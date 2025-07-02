@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36221.1 d17.14
+VisualStudioVersion = 17.14.36221.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartExpense.WebUI", "SmartExpense.WebUI\SmartExpense.WebUI.csproj", "{2CCC8AC0-0B8B-47D8-900B-D77A92433621}"
 EndProject
@@ -16,6 +16,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventBus.AzureServiceBus", "EventBus.AzureServiceBus\EventBus.AzureServiceBus.csproj", "{A40E5C86-6CB8-4DD1-AE60-E13918A4D671}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventBus.RabbitMQ", "EventBus.RabbitMQ\EventBus.RabbitMQ.csproj", "{CC92B2F1-D780-4F5C-885E-A9839DB7F646}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventBus.UnitTests", "EventBus.UnitTests\EventBus.UnitTests.csproj", "{D7E03D93-710B-45A5-AB42-DAF016759FD9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -51,6 +53,10 @@ Global
 		{CC92B2F1-D780-4F5C-885E-A9839DB7F646}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CC92B2F1-D780-4F5C-885E-A9839DB7F646}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CC92B2F1-D780-4F5C-885E-A9839DB7F646}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D7E03D93-710B-45A5-AB42-DAF016759FD9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7E03D93-710B-45A5-AB42-DAF016759FD9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7E03D93-710B-45A5-AB42-DAF016759FD9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7E03D93-710B-45A5-AB42-DAF016759FD9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
