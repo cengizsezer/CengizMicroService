@@ -19,7 +19,7 @@ namespace EventBus.UnitTest
         public EventBusTests()
         {
             services = new ServiceCollection();
-            //services.AddLogging(configure => configure.AddConsole());
+            services.AddLogging(configure => configure.AddConsole());
         }
 
         [TestMethod]
@@ -36,7 +36,7 @@ namespace EventBus.UnitTest
             var eventBus = sp.GetRequiredService<IEventBus>();
 
             eventBus.Subscribe<OrderCreatedIntegrationEvent, OrderCreatedIntegrationEventHandler>();
-            //eventBus.UnSubscribe<OrderCreatedIntegrationEvent, OrderCreatedIntegrationEventHandler>();
+            eventBus.UnSubscribe<OrderCreatedIntegrationEvent, OrderCreatedIntegrationEventHandler>();
         }
 
         [TestMethod]
@@ -53,7 +53,7 @@ namespace EventBus.UnitTest
             var eventBus = sp.GetRequiredService<IEventBus>();
 
             eventBus.Subscribe<OrderCreatedIntegrationEvent, OrderCreatedIntegrationEventHandler>();
-            //eventBus.UnSubscribe<OrderCreatedIntegrationEvent, OrderCreatedIntegrationEventHandler>();
+            eventBus.UnSubscribe<OrderCreatedIntegrationEvent, OrderCreatedIntegrationEventHandler>();
 
             Task.Delay(2000).Wait();
         }
