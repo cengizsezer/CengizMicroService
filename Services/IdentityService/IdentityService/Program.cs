@@ -40,7 +40,7 @@ try
 
     builder.Services.AddSwaggerGen(c =>
     {
-        c.SwaggerDoc("v1", new OpenApiInfo { Title = "IdentityService.Api", Version = "v1" });
+        c.SwaggerDoc("v1", new OpenApiInfo { Title = "IdentityService", Version = "v1" });
     });
 
     builder.Services.AddHealthChecks()
@@ -52,7 +52,7 @@ try
     {
         app.UseDeveloperExceptionPage();
         app.UseSwagger();
-        app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "IdentityService.Api v1"));
+        app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "IdentityService v1"));
     }
 
     app.UseHttpsRedirection();
