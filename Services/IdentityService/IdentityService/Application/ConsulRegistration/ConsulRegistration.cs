@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
 
-namespace IdentityService.Extensions.Registration
+namespace IdentityService.Application.ConsulRegistration
 {
     public static class ConsulRegistration
     {

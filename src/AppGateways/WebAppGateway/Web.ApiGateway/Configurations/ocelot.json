@@ -3,10 +3,8 @@
     {
       "ServiceName": "IdentityService",
       "UseServiceDiscovery": true,
-
       "DownstreamPathTemplate": "/api/auth",
       "DownstreamScheme": "http",
-
       "UpstreamPathTemplate": "/auth",
       "UpstreamHttpMethod": [ "POST" ],
       "UpstreamScheme": "http"

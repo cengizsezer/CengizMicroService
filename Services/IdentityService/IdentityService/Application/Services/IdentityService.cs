@@ -1,4 +1,4 @@
-﻿using IdentityServer.Application.Models;
+﻿using IdentityService.Application.Models;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
@@ -8,7 +8,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace IdentityServer.Application.Services
+namespace IdentityService.Application.Services
 {
     public class IdentityService : IIdentityService
     {
@@ -38,5 +38,7 @@ namespace IdentityServer.Application.Services
 
             return Task.FromResult(response);
         }
+
+       
     }
 }

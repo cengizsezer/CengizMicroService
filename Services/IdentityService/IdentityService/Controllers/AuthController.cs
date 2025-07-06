@@ -1,11 +1,7 @@
-﻿using IdentityServer.Application.Models;
-using IdentityServer.Application.Services;
-using Microsoft.AspNetCore.Http;
+﻿using IdentityService.Application.Models;
+using IdentityService.Application.Services;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+
 
 namespace IdentityService.Controllers
 {
@@ -14,9 +10,9 @@ namespace IdentityService.Controllers
     public class AuthController : ControllerBase
     {
 
-        private readonly IIdentityService identityService;
+        private readonly IdentityService.Application.Services.IIdentityService identityService;
 
-        public AuthController(IIdentityService identityService)
+        public AuthController(IdentityService.Application.Services.IIdentityService identityService)
         {
             this.identityService = identityService;
         }

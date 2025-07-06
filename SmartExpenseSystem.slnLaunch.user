@@ -3,11 +3,15 @@
     "Name": "New Profile",
     "Projects": [
       {
+        "Path": "Services\\IdentityService\\IdentityService\\IdentityService.csproj",
+        "Action": "Start"
+      },
+      {
         "Path": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Web.ApiGateway.csproj",
         "Action": "Start"
       },
       {
-        "Path": "Services\\IdentityService\\IdentityService\\IdentityService.csproj",
+        "Path": "src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj",
         "Action": "Start"
       }
     ]

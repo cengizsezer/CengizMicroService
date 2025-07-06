@@ -1,0 +1,26 @@
+﻿@page "/logout"
+
+@using WebApp.Application.Services.Interfaces
+@using Microsoft.AspNetCore.WebUtilities
+
+<h3>Logout</h3>
+
+@code {
+
+    [Inject]
+    IIdentityService identityService { get; set; }
+
+    [Inject]
+    NavigationManager navigationManager { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        identityService.Logout();
+
+        var uri = new Uri(navigationManager.Uri);
+        var queryDict = QueryHelpers.ParseQuery(uri.Query);
+        string returnUrl = queryDict.TryGetValue("returnUrl", out var values) ? values.FirstOrDefault() : "/";
+
+        navigationManager.NavigateTo(returnUrl);
+    }
+}

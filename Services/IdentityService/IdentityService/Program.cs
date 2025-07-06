@@ -1,25 +1,32 @@
-﻿using Serilog;
-using HealthChecks.UI.Client;
-using IdentityServer.Application.Services;
-using IdentityService.Extensions.Registration;
+﻿using HealthChecks.UI.Client;
+using IdentityService.Application.ConsulRegistration;
+using IdentityService.Application.Services;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
+using Serilog;
 
 var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
 
-// Global config (appsettings)
+// Configurations
 var configuration = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())
     .AddJsonFile("Configurations/appsettings.json", optional: false)
     .AddJsonFile($"Configurations/appsettings.{env}.json", optional: true)
+    .AddEnvironmentVariables()
+    .Build();
+
+// Serilog Configuration - Ayrı yüklenmeli
+var serilogConfig = new ConfigurationBuilder()
+    .SetBasePath(Directory.GetCurrentDirectory())
     .AddJsonFile("Configurations/serilog.json", optional: false)
     .AddJsonFile($"Configurations/serilog.{env}.json", optional: true)
     .AddEnvironmentVariables()
     .Build();
 
-// Serilog’u henüz builder oluşturulmadan önce ayarla!
+// Serilog initialization
 Log.Logger = new LoggerConfiguration()
-    .Enrich.FromLogContext()
+    .ReadFrom.Configuration(serilogConfig)
     .CreateLogger();
 
 try
@@ -28,13 +35,16 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    // Use Serilog
+    // ÖNEMLİ: Builder'ın configuration'ını ana config ile değiştir
+    builder.Configuration.Sources.Clear();
+    builder.Configuration.AddConfiguration(configuration);
+
     builder.Host.UseSerilog();
 
     // Services
-    builder.Services.AddScoped<IIdentityService, IdentityServer.Application.Services.IdentityService>();
-    builder.Services.ConfigureConsul(configuration);
-
+  
+    builder.Services.AddScoped<IdentityService.Application.Services.IIdentityService,
+                          IdentityService.Application.Services.IdentityService>();
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
 
@@ -44,10 +54,14 @@ try
     });
 
     builder.Services.AddHealthChecks()
-        .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy());
+        .AddCheck("self", () => HealthCheckResult.Healthy());
+
+    // Consul Registration
+    builder.Services.ConfigureConsul(configuration);
 
     var app = builder.Build();
 
+    // Pipeline
     if (app.Environment.IsDevelopment())
     {
         app.UseDeveloperExceptionPage();

@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SmartExpense.WebUI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+774a14b4c2bc1d1f49fef0be1f82bef003362cb2")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+72635698bc9a05bbd2006520716e7219bca6b68d")]
 [assembly: System.Reflection.AssemblyProductAttribute("SmartExpense.WebUI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SmartExpense.WebUI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -9,7 +9,7 @@
     "Parameters": [
       {
         "Name": "loginRequestModel",
-        "Type": "IdentityServer.Application.Models.LoginRequestModel",
+        "Type": "IdentityService.Application.Models.LoginRequestModel",
         "IsRequired": true
       }
     ],
