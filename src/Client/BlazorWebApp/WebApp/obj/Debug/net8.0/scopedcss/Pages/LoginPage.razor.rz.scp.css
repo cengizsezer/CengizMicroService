@@ -1,0 +1,60 @@
+.login-container[b-5us2lodrrx] {
+    display: flex;
+    height: 100vh;
+}
+
+.login-left[b-5us2lodrrx] {
+    flex: 1;
+    background-color: #f0f4ff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    text-align: center;
+}
+
+    .login-left h2[b-5us2lodrrx] {
+        font-weight: 600;
+        margin-top: 2rem;
+        color: #2c3e50;
+    }
+
+.login-image[b-5us2lodrrx] {
+    max-width: 80%;
+    height: auto;
+}
+
+.login-right[b-5us2lodrrx] {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    background-color: white;
+}
+
+.d-flex-between[b-5us2lodrrx] {
+    display: flex;
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+    .login-container[b-5us2lodrrx] {
+        flex-direction: column;
+    }
+
+    .login-left[b-5us2lodrrx],
+    .login-right[b-5us2lodrrx] {
+        flex: none;
+        width: 100%;
+    }
+
+    .login-left[b-5us2lodrrx] {
+        order: 2;
+    }
+
+    .login-right[b-5us2lodrrx] {
+        order: 1;
+    }
+}

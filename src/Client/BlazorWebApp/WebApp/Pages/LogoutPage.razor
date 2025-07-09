@@ -1,26 +1,21 @@
 ﻿@page "/logout"
-
 @using WebApp.Application.Services.Interfaces
-@using Microsoft.AspNetCore.WebUtilities
 
-<h3>Logout</h3>
+@inject NavigationManager NavigationManager
+@inject IIdentityService IdentityService
+
+<div class="logout-container">
+    <RadzenCard Style="text-align: center; padding: 2rem;">
+        <RadzenHeading Size="H5">Çıkış yapılıyor...</RadzenHeading>
+        <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" Style="width: 100%; margin-top: 1rem;" />
+    </RadzenCard>
+</div>
 
 @code {
-
-    [Inject]
-    IIdentityService identityService { get; set; }
-
-    [Inject]
-    NavigationManager navigationManager { get; set; }
-
     protected override async Task OnInitializedAsync()
     {
-        identityService.Logout();
-
-        var uri = new Uri(navigationManager.Uri);
-        var queryDict = QueryHelpers.ParseQuery(uri.Query);
-        string returnUrl = queryDict.TryGetValue("returnUrl", out var values) ? values.FirstOrDefault() : "/";
-
-        navigationManager.NavigateTo(returnUrl);
+        IdentityService.Logout(); // örnek logout işlemi
+        await Task.Delay(1000); // animasyon görünsün diye kısa gecikme
+        NavigationManager.NavigateTo("/login", true);
     }
 }

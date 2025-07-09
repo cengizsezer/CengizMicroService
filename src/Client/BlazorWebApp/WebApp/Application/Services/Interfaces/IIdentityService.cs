@@ -15,6 +15,8 @@ namespace WebApp.Application.Services.Interfaces
 
         Task<bool> Login(string userName, string password);
 
+        Task<bool> Register(string userName, string email, string password);
+
         void Logout();
     }
 }

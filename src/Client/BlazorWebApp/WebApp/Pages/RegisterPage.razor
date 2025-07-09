@@ -1,0 +1,123 @@
+﻿@page "/register"
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@using WebApp.Application.Services.Interfaces
+@inject NavigationManager NavigationManager
+@inject IIdentityService IdentityService
+@inject Microsoft.JSInterop.IJSRuntime JSRuntime
+
+<h3>Kayıt Ol</h3>
+
+<EditForm EditContext="@editContext" OnValidSubmit="@OnRegister" OnInvalidSubmit="@OnInvalidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <RadzenTextBox @bind-Value="registerModel.UserName" Name="username" Placeholder="Kullanıcı Adı" Style="width: 100%;" />
+    <ValidationMessage For="@(() => registerModel.UserName)" />
+
+    <RadzenTextBox @bind-Value="registerModel.Email" Name="email" Placeholder="Email" Style="width: 100%; margin-top: 1rem;" />
+    <ValidationMessage For="@(() => registerModel.Email)" />
+
+    <RadzenPassword @bind-Value="registerModel.Password" Name="password" Placeholder="Şifre" Style="width: 100%; margin-top: 1rem;" />
+    <ValidationMessage For="@(() => registerModel.Password)" />
+
+    <RadzenButton ButtonType="ButtonType.Submit" Text="Kayıt Ol" Style="width: 100%; margin-top: 2rem;" />
+
+    <RadzenAlert Visible="@hasError" Severity="AlertSeverity.Error" Style="margin-top: 1rem;">
+        Kayıt başarısız oldu.
+    </RadzenAlert>
+</EditForm>
+
+<hr />
+
+<h4>Doğrudan Test POST Gönder</h4>
+
+<button @onclick="DirectTestPost" style="width: 100%; padding: 1rem; margin-top: 1rem;">
+    Test POST Gönder (Doğrudan HttpClient ile)
+</button>
+
+<p>@testPostResult</p>
+
+@code {
+    private RegisterModel registerModel = new();
+    private EditContext editContext;
+
+    public class RegisterModel
+    {
+        [Required(ErrorMessage = "Kullanıcı adı zorunludur")]
+        public string UserName { get; set; }
+
+        [Required(ErrorMessage = "Email zorunludur")]
+        [EmailAddress(ErrorMessage = "Geçerli bir email girin")]
+        public string Email { get; set; }
+
+        [Required(ErrorMessage = "Şifre zorunludur")]
+        public string Password { get; set; }
+    }
+
+    private bool hasError;
+    private string testPostResult = "";
+
+    protected override void OnInitialized()
+    {
+        editContext = new EditContext(registerModel);
+    }
+
+    private async Task OnRegister()
+    {
+        hasError = false;
+        await JSRuntime.InvokeVoidAsync("console.log", "✅ OnRegister tetiklendi");
+
+        try
+        {
+            bool isSuccess = await IdentityService.Register(registerModel.UserName, registerModel.Email, registerModel.Password);
+
+            if (isSuccess)
+            {
+                NavigationManager.NavigateTo("/login");
+            }
+            else
+            {
+                hasError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            hasError = true;
+            await JSRuntime.InvokeVoidAsync("console.error", $"❌ Register hata: {ex.Message}");
+        }
+    }
+
+    private void OnInvalidSubmit(EditContext context)
+    {
+        JSRuntime.InvokeVoidAsync("console.warn", "❌ Form doğrulaması başarısız");
+    }
+
+    private async Task DirectTestPost()
+    {
+        try
+        {
+            testPostResult = "Gönderiliyor...";
+            var client = new HttpClient { BaseAddress = new Uri("http://localhost:5000/") };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                userName = "testuser",
+                email = "test@test.com",
+                password = "Test1234!"
+            });
+
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await client.PostAsync("auth/register", content);
+
+            testPostResult = response.IsSuccessStatusCode
+                ? "Başarılı! Status Code: " + (int)response.StatusCode
+                : "Başarısız! Status Code: " + (int)response.StatusCode;
+        }
+        catch (Exception ex)
+        {
+            testPostResult = "Hata: " + ex.Message;
+        }
+    }
+}

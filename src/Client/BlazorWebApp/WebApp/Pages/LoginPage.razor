@@ -1,47 +1,163 @@
 ﻿@page "/login"
-
+@using System.ComponentModel.DataAnnotations
 @using WebApp.Application.Services.Interfaces
-@using WebApp.Domain.Models.User
-@using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.AspNetCore.Components.Forms
+@inject NavigationManager NavigationManager
+@inject IIdentityService IdentityService
+@inject Microsoft.JSInterop.IJSRuntime JSRuntime
 
-<div class="container-fluid h-100">
-    <div class="row justify-content-center align-items-center h-100">
-        <div class="col col-sm-6 col-md-6 col-lg-4 col-xl-3">
-            <EditForm Model="@userLoginRequest" OnValidSubmit="loginProcess">
+<style>
+    .login-container {
+        display: flex;
+        min-height: 100vh;
+        width: 100vw;
+    }
+
+    .login-left {
+        width: 50vw;
+        height: 100vh;
+        background-color: #f5f7fa;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        text-align: center;
+    }
+
+    .login-image {
+        width: 100%;
+        height: auto;
+        max-width: none;
+        margin-bottom: 2rem;
+    }
+
+    .login-right {
+        width: 50vw;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background-color: white;
+    }
+
+    .login-options {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin: 1rem 0;
+    }
+
+    .remember-me {
+        display: flex;
+        align-items: center;
+    }
+
+    .login-card {
+        width: 100%;
+        max-width: 400px;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .login-title {
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    .alternative-login {
+        text-align: center;
+        margin: 1rem 0;
+    }
+</style>
+
+<div class="login-container">
+    <!-- Sol kısım - görsel ve başlık -->
+    <div class="login-left">
+        <img src="img/loginBG.png" alt="Digital Accounting" class="login-image" />
+        <h2>MASRAF<br />YÖNETİMİ</h2>
+    </div>
+
+    <!-- Sağ kısım - login form -->
+    <div class="login-right">
+        <div class="login-card">
+            <div class="login-title">
+                <RadzenHeading Size="H4">Giriş Yap</RadzenHeading>
+            </div>
+
+            <div class="alternative-login">
+                <RadzenText>
+                    Firma Kodu veya Kullanıcı Kodu ile mi giriş yapıyorsunuz?
+                    <RadzenLink Text="Buraya tıklayınız" Path="#" Style="color: #3b82f6; margin-left: 5px;" />
+                </RadzenText>
+            </div>
+
+            <div class="alternative-login" style="margin-top: 2rem;">
+                <RadzenText>
+                    Hesabınız yok mu?
+                    <RadzenLink Text="Kayıt Ol" Path="/register" Style="color: #3b82f6; margin-left: 5px;" />
+                </RadzenText>
+            </div>
+
+            <EditForm EditContext="@loginEditContext" OnValidSubmit="@OnLogin">
                 <DataAnnotationsValidator />
-                <div class="form-group">
-                    <input @bind-value="userLoginRequest.UserName" class="form-control form-control-lg" type="text" placeholder="User Name" />
+
+                <RadzenTextBox @bind-Value="loginModel.Username" Placeholder="Kullanıcı Adı (veya E-posta)" Style="width: 100%; margin-bottom: 1rem;" Name="Username" />
+                <ValidationMessage For="@(() => loginModel.Username)" />
+
+                <RadzenPassword @bind-Value="loginModel.Password" Placeholder="Şifre" Style="width: 100%; margin-bottom: 1rem;" Name="Password" />
+                <ValidationMessage For="@(() => loginModel.Password)" />
+
+                <div class="login-options">
+                    <div class="remember-me">
+                        <RadzenCheckBox @bind-Value="rememberMe" Style="margin-right: 5px;" />
+                        <RadzenLabel Text="Beni Hatırla" />
+                    </div>
+                    <RadzenLink Text="Şifremi Unuttum" Path="#" Style="color: #3b82f6;" />
                 </div>
-                <div class="form-group">
-                    <input @bind-value="userLoginRequest.Password" class="form-control form-control-lg" type="password" placeholder="Password" />
-                </div>
-                <div class="form-group">
-                    <button class="btn btn-info btn-block">Login</button>
-                </div>
+
+                <RadzenButton ButtonType="@ButtonType.Submit" Text="Giriş Yap" Style="width: 100%; margin-top: 1.5rem; background-color: #3b82f6;" />
             </EditForm>
         </div>
     </div>
 </div>
 
 @code {
-    [Inject]
-    IIdentityService identityService { get; set; }
+    private LoginModel loginModel = new();
+    private EditContext loginEditContext;
+    private bool rememberMe = true;
 
-    [Inject]
-    NavigationManager navigationManager { get; set; }
-
-    public UserLoginRequest userLoginRequest = new UserLoginRequest("", "");
-
-    private async Task loginProcess()
+    public class LoginModel
     {
-        var res = await identityService.Login(userLoginRequest.UserName, userLoginRequest.Password);
+        [Required(ErrorMessage = "Kullanıcı adı zorunludur")]
+        public string Username { get; set; }  // <-- Artık 'Email' yerine 'Username' kullanıyoruz
 
-        if (res)
+        [Required(ErrorMessage = "Şifre zorunludur")]
+        public string Password { get; set; }
+    }
+
+    protected override void OnInitialized()
+    {
+        loginEditContext = new EditContext(loginModel);
+    }
+
+    private async Task OnLogin()
+    {
+        await JSRuntime.InvokeVoidAsync("console.log", "🚀 OnLogin tetiklendi");
+
+        var success = await IdentityService.Login(loginModel.Username, loginModel.Password); // <-- Artık Username gönderiyoruz
+
+        if (success)
         {
-            var uri = new Uri(navigationManager.Uri);
-            var queryDict = QueryHelpers.ParseQuery(uri.Query);
-            string returnUrl = queryDict.TryGetValue("returnUrl", out var values) ? values.FirstOrDefault() : "/";
-            navigationManager.NavigateTo(returnUrl);
+            NavigationManager.NavigateTo("/home");
+        }
+        else
+        {
+            await JSRuntime.InvokeVoidAsync("console.warn", "❌ Giriş başarısız.");
         }
     }
+
 }

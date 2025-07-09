@@ -1,0 +1,18 @@
+[
+  {
+    "ContainingType": "IdentityService.Controllers.AuthController",
+    "Method": "Login",
+    "RelativePath": "api/Auth",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "loginRequestModel",
+        "Type": "IdentityService.Application.Models.LoginRequestModel",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  }
+]

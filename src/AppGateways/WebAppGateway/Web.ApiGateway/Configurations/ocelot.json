@@ -3,11 +3,34 @@
     {
       "ServiceName": "IdentityService",
       "UseServiceDiscovery": true,
-      "DownstreamPathTemplate": "/api/auth",
+      "DownstreamPathTemplate": "/api/auth/login",
       "DownstreamScheme": "http",
-      "UpstreamPathTemplate": "/auth",
-      "UpstreamHttpMethod": [ "POST" ],
-      "UpstreamScheme": "http"
+      "UpstreamPathTemplate": "/auth/login",
+      "UpstreamHttpMethod": [ "POST" ]
+    },
+    {
+      "ServiceName": "IdentityService",
+      "UseServiceDiscovery": true,
+      "DownstreamPathTemplate": "/api/auth/register",
+      "DownstreamScheme": "http",
+      "UpstreamPathTemplate": "/auth/register",
+      "UpstreamHttpMethod": [ "POST" ]
+    },
+    {
+      "ServiceName": "IdentityService",
+      "UseServiceDiscovery": true,
+      "DownstreamPathTemplate": "/api/auth/refresh-token",
+      "DownstreamScheme": "http",
+      "UpstreamPathTemplate": "/auth/refresh-token",
+      "UpstreamHttpMethod": [ "POST" ]
+    },
+    {
+      "ServiceName": "IdentityService",
+      "UseServiceDiscovery": true,
+      "DownstreamPathTemplate": "/api/auth/admin-test",
+      "DownstreamScheme": "http",
+      "UpstreamPathTemplate": "/auth/admin-test",
+      "UpstreamHttpMethod": [ "GET" ]
     }
   ],
   "GlobalConfiguration": {

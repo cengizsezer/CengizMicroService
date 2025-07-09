@@ -587,6 +587,29 @@
           "build/Microsoft.NET.Sdk.WebAssembly.Pack.targets": {}
         }
       },
+      "Radzen.Blazor/7.1.4": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.AspNetCore.Components": "8.0.0",
+          "Microsoft.AspNetCore.Components.Web": "8.0.0"
+        },
+        "compile": {
+          "lib/net8.0/Radzen.Blazor.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/Radzen.Blazor.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/Radzen.Blazor.props": {}
+        },
+        "buildMultiTargeting": {
+          "buildMultiTargeting/Radzen.Blazor.props": {}
+        }
+      },
       "System.Diagnostics.DiagnosticSource/10.0.0-preview.5.25277.114": {
         "type": "package",
         "compile": {
@@ -1265,6 +1288,29 @@
         "build": {
           "build/Microsoft.NET.Sdk.WebAssembly.Pack.props": {},
           "build/Microsoft.NET.Sdk.WebAssembly.Pack.targets": {}
+        }
+      },
+      "Radzen.Blazor/7.1.4": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.AspNetCore.Components": "8.0.0",
+          "Microsoft.AspNetCore.Components.Web": "8.0.0"
+        },
+        "compile": {
+          "lib/net8.0/Radzen.Blazor.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/Radzen.Blazor.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/Radzen.Blazor.props": {}
+        },
+        "buildMultiTargeting": {
+          "buildMultiTargeting/Radzen.Blazor.props": {}
         }
       },
       "System.Diagnostics.DiagnosticSource/10.0.0-preview.5.25277.114": {
@@ -2439,6 +2485,69 @@
         "tools/net9.0/Microsoft.NET.WebAssembly.Webcil.dll"
       ]
     },
+    "Radzen.Blazor/7.1.4": {
+      "sha512": "cW91a8xgAG2dSm4IQk23j8TJNH82I6jSDuu3yHzZFUw2JAerpHjgRNeJ2enFK1SVB4druHfdvbxuAudMdCGJyw==",
+      "type": "package",
+      "path": "radzen.blazor/7.1.4",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.txt",
+        "README.md",
+        "build/Microsoft.AspNetCore.StaticWebAssetEndpoints.props",
+        "build/Microsoft.AspNetCore.StaticWebAssets.props",
+        "build/Radzen.Blazor.props",
+        "buildMultiTargeting/Radzen.Blazor.props",
+        "buildTransitive/Radzen.Blazor.props",
+        "icon.png",
+        "lib/net6.0/Radzen.Blazor.dll",
+        "lib/net6.0/Radzen.Blazor.xml",
+        "lib/net7.0/Radzen.Blazor.dll",
+        "lib/net7.0/Radzen.Blazor.xml",
+        "lib/net8.0/Radzen.Blazor.dll",
+        "lib/net8.0/Radzen.Blazor.xml",
+        "lib/net9.0/Radzen.Blazor.dll",
+        "lib/net9.0/Radzen.Blazor.xml",
+        "radzen.blazor.7.1.4.nupkg.sha512",
+        "radzen.blazor.nuspec",
+        "staticwebassets/Radzen.Blazor.js",
+        "staticwebassets/Radzen.Blazor.min.js",
+        "staticwebassets/css/dark-base.css",
+        "staticwebassets/css/dark-wcag.css",
+        "staticwebassets/css/dark.css",
+        "staticwebassets/css/default-base.css",
+        "staticwebassets/css/default-wcag.css",
+        "staticwebassets/css/default.css",
+        "staticwebassets/css/humanistic-base.css",
+        "staticwebassets/css/humanistic-dark-base.css",
+        "staticwebassets/css/humanistic-dark-wcag.css",
+        "staticwebassets/css/humanistic-dark.css",
+        "staticwebassets/css/humanistic-wcag.css",
+        "staticwebassets/css/humanistic.css",
+        "staticwebassets/css/material-base.css",
+        "staticwebassets/css/material-dark-base.css",
+        "staticwebassets/css/material-dark-wcag.css",
+        "staticwebassets/css/material-dark.css",
+        "staticwebassets/css/material-wcag.css",
+        "staticwebassets/css/material.css",
+        "staticwebassets/css/software-base.css",
+        "staticwebassets/css/software-dark-base.css",
+        "staticwebassets/css/software-dark-wcag.css",
+        "staticwebassets/css/software-dark.css",
+        "staticwebassets/css/software-wcag.css",
+        "staticwebassets/css/software.css",
+        "staticwebassets/css/standard-base.css",
+        "staticwebassets/css/standard-dark-base.css",
+        "staticwebassets/css/standard-dark-wcag.css",
+        "staticwebassets/css/standard-dark.css",
+        "staticwebassets/css/standard-wcag.css",
+        "staticwebassets/css/standard.css",
+        "staticwebassets/fonts/MaterialSymbolsOutlined.woff2",
+        "staticwebassets/fonts/RobotoFlex.woff2",
+        "staticwebassets/fonts/SourceSans3VF-Italic.ttf.woff2",
+        "staticwebassets/fonts/SourceSans3VF-Upright.ttf.woff2"
+      ]
+    },
     "System.Diagnostics.DiagnosticSource/10.0.0-preview.5.25277.114": {
       "sha512": "bAqwR7f/neMX5iV5sjMcZBUruBF2bvXPmF07xtxZjgLJtXBxLBL91TGhKlrbdiQuPjxwRi5D1HmUwZgN3EIeUA==",
       "type": "package",
@@ -2650,6 +2759,7 @@
       "Microsoft.Extensions.Http >= 10.0.0-preview.5.25277.114",
       "Microsoft.NET.ILLink.Tasks >= 8.0.17",
       "Microsoft.NET.Sdk.WebAssembly.Pack >= 9.0.6",
+      "Radzen.Blazor >= 7.1.4",
       "System.Net.Http.Json >= 10.0.0-preview.5.25277.114"
     ]
   },
@@ -2740,6 +2850,10 @@
             "target": "Package",
             "version": "[9.0.6, )",
             "autoReferenced": true
+          },
+          "Radzen.Blazor": {
+            "target": "Package",
+            "version": "[7.1.4, )"
           },
           "System.Net.Http.Json": {
             "target": "Package",
