@@ -1,7 +1,7 @@
 ﻿@page "/login"
 @using System.ComponentModel.DataAnnotations
-@using WebApp.Application.Services.Interfaces
 @using Microsoft.AspNetCore.Components.Forms
+@using WebApp.Application.Services.Interfaces
 @inject NavigationManager NavigationManager
 @inject IIdentityService IdentityService
 @inject Microsoft.JSInterop.IJSRuntime JSRuntime
@@ -42,19 +42,6 @@
         background-color: white;
     }
 
-    .login-options {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
-        margin: 1rem 0;
-    }
-
-    .remember-me {
-        display: flex;
-        align-items: center;
-    }
-
     .login-card {
         width: 100%;
         max-width: 400px;
@@ -72,16 +59,29 @@
         text-align: center;
         margin: 1rem 0;
     }
+
+    .login-options {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin: 1rem 0;
+    }
+
+    .remember-me {
+        display: flex;
+        align-items: center;
+    }
 </style>
 
 <div class="login-container">
-    <!-- Sol kısım - görsel ve başlık -->
+    <!-- Sol kısım -->
     <div class="login-left">
         <img src="img/loginBG.png" alt="Digital Accounting" class="login-image" />
         <h2>MASRAF<br />YÖNETİMİ</h2>
     </div>
 
-    <!-- Sağ kısım - login form -->
+    <!-- Sağ kısım -->
     <div class="login-right">
         <div class="login-card">
             <div class="login-title">
@@ -95,12 +95,10 @@
                 </RadzenText>
             </div>
 
-            <div class="alternative-login" style="margin-top: 2rem;">
-                <RadzenText>
-                    Hesabınız yok mu?
-                    <RadzenLink Text="Kayıt Ol" Path="/register" Style="color: #3b82f6; margin-left: 5px;" />
-                </RadzenText>
-            </div>
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <RadzenLabel Text="@errorMessage" Style="color: #d32f2f; margin-bottom: 12px; text-align: center;" />
+            }
 
             <EditForm EditContext="@loginEditContext" OnValidSubmit="@OnLogin">
                 <DataAnnotationsValidator />
@@ -119,8 +117,29 @@
                     <RadzenLink Text="Şifremi Unuttum" Path="#" Style="color: #3b82f6;" />
                 </div>
 
-                <RadzenButton ButtonType="@ButtonType.Submit" Text="Giriş Yap" Style="width: 100%; margin-top: 1.5rem; background-color: #3b82f6;" />
+               <RadzenButton ButtonType="ButtonType.Submit" Disabled="@isLoading"
+              Style="width: 100%; background-color: #3b82f6; color: white; font-weight: 600; border-radius: 25px; padding: 10px;">
+    @if (isLoading)
+    {
+        <div style="display: flex; align-items: center; justify-content: center;">
+            <RadzenProgressCircle ShowValue="false" Style="width: 20px; height: 20px; margin-right: 8px;" />
+            <span>Giriş Yapılıyor...</span>
+        </div>
+    }
+    else
+    {
+        <span>Giriş Yap</span>
+    }
+</RadzenButton>
+
             </EditForm>
+
+            <div class="alternative-login" style="margin-top: 2rem;">
+                <RadzenText>
+                    Hesabınız yok mu?
+                    <RadzenLink Text="Kayıt Ol" Path="/register" Style="color: #3b82f6; margin-left: 5px;" />
+                </RadzenText>
+            </div>
         </div>
     </div>
 </div>
@@ -129,11 +148,13 @@
     private LoginModel loginModel = new();
     private EditContext loginEditContext;
     private bool rememberMe = true;
+    private bool isLoading = false;
+    private string errorMessage;
 
     public class LoginModel
     {
         [Required(ErrorMessage = "Kullanıcı adı zorunludur")]
-        public string Username { get; set; }  // <-- Artık 'Email' yerine 'Username' kullanıyoruz
+        public string Username { get; set; }
 
         [Required(ErrorMessage = "Şifre zorunludur")]
         public string Password { get; set; }
@@ -146,18 +167,30 @@
 
     private async Task OnLogin()
     {
-        await JSRuntime.InvokeVoidAsync("console.log", "🚀 OnLogin tetiklendi");
+        isLoading = true;
+        errorMessage = null;
+        StateHasChanged();
 
-        var success = await IdentityService.Login(loginModel.Username, loginModel.Password); // <-- Artık Username gönderiyoruz
-
-        if (success)
+        try
         {
-            NavigationManager.NavigateTo("/home");
+            var success = await IdentityService.Login(loginModel.Username, loginModel.Password, rememberMe);
+
+            if (success)
+            {
+                NavigationManager.NavigateTo("/home");
+            }
+            else
+            {
+                errorMessage = "Geçersiz kullanıcı adı veya şifre.";
+            }
         }
-        else
+        catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("console.warn", "❌ Giriş başarısız.");
+            errorMessage = "Bir hata oluştu: " + ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
-
 }

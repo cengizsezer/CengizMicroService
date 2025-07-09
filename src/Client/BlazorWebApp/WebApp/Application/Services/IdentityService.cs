@@ -38,7 +38,8 @@ namespace WebApp.Application.Services
         {
             return syncLocalStorageService.GetItem<string>("token");
         }
-        public async Task<bool> Login(string username, string password)
+        public async Task<bool> Login(string username, string password, bool rememberMe = false)
+
         {
             var loginModel = new UserLoginRequest
             {
@@ -58,9 +59,17 @@ namespace WebApp.Application.Services
 
             var result = await response.Content.ReadFromJsonAsync<UserLoginResponse>();
 
-            syncLocalStorageService.SetItem("username", username);
-            syncLocalStorageService.SetItem("token", result.Token);  // burası "token" olmalı
-            syncLocalStorageService.SetItem("refresh_token", result.RefreshToken);
+            if (rememberMe)
+            {
+                syncLocalStorageService.SetItem("username", username);
+                syncLocalStorageService.SetItem("token", result.Token);
+                syncLocalStorageService.SetItem("refresh_token", result.RefreshToken);
+            }
+            else
+            {
+                // Kalıcı saklama yerine sadece bellekte tutabilirsin veya saklamayabilirsin
+                // Bu örnekte hiçbir yere kaydetmiyoruz
+            }
 
             ((AuthStateProvider)authStateProvider).NotifyUserLogin(username);
 

@@ -1,4 +1,6 @@
-﻿<CascadingAuthenticationState>
+﻿﻿@using Microsoft.AspNetCore.Components.Authorization
+
+<CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
@@ -6,13 +8,51 @@
                     <RedirectToLogin />
                 </NotAuthorized>
             </AuthorizeRouteView>
-            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
         </Found>
         <NotFound>
-            <PageTitle>Not found</PageTitle>
             <LayoutView Layout="@typeof(MainLayout)">
-                <p role="alert">Sorry, there's nothing at this address.</p>
+                <MudText Typo="Typo.h6" Color="Color.Error">404 - Page Not Found</MudText>
             </LayoutView>
         </NotFound>
     </Router>
 </CascadingAuthenticationState>
+
+
+@code{
+    [Inject] NavigationManager Navigation { get; set; }
+    [Inject] AuthenticationStateProvider provider { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await provider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        // Ensure the initial navigation happens
+        if (Navigation.Uri == Navigation.BaseUri) // Only redirect if on the root URL
+        {
+            if (user?.Identity?.IsAuthenticated == true)
+            {
+                Navigation.NavigateTo("/home");
+            }
+            else
+            {
+                Navigation.NavigateTo("/login");
+            }
+        }
+        // Additional check for unauthorized access to /home
+        else if (!user?.Identity?.IsAuthenticated == true && Navigation.Uri.EndsWith("home"))
+        {
+            Navigation.NavigateTo("/login");
+        }
+    }
+
+    private class RedirectToLogin : ComponentBase
+    {
+        [Inject] NavigationManager Navigation { get; set; }
+
+        protected override void OnInitialized()
+        {
+            Navigation.NavigateTo("/login");
+        }
+    }
+}

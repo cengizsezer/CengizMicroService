@@ -1,0 +1,77 @@
+﻿﻿@using Blazored.LocalStorage
+
+@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@inject IIdentityService IdentityService
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Application.Services.Interfaces
+@inject ILocalStorageService LocalStorage
+
+<RadzenNotification />
+<RadzenDialog />
+
+<RadzenLayout>
+    <RadzenHeader>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
+            <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
+            <RadzenLabel Text="Smart Balance" />
+
+            <RadzenButton Variant="Variant.Text" Click="@OnLogout" Style="margin-left: auto; color:white">
+                <i class="fa-solid fa-right-from-bracket" style="font-size: 18px; margin-right: 5px;"></i>
+            </RadzenButton>
+        </RadzenStack>
+    </RadzenHeader>
+
+    <RadzenSidebar Responsive="false" Style="width: max-content">
+        <RadzenPanelMenu DisplayStyle="@(sidebarExpanded? MenuItemDisplayStyle.IconAndText: MenuItemDisplayStyle.Icon)" ShowArrow="false">
+            <RadzenPanelMenuItem Text="Home" Icon="home" Path="/home" />
+            <RadzenPanelMenuItem Text="Dashboard" Icon="dashboard" Path="/dashboard" />
+            <RadzenPanelMenuItem Text="Personel" Icon="people" Path="/personnel" />
+            <RadzenPanelMenuItem Text="Settings" Icon="settings">
+                <RadzenPanelMenuItem Text="Account" Icon="account_circle" Path="/account" />
+            </RadzenPanelMenuItem>
+        </RadzenPanelMenu>
+    </RadzenSidebar>
+
+    <RadzenBody>
+        <div class="rz-p-4">
+            @Body
+        </div>
+    </RadzenBody>
+
+    <RadzenFooter>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Style="padding: 10px; background: #1E1E1E; color: white;">
+            <RadzenLabel>
+                © @DateTime.Now.Year Smart Balance, keep it simple - All rights reserved.
+            </RadzenLabel>
+
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="10px">
+                <RadzenLink Href="https://github.com/Joshy180696" Target="_blank">
+                    <i class="fab fa-github" style="color: white; font-size: 20px;"></i>
+                </RadzenLink>
+                <RadzenLink Href="https://www.linkedin.com/in/jo%C3%A3o-fernandes-746ab922a/" Target="_blank">
+                    <i class="fab fa-linkedin" style="color: white; font-size: 20px;"></i>
+                </RadzenLink>
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenFooter>
+</RadzenLayout>
+
+@code {
+    bool sidebarExpanded = false;
+
+    private async Task OnLogout()
+    {
+        IdentityService.Logout();
+        Navigation.NavigateTo("/login");
+    }
+}
+
+<style>
+    .rz-scheduler-navigation button {
+        pointer-events: none;
+        opacity: 0.5;
+    }
+</style>

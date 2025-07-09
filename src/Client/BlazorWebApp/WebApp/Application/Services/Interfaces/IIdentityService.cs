@@ -12,8 +12,8 @@ namespace WebApp.Application.Services.Interfaces
         string GetUserToken();
 
         bool IsLoggedIn { get; }
-
-        Task<bool> Login(string userName, string password);
+        Task<bool> Login(string username, string password, bool rememberMe);
+       
 
         Task<bool> Register(string userName, string email, string password);
 
