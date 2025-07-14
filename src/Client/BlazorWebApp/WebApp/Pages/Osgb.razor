@@ -1,0 +1,49 @@
+﻿@page "/Osgb"
+@inject HttpClient Http
+
+<h3>Bölge Bazlı Masraf Haritası</h3>
+
+<div style="text-align:center">
+    <object type="image/svg+xml" data="img/OsgbMap.svg" style="width:100%; height:auto;"></object>
+</div>
+
+<div class="summary-container" style="margin-top: 2rem;">
+    <RadzenCard>
+        <RadzenHeading Size="H4" Text="Bölgelere Göre Yıllık Toplam Masraflar" />
+        <RadzenDataGrid Data="@regionSummaries" TItem="RegionSummary" AllowSorting="true" AllowPaging="true">
+            <Columns>
+                <RadzenDataGridColumn Property="RegionName" Title="Bölge" />
+                <RadzenDataGridColumn Property="TotalAmount" Title="Toplam Masraf (TL)" />
+            </Columns>
+        </RadzenDataGrid>
+    </RadzenCard>
+</div>
+
+@code {
+    public class RegionSummary
+    {
+        public string RegionName { get; set; }
+        public decimal TotalAmount { get; set; }
+    }
+
+    List<RegionSummary> regionSummaries = new List<RegionSummary>();
+
+    protected override void OnInitialized()
+    {
+        // Sahte verilerle masraf özetlerini doldur
+        regionSummaries = new List<RegionSummary>
+        {
+            new RegionSummary { RegionName = "Ankara", TotalAmount = 125000 },
+            new RegionSummary { RegionName = "Istanbul", TotalAmount = 192000 }
+        };
+    }
+
+    void OnRegionClick(string regionName)
+    {
+        var region = regionSummaries.FirstOrDefault(r => r.RegionName == regionName);
+        if (region != null)
+        {
+            Console.WriteLine($"{region.RegionName} bölgesine tıklandı. Toplam masraf: {region.TotalAmount:C}");
+        }
+    }
+}

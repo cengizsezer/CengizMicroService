@@ -1,0 +1,184 @@
+﻿@page "/Personel"
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Forms
+@using WebApp.Shared
+@inject DialogService DialogService
+
+<h3>Masraf Listesi</h3>
+
+<RadzenCard>
+    <RadzenDataGrid TItem="Expense" Data="@expenses" @ref="grid" AllowPaging="true" PageSize="10" AllowSorting="true" AllowFiltering="true"
+                    ExpandMode="DataGridExpandMode.Single"
+                    RowRender="@RowRender">
+        <Columns>
+            <RadzenDataGridColumn TItem="Expense" Title="Tür">
+                <Template>MASRAF</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="Expense" Property="Company" Title="Firma" />
+            <RadzenDataGridColumn TItem="Expense" Property="AccountingCode" Title="Muhasebe Kodu" />
+            <RadzenDataGridColumn TItem="Expense" Property="PersonnelCode" Title="Personel Kodu" />
+            <RadzenDataGridColumn TItem="Expense" Property="FullName" Title="Personel Adı Soyadı" />
+            <RadzenDataGridColumn TItem="Expense" Property="Note" Title="Masraf Açıklaması" />
+            <RadzenDataGridColumn TItem="Expense" Property="AmountExclVat" Title="KDV Hariç Tutar" />
+            <RadzenDataGridColumn TItem="Expense" Property="VatRate" Title="KDV Oranı (%)" />
+            <RadzenDataGridColumn TItem="Expense" Title="KDV Tutarı">
+                <Template Context="expense">
+                    @(expense.AmountExclVat * (expense.VatRate / 100)).ToString("C")
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="Expense" Title="">
+                <Template Context="expense">
+                    <RadzenButton Text="Evrak Görüntüle" Size="ButtonSize.Small" Click="@(() => ShowDocuments(expense))" Icon="description" Style="margin-top:4px" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+        <Template Context="expense">
+            <RadzenDataGrid Data="@expense.ReceiptDetails" TItem="ReceiptItem" ShowPagingSummary="false" ShowPagination="false" AllowFiltering="false" AllowSorting="false"
+                            ExpandMode="DataGridExpandMode.Single"
+                            RowRender="@((RowRenderEventArgs<ReceiptItem> args) => args.Expandable = args.Data.ProductDetails != null && args.Data.ProductDetails.Any())">
+                <Columns>
+                    <RadzenDataGridColumn TItem="ReceiptItem" Title="Tür">
+                        <Template>FİŞ</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="ReceiptItem" Property="AccountingCode" Title="Muhasebe Kodu" />
+                    <RadzenDataGridColumn TItem="ReceiptItem" Property="PersonnelCode" Title="Personel Kodu" />
+                    <RadzenDataGridColumn TItem="ReceiptItem" Property="FullName" Title="Personel Adı Soyadı" />
+                    <RadzenDataGridColumn TItem="ReceiptItem" Property="Item" Title="Masraf Açıklaması" />
+                    <RadzenDataGridColumn TItem="ReceiptItem" Property="Amount" Title="KDV Hariç Tutar" />
+                    <RadzenDataGridColumn TItem="ReceiptItem" Property="VatRate" Title="KDV Oranı (%)" />
+                    <RadzenDataGridColumn TItem="ReceiptItem" Title="KDV Tutarı">
+                        <Template Context="receipt">
+                            @(receipt.Amount * (receipt.VatRate / 100)).ToString("C")
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+                <Template Context="receipt">
+                    <RadzenDataGrid Data="@receipt.ProductDetails" TItem="ProductDetail" ShowPagination="false" AllowFiltering="false" AllowSorting="false">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="ProductDetail" Title="Tür">
+                                <Template>DETAY</Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="ProductDetail" Property="AccountingCode" Title="Muhasebe Kodu" />
+                            <RadzenDataGridColumn TItem="ProductDetail" Property="PersonnelCode" Title="Personel Kodu" />
+                            <RadzenDataGridColumn TItem="ProductDetail" Property="FullName" Title="Personel Adı Soyadı" />
+                            <RadzenDataGridColumn TItem="ProductDetail" Property="Name" Title="Masraf Açıklaması" />
+                            <RadzenDataGridColumn TItem="ProductDetail" Property="Amount" Title="KDV Hariç Tutar" />
+                            <RadzenDataGridColumn TItem="ProductDetail" Property="VatRate" Title="KDV Oranı (%)" />
+                            <RadzenDataGridColumn TItem="ProductDetail" Title="KDV Tutarı">
+                                <Template Context="product">
+                                    @(product.Amount * (product.VatRate / 100)).ToString("C")
+                                </Template>
+                            </RadzenDataGridColumn>
+                        </Columns>
+                    </RadzenDataGrid>
+                </Template>
+            </RadzenDataGrid>
+        </Template>
+    </RadzenDataGrid>
+</RadzenCard>
+
+<RadzenDialog />
+
+@code {
+    RadzenDataGrid<Expense> grid;
+
+    List<Expense> expenses = new()
+    {
+        new Expense
+        {
+            Company = "TEZ MEDİKAL",
+            AccountingCode = "770.01.01.00001",
+            PersonnelCode = "195.01.01.00001",
+            FullName = "Cengiz Sezer",
+            Note = "Market Alışverişi",
+            AmountExclVat = 100,
+            VatRate = 20,
+            ReceiptDetails = new List<ReceiptItem>
+            {
+                new ReceiptItem {
+                    Company = "TEZ MEDİKAL", AccountingCode="770.01.01.00001", PersonnelCode="195.01.01.00001", FullName="Cengiz Sezer",
+                    Item = "Tek Ürün", Amount = 100, VatRate = 20, ProductDetails = new List<ProductDetail>() }
+            }
+        },
+        new Expense
+        {
+            Company = "BİZ KLİNİK",
+            AccountingCode = "770.01.01.00002",
+            PersonnelCode = "195.01.01.00002",
+            FullName = "Ali Veli",
+            Note = "Yemek",
+            AmountExclVat = 200,
+            VatRate = 10,
+            ReceiptDetails = new List<ReceiptItem>
+            {
+                new ReceiptItem {
+                    Company = "BİZ KLİNİK", AccountingCode="770.01.01.00002", PersonnelCode="195.01.01.00002", FullName="Ali Veli",
+                    Item = "Fiş 1", Amount = 100, VatRate = 10, ProductDetails = new List<ProductDetail> {
+                        new ProductDetail { Company = "BİZ KLİNİK", AccountingCode="770.01.01.00002", PersonnelCode="195.01.01.00002", FullName="Ali Veli", Name = "Yemek 1", Amount = 60, VatRate = 10 },
+                        new ProductDetail { Company = "BİZ KLİNİK", AccountingCode="770.01.01.00002", PersonnelCode="195.01.01.00002", FullName="Ali Veli", Name = "Yemek 2", Amount = 40, VatRate = 10 }
+                    }
+                },
+                new ReceiptItem {
+                    Company = "BİZ KLİNİK", AccountingCode="770.01.01.00002", PersonnelCode="195.01.01.00002", FullName="Ali Veli",
+                    Item = "Fiş 2", Amount = 100, VatRate = 10, ProductDetails = new List<ProductDetail> {
+                        new ProductDetail { Company = "BİZ KLİNİK", AccountingCode="770.01.01.00002", PersonnelCode="195.01.01.00002", FullName="Ali Veli", Name = "Yemek 3", Amount = 100, VatRate = 10 }
+                    }
+                }
+            }
+        }
+    };
+
+    void RowRender(RowRenderEventArgs<Expense> args)
+    {
+        args.Expandable = args.Data.ReceiptDetails != null && args.Data.ReceiptDetails.Any();
+    }
+
+    void ShowDocuments(Expense expense)
+    {
+        var parameters = new Dictionary<string, object>
+    {
+        { "Receipts", expense.ReceiptDetails }
+    };
+
+        DialogService.Open<ViewDocuments>("Evraklar", parameters, new DialogOptions { Width = "600px", Height = "400px" });
+    }
+
+
+
+
+
+    public class Expense
+    {
+        public string Company { get; set; }
+        public string AccountingCode { get; set; }
+        public string PersonnelCode { get; set; }
+        public string FullName { get; set; }
+        public string Note { get; set; }
+        public decimal AmountExclVat { get; set; }
+        public decimal VatRate { get; set; }
+        public List<ReceiptItem> ReceiptDetails { get; set; } = new();
+    }
+
+    public class ReceiptItem
+    {
+        public string Company { get; set; }
+        public string AccountingCode { get; set; }
+        public string PersonnelCode { get; set; }
+        public string FullName { get; set; }
+        public string Item { get; set; }
+        public decimal Amount { get; set; }
+        public decimal VatRate { get; set; }
+        public List<ProductDetail> ProductDetails { get; set; } = new();
+    }
+
+    public class ProductDetail
+    {
+        public string Company { get; set; }
+        public string AccountingCode { get; set; }
+        public string PersonnelCode { get; set; }
+        public string FullName { get; set; }
+        public string Name { get; set; }
+        public decimal Amount { get; set; }
+        public decimal VatRate { get; set; }
+    }
+}

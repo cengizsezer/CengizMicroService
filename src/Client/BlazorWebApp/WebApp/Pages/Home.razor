@@ -1,237 +1,208 @@
 ﻿@page "/home"
 @using Microsoft.AspNetCore.Authorization
+@using WebApp.Domain.Models
+@using Radzen
+@using Radzen.Blazor
 @attribute [Authorize]
 
-<PageTitle>Home - SmartBalance</PageTitle>
+<RadzenStack Gap="1rem">
+    <RadzenRow>
+        <RadzenColumn Size="12" SizeMD="6" SizeLG="6">
+            <RadzenCard Variant="Variant.Outlined" Style="height: 100%;">
+                <RadzenStack Style="height: 100%;" JustifyContent="JustifyContent.SpaceBetween">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" JustifyContent="JustifyContent.SpaceBetween">
+                        <RadzenText TextStyle="TextStyle.H6">Toplam Masraf</RadzenText>
+                        <RadzenText TextStyle="TextStyle.H2" class="rz-m-0">@expenses.Count()</RadzenText>
+                    </RadzenStack>
+                    <RadzenChart Style="width: 100%; height: 300px;">
+                        <RadzenAreaSeries Data="@expensesByDate.Where(e => !e.IsRead)" ValueProperty="Count" CategoryProperty="Date" Title="Okunmamış" Stroke="var(--rz-danger)" Fill="var(--rz-danger-lighter)">
+                            <RadzenMarkers Visible="true" MarkerType="MarkerType.Circle" />
+                        </RadzenAreaSeries>
+                        <RadzenAreaSeries Data="@expensesByDate.Where(e => e.IsRead)" ValueProperty="Count" CategoryProperty="Date" Title="Okunmuş" Stroke="var(--rz-success)" Fill="var(--rz-success-lighter)">
+                            <RadzenMarkers Visible="true" MarkerType="MarkerType.Circle" />
+                        </RadzenAreaSeries>
+                        <RadzenValueAxis>
+                            <RadzenGridLines Visible="true" />
+                        </RadzenValueAxis>
+                        <RadzenCategoryAxis Padding="20" Formatter="@(d => ((DateTime)d).ToString("MMM dd"))" />
+                    </RadzenChart>
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenColumn>
 
-<div class="home-container">
-    <div class="welcome-section">
-        <h3>Welcome back, @username!</h3>
-        <p class="subtitle">Manage your finances effectively</p>
-    </div>
+        <RadzenColumn Size="12" SizeMD="3" SizeXL="2">
+            <RadzenRow>
+                <RadzenColumn Size="12">
+                    <RadzenCard Variant="Variant.Outlined" Style="height: 100%;">
+                        <RadzenStack JustifyContent="JustifyContent.SpaceBetween" Style="height: 100%;">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" JustifyContent="JustifyContent.SpaceBetween">
+                                <RadzenText TextStyle="TextStyle.H6">Okunmamış Masraflar</RadzenText>
+                                <RadzenText TextStyle="TextStyle.H2" class="rz-color-danger rz-m-0">@unreadExpenses.Count()</RadzenText>
+                            </RadzenStack>
+                        </RadzenStack>
+                    </RadzenCard>
+                </RadzenColumn>
+                <RadzenColumn Size="12">
+                    <RadzenCard Variant="Variant.Outlined" Style="height: 100%;">
+                        <RadzenStack Gap="0">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" JustifyContent="JustifyContent.SpaceBetween">
+                                <RadzenText TextStyle="TextStyle.H6">Okunmuş Masraflar</RadzenText>
+                                <RadzenText TextStyle="TextStyle.H2" class="rz-color-success rz-m-0">@readExpenses.Count()</RadzenText>
+                            </RadzenStack>
+                        </RadzenStack>
+                    </RadzenCard>
+                </RadzenColumn>
+            </RadzenRow>
+        </RadzenColumn>
 
-    <div class="stats-container">
-        <div class="stat-card">
-            <div class="stat-value">@monthlyIncome.ToString("C")</div>
-            <div class="stat-label">Monthly Income</div>
-        </div>
+        <RadzenColumn Size="12" SizeMD="3" SizeXL="2">
+            <RadzenCard Variant="Variant.Outlined" Style="height: 100%;">
+                <RadzenText TextStyle="TextStyle.H6" class="rz-mb-2">Kategori Bazlı Masraf Dağılımı</RadzenText>
+                <RadzenChart Style="height: 200px; width: 100%;">
+                    <RadzenDonutSeries Data="@categoryGroups" CategoryProperty="Category" ValueProperty="Total" />
+                </RadzenChart>
+            </RadzenCard>
+        </RadzenColumn>
 
-        <div class="stat-card">
-            <div class="stat-value" style="@(TotalBalance < 0 ? "color: #d32f2f;" : "color: #3f51b5;")">
-                @TotalBalance.ToString("C")
-            </div>
-            <div class="stat-label">Remaining Balance</div>
-        </div>
-    </div>
+        <RadzenColumn Size="12">
+            <RadzenDateRangePicker 
+                Value="@dateRange"
+                ValueChanged="@((DateRange range) => dateRange = range)"
+                ValueExpression="@(() => dateRange)"
+                StartText="Başlangıç" 
+                EndText="Bitiş" 
+                Change="OnDateRangeChanged" 
+                Style="margin-bottom: 1rem;" />
 
-    <div class="quick-actions">
-        <button class="action-button" @onclick="NavigateToExpenses">
-            <span class="icon">📊</span>
-            <span>View Expenses</span>
-        </button>
+            <RadzenDataGrid Data="@filteredExpenses" TItem="Expense" Style="height: 500px" AllowFiltering="true" AllowSorting="true">
+                <Columns>
+                    <RadzenDataGridColumn Property="Title" Title="Başlık" />
+                    <RadzenDataGridColumn Property="Amount" Title="Tutar (₺)" />
+                    <RadzenDataGridColumn Property="Category" Title="Kategori" />
+                    <RadzenDataGridColumn Property="CreatedAt" Title="Tarih" FormatString="{0:dd.MM.yyyy}" />
+                    <RadzenDataGridColumn Title="Durum">
+                        <Template Context="expense">
+                            @if (!expense.IsRead)
+                            {
+                                <RadzenBadge Text="Okunmadı" BadgeStyle="BadgeStyle.Danger" IsPill="true" />
+                            }
+                            else
+                            {
+                                <RadzenBadge Text="Okundu" BadgeStyle="BadgeStyle.Success" IsPill="true" />
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Title="İşlem">
+                        <Template Context="expense">
+                            <RadzenButton Icon="info" Size="ButtonSize.Small" Text="Detay" Click="() => ShowDetails(expense)" Style="margin-right: 6px;" />
+                            @if (!expense.IsRead)
+                            {
+                                <RadzenButton Icon="check" Size="ButtonSize.Small" Text="Okundu" Click="() => MarkAsRead(expense)" />
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        </RadzenColumn>
+    </RadzenRow>
+</RadzenStack>
 
-        <button class="action-button" @onclick="NavigateToAddExpense">
-            <span class="icon">➕</span>
-            <span>Add Expense</span>
-        </button>
-    </div>
-
-    <div class="recent-activity">
-        <h4>Recent Activity</h4>
-        @if (recentExpenses.Any())
-        {
-            <ul class="activity-list">
-                @foreach (var expense in recentExpenses)
-                {
-                    <li class="activity-item">
-                        <span class="expense-amount @(expense.Amount > 0 ? "income" : "expense")">
-                            @expense.Amount.ToString("C")
-                        </span>
-                        <span class="expense-description">@expense.Description</span>
-                        <span class="expense-date">@expense.Date.ToString("MMM dd")</span>
-                    </li>
-                }
-            </ul>
-        }
-        else
-        {
-            <p class="no-activity">No recent expenses found</p>
-        }
-    </div>
-</div>
+<RadzenDialog />
 
 @code {
-    private string username = "User";
-    private decimal monthlyIncome = 3500.00m;
-    private List<Expense> recentExpenses = new List<Expense>();
+    public class Expense
+    {
+        public string Title { get; set; }
+        public decimal Amount { get; set; }
+        public string Category { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public bool IsRead { get; set; }
+    }
 
-    private decimal TotalBalance => monthlyIncome - recentExpenses.Sum(e => e.Amount);
+    public class ExpenseSummary
+    {
+        public DateTime Date { get; set; }
+        public int Count { get; set; }
+        public bool IsRead { get; set; }
+    }
+
+    public class CategoryGroup
+    {
+        public string Category { get; set; }
+        public decimal Total { get; set; }
+    }
+
+    public class DateRange
+    {
+        public DateTime? Start { get; set; }
+        public DateTime? End { get; set; }
+    }
+
+    List<Expense> expenses = new();
+    List<Expense> readExpenses => expenses.Where(e => e.IsRead).ToList();
+    List<Expense> unreadExpenses => expenses.Where(e => !e.IsRead).ToList();
+
+    DateRange dateRange = new();
+    DateTime? startDate => dateRange?.Start;
+    DateTime? endDate => dateRange?.End;
+
+    List<Expense> filteredExpenses => expenses
+        .Where(e => (!startDate.HasValue || e.CreatedAt.Date >= startDate.Value.Date) && (!endDate.HasValue || e.CreatedAt.Date <= endDate.Value.Date))
+        .ToList();
+
+    IEnumerable<ExpenseSummary> expensesByDate;
+    IEnumerable<CategoryGroup> categoryGroups;
+
+    void MarkAsRead(Expense expense)
+    {
+        expense.IsRead = true;
+    }
+
+    async Task ShowDetails(Expense expense)
+    {
+        await DialogService.OpenAsync("Masraf Detayı", ds => @<div class="rz-p-4">
+            <p><b>Başlık:</b> @expense.Title</p>
+            <p><b>Kategori:</b> @expense.Category</p>
+            <p><b>Tutar:</b> ₺@expense.Amount</p>
+            <p><b>Tarih:</b> @expense.CreatedAt.ToString("dd.MM.yyyy")</p>
+            <p><b>Durum:</b> @(expense.IsRead ? "Okundu" : "Okunmadı")</p>
+        </div>, new DialogOptions { Width = "400px", Height = "350px" });
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        // Simulate loading user data
-        username = "John Doe";
+        await Task.Delay(200);
 
-        // Sample recent expenses
-        recentExpenses = new List<Expense>
+        var now = DateTime.Now;
+        expenses = new List<Expense>
         {
-            new Expense { Description = "Groceries", Amount = -125.50m, Date = DateTime.Now.AddDays(-1) },
-            new Expense { Description = "Electric Bill", Amount = -85.00m, Date = DateTime.Now.AddDays(-3) },
-            new Expense { Description = "Freelance Work", Amount = 250.00m, Date = DateTime.Now.AddDays(-5) },
-            new Expense { Description = "Dinner Out", Amount = -45.75m, Date = DateTime.Now.AddDays(-7) }
+            new Expense { Title = "Yemek Fişi", Amount = 124.50m, Category = "Yemek", CreatedAt = now.AddDays(-1), IsRead = false },
+            new Expense { Title = "Taksi Ücreti", Amount = 75m, Category = "Ulaşım", CreatedAt = now.AddDays(-2), IsRead = true },
+            new Expense { Title = "Ofis Kırtasiye", Amount = 340m, Category = "Ofis", CreatedAt = now.AddDays(-3), IsRead = false },
+            new Expense { Title = "Fatura Gideri", Amount = 980m, Category = "Fatura", CreatedAt = now.AddDays(-4), IsRead = true },
+            new Expense { Title = "Yemek", Amount = 60m, Category = "Yemek", CreatedAt = now.AddDays(-5), IsRead = false },
+            new Expense { Title = "Metro Kartı", Amount = 200m, Category = "Ulaşım", CreatedAt = now.AddDays(-6), IsRead = true },
+            new Expense { Title = "Temizlik Malzemesi", Amount = 185m, Category = "Ofis", CreatedAt = now.AddDays(-7), IsRead = false },
+            new Expense { Title = "Elektrik Faturası", Amount = 800m, Category = "Fatura", CreatedAt = now.AddDays(-8), IsRead = true },
+            new Expense { Title = "Kırtasiye", Amount = 155m, Category = "Ofis", CreatedAt = now.AddDays(-9), IsRead = true },
+            new Expense { Title = "Yemek Kartı", Amount = 250m, Category = "Yemek", CreatedAt = now.AddDays(-10), IsRead = false }
         };
+
+        expensesByDate = expenses
+            .GroupBy(e => new { Date = e.CreatedAt.Date, e.IsRead })
+            .Select(g => new ExpenseSummary { Date = g.Key.Date, IsRead = g.Key.IsRead, Count = g.Count() })
+            .OrderBy(e => e.Date);
+
+        categoryGroups = expenses
+            .GroupBy(e => e.Category)
+            .Select(g => new CategoryGroup { Category = g.Key, Total = g.Sum(e => e.Amount) })
+            .OrderByDescending(g => g.Total);
     }
 
-    private void NavigateToExpenses()
+    void OnDateRangeChanged(object value)
     {
-        // Navigation.NavigateTo("/expenses");
+        StateHasChanged();
     }
 
-    private void NavigateToAddExpense()
-    {
-        // Navigation.NavigateTo("/addexpense");
-    }
-
-    private class Expense
-    {
-        public string Description { get; set; } = string.Empty;
-        public decimal Amount { get; set; }
-        public DateTime Date { get; set; }
-    }
+    [Inject] DialogService DialogService { get; set; }
 }
-
-<style>
-    .home-container {
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 20px;
-    }
-
-    .welcome-section {
-        text-align: center;
-        margin-bottom: 30px;
-    }
-
-        .welcome-section h3 {
-            font-size: 1.8rem;
-            color: #3f51b5;
-            margin-bottom: 5px;
-        }
-
-    .subtitle {
-        color: #666;
-        font-size: 1.1rem;
-    }
-
-    .stats-container {
-        display: flex;
-        justify-content: space-around;
-        margin: 30px 0;
-    }
-
-    .stat-card {
-        background: white;
-        border-radius: 10px;
-        padding: 20px;
-        width: 45%;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        text-align: center;
-    }
-
-    .stat-value {
-        font-size: 1.8rem;
-        font-weight: bold;
-        margin-bottom: 5px;
-    }
-
-    .stat-label {
-        color: #666;
-        font-size: 0.9rem;
-    }
-
-    .quick-actions {
-        display: flex;
-        justify-content: space-around;
-        margin: 30px 0;
-    }
-
-    .action-button {
-        background: #3f51b5;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 15px 20px;
-        font-size: 1rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        transition: background 0.3s;
-    }
-
-        .action-button:hover {
-            background: #303f9f;
-        }
-
-        .action-button .icon {
-            margin-right: 10px;
-            font-size: 1.2rem;
-        }
-
-    .recent-activity {
-        background: white;
-        border-radius: 10px;
-        padding: 20px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-
-        .recent-activity h4 {
-            margin-top: 0;
-            color: #3f51b5;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-        }
-
-    .activity-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-
-    .activity-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 10px 0;
-        border-bottom: 1px solid #f5f5f5;
-    }
-
-    .expense-amount {
-        font-weight: bold;
-        width: 100px;
-        text-align: right;
-    }
-
-        .expense-amount.income {
-            color: #4caf50;
-        }
-
-        .expense-amount.expense {
-            color: #d32f2f;
-        }
-
-    .expense-description {
-        flex-grow: 1;
-        padding: 0 15px;
-    }
-
-    .expense-date {
-        color: #666;
-        width: 70px;
-        text-align: right;
-    }
-
-    .no-activity {
-        color: #666;
-        text-align: center;
-        padding: 20px 0;
-    }
-</style>

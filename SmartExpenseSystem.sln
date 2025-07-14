@@ -55,6 +55,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sqlserver", "sqlserver", "{
 		Docker-Compose-File\sqlserver\docker-compose.yml = Docker-Compose-File\sqlserver\docker-compose.yml
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CatalogService", "CatalogService", "{0907D5CC-FBF1-4BA9-A63D-9B6D7BA13E00}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CatalogService.Api", "Services\CatalogService\CatalogService.Api\CatalogService.Api.csproj", "{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -93,6 +97,10 @@ Global
 		{EEA6B069-1718-4234-8E5E-D81DFB9AC747}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EEA6B069-1718-4234-8E5E-D81DFB9AC747}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EEA6B069-1718-4234-8E5E-D81DFB9AC747}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -110,6 +118,8 @@ Global
 		{75A5331E-40A2-46C5-93D3-6C8F3058B932} = {41B6827F-0F15-4277-BBA2-C3B77589C7BD}
 		{2928F7D4-5F20-4AF8-B5E9-BAE0BAF22559} = {41B6827F-0F15-4277-BBA2-C3B77589C7BD}
 		{A970085C-8EF1-41DD-9575-371FA697C7E1} = {41B6827F-0F15-4277-BBA2-C3B77589C7BD}
+		{0907D5CC-FBF1-4BA9-A63D-9B6D7BA13E00} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{1912A3E3-D86E-480E-ABD3-F16C7B59A23C} = {0907D5CC-FBF1-4BA9-A63D-9B6D7BA13E00}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E67C885E-7DF1-44F0-A36A-69C0D39A3F3F}

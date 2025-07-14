@@ -1,0 +1,18 @@
+﻿@using static WebApp.Pages.Personel
+@inherits LayoutComponentBase
+@code {
+    [Parameter] public List<ReceiptItem> Receipts { get; set; }
+}
+
+<div style="padding: 20px">
+    <h4>Evraklar</h4>
+    <ul>
+        @if (Receipts != null)
+        {
+            foreach (var receipt in Receipts)
+            {
+                <li>@receipt.Item - Tutar: @receipt.Amount.ToString("C")</li>
+            }
+        }
+    </ul>
+</div>
