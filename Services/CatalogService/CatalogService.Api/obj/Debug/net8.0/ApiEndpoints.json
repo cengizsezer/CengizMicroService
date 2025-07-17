@@ -72,6 +72,118 @@
   },
   {
     "ContainingType": "CatalogService.Api.Controllers.CatalogController",
+    "Method": "GetAllExpensesAsync",
+    "RelativePath": "api/Catalog/expenses",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Core.Domain.Expense, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Controllers.CatalogController",
+    "Method": "GetExpenseByIdAsync",
+    "RelativePath": "api/Catalog/expenses/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Core.Domain.Expense",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Controllers.CatalogController",
+    "Method": "GetExpensesByCompanyAsync",
+    "RelativePath": "api/Catalog/expenses/bycompany",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "company",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Core.Domain.Expense, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Controllers.CatalogController",
+    "Method": "GetPagedExpensesAsync",
+    "RelativePath": "api/Catalog/expenses/paged",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "pageIndex",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "pageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Core.Application.ViewModels.PaginatedItemsViewModel\u00601[[CatalogService.Api.Core.Domain.Expense, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Controllers.CatalogController",
     "Method": "ItemsAsync",
     "RelativePath": "api/Catalog/items",
     "HttpMethod": "GET",

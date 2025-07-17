@@ -1,70 +1,131 @@
-﻿@page "/Personel"
-@using System.Globalization
-@using Microsoft.AspNetCore.Components.Forms
+﻿@page "/personel"
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Domain.Models.Catalog
+@using WebApp.Domain.Models
 @using WebApp.Shared
+@inject IExpenseService ExpenseService
 @inject DialogService DialogService
 
 <h3>Masraf Listesi</h3>
 
 <RadzenCard>
-    <RadzenDataGrid TItem="Expense" Data="@expenses" @ref="grid" AllowPaging="true" PageSize="10" AllowSorting="true" AllowFiltering="true"
+    <RadzenDataGrid TItem="Expense"
+                    Data="@expenses"
+                    @ref="grid"
+                    Count="@totalCount"
+                    LoadData="@LoadData"
+                    AllowPaging="true"
+                    PageSize="10"
+                    AllowSorting="true"
+                    AllowFiltering="true"
+                    AllowColumnPicking="true"
+                    PickedColumnsChanged="@PickedColumnsChanged"
+                    ColumnsPickerAllowFiltering="true"
                     ExpandMode="DataGridExpandMode.Single"
-                    RowRender="@RowRender">
+                    RowRender="@RowRender"
+                    SelectionMode="DataGridSelectionMode.Multiple"
+                    Value="@selectedExpenses"
+                    ValueChanged="@OnSelectedExpensesChanged">
+
+
         <Columns>
-            <RadzenDataGridColumn TItem="Expense" Title="Tür">
+            <RadzenDataGridColumn Width="60px" Sortable="false" Filterable="false">
+                <HeaderTemplate>
+                    <RadzenCheckBox TabIndex="-1"
+                                    TriState="false"
+                                    TValue="bool?"
+                                    Value="@(selectedExpenses != null && selectedExpenses.Count == expenses.Count)"
+                                    Change="@ToggleSelectAll"
+                                    InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "Select all items" } })" />
+                </HeaderTemplate>
+                <Template Context="data">
+                    <RadzenCheckBox TabIndex="-1" TriState="false" TValue="bool"
+                                    Value="@(selectedExpenses?.Contains(data) == true)"
+                                    Change="@(args => {
+                                        if (args == true)
+                                            selectedExpenses.Add(data);
+                                        else
+                                            selectedExpenses.Remove(data);
+                                    })" />
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn Title="Tür">
                 <Template>MASRAF</Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="Expense" Property="Company" Title="Firma" />
-            <RadzenDataGridColumn TItem="Expense" Property="AccountingCode" Title="Muhasebe Kodu" />
-            <RadzenDataGridColumn TItem="Expense" Property="PersonnelCode" Title="Personel Kodu" />
-            <RadzenDataGridColumn TItem="Expense" Property="FullName" Title="Personel Adı Soyadı" />
-            <RadzenDataGridColumn TItem="Expense" Property="Note" Title="Masraf Açıklaması" />
-            <RadzenDataGridColumn TItem="Expense" Property="AmountExclVat" Title="KDV Hariç Tutar" />
-            <RadzenDataGridColumn TItem="Expense" Property="VatRate" Title="KDV Oranı (%)" />
-            <RadzenDataGridColumn TItem="Expense" Title="KDV Tutarı">
+            <RadzenDataGridColumn Property="Company" Title="Firma" />
+            <RadzenDataGridColumn Property="AccountingCode" Title="Muhasebe Kodu" />
+            <RadzenDataGridColumn Property="PersonnelCode" Title="Personel Kodu" />
+            <RadzenDataGridColumn Property="FullName" Title="Personel Adı Soyadı" />
+            <RadzenDataGridColumn Property="Note" Title="Masraf Açıklaması" />
+            <RadzenDataGridColumn Property="AmountExclVat" Title="KDV Hariç Tutar">
+                <FooterTemplate>
+                    Toplam: <b>@expenses.Sum(e => e.AmountExclVat).ToString("C")</b>
+                </FooterTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="VatRate" Title="KDV Oranı (%)" />
+            <RadzenDataGridColumn Title="KDV Tutarı">
                 <Template Context="expense">
                     @(expense.AmountExclVat * (expense.VatRate / 100)).ToString("C")
                 </Template>
+                <FooterTemplate>
+                    Toplam: <b>@expenses.Sum(e => e.AmountExclVat * (e.VatRate / 100)).ToString("C")</b>
+                </FooterTemplate>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="Expense" Title="">
+            <RadzenDataGridColumn Title="">
                 <Template Context="expense">
-                    <RadzenButton Text="Evrak Görüntüle" Size="ButtonSize.Small" Click="@(() => ShowDocuments(expense))" Icon="description" Style="margin-top:4px" />
+                    <RadzenButton Text="Evrak Görüntüle"
+                                  Size="ButtonSize.Small"
+                                  Click="@(() => ShowDocuments(expense))"
+                                  Icon="description"
+                                  Style="margin-top:4px" />
                 </Template>
             </RadzenDataGridColumn>
         </Columns>
+
         <Template Context="expense">
-            <RadzenDataGrid Data="@expense.ReceiptDetails" TItem="ReceiptItem" ShowPagingSummary="false" ShowPagination="false" AllowFiltering="false" AllowSorting="false"
+            <RadzenDataGrid Data="@expense.ReceiptDetails"
+                            TItem="ReceiptItem"
+                            ShowPagingSummary="false"
+                            ShowPagination="false"
+                            AllowFiltering="false"
+                            AllowSorting="false"
                             ExpandMode="DataGridExpandMode.Single"
                             RowRender="@((RowRenderEventArgs<ReceiptItem> args) => args.Expandable = args.Data.ProductDetails != null && args.Data.ProductDetails.Any())">
                 <Columns>
-                    <RadzenDataGridColumn TItem="ReceiptItem" Title="Tür">
+                    <RadzenDataGridColumn Title="Tür">
                         <Template>FİŞ</Template>
                     </RadzenDataGridColumn>
-                    <RadzenDataGridColumn TItem="ReceiptItem" Property="AccountingCode" Title="Muhasebe Kodu" />
-                    <RadzenDataGridColumn TItem="ReceiptItem" Property="PersonnelCode" Title="Personel Kodu" />
-                    <RadzenDataGridColumn TItem="ReceiptItem" Property="FullName" Title="Personel Adı Soyadı" />
-                    <RadzenDataGridColumn TItem="ReceiptItem" Property="Item" Title="Masraf Açıklaması" />
-                    <RadzenDataGridColumn TItem="ReceiptItem" Property="Amount" Title="KDV Hariç Tutar" />
-                    <RadzenDataGridColumn TItem="ReceiptItem" Property="VatRate" Title="KDV Oranı (%)" />
-                    <RadzenDataGridColumn TItem="ReceiptItem" Title="KDV Tutarı">
+                    <RadzenDataGridColumn Property="AccountingCode" Title="Muhasebe Kodu" />
+                    <RadzenDataGridColumn Property="PersonnelCode" Title="Personel Kodu" />
+                    <RadzenDataGridColumn Property="FullName" Title="Personel Adı Soyadı" />
+                    <RadzenDataGridColumn Property="Item" Title="Masraf Açıklaması" />
+                    <RadzenDataGridColumn Property="Amount" Title="KDV Hariç Tutar" />
+                    <RadzenDataGridColumn Property="VatRate" Title="KDV Oranı (%)" />
+                    <RadzenDataGridColumn Title="KDV Tutarı">
                         <Template Context="receipt">
                             @(receipt.Amount * (receipt.VatRate / 100)).ToString("C")
                         </Template>
                     </RadzenDataGridColumn>
                 </Columns>
+
                 <Template Context="receipt">
-                    <RadzenDataGrid Data="@receipt.ProductDetails" TItem="ProductDetail" ShowPagination="false" AllowFiltering="false" AllowSorting="false">
+                    <RadzenDataGrid Data="@receipt.ProductDetails"
+                                    TItem="ProductDetail"
+                                    ShowPagination="false"
+                                    AllowFiltering="false"
+                                    AllowSorting="false">
                         <Columns>
-                            <RadzenDataGridColumn TItem="ProductDetail" Title="Tür">
+                            <RadzenDataGridColumn Title="Tür">
                                 <Template>DETAY</Template>
                             </RadzenDataGridColumn>
-                            <RadzenDataGridColumn TItem="ProductDetail" Property="AccountingCode" Title="Muhasebe Kodu" />
-                            <RadzenDataGridColumn TItem="ProductDetail" Property="PersonnelCode" Title="Personel Kodu" />
-                            <RadzenDataGridColumn TItem="ProductDetail" Property="FullName" Title="Personel Adı Soyadı" />
-                            <RadzenDataGridColumn TItem="ProductDetail" Property="Name" Title="Masraf Açıklaması" />
-                            <RadzenDataGridColumn TItem="ProductDetail" Property="Amount" Title="KDV Hariç Tutar" />
-                            <RadzenDataGridColumn TItem="ProductDetail" Property="VatRate" Title="KDV Oranı (%)" />
-                            <RadzenDataGridColumn TItem="ProductDetail" Title="KDV Tutarı">
+                            <RadzenDataGridColumn Property="AccountingCode" Title="Muhasebe Kodu" />
+                            <RadzenDataGridColumn Property="PersonnelCode" Title="Personel Kodu" />
+                            <RadzenDataGridColumn Property="FullName" Title="Personel Adı Soyadı" />
+                            <RadzenDataGridColumn Property="Name" Title="Masraf Açıklaması" />
+                            <RadzenDataGridColumn Property="Amount" Title="KDV Hariç Tutar" />
+                            <RadzenDataGridColumn Property="VatRate" Title="KDV Oranı (%)" />
+                            <RadzenDataGridColumn Title="KDV Tutarı">
                                 <Template Context="product">
                                     @(product.Amount * (product.VatRate / 100)).ToString("C")
                                 </Template>
@@ -81,52 +142,28 @@
 
 @code {
     RadzenDataGrid<Expense> grid;
+    List<Expense> expenses = new();
+    List<Expense> selectedExpenses = new();
+    int totalCount = 0;
+    bool initialized = false;
 
-    List<Expense> expenses = new()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        new Expense
+        if (firstRender && !initialized)
         {
-            Company = "TEZ MEDİKAL",
-            AccountingCode = "770.01.01.00001",
-            PersonnelCode = "195.01.01.00001",
-            FullName = "Cengiz Sezer",
-            Note = "Market Alışverişi",
-            AmountExclVat = 100,
-            VatRate = 20,
-            ReceiptDetails = new List<ReceiptItem>
-            {
-                new ReceiptItem {
-                    Company = "TEZ MEDİKAL", AccountingCode="770.01.01.00001", PersonnelCode="195.01.01.00001", FullName="Cengiz Sezer",
-                    Item = "Tek Ürün", Amount = 100, VatRate = 20, ProductDetails = new List<ProductDetail>() }
-            }
-        },
-        new Expense
-        {
-            Company = "BİZ KLİNİK",
-            AccountingCode = "770.01.01.00002",
-            PersonnelCode = "195.01.01.00002",
-            FullName = "Ali Veli",
-            Note = "Yemek",
-            AmountExclVat = 200,
-            VatRate = 10,
-            ReceiptDetails = new List<ReceiptItem>
-            {
-                new ReceiptItem {
-                    Company = "BİZ KLİNİK", AccountingCode="770.01.01.00002", PersonnelCode="195.01.01.00002", FullName="Ali Veli",
-                    Item = "Fiş 1", Amount = 100, VatRate = 10, ProductDetails = new List<ProductDetail> {
-                        new ProductDetail { Company = "BİZ KLİNİK", AccountingCode="770.01.01.00002", PersonnelCode="195.01.01.00002", FullName="Ali Veli", Name = "Yemek 1", Amount = 60, VatRate = 10 },
-                        new ProductDetail { Company = "BİZ KLİNİK", AccountingCode="770.01.01.00002", PersonnelCode="195.01.01.00002", FullName="Ali Veli", Name = "Yemek 2", Amount = 40, VatRate = 10 }
-                    }
-                },
-                new ReceiptItem {
-                    Company = "BİZ KLİNİK", AccountingCode="770.01.01.00002", PersonnelCode="195.01.01.00002", FullName="Ali Veli",
-                    Item = "Fiş 2", Amount = 100, VatRate = 10, ProductDetails = new List<ProductDetail> {
-                        new ProductDetail { Company = "BİZ KLİNİK", AccountingCode="770.01.01.00002", PersonnelCode="195.01.01.00002", FullName="Ali Veli", Name = "Yemek 3", Amount = 100, VatRate = 10 }
-                    }
-                }
-            }
+            initialized = true;
+            await grid.FirstPage(true); // LoadData() fonksiyonunu tetikler
         }
-    };
+    }
+
+    async Task LoadData(LoadDataArgs args)
+    {
+        var pageIndex = args.Skip.HasValue && args.Top.HasValue ? args.Skip.Value / args.Top.Value : 0;
+        var pageSize = args.Top ?? 10;
+        var result = await ExpenseService.GetExpensesAsync(pageIndex, pageSize);
+        expenses = result.Data.ToList();
+        totalCount = (int)result.Count;
+    }
 
     void RowRender(RowRenderEventArgs<Expense> args)
     {
@@ -136,49 +173,34 @@
     void ShowDocuments(Expense expense)
     {
         var parameters = new Dictionary<string, object>
-    {
-        { "Receipts", expense.ReceiptDetails }
-    };
+        {
+            { "Receipts", expense.ReceiptDetails }
+        };
 
         DialogService.Open<ViewDocuments>("Evraklar", parameters, new DialogOptions { Width = "600px", Height = "400px" });
     }
 
-
-
-
-
-    public class Expense
+    void PickedColumnsChanged(DataGridPickedColumnsChangedEventArgs<Expense> args)
     {
-        public string Company { get; set; }
-        public string AccountingCode { get; set; }
-        public string PersonnelCode { get; set; }
-        public string FullName { get; set; }
-        public string Note { get; set; }
-        public decimal AmountExclVat { get; set; }
-        public decimal VatRate { get; set; }
-        public List<ReceiptItem> ReceiptDetails { get; set; } = new();
+        Console.WriteLine($"Picked columns: {string.Join(", ", args.Columns.Select(c => c.Title))}");
     }
 
-    public class ReceiptItem
+    void ToggleSelectAll(bool? isChecked)
     {
-        public string Company { get; set; }
-        public string AccountingCode { get; set; }
-        public string PersonnelCode { get; set; }
-        public string FullName { get; set; }
-        public string Item { get; set; }
-        public decimal Amount { get; set; }
-        public decimal VatRate { get; set; }
-        public List<ProductDetail> ProductDetails { get; set; } = new();
+        if (isChecked == true)
+        {
+            selectedExpenses = expenses.ToList();
+        }
+        else
+        {
+            selectedExpenses.Clear();
+        }
     }
 
-    public class ProductDetail
+
+    private Task OnSelectedExpensesChanged(IEnumerable<Expense> selected)
     {
-        public string Company { get; set; }
-        public string AccountingCode { get; set; }
-        public string PersonnelCode { get; set; }
-        public string FullName { get; set; }
-        public string Name { get; set; }
-        public decimal Amount { get; set; }
-        public decimal VatRate { get; set; }
+        selectedExpenses = selected.ToList();
+        return Task.CompletedTask;
     }
 }

@@ -7,6 +7,10 @@
         "Action": "Start"
       },
       {
+        "Path": "Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj",
+        "Action": "Start"
+      },
+      {
         "Path": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Web.ApiGateway.csproj",
         "Action": "Start"
       },

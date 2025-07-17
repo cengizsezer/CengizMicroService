@@ -3,7 +3,7 @@
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 
-@code {
+@* @code {
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -14,6 +14,20 @@
             Navigation.NavigateTo("/home", true);
         }
         else
+        {
+            Navigation.NavigateTo("/login", true);
+        }
+
+
+       
+    }
+} *@
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (!authState.User.Identity.IsAuthenticated)
         {
             Navigation.NavigateTo("/login", true);
         }

@@ -32,6 +32,12 @@ namespace WebApp
 
             //builder.Services.AddTransient<IIdentityService, IdentityService>();
 
+            builder.Services.AddHttpClient<IExpenseService, ExpenseService>(client =>
+            {
+                client.BaseAddress = new Uri("http://localhost:5000/"); // API Gateway adresin neyse
+            }).AddHttpMessageHandler<AuthTokenHandler>();
+
+
             builder.Services.AddHttpClient<IIdentityService, IdentityService>(client =>
             {
                 client.BaseAddress = new Uri("http://localhost:5000/");

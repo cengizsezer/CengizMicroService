@@ -11,10 +11,11 @@
 using System;
 using System.Reflection;
 
+[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("50ce8e3b-f3f5-4a8a-bb3a-d5e2c34c7a75")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("Web.ApiGateway")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+963431242c2af075b3cdae4e099fae71f58a78a4")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+734e645805ea8f66a6558753414d31b25124402a")]
 [assembly: System.Reflection.AssemblyProductAttribute("Web.ApiGateway")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Web.ApiGateway")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

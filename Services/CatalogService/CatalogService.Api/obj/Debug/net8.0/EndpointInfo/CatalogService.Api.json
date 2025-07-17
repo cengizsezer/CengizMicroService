@@ -550,6 +550,200 @@
         }
       }
     },
+    "/api/Catalog/expenses": {
+      "get": {
+        "tags": [
+          "Catalog"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Expense"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Expense"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Expense"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Catalog/expenses/{id}": {
+      "get": {
+        "tags": [
+          "Catalog"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Expense"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Expense"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Expense"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Catalog/expenses/bycompany": {
+      "get": {
+        "tags": [
+          "Catalog"
+        ],
+        "parameters": [
+          {
+            "name": "company",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Expense"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Expense"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Expense"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Catalog/expenses/paged": {
+      "get": {
+        "tags": [
+          "Catalog"
+        ],
+        "parameters": [
+          {
+            "name": "pageIndex",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpensePaginatedItemsViewModel"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpensePaginatedItemsViewModel"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpensePaginatedItemsViewModel"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/Pic": {
       "get": {
         "tags": [
@@ -729,6 +923,76 @@
         },
         "additionalProperties": false
       },
+      "Expense": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "company": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountingCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "personnelCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "fullName": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "amountExclVat": {
+            "type": "number",
+            "format": "double"
+          },
+          "vatRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "receiptDetails": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceiptItem"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ExpensePaginatedItemsViewModel": {
+        "type": "object",
+        "properties": {
+          "pageIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Expense"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -755,6 +1019,119 @@
           }
         },
         "additionalProperties": { }
+      },
+      "ProductDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "vatRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "receiptItemId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "accountingCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "personnelCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "fullName": {
+            "type": "string",
+            "nullable": true
+          },
+          "company": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "amountExclVat": {
+            "type": "number",
+            "format": "double"
+          },
+          "receiptItem": {
+            "$ref": "#/components/schemas/ReceiptItem"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReceiptItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "item": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "vatRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "accountingCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "personnelCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "fullName": {
+            "type": "string",
+            "nullable": true
+          },
+          "company": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "amountExclVat": {
+            "type": "number",
+            "format": "double"
+          },
+          "expenseId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "expense": {
+            "$ref": "#/components/schemas/Expense"
+          },
+          "productDetails": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductDetail"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
       }
     }
   }

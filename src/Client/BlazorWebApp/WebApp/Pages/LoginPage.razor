@@ -1,10 +1,12 @@
 ﻿@page "/login"
+@layout AuthLayout
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
 @using WebApp.Application.Services.Interfaces
 @inject NavigationManager NavigationManager
 @inject IIdentityService IdentityService
 @inject Microsoft.JSInterop.IJSRuntime JSRuntime
+
 
 <style>
     .login-container {
@@ -14,22 +16,36 @@
     }
 
     .login-left {
+        position: relative;
         width: 50vw;
         height: 100vh;
         background-color: #f5f7fa;
         display: flex;
-        flex-direction: column;
-        align-items: center;
         justify-content: center;
+        align-items: center;
         padding: 2rem;
         text-align: center;
+        overflow: hidden;
     }
 
     .login-image {
         width: 100%;
         height: auto;
-        max-width: none;
-        margin-bottom: 2rem;
+        object-fit: cover;
+        display: block;
+    }
+
+    .login-title-on-image {
+        position: absolute;
+        bottom: 5%; /* Resmin altına yakınlaştırmak için */
+        left: 50%;
+        transform: translateX(-50%);
+        font-weight: 800;
+        font-size: 2rem;
+        color: white;
+        text-shadow: 0 0 10px rgba(0, 123, 255, 0.8);
+        z-index: 2;
+        text-align: center;
     }
 
     .login-right {
@@ -76,10 +92,12 @@
 
 <div class="login-container">
     <!-- Sol kısım -->
+
     <div class="login-left">
-        <img src="img/loginBG.png" alt="Digital Accounting" class="login-image" />
-        <h2>MASRAF<br />YÖNETİMİ</h2>
+        <img src="img/DigitalBG.jpg" alt="Digital Accounting" class="login-image" />
+        <h2 class="login-title-on-image">DİJİTAL<br />MASRAF</h2>
     </div>
+
 
     <!-- Sağ kısım -->
     <div class="login-right">

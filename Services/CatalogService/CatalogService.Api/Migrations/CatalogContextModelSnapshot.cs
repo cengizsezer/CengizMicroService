@@ -110,6 +110,164 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("CatalogType", "catalog");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Core.Domain.Expense", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AccountingCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("AmountExclVat")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Company")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("PersonnelCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("VatRate")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Expenses", "catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Core.Domain.ProductDetail", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AccountingCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("AmountExclVat")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Company")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("PersonnelCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("ReceiptItemId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("VatRate")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReceiptItemId");
+
+                    b.ToTable("ProductDetails", "catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Core.Domain.ReceiptItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AccountingCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("AmountExclVat")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Company")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("ExpenseId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Item")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("PersonnelCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("VatRate")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpenseId");
+
+                    b.ToTable("ReceiptItems", "catalog");
+                });
+
             modelBuilder.Entity("CatalogService.Api.Core.Domain.Entities.CatalogItem", b =>
                 {
                     b.HasOne("CatalogService.Api.Core.Domain.Entities.CatalogBrand", "CatalogBrand")
@@ -127,6 +285,38 @@ namespace CatalogService.Api.Migrations
                     b.Navigation("CatalogBrand");
 
                     b.Navigation("CatalogType");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Core.Domain.ProductDetail", b =>
+                {
+                    b.HasOne("CatalogService.Api.Core.Domain.ReceiptItem", "ReceiptItem")
+                        .WithMany("ProductDetails")
+                        .HasForeignKey("ReceiptItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ReceiptItem");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Core.Domain.ReceiptItem", b =>
+                {
+                    b.HasOne("CatalogService.Api.Core.Domain.Expense", "Expense")
+                        .WithMany("ReceiptDetails")
+                        .HasForeignKey("ExpenseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Expense");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Core.Domain.Expense", b =>
+                {
+                    b.Navigation("ReceiptDetails");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Core.Domain.ReceiptItem", b =>
+                {
+                    b.Navigation("ProductDetails");
                 });
 #pragma warning restore 612, 618
         }

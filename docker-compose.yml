@@ -1,0 +1,32 @@
+version: '3.4'
+
+services:
+  identityservice:
+    container_name: c_identityservice
+    image: ${DOCKER_REGISTRY-}identityservice
+    build:
+      context: .
+      dockerfile: Services/IdentityService/IdentityService/Dockerfile
+
+  catalogservice.api:
+    container_name: c_catalogservice
+    image: ${DOCKER_REGISTRY-}catalogserviceapi
+    build:
+      context: .
+      dockerfile: Services/CatalogService/CatalogService.Api/Dockerfile
+
+
+  web.apigateway:
+    container_name: c_apigateway
+    image: ${DOCKER_REGISTRY-}webapigateway
+    build:
+      context: .
+      dockerfile: src/AppGateways/WebAppGateway/Web.ApiGateway/Dockerfile
+
+  webapp:
+    container_name: c_blazorui
+    image: ${DOCKER_REGISTRY-}webapp
+    build:
+      context: .
+      dockerfile: src/Client/BlazorWebApp/WebApp/Dockerfile
+
