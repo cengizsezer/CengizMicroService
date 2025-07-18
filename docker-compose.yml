@@ -30,3 +30,17 @@ services:
       context: .
       dockerfile: src/Client/BlazorWebApp/WebApp/Dockerfile
 
+
+   
+
+  s_rabbitmq:
+     container_name: c_rabbitmq
+     image: rabbitmq:3-management
+
+  s_sqlserver:
+    container_name: c_sqlserver
+    image: mcr.microsoft.com/mssql/server:2019-latest
+
+  s_consul:
+    container_name: c_consul
+    image: consul:1.15

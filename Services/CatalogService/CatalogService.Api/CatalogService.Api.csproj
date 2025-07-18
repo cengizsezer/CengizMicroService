@@ -28,10 +28,6 @@
 	  <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
 	  <PackageReference Include="Serilog.Settings.Configuration" Version="8.0.4" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Pics\" />
-  </ItemGroup>
 	<ItemGroup>
 		<None Update="Configurations\appsettings.json">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
