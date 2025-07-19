@@ -29,13 +29,12 @@ namespace CatalogService.Api.Infrastructure.Context
 
 
             var setupDirPath = Path.Combine(env.ContentRootPath, "Infrastructure", "Setup", "SeedFiles");
-            var picturePath = "Pics";
 
-            await policy.ExecuteAsync(() => ProcessSeeding(context, setupDirPath, picturePath, logger));
+            await policy.ExecuteAsync(() => ProcessSeeding(context, setupDirPath, logger));
         }
 
 
-        private async Task ProcessSeeding(CatalogContext context, string setupDirPath, string picturePath, ILogger logger)
+        private async Task ProcessSeeding(CatalogContext context, string setupDirPath, ILogger logger)
         {
 
             if (!context.Expenses.Any())
