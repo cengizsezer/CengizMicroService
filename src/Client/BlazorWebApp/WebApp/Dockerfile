@@ -8,12 +8,15 @@ RUN dotnet publish "src/Client/BlazorWebApp/WebApp/WebApp.csproj" -c Release -o 
 FROM nginx:alpine
 WORKDIR /var/www/web
 
+RUN apk add --no-cache dos2unix
+
 # Blazor wwwroot dosyalarını kopyala
 COPY --from=build-env /app/build/wwwroot .
 
 # Varsayılan Nginx ayarını kaldır, kendi ayarımızı kopyala
 RUN rm /etc/nginx/conf.d/default.conf
 COPY src/Client/BlazorWebApp/WebApp/default.conf /etc/nginx/conf.d/default.conf
+RUN dos2unix /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 

@@ -10,7 +10,7 @@ namespace WebApp.Extensions
 {
     public static class HttpClientExtension
     {
-        public async static Task<TResult> PostGetResponseAsync<TResult, TValue>(this HttpClient Client, String Url, TValue Value)
+        public async static Task<TResult?> PostGetResponseAsync<TResult, TValue>(this HttpClient Client, String Url, TValue Value)
         {
             var httpRes = await Client.PostAsJsonAsync(Url, Value);
 
@@ -23,7 +23,7 @@ namespace WebApp.Extensions
         }
 
 
-        public async static Task<T> GetResponseAsync<T>(this HttpClient Client, String Url)
+        public async static Task<T?> GetResponseAsync<T>(this HttpClient Client, String Url)
         {
             return await Client.GetFromJsonAsync<T>(Url);
         }

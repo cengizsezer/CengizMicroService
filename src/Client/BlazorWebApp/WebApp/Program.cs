@@ -24,25 +24,26 @@ namespace WebApp
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
             builder.RootComponents.Add<App>("#app");
 
-           // builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+            builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
             builder.Services.AddBlazoredLocalStorage();
 
             builder.Services.AddRadzenComponents();
 
-            //builder.Services.AddTransient<IIdentityService, IdentityService>();
+            builder.Services.AddTransient<IIdentityService, IdentityService>();
+            builder.Services.AddTransient<IExpenseService, ExpenseService>();
 
-            builder.Services.AddHttpClient<IExpenseService, ExpenseService>(client =>
-            {
-                client.BaseAddress = new Uri("http://localhost:5000/"); // API Gateway adresin neyse
-            }).AddHttpMessageHandler<AuthTokenHandler>();
+//            builder.Services.AddHttpClient<IExpenseService, ExpenseService>(client =>
+//            {
+//                client.BaseAddress = new Uri("http://localhost:5000/"); // API Gateway adresin neyse
+//            }).AddHttpMessageHandler<AuthTokenHandler>();
 
 
-            builder.Services.AddHttpClient<IIdentityService, IdentityService>(client =>
-            {
-                client.BaseAddress = new Uri("http://localhost:5000/");
-            })
-.AddHttpMessageHandler<AuthTokenHandler>();
+//            builder.Services.AddHttpClient<IIdentityService, IdentityService>(client =>
+//            {
+//                client.BaseAddress = new Uri("http://localhost:5000/");
+//            })
+//.AddHttpMessageHandler<AuthTokenHandler>();
 
 
             builder.Services.AddScoped<AuthenticationStateProvider, AuthStateProvider>();
@@ -61,9 +62,13 @@ namespace WebApp
 
             builder.Services.AddScoped<AuthTokenHandler>();
 
+            var apiBaseAddress = builder.HostEnvironment.IsDevelopment()
+                                ? "http://localhost:5000/"
+                                : "https://www.dijitalmasraf.com/";
+
             builder.Services.AddHttpClient("ApiGatewayHttpClient", client =>
             {
-                client.BaseAddress = new Uri("http://localhost:5000/");
+                client.BaseAddress = new Uri(apiBaseAddress);
             })
             .AddHttpMessageHandler<AuthTokenHandler>();
 

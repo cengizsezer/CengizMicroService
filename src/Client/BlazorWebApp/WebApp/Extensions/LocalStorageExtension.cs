@@ -8,12 +8,12 @@ namespace WebApp.Extensions
 {
     public static class LocalStorageExtension
     {
-        public static string GetUsername(this ISyncLocalStorageService localStorageService)
+        public static string? GetUsername(this ISyncLocalStorageService localStorageService)
         {
             return localStorageService.GetItem<string>("username");
         }
 
-        public async static Task<string> GetUsername(this ILocalStorageService localStorageService)
+        public async static Task<string?> GetUsername(this ILocalStorageService localStorageService)
         {
             return await localStorageService.GetItemAsync<string>("username");
         }
@@ -29,14 +29,12 @@ namespace WebApp.Extensions
         }
 
 
-
-
-        public static string GetToken(this ISyncLocalStorageService localStorageService)
+        public static string? GetToken(this ISyncLocalStorageService localStorageService)
         {
             return localStorageService.GetItem<string>("token");
         }
 
-        public async static Task<string> GetToken(this ILocalStorageService localStorageService)
+        public async static Task<string?> GetToken(this ILocalStorageService localStorageService)
         {
             return await localStorageService.GetItemAsync<string>("token");
         }

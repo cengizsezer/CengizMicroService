@@ -1,20 +1,43 @@
-﻿namespace WebApp.Domain.Models.Catalog
+﻿using System.Text.Json.Serialization;
+
+namespace WebApp.Domain.Models.Catalog
 {
     public class ProductDetail
     {
+        [JsonPropertyName("id")]
         public int Id { get; set; }
-        public string Name { get; set; } // Eski CatalogType.Type olabilir veya yeni
+
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+
+        [JsonPropertyName("amount")]
         public decimal Amount { get; set; }
+
+        [JsonPropertyName("vatRate")]
         public decimal VatRate { get; set; }
 
+        [JsonPropertyName("receiptItemId")]
         public int ReceiptItemId { get; set; }
 
-        public string AccountingCode { get; set; }
-        public string PersonnelCode { get; set; }
-        public string FullName { get; set; }
-        public string Company { get; set; }
-        public string Note { get; set; }
+        [JsonPropertyName("accountingCode")]
+        public string AccountingCode { get; set; } = string.Empty;
+
+        [JsonPropertyName("personnelCode")]
+        public string PersonnelCode { get; set; } = string.Empty;
+
+        [JsonPropertyName("fullName")]
+        public string FullName { get; set; } = string.Empty;
+
+        [JsonPropertyName("company")]
+        public string Company { get; set; } = string.Empty;
+
+        [JsonPropertyName("note")]
+        public string Note { get; set; } = string.Empty;
+
+        [JsonPropertyName("amountExclVat")]
         public decimal AmountExclVat { get; set; }
-        public ReceiptItem ReceiptItem { get; set; }
+
+        [JsonPropertyName("receiptItem")]
+        public ReceiptItem? ReceiptItem { get; set; }
     }
 }
