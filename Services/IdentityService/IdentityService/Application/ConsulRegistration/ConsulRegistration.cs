@@ -41,10 +41,18 @@ namespace IdentityService.Application.ConsulRegistration
             {
                 ID = serviceId ?? "IdentityService",
                 Name = serviceName ?? "IdentityService",
-                Address = $"{uri.Host}",
+                Address = uri.Host,
                 Port = uri.Port,
-                Tags = new[] { serviceName, serviceId }
+                Tags = new[] { serviceName, serviceId },
+                Check = new AgentServiceCheck
+                {
+                    HTTP = $"{uri.Scheme}://{uri.Host}:{uri.Port}/liveness",
+                    Interval = TimeSpan.FromSeconds(10),
+                    Timeout = TimeSpan.FromSeconds(5),
+                    DeregisterCriticalServiceAfter = TimeSpan.FromMinutes(1)
+                }
             };
+
 
             logger.LogInformation("Registering with Consul");
             consulClient.Agent.ServiceDeregister(registration.ID).Wait();

@@ -1,65 +1,33 @@
 {
   "Routes": [
     {
-      "ServiceName": "IdentityService",
       "UseServiceDiscovery": true,
-      "DownstreamPathTemplate": "/api/auth/login",
+      "ServiceName": "CatalogService",
+      "DownstreamPathTemplate": "/api/catalog/{everything}",
       "DownstreamScheme": "http",
-      "UpstreamPathTemplate": "/auth/login",
-      "UpstreamHttpMethod": [ "POST" ]
-    },
-    {
-      "ServiceName": "IdentityService",
-      "UseServiceDiscovery": true,
-      "DownstreamPathTemplate": "/api/auth/register",
-      "DownstreamScheme": "http",
-      "UpstreamPathTemplate": "/auth/register",
-      "UpstreamHttpMethod": [ "POST" ]
-    },
-    {
-      "ServiceName": "IdentityService",
-      "UseServiceDiscovery": true,
-      "DownstreamPathTemplate": "/api/auth/refresh-token",
-      "DownstreamScheme": "http",
-      "UpstreamPathTemplate": "/auth/refresh-token",
-      "UpstreamHttpMethod": [ "POST" ]
-    },
-    {
-      "ServiceName": "IdentityService",
-      "UseServiceDiscovery": true,
-      "DownstreamPathTemplate": "/api/auth/admin-test",
-      "DownstreamScheme": "http",
-      "UpstreamPathTemplate": "/auth/admin-test",
-      "UpstreamHttpMethod": [ "GET" ]
-    },
-    //{
-    //  "UseServiceDiscovery": true,
-    //  "ServiceName": "CatalogService",
-    //  "DownstreamPathTemplate": "/api/catalog/{everything}",
-    //  "DownstreamScheme": "http",
 
-    //  "UpstreamPathTemplate": "/catalog/{everything}",
-    //  "UpstreamHttpMethod": [ "Get", "Post", "Delete", "Put" ],
-    //  "UpstreamScheme": "http"
-    //},
+      "UpstreamPathTemplate": "/catalog/{everything}",
+      "UpstreamHttpMethod": [ "Get", "Post", "Delete", "Put" ],
+      "UpstreamScheme": "http"
+    },
     {
-      "DownstreamPathTemplate": "/api/catalog/expenses/paged",
-      "DownstreamScheme": "https",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5004
-        }
-      ],
-      "UpstreamPathTemplate": "/catalog/expenses/paged",
-      "UpstreamHttpMethod": [ "GET" ]
+      "UseServiceDiscovery": true,
+      "ServiceName": "IdentityService",
+
+      "DownstreamPathTemplate": "/api/auth",
+      "DownstreamScheme": "http",
+
+      "UpstreamPathTemplate": "/auth",
+      "UpstreamHttpMethod": [ "Post" ],
+      "UpstreamScheme": "http"
     }
-
   ],
   "GlobalConfiguration": {
+    //"BaseUrl": "http://webapigateway.api:5000",
     "BaseUrl": "http://localhost:5000",
     "ServiceDiscoveryProvider": {
-      "Host": "localhost",
+      //"Host": "c_consul",
+      "Host": "http://localhost:5000",
       "Port": 8500,
       "Type": "Consul"
     }

@@ -37,6 +37,18 @@ builder.Services.ConfigureAuth(builder.Configuration);
 
 // Ocelot ve Consul entegrasyonu
 builder.Services.AddOcelot().AddConsul();
+builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+builder.Services.AddTransient<HttpClientDelegatingHandler>();
+
+builder.Services.AddHttpClient("basket", c =>
+{
+    c.BaseAddress = new Uri(builder.Configuration["urls:basket"]);
+}).AddHttpMessageHandler<HttpClientDelegatingHandler>();
+
+builder.Services.AddHttpClient("catalog", c =>
+{
+    c.BaseAddress = new Uri(builder.Configuration["urls:catalog"]);
+}).AddHttpMessageHandler<HttpClientDelegatingHandler>();
 
 // HTTP context erişimi
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();

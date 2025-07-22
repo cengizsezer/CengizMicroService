@@ -31,44 +31,32 @@ namespace CatalogService.Api.Extensions
             var consulClient = app.ApplicationServices.GetRequiredService<IConsulClient>();
             var loggingFactory = app.ApplicationServices.GetRequiredService<ILoggerFactory>();
             var logger = loggingFactory.CreateLogger<IApplicationBuilder>();
-
-            try
+            var uri = configuration.GetValue<Uri>("ConsulConfig:ServiceAddress");
+            var serviceName = configuration.GetValue<string>("ConsulConfig:ServiceName");
+            var serviceId = configuration.GetValue<string>("ConsulConfig:ServiceId");
+            var registration = new AgentServiceRegistration()
             {
-                var uri = configuration.GetValue<Uri>("ConsulConfig:ServiceAddress");
-                var serviceName = configuration.GetValue<string>("ConsulConfig:ServiceName");
-                var serviceId = configuration.GetValue<string>("ConsulConfig:ServiceId");
-
-                if (uri == null)
+                ID = serviceId ?? "CatalogService",
+                Name = serviceName ?? "CatalogService",
+                Address = uri.Host,
+                Port = uri.Port,
+                Tags = new[] { serviceName, serviceId },
+                Check = new AgentServiceCheck
                 {
-                    logger.LogError("❌ ServiceAddress 'ConsulConfig:ServiceAddress' appsettings içinde tanımlı değil veya geçersiz.");
-                    return app;
+                    HTTP = $"{uri.Scheme}://{uri.Host}:{uri.Port}/liveness",
+                    Interval = TimeSpan.FromSeconds(10),
+                    Timeout = TimeSpan.FromSeconds(5),
+                    DeregisterCriticalServiceAfter = TimeSpan.FromMinutes(1)
                 }
+            };
+            consulClient.Agent.ServiceDeregister(registration.ID).Wait();
+            consulClient.Agent.ServiceRegister(registration).Wait();
 
-                var registration = new AgentServiceRegistration()
-                {
-                    ID = serviceId ?? "CatalogService",
-                    Name = serviceName ?? "CatalogService",
-                    Address = uri.Host,
-                    Port = uri.Port,
-                    Tags = new[] { serviceName, serviceId }
-                };
-
-                logger.LogInformation("✅ Consul servisine kayıt olunuyor...");
-                consulClient.Agent.ServiceDeregister(registration.ID).Wait();
-                consulClient.Agent.ServiceRegister(registration).Wait();
-
-                lifetime.ApplicationStopping.Register(() =>
-                {
-                    logger.LogInformation("🧹 Consul kaydı siliniyor...");
-                    consulClient.Agent.ServiceDeregister(registration.ID).Wait();
-                });
-
-                logger.LogInformation("✅ Consul kaydı başarılı.");
-            }
-            catch (Exception ex)
+            lifetime.ApplicationStopping.Register(() =>
             {
-                logger.LogError(ex, "❌ Consul servisine kayıt olurken hata oluştu.");
-            }
+                consulClient.Agent.ServiceDeregister(registration.ID).Wait();
+            });
+
 
             return app;
         }
