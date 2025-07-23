@@ -3,6 +3,22 @@
   "WorkspaceRootPath": "C:\\GitHub\\CengizMicroService\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\default.conf||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\default.conf||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{81DDED9D-158B-E303-5F62-77A2896D2A5A}|docker-compose.dcproj|c:\\github\\cengizmicroservice\\docker-compose.override.yml||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{81DDED9D-158B-E303-5F62-77A2896D2A5A}|docker-compose.dcproj|solutionrelative:docker-compose.override.yml||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{81DDED9D-158B-E303-5F62-77A2896D2A5A}|docker-compose.dcproj|c:\\github\\cengizmicroservice\\docker-compose.yml||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{81DDED9D-158B-E303-5F62-77A2896D2A5A}|docker-compose.dcproj|solutionrelative:docker-compose.yml||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\core\\domain\\productdetail.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\core\\domain\\productdetail.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
@@ -36,11 +52,63 @@
         },
         {
           "DockedWidth": 282,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Dockerfile",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Dockerfile",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Dockerfile",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Dockerfile",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Dockerfile",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-07-23T18:51:06.105Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "default.conf",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\default.conf",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\default.conf",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\default.conf",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\default.conf",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-07-23T18:35:44.597Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "docker-compose.override.yml",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.override.yml",
+              "RelativeDocumentMoniker": "docker-compose.override.yml",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\docker-compose.override.yml",
+              "RelativeToolTip": "docker-compose.override.yml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003775|",
+              "WhenOpened": "2025-07-23T18:35:38.652Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "docker-compose.yml",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.yml",
+              "RelativeDocumentMoniker": "docker-compose.yml",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\docker-compose.yml",
+              "RelativeToolTip": "docker-compose.yml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003775|",
+              "WhenOpened": "2025-07-23T18:35:36.372Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
               "Title": "ProductDetail.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Core\\Domain\\ProductDetail.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Core\\Domain\\ProductDetail.cs",
