@@ -7,9 +7,9 @@ namespace IdentityService.Application.Models
 {
     public class LoginResponseModel
     {
-        public string Username { get; set; }
-        public string Token { get; set; }
-        public string RefreshToken { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string Token { get; set; } = string.Empty;
+        public string RefreshToken { get; set; } = string.Empty;
     }
 
 }

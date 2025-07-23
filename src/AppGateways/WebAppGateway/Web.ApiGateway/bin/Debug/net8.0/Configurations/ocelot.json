@@ -13,21 +13,21 @@
     {
       "UseServiceDiscovery": true,
       "ServiceName": "IdentityService",
-
-      "DownstreamPathTemplate": "/api/auth",
+      "DownstreamPathTemplate": "/api/auth/{everything}",
       "DownstreamScheme": "http",
 
-      "UpstreamPathTemplate": "/auth",
-      "UpstreamHttpMethod": [ "Post" ],
+      "UpstreamPathTemplate": "/auth/{everything}",
+      "UpstreamHttpMethod": [ "Get", "Post", "Delete", "Put" ],
       "UpstreamScheme": "http"
     }
+    
   ],
   "GlobalConfiguration": {
     //"BaseUrl": "http://webapigateway.api:5000",
     "BaseUrl": "http://localhost:5000",
     "ServiceDiscoveryProvider": {
       //"Host": "c_consul",
-      "Host": "http://localhost:5000",
+      "Host": "localhost",
       "Port": 8500,
       "Type": "Consul"
     }

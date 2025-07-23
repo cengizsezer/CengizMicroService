@@ -1,5 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.Extensions.Configuration;
+using System;
+using System.IO;
 
 namespace IdentityService.Persistence
 {
@@ -7,10 +10,21 @@ namespace IdentityService.Persistence
     {
         public IdentityDbContext CreateDbContext(string[] args)
         {
+            var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development";
+
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("Configurations/appsettings.json", optional: false)
+                .AddJsonFile($"Configurations/appsettings.{environment}.json", optional: true)
+                .AddEnvironmentVariables()
+                .Build();
+
+            var connectionString = configuration.GetConnectionString("DatabaseConnection");
+
             var optionsBuilder = new DbContextOptionsBuilder<IdentityDbContext>();
-            optionsBuilder.UseSqlServer("Server=DESKTOP-I290HP6;Initial Catalog=UserDataBase;Integrated Security=True;TrustServerCertificate=True;");
+            optionsBuilder.UseSqlServer(connectionString);
+
             return new IdentityDbContext(optionsBuilder.Options);
         }
     }
-
 }

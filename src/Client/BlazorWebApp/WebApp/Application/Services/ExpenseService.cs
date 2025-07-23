@@ -17,12 +17,19 @@ namespace WebApp.Application.Services
             _httpClient = httpClient;
         }
 
+        //public async Task<PaginatedItemsViewModel<Expense>> GetExpensesAsync(int pageIndex = 0, int pageSize = 10)
+        //{
+        //    string prefix = _httpClient.BaseAddress?.Host.Contains("localhost") == true ? "" : "api/";
+        //    string url = $"{prefix}catalog/expenses/paged?pageIndex={pageIndex}&pageSize={pageSize}";
+        //    return await _httpClient.GetResponseAsync<PaginatedItemsViewModel<Expense>>(url);
+
+        //}
+
         public async Task<PaginatedItemsViewModel<Expense>> GetExpensesAsync(int pageIndex = 0, int pageSize = 10)
         {
-            string prefix = _httpClient.BaseAddress?.Host.Contains("localhost") == true ? "" : "api/";
-            string url = $"{prefix}catalog/expenses/paged?pageIndex={pageIndex}&pageSize={pageSize}";
+            string url = $"/catalog/expenses/paged?pageIndex={pageIndex}&pageSize={pageSize}";
             return await _httpClient.GetResponseAsync<PaginatedItemsViewModel<Expense>>(url);
-
         }
+
     }
 }

@@ -39,7 +39,7 @@ namespace IdentityService.Application.ConsulRegistration
 
             var registration = new AgentServiceRegistration()
             {
-                ID = serviceId ?? "IdentityService",
+                ID = serviceId ?? "Identity",
                 Name = serviceName ?? "IdentityService",
                 Address = uri.Host,
                 Port = uri.Port,

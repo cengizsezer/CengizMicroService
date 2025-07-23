@@ -36,7 +36,7 @@ namespace CatalogService.Api.Extensions
             var serviceId = configuration.GetValue<string>("ConsulConfig:ServiceId");
             var registration = new AgentServiceRegistration()
             {
-                ID = serviceId ?? "CatalogService",
+                ID = serviceId ?? "Catalog",
                 Name = serviceName ?? "CatalogService",
                 Address = uri.Host,
                 Port = uri.Port,

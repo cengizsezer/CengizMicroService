@@ -18,7 +18,7 @@ namespace WebApp.Application.Services
         private readonly ISyncLocalStorageService syncLocalStorageService;
         private readonly AuthenticationStateProvider authStateProvider;
 
-        private readonly string prefix;
+      
 
         public IdentityService(HttpClient httpClient, ISyncLocalStorageService syncLocalStorageService, AuthenticationStateProvider authStateProvider)
         {
@@ -28,7 +28,7 @@ namespace WebApp.Application.Services
 
             // 🌍 Localde çalışıyorsa prefix yok, değilse api/ eklenecek
             var isLocal = httpClient.BaseAddress?.Host.Contains("localhost") == true;
-            prefix = isLocal ? "" : "api/";
+           
         }
 
         public bool IsLoggedIn => !string.IsNullOrEmpty(GetUserToken());
@@ -39,14 +39,14 @@ namespace WebApp.Application.Services
 
         public async Task<bool> Login(string username, string password, bool rememberMe = false)
         {
-            var loginModel = new UserLoginRequest
+            var loginModel = new LoginRequestModel
             {
                 Username = username,
                 Password = password,
                 RefreshToken = ""
             };
 
-            var response = await httpClient.PostAsJsonAsync($"{prefix}auth/login", loginModel);
+            var response = await httpClient.PostAsJsonAsync($"auth/login", loginModel);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -55,7 +55,7 @@ namespace WebApp.Application.Services
                 return false;
             }
 
-            var result = await response.Content.ReadFromJsonAsync<UserLoginResponse>();
+            var result = await response.Content.ReadFromJsonAsync<LoginResponseModel>();
 
             if (rememberMe)
             {
@@ -79,7 +79,7 @@ namespace WebApp.Application.Services
 
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await httpClient.PostAsync($"{prefix}auth/register", content);
+            var response = await httpClient.PostAsync($"auth/register", content);
 
             if (!response.IsSuccessStatusCode)
                 return false;

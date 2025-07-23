@@ -23,9 +23,9 @@ var serilogConfiguration = new ConfigurationBuilder()
     .AddEnvironmentVariables()
     .Build();
 
-//Log.Logger = new LoggerConfiguration()
-//    .ReadFrom.Configuration(serilogConfiguration)
-//    .CreateLogger();
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(serilogConfiguration)
+    .CreateLogger();
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 builder.Configuration.AddConfiguration(configuration);
