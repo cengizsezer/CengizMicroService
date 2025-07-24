@@ -33,6 +33,8 @@ namespace WebApp.Extensions
             var stream = await Client.GetStreamAsync(Url);
 
             // typeof ile generic type’a göre TypeInfo elde ediyoruz
+            // typeof ile generic type’a göre TypeInfo elde ediyoruz
+
             var options = new JsonSerializerOptions
             {
                 TypeInfoResolver = AppJsonContext.Default
