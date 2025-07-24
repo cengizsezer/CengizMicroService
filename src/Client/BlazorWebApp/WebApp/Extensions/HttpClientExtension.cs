@@ -23,9 +23,22 @@ namespace WebApp.Extensions
         }
 
 
-        public async static Task<T?> GetResponseAsync<T>(this HttpClient Client, String Url)
+        //public async static Task<T?> GetResponseAsync<T>(this HttpClient Client, String Url)
+        //{
+        //    return await Client.GetFromJsonAsync<T>(Url);
+        //}
+
+        public async static Task<T?> GetResponseAsync<T>(this HttpClient Client, string Url)
         {
-            return await Client.GetFromJsonAsync<T>(Url);
+            var stream = await Client.GetStreamAsync(Url);
+
+            // typeof ile generic type’a göre TypeInfo elde ediyoruz
+            var options = new JsonSerializerOptions
+            {
+                TypeInfoResolver = AppJsonContext.Default
+            };
+
+            return await JsonSerializer.DeserializeAsync<T>(stream, options);
         }
     }
 }

@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using WebApp.Application.Services;
 using WebApp.Application.Services.Interfaces;
@@ -32,18 +33,21 @@ namespace WebApp
 
             builder.Services.AddTransient<IIdentityService, IdentityService>();
             builder.Services.AddTransient<IExpenseService, ExpenseService>();
+            builder.Services.AddSingleton(new JsonSerializerOptions
+            {
+                TypeInfoResolver = AppJsonContext.Default
+            });
+            //            builder.Services.AddHttpClient<IExpenseService, ExpenseService>(client =>
+            //            {
+            //                client.BaseAddress = new Uri("http://localhost:5000/"); // API Gateway adresin neyse
+            //            }).AddHttpMessageHandler<AuthTokenHandler>();
 
-//            builder.Services.AddHttpClient<IExpenseService, ExpenseService>(client =>
-//            {
-//                client.BaseAddress = new Uri("http://localhost:5000/"); // API Gateway adresin neyse
-//            }).AddHttpMessageHandler<AuthTokenHandler>();
 
-
-//            builder.Services.AddHttpClient<IIdentityService, IdentityService>(client =>
-//            {
-//                client.BaseAddress = new Uri("http://localhost:5000/");
-//            })
-//.AddHttpMessageHandler<AuthTokenHandler>();
+            //            builder.Services.AddHttpClient<IIdentityService, IdentityService>(client =>
+            //            {
+            //                client.BaseAddress = new Uri("http://localhost:5000/");
+            //            })
+            //.AddHttpMessageHandler<AuthTokenHandler>();
 
 
             builder.Services.AddScoped<AuthenticationStateProvider, AuthStateProvider>();
