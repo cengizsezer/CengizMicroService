@@ -1,20 +1,20 @@
 ﻿using System.Collections.Generic;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace WebApp.Domain.Models
 {
     public class PaginatedItemsViewModel<TEntity> where TEntity : class
     {
-        [JsonPropertyName("pageIndex")]
+        [JsonProperty("pageIndex")]
         public int PageIndex { get; set; }
 
-        [JsonPropertyName("pageSize")]
+        [JsonProperty("pageSize")]
         public int PageSize { get; set; }
 
-        [JsonPropertyName("count")]
+        [JsonProperty("count")]
         public long Count { get; set; }
 
-        [JsonPropertyName("data")]
+        [JsonProperty("data")]
         public IEnumerable<TEntity> Data { get; set; } = new List<TEntity>();
 
         public PaginatedItemsViewModel(int pageIndex, int pageSize, long count, IEnumerable<TEntity> data)

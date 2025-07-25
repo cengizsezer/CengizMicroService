@@ -1,46 +1,46 @@
-﻿using System.Text.Json.Serialization;
+﻿using Newtonsoft.Json;
 
 namespace WebApp.Domain.Models.Catalog
 {
     public class ReceiptItem
     {
-        [JsonPropertyName("id")]
+        [JsonProperty("id")]
         public int Id { get; set; }
 
-        [JsonPropertyName("item")]
+        [JsonProperty("item")]
         public string Item { get; set; } = string.Empty;
 
-        [JsonPropertyName("amount")]
+        [JsonProperty("amount")]
         public decimal Amount { get; set; }
 
-        [JsonPropertyName("vatRate")]
+        [JsonProperty("vatRate")]
         public decimal VatRate { get; set; }
 
-        [JsonPropertyName("accountingCode")]
+        [JsonProperty("accountingCode")]
         public string AccountingCode { get; set; } = string.Empty;
 
-        [JsonPropertyName("personnelCode")]
+        [JsonProperty("personnelCode")]
         public string PersonnelCode { get; set; } = string.Empty;
 
-        [JsonPropertyName("fullName")]
+        [JsonProperty("fullName")]
         public string FullName { get; set; } = string.Empty;
 
-        [JsonPropertyName("company")]
+        [JsonProperty("company")]
         public string Company { get; set; } = string.Empty;
 
-        [JsonPropertyName("note")]
+        [JsonProperty("note")]
         public string Note { get; set; } = string.Empty;
 
-        [JsonPropertyName("amountExclVat")]
+        [JsonProperty("amountExclVat")]
         public decimal AmountExclVat { get; set; }
 
-        [JsonPropertyName("expenseId")]
+        [JsonProperty("expenseId")]
         public int ExpenseId { get; set; }
 
-        [JsonPropertyName("expense")]
+        [JsonProperty("expense")]
         public Expense? Expense { get; set; }
 
-        [JsonPropertyName("productDetails")]
+        [JsonProperty("productDetails")]
         public List<ProductDetail> ProductDetails { get; set; } = new();
     }
 }

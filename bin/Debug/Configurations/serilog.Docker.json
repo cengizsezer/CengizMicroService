@@ -9,7 +9,7 @@
           "hostnameOrAddress": "c_graylog",
           "port": "12201",
           "transportType": "Udp",
-          "facility": "IdentityService"
+          "facility": "CatalogService"
         }
       },
       {
@@ -18,7 +18,7 @@
     ],
 
     "Properties": {
-      "Application": "IdentityService"
+      "Application": "CatalogService"
     }
   }
 }

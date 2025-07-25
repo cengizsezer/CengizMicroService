@@ -88,6 +88,10 @@
               "version": "[9.0.6, )",
               "autoReferenced": true
             },
+            "Newtonsoft.Json": {
+              "target": "Package",
+              "version": "[13.0.3, )"
+            },
             "Radzen.Blazor": {
               "target": "Package",
               "version": "[7.1.4, )"

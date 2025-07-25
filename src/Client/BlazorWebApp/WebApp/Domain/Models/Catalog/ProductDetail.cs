@@ -1,43 +1,43 @@
-﻿using System.Text.Json.Serialization;
+﻿using Newtonsoft.Json;
 
 namespace WebApp.Domain.Models.Catalog
 {
     public class ProductDetail
     {
-        [JsonPropertyName("id")]
+        [JsonProperty("id")]
         public int Id { get; set; }
 
-        [JsonPropertyName("name")]
+        [JsonProperty("name")]
         public string Name { get; set; } = string.Empty;
 
-        [JsonPropertyName("amount")]
+        [JsonProperty("amount")]
         public decimal Amount { get; set; }
 
-        [JsonPropertyName("vatRate")]
+        [JsonProperty("vatRate")]
         public decimal VatRate { get; set; }
 
-        [JsonPropertyName("receiptItemId")]
+        [JsonProperty("receiptItemId")]
         public int ReceiptItemId { get; set; }
 
-        [JsonPropertyName("accountingCode")]
+        [JsonProperty("accountingCode")]
         public string AccountingCode { get; set; } = string.Empty;
 
-        [JsonPropertyName("personnelCode")]
+        [JsonProperty("personnelCode")]
         public string PersonnelCode { get; set; } = string.Empty;
 
-        [JsonPropertyName("fullName")]
+        [JsonProperty("fullName")]
         public string FullName { get; set; } = string.Empty;
 
-        [JsonPropertyName("company")]
+        [JsonProperty("company")]
         public string Company { get; set; } = string.Empty;
 
-        [JsonPropertyName("note")]
+        [JsonProperty("note")]
         public string Note { get; set; } = string.Empty;
 
-        [JsonPropertyName("amountExclVat")]
+        [JsonProperty("amountExclVat")]
         public decimal AmountExclVat { get; set; }
 
-        [JsonPropertyName("receiptItem")]
+        [JsonProperty("receiptItem")]
         public ReceiptItem? ReceiptItem { get; set; }
     }
 }

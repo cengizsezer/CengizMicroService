@@ -1,46 +1,39 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text.Json;
+﻿using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace WebApp.Extensions
 {
     public static class HttpClientExtension
     {
-        public async static Task<TResult?> PostGetResponseAsync<TResult, TValue>(this HttpClient Client, String Url, TValue Value)
+        public static async Task<TResult> PostGetResponseAsync<TResult, TValue>(this HttpClient client, string url, TValue value)
         {
-            var httpRes = await Client.PostAsJsonAsync(Url, Value);
+            var json = JsonConvert.SerializeObject(value);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            return httpRes.IsSuccessStatusCode ? await httpRes.Content.ReadFromJsonAsync<TResult>() : default;
+            var httpRes = await client.PostAsync(url, content);
+            if (!httpRes.IsSuccessStatusCode) return default;
+
+            var responseJson = await httpRes.Content.ReadAsStringAsync();
+            return JsonConvert.DeserializeObject<TResult>(responseJson);
         }
 
-        public async static Task PostAsync<TValue>(this HttpClient Client, String Url, TValue Value)
+        public static async Task PostAsync<TValue>(this HttpClient client, string url, TValue value)
         {
-            await Client.PostAsJsonAsync(Url, Value);
+            var json = JsonConvert.SerializeObject(value);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            await client.PostAsync(url, content);
         }
 
-
-        //public async static Task<T?> GetResponseAsync<T>(this HttpClient Client, String Url)
-        //{
-        //    return await Client.GetFromJsonAsync<T>(Url);
-        //}
-
-        public async static Task<T?> GetResponseAsync<T>(this HttpClient Client, string Url)
+        public static async Task<T> GetResponseAsync<T>(this HttpClient client, string url)
         {
-            var stream = await Client.GetStreamAsync(Url);
+            var response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode) return default;
 
-            // typeof ile generic type’a göre TypeInfo elde ediyoruz
-            // typeof ile generic type’a göre TypeInfo elde ediyoruz
-
-            var options = new JsonSerializerOptions
-            {
-                TypeInfoResolver = AppJsonContext.Default
-            };
-
-            return await JsonSerializer.DeserializeAsync<T>(stream, options);
+            var json = await response.Content.ReadAsStringAsync();
+            return JsonConvert.DeserializeObject<T>(json);
         }
     }
 }
