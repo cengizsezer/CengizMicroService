@@ -27,7 +27,6 @@ namespace WebApp.Extensions
             await client.PostAsync(url, content);
         }
 
-
         public static async Task<T> GetResponseAsync<T>(this HttpClient client, string url)
         {
             var response = await client.GetAsync(url);
