@@ -53,6 +53,7 @@ using (var scope = app.Services.CreateScope())
 
     try
     {
+        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'catalog') EXEC('CREATE SCHEMA catalog');");
         context.Database.Migrate();
         var seeder = new CatalogContextSeed();
         await seeder.SeedAsync(context, envHost, logger);
