@@ -22,10 +22,6 @@
 	<PackageReference Include="Ocelot" Version="18.0.0" />
 	<PackageReference Include="Ocelot.Provider.Consul" Version="18.0.0" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Configurations\" />
-  </ItemGroup>
   
 
 </Project>

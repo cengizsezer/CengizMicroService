@@ -1,8 +1,6 @@
 ﻿using Consul;
 using HealthChecks.UI.Client;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 using Ocelot.DependencyInjection;
@@ -11,32 +9,43 @@ using Ocelot.Provider.Consul;
 using Web.ApiGateway.Extensions;
 using Web.ApiGateway.Infrastructure;
 
+var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+
+// Ana appsettings config
+var configuration = new ConfigurationBuilder()
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("Configurations/appsettings.json", optional: false)
+    .AddJsonFile($"Configurations/appsettings.{env}.json", optional: true)
+    .AddEnvironmentVariables()
+    .Build();
+
+// Environment'e özel ocelot config
+var ocelotConfiguration = new ConfigurationBuilder()
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile($"Configurations/ocelot.{env}.json", optional: false, reloadOnChange: true)
+    .Build();
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Yapılandırma dosyaları
-builder.Configuration
-    .SetBasePath(builder.Environment.ContentRootPath)
-    .AddJsonFile("Configurations/ocelot.json")
-    .AddEnvironmentVariables();
+// Appsettings yüklemesi
+builder.Configuration.AddConfiguration(configuration);
 
-// Servis kayıtları
+// Ocelot'u ayrı config ile başlat
+builder.Services.AddOcelot(ocelotConfiguration).AddConsul();
+
+// Diğer servis kayıtları
 builder.Services.AddControllers();
 
-// HealthCheck ayarları
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy());
 
-// Swagger dokümantasyonu
-builder.Services.AddSwaggerGen(c => 
+builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "Web.ApiGateway", Version = "v1" });
 });
 
-// Kimlik doğrulama ayarları
 builder.Services.ConfigureAuth(builder.Configuration);
 
-// Ocelot ve Consul entegrasyonu
-builder.Services.AddOcelot().AddConsul();
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddTransient<HttpClientDelegatingHandler>();
 
@@ -50,14 +59,9 @@ builder.Services.AddHttpClient("catalog", c =>
     c.BaseAddress = new Uri(builder.Configuration["urls:catalog"]);
 }).AddHttpMessageHandler<HttpClientDelegatingHandler>();
 
-// HTTP context erişimi
-builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-builder.Services.AddTransient<HttpClientDelegatingHandler>();
-
-// CORS politikası (Geliştirme ortamı için geniş ayarlar)
-builder.Services.AddCors(options => 
+builder.Services.AddCors(options =>
 {
-    options.AddPolicy("CorsPolicy", policy => 
+    options.AddPolicy("CorsPolicy", policy =>
     {
         policy.SetIsOriginAllowed(_ => true)
               .AllowAnyMethod()
@@ -68,7 +72,6 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Geliştirme ortamı özellikleri
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -76,19 +79,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Web.ApiGateway v1"));
 }
 
-// Middleware pipeline
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors("CorsPolicy");
 
-// Kimlik doğrulama ve yetkilendirme
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Endpoint yapılandırması
 app.MapControllers();
 
-// HealthCheck endpoint'leri
 app.MapHealthChecks("/health", new()
 {
     Predicate = _ => true,
@@ -97,7 +96,7 @@ app.MapHealthChecks("/health", new()
 
 app.MapHealthChecksUI(config => config.UIPath = "/hc-ui");
 
-// Ocelot middleware'i
+// ✅ Ocelot'u environment'e özel config ile başlatıyoruz
 await app.UseOcelot();
 
 app.Run();

@@ -11,6 +11,10 @@
         "Action": "Start"
       },
       {
+        "Path": "Services\\OCRService\\OCRService.Api\\OCRService.Api.csproj",
+        "Action": "Start"
+      },
+      {
         "Path": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Web.ApiGateway.csproj",
         "Action": "Start"
       },

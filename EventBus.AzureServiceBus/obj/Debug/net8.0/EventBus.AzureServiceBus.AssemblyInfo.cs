@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("EventBus.AzureServiceBus")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+03f09249d086915b12fb271238dd20b451f23f7c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2e90b46234f4803320b2606b58b6a100b6e4b29b")]
 [assembly: System.Reflection.AssemblyProductAttribute("EventBus.AzureServiceBus")]
 [assembly: System.Reflection.AssemblyTitleAttribute("EventBus.AzureServiceBus")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
