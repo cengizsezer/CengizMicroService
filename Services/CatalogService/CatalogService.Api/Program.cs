@@ -31,7 +31,7 @@ builder.Host.UseSerilog();
 builder.Configuration.AddConfiguration(configuration);
 //builder.WebHost.UseUrls("http://localhost:5004");
 
-if (env == "docker")
+if (env == "Docker")
 {
     builder.WebHost.UseUrls("http://0.0.0.0:5004"); // container dışına açıl
 }
