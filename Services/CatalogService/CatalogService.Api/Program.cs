@@ -29,7 +29,17 @@ Log.Logger = new LoggerConfiguration()
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 builder.Configuration.AddConfiguration(configuration);
-builder.WebHost.UseUrls("http://localhost:5004");
+//builder.WebHost.UseUrls("http://localhost:5004");
+
+if (env == "docker")
+{
+    builder.WebHost.UseUrls("http://0.0.0.0:5004"); // container dışına açıl
+}
+else
+{
+    builder.WebHost.UseUrls("http://localhost:5004"); // local dev için
+}
+
 
 // Service Registration
 builder.Services.AddControllers();
