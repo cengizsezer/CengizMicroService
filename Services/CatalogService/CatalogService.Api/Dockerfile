@@ -21,7 +21,7 @@ RUN dotnet build "./CatalogService.Api.csproj" -c $BUILD_CONFIGURATION -o /app/b
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./CatalogService.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
-
+COPY Services/CatalogService/CatalogService.Api/Infrastructure/Setup/SeedFiles /app/publish/Infrastructure/Setup/SeedFiles
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final
 WORKDIR /app
