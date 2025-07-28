@@ -3,12 +3,16 @@
   "WorkspaceRootPath": "C:\\GitHub\\CengizMicroService\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6CB4C2CA-B839-424A-9216-7AEA1AAA8319}|Services\\OCRService\\OCRService.Api\\OCRService.Api.csproj|c:\\github\\cengizmicroservice\\services\\ocrservice\\ocrservice.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6CB4C2CA-B839-424A-9216-7AEA1AAA8319}|Services\\OCRService\\OCRService.Api\\OCRService.Api.csproj|solutionrelative:services\\ocrservice\\ocrservice.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\controllers\\catalogcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -49,10 +53,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{6CB4C2CA-B839-424A-9216-7AEA1AAA8319}|Services\\OCRService\\OCRService.Api\\OCRService.Api.csproj|c:\\github\\cengizmicroservice\\services\\ocrservice\\ocrservice.api\\configurations\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
       "RelativeMoniker": "D:0:0:{6CB4C2CA-B839-424A-9216-7AEA1AAA8319}|Services\\OCRService\\OCRService.Api\\OCRService.Api.csproj|solutionrelative:services\\ocrservice\\ocrservice.api\\configurations\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{6CB4C2CA-B839-424A-9216-7AEA1AAA8319}|Services\\OCRService\\OCRService.Api\\OCRService.Api.csproj|c:\\github\\cengizmicroservice\\services\\ocrservice\\ocrservice.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{6CB4C2CA-B839-424A-9216-7AEA1AAA8319}|Services\\OCRService\\OCRService.Api\\OCRService.Api.csproj|solutionrelative:services\\ocrservice\\ocrservice.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{6CB4C2CA-B839-424A-9216-7AEA1AAA8319}|Services\\OCRService\\OCRService.Api\\OCRService.Api.csproj|c:\\github\\cengizmicroservice\\services\\ocrservice\\ocrservice.api\\configurations\\serilog.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
@@ -314,11 +314,11 @@
       "DocumentGroups": [
         {
           "DockedWidth": 454,
-          "SelectedChildIndex": 12,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 1,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\OCRService\\OCRService.Api\\Program.cs",
               "RelativeDocumentMoniker": "Services\\OCRService\\OCRService.Api\\Program.cs",
@@ -331,13 +331,13 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Program.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Program.cs",
               "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Program.cs",
               "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Program.cs",
-              "ViewState": "AgIAAAwAAAAAAAAAAAAAABkAAAAmAAAAAAAAAA==",
+              "ViewState": "AgIAAAkAAAAAAAAAAAAAABsAAAAUAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-07-26T10:26:33.154Z",
               "IsPinned": true,
@@ -400,7 +400,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 5,
               "Title": "ConsulRegistration.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Extensions\\ConsulRegistration.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Extensions\\ConsulRegistration.cs",
@@ -408,12 +408,11 @@
               "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Extensions\\ConsulRegistration.cs",
               "ViewState": "AgIAABwAAAAAAAAAAAAkwEAAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-26T15:02:27.348Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-26T15:02:27.348Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "appsettings.Docker.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Configurations\\appsettings.Docker.json",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Configurations\\appsettings.Docker.json",
@@ -421,12 +420,11 @@
               "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Configurations\\appsettings.Docker.json",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2025-07-26T10:28:51.994Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-26T10:28:51.994Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "CatalogController.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Controllers\\CatalogController.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Controllers\\CatalogController.cs",
@@ -434,12 +432,11 @@
               "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Controllers\\CatalogController.cs",
               "ViewState": "AgIAADUAAAAAAAAAAAAwwI4AAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-26T10:18:08.811Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-26T10:18:08.811Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 2,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Program.cs",
               "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Program.cs",
@@ -447,12 +444,11 @@
               "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Program.cs",
               "ViewState": "AgIAAGwAAAAAAAAAAAAAAHUAAAAZAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-26T15:00:45.128Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-26T15:00:45.128Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 6,
               "Title": "appsettings.Development.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Configurations\\appsettings.Development.json",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Configurations\\appsettings.Development.json",
@@ -460,12 +456,11 @@
               "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Configurations\\appsettings.Development.json",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2025-07-26T10:28:59.21Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-26T10:28:59.21Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 7,
               "Title": "Dockerfile",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Dockerfile",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Dockerfile",
@@ -473,12 +468,11 @@
               "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Dockerfile",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-07-28T21:01:51.764Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-28T21:01:51.764Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 8,
               "Title": "DbContextRegistration.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Extensions\\DbContextRegistration.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Extensions\\DbContextRegistration.cs",
@@ -490,7 +484,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 9,
               "Title": "appsettings.Docker.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Configurations\\appsettings.Docker.json",
               "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Configurations\\appsettings.Docker.json",
@@ -502,7 +496,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 10,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\OCRService\\OCRService.Api\\Configurations\\appsettings.json",
               "RelativeDocumentMoniker": "Services\\OCRService\\OCRService.Api\\Configurations\\appsettings.json",
@@ -514,7 +508,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 11,
               "Title": "appsettings.Docker.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\OCRService\\OCRService.Api\\Configurations\\appsettings.Docker.json",
               "RelativeDocumentMoniker": "Services\\OCRService\\OCRService.Api\\Configurations\\appsettings.Docker.json",
@@ -526,7 +520,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 12,
               "Title": "appsettings.Development.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\OCRService\\OCRService.Api\\Configurations\\appsettings.Development.json",
               "RelativeDocumentMoniker": "Services\\OCRService\\OCRService.Api\\Configurations\\appsettings.Development.json",
