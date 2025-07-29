@@ -96,10 +96,29 @@ try
     });
     });
 
+    if (env == "Docker")
+    {
+        builder.WebHost.UseUrls("http://0.0.0.0:5005"); // container dışına açıl
+    }
+    else
+    {
+        builder.WebHost.UseUrls("http://localhost:5005"); // local dev için
+    }
     builder.Services.AddHealthChecks()
         .AddCheck("self", () => HealthCheckResult.Healthy());
 
     builder.Services.ConfigureConsul(configuration);
+
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("AllowAll", policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
+    });
+
 
     var app = builder.Build();
 
@@ -110,7 +129,7 @@ try
         app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "IdentityService v1"));
     }
 
-    app.UseHttpsRedirection();
+    //app.UseHttpsRedirection();
     app.UseRouting();
     app.UseAuthentication();
     app.UseAuthorization();
