@@ -1,4 +1,5 @@
 ﻿using Blazored.LocalStorage;
+using Blazored.SessionStorage;
 using Microsoft.AspNetCore.Components.Authorization;
 using System;
 using System.Net.Http;
@@ -6,6 +7,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using WebApp.Extensions;
 using WebApp.Infrastructure;
+
 
 namespace WebApp.Utils
 {
@@ -15,32 +17,32 @@ namespace WebApp.Utils
         private readonly HttpClient client;
         private readonly AuthenticationState anonymous;
         private readonly AppStateManager appState;
+        private readonly ISessionStorageService sessionStorageService;
 
-
-        public AuthStateProvider(ILocalStorageService LocalStorageService, HttpClient Client, AppStateManager appState)
+        public AuthStateProvider(ISessionStorageService sessionStorageService, HttpClient Client, AppStateManager appState)
         {
-            localStorageService = LocalStorageService;
+            this.sessionStorageService = sessionStorageService;
             client = Client;
             anonymous = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
             this.appState = appState;
         }
 
-        public async override Task<AuthenticationState> GetAuthenticationStateAsync()
-        {
-            String apiToken = await localStorageService.GetToken();
 
-            if (String.IsNullOrEmpty(apiToken))
+public async override Task<AuthenticationState> GetAuthenticationStateAsync()
+        {
+            var apiToken = await sessionStorageService.GetItemAsync<string>("token");
+            if (string.IsNullOrWhiteSpace(apiToken))
                 return anonymous;
 
-            String userName = await localStorageService.GetUsername();
+            var userName = await sessionStorageService.GetItemAsync<string>("username");
 
             var cp = new ClaimsPrincipal(new ClaimsIdentity(new[]
             {
-                new Claim(ClaimTypes.Name, userName)
+        new Claim(ClaimTypes.Name, userName)
+    }, "jwtAuthType"));
 
-            }, "jwtAuthType"));
-
-            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiToken);
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiToken);
 
             return new AuthenticationState(cp);
         }

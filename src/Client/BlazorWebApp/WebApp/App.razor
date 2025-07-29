@@ -1,4 +1,4 @@
-﻿﻿@using Microsoft.AspNetCore.Components.Authorization
+﻿@using Microsoft.AspNetCore.Components.Authorization
 
 <CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly">
@@ -11,48 +11,30 @@
         </Found>
         <NotFound>
             <LayoutView Layout="@typeof(MainLayout)">
-                <MudText Typo="Typo.h6" Color="Color.Error">404 - Page Not Found</MudText>
+                <MudText Typo="Typo.h6" Color="Color.Error">404 - Sayfa Bulunamadı</MudText>
             </LayoutView>
         </NotFound>
     </Router>
 </CascadingAuthenticationState>
 
-
-@code{
+@code {
     [Inject] NavigationManager Navigation { get; set; }
-    [Inject] AuthenticationStateProvider provider { get; set; }
+    [Inject] AuthenticationStateProvider AuthStateProvider { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        var authState = await provider.GetAuthenticationStateAsync();
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
 
-        // Ensure the initial navigation happens
-        if (Navigation.Uri == Navigation.BaseUri) // Only redirect if on the root URL
-        {
-            if (user?.Identity?.IsAuthenticated == true)
-            {
-                Navigation.NavigateTo("/home");
-            }
-            else
-            {
-                Navigation.NavigateTo("/login");
-            }
-        }
-        // Additional check for unauthorized access to /home
-        else if (!user?.Identity?.IsAuthenticated == true && Navigation.Uri.EndsWith("home"))
-        {
-            Navigation.NavigateTo("/login");
-        }
-    }
+        var currentUri = Navigation.ToBaseRelativePath(Navigation.Uri);
 
-    private class RedirectToLogin : ComponentBase
-    {
-        [Inject] NavigationManager Navigation { get; set; }
-
-        protected override void OnInitialized()
+        // 🔒 Eğer giriş yapılmamışsa ve anasayfadaysa login'e yönlendir
+        if (string.IsNullOrWhiteSpace(currentUri))
         {
-            Navigation.NavigateTo("/login");
+            if (!user.Identity.IsAuthenticated)
+            {
+                Navigation.NavigateTo("/login", true);
+            }
         }
     }
 }

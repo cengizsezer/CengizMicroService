@@ -7,7 +7,6 @@
 @inject IIdentityService IdentityService
 @inject Microsoft.JSInterop.IJSRuntime JSRuntime
 
-
 <style>
     .login-container {
         display: flex;
@@ -37,7 +36,7 @@
 
     .login-title-on-image {
         position: absolute;
-        bottom: 5%; /* Resmin altına yakınlaştırmak için */
+        bottom: 5%;
         left: 50%;
         transform: translateX(-50%);
         font-weight: 800;
@@ -78,28 +77,17 @@
 
     .login-options {
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        width: 100%;
-        margin: 1rem 0;
-    }
-
-    .remember-me {
-        display: flex;
-        align-items: center;
+        margin-bottom: 1rem;
     }
 </style>
 
 <div class="login-container">
-    <!-- Sol kısım -->
-
     <div class="login-left">
         <img src="img/DigitalBG.jpg" alt="Digital Accounting" class="login-image" />
         <h2 class="login-title-on-image">DİJİTAL<br />MASRAF</h2>
     </div>
 
-
-    <!-- Sağ kısım -->
     <div class="login-right">
         <div class="login-card">
             <div class="login-title">
@@ -128,28 +116,26 @@
                 <ValidationMessage For="@(() => loginModel.Password)" />
 
                 <div class="login-options">
-                    <div class="remember-me">
-                        <RadzenCheckBox @bind-Value="rememberMe" Style="margin-right: 5px;" />
-                        <RadzenLabel Text="Beni Hatırla" />
-                    </div>
-                    <RadzenLink Text="Şifremi Unuttum" Path="#" Style="color: #3b82f6;" />
+                    <RadzenCheckBox @bind-Value="rememberMe" Style="margin-right: 5px;" />
+                    <RadzenLabel Text="Beni Hatırla" />
                 </div>
 
-               <RadzenButton ButtonType="ButtonType.Submit" Disabled="@isLoading"
-              Style="width: 100%; background-color: #3b82f6; color: white; font-weight: 600; border-radius: 25px; padding: 10px;">
-    @if (isLoading)
-    {
-        <div style="display: flex; align-items: center; justify-content: center;">
-            <RadzenProgressCircle ShowValue="false" Style="width: 20px; height: 20px; margin-right: 8px;" />
-            <span>Giriş Yapılıyor...</span>
-        </div>
-    }
-    else
-    {
-        <span>Giriş Yap</span>
-    }
-</RadzenButton>
+                <RadzenLink Text="Şifremi Unuttum" Path="#" Style="color: #3b82f6; display: block; text-align: right; margin-bottom: 1rem;" />
 
+                <RadzenButton ButtonType="ButtonType.Submit" Disabled="@isLoading"
+                               Style="width: 100%; background-color: #3b82f6; color: white; font-weight: 600; border-radius: 25px; padding: 10px;">
+                    @if (isLoading)
+                    {
+                        <div style="display: flex; align-items: center; justify-content: center;">
+                            <RadzenProgressCircle ShowValue="false" Style="width: 20px; height: 20px; margin-right: 8px;" />
+                            <span>Giriş Yapılıyor...</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <span>Giriş Yap</span>
+                    }
+                </RadzenButton>
             </EditForm>
 
             <div class="alternative-login" style="margin-top: 2rem;">
@@ -165,9 +151,9 @@
 @code {
     private LoginModel loginModel = new();
     private EditContext loginEditContext;
-    private bool rememberMe = true;
     private bool isLoading = false;
     private string errorMessage;
+    private bool rememberMe = true;
 
     public class LoginModel
     {
@@ -178,9 +164,13 @@
         public string Password { get; set; }
     }
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         loginEditContext = new EditContext(loginModel);
+
+        var (savedUsername, savedPassword) = await IdentityService.GetRememberedCredentials();
+        loginModel.Username = savedUsername;
+        loginModel.Password = savedPassword;
     }
 
     private async Task OnLogin()

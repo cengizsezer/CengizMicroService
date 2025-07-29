@@ -1,4 +1,5 @@
 ﻿using Blazored.LocalStorage;
+using Blazored.SessionStorage;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,7 +24,7 @@ namespace WebApp
             // Blazor local storage & Radzen
             builder.Services.AddBlazoredLocalStorage();
             builder.Services.AddRadzenComponents();
-
+            builder.Services.AddBlazoredSessionStorage();
             // Auth
             builder.Services.AddScoped<AuthenticationStateProvider, AuthStateProvider>();
             builder.Services.AddAuthorizationCore();
