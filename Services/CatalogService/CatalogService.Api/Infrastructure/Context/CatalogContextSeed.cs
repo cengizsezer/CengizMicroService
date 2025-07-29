@@ -15,10 +15,10 @@ namespace CatalogService.Api.Infrastructure.Context
 {
     public class CatalogContextSeed
     {
-        public async Task SeedAsync(CatalogContext context, IWebHostEnvironment env, ILogger<CatalogContextSeed> logger)
+        public async Task SeedAsync(CatalogContext context, IWebHostEnvironment env, ILogger<CatalogContextSeed> logger, bool force = false)
         {
-            var policy = Policy.Handle<SqlException>().
-                WaitAndRetryAsync(
+            var policy = Policy.Handle<SqlException>()
+                .WaitAndRetryAsync(
                     retryCount: 3,
                     sleepDurationProvider: retry => TimeSpan.FromSeconds(5),
                     onRetry: (exception, timeSpan, retry, ctx) =>
@@ -27,22 +27,20 @@ namespace CatalogService.Api.Infrastructure.Context
                     }
                 );
 
-
             var setupDirPath = Path.Combine(env.ContentRootPath, "Infrastructure", "Setup", "SeedFiles");
 
-            await policy.ExecuteAsync(() => ProcessSeeding(context, setupDirPath, logger));
+            await policy.ExecuteAsync(() => ProcessSeeding(context, setupDirPath, logger, force));
         }
 
 
-        private async Task ProcessSeeding(CatalogContext context, string setupDirPath, ILogger logger)
-        {
 
-            if (!context.Expenses.Any())
+        private async Task ProcessSeeding(CatalogContext context, string setupDirPath, ILogger logger, bool force)
+        {
+            if (force || !context.Expenses.Any())
             {
                 await context.Expenses.AddRangeAsync(GetExpensesFromFiles(setupDirPath));
                 await context.SaveChangesAsync();
             }
-           
         }
 
 

@@ -53,6 +53,30 @@ builder.Services.ConfigureConsul(configuration);
 
 var app = builder.Build();
 
+if (args.Contains("--seed-force"))
+{
+    using var scope = app.Services.CreateScope();
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<CatalogContextSeed>>();
+    var envHost = services.GetRequiredService<IWebHostEnvironment>();
+    var context = services.GetRequiredService<CatalogContext>();
+
+    try
+    {
+        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'catalog') EXEC('CREATE SCHEMA catalog');");
+        context.Database.Migrate();
+        var seeder = new CatalogContextSeed();
+        await seeder.SeedAsync(context, envHost, logger, force: true); // force true
+
+        logger.LogInformation("✅ Veritabanı seed işlemi tamamlandı (sadece seed).");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Seed-force sırasında hata oluştu.");
+    }
+
+    return; // ⚠️ API başlatılmaz
+}
 // Migration & Seed
 using (var scope = app.Services.CreateScope())
 {

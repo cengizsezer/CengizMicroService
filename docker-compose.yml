@@ -15,6 +15,13 @@ services:
       context: .
       dockerfile: Services/CatalogService/CatalogService.Api/Dockerfile
 
+  catalogseeder.api:
+    container_name: c_catalogseeder
+    image: ${DOCKER_REGISTRY-}catalogserviceapi
+    build:
+      context: .
+      dockerfile: Services/CatalogService/CatalogService.Api/Dockerfile
+
 
   web.apigateway:
     container_name: c_apigateway
