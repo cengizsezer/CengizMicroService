@@ -11,6 +11,10 @@
       "RelativeMoniker": "D:0:0:{0B20C76B-62F2-4839-932E-6BADFB5FC08D}|conf.d{0B20C76B-62F2-4839-932E-6BADFB5FC08D}|solutionrelative:dijitalmasraf.conf||{3B902123-F8A7-4915-9F01-361F908088D0}"
     },
     {
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{6CB4C2CA-B839-424A-9216-7AEA1AAA8319}|Services\\OCRService\\OCRService.Api\\OCRService.Api.csproj|c:\\github\\cengizmicroservice\\services\\ocrservice\\ocrservice.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{6CB4C2CA-B839-424A-9216-7AEA1AAA8319}|Services\\OCRService\\OCRService.Api\\OCRService.Api.csproj|solutionrelative:services\\ocrservice\\ocrservice.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -350,11 +354,11 @@
       "DocumentGroups": [
         {
           "DockedWidth": 454,
-          "SelectedChildIndex": 12,
+          "SelectedChildIndex": 13,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\OCRService\\OCRService.Api\\Program.cs",
               "RelativeDocumentMoniker": "Services\\OCRService\\OCRService.Api\\Program.cs",
@@ -367,7 +371,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 18,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Program.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Program.cs",
@@ -380,7 +384,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 40,
+              "DocumentIndex": 41,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Program.cs",
               "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Program.cs",
@@ -393,7 +397,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 60,
+              "DocumentIndex": 61,
               "Title": "launchSettings.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\OCRService\\OCRService.Api\\Properties\\launchSettings.json",
               "RelativeDocumentMoniker": "Services\\OCRService\\OCRService.Api\\Properties\\launchSettings.json",
@@ -406,7 +410,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 66,
+              "DocumentIndex": 67,
               "Title": "launchSettings.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Properties\\launchSettings.json",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Properties\\launchSettings.json",
@@ -419,7 +423,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 39,
+              "DocumentIndex": 40,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Program.cs",
               "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Program.cs",
@@ -429,6 +433,19 @@
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-07-26T15:00:45.128Z",
               "IsPinned": true
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Dockerfile",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Dockerfile",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Dockerfile",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Dockerfile",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Dockerfile",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-07-29T23:29:57.73Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Bookmark",
@@ -459,7 +476,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "appsettings.Docker.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Configurations\\appsettings.Docker.json",
               "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Configurations\\appsettings.Docker.json",
@@ -477,14 +494,14 @@
               "RelativeDocumentMoniker": "Nginx\\Dockerfile",
               "ToolTip": "C:\\GitHub\\CengizMicroService\\Nginx\\Dockerfile",
               "RelativeToolTip": "Nginx\\Dockerfile",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAlAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
               "WhenOpened": "2025-07-29T22:17:45.519Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 5,
               "Title": "appsettings.Docker.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Configurations\\appsettings.Docker.json",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Configurations\\appsettings.Docker.json",
@@ -496,7 +513,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 6,
               "Title": "appsettings.Docker.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\appsettings.Docker.json",
               "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\appsettings.Docker.json",
@@ -508,7 +525,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 7,
               "Title": "appsettings.Docker.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\OCRService\\OCRService.Api\\Configurations\\appsettings.Docker.json",
               "RelativeDocumentMoniker": "Services\\OCRService\\OCRService.Api\\Configurations\\appsettings.Docker.json",
@@ -520,7 +537,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 8,
               "Title": "appsettings.Development.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\OCRService\\OCRService.Api\\Configurations\\appsettings.Development.json",
               "RelativeDocumentMoniker": "Services\\OCRService\\OCRService.Api\\Configurations\\appsettings.Development.json",
@@ -532,7 +549,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 9,
               "Title": "serilog.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\OCRService\\OCRService.Api\\Configurations\\serilog.json",
               "RelativeDocumentMoniker": "Services\\OCRService\\OCRService.Api\\Configurations\\serilog.json",
@@ -544,7 +561,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 10,
               "Title": "ocelot.Development.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.Development.json",
               "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.Development.json",
@@ -556,7 +573,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 11,
               "Title": "ocelot.Docker.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.Docker.json",
               "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.Docker.json",
@@ -568,7 +585,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 12,
               "Title": "appsettings.Development.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\appsettings.Development.json",
               "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\appsettings.Development.json",
@@ -580,7 +597,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 13,
               "Title": "ocelot.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.json",
               "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.json",
@@ -592,7 +609,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 14,
               "Title": "appsettings.Development.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Configurations\\appsettings.Development.json",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Configurations\\appsettings.Development.json",
@@ -604,7 +621,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 15,
               "Title": "docker-compose.override.yml",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.override.yml",
               "RelativeDocumentMoniker": "docker-compose.override.yml",
@@ -616,7 +633,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 16,
               "Title": "docker-compose.yml",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.yml",
               "RelativeDocumentMoniker": "docker-compose.yml",
@@ -628,7 +645,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 17,
               "Title": "CatalogContextSeed.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Context\\CatalogContextSeed.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Context\\CatalogContextSeed.cs",
@@ -640,7 +657,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 19,
               "Title": "IdentityService.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\IdentityService.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\IdentityService.cs",
@@ -652,7 +669,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 19,
+              "DocumentIndex": 20,
               "Title": "LoginPage.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\LoginPage.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\LoginPage.razor",
@@ -664,7 +681,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 20,
+              "DocumentIndex": 21,
               "Title": "IIdentityService.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IIdentityService.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IIdentityService.cs",
@@ -676,7 +693,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 21,
+              "DocumentIndex": 22,
               "Title": "AuthStateProvider.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Utils\\AuthStateProvider.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Utils\\AuthStateProvider.cs",
@@ -688,7 +705,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 22,
+              "DocumentIndex": 23,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
@@ -700,7 +717,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 23,
+              "DocumentIndex": 24,
               "Title": "App.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\App.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\App.razor",
@@ -712,7 +729,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 25,
+              "DocumentIndex": 26,
               "Title": "LoginResponseModel.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\User\\LoginResponseModel.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\User\\LoginResponseModel.cs",
@@ -724,7 +741,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 24,
+              "DocumentIndex": 25,
               "Title": "RedirectToLogin.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Layout\\RedirectToLogin.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Layout\\RedirectToLogin.razor",
@@ -736,7 +753,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 26,
+              "DocumentIndex": 27,
               "Title": "LoginRequestModel.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\User\\LoginRequestModel.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\User\\LoginRequestModel.cs",
@@ -748,7 +765,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 27,
+              "DocumentIndex": 28,
               "Title": "ExpenseService.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\ExpenseService.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\ExpenseService.cs",
@@ -760,7 +777,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 28,
+              "DocumentIndex": 29,
               "Title": "Home.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Home.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Home.razor",
@@ -772,7 +789,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 29,
+              "DocumentIndex": 30,
               "Title": "Index.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Index.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Index.razor",
@@ -784,7 +801,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 30,
+              "DocumentIndex": 31,
               "Title": "RegisterPage.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\RegisterPage.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\RegisterPage.razor",
@@ -796,7 +813,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 31,
+              "DocumentIndex": 32,
               "Title": "Personel.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Personel.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Personel.razor",
@@ -808,7 +825,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 32,
+              "DocumentIndex": 33,
               "Title": "LogoutPage.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\LogoutPage.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\LogoutPage.razor",
@@ -820,7 +837,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 33,
+              "DocumentIndex": 34,
               "Title": "LocalStorageExtension.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Extensions\\LocalStorageExtension.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Extensions\\LocalStorageExtension.cs",
@@ -832,7 +849,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 34,
+              "DocumentIndex": 35,
               "Title": "HttpClientExtension.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Extensions\\HttpClientExtension.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Extensions\\HttpClientExtension.cs",
@@ -844,7 +861,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 35,
+              "DocumentIndex": 36,
               "Title": "DateTimeExtensions.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Extensions\\DateTimeExtensions.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Extensions\\DateTimeExtensions.cs",
@@ -856,7 +873,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 36,
+              "DocumentIndex": 37,
               "Title": "RegisterResponseModel.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\User\\RegisterResponseModel.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\User\\RegisterResponseModel.cs",
@@ -868,7 +885,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 37,
+              "DocumentIndex": 38,
               "Title": "PaginatedItemsViewModel.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\PaginatedItemsViewModel.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\PaginatedItemsViewModel.cs",
@@ -880,7 +897,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 38,
+              "DocumentIndex": 39,
               "Title": "RegisterRequestModel.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\User\\RegisterRequestModel.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\User\\RegisterRequestModel.cs",
@@ -892,7 +909,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 41,
+              "DocumentIndex": 42,
               "Title": "appsettings.Development.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Configurations\\appsettings.Development.json",
               "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Configurations\\appsettings.Development.json",
@@ -904,7 +921,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 42,
+              "DocumentIndex": 43,
               "Title": "IdentityService.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Services\\IdentityService.cs",
               "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Application\\Services\\IdentityService.cs",
@@ -916,7 +933,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 43,
+              "DocumentIndex": 44,
               "Title": "default.conf",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\default.conf",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\default.conf",
@@ -928,7 +945,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 44,
+              "DocumentIndex": 45,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Configurations\\appsettings.json",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Configurations\\appsettings.json",
@@ -940,7 +957,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 45,
+              "DocumentIndex": 46,
               "Title": "ConsulRegistration.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Extensions\\ConsulRegistration.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Extensions\\ConsulRegistration.cs",
@@ -952,7 +969,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 46,
+              "DocumentIndex": 47,
               "Title": "CatalogController.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Controllers\\CatalogController.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Controllers\\CatalogController.cs",
@@ -964,7 +981,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 47,
+              "DocumentIndex": 48,
               "Title": "Dockerfile",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Dockerfile",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Dockerfile",
@@ -976,7 +993,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 48,
+              "DocumentIndex": 49,
               "Title": "DbContextRegistration.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Extensions\\DbContextRegistration.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Extensions\\DbContextRegistration.cs",
@@ -988,7 +1005,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 49,
+              "DocumentIndex": 50,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\OCRService\\OCRService.Api\\Configurations\\appsettings.json",
               "RelativeDocumentMoniker": "Services\\OCRService\\OCRService.Api\\Configurations\\appsettings.json",
@@ -1000,7 +1017,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 54,
+              "DocumentIndex": 55,
               "Title": "serilog.Development.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\OCRService\\OCRService.Api\\Configurations\\serilog.Development.json",
               "RelativeDocumentMoniker": "Services\\OCRService\\OCRService.Api\\Configurations\\serilog.Development.json",
@@ -1012,7 +1029,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 53,
+              "DocumentIndex": 54,
               "Title": "serilog.Docker.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\OCRService\\OCRService.Api\\Configurations\\serilog.Docker.json",
               "RelativeDocumentMoniker": "Services\\OCRService\\OCRService.Api\\Configurations\\serilog.Docker.json",
@@ -1024,7 +1041,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 52,
+              "DocumentIndex": 53,
               "Title": "serilog.Docker.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Configurations\\serilog.Docker.json",
               "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Configurations\\serilog.Docker.json",
@@ -1036,7 +1053,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 50,
+              "DocumentIndex": 51,
               "Title": "serilog.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Configurations\\serilog.json",
               "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Configurations\\serilog.json",
@@ -1048,7 +1065,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 51,
+              "DocumentIndex": 52,
               "Title": "serilog.Development.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Configurations\\serilog.Development.json",
               "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Configurations\\serilog.Development.json",
@@ -1060,7 +1077,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 55,
+              "DocumentIndex": 56,
               "Title": "IdentityService.csproj",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\IdentityService.csproj",
               "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\IdentityService.csproj",
@@ -1072,7 +1089,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 56,
+              "DocumentIndex": 57,
               "Title": "OCRService.Api.csproj",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\OCRService\\OCRService.Api\\OCRService.Api.csproj",
               "RelativeDocumentMoniker": "Services\\OCRService\\OCRService.Api\\OCRService.Api.csproj",
@@ -1084,7 +1101,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 57,
+              "DocumentIndex": 58,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Configurations\\appsettings.json",
               "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Configurations\\appsettings.json",
@@ -1096,7 +1113,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 58,
+              "DocumentIndex": 59,
               "Title": "ConsulRegistration.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\OCRService\\OCRService.Api\\Application\\ConsulRegistration\\ConsulRegistration.cs",
               "RelativeDocumentMoniker": "Services\\OCRService\\OCRService.Api\\Application\\ConsulRegistration\\ConsulRegistration.cs",
@@ -1108,7 +1125,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 59,
+              "DocumentIndex": 60,
               "Title": "ConsulRegistration.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\ConsulRegistration\\ConsulRegistration.cs",
               "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Application\\ConsulRegistration\\ConsulRegistration.cs",
@@ -1120,7 +1137,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 61,
+              "DocumentIndex": 62,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\appsettings.json",
               "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\appsettings.json",
@@ -1132,7 +1149,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 63,
+              "DocumentIndex": 64,
               "Title": "OcrController.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\OCRService\\OCRService.Api\\Controllers\\OcrController.cs",
               "RelativeDocumentMoniker": "Services\\OCRService\\OCRService.Api\\Controllers\\OcrController.cs",
@@ -1144,7 +1161,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 62,
+              "DocumentIndex": 63,
               "Title": "launchSettings.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Properties\\launchSettings.json",
               "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Properties\\launchSettings.json",
@@ -1156,7 +1173,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 64,
+              "DocumentIndex": 65,
               "Title": "OcrProcessor.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\OCRService\\OCRService.Api\\Services\\OcrProcessor.cs",
               "RelativeDocumentMoniker": "Services\\OCRService\\OCRService.Api\\Services\\OcrProcessor.cs",
@@ -1168,7 +1185,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 65,
+              "DocumentIndex": 66,
               "Title": "OpenAiInterpreter.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\OCRService\\OCRService.Api\\Services\\OpenAiInterpreter.cs",
               "RelativeDocumentMoniker": "Services\\OCRService\\OCRService.Api\\Services\\OpenAiInterpreter.cs",
@@ -1180,7 +1197,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 68,
+              "DocumentIndex": 69,
               "Title": "launchSettings.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Properties\\launchSettings.json",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Properties\\launchSettings.json",
@@ -1192,7 +1209,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 67,
+              "DocumentIndex": 68,
               "Title": "launchSettings.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Properties\\launchSettings.json",
               "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Properties\\launchSettings.json",
@@ -1204,7 +1221,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 70,
+              "DocumentIndex": 71,
               "Title": "IdentityDbContextFactory.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Persistence\\IdentityDbContextFactory.cs",
               "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Persistence\\IdentityDbContextFactory.cs",
@@ -1216,7 +1233,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 72,
+              "DocumentIndex": 73,
               "Title": "HttpClientExtension.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Extensions\\HttpClientExtension.cs",
               "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Extensions\\HttpClientExtension.cs",
@@ -1228,7 +1245,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 71,
+              "DocumentIndex": 72,
               "Title": "AuthRegistration.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Extensions\\AuthRegistration.cs",
               "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Extensions\\AuthRegistration.cs",
@@ -1240,7 +1257,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 69,
+              "DocumentIndex": 70,
               "Title": "IdentityDbContext.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Persistence\\IdentityDbContext.cs",
               "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Persistence\\IdentityDbContext.cs",
@@ -1252,7 +1269,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 73,
+              "DocumentIndex": 74,
               "Title": "HttpClientDelegatingHandler.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Infrastructure\\HttpClientDelegatingHandler.cs",
               "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Infrastructure\\HttpClientDelegatingHandler.cs",
@@ -1264,7 +1281,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 74,
+              "DocumentIndex": 75,
               "Title": "AuthController.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Controllers\\AuthController.cs",
               "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Controllers\\AuthController.cs",
@@ -1276,7 +1293,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 75,
+              "DocumentIndex": 76,
               "Title": "CatalogSettings.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Infrastructure\\CatalogSettings.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Infrastructure\\CatalogSettings.cs",
@@ -1288,7 +1305,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 78,
+              "DocumentIndex": 79,
               "Title": "HostExtension.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Extensions\\HostExtension.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Extensions\\HostExtension.cs",
@@ -1300,7 +1317,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 77,
+              "DocumentIndex": 78,
               "Title": "CatalogContext.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Context\\CatalogContext.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Context\\CatalogContext.cs",
@@ -1312,7 +1329,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 76,
+              "DocumentIndex": 77,
               "Title": "CatalogContextDesignFactory.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Context\\CatalogContextDesignFactory.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Context\\CatalogContextDesignFactory.cs",
@@ -1324,7 +1341,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 79,
+              "DocumentIndex": 80,
               "Title": "ExpenseEntityTypeConfiguration.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Infrastructure\\EntityConfigurations\\ExpenseEntityTypeConfiguration.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Infrastructure\\EntityConfigurations\\ExpenseEntityTypeConfiguration.cs",
@@ -1336,7 +1353,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 81,
+              "DocumentIndex": 82,
               "Title": "AppStateManager.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AppStateManager.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AppStateManager.cs",
@@ -1348,7 +1365,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 80,
+              "DocumentIndex": 81,
               "Title": "AuthTokenHandler.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AuthTokenHandler.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AuthTokenHandler.cs",
@@ -1360,7 +1377,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 82,
+              "DocumentIndex": 83,
               "Title": "Expense.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\Catalog\\Expense.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\Catalog\\Expense.cs",
@@ -1372,7 +1389,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 84,
+              "DocumentIndex": 85,
               "Title": "ProductDetail.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\Catalog\\ProductDetail.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\Catalog\\ProductDetail.cs",
@@ -1384,7 +1401,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 83,
+              "DocumentIndex": 84,
               "Title": "ReceiptItem.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\Catalog\\ReceiptItem.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\Catalog\\ReceiptItem.cs",

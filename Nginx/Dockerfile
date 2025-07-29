@@ -1,10 +1,15 @@
 ﻿FROM nginx:stable
 
-# Varsayılan default.conf'u sil (içinde basic welcome sayfası vs. vardır)
+# 🧰 Gerekli paketler: dos2unix
+RUN apt-get update && apt-get install -y dos2unix
+
+# 🔄 Varsayılan conf dosyasını sil
 RUN rm /etc/nginx/conf.d/default.conf
 
-# Kendi konfigürasyonunu default.conf olarak yerleştir
+# ⚙️ Yeni site konfig dosyasını kopyala ve satır sonlarını düzelt
 COPY conf.d/dijitalmasraf.conf /etc/nginx/conf.d/default.conf
+RUN dos2unix /etc/nginx/conf.d/default.conf
 
-# Eğer istersen nginx.conf'u da override edebilirsin (şart değil)
+# ⚙️ Genel nginx.conf dosyasını kopyala ve satır sonlarını düzelt
 COPY nginx.conf /etc/nginx/nginx.conf
+RUN dos2unix /etc/nginx/nginx.conf
