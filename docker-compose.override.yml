@@ -82,6 +82,20 @@ services:
       - s_rabbitmq
       - s_sqlserver
 
+  nginx.public:
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - nginx_cache:/var/cache/nginx
+    networks:
+      - net_apigateway
+      - net_frontend
+      - net_backendservices
+    depends_on:
+      - webapp
+      - web.apigateway     
 
   s_consul:
     ports:
@@ -130,6 +144,7 @@ networks:
     external: true
 
 volumes:
+  nginx_cache:
   rabbitmq:
   sqlserver_data:
   sqlserver_log:

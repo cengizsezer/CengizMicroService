@@ -37,6 +37,12 @@ services:
       context: .
       dockerfile: src/Client/BlazorWebApp/WebApp/Dockerfile
 
+  nginx.public:
+    container_name: c_nginx_public
+    build:
+      context: ./Nginx
+      dockerfile: Dockerfile
+
 
    
 
