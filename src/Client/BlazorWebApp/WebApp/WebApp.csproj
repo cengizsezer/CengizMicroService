@@ -5,7 +5,8 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 
-		<!-- 🛡️ Blazor publish sırasında Linker kesintisini engelle -->
+		
+		<NullabilityInfoContextSupport>true</NullabilityInfoContextSupport>
 		<BlazorWebAssemblyEnableLinking>false</BlazorWebAssemblyEnableLinking>
 	</PropertyGroup>
 
