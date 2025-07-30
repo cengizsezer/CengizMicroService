@@ -16,7 +16,7 @@
 
     .login-left {
         position: relative;
-        width: 50vw;
+        width: 66.66vw;
         height: 100vh;
         background-color: #f5f7fa;
         display: flex;
@@ -28,8 +28,8 @@
     }
 
     .login-image {
-        width: 100%;
-        height: auto;
+        width: 120%;
+        height: 120%;
         object-fit: cover;
         display: block;
     }
@@ -48,21 +48,35 @@
     }
 
     .login-right {
-        width: 50vw;
+        width: 33.33vw;
         height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 2rem;
-        background-color: white;
+        background: linear-gradient(to bottom right, #f0f4ff, #ffffff);
     }
 
     .login-card {
         width: 100%;
-        max-width: 400px;
+        max-width: 600px;
         padding: 2rem;
         border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        /* box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); */
+        background-color: transparent;
+    }
+
+    .login-logo-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 10rem;
+        margin-top: -3rem;
+    }
+
+    .login-logo {
+        max-height: 200px;
+        width: auto;
     }
 
     .login-title {
@@ -80,16 +94,26 @@
         align-items: center;
         margin-bottom: 1rem;
     }
+
+    .RadzenTextBox,
+    .RadzenPassword,
+    .RadzenButton {
+        width: 130% !important;}
 </style>
 
 <div class="login-container">
     <div class="login-left">
-        <img src="img/DigitalBG.jpg" alt="Digital Accounting" class="login-image" />
-        <h2 class="login-title-on-image">DİJİTAL<br />MASRAF</h2>
+        <img src="img/Login.jpeg" alt="Digital Accounting" class="login-image" />
+        @* <h2 class="login-title-on-image">DİJİTAL<br />MASRAF</h2> *@
     </div>
 
     <div class="login-right">
         <div class="login-card">
+            <!-- 🟦 BURASI: Logo alanı eklendi -->
+            <div class="login-logo-container">
+                <img src="img/LogoWithText.png" alt="Dijital Masraf Logo" class="login-logo" />
+            </div>
+
             <div class="login-title">
                 <RadzenHeading Size="H4">Giriş Yap</RadzenHeading>
             </div>

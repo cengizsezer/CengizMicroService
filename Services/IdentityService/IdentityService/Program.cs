@@ -128,7 +128,11 @@ try
         app.UseSwagger();
         app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "IdentityService v1"));
     }
-
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        dbContext.Database.Migrate(); // ⬅ otomatik migration
+    }
     //app.UseHttpsRedirection();
     app.UseRouting();
     app.UseAuthentication();

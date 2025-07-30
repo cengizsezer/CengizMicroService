@@ -3,11 +3,10 @@ using Blazored.SessionStorage;
 using Microsoft.AspNetCore.Components.Authorization;
 using Newtonsoft.Json;
 using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text;
 using System.Threading.Tasks;
 using WebApp.Application.Services.Interfaces;
 using WebApp.Domain.Models.User;
+using WebApp.Extensions;
 using WebApp.Utils;
 
 namespace WebApp.Application.Services
@@ -40,20 +39,13 @@ namespace WebApp.Application.Services
                 RefreshToken = ""
             };
 
-            var response = await httpClient.PostAsJsonAsync("auth/login", loginModel);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var error = await response.Content.ReadAsStringAsync();
-                Console.WriteLine("Login Hatası: " + error);
-                return false;
-            }
-
-            var json = await response.Content.ReadAsStringAsync();
-            var result = JsonConvert.DeserializeObject<LoginResponseModel>(json);
+            var result = await httpClient.PostGetResponseAsync<LoginResponseModel, LoginRequestModel>("auth/login", loginModel);
 
             if (result == null)
+            {
+                Console.WriteLine("Login Hatası: Sunucudan geçerli yanıt alınamadı.");
                 return false;
+            }
 
             // Tarayıcı kapatıldığında silinecek oturum verisi
             await sessionStorage.SetItemAsync("username", username);
@@ -78,17 +70,8 @@ namespace WebApp.Application.Services
 
         public async Task<bool> Register(string userName, string email, string password)
         {
-            var json = JsonConvert.SerializeObject(new { userName, email, password });
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await httpClient.PostAsync("auth/register", content);
-
-            if (!response.IsSuccessStatusCode)
-                return false;
-
-            var responseJson = await response.Content.ReadAsStringAsync();
-            var result = JsonConvert.DeserializeObject<RegisterResponseModel>(responseJson);
-
+            var model = new { userName, email, password };
+            var result = await httpClient.PostGetResponseAsync<RegisterResponseModel, object>("auth/register", model);
             return result?.Success == true;
         }
 
@@ -104,13 +87,13 @@ namespace WebApp.Application.Services
 
         public async Task<string> GetUserName() => await sessionStorage.GetItemAsync<string>("username");
         public async Task<string> GetUserToken() => await sessionStorage.GetItemAsync<string>("token");
+
         public async Task<bool> IsLoggedIn()
         {
             var token = await sessionStorage.GetItemAsync<string>("token");
             return !string.IsNullOrWhiteSpace(token);
         }
 
-        // Bu kısım Login sayfasında inputlara otomatik değer doldurmak için kullanılabilir
         public async Task<(string Username, string Password)> GetRememberedCredentials()
         {
             var username = await localStorage.GetItemAsync<string>("saved_username") ?? "";
