@@ -3,6 +3,26 @@
   "WorkspaceRootPath": "C:\\GitHub\\CengizMicroService\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\infrastructure\\context\\catalogcontextseed.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\infrastructure\\context\\catalogcontextseed.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\infrastructure\\context\\catalogcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\infrastructure\\context\\catalogcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\extensions\\hostextension.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\extensions\\hostextension.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\extensions\\dbcontextregistration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\extensions\\dbcontextregistration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\pages\\personel.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\pages\\personel.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
@@ -54,11 +74,11 @@
       "DocumentGroups": [
         {
           "DockedWidth": 454,
-          "SelectedChildIndex": 13,
+          "SelectedChildIndex": 5,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 8,
               "Title": "LoginPage.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\LoginPage.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\LoginPage.razor",
@@ -67,7 +87,71 @@
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
               "WhenOpened": "2025-07-31T17:40:21.892Z",
-              "IsPinned": true,
+              "IsPinned": true
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "CatalogContextSeed.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Context\\CatalogContextSeed.cs",
+              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Context\\CatalogContextSeed.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Context\\CatalogContextSeed.cs",
+              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Context\\CatalogContextSeed.cs",
+              "ViewState": "AgIAAGIAAAAAAAAAAAAswIcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-01T16:28:54.453Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "CatalogContext.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Context\\CatalogContext.cs",
+              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Context\\CatalogContext.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Context\\CatalogContext.cs",
+              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Context\\CatalogContext.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-01T16:28:53.094Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "HostExtension.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Extensions\\HostExtension.cs",
+              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Extensions\\HostExtension.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Extensions\\HostExtension.cs",
+              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Extensions\\HostExtension.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-01T16:28:51.39Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "DbContextRegistration.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Extensions\\DbContextRegistration.cs",
+              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Extensions\\DbContextRegistration.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Extensions\\DbContextRegistration.cs",
+              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Extensions\\DbContextRegistration.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-01T16:28:23.928Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Program.cs",
+              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Program.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Program.cs",
+              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAIYAAAADAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-01T16:27:49.318Z",
               "EditorCaption": ""
             },
             {
@@ -88,7 +172,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 7,
               "Title": "AddExpensePage.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\AddExpensePage.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\AddExpensePage.razor",
@@ -96,12 +180,11 @@
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\AddExpensePage.razor",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-07-31T19:30:03.544Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-31T19:30:03.544Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 6,
               "Title": "NavMenu.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Layout\\NavMenu.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Layout\\NavMenu.razor",
@@ -109,12 +192,11 @@
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Layout\\NavMenu.razor",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-07-31T18:42:57.095Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-31T18:42:57.095Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 11,
               "Title": "MainLayout.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor",
@@ -122,12 +204,11 @@
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor",
               "ViewState": "AgIAACoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-07-31T18:42:51.097Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-31T18:42:51.097Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 12,
               "Title": "AuthLayout.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Layout\\AuthLayout.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Layout\\AuthLayout.razor",
@@ -135,12 +216,11 @@
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Layout\\AuthLayout.razor",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-07-31T18:42:48.872Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-31T18:42:48.872Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 13,
               "Title": "IdentityService.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\IdentityService.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\IdentityService.cs",
@@ -148,12 +228,11 @@
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\IdentityService.cs",
               "ViewState": "AgIAADAAAAAAAAAAAAAowAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-31T18:42:41.547Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-31T18:42:41.547Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 9,
               "Title": "Expense.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\Catalog\\Expense.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\Catalog\\Expense.cs",
@@ -161,12 +240,11 @@
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\Catalog\\Expense.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-31T18:31:06.455Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-31T18:31:06.455Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 10,
               "Title": "ContentsDetail.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\ContentsDetail.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\ContentsDetail.razor",
@@ -174,12 +252,11 @@
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\ContentsDetail.razor",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAWAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-07-31T18:23:18.378Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-31T18:23:18.378Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 14,
               "Title": "Index.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Index.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Index.razor",
@@ -187,25 +264,24 @@
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Index.razor",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-07-31T17:40:20.218Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-31T17:40:20.218Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 5,
               "Title": "Personel.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Personel.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Personel.razor",
               "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Personel.razor",
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Personel.razor",
-              "ViewState": "AgIAAAYAAAAAAAAAAAAswBAAAAAXAAAAAAAAAA==",
+              "ViewState": "AgIAAAYAAAAAAAAAAAAswBcAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
               "WhenOpened": "2025-07-31T16:40:36.928Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 15,
               "Title": "ReceiptItem.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\Catalog\\ReceiptItem.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\Catalog\\ReceiptItem.cs",
@@ -213,8 +289,7 @@
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\Catalog\\ReceiptItem.cs",
               "ViewState": "AgIAAAkAAAAAAAAAAAAswC4AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-25T20:43:39.304Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-25T20:43:39.304Z"
             }
           ]
         }

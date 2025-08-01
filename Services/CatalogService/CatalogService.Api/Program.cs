@@ -63,20 +63,29 @@ if (args.Contains("--seed-force"))
 
     try
     {
-        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'catalog') EXEC('CREATE SCHEMA catalog');");
-        context.Database.Migrate();
-        var seeder = new CatalogContextSeed();
-        await seeder.SeedAsync(context, envHost, logger, force: true); // force true
+        logger.LogInformation("🧨 Seed-force başlatıldı: veritabanı yeniden oluşturulacak...");
 
+        // ❗ Eski verileri ve şemayı komple silmek istiyorsan (dev ortamı için uygundur)
+        await context.Database.EnsureDeletedAsync();
+        logger.LogInformation("🗑️ Eski veritabanı silindi.");
+
+        // ❗ Veritabanını yeniden oluştur ve migration'ı uygula
+        await context.Database.MigrateAsync();
+        logger.LogInformation("🧱 Migration tamamlandı, veritabanı yeniden oluşturuldu.");
+
+        // ✅ Seed işlemi
+        var seeder = new CatalogContextSeed();
+        await seeder.SeedAsync(context, envHost, logger, force: true);
         logger.LogInformation("✅ Veritabanı seed işlemi tamamlandı (sadece seed).");
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "Seed-force sırasında hata oluştu.");
+        logger.LogError(ex, "❌ Seed-force sırasında hata oluştu.");
     }
 
-    return; // ⚠️ API başlatılmaz
+    return;
 }
+
 // Migration & Seed
 using (var scope = app.Services.CreateScope())
 {
