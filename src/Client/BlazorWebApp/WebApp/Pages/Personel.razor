@@ -5,8 +5,43 @@
 @using WebApp.Shared
 @inject IExpenseService ExpenseService
 @inject DialogService DialogService
+@using Radzen.Blazor
+@inject NavigationManager NavManager
+
+<style>
+    .rz-grid-table {
+        width: unset;
+    }
+</style>
 
 <h3>Masraf Listesi</h3>
+
+<RadzenCard Variant="Variant.Outlined" class="rz-my-4">
+    <RadzenStack Orientation="Orientation.Horizontal"
+                 JustifyContent="JustifyContent.SpaceBetween"
+                 AlignItems="AlignItems.Center"
+                 Gap="1rem">
+
+        <!-- Sol taraf -->
+        <div>Edit Mode:</div>
+
+        <!-- Sağ taraf butonlar -->
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+
+           @if (!isEditMode)
+            {
+                <RadzenButton Icon="edit" Text="Düzenle" ButtonStyle="ButtonStyle.Primary" Click="@(() => isEditMode = true)" />
+                <RadzenButton Icon="delete" Text="Sil" ButtonStyle="ButtonStyle.Danger" />
+            }
+            else
+            {
+                <RadzenButton Icon="check" Text="Kaydet" ButtonStyle="ButtonStyle.Success" Click="@(() => isEditMode = false)" />
+                <RadzenButton Icon="close" Text="İptal" ButtonStyle="ButtonStyle.Secondary" Click="@(() => isEditMode = false)" />
+            }
+        </RadzenStack>
+    </RadzenStack>
+</RadzenCard>
+
 
 <RadzenCard>
     <RadzenDataGrid TItem="Expense"
@@ -26,6 +61,15 @@
                     SelectionMode="DataGridSelectionMode.Multiple"
                     Value="@selectedExpenses"
                     ValueChanged="@OnSelectedExpensesChanged">
+
+        <HeaderTemplate>
+            <div style="display: flex; justify-content: flex-end;">
+                <RadzenButton ButtonStyle="ButtonStyle.Success"
+                              Icon="add_circle"
+                              Text="YENİ MASRAF EKLE"
+                              Click="@(args => OnClickAddExpense())" />
+            </div>
+        </HeaderTemplate>
 
 
         <Columns>
@@ -72,15 +116,24 @@
                     Toplam: <b>@expenses.Sum(e => e.AmountExclVat * (e.VatRate / 100)).ToString("C")</b>
                 </FooterTemplate>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn Title="">
+            <RadzenDataGridColumn Title="İşlem" Width="160px">
                 <Template Context="expense">
-                    <RadzenButton Text="Evrak Görüntüle"
-                                  Size="ButtonSize.Small"
-                                  Click="@(() => ShowDocuments(expense))"
-                                  Icon="description"
-                                  Style="margin-top:4px" />
+                    <RadzenSplitButton Text="İŞLEM YAP"
+                                       ButtonStyle="ButtonStyle.Primary"
+                                       Size="ButtonSize.Small"
+                                       Click="@(args => OnSplitButtonClick(args, expense))">
+
+                        <ChildContent>
+                            <RadzenSplitButtonItem Text="Hareketler" Value="zarf" />
+                            <RadzenSplitButtonItem Text="Excel" Value="hareket" />
+                        </ChildContent>
+                    </RadzenSplitButton>
                 </Template>
             </RadzenDataGridColumn>
+
+
+
+
         </Columns>
 
         <Template Context="expense">
@@ -146,16 +199,46 @@
     List<Expense> selectedExpenses = new();
     int totalCount = 0;
     bool initialized = false;
+     bool isEditMode = false;
+    void OnClickAddExpense()
+    {
+        NavManager.NavigateTo($"/AddExpensePage");
+    }
 
+    void OnSplitButtonClick(RadzenSplitButtonItem? item, Expense expense)
+    {
+        if (item == null)
+        {
+            // Ana buton tıklandı
+            Console.WriteLine($"Ana butona tıklandı: {expense.FullName}");
+        }
+        else
+        {
+            // Alt seçeneklerden biri seçildi
+            switch (item.Value)
+            {
+                case "zarf":
+                    //NavManager.NavigateTo($"/Content/{expense.Id}");
+                    NavManager.NavigateTo($"/ContentsDetail");
+                    Console.WriteLine($"item 1 tıklandı: {expense.Id}");
+                    //DialogService.Open<ViewDocuments>("Zarf İçeriği", new Dictionary<string, object> { { "Receipts", expense.ReceiptDetails } });
+                    break;
+                case "hareket":
+                    DialogService.Alert($"Kullanıcı hareketleri gösterilecek: {expense.FullName}");
+                    break;
+            }
+        }
+    }
+   
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender && !initialized)
         {
             initialized = true;
-            await grid.FirstPage(true); // LoadData() fonksiyonunu tetikler
+            await grid.FirstPage(true);
         }
     }
-
+  
     async Task LoadData(LoadDataArgs args)
     {
         var pageIndex = args.Skip.HasValue && args.Top.HasValue ? args.Skip.Value / args.Top.Value : 0;
@@ -164,6 +247,9 @@
         expenses = result.Data.ToList();
         totalCount = (int)result.Count;
     }
+
+   
+
 
     void RowRender(RowRenderEventArgs<Expense> args)
     {
@@ -196,7 +282,6 @@
             selectedExpenses.Clear();
         }
     }
-
 
     private Task OnSelectedExpensesChanged(IEnumerable<Expense> selected)
     {

@@ -1,0 +1,25 @@
+﻿@page "/ContentsDetail"
+@page "/Content/{id:int}"
+@inject NavigationManager NavManager
+
+<h3>Zarf Detayı</h3>
+
+<RadzenButton Text="Geri" Click="@(() => NavManager.NavigateTo("/Personel"))" />
+<!-- Burada Expense detayları gösterilir -->
+
+@code {
+    [Parameter]
+    public int? id { get; set; } // nullable yap
+
+    protected override void OnInitialized()
+    {
+        if (id.HasValue)
+        {
+            // id'ye göre işlem yap
+        }
+        else
+        {
+            // id yoksa varsayılan işlem
+        }
+    }
+}
