@@ -68,6 +68,31 @@ services:
       - s_rabbitmq
       - s_sqlserver
 
+  # ocrservice.api:
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Docker
+  #     - ASPNETCORE_URLS=http://+:5003
+  #     - ConsulConfig__Address=http://s_consul:8500
+  #     - ConsulConfig__ServiceAddress=http://c_ocrservice:5003
+  #     - ConsulConfig__ServiceName=OCRService
+  #     - ConsulConfig__ServiceId=OCR
+  #   ports:
+  #     - "5003:5003"
+  #   networks:
+  #     - net_backendservices
+  #   depends_on:
+  #     - web.apigateway
+  #     - s_sqlserver
+  #     - s_consul
+  #     - s_rabbitmq
+  #   external_links:
+  #     - c_graylog
+  #     - s_consul
+  #     - s_rabbitmq
+  #     - s_sqlserver
+
+  
+
   catalogseeder.api:
     command: ["dotnet", "CatalogService.Api.dll", "--seed-force"]
     environment:

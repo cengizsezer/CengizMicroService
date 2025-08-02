@@ -1,11 +1,13 @@
 ﻿using HealthChecks.UI.Client;
+using IdentityService.Application.ConsulRegistration;
+using IdentityService.Application.DbRegistration;
 using IdentityService.Application.Services;
 using IdentityService.Persistence;
-using IdentityService.Application.ConsulRegistration;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
@@ -43,7 +45,7 @@ try
     // DbContext
     builder.Services.AddDbContext<IdentityDbContext>(options =>
         options.UseSqlServer(builder.Configuration.GetConnectionString("DatabaseConnection")));
-
+    //builder.Services.ConfigureDbContext(configuration);
     // Services
     builder.Services.AddScoped<IIdentityService, IdentityService.Application.Services.IdentityService>();
 
@@ -119,8 +121,17 @@ try
         });
     });
 
-
     var app = builder.Build();
+
+    var host = app as IHost;   // Veya doğrudan builder.Build()'ten sonra kullan
+
+    host.MigrateDbContext<IdentityDbContext>((context, services) =>
+    {
+        var logger = services.GetRequiredService<ILogger<IdentityContextSeed>>();
+        var env = services.GetRequiredService<IWebHostEnvironment>();
+        var seeder = new IdentityContextSeed();
+        seeder.SeedAsync(context, env, logger,true).Wait();
+    });
 
     if (app.Environment.IsDevelopment())
     {
@@ -128,11 +139,7 @@ try
         app.UseSwagger();
         app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "IdentityService v1"));
     }
-    using (var scope = app.Services.CreateScope())
-    {
-        var dbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-        dbContext.Database.Migrate(); // ⬅ otomatik migration
-    }
+   
     //app.UseHttpsRedirection();
     app.UseRouting();
     app.UseAuthentication();
@@ -154,7 +161,14 @@ try
 
     app.RegisterWithConsul(app.Lifetime, configuration);
 
+
+
+
+
+
     app.Run();
+
+  
 }
 catch (Exception ex)
 {

@@ -1,4 +1,5 @@
 ﻿using IdentityService.Domain.Entities;
+using IdentityService.Domain.EntityConfigurations;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 
@@ -12,6 +13,13 @@ namespace IdentityService.Persistence
         }
 
         public DbSet<User> Users { get; set; }
+
+
+        protected override void OnModelCreating(ModelBuilder builder)
+        {
+            builder.ApplyConfiguration(new UserEntityTypeConfiguration());
+        }
     }
+
 
 }
