@@ -1,0 +1,157 @@
+﻿@page "/AddReceiptItemCardPage"
+@inject Radzen.DialogService dialogService
+
+<style>
+    #uploadWithDragAndDrop {
+        left: 0;
+        --rz-upload-button-bar-background-color: transparent;
+        --rz-upload-button-bar-padding: 0;
+    }
+
+        #uploadWithDragAndDrop .rz-fileupload-buttonbar .rz-fileupload-choose {
+            width: 100%;
+            text-align: center;
+            font-size: 16px;
+            padding: 100px 0;
+        }
+</style>
+
+
+<RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" Style="height: 100%;">
+    <RadzenStack>
+        <RadzenRow>
+            <RadzenColumn Size="12" SizeMD="6" class="rz-p-4 rz-border-radius-1" Style="border: var(--rz-grid-cell-border)">
+                <RadzenText TextStyle="TextStyle.Subtitle1">Fiş Bilgileri</RadzenText>
+                <RadzenStack>
+                    <RadzenFormField Text="Firma İsmi" Variant="@variant">
+                        <RadzenTextBox @bind-Value="@_componyName" />
+                    </RadzenFormField>
+                    <RadzenFormField Text="Fiş No" Variant="@variant">
+                        <RadzenNumeric @bind-Value="@_receiptNumber" />
+                    </RadzenFormField>
+                    <RadzenFormField Text="Hesap Kodu" Variant="@variant">
+                        <RadzenDropDownDataGrid Data=@companyNames @bind-Value="@dropDownDataGridValue" />
+                    </RadzenFormField>
+                    <RadzenFormField Text="Masraf Açıklama" Variant="@variant">
+                        <RadzenTextBox @bind-Value="@_expenseDesciription" />
+                    </RadzenFormField>
+                </RadzenStack>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" class="rz-p-4 rz-border-radius-1" Style="border: var(--rz-grid-cell-border)">
+                <RadzenText TextStyle="TextStyle.Subtitle1">Delivery Information</RadzenText>
+                <RadzenStack>
+                    <RadzenFormField Text="Fiş Tarihi" Variant="@variant">
+                        <RadzenDatePicker @bind-Value="@date" ShowTime="@true" />
+                    </RadzenFormField>
+                    <RadzenFormField Text="Oluşturulma Tarihi" Variant="@variant">
+                        <RadzenDatePicker @bind-Value="@date" ShowTime="@true" />
+                    </RadzenFormField>
+                    <RadzenFormField Text="Not" Variant="@variant">
+                        <RadzenTextArea @bind-Value="@_note" Rows="4" />
+                    </RadzenFormField>
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+            <RadzenText TextStyle="TextStyle.Subtitle1" class="rz-m-0">Masraf @ExpenseID Details</RadzenText>
+            <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Text=@($"{String.Format(new System.Globalization.CultureInfo("en-US"), "{0:C}", _totalValue)}") />
+        </RadzenStack>
+        <RadzenDataGrid AllowFiltering="true" AllowPaging="true" AllowSorting="true" FilterPopupRenderMode="PopupRenderMode.OnDemand" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        Data="@(_lsProductDetails)" ColumnWidth="200px" Density="Density.Compact" AllowAlternatingRows="false">
+            <Columns>
+                <RadzenDataGridColumn Property="@nameof(ProductDetail.Rank)" Title="Sıra" />
+                <RadzenDataGridColumn Property="@nameof(ProductDetail.TaxBase)" Title="Matrah" FormatString="{0:N2}" />
+                <RadzenDataGridColumn Property="@nameof(ProductDetail.VatRate)" Title="KDV Oran" FormatString="{0:P0}" />
+                <RadzenDataGridColumn Property="@nameof(ProductDetail.Vat)" Title="KDV Tutar" FormatString="{0:N2}" />
+                <RadzenDataGridColumn Property="@nameof(ProductDetail.Total)" Title="Toplam Tutar" FormatString="{0:N2}" />
+
+            </Columns>
+        </RadzenDataGrid>
+    </RadzenStack>
+    <RadzenCard Variant="Variant.Outlined">
+        <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Drag and drop files to upload</RadzenText>
+        <RadzenUpload id="uploadWithDragAndDrop" @ref="upload" ChooseText="Drag and drop here or click to choose files"
+                      Auto="false" Multiple="true" Url="upload/multiple" InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "select file" }})"
+                      Progress=@OnProgress Style="width: 100%" />
+        <RadzenButton Text="Upload" Click=@OnUpload class="rz-mt-4" />
+    </RadzenCard>
+    <RadzenStack Visible="@ShowClose" Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+        <RadzenButton Click="@((args) => dialogService.Close(true))" Variant="Variant.Flat" Text="Close" Style="width: 120px" />
+    </RadzenStack>
+</RadzenStack>
+@code {
+    [Parameter] public int ExpenseID { get; set; } = 1001;
+    [Parameter] public bool ShowClose { get; set; } = true;
+    Variant variant = Variant.Outlined;
+   
+    private List<ProductDetail> _lsProductDetails = new();
+    IEnumerable<string> companyNames;
+
+    private string _componyName = "Text";
+    private int _receiptNumber = 123;
+    private string _expenseDesciription = "";
+    private string _note="";
+    DateTime? date = DateTime.Today;
+    TimeSpan? timeSpan = new TimeSpan(5, 15, 30);
+    private decimal _totalValue = 1425.75m;
+    private string dropDownDataGridValue = "";
+
+    private RadzenUpload upload;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        // Sahte verileri yükle
+       
+
+        _lsProductDetails = new List<ProductDetail>
+        {
+            new ProductDetail { Rank = 1, VatRate = 0.01f, Vat=100.20f, TaxBase=529.85f,Total=650f},
+            new ProductDetail { Rank = 2, VatRate = 0.20f,Vat=0.50f,TaxBase=10f,Total=12f }
+        };
+
+
+        companyNames = new List<string>
+        {
+            "TEZ MEDIKAL",
+            "BIZ KLINIK",
+            "TEZ HOLDING",
+            "TEZ EGITIM",
+            "TEZ FILO",
+            "TEZ YAZILIM"
+        };
+
+        await Task.CompletedTask;
+    }
+
+    public class ProductDetail
+    {
+        public int Rank { get; set; }
+        public float VatRate { get; set; }
+        public float Vat { get; set; }
+        public float TaxBase { get; set; }
+        public float Total { get; set; }
+    }
+
+   
+
+   private void OnUpload()
+    {
+        upload.Upload();
+    }
+
+    private void OnProgress(UploadProgressArgs args)
+    {
+        Console.WriteLine($"Upload progress: {args.Progress}% / {args.Loaded} of {args.Total} bytes.");
+
+        if (args.Progress == 100)
+        {
+            foreach (var file in args.Files)
+            {
+                Console.WriteLine($"Uploaded: {file.Name} / {file.Size} bytes");
+            }
+        }
+    }
+
+   
+}
