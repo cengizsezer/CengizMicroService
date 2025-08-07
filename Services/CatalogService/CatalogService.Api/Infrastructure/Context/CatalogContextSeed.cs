@@ -150,17 +150,21 @@ namespace CatalogService.Api.Infrastructure.Context
 
                 yield return new Personnel
                 {
-                    Company = fields[0],
-                    Department = fields[1],
-                    Unit = fields[2],
-                    NationalId = fields[3],
-                    FirstName = fields[4],
-                    LastName = fields[5],
-                    Title = fields[6],
-                    PhoneNumber = fields[7],
-                    ExpenseCenter = fields[8],
-                    Email = fields[9],
-                    IBAN = fields[10]
+                    FullName = fields[0],
+                    NormalExpenseNumber = fields[1],
+                    SalaryExpenseNumber = fields[2],
+                    CaseExpenseNumber = fields[3],
+                    Company = fields[4],
+                    Department = fields[5],
+                    Unit = fields[6],
+                    NationalId = fields[7],
+                    FirstName = fields[8],
+                    LastName = fields[9],
+                    Title = fields[10],
+                    PhoneNumber = fields[11],
+                    ExpenseCenter = fields[12],
+                    Email = fields[13],
+                    IBAN = fields[14]
                 };
 
                 lineNumber++;

@@ -5,7 +5,7 @@
 namespace CatalogService.Api.Migrations
 {
     /// <inheritdoc />
-    public partial class newcreate : Migration
+    public partial class InitialCreateaddpersonel : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -64,11 +64,67 @@ namespace CatalogService.Api.Migrations
                 oldClrType: typeof(string),
                 oldType: "nvarchar(50)",
                 oldMaxLength: 50);
+
+            migrationBuilder.AddColumn<string>(
+                name: "CaseExpenseNumber",
+                schema: "catalog",
+                table: "Personnels",
+                type: "nvarchar(100)",
+                maxLength: 100,
+                nullable: false,
+                defaultValue: "");
+
+            migrationBuilder.AddColumn<string>(
+                name: "FullName",
+                schema: "catalog",
+                table: "Personnels",
+                type: "nvarchar(100)",
+                maxLength: 100,
+                nullable: false,
+                defaultValue: "");
+
+            migrationBuilder.AddColumn<string>(
+                name: "NormalExpenseNumber",
+                schema: "catalog",
+                table: "Personnels",
+                type: "nvarchar(100)",
+                maxLength: 100,
+                nullable: false,
+                defaultValue: "");
+
+            migrationBuilder.AddColumn<string>(
+                name: "SalaryExpenseNumber",
+                schema: "catalog",
+                table: "Personnels",
+                type: "nvarchar(100)",
+                maxLength: 100,
+                nullable: false,
+                defaultValue: "");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropColumn(
+                name: "CaseExpenseNumber",
+                schema: "catalog",
+                table: "Personnels");
+
+            migrationBuilder.DropColumn(
+                name: "FullName",
+                schema: "catalog",
+                table: "Personnels");
+
+            migrationBuilder.DropColumn(
+                name: "NormalExpenseNumber",
+                schema: "catalog",
+                table: "Personnels");
+
+            migrationBuilder.DropColumn(
+                name: "SalaryExpenseNumber",
+                schema: "catalog",
+                table: "Personnels");
+
             migrationBuilder.AlterColumn<string>(
                 name: "PhoneNumber",
                 schema: "catalog",

@@ -3,11 +3,13 @@
     public class PersonnelDto
     {
         public int Id { get; set; }
-
+        public string FullName { get; set; } = string.Empty;
+        public string NormalExpenseNumber { get; set; } = string.Empty;
+        public string SalaryExpenseNumber { get; set; } = string.Empty;
+        public string CaseExpenseNumber { get; set; } = string.Empty;
         public string NationalId { get; set; } = string.Empty;     // TC NO
         public string FirstName { get; set; } = string.Empty;      // Adı
         public string LastName { get; set; } = string.Empty;       // Soyadı
-        public string FullName => $"{FirstName} {LastName}";       // Otomatik ad + soyad
 
         public string Title { get; set; } = string.Empty;          // Ünvan
         public string PhoneNumber { get; set; } = string.Empty;    // Cep Telefonu

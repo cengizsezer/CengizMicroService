@@ -68,6 +68,11 @@ namespace CatalogService.Api.Controllers
                     Email = p.Email,
                     FirstName= p.FirstName,
                     LastName= p.LastName,
+                    SalaryExpenseNumber = p.SalaryExpenseNumber,
+                    CaseExpenseNumber = p.CaseExpenseNumber,
+                    NormalExpenseNumber = p.NormalExpenseNumber,
+                    FullName = p.FullName,
+                    
                     
                 })
                 .ToListAsync();

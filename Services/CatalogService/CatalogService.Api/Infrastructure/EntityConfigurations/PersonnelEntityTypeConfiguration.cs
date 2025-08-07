@@ -13,6 +13,20 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
 
             builder.HasKey(e => e.Id);
 
+            builder.Property(e => e.FullName)
+                  .IsRequired()
+                  .HasMaxLength(100);
+
+            builder.Property(e => e.NormalExpenseNumber)
+                 .IsRequired()
+                 .HasMaxLength(100);
+            builder.Property(e => e.CaseExpenseNumber)
+                 .IsRequired()
+                 .HasMaxLength(100);
+            builder.Property(e => e.SalaryExpenseNumber)
+                 .IsRequired()
+                 .HasMaxLength(100);
+
             builder.Property(e => e.NationalId)
                    .IsRequired()
                    .HasMaxLength(11); // TC Kimlik No için ideal
