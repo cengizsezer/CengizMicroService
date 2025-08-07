@@ -1,9 +1,12 @@
 ﻿@page "/AddExpensePage"
 @using Newtonsoft.Json
 @using Microsoft.JSInterop
+@using WebApp.Application.Services.Interfaces
 @using WebApp.Cards
+@using WebApp.Shared.Dto
 @inject DialogService DialogService
 @inject IJSRuntime JSRuntime
+@inject IExpenseService ExpenseService
 
 <h3>Yeni Masraf Oluştur</h3>
 
@@ -17,10 +20,24 @@
         <RadzenColumn Size="12" SizeSM="6">
             <RadzenStack>
                 <RadzenFormField Text="Personel Ad Soyad" Variant="@variant">
-                    <RadzenDropDownDataGrid Data=@companyNames @bind-Value="@dropDownDataGridValue" />
+                    <RadzenDropDownDataGrid TValue="PersonnelDto"
+                                            Data="@personnelList"
+                                            @bind-Value="@selectedPersonnel"
+                                            TextProperty="FullName"
+                                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                            AllowFiltering="true"
+                                            Placeholder="Personel seçin..."
+                                            Style="width: 100%;" />
                 </RadzenFormField>
                 <RadzenFormField Text="Hesap Kodu" Variant="@variant">
-                    <RadzenDropDownDataGrid Data=@companyNames @bind-Value="@dropDownDataGridValue" />
+                    <RadzenDropDownDataGrid TValue="AccountingCodeDto"
+                                            Data="@accountingCodes"
+                                            @bind-Value="@selectedAccountingCode"
+                                            TextProperty="Description"
+                                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                            Placeholder="Hesap kodu seçin"
+                                            AllowFiltering="true"
+                                            Style="width: 100%;" />
                 </RadzenFormField>
                 <RadzenFormField Text="Masraf Merkezi" Variant="@variant">
                     <RadzenDropDownDataGrid Data=@companyNames @bind-Value="@dropDownDataGridValue" />
@@ -72,9 +89,18 @@
 
     IEnumerable<string> companyNames;
 
+    List<PersonnelDto> personnelList = new();
+    PersonnelDto selectedPersonnel;
+    List<AccountingCodeDto> accountingCodes = new();
+    AccountingCodeDto selectedAccountingCode;
+
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
+
+        await LoadPersonnelData();
+        await LoadAccountingCodesData();
+
 
         companyNames = new List<string>
         {
@@ -86,7 +112,29 @@
             "TEZ YAZILIM"
         };
     }
+    private async Task LoadPersonnelData()
+    {
+        try
+        {
+            personnelList = await ExpenseService.GetPersonnelsAsync(); // zaten List döner artık
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Hata: " + ex.Message);
+        }
+    }
 
+    private async Task LoadAccountingCodesData()
+    {
+        try
+        {
+            accountingCodes = await ExpenseService.GetAccountingCodesAsync(); // zaten List döner artık
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Hata: " + ex.Message);
+        }
+    }
 
     private async Task OnClickAddReceiptItem()
     {

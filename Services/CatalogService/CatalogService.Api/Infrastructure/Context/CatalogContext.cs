@@ -19,6 +19,8 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<Expense> Expenses { get; set; }
         public DbSet<ReceiptItem> ReceiptItems { get; set; }
         public DbSet<ProductDetail> ProductDetails { get; set; }
+        public DbSet<AccountingCode> AccountingCodes { get; set; }
+        public DbSet<Personnel> Personnels { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -27,6 +29,8 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new ExpenseEntityTypeConfiguration());
             builder.ApplyConfiguration(new ReceiptItemEntityTypeConfiguration());
             builder.ApplyConfiguration(new ProductDetailEntityTypeConfiguration());
+            builder.ApplyConfiguration(new AccountingCodeEntityTypeConfiguration());
+            builder.ApplyConfiguration(new PersonnelEntityTypeConfiguration());
         }
 
     }

@@ -15,12 +15,12 @@ services:
       context: .
       dockerfile: Services/CatalogService/CatalogService.Api/Dockerfile
 
-  # ocrservice.api:
-  #   container_name: c_ocrservice
-  #   image: ${DOCKER_REGISTRY-}ocrserviceapi
-  #   build:
-  #     context: .
-  #     dockerfile: Services/OCRService/OCRService.Api/Dockerfile
+  ocrservice.api:
+    container_name: c_ocrservice
+    image: ${DOCKER_REGISTRY-}ocrserviceapi
+    build:
+      context: .
+      dockerfile: Services/OCRService/OCRService.Api/Dockerfile
 
   catalogseeder.api:
     container_name: c_catalogseeder

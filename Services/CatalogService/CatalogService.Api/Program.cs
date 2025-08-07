@@ -1,4 +1,5 @@
-﻿using CatalogService.Api.Extensions;
+﻿using CatalogService.Api.Core.Application.Mapping;
+using CatalogService.Api.Extensions;
 using CatalogService.Api.Infrastructure;
 using CatalogService.Api.Infrastructure.Context;
 using HealthChecks.UI.Client;
@@ -50,7 +51,7 @@ builder.Services.ConfigureDbContext(configuration);
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy());
 builder.Services.ConfigureConsul(configuration);
-
+builder.Services.AddAutoMapper(typeof(ExpenseProfile));
 var app = builder.Build();
 
 if (args.Contains("--seed-force"))

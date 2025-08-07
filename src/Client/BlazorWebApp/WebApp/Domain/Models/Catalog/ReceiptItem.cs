@@ -4,43 +4,76 @@ namespace WebApp.Domain.Models.Catalog
 {
     public class ReceiptItem
     {
-        [JsonProperty("id")]
         public int Id { get; set; }
 
-        [JsonProperty("item")]
-        public string Item { get; set; } = string.Empty;
+        /// <summary>
+        /// Links this receipt item to a specific expense.
+        /// </summary>
+        public string ExpenseCode { get; set; } = string.Empty;
 
-        [JsonProperty("amount")]
-        public decimal Amount { get; set; }
+        /// <summary>
+        /// Type of the expense item. Default: "Service".
+        /// </summary>
+        public string Type { get; set; } = "Hizmet";
 
-        [JsonProperty("vatRate")]
-        public decimal VatRate { get; set; }
-
-        [JsonProperty("accountingCode")]
+        /// <summary>
+        /// The accounting code assigned to this item.
+        /// </summary>
         public string AccountingCode { get; set; } = string.Empty;
 
-        [JsonProperty("personnelCode")]
-        public string PersonnelCode { get; set; } = string.Empty;
+        /// <summary>
+        /// Description tied to the accounting code (auto-filled).
+        /// </summary>
+        public string AccountingCodeDescription { get; set; } = string.Empty;
 
-        [JsonProperty("fullName")]
-        public string FullName { get; set; } = string.Empty;
+        /// <summary>
+        /// Custom description entered by the user.
+        /// </summary>
+        public string Description { get; set; } = string.Empty;
 
-        [JsonProperty("company")]
-        public string Company { get; set; } = string.Empty;
+        /// <summary>
+        /// Quantity of the item. Default is 1.
+        /// </summary>
+        public int Quantity { get; set; } = 1;
 
-        [JsonProperty("note")]
-        public string Note { get; set; } = string.Empty;
+        /// <summary>
+        /// Unit of measurement. Default is "Piece".
+        /// </summary>
+        public string Unit { get; set; } = "Adet";
 
-        [JsonProperty("amountExclVat")]
-        public decimal AmountExclVat { get; set; }
+        /// <summary>
+        /// Total amount including VAT.
+        /// </summary>
+        public decimal TotalAmount { get; set; }
 
-        [JsonProperty("expenseId")]
+        /// <summary>
+        /// Total VAT amount.
+        /// </summary>
+        public decimal TotalVat { get; set; }
+
+        /// <summary>
+        /// Receipt number.
+        /// </summary>
+        public string ReceiptNumber { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Date of the receipt.
+        /// </summary>
+        public DateTime ReceiptDate { get; set; }
+
+        /// <summary>
+        /// Foreign key to the parent expense.
+        /// </summary>
         public int ExpenseId { get; set; }
 
-        [JsonProperty("expense")]
-        public Expense? Expense { get; set; }
+        /// <summary>
+        /// Navigation property for the parent expense.
+        /// </summary>
+        public Expense Expense { get; set; } = new();
 
-        [JsonProperty("productDetails")]
+        /// <summary>
+        /// List of product-level details under this receipt.
+        /// </summary>
         public List<ProductDetail> ProductDetails { get; set; } = new();
     }
 }

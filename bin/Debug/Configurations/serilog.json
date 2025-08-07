@@ -9,13 +9,13 @@
           "hostnameOrAddress": "c_graylog",
           "port": "12201",
           "transportType": "Udp",
-          "facility": "CatalogService"
+          "facility": "OCRService"
         }
       }
     ],
 
     "Properties": {
-      "Application": "CatalogService"
+      "Application": "OCRService"
     }
   }
 }

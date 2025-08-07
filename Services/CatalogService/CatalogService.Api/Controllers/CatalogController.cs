@@ -1,4 +1,6 @@
-﻿using CatalogService.Api.Core.Application.ViewModels;
+﻿using AutoMapper;
+using CatalogService.Api.Contracts.Dtos;
+using CatalogService.Api.Core.Application.ViewModels;
 using CatalogService.Api.Core.Domain;
 
 using CatalogService.Api.Infrastructure;
@@ -8,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Polly;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,13 +24,14 @@ namespace CatalogService.Api.Controllers
     public class CatalogController : ControllerBase
     {
         private readonly CatalogContext _catalogContext;
+        private readonly IMapper _catalogmapper;
         private readonly CatalogSettings _settings;
 
-        public CatalogController(CatalogContext context, IOptionsSnapshot<CatalogSettings> settings)
+        public CatalogController(IMapper mapper,CatalogContext context, IOptionsSnapshot<CatalogSettings> settings)
         {
             _catalogContext = context ?? throw new ArgumentNullException(nameof(context));
             _settings = settings.Value;
-
+            _catalogmapper=mapper; ;
             context.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
         }
        
@@ -37,11 +41,56 @@ namespace CatalogService.Api.Controllers
         public async Task<ActionResult<List<Expense>>> GetAllExpensesAsync()
         {
             var expenses = await _catalogContext.Expenses
-                .Include(e => e.ReceiptDetails)
+                .Include(e => e.ReceiptItems)
                     .ThenInclude(r => r.ProductDetails)
                 .ToListAsync();
 
             return Ok(expenses);
+        }
+
+        [HttpGet("personnels")]
+        [ProducesResponseType(typeof(Expense), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        public async Task<ActionResult<PersonnelDto>> GetPersonnel()
+        {
+            var personnel = await _catalogContext.Personnels
+                .Select(p => new PersonnelDto
+                {
+                    Id = p.Id,
+                    Company = p.Company,
+                    Title = p.Title,
+                    PhoneNumber = p.PhoneNumber,
+                    Department = p.Department,
+                    Unit= p.Unit,
+                    ExpenseCenter = p.ExpenseCenter,
+                    NationalId = p.NationalId,
+                    IBAN = p.IBAN,
+                    Email = p.Email,
+                    FirstName= p.FirstName,
+                    LastName= p.LastName,
+                    
+                })
+                .ToListAsync();
+
+            return Ok(personnel);
+        }
+
+
+        [HttpGet("accountingcodes")]
+        [ProducesResponseType(typeof(Expense), (int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.NotFound)]
+        public async Task<ActionResult<AccountingCodeDto>> GetAccountingCodes()
+        {
+            var accountingCodeDto = await _catalogContext.AccountingCodes
+                .Select(p => new AccountingCodeDto
+                {
+                    Id = p.Id,
+                    Code = p.Code,
+                    Description = p.Description
+                })
+                .ToListAsync();
+
+            return Ok(accountingCodeDto);
         }
 
         [HttpGet("expenses/{id}")]
@@ -50,7 +99,7 @@ namespace CatalogService.Api.Controllers
         public async Task<ActionResult<Expense>> GetExpenseByIdAsync(int id)
         {
             var expense = await _catalogContext.Expenses
-                .Include(e => e.ReceiptDetails)
+                .Include(e => e.ReceiptItems)
                     .ThenInclude(r => r.ProductDetails)
                 .FirstOrDefaultAsync(e => e.Id == id);
 
@@ -62,81 +111,92 @@ namespace CatalogService.Api.Controllers
             return Ok(expense);
         }
 
-        [HttpGet("expenses/bycompany")]
-        [ProducesResponseType(typeof(List<Expense>), (int)HttpStatusCode.OK)]
-        public async Task<ActionResult<List<Expense>>> GetExpensesByCompanyAsync([FromQuery] string company)
-        {
-            var expenses = await _catalogContext.Expenses
-                .Include(e => e.ReceiptDetails)
-                    .ThenInclude(r => r.ProductDetails)
-                .Where(e => e.Company == company)
-                .ToListAsync();
-
-            return Ok(expenses);
-        }
 
         [HttpGet("expenses/paged")]
-        [ProducesResponseType(typeof(PaginatedItemsViewModel<Expense>), (int)HttpStatusCode.OK)]
-        public async Task<ActionResult<PaginatedItemsViewModel<Expense>>> GetPagedExpensesAsync([FromQuery] int pageIndex = 0, [FromQuery] int pageSize = 10)
+        [ProducesResponseType(typeof(PaginatedItemsViewModel<ExpenseDto>), (int)HttpStatusCode.OK)]
+        public async Task<ActionResult<PaginatedItemsViewModel<ExpenseDto>>> GetPagedExpensesAsync(
+     [FromQuery] int pageIndex = 0,
+     [FromQuery] int pageSize = 10)
         {
             try
             {
                 var totalItems = await _catalogContext.Expenses.CountAsync();
 
                 var items = await _catalogContext.Expenses
-                    .Include(e => e.ReceiptDetails)
+                    .Include(e => e.ReceiptItems)
                         .ThenInclude(r => r.ProductDetails)
                     .OrderByDescending(x => x.Id)
                     .Skip(pageIndex * pageSize)
                     .Take(pageSize)
                     .ToListAsync();
 
-                var dtoItems = items.Select(e => new Expense
+                var dtoItems = items.Select(e => new ExpenseDto
                 {
                     Id = e.Id,
-                    Company = e.Company,
-                    Note = e.Note,
-                    AmountExclVat = e.AmountExclVat,
-                    VatRate = e.VatRate,
-                    ReceiptDetails = e.ReceiptDetails?.Select(r => new ReceiptItem
+                    ExpenseCode = e.ExpenseCode,
+                    PersonnelFullName = e.PersonnelFullName,
+                    PersonnelAccountingCode = e.PersonnelAccountingCode,
+                    ExpenseDate = e.ExpenseDate,
+                    ProjectCode = e.ProjectCode,
+                    CreatedDate = e.CreatedDate,
+                    CreatedTime = e.CreatedTime,
+                    ApprovedBy = e.ApprovedBy,
+                    ApprovedAt = e.ApprovedAt,
+                    TotalAmount = e.TotalAmount,
+                    TotalVat = e.TotalVat,
+                    Description = e.Description,
+                    ReceiptItems = e.ReceiptItems?.Select(r => new ReceiptItemDto
                     {
                         Id = r.Id,
-                        Company = r.Company,
-                        Item = r.Item,
-                        Amount = r.Amount,
-                        VatRate = r.VatRate,
+                        ExpenseId = r.ExpenseId,
+                        ExpenseCode = r.ExpenseCode,
+                        Type = r.Type,
                         AccountingCode = r.AccountingCode,
-                        PersonnelCode = r.PersonnelCode,
-                        FullName = r.FullName,
-                        Note = r.Note,
-                        AmountExclVat = r.AmountExclVat,
-                        ProductDetails = r.ProductDetails?.Select(p => new ProductDetail
+                        AccountingCodeDescription = r.AccountingCodeDescription,
+                        Description = r.Description,
+                        Quantity = r.Quantity,
+                        Unit = r.Unit,
+                        TotalAmount = r.TotalAmount,
+                        TotalVat = r.TotalVat,
+                        ReceiptNumber = r.ReceiptNumber,
+                        ReceiptDate = r.ReceiptDate,
+                        ProductDetails = r.ProductDetails?.Select(p => new ProductDetailDto
                         {
                             Id = p.Id,
-                            Company = p.Company,
-                            Name = p.Name,
-                            Amount = p.Amount,
+                            Rank = p.Rank,
+                            TaxBase = p.TaxBase,
                             VatRate = p.VatRate,
-                            AccountingCode = p.AccountingCode,
-                            PersonnelCode = p.PersonnelCode,
-                            FullName = p.FullName,
-                            Note = p.Note,
-                            AmountExclVat = p.AmountExclVat
-                        }).ToList() ?? new List<ProductDetail>()
-                    }).ToList() ?? new List<ReceiptItem>()
+                            VatAmount = p.VatAmount,
+                            TotalAmount = p.TotalAmount,
+                            ReceiptItemId = p.ReceiptItemId,
+                            // ReceiptItem property opsiyonel olarak gönderilebilir, döngüsel bağı engellemek için null bırakıyorum
+                            ReceiptItem = null
+                        }).ToList() ?? new List<ProductDetailDto>()
+                    }).ToList() ?? new List<ReceiptItemDto>()
                 }).ToList();
 
-                var model = new PaginatedItemsViewModel<Expense>(pageIndex, pageSize, totalItems, dtoItems);
+                var model = new PaginatedItemsViewModel<ExpenseDto>(pageIndex, pageSize, totalItems, dtoItems);
                 return Ok(model);
             }
             catch (Exception ex)
             {
-                Console.WriteLine("❌ Hata oluştu: " + ex.ToString());
+                Console.WriteLine("❌ Hata oluştu: " + ex);
                 return StatusCode(500, ex.ToString());
             }
         }
 
 
+
+
+        [HttpPost]
+        public async Task<IActionResult> CreateExpense([FromBody] ExpenseDto dto)
+        {
+            var expense = _catalogmapper.Map<Expense>(dto);
+            _catalogContext.Expenses.Add(expense);
+            await _catalogContext.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetExpenseByIdAsync), new { id = expense.Id }, expense);
+        }
 
 
     }

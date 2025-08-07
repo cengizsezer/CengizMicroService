@@ -1,5 +1,6 @@
-﻿Item,Name,Amount,VatRate
-Market Alışverişi,Elma,100.00,10
-Market Alışverişi,Kumanda,150.00,20
-Market Alışverişi,Silgi,50.00,1
-Yemek Fişi,Kebap Menü,120.00,10
+﻿ReceiptNumber,TaxBase,VatRate,VatAmount,TotalAmount
+RCPT001,400.00,0.20,80.00,480.00
+RCPT001,50.00,0.10,5.00,55.00
+RCPT001,50.00,0.10,5.00,55.00
+RCPT001,50.00,0.10,5.00,55.00
+RCPT001,50.00,0.10,5.00,55.00

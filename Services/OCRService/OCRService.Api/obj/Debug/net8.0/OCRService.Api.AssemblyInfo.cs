@@ -11,10 +11,11 @@
 using System;
 using System.Reflection;
 
+[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("d7ce1281-a7db-4206-a5da-cc932d34b0b7")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("OCRService.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e4c504e91161796436a802d41aaf84656fa3320d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b53b3bca1a35f96e633a283894441b1f1a527367")]
 [assembly: System.Reflection.AssemblyProductAttribute("OCRService.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("OCRService.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -13,22 +13,44 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
 
             builder.HasKey(e => e.Id);
 
-            builder.Property(e => e.Company)
-                .IsRequired()
-                .HasMaxLength(100);
+            builder.Property(e => e.ExpenseCode)
+                   .IsRequired()
+                   .HasMaxLength(50);
 
-            builder.Property(e => e.AccountingCode).HasMaxLength(100);
-            builder.Property(e => e.PersonnelCode).HasMaxLength(100);
-            builder.Property(e => e.FullName).HasMaxLength(100);
-            builder.Property(e => e.Note).HasMaxLength(250);
+            builder.Property(e => e.PersonnelFullName)
+                   .IsRequired()
+                   .HasMaxLength(100);
 
-            builder.Property(e => e.AmountExclVat)
+            builder.Property(e => e.PersonnelAccountingCode)
+                   .HasMaxLength(100);
+
+            builder.Property(e => e.ExpenseDate)
+                   .IsRequired();
+
+            builder.Property(e => e.ProjectCode)
+                   .HasMaxLength(100);
+
+            builder.Property(e => e.CreatedDate)
+                   .IsRequired();
+
+            builder.Property(e => e.CreatedTime)
+                   .IsRequired();
+
+            builder.Property(e => e.ApprovedBy)
+                   .HasMaxLength(100);
+
+            builder.Property(e => e.ApprovedAt);
+
+            builder.Property(e => e.TotalAmount)
                    .HasColumnType("decimal(18,2)");
 
-            builder.Property(e => e.VatRate)
-                   .HasColumnType("decimal(5,2)");
+            builder.Property(e => e.TotalVat)
+                   .HasColumnType("decimal(18,2)");
 
-            builder.HasMany(e => e.ReceiptDetails)
+            builder.Property(e => e.Description)
+                   .HasMaxLength(250);
+
+            builder.HasMany(e => e.ReceiptItems)
                    .WithOne(r => r.Expense)
                    .HasForeignKey(r => r.ExpenseId);
         }

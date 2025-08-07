@@ -1,6 +1,51 @@
 [
   {
     "ContainingType": "CatalogService.Api.Controllers.CatalogController",
+    "Method": "CreateExpense",
+    "RelativePath": "api/Catalog",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Contracts.Dtos.ExpenseDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Controllers.CatalogController",
+    "Method": "GetAccountingCodes",
+    "RelativePath": "api/Catalog/accountingcodes",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Core.Domain.Expense",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Controllers.CatalogController",
     "Method": "GetAllExpensesAsync",
     "RelativePath": "api/Catalog/expenses",
     "HttpMethod": "GET",
@@ -56,32 +101,6 @@
   },
   {
     "ContainingType": "CatalogService.Api.Controllers.CatalogController",
-    "Method": "GetExpensesByCompanyAsync",
-    "RelativePath": "api/Catalog/expenses/bycompany",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "company",
-        "Type": "System.String",
-        "IsRequired": false
-      }
-    ],
-    "ReturnTypes": [
-      {
-        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Core.Domain.Expense, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 200
-      }
-    ]
-  },
-  {
-    "ContainingType": "CatalogService.Api.Controllers.CatalogController",
     "Method": "GetPagedExpensesAsync",
     "RelativePath": "api/Catalog/expenses/paged",
     "HttpMethod": "GET",
@@ -101,13 +120,42 @@
     ],
     "ReturnTypes": [
       {
-        "Type": "CatalogService.Api.Core.Application.ViewModels.PaginatedItemsViewModel\u00601[[CatalogService.Api.Core.Domain.Expense, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "Type": "CatalogService.Api.Core.Application.ViewModels.PaginatedItemsViewModel\u00601[[CatalogService.Api.Contracts.Dtos.ExpenseDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
         "MediaTypes": [
           "text/plain",
           "application/json",
           "text/json"
         ],
         "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Controllers.CatalogController",
+    "Method": "GetPersonnel",
+    "RelativePath": "api/Catalog/personnels",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Core.Domain.Expense",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
       }
     ]
   }

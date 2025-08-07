@@ -1,4 +1,5 @@
 ﻿@page "/register"
+@layout AuthLayout
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
 @using WebApp.Application.Services.Interfaces
@@ -6,41 +7,138 @@
 @inject IIdentityService IdentityService
 @inject Microsoft.JSInterop.IJSRuntime JSRuntime
 
-<h3>Kayıt Ol</h3>
+<style>
+    .login-container {
+        display: flex;
+        min-height: 100vh;
+        width: 100vw;
+    }
 
-<EditForm EditContext="@editContext" OnValidSubmit="@OnRegister" OnInvalidSubmit="@OnInvalidSubmit">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+    .login-left {
+        position: relative;
+        width: 66.66vw;
+        height: 100vh;
+        background-color: #f5f7fa;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 2rem;
+        text-align: center;
+        overflow: hidden;
+    }
 
-    <RadzenTextBox @bind-Value="registerModel.UserName" Name="username" Placeholder="Kullanıcı Adı" Style="width: 100%;" />
-    <ValidationMessage For="@(() => registerModel.UserName)" />
+    .login-image {
+        width: 120%;
+        height: 120%;
+        object-fit: cover;
+        display: block;
+    }
 
-    <RadzenTextBox @bind-Value="registerModel.Email" Name="email" Placeholder="Email" Style="width: 100%; margin-top: 1rem;" />
-    <ValidationMessage For="@(() => registerModel.Email)" />
+    .login-right {
+        width: 33.33vw;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background: linear-gradient(to bottom right, #f0f4ff, #ffffff);
+    }
 
-    <RadzenPassword @bind-Value="registerModel.Password" Name="password" Placeholder="Şifre" Style="width: 100%; margin-top: 1rem;" />
-    <ValidationMessage For="@(() => registerModel.Password)" />
+    .login-card {
+        width: 100%;
+        max-width: 600px;
+        padding: 2rem;
+        border-radius: 8px;
+        background-color: transparent;
+    }
 
-    <RadzenButton ButtonType="ButtonType.Submit" Text="Kayıt Ol" Style="width: 100%; margin-top: 2rem;" />
+    .login-logo-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 10rem;
+        margin-top: -3rem;
+    }
 
-    <RadzenAlert Visible="@hasError" Severity="AlertSeverity.Error" Style="margin-top: 1rem;">
-        Kayıt başarısız oldu.
-    </RadzenAlert>
-</EditForm>
+    .login-logo {
+        max-height: 200px;
+        width: auto;
+    }
 
-<hr />
+    .login-title {
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
 
-<h4>Doğrudan Test POST Gönder</h4>
+    .RadzenTextBox,
+    .RadzenPassword,
+    .RadzenButton {
+        width: 130% !important;
+    }
+</style>
 
-<button @onclick="DirectTestPost" style="width: 100%; padding: 1rem; margin-top: 1rem;">
-    Test POST Gönder (Doğrudan HttpClient ile)
-</button>
+<div class="login-container">
+    <div class="login-left">
+        <img src="img/Login.jpeg" alt="Digital Accounting" class="login-image" />
+    </div>
 
-<p>@testPostResult</p>
+    <div class="login-right">
+        <div class="login-card">
+            <div class="login-logo-container">
+                <img src="img/LogoWithText.png" alt="Dijital Masraf Logo" class="login-logo" />
+            </div>
+
+            <div class="login-title">
+                <RadzenHeading Size="H4">Kayıt Ol</RadzenHeading>
+            </div>
+
+            <EditForm EditContext="@editContext" OnValidSubmit="@OnRegister" OnInvalidSubmit="@OnInvalidSubmit">
+                <DataAnnotationsValidator />
+
+                <RadzenTextBox @bind-Value="registerModel.UserName" Name="username" Placeholder="Kullanıcı Adı" Style="width: 100%; margin-bottom: 1rem;" />
+                <ValidationMessage For="@(() => registerModel.UserName)" />
+
+                <RadzenTextBox @bind-Value="registerModel.Email" Name="email" Placeholder="Email" Style="width: 100%; margin-bottom: 1rem;" />
+                <ValidationMessage For="@(() => registerModel.Email)" />
+
+                <RadzenPassword @bind-Value="registerModel.Password" Name="password" Placeholder="Şifre" Style="width: 100%; margin-bottom: 1rem;" />
+                <ValidationMessage For="@(() => registerModel.Password)" />
+
+                <RadzenButton ButtonType="ButtonType.Submit" Disabled="@isLoading"
+                               Style="width: 100%; background-color: #3b82f6; color: white; font-weight: 600; border-radius: 25px; padding: 10px;">
+                    @if (isLoading)
+                    {
+                        <div style="display: flex; align-items: center; justify-content: center;">
+                            <RadzenProgressCircle ShowValue="false" Style="width: 20px; height: 20px; margin-right: 8px;" />
+                            <span>Kayıt Yapılıyor...</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <span>Kayıt Ol</span>
+                    }
+                </RadzenButton>
+
+                <RadzenAlert Visible="@hasError" Severity="AlertSeverity.Error" Style="margin-top: 1rem;">
+                    Kayıt başarısız oldu.
+                </RadzenAlert>
+            </EditForm>
+
+            <div class="alternative-login" style="margin-top: 2rem; text-align:center;">
+                <RadzenText>
+                    Zaten bir hesabınız var mı?
+                    <RadzenLink Text="Giriş Yap" Path="/login" Style="color: #3b82f6; margin-left: 5px;" />
+                </RadzenText>
+            </div>
+        </div>
+    </div>
+</div>
 
 @code {
     private RegisterModel registerModel = new();
     private EditContext editContext;
+    private bool hasError;
+    private bool isLoading = false;
 
     public class RegisterModel
     {
@@ -55,9 +153,6 @@
         public string Password { get; set; }
     }
 
-    private bool hasError;
-    private string testPostResult = "";
-
     protected override void OnInitialized()
     {
         editContext = new EditContext(registerModel);
@@ -66,7 +161,8 @@
     private async Task OnRegister()
     {
         hasError = false;
-        await JSRuntime.InvokeVoidAsync("console.log", "✅ OnRegister tetiklendi");
+        isLoading = true;
+        StateHasChanged();
 
         try
         {
@@ -84,40 +180,16 @@
         catch (Exception ex)
         {
             hasError = true;
-            await JSRuntime.InvokeVoidAsync("console.error", $"❌ Register hata: {ex.Message}");
+            await JSRuntime.InvokeVoidAsync("console.error", $"\u274C Register hata: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 
     private void OnInvalidSubmit(EditContext context)
     {
-        JSRuntime.InvokeVoidAsync("console.warn", "❌ Form doğrulaması başarısız");
-    }
-
-    private async Task DirectTestPost()
-    {
-        try
-        {
-            testPostResult = "Gönderiliyor...";
-            var client = new HttpClient { BaseAddress = new Uri("http://localhost:5000/") };
-
-            var json = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                userName = "testuser",
-                email = "test@test.com",
-                password = "Test1234!"
-            });
-
-            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-
-            var response = await client.PostAsync("auth/register", content);
-
-            testPostResult = response.IsSuccessStatusCode
-                ? "Başarılı! Status Code: " + (int)response.StatusCode
-                : "Başarısız! Status Code: " + (int)response.StatusCode;
-        }
-        catch (Exception ex)
-        {
-            testPostResult = "Hata: " + ex.Message;
-        }
+        JSRuntime.InvokeVoidAsync("console.warn", "\u274C Form doğrulaması başarısız");
     }
 }

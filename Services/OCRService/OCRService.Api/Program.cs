@@ -29,7 +29,14 @@ Log.Logger = new LoggerConfiguration()
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddConfiguration(configuration);
 builder.Host.UseSerilog();
-builder.WebHost.UseUrls("http://localhost:5002");
+if (env == "Docker")
+{
+    builder.WebHost.UseUrls("http://0.0.0.0:5002"); // container dışına açıl
+}
+else
+{
+    builder.WebHost.UseUrls("http://localhost:5002"); // local dev için
+}
 
 builder.Services.AddControllers();
 builder.Services.ConfigureConsul(configuration);
@@ -44,14 +51,13 @@ builder.Services.AddHealthChecks()
 builder.Services.ConfigureConsul(configuration);
 
 
-var visionKeyPath = Environment.GetEnvironmentVariable("GOOGLE_VISION_CREDENTIALS")
-                   ?? configuration["GoogleVision:CredentialsPath"];
+var visionKeyPath = configuration["GoogleVision:CredentialsPath"]
+                 ?? Environment.GetEnvironmentVariable("GOOGLE_VISION_CREDENTIALS");
 
 if (!string.IsNullOrEmpty(visionKeyPath))
 {
     Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", visionKeyPath);
 }
-
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

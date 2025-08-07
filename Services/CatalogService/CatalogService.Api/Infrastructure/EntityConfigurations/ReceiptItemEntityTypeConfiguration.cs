@@ -13,26 +13,46 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
 
             builder.HasKey(r => r.Id);
 
-            builder.Property(r => r.Item)
-                .IsRequired()
-                .HasMaxLength(100);
+            builder.Property(r => r.ExpenseCode)
+                   .IsRequired()
+                   .HasMaxLength(50);
 
-            builder.Property(r => r.Amount)
-                .IsRequired()
-                .HasColumnType("decimal(18,2)");
+            builder.Property(r => r.Type)
+                   .IsRequired()
+                   .HasMaxLength(50)
+                   .HasDefaultValue("Hizmet");
 
-            builder.Property(r => r.VatRate)
-                .IsRequired()
-                .HasColumnType("decimal(5,2)");
+            builder.Property(r => r.AccountingCode)
+                   .HasMaxLength(100);
 
-            builder.Property(r => r.AccountingCode).HasMaxLength(100);
-            builder.Property(r => r.PersonnelCode).HasMaxLength(100);
-            builder.Property(r => r.FullName).HasMaxLength(100);
-            builder.Property(r => r.Company).HasMaxLength(100);
-            builder.Property(r => r.Note).HasMaxLength(250);
+            builder.Property(r => r.AccountingCodeDescription)
+                   .HasMaxLength(250);
 
-            builder.Property(r => r.AmountExclVat)
+            builder.Property(r => r.Description)
+                   .HasMaxLength(250);
+
+            builder.Property(r => r.Quantity)
+                   .HasDefaultValue(1);
+
+            builder.Property(r => r.Unit)
+                   .IsRequired()
+                   .HasMaxLength(50)
+                   .HasDefaultValue("Adet");
+
+            builder.Property(r => r.TotalAmount)
                    .HasColumnType("decimal(18,2)");
+
+            builder.Property(r => r.TotalVat)
+                   .HasColumnType("decimal(18,2)");
+
+            builder.Property(r => r.ReceiptNumber)
+                   .HasMaxLength(100);
+
+            builder.Property(r => r.ReceiptDate)
+                   .IsRequired();
+
+            builder.Property(r => r.ExpenseId)
+                   .IsRequired();
 
             builder.HasMany(r => r.ProductDetails)
                    .WithOne(p => p.ReceiptItem)

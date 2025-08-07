@@ -6,10 +6,10 @@
       {
         "Name": "Graylog",
         "Args": {
-          "hostnameOrAddress": "localhost",
+          "hostnameOrAddress": "c_graylog",
           "port": "12201",
           "transportType": "Udp",
-          "facility": "IdentityService"
+          "facility": "OCRService"
         }
       },
       {
@@ -18,7 +18,7 @@
     ],
 
     "Properties": {
-      "Application": "IdentityService"
+      "Application": "OCRService"
     }
   }
 }

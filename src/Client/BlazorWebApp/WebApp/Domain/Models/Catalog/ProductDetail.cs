@@ -4,40 +4,41 @@ namespace WebApp.Domain.Models.Catalog
 {
     public class ProductDetail
     {
-        [JsonProperty("id")]
         public int Id { get; set; }
 
-        [JsonProperty("name")]
-        public string Name { get; set; } = string.Empty;
+        /// <summary>
+        /// Display order of the product in the receipt item.
+        /// </summary>
+        public int Rank { get; set; }
 
-        [JsonProperty("amount")]
-        public decimal Amount { get; set; }
+        /// <summary>
+        /// Tax base amount (excluding VAT).
+        /// </summary>
+        public decimal TaxBase { get; set; }
 
-        [JsonProperty("vatRate")]
+        /// <summary>
+        /// VAT rate (e.g., 0.20 for 20%).
+        /// </summary>
         public decimal VatRate { get; set; }
 
-        [JsonProperty("receiptItemId")]
+        /// <summary>
+        /// VAT amount calculated from the tax base and rate.
+        /// </summary>
+        public decimal VatAmount { get; set; }
+
+        /// <summary>
+        /// Total amount (TaxBase + VatAmount).
+        /// </summary>
+        public decimal TotalAmount { get; set; }
+
+        /// <summary>
+        /// Foreign key to the parent receipt item.
+        /// </summary>
         public int ReceiptItemId { get; set; }
 
-        [JsonProperty("accountingCode")]
-        public string AccountingCode { get; set; } = string.Empty;
-
-        [JsonProperty("personnelCode")]
-        public string PersonnelCode { get; set; } = string.Empty;
-
-        [JsonProperty("fullName")]
-        public string FullName { get; set; } = string.Empty;
-
-        [JsonProperty("company")]
-        public string Company { get; set; } = string.Empty;
-
-        [JsonProperty("note")]
-        public string Note { get; set; } = string.Empty;
-
-        [JsonProperty("amountExclVat")]
-        public decimal AmountExclVat { get; set; }
-
-        [JsonProperty("receiptItem")]
-        public ReceiptItem? ReceiptItem { get; set; }
+        /// <summary>
+        /// Navigation property to the parent receipt item.
+        /// </summary>
+        public ReceiptItem ReceiptItem { get; set; } = new();
     }
 }

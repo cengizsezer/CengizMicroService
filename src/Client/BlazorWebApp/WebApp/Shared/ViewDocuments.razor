@@ -11,7 +11,7 @@
         {
             foreach (var receipt in Receipts)
             {
-                <li>@receipt.Item - Tutar: @receipt.Amount.ToString("C")</li>
+                <li>@receipt.ExpenseId - Tutar: @receipt.TotalAmount.ToString("C")</li>
             }
         }
     </ul>

@@ -1,49 +1,98 @@
 ﻿@page "/Osgb"
-@inject HttpClient Http
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
-<h3>Bölge Bazlı Masraf Haritası</h3>
+<h3 style="text-align:center">Bölge Bazlı Masraf Haritası</h3>
 
-<div style="text-align:center">
-    <object type="image/svg+xml" data="img/OsgbMap.svg" style="width:100%; height:auto;"></object>
+<div style="display: flex; justify-content: center; align-items: center; height: 400px; border: 1px solid #ccc; background-color: white;">
+    <div id="map" style="max-width: 120%; max-height: 120%;"></div>
 </div>
 
-<div class="summary-container" style="margin-top: 2rem;">
-    <RadzenCard>
-        <RadzenHeading Size="H4" Text="Bölgelere Göre Yıllık Toplam Masraflar" />
-        <RadzenDataGrid Data="@regionSummaries" TItem="RegionSummary" AllowSorting="true" AllowPaging="true">
+@if (SelectedRegion is not null)
+{
+    <h4 class="mt-4" style="text-align:center">@SelectedRegion bölgesi için masraf listesi</h4>
+
+    <div style="max-width:1000px; margin: 0 auto;">
+        <RadzenDataGrid Data="@expensesForRegion" TItem="ExpenseModel" Class="w-100" ShowPagingSummary="true" PageSize="5" AllowPaging="true" AllowSorting="true">
             <Columns>
-                <RadzenDataGridColumn Property="RegionName" Title="Bölge" />
-                <RadzenDataGridColumn Property="TotalAmount" Title="Toplam Masraf (TL)" />
+                <RadzenDataGridColumn TItem="ExpenseModel" Property="City" Title="İl" />
+                <RadzenDataGridColumn TItem="ExpenseModel" Property="PersonName" Title="Personel" />
+                <RadzenDataGridColumn TItem="ExpenseModel" Property="Date" Title="Tarih" FormatString="{0:dd.MM.yyyy}" />
+                <RadzenDataGridColumn TItem="ExpenseModel" Property="Amount" Title="Tutar" FormatString="{0:C}" />
             </Columns>
         </RadzenDataGrid>
-    </RadzenCard>
-</div>
+    </div>
+}
 
 @code {
-    public class RegionSummary
-    {
-        public string RegionName { get; set; }
-        public decimal TotalAmount { get; set; }
-    }
+    private DotNetObjectReference<Osgb>? dotNetHelper;
+    private string? SelectedRegion;
+    private List<ExpenseModel> allExpenses = new();
+    private List<ExpenseModel> expensesForRegion = new();
 
-    List<RegionSummary> regionSummaries = new List<RegionSummary>();
-
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        // Sahte verilerle masraf özetlerini doldur
-        regionSummaries = new List<RegionSummary>
+        var cities = new[] { "İstanbul", "Kocaeli", "Balıkesir", "Ankara", "İzmir", "Düzce", "Osmaniye" };
+        var names = new[] { "Ali Yılmaz", "Ayşe Demir", "Mehmet Kaya", "Zeynep Şahin", "Fatma Aydın", "Caner Koç", "Merve Akın" };
+        var rnd = new Random();
+
+        for (int i = 0; i < 100; i++)
         {
-            new RegionSummary { RegionName = "Ankara", TotalAmount = 125000 },
-            new RegionSummary { RegionName = "Istanbul", TotalAmount = 192000 }
-        };
-    }
+            var city = cities[rnd.Next(cities.Length)];
+            var name = names[rnd.Next(names.Length)];
+            var date = DateTime.Today.AddDays(-rnd.Next(90));
+            var amount = rnd.Next(200, 5000);
 
-    void OnRegionClick(string regionName)
-    {
-        var region = regionSummaries.FirstOrDefault(r => r.RegionName == regionName);
-        if (region != null)
-        {
-            Console.WriteLine($"{region.RegionName} bölgesine tıklandı. Toplam masraf: {region.TotalAmount:C}");
+            allExpenses.Add(new ExpenseModel
+            {
+                City = city,
+                PersonName = name,
+                Date = date,
+                Amount = amount
+            });
         }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetHelper = DotNetObjectReference.Create(this);
+
+            try
+            {
+                await JS.InvokeVoidAsync("loadSvgMap", dotNetHelper);
+            }
+            catch (JSException ex)
+            {
+                Console.WriteLine($"JS Hatası: {ex.Message}");
+            }
+        }
+    }
+
+    [JSInvokable]
+    public Task OnRegionClicked(string regionName)
+    {
+        SelectedRegion = regionName;
+
+        expensesForRegion = allExpenses
+            .Where(e => e.City.Equals(regionName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        dotNetHelper?.Dispose();
+    }
+
+    public class ExpenseModel
+    {
+        public string City { get; set; } = "";
+        public string PersonName { get; set; } = "";
+        public DateTime Date { get; set; }
+        public decimal Amount { get; set; }
     }
 }
