@@ -23,7 +23,7 @@
     {
       "UseServiceDiscovery": true,
       "ServiceName": "OCRService",
-      "DownstreamPathTemplate": "/api/auth/{everything}",
+      "DownstreamPathTemplate": "/api/ocr/{everything}",
       "DownstreamScheme": "http",
 
       "UpstreamPathTemplate": "/OCR/{everything}",

@@ -90,7 +90,7 @@ else
         </HeaderTemplate>
 
         <Columns>
-            <RadzenDataGridColumn Width="60px" Sortable="false" Filterable="false">
+            <RadzenDataGridColumn Width="60px" Sortable="false" Filterable="false" Frozen="true">
                 <HeaderTemplate>
                     <RadzenCheckBox TabIndex="-1"
                                     TriState="false"
@@ -131,7 +131,7 @@ else
             <RadzenDataGridColumn Property="CreatedDate" Title="Kayıt Tarihi" Width="140px" />
             <RadzenDataGridColumn Property="CreatedTime" Title="Kayıt Saati" Width="140px" />
 
-            <RadzenDataGridColumn Title="İşlem" Width="180px">
+            <RadzenDataGridColumn Title="İşlem" Width="180px" Frozen="true" FrozenPosition="FrozenColumnPosition.Right">
                 <Template Context="expense">
                     <RadzenSplitButton Text="İŞLEM YAP"
                                        ButtonStyle="ButtonStyle.Primary"

@@ -1,102 +1,135 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Text.Json;
+using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using OCRService.Api.Contracts.Dtos;
 
-namespace OCRService.Api.Services;
-
-public class OpenAiInterpreter
+namespace OCRService.Api.Services
 {
-    private readonly IHttpClientFactory _factory;
-    private readonly IConfiguration _config;
-    private readonly ILogger<OpenAiInterpreter> _logger;
-
-    public OpenAiInterpreter(IHttpClientFactory factory, IConfiguration config, ILogger<OpenAiInterpreter> logger)
+    public class OpenAiInterpreter
     {
-        _factory = factory;
-        _config = config;
-        _logger = logger;
-    }
+        private readonly IHttpClientFactory _factory;
+        private readonly IConfiguration _config;
+        private readonly ILogger<OpenAiInterpreter> _logger;
 
-    public async Task<string> InterpretAsync(string inputText)
-    {
-        var client = _factory.CreateClient();
-        var apiKey = _config["OpenAI:ApiKey"];
-        var model = _config["OpenAI:Model"] ?? "gpt-4o";
-
-        if (string.IsNullOrWhiteSpace(apiKey))
+        public OpenAiInterpreter(IHttpClientFactory factory, IConfiguration config, ILogger<OpenAiInterpreter> logger)
         {
-            _logger.LogError("OpenAI API key bulunamadı. 'OpenAI:ApiKey' config'e eklenmeli.");
-            return "API anahtarı eksik.";
+            _factory = factory;
+            _config = config;
+            _logger = logger;
         }
 
-        var prompt = """
-        Aşağıdaki OCR çıktısını analiz et ve sadece şu formatta JSON döndür:
-
+        /// <summary>
+        /// OCR metnini yorumlar ve OcrInterpretationDto döner.
+        /// </summary>
+        public async Task<OcrInterpretationDto?> InterpretAsync(string inputText, CancellationToken ct = default)
         {
-          "firmaAdi": "tam firma adı",
-          "belgeNumarasi": "fiş/fatura no",
-          "netTutar": decimal, // KDV hariç toplam
-          "kdvDetaylari": {
-            "%1":   { "net": decimal, "kdv": decimal },
-            "%10":  { "net": decimal, "kdv": decimal },
-            "%20":  { "net": decimal, "kdv": decimal }
-          }
-        }
+            var client = _factory.CreateClient();
+            var apiKey = _config["OpenAI:ApiKey"];
+            var model = _config["OpenAI:Model"] ?? "gpt-4o";
 
-        Sadece OCR içeriğinden çıkarılabilen oranları ekle. Virgül yerine nokta kullan. Açıklama yazma, sadece geçerli bir JSON üret.
-        """;
-
-        var requestBody = new
-        {
-            model,
-            messages = new[]
+            if (string.IsNullOrWhiteSpace(apiKey))
             {
-                new { role = "system", content = prompt },
-                new { role = "user", content = inputText }
+                _logger.LogError("OpenAI API key bulunamadı. 'OpenAI:ApiKey' config'e eklenmeli.");
+                return null;
             }
-        };
 
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions")
-        {
-            Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-
-        try
-        {
-            var response = await client.SendAsync(request);
-            var responseJson = await response.Content.ReadAsStringAsync();
-
-            _logger.LogInformation("OpenAI Raw Response: {0}", responseJson);
-
-            using var doc = JsonDocument.Parse(responseJson);
-
-            if (doc.RootElement.TryGetProperty("choices", out var choices) &&
-                choices.GetArrayLength() > 0 &&
-                choices[0].TryGetProperty("message", out var message) &&
-                message.TryGetProperty("content", out var contentElement))
+            // FIELD İSİMLERİ SENİN DTO'LARLA BİREBİR!
+            var systemPrompt = """
+            Aşağıdaki OCR çıktısını analiz et ve SADECE şu yapıda GEÇERLİ JSON döndür:
             {
-                var result = contentElement.GetString()?.Trim();
+              "CompanyName": "tam firma adı",
+              "InvoiceNumber": "fiş/fatura no",
+              "BaseAmount": number,
+              "LsVatDetails": {
+                "%1":  { "BaseAmount": number, "BaseVat": number },
+                "%10": { "BaseAmount": number, "BaseVat": number },
+                "%20": { "BaseAmount": number, "BaseVat": number }
+              }
+            }
+            Kurallar:
+            - Sadece bulabildiğin oranları koy.
+            - Sayılarda nokta kullan (örn: 976.43).
+            - Ekstra açıklama yok, sadece JSON.
+            """;
 
-                // Basit JSON doğrulama
-                if (!string.IsNullOrWhiteSpace(result) &&
-                    result.StartsWith("{") &&
-                    result.EndsWith("}"))
+            var body = new
+            {
+                model,
+                temperature = 0,
+                max_tokens = 600,
+                response_format = new { type = "json_object" }, // JSON zorlaması
+                messages = new object[]
                 {
-                    return result;
+                    new { role = "system", content = systemPrompt },
+                    new { role = "user",   content = inputText }
+                }
+            };
+
+            var req = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions")
+            {
+                Content = new StringContent(JsonConvert.SerializeObject(body), Encoding.UTF8, "application/json")
+            };
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+            try
+            {
+                using var resp = await client.SendAsync(req, ct);
+                var respText = await resp.Content.ReadAsStringAsync(ct);
+                _logger.LogInformation("OpenAI Raw Response: {resp}", respText);
+
+                var root = JObject.Parse(respText);
+                var content = root["choices"]?[0]?["message"]?["content"]?.ToString() ?? "";
+
+                // code-fence temizle
+                content = content.Replace("```json", "").Replace("```", "").Trim();
+
+                if (string.IsNullOrWhiteSpace(content) || !content.StartsWith("{") || !content.EndsWith("}"))
+                {
+                    _logger.LogWarning("Beklenen JSON content bulunamadı. Content: {content}", content);
+                    return null;
                 }
 
-                return $"⚠ Beklenen JSON formatı alınamadı:\n{result}";
-            }
+                // JSON'u DTO'ya çevir
+                var dto = JsonConvert.DeserializeObject<OcrInterpretationDto>(content);
+                if (dto == null)
+                    return null;
 
-            _logger.LogError("⚠ OpenAI response formatı beklenmiyor: {0}", responseJson);
-            return "OpenAI cevabı beklenen formatta değil.";
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "❌ OpenAI cevabı işlenirken hata oluştu.");
-            return $"OpenAI işlem hatası: {ex.Message}";
+                // KDV oranlarından eksik BaseAmount'ları tamamla (BaseAmount = BaseVat * 100 / yüzde)
+                if (dto.LsVatDetails != null)
+                {
+                    foreach (var kv in dto.LsVatDetails.ToList())
+                    {
+                        var key = (kv.Key ?? "").Trim().Replace("%", "");
+                        if (decimal.TryParse(key, NumberStyles.Any, CultureInfo.InvariantCulture, out var pct) && pct > 0)
+                        {
+                            var v = kv.Value ?? new VatDetailDto();
+                            if (v.BaseAmount == 0 && v.BaseVat > 0)
+                            {
+                                // Örn: %20 ve KDV=0.97 ise matrah = 0.97 * 100 / 20 = 4.85
+                                v.BaseAmount = Math.Round(v.BaseVat * 100m / pct, 2, MidpointRounding.AwayFromZero);
+                                dto.LsVatDetails[kv.Key] = v;
+                            }
+                        }
+                    }
+                }
+
+                // Üstteki BaseAmount (net toplam) yoksa/0 ise detaylardan topla
+                if (dto.BaseAmount <= 0 && dto.LsVatDetails != null)
+                {
+                    var sumNet = dto.LsVatDetails.Values.Sum(x => x?.BaseAmount ?? 0m);
+                    if (sumNet > 0) dto.BaseAmount = sumNet;
+                }
+
+                return dto;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "OpenAI interpret hatası");
+                return null;
+            }
         }
     }
 }

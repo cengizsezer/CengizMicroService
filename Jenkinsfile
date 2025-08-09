@@ -1,4 +1,4 @@
-﻿pipeline {
+pipeline {
   agent any
   triggers { githubPush() }   // Webhook geldiğinde tetikler
 

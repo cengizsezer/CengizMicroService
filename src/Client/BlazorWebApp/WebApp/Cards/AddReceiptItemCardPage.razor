@@ -1,5 +1,8 @@
 ﻿@page "/AddReceiptItemCardPage"
+@using Newtonsoft.Json
+@using WebApp.Shared.Dto
 @inject Radzen.DialogService dialogService
+@inject NavigationManager NavManager
 
 <style>
     #uploadWithDragAndDrop {
@@ -16,7 +19,6 @@
         }
 </style>
 
-
 <RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" Style="height: 100%;">
     <RadzenStack>
         <RadzenRow>
@@ -24,27 +26,28 @@
                 <RadzenText TextStyle="TextStyle.Subtitle1">Fiş Bilgileri</RadzenText>
                 <RadzenStack>
                     <RadzenFormField Text="Firma İsmi" Variant="@variant">
-                        <RadzenTextBox @bind-Value="@_componyName" />
+                        <RadzenTextBox @bind-Value="@_companyName" />
                     </RadzenFormField>
                     <RadzenFormField Text="Fiş No" Variant="@variant">
                         <RadzenNumeric @bind-Value="@_receiptNumber" />
                     </RadzenFormField>
                     <RadzenFormField Text="Hesap Kodu" Variant="@variant">
-                        <RadzenDropDownDataGrid Data=@companyNames @bind-Value="@dropDownDataGridValue" />
+                        <RadzenDropDownDataGrid Data="@companyNames" @bind-Value="@dropDownDataGridValue" />
                     </RadzenFormField>
                     <RadzenFormField Text="Masraf Açıklama" Variant="@variant">
-                        <RadzenTextBox @bind-Value="@_expenseDesciription" />
+                        <RadzenTextBox @bind-Value="@_expenseDescription" />
                     </RadzenFormField>
                 </RadzenStack>
             </RadzenColumn>
+
             <RadzenColumn Size="12" SizeMD="6" class="rz-p-4 rz-border-radius-1" Style="border: var(--rz-grid-cell-border)">
                 <RadzenText TextStyle="TextStyle.Subtitle1">Delivery Information</RadzenText>
                 <RadzenStack>
                     <RadzenFormField Text="Fiş Tarihi" Variant="@variant">
-                        <RadzenDatePicker @bind-Value="@date" ShowTime="@true" />
+                        <RadzenDatePicker @bind-Value="@date" ShowTime="true" />
                     </RadzenFormField>
                     <RadzenFormField Text="Oluşturulma Tarihi" Variant="@variant">
-                        <RadzenDatePicker @bind-Value="@date" ShowTime="@true" />
+                        <RadzenDatePicker @bind-Value="@createdAt" ShowTime="true" />
                     </RadzenFormField>
                     <RadzenFormField Text="Not" Variant="@variant">
                         <RadzenTextArea @bind-Value="@_note" Rows="4" />
@@ -52,65 +55,75 @@
                 </RadzenStack>
             </RadzenColumn>
         </RadzenRow>
+
         <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
             <RadzenText TextStyle="TextStyle.Subtitle1" class="rz-m-0">Masraf @ExpenseID Details</RadzenText>
-            <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Text=@($"{String.Format(new System.Globalization.CultureInfo("en-US"), "{0:C}", _totalValue)}") />
+            <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Text="@($"{String.Format(new System.Globalization.CultureInfo("en-US"), "{0:C}", _totalValue)}")" />
         </RadzenStack>
-        <RadzenDataGrid AllowFiltering="true" AllowPaging="true" AllowSorting="true" FilterPopupRenderMode="PopupRenderMode.OnDemand" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                        Data="@(_lsProductDetails)" ColumnWidth="200px" Density="Density.Compact" AllowAlternatingRows="false">
+
+        <RadzenDataGrid AllowFiltering="true" AllowPaging="true" AllowSorting="true"
+                        FilterPopupRenderMode="PopupRenderMode.OnDemand" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        Data="@_lsProductDetails" ColumnWidth="200px" Density="Density.Compact" AllowAlternatingRows="false">
             <Columns>
                 <RadzenDataGridColumn Property="@nameof(ProductDetail.Rank)" Title="Sıra" />
                 <RadzenDataGridColumn Property="@nameof(ProductDetail.TaxBase)" Title="Matrah" FormatString="{0:N2}" />
                 <RadzenDataGridColumn Property="@nameof(ProductDetail.VatRate)" Title="KDV Oran" FormatString="{0:P0}" />
                 <RadzenDataGridColumn Property="@nameof(ProductDetail.Vat)" Title="KDV Tutar" FormatString="{0:N2}" />
                 <RadzenDataGridColumn Property="@nameof(ProductDetail.Total)" Title="Toplam Tutar" FormatString="{0:N2}" />
-
             </Columns>
         </RadzenDataGrid>
     </RadzenStack>
+
     <RadzenCard Variant="Variant.Outlined">
-        <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Drag and drop files to upload</RadzenText>
-        <RadzenUpload id="uploadWithDragAndDrop" @ref="upload" ChooseText="Drag and drop here or click to choose files"
-                      Auto="false" Multiple="true" Url="upload/multiple" InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "select file" }})"
-                      Progress=@OnProgress Style="width: 100%" />
-        <RadzenButton Text="Upload" Click=@OnUpload class="rz-mt-4" />
+        <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Fiş Yükle</RadzenText>
+        <RadzenUpload id="uploadWithDragAndDrop"
+                      @ref="upload"
+                      Auto="false"
+                      Multiple="false"
+                      Accept="image/*"
+                      Url="@_ocrUrl"
+                      ParameterName="file"
+                      Progress="@OnProgress"
+                      Complete="@OnComplete"
+                      Style="width:100%" />
+        <RadzenButton Text="Upload" Click="@OnUpload" class="rz-mt-4" />
+        <RadzenText class="rz-mt-2">@_status</RadzenText>
     </RadzenCard>
+
     <RadzenStack Visible="@ShowClose" Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
         <RadzenButton Click="@((args) => dialogService.Close(true))" Variant="Variant.Flat" Text="Close" Style="width: 120px" />
     </RadzenStack>
 </RadzenStack>
+
 @code {
     [Parameter] public int ExpenseID { get; set; } = 1001;
     [Parameter] public bool ShowClose { get; set; } = true;
+
     Variant variant = Variant.Outlined;
-   
+
     private List<ProductDetail> _lsProductDetails = new();
     IEnumerable<string> companyNames;
 
-    private string _componyName = "Text";
-    private int _receiptNumber = 123;
-    private string _expenseDesciription = "";
-    private string _note="";
+    private string _companyName = "";
+    private int _receiptNumber = 0;
+    private string _expenseDescription = "";
+    private string _note = "";
     DateTime? date = DateTime.Today;
-    TimeSpan? timeSpan = new TimeSpan(5, 15, 30);
-    private decimal _totalValue = 1425.75m;
+    DateTime? createdAt = DateTime.Now;
+
+    private decimal _totalValue = 0m;
     private string dropDownDataGridValue = "";
 
+    private string _status = "";
     private RadzenUpload upload;
+
+    // OCR endpoint adresin:
+    // Prod: "https://www.dijitalmasraf.com/api/ocr/analyze"
+    // Lokal Gateway: "http://localhost:5000/api/ocr/analyze"
+    private string _ocrUrl = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
-        await base.OnInitializedAsync();
-        // Sahte verileri yükle
-       
-
-        _lsProductDetails = new List<ProductDetail>
-        {
-            new ProductDetail { Rank = 1, VatRate = 0.01f, Vat=100.20f, TaxBase=529.85f,Total=650f},
-            new ProductDetail { Rank = 2, VatRate = 0.20f,Vat=0.50f,TaxBase=10f,Total=12f }
-        };
-
-
         companyNames = new List<string>
         {
             "TEZ MEDIKAL",
@@ -121,37 +134,115 @@
             "TEZ YAZILIM"
         };
 
+        _lsProductDetails = new List<ProductDetail>(); // boş başlasın
+
+        _ocrUrl = NavManager.BaseUri.Contains("localhost")
+       ? "http://localhost:5000/ocr/analyze"
+       : "https://www.dijitalmasraf.com/api/ocr/analyze";
+
         await Task.CompletedTask;
     }
 
     public class ProductDetail
     {
         public int Rank { get; set; }
-        public float VatRate { get; set; }
-        public float Vat { get; set; }
-        public float TaxBase { get; set; }
-        public float Total { get; set; }
+        public decimal VatRate { get; set; }   // 0.01m, 0.20m
+        public decimal Vat { get; set; }       // KDV tutarı
+        public decimal TaxBase { get; set; }   // Matrah
+        public decimal Total { get; set; }     // Satır Toplam = Matrah + KDV
     }
 
-   
-
-   private void OnUpload()
-    {
-        upload.Upload();
-    }
+    // === OCR API'den gelen DTO'lar (client kopyası) ===
+  
+    // === Upload events ===
+    private void OnUpload() => upload?.Upload();
 
     private void OnProgress(UploadProgressArgs args)
     {
-        Console.WriteLine($"Upload progress: {args.Progress}% / {args.Loaded} of {args.Total} bytes.");
-
-        if (args.Progress == 100)
-        {
-            foreach (var file in args.Files)
-            {
-                Console.WriteLine($"Uploaded: {file.Name} / {file.Size} bytes");
-            }
-        }
+        _status = $"Yükleniyor: {args.Progress}% ({args.Loaded}/{args.Total} bayt)";
+        StateHasChanged();
     }
 
-   
+    private void OnComplete(UploadCompleteEventArgs args)
+    {
+        var raw = args.RawResponse ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            _status = "Sunucudan boş yanıt geldi.";
+            return;
+        }
+
+        try
+        {
+            var dto = JsonConvert.DeserializeObject<AnalyzeResponseDto>(raw);
+            if (dto?.Interpreted == null)
+            {
+                _status = "Interpretation boş döndü. " + raw.ToString();
+              
+                return;
+            }
+
+            var it = dto.Interpreted;
+
+            // Kart üst alanları doldur
+            _companyName = it.CompanyName ?? "";
+
+            // Fiş No metin olabilir; parse edebilirsek Numeric'e yazalım
+            if (!string.IsNullOrWhiteSpace(it.InvoiceNumber) && int.TryParse(it.InvoiceNumber, out var number))
+                _receiptNumber = number;
+
+            // Grid verilerini hazırla
+            _lsProductDetails.Clear();
+
+            decimal ParseRate(string key)
+            {
+                var s = (key ?? "").Trim().Replace("%", "");
+                return decimal.TryParse(s, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var pct)
+                    ? pct / 100m : 0m;
+            }
+
+            var rank = 1;
+            foreach (var kv in it.LsVatDetails.OrderBy(k => ParseRate(k.Key)))
+            {
+                var rate = ParseRate(kv.Key);
+                var v = kv.Value ?? new VatDetailDto();
+
+                var taxBase = v.BaseAmount;
+                var vat = v.BaseVat;
+
+                // Matrah boş/0 ve KDV > 0 ise oranla türet: matrah = kdv / rate
+                if (taxBase == 0 && vat > 0 && rate > 0)
+                    taxBase = Math.Round(vat / rate, 2, MidpointRounding.AwayFromZero);
+
+                var total = taxBase + vat;
+
+                _lsProductDetails.Add(new ProductDetail
+                {
+                    Rank = rank++,
+                    VatRate = rate,
+                    Vat = vat,
+                    TaxBase = taxBase,
+                    Total = total
+                });
+            }
+
+            // Badge: toplam brut ya da net+kdv
+            var totalNet = _lsProductDetails.Sum(x => x.TaxBase);
+            var totalVat = _lsProductDetails.Sum(x => x.Vat);
+            _totalValue = totalNet + totalVat;
+
+            // İstersen açıklamayı OCR’dan kırpıp yaz
+            _expenseDescription = dto.ExtractedText?.Length > 120
+                ? dto.ExtractedText.Substring(0, 120) + "..."
+                : dto.ExtractedText ?? "";
+
+            _status = "Yükleme ve analiz tamam.";
+        }
+        catch (Exception ex)
+        {
+            _status = $"JSON parse hatası: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
 }

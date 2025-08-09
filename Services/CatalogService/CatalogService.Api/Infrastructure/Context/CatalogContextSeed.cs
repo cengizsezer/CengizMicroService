@@ -117,78 +117,188 @@ namespace CatalogService.Api.Infrastructure.Context
         private IEnumerable<Personnel> GetPersonnelsFromCsv(string path)
         {
             var filePath = Path.Combine(path, "Personnels.txt");
-
             if (!File.Exists(filePath))
             {
                 Console.WriteLine($"[HATA] CSV dosyası bulunamadı: {filePath}");
                 yield break;
             }
 
-            var lines = File.ReadAllLines(filePath, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)).Skip(1);
-            int lineNumber = 2; // 1. satır header olduğu için
+            const int RequiredCols = 15; // 0..14
+            var allLines = File.ReadAllLines(filePath, new UTF8Encoding(false));
+            if (allLines.Length == 0) yield break;
 
-            foreach (var line in lines)
+            int lineNumber = 1;
+            foreach (var rawLine in allLines)
             {
-                if (string.IsNullOrWhiteSpace(line))
+                // Header'ı atla
+                if (lineNumber == 1 || rawLine.StartsWith("AD SOYAD", StringComparison.OrdinalIgnoreCase))
+                { lineNumber++; continue; }
+
+                if (string.IsNullOrWhiteSpace(rawLine))
                 {
                     Console.WriteLine($"[Uyarı] {lineNumber}. satır boş, atlanıyor.");
                     lineNumber++;
                     continue;
                 }
 
-                var fields = line.Split(';').Select(f => f.Trim()).ToList();
+                Personnel? person = null;
 
-                // Eksik sütunları "-" ile tamamla
-                while (fields.Count < 11)
-                    fields.Add("-");
-
-                if (fields.Count > 11)
+                try
                 {
-                    Console.WriteLine($"[Uyarı] {lineNumber}. satırda fazla sütun var. İlk 11 sütun alınacak.");
-                    fields = fields.Take(11).ToList();
+                    // ; veya , seç
+                    char delimiter = rawLine.Count(c => c == ';') >= rawLine.Count(c => c == ',') ? ';' : ',';
+                    var fields = rawLine.Split(delimiter).Select(f => (f ?? "").Trim().Trim('"')).ToList();
+
+                    while (fields.Count < RequiredCols) fields.Add(string.Empty);
+                    if (fields.Count > RequiredCols)
+                    {
+                        Console.WriteLine($"[Uyarı] {lineNumber}. satırda fazla sütun var. İlk {RequiredCols} kolon alınacak (toplam {fields.Count}).");
+                        fields = fields.Take(RequiredCols).ToList();
+                    }
+
+                    string F(int i) => i < fields.Count ? fields[i] ?? "" : "";
+
+                    person = new Personnel
+                    {
+                        FullName = F(0),
+                        NormalExpenseNumber = F(1),
+                        SalaryExpenseNumber = F(2),
+                        CaseExpenseNumber = F(3),
+                        Company = F(4),
+                        Department = F(5),
+                        Unit = F(6),
+                        NationalId = F(7),
+                        FirstName = F(8),
+                        LastName = F(9),
+                        Title = F(10),
+                        PhoneNumber = F(11),
+                        ExpenseCenter = F(12),
+                        Email = F(13),
+                        IBAN = F(14)
+                    };
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Uyarı] {lineNumber}. satır işlenemedi: {ex.Message}");
                 }
 
-                yield return new Personnel
-                {
-                    FullName = fields[0],
-                    NormalExpenseNumber = fields[1],
-                    SalaryExpenseNumber = fields[2],
-                    CaseExpenseNumber = fields[3],
-                    Company = fields[4],
-                    Department = fields[5],
-                    Unit = fields[6],
-                    NationalId = fields[7],
-                    FirstName = fields[8],
-                    LastName = fields[9],
-                    Title = fields[10],
-                    PhoneNumber = fields[11],
-                    ExpenseCenter = fields[12],
-                    Email = fields[13],
-                    IBAN = fields[14]
-                };
+                // yield'ı try-catch DIŞINDA çağır
+                if (person != null)
+                    yield return person;
 
                 lineNumber++;
             }
         }
 
 
+        //private IEnumerable<Personnel> GetPersonnelsFromCsv(string path)
+        //{
+        //    var filePath = Path.Combine(path, "Personnels.txt");
+
+        //    if (!File.Exists(filePath))
+        //    {
+        //        Console.WriteLine($"[HATA] CSV dosyası bulunamadı: {filePath}");
+        //        yield break;
+        //    }
+
+        //    var lines = File.ReadAllLines(filePath, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)).Skip(1);
+        //    int lineNumber = 2; // 1. satır header olduğu için
+
+        //    foreach (var line in lines)
+        //    {
+        //        if (string.IsNullOrWhiteSpace(line))
+        //        {
+        //            Console.WriteLine($"[Uyarı] {lineNumber}. satır boş, atlanıyor.");
+        //            lineNumber++;
+        //            continue;
+        //        }
+
+        //        var fields = line.Split(';').Select(f => f.Trim()).ToList();
+
+        //        // Eksik sütunları "-" ile tamamla
+        //        while (fields.Count < 11)
+        //            fields.Add("-");
+
+        //        if (fields.Count > 15)
+        //        {
+        //            Console.WriteLine($"[Uyarı] {lineNumber}. satırda fazla sütun var. İlk 11 sütun alınacak.");
+        //            fields = fields.Take(11).ToList();
+        //        }
+
+        //        yield return new Personnel
+        //        {
+        //            FullName = fields[0],
+        //            NormalExpenseNumber = fields[1],
+        //            SalaryExpenseNumber = fields[2],
+        //            CaseExpenseNumber = fields[3],
+        //            Company = fields[4],
+        //            Department = fields[5],
+        //            Unit = fields[6],
+        //            NationalId = fields[7],
+        //            FirstName = fields[8],
+        //            LastName = fields[9],
+        //            Title = fields[10],
+        //            PhoneNumber = fields[11],
+        //            ExpenseCenter = fields[12],
+        //            Email = fields[13],
+        //            IBAN = fields[14]
+        //        };
+
+        //        lineNumber++;
+        //    }
+        //}
+
+
 
         private IEnumerable<AccountingCode> GetAccountingCodesFromCsv(string path)
         {
             var filePath = Path.Combine(path, "AccountingCodes.txt");
-            var lines = File.ReadAllLines(filePath, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)).Skip(1);
-
-            foreach (var line in lines)
+            if (!File.Exists(filePath))
             {
-                var fields = line.Split(';');
+                Console.WriteLine($"[HATA] CSV dosyası bulunamadı: {filePath}");
+                yield break;
+            }
+
+            var allLines = File.ReadAllLines(filePath, new UTF8Encoding(false));
+            if (allLines.Length == 0) yield break;
+
+            // Header'ı okuyup ayraç tespiti
+            var header = allLines[0];
+            char delimiter = header.Contains(';') ? ';' : ',';
+
+            for (int i = 1; i < allLines.Length; i++)
+            {
+                var raw = allLines[i];
+                if (string.IsNullOrWhiteSpace(raw)) continue;
+
+                // Başındaki boşlukları ve NBSP karakterlerini temizle
+                var line = raw.Replace('\u00A0', ' ').TrimStart();
+
+                // Ayracı ilk geçtiği yerden böl (açıklama içinde ayraç varsa bozulmasın)
+                int sep = line.IndexOf(delimiter);
+                if (sep < 0)
+                {
+                    Console.WriteLine($"[ACC CSV] {i + 1}. satırda ayraç ({delimiter}) yok, atlanıyor. Satır: {line}");
+                    continue;
+                }
+
+                var code = line.Substring(0, sep).Trim().Trim('"');
+                var desc = line.Substring(sep + 1).Trim().Trim('"');
+
+                if (string.IsNullOrWhiteSpace(code))
+                {
+                    Console.WriteLine($"[ACC CSV] {i + 1}. satırda kod boş, atlanıyor.");
+                    continue;
+                }
 
                 yield return new AccountingCode
                 {
-                    Code = fields[0].Trim(),          // Hesap Kodu
-                    Description = fields[1].Trim()    // Açıklama
+                    Code = code,
+                    Description = desc
                 };
             }
         }
+
 
 
 

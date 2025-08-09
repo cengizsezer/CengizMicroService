@@ -35,5 +35,19 @@ namespace WebApp.Extensions
             var json = await response.Content.ReadAsStringAsync();
             return JsonConvert.DeserializeObject<T>(json);
         }
+
+        public static async Task<T?> PostFileAsync<T>(this HttpClient client, string url, Stream stream, string fileName, string formField = "file")
+        {
+            using var content = new MultipartFormDataContent();
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png"); // gerekirse dinamik
+            content.Add(fileContent, formField, fileName);
+
+            var res = await client.PostAsync(url, content);
+            if (!res.IsSuccessStatusCode) return default;
+
+            var json = await res.Content.ReadAsStringAsync();
+            return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(json);
+        }
     }
 }

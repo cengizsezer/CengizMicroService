@@ -51,6 +51,7 @@ namespace WebApp
             // Servisler
             builder.Services.AddTransient<IIdentityService, IdentityService>();
             builder.Services.AddTransient<IExpenseService, ExpenseService>();
+            builder.Services.AddTransient<IOcrService, OcrService>();
 
             await builder.Build().RunAsync();
         }

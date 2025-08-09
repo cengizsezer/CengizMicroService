@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
+using OCRService.Api.Contracts;
+using OCRService.Api.Contracts.Dtos;
 using OCRService.Api.Services;
-
-namespace OCRService.Api.Controllers;
+using System.Globalization;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -17,24 +19,36 @@ public class OcrController : ControllerBase
     }
 
     [HttpPost("analyze")]
-    public async Task<IActionResult> AnalyzeImage(IFormFile file)
+    public async Task<ActionResult<AnalyzeResponseDto>> AnalyzeImage([FromForm] IFormFile file, CancellationToken ct)
     {
-        if (file == null || file.Length == 0)
-            return BadRequest("Dosya zorunludur");
+        if (file is null || file.Length == 0) return BadRequest(new { error = "Dosya zorunludur" });
 
         await using var stream = file.OpenReadStream();
-
-        // ✅ Google Cloud Vision ile OCR metni çıkar
         var extractedText = await _ocr.ExtractTextAsync(stream);
-
-        // ✅ OpenAI ile metni yorumla (firma adı, tutar, kdv vs.)
-        var interpreted = await _openai.InterpretAsync(extractedText);
-
-        // ✅ Sonucu dön
-        return Ok(new
+        var interpreted = await _openai.InterpretAsync(extractedText, ct); // <-- OcrInterpretationDto?
+        Console.WriteLine("OpenAI raw JSON: " + interpreted);
+        if (interpreted == null)
         {
-            extractedText,
-            interpreted
+            interpreted = new OcrInterpretationDto
+            {
+                CompanyName = "",
+                InvoiceNumber = "",
+                BaseAmount = 0,
+                LsVatDetails = new Dictionary<string, VatDetailDto>()
+            };
+        }
+
+
+        Console.WriteLine("=== OCR Extracted Text ===");
+        Console.WriteLine(extractedText);
+        Console.WriteLine("=== Interpreted DTO ===");
+        Console.WriteLine(JsonConvert.SerializeObject(interpreted, Formatting.Indented));
+        return Ok(new AnalyzeResponseDto
+        {
+            ExtractedText = extractedText,
+            Interpreted = interpreted // null olabilir; UI'da kontrol et
         });
     }
+
 }
+

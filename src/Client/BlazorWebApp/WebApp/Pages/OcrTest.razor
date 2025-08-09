@@ -1,0 +1,99 @@
+﻿@page "/ocrtest"
+@using Newtonsoft.Json
+@using Newtonsoft.Json.Linq;
+@inject NavigationManager Nav
+
+<style>
+    #uploadWithDragAndDrop {
+        left: 0;
+        --rz-upload-button-bar-background-color: transparent;
+        --rz-upload-button-bar-padding: 0;
+    }
+    #uploadWithDragAndDrop .rz-fileupload-buttonbar .rz-fileupload-choose {
+        width: 100%;
+        text-align: center;
+        font-size: 16px;
+        padding: 100px 0;
+    }
+</style>
+
+<RadzenStack Gap="1rem" Orientation="Orientation.Vertical" Style="height:100%;">
+    <RadzenCard Variant="Variant.Outlined">
+        <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Fiş Yükle</RadzenText>
+
+        <RadzenUpload id="uploadWithDragAndDrop"
+                      @ref="upload"
+                      Auto="false"
+                      Multiple="false"
+                      Accept="image/*"
+                      Url="@_ocrUrl"
+                      ParameterName="file"
+                      Progress="@OnProgress"
+                      Complete="@OnComplete"
+                      Style="width:100%" />
+
+        <RadzenButton Text="Yükle" Click="@OnUpload" class="rz-mt-4" />
+        <RadzenText class="rz-mt-2">@_status</RadzenText>
+    </RadzenCard>
+
+    <RadzenCard Variant="Variant.Outlined">
+        <RadzenText TextStyle="TextStyle.Subtitle2">OCR Çıkan Metin</RadzenText>
+        <RadzenTextArea @bind-Value="_ocrText" Rows="10" Style="width:100%" />
+    </RadzenCard>
+
+    <RadzenCard Variant="Variant.Outlined">
+        <RadzenText TextStyle="TextStyle.Subtitle2">OpenAI Yorum (JSON)</RadzenText>
+        <RadzenTextArea @bind-Value="_interpretedPretty" Rows="12" Style="width:100%; font-family: Consolas, monospace;" />
+    </RadzenCard>
+</RadzenStack>
+
+@code
+{
+    private RadzenUpload upload;
+    private string _ocrText = string.Empty;
+    private string _interpretedPretty = string.Empty;
+    private string _status = string.Empty;
+
+    // Ortamına göre değiştir:
+    // Prod (Gateway): https://www.dijitalmasraf.com/api/ocr/analyze
+    // Lokal (Gateway): http://localhost:5000/ocr/analyze
+    private string _ocrUrl = "http://localhost:5000/ocr/analyze";
+
+    private void OnUpload() => upload?.Upload();
+
+    private void OnProgress(UploadProgressArgs a)
+    {
+        _status = $"Yükleniyor: {a.Progress}% ({a.Loaded}/{a.Total} bayt)";
+        StateHasChanged();
+    }
+
+    private void OnComplete(UploadCompleteEventArgs args)
+    {
+        var raw = args.RawResponse ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            _status = "Sunucudan boş yanıt geldi.";
+            return;
+        }
+
+        try
+        {
+            var obj = JObject.Parse(raw);
+
+            _ocrText = obj["extractedText"]?.ToString() ?? "";
+            _interpretedPretty = obj["interpreted"] != null
+                ? obj["interpreted"].ToString(Formatting.Indented)
+                : "";
+
+            _status = "Yükleme ve analiz tamam.";
+        }
+        catch (JsonReaderException)
+        {
+            _ocrText = raw;
+            _interpretedPretty = "";
+            _status = "Yanıt JSON değil; düz metin gösterildi.";
+        }
+
+        StateHasChanged();
+    }
+}
