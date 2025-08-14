@@ -1,0 +1,65 @@
+﻿@using Radzen
+@using WebApp.Domain.Models.User
+@using WebApp.Infrastructure
+@inject DialogService DialogService
+
+<RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" Style="height: 100%;">
+    <RadzenStack>
+        <RadzenRow>
+            <RadzenColumn Size="12" SizeMD="6" class="rz-p-4 rz-border-radius-1" Style="border: var(--rz-grid-cell-border)">
+                <RadzenText TextStyle="TextStyle.Subtitle1">Contact</RadzenText>
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                    <RadzenImage Path="/images/default-logo.png" Style="width: 80px; height: 80px; border-radius: 50%" />
+                    <RadzenStack Gap="0" class="rz-text-truncate">
+                        <RadzenText TextStyle="TextStyle.Overline" class="rz-mt-2 rz-my-0" Style="color: var(--rz-text-tertiary-color);">Firma Adı</RadzenText>
+                        <RadzenText TextStyle="TextStyle.Body1" class="rz-text-truncate"><b>@Firm?.Ad</b></RadzenText>
+                        <RadzenText TextStyle="TextStyle.Overline" class="rz-mt-4 rz-mb-0" Style="color: var(--rz-text-tertiary-color);">VKN</RadzenText>
+                        <RadzenText TextStyle="TextStyle.Body1" class="rz-text-truncate"><b>@Firm?.Vkn</b></RadzenText>
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" class="rz-p-4 rz-border-radius-1" Style="border: var(--rz-grid-cell-border)">
+                <RadzenText TextStyle="TextStyle.Subtitle1">Delivery Information</RadzenText>
+                <RadzenStack Gap="0" class="rz-text-truncate">
+                    <RadzenText TextStyle="TextStyle.Overline" class="rz-mt-2 rz-my-0" Style="color: var(--rz-text-tertiary-color);">Address</RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body1" class="rz-text-truncate"><b>""</b></RadzenText>
+                    <RadzenText TextStyle="TextStyle.Overline" class="rz-mt-2 rz-my-0" Style="color: var(--rz-text-tertiary-color);">Firma Kodu</RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body1" class="rz-text-truncate"><b>@Firm?.FirmaNo</b></RadzenText>
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+            <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Style="float:left; margin-right:8px;" Text=@($"{String.Format(new System.Globalization.CultureInfo("en-US"), "{0:C}", @Firm?.FirmaNo)}") />
+        </RadzenStack>
+        <RadzenDataGrid AllowFiltering="true" AllowPaging="true" AllowSorting="true" FilterPopupRenderMode="PopupRenderMode.OnDemand" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        Data="new List<FirmaDto> { Firm }" ColumnWidth="200px" Density="Density.Compact" AllowAlternatingRows="false">
+            <Columns>
+                <RadzenDataGridColumn Property="Ad" Title="Firma Adı" />
+                <RadzenDataGridColumn Property="Vkn" Title="VKN" />
+                <RadzenDataGridColumn Property="FirmaNo" Title="Firma No" />
+            </Columns>
+        </RadzenDataGrid>
+    </RadzenStack>
+    <RadzenStack Visible="@ShowClose" Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+        <RadzenButton Click="@((args) => DialogService.Close(true))" Variant="Variant.Flat" Text="Close" Style="width: 120px" />
+    </RadzenStack>
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+        @if (ShowContinue)
+        {
+            <RadzenButton Text="Devam" Icon="check_circle"
+                          ButtonStyle="ButtonStyle.Primary"
+                          Click="@(() => OnContinue.InvokeAsync(Firm))" />
+        }
+     
+    </RadzenStack>
+</RadzenStack>
+
+
+@code {
+    [Parameter] public FirmaDto? Firm { get; set; }
+    [Parameter] public bool ShowClose { get; set; } = true;
+    [Parameter] public bool ShowContinue { get; set; } = true;
+
+   
+    [Parameter] public EventCallback<FirmaDto?> OnContinue { get; set; }
+}

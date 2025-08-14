@@ -51,12 +51,16 @@ builder.Services.AddHealthChecks()
 builder.Services.ConfigureConsul(configuration);
 
 
-var visionKeyPath = configuration["GoogleVision:CredentialsPath"]
-                 ?? Environment.GetEnvironmentVariable("GOOGLE_VISION_CREDENTIALS");
+// Program.cs (builder oluşturduktan hemen sonra)
+var visionPath =
+    Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS") // CI & Docker
+    ?? configuration["GoogleVision:CredentialsPath"]                      // local config
+    ?? Environment.GetEnvironmentVariable("GOOGLE_VISION_CREDENTIALS");   // eski isim
 
-if (!string.IsNullOrEmpty(visionKeyPath))
+if (!string.IsNullOrWhiteSpace(visionPath))
 {
-    Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", visionKeyPath);
+    // Tek merkez: Vision lib bu env'i okur
+    Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", visionPath);
 }
 var app = builder.Build();
 

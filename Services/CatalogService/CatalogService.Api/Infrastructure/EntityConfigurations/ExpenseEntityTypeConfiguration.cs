@@ -52,7 +52,17 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
 
             builder.HasMany(e => e.ReceiptItems)
                    .WithOne(r => r.Expense)
-                   .HasForeignKey(r => r.ExpenseId);
+                   .HasForeignKey(r => r.ExpenseId)
+                   .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Property(e => e.TenantNo)
+              .IsRequired()
+              .HasMaxLength(16);
+
+            // Indexler
+            builder.HasIndex(e => new { e.TenantNo, e.ExpenseDate });
+            builder.HasIndex(e => new { e.TenantNo, e.PersonnelAccountingCode, e.ExpenseDate });
+            builder.HasIndex(e => new { e.TenantNo, e.ExpenseCode });
         }
     }
 }

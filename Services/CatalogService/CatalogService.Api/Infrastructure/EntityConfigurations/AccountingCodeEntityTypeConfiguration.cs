@@ -20,6 +20,13 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(ac => ac.Description)
                    .IsRequired()
                    .HasMaxLength(200);
+
+            builder.Property(ac => ac.TenantNo)
+               .IsRequired()
+               .HasMaxLength(16);
+
+            // Indexler
+            builder.HasIndex(ac => new { ac.TenantNo, ac.Code });
         }
     }
 }

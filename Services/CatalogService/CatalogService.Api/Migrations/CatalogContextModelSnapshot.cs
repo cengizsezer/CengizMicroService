@@ -40,7 +40,14 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("TenantNo")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantNo", "Code");
 
                     b.ToTable("AccountingCodes", "catalog");
                 });
@@ -95,6 +102,11 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("TenantNo")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(18,2)");
 
@@ -102,6 +114,12 @@ namespace CatalogService.Api.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantNo", "ExpenseCode");
+
+                    b.HasIndex("TenantNo", "ExpenseDate");
+
+                    b.HasIndex("TenantNo", "PersonnelAccountingCode", "ExpenseDate");
 
                     b.ToTable("Expenses", "catalog");
                 });
@@ -179,6 +197,11 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("TenantNo")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -190,6 +213,10 @@ namespace CatalogService.Api.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantNo", "FullName");
+
+                    b.HasIndex("TenantNo", "NationalId");
 
                     b.ToTable("Personnels", "catalog");
                 });
@@ -211,6 +238,11 @@ namespace CatalogService.Api.Migrations
                     b.Property<decimal>("TaxBase")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("TenantNo")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(18,2)");
 
@@ -223,6 +255,8 @@ namespace CatalogService.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ReceiptItemId");
+
+                    b.HasIndex("TenantNo", "ReceiptItemId");
 
                     b.ToTable("ProductDetails", "catalog");
                 });
@@ -271,6 +305,11 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("TenantNo")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(18,2)");
 
@@ -294,6 +333,10 @@ namespace CatalogService.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ExpenseId");
+
+                    b.HasIndex("TenantNo", "ExpenseId");
+
+                    b.HasIndex("TenantNo", "ReceiptDate");
 
                     b.ToTable("ReceiptItems", "catalog");
                 });

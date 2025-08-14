@@ -37,7 +37,15 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
 
             builder.HasOne(p => p.ReceiptItem)
                    .WithMany(r => r.ProductDetails)
-                   .HasForeignKey(p => p.ReceiptItemId);
+                   .HasForeignKey(p => p.ReceiptItemId)
+                   .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Property(p => p.TenantNo)
+             .IsRequired()
+             .HasMaxLength(16);
+
+            // Indexler
+            builder.HasIndex(p => new { p.TenantNo, p.ReceiptItemId });
         }
     }
 }

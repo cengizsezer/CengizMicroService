@@ -15,6 +15,7 @@
 		<PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
 		<PackageReference Include="Consul" Version="1.7.14.7" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.8" />
 
 		<!-- EF Core paketlerini aynı versiyonda tut -->
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.6" />

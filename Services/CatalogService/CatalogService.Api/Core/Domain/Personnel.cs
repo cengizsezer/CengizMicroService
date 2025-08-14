@@ -1,6 +1,8 @@
-﻿namespace CatalogService.Api.Core.Domain
+﻿using CatalogService.Api.Core.Base;
+
+namespace CatalogService.Api.Core.Domain
 {
-    public class Personnel
+    public class Personnel: TenantEntity
     {
         public int Id { get; set; }
         public string FullName { get; set; } = string.Empty;

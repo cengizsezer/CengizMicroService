@@ -1,0 +1,67 @@
+﻿@using Radzen
+@using WebApp.Cards
+@using WebApp.Infrastructure
+@using Blazored.LocalStorage
+@using WebApp.Domain.Models.User
+
+@inject DialogService DialogService
+@inject NavigationManager Nav
+@inject ILocalStorageService LocalStorage
+@inject AppStateManager AppState
+
+<RadzenStack class="rz-p-0 rz-p-md-12" Style="height:100%; width:100%;">
+    <RadzenCard class="rz-p-4"
+                Variant="Variant.Outlined"
+                >
+        <RadzenCarousel @ref="carousel"
+                        PagerOverlay="false"
+                        Interval="@interval"
+                        ButtonShade="Shade.Default"
+                        Style="height:500px"
+                        Auto="@auto">
+           
+            <Items>
+                @foreach (var f in Firms ?? Enumerable.Empty<FirmaDto>())
+                {
+                   
+                    <RadzenCarouselItem>
+                        <RadzenCard class="rz-w-75">
+                            <FirmCardPage Firm="@f"
+                                          ShowClose="false"
+                                          ShowContinue="true"
+                                          OnContinue="Continue" />
+                        </RadzenCard>
+                    </RadzenCarouselItem>
+                }
+            </Items>
+        </RadzenCarousel>
+    </RadzenCard>
+</RadzenStack>
+
+@* <RadzenCarouselItem Style="width:100%; height:100%;  display:flex; align-items:center; justify-content:center;"> *@
+
+@code {
+    RadzenCarousel? carousel;
+    bool auto = false;
+    double interval = 4000;
+    int selectedIndex;
+
+    [Parameter] public List<FirmaDto>? Firms { get; set; }
+
+    private async Task Continue(FirmaDto firm)
+    {
+        if (firm is null) return;
+
+        AppState.SelectedFirmId = firm.FirmaNo;
+        AppState.SelectedFirmName = firm.Ad;
+        AppState.FirmChanged(this);
+
+        await LocalStorage.SetItemAsync("SelectedFirmId", firm.FirmaNo);
+        await LocalStorage.SetItemAsync("SelectedFirmName", firm.Ad);
+
+        DialogService.Close(true);
+        Nav.NavigateTo("/home");
+    }
+}
+
+

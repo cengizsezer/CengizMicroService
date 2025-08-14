@@ -9,6 +9,8 @@ namespace WebApp.Infrastructure
     public class AppStateManager
     {
         public event Action<ComponentBase, string> StateChanged;
+        public string SelectedFirmId { get; set; } = string.Empty;
+        public string SelectedFirmName { get; set; } = string.Empty;
 
         public void UpdateCart(ComponentBase component)
         {
@@ -18,6 +20,13 @@ namespace WebApp.Infrastructure
         public void LoginChanged(ComponentBase component)
         {
             StateChanged?.Invoke(component, "login");
+        }
+
+       
+
+        public void FirmChanged(ComponentBase component)
+        {
+            StateChanged?.Invoke(component, "firmchanged");
         }
 
     }

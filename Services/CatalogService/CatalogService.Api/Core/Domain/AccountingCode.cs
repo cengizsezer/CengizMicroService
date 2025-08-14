@@ -1,6 +1,8 @@
-﻿namespace CatalogService.Api.Core.Domain
+﻿using CatalogService.Api.Core.Base;
+
+namespace CatalogService.Api.Core.Domain
 {
-    public class AccountingCode
+    public class AccountingCode: TenantEntity
     {
         public int Id { get; set; }
 

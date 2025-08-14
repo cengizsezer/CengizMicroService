@@ -1,11 +1,14 @@
 ﻿using CatalogService.Api.Core.Application.Mapping;
 using CatalogService.Api.Extensions;
 using CatalogService.Api.Infrastructure;
+using CatalogService.Api.Infrastructure.Accessor;
 using CatalogService.Api.Infrastructure.Context;
+using CatalogService.Api.Infrastructure.Interface;
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Serilog;
 
 var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
@@ -30,7 +33,6 @@ Log.Logger = new LoggerConfiguration()
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 builder.Configuration.AddConfiguration(configuration);
-//builder.WebHost.UseUrls("http://localhost:5004");
 
 if (env == "Docker")
 {
@@ -52,6 +54,8 @@ builder.Services.AddHealthChecks()
     .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy());
 builder.Services.ConfigureConsul(configuration);
 builder.Services.AddAutoMapper(typeof(ExpenseProfile));
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ITenantAccessor, HttpTenantAccessor>();
 var app = builder.Build();
 
 if (args.Contains("--seed-force"))
@@ -60,24 +64,39 @@ if (args.Contains("--seed-force"))
     var services = scope.ServiceProvider;
     var logger = services.GetRequiredService<ILogger<CatalogContextSeed>>();
     var envHost = services.GetRequiredService<IWebHostEnvironment>();
-    var context = services.GetRequiredService<CatalogContext>();
-
+    var options = services.GetRequiredService<DbContextOptions<CatalogContext>>();
     try
     {
-        logger.LogInformation("🧨 Seed-force başlatıldı: veritabanı yeniden oluşturulacak...");
+        // Şema + migration tek seferlik, tenant bağımsız bir context ile
+        //using (var ctxOnce = new CatalogContext(options, new FixedTenantAccessor("schema")))
+        //{
+        //    ctxOnce.Database.ExecuteSqlRaw(
+        //        "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'catalog') EXEC('CREATE SCHEMA catalog');");
+        //    ctxOnce.Database.Migrate();
+        //}
 
-        // ❗ Eski verileri ve şemayı komple silmek istiyorsan (dev ortamı için uygundur)
-        await context.Database.EnsureDeletedAsync();
-        logger.LogInformation("🗑️ Eski veritabanı silindi.");
+        using (var ctxOnce = new CatalogContext(options, new FixedTenantAccessor("schema")))
+        {
+            logger.LogInformation("🗑️ Mevcut catalog shema veritabanı siliniyor...");
+            //await ctxOnce.Database.EnsureDeletedAsync(); // tüm veritabanını siler
+            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[ProductDetails]");
+            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[ReceiptItems]");
+            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[Expenses]");
+            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[AccountingCodes]");
+            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[Personnels]");
+            logger.LogInformation("🧱 Migration uygulanıyor...");
+            await ctxOnce.Database.MigrateAsync(); // migration'ları sıfırdan uygular
+        }
 
-        // ❗ Veritabanını yeniden oluştur ve migration'ı uygula
-        await context.Database.MigrateAsync();
-        logger.LogInformation("🧱 Migration tamamlandı, veritabanı yeniden oluşturuldu.");
-
-        // ✅ Seed işlemi
         var seeder = new CatalogContextSeed();
-        await seeder.SeedAsync(context, envHost, logger, force: true);
-        logger.LogInformation("✅ Veritabanı seed işlemi tamamlandı (sadece seed).");
+        var tenants = new[] { "201", "106", "108", "105", "107" };
+
+        // 🔑 Her tenant için sabit accessor ile AYRI bir context
+        foreach (var t in tenants)
+        {
+            using var ctx = new CatalogContext(options, new FixedTenantAccessor(t));
+            await seeder.SeedAsync(ctx, envHost, logger, new[] { t }, force: true);
+        }
     }
     catch (Exception ex)
     {
@@ -85,29 +104,98 @@ if (args.Contains("--seed-force"))
     }
 
     return;
+    //try
+    //{
+    //    logger.LogInformation("🧨 Seed-force başlatıldı: veritabanı yeniden oluşturulacak...");
+
+    //    // ❗ Eski verileri ve şemayı komple silmek istiyorsan (dev ortamı için uygundur)
+    //    await context.Database.EnsureDeletedAsync();
+    //    logger.LogInformation("🗑️ Eski veritabanı silindi.");
+
+    //    // ❗ Veritabanını yeniden oluştur ve migration'ı uygula
+    //    await context.Database.MigrateAsync();
+    //    logger.LogInformation("🧱 Migration tamamlandı, veritabanı yeniden oluşturuldu.");
+
+    //    // ✅ Seed işlemi
+    //    var seeder = new CatalogContextSeed();
+    //    await seeder.SeedAsync(context, envHost, logger, force: true);
+    //    logger.LogInformation("✅ Veritabanı seed işlemi tamamlandı (sadece seed).");
+    //}
+    //catch (Exception ex)
+    //{
+    //    logger.LogError(ex, "❌ Seed-force sırasında hata oluştu.");
+    //}
+
+    //return;
 }
 
 // Migration & Seed
+//using (var scope = app.Services.CreateScope())
+//{
+//    var services = scope.ServiceProvider;
+//    var logger = services.GetRequiredService<ILogger<CatalogContextSeed>>();
+//    var envHost = services.GetRequiredService<IWebHostEnvironment>();
+//    var context = services.GetRequiredService<CatalogContext>();
+
+//    try
+//    {
+//        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'catalog') EXEC('CREATE SCHEMA catalog');");
+//        context.Database.Migrate();
+//        var seeder = new CatalogContextSeed();
+//        var tenants = new[] { "201", "106", "108", "105", "107" };
+//        await seeder.SeedAsync(context, envHost, logger, tenants, force: true);
+//    }
+//    catch (Exception ex)
+//    {
+//        logger.LogError(ex, "Migration veya Seed sırasında hata oluştu.");
+//    }
+//}
+
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
-    var logger = services.GetRequiredService<ILogger<CatalogContextSeed>>();
-    var envHost = services.GetRequiredService<IWebHostEnvironment>();
-    var context = services.GetRequiredService<CatalogContext>();
+    var sp = scope.ServiceProvider;
+    var logger = sp.GetRequiredService<ILogger<CatalogContextSeed>>();
+    var envHost = sp.GetRequiredService<IWebHostEnvironment>();
+    var options = sp.GetRequiredService<DbContextOptions<CatalogContext>>();
 
     try
     {
-        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'catalog') EXEC('CREATE SCHEMA catalog');");
-        context.Database.Migrate();
+        // Şema + migration tek seferlik, tenant bağımsız bir context ile
+        //using (var ctxOnce = new CatalogContext(options, new FixedTenantAccessor("schema")))
+        //{
+        //    ctxOnce.Database.ExecuteSqlRaw(
+        //        "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'catalog') EXEC('CREATE SCHEMA catalog');");
+        //    ctxOnce.Database.Migrate();
+        //}
+
+        using (var ctxOnce = new CatalogContext(options, new FixedTenantAccessor("schema")))
+        {
+            logger.LogInformation("🗑️ Mevcut catalog shema veritabanı siliniyor...");
+            //await ctxOnce.Database.EnsureDeletedAsync(); // tüm veritabanını siler
+            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[ProductDetails]");
+            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[ReceiptItems]");
+            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[Expenses]");
+            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[AccountingCodes]");
+            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[Personnels]");
+            logger.LogInformation("🧱 Migration uygulanıyor...");
+            await ctxOnce.Database.MigrateAsync(); // migration'ları sıfırdan uygular
+        }
+
         var seeder = new CatalogContextSeed();
-        await seeder.SeedAsync(context, envHost, logger);
+        var tenants = new[] { "201", "106", "108", "105", "107" };
+
+        // 🔑 Her tenant için sabit accessor ile AYRI bir context
+        foreach (var t in tenants)
+        {
+            using var ctx = new CatalogContext(options, new FixedTenantAccessor(t));
+            await seeder.SeedAsync(ctx, envHost, logger, new[] { t }, force: true);
+        }
     }
     catch (Exception ex)
     {
         logger.LogError(ex, "Migration veya Seed sırasında hata oluştu.");
     }
 }
-
 // Swagger
 if (app.Environment.IsDevelopment())
 {

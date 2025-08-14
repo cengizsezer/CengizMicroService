@@ -80,8 +80,8 @@ services:
       - ConsulConfig__ServiceAddress=http://c_ocrservice:5002
       - ConsulConfig__ServiceName=OCRService
       - ConsulConfig__ServiceId=OCR
-      - OpenAI__ApiKey=${OpenAI__ApiKey}
-      - GoogleVision__CredentialsPath=${GoogleVision__CredentialsPath}
+      - OpenAI__ApiKey=${OPENAI_API_KEY}
+      - GoogleVision__CredentialsPath=${GOOGLE_APPLICATION_CREDENTIALS}
     ports:
       - "5002:5002"
     networks:
@@ -97,7 +97,7 @@ services:
       - s_rabbitmq
       - s_sqlserver
     volumes:
-      - ./Services/OCRService/OCRService.Api/Config:/app/Config:ro
+      - ./Services/OCRService/OCRService.Api/Config:/app/Services/OCRService/OCRService.Api/Config:ro
 
 
   

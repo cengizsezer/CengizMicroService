@@ -14,16 +14,19 @@
           "content": {
             "multipart/form-data": {
               "schema": {
+                "required": [
+                  "File"
+                ],
                 "type": "object",
                 "properties": {
-                  "file": {
+                  "File": {
                     "type": "string",
                     "format": "binary"
                   }
                 }
               },
               "encoding": {
-                "file": {
+                "File": {
                   "style": "form"
                 }
               }
@@ -32,11 +35,97 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyzeResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyzeResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyzeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
           }
         }
       }
     }
   },
-  "components": { }
+  "components": {
+    "schemas": {
+      "AnalyzeResponseDto": {
+        "type": "object",
+        "properties": {
+          "extractedText": {
+            "type": "string",
+            "nullable": true
+          },
+          "interpreted": {
+            "$ref": "#/components/schemas/OcrInterpretationDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OcrInterpretationDto": {
+        "type": "object",
+        "properties": {
+          "companyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "invoiceNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "baseAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "lsVatDetails": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/VatDetailDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "VatDetailDto": {
+        "type": "object",
+        "properties": {
+          "baseAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "baseVat": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
 }

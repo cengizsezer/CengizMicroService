@@ -6,9 +6,7 @@ using Polly;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
-using System.Globalization;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -17,104 +15,157 @@ namespace CatalogService.Api.Infrastructure.Context
 {
     public class CatalogContextSeed
     {
-        public async Task SeedAsync(CatalogContext context, IWebHostEnvironment env, ILogger<CatalogContextSeed> logger, bool force = false)
+        /// <summary>
+        /// Çoklu tenant için seed. Örn: new[] { "201","106","108","105","107" }
+        /// </summary>
+        public async Task SeedAsync(
+            CatalogContext context,
+            IWebHostEnvironment env,
+            ILogger<CatalogContextSeed> logger,
+            IEnumerable<string> tenantNos,
+            bool force = false)
         {
             var policy = Policy.Handle<SqlException>()
                 .WaitAndRetryAsync(
                     retryCount: 3,
-                    sleepDurationProvider: retry => TimeSpan.FromSeconds(5),
-                    onRetry: (exception, timeSpan, retry, ctx) =>
+                    sleepDurationProvider: _ => TimeSpan.FromSeconds(5),
+                    onRetry: (ex, _, retry, __) =>
                     {
-                        logger.LogWarning(exception, "[{prefix}] Exception {ExceptionType} with message {Message} detected on attempt {retry} of {retries}", nameof(logger), exception.GetType().Name, exception.Message, retry, 3);
-                    }
-                );
+                        logger.LogWarning(ex,
+                            "[Seed] Retry {retry}/3: {Message}",
+                            retry, ex.Message);
+                    });
 
             var setupDirPath = Path.Combine(env.ContentRootPath, "Infrastructure", "Setup", "SeedFiles");
 
-            await policy.ExecuteAsync(() => ProcessSeeding(context, setupDirPath, logger, force));
+            foreach (var tenantNo in tenantNos.Distinct())
+            {
+                Console.WriteLine($"[Seed] Expense.TenantNo={tenantNo} {this.ToString()}");
+                await policy.ExecuteAsync(() => ProcessSeeding(context, setupDirPath, logger, tenantNo, force));
+            }
         }
 
+        // İstersen eski imzayı da korumak için bir helper bırakıyoruz:
+        public Task SeedAsync(CatalogContext context, IWebHostEnvironment env, ILogger<CatalogContextSeed> logger, bool force = false)
+            => SeedAsync(context, env, logger, new[] { "201" }, force); // default tek tenant; istersen değiştir
 
-
-        private async Task ProcessSeeding(CatalogContext context, string setupDirPath, ILogger logger, bool force)
+        private async Task ProcessSeeding(
+            CatalogContext context,
+            string setupDirPath,
+            ILogger logger,
+            string tenantNo,
+            bool force)
         {
-            Console.WriteLine("🚀 [Seeder] Seeding işlemi başladı...");
+            Console.WriteLine($"🚀 [Seeder] Tenant {tenantNo} seeding başladı…");
             Console.WriteLine($"📂 setupDirPath: {setupDirPath}");
             Console.WriteLine($"🧠 Database: {context.Database.GetDbConnection().ConnectionString}");
 
-            if (force || !context.Personnels.Any())
+            // ========== PERSONNEL ==========
+            bool hasPersonnels = await context.Personnels.IgnoreQueryFilters().AnyAsync(p => p.TenantNo == tenantNo);
+            if (force || !hasPersonnels)
             {
-                var personnels = GetPersonnelsFromCsv(setupDirPath).ToList();
-                Console.WriteLine($"[Seed] ✅ Personel sayısı: {personnels.Count}");
+                var personnels = GetPersonnelsFromCsv(setupDirPath, tenantNo)
+                    .Select(p => { p.TenantNo = tenantNo; return p; })
+                    .ToList();
 
-                await context.Personnels.AddRangeAsync(personnels);
-                Console.WriteLine("[Seed] 💾 Personeller ekleniyor...");
-
-                try
+                Console.WriteLine($"[Seed:{tenantNo}] ✅ Personel sayısı: {personnels.Count}");
+                if (personnels.Count > 0)
                 {
-                    await context.SaveChangesAsync();
-                    logger.LogInformation("[Seed] ✅ Personeller başarıyla kaydedildi.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("❌ Personelleri kaydederken hata oluştu!");
-                }
-            }
-            else
-            {
-                Console.WriteLine("[Seed] ℹ️ Personeller zaten mevcut, atlandı.");
-            }
-
-            if (force || !context.AccountingCodes.Any())
-            {
-                var accountingCodes = GetAccountingCodesFromCsv(setupDirPath).ToList();
-                Console.WriteLine($"[Seed] ✅ Muhasebe kodu sayısı: {accountingCodes.Count}");
-
-                await context.AccountingCodes.AddRangeAsync(accountingCodes);
-                Console.WriteLine("[Seed] 💾 Muhasebe kodları ekleniyor...");
-
-                try
-                {
-                    await context.SaveChangesAsync();
-                    Console.WriteLine("[Seed] ✅ Muhasebe kodları başarıyla kaydedildi.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("❌ Muhasebe kodlarını kaydederken hata oluştu!");
+                    await context.Personnels.AddRangeAsync(personnels);
+                    try
+                    {
+                        await context.SaveChangesAsync();
+                        logger.LogInformation("[Seed:{Tenant}] ✅ Personeller kaydedildi.", tenantNo);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"❌ ({tenantNo}) Personeller kaydedilirken hata: {ex.Message}");
+                    }
                 }
             }
             else
             {
-                Console.WriteLine("[Seed] ℹ️ Muhasebe kodları zaten mevcut, atlandı.");
+                Console.WriteLine($"[Seed:{tenantNo}] ℹ️ Personeller zaten mevcut, atlandı.");
             }
 
-            if (force || !context.Expenses.Any())
+            // ========== ACCOUNTING CODES ==========
+            bool hasAcc = await context.AccountingCodes.IgnoreQueryFilters().AnyAsync(a => a.TenantNo == tenantNo);
+            if (force || !hasAcc)
             {
-                var expenses = GetExpensesFromFiles(setupDirPath).ToList();
-                Console.WriteLine($"[Seed] ✅ Masraf kaydı sayısı: {expenses.Count}");
+                var accountingCodes = GetAccountingCodesFromCsv(setupDirPath, tenantNo)
+                    .Select(a => { a.TenantNo = tenantNo; return a; })
+                    .ToList();
 
-                await context.Expenses.AddRangeAsync(expenses);
-                Console.WriteLine("[Seed] 💾 Masraflar ekleniyor...");
-
-                try
+                Console.WriteLine($"[Seed:{tenantNo}] ✅ Muhasebe kodu sayısı: {accountingCodes.Count}");
+                if (accountingCodes.Count > 0)
                 {
-                    await context.SaveChangesAsync();
-                    Console.WriteLine("[Seed] ✅ Masraflar başarıyla kaydedildi.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine( "❌ Masrafları kaydederken hata oluştu!");
+                    await context.AccountingCodes.AddRangeAsync(accountingCodes);
+                    try
+                    {
+                        await context.SaveChangesAsync();
+                        Console.WriteLine($"[Seed:{tenantNo}] ✅ Muhasebe kodları kaydedildi.");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"❌ ({tenantNo}) Muhasebe kodları kaydedilirken hata: {ex.Message}");
+                    }
                 }
             }
             else
             {
-                Console.WriteLine("[Seed] ℹ️ Masraflar zaten mevcut, atlandı.");
+                Console.WriteLine($"[Seed:{tenantNo}] ℹ️ Muhasebe kodları zaten mevcut, atlandı.");
             }
 
-            Console.WriteLine("🏁 [Seeder] Seeding işlemi tamamlandı.");
+            // ========== EXPENSES (ReceiptItem + ProductDetail ile birlikte) ==========
+            bool hasExpenses = await context.Expenses.IgnoreQueryFilters().AnyAsync(e => e.TenantNo == tenantNo);
+            if (force || !hasExpenses)
+            {
+                var expenses = GetExpensesFromFiles(setupDirPath, tenantNo)
+                    .Select(e =>
+                    {
+                        e.TenantNo = tenantNo;
+                        if (e.ReceiptItems != null)
+                        {
+                            foreach (var r in e.ReceiptItems)
+                            {
+                                r.TenantNo = tenantNo;
+                                if (r.ProductDetails != null)
+                                {
+                                    foreach (var pd in r.ProductDetails)
+                                        pd.TenantNo = tenantNo;
+                                }
+                            }
+                        }
+                        return e;
+                    })
+                    .ToList();
+
+                Console.WriteLine($"[Seed:{tenantNo}] ✅ Masraf sayısı: {expenses.Count}");
+                if (expenses.Count > 0)
+                {
+                    await context.Expenses.AddRangeAsync(expenses);
+                    try
+                    {
+                        await context.SaveChangesAsync();
+                        Console.WriteLine($"[Seed:{tenantNo}] ✅ Masraflar kaydedildi.");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"❌ ({tenantNo}) Masraflar kaydedilirken hata: {ex.Message}");
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[Seed:{tenantNo}] ℹ️ Masraflar zaten mevcut, atlandı.");
+            }
+
+            Console.WriteLine($"🏁 [Seeder] Tenant {tenantNo} tamamlandı.");
         }
 
-        private IEnumerable<Personnel> GetPersonnelsFromCsv(string path)
+        // ---------------- CSV PARSERS (Aynen bırakıldı) ----------------
+
+        private IEnumerable<Personnel> GetPersonnelsFromCsv(string path, string tenantNo)
         {
             var filePath = Path.Combine(path, "Personnels.txt");
             if (!File.Exists(filePath))
@@ -130,7 +181,6 @@ namespace CatalogService.Api.Infrastructure.Context
             int lineNumber = 1;
             foreach (var rawLine in allLines)
             {
-                // Header'ı atla
                 if (lineNumber == 1 || rawLine.StartsWith("AD SOYAD", StringComparison.OrdinalIgnoreCase))
                 { lineNumber++; continue; }
 
@@ -142,10 +192,8 @@ namespace CatalogService.Api.Infrastructure.Context
                 }
 
                 Personnel? person = null;
-
                 try
                 {
-                    // ; veya , seç
                     char delimiter = rawLine.Count(c => c == ';') >= rawLine.Count(c => c == ',') ? ';' : ',';
                     var fields = rawLine.Split(delimiter).Select(f => (f ?? "").Trim().Trim('"')).ToList();
 
@@ -160,7 +208,7 @@ namespace CatalogService.Api.Infrastructure.Context
 
                     person = new Personnel
                     {
-                        FullName = F(0),
+                        FullName = $"{F(0)}_{tenantNo}",
                         NormalExpenseNumber = F(1),
                         SalaryExpenseNumber = F(2),
                         CaseExpenseNumber = F(3),
@@ -182,7 +230,6 @@ namespace CatalogService.Api.Infrastructure.Context
                     Console.WriteLine($"[Uyarı] {lineNumber}. satır işlenemedi: {ex.Message}");
                 }
 
-                // yield'ı try-catch DIŞINDA çağır
                 if (person != null)
                     yield return person;
 
@@ -190,67 +237,7 @@ namespace CatalogService.Api.Infrastructure.Context
             }
         }
 
-
-        //private IEnumerable<Personnel> GetPersonnelsFromCsv(string path)
-        //{
-        //    var filePath = Path.Combine(path, "Personnels.txt");
-
-        //    if (!File.Exists(filePath))
-        //    {
-        //        Console.WriteLine($"[HATA] CSV dosyası bulunamadı: {filePath}");
-        //        yield break;
-        //    }
-
-        //    var lines = File.ReadAllLines(filePath, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)).Skip(1);
-        //    int lineNumber = 2; // 1. satır header olduğu için
-
-        //    foreach (var line in lines)
-        //    {
-        //        if (string.IsNullOrWhiteSpace(line))
-        //        {
-        //            Console.WriteLine($"[Uyarı] {lineNumber}. satır boş, atlanıyor.");
-        //            lineNumber++;
-        //            continue;
-        //        }
-
-        //        var fields = line.Split(';').Select(f => f.Trim()).ToList();
-
-        //        // Eksik sütunları "-" ile tamamla
-        //        while (fields.Count < 11)
-        //            fields.Add("-");
-
-        //        if (fields.Count > 15)
-        //        {
-        //            Console.WriteLine($"[Uyarı] {lineNumber}. satırda fazla sütun var. İlk 11 sütun alınacak.");
-        //            fields = fields.Take(11).ToList();
-        //        }
-
-        //        yield return new Personnel
-        //        {
-        //            FullName = fields[0],
-        //            NormalExpenseNumber = fields[1],
-        //            SalaryExpenseNumber = fields[2],
-        //            CaseExpenseNumber = fields[3],
-        //            Company = fields[4],
-        //            Department = fields[5],
-        //            Unit = fields[6],
-        //            NationalId = fields[7],
-        //            FirstName = fields[8],
-        //            LastName = fields[9],
-        //            Title = fields[10],
-        //            PhoneNumber = fields[11],
-        //            ExpenseCenter = fields[12],
-        //            Email = fields[13],
-        //            IBAN = fields[14]
-        //        };
-
-        //        lineNumber++;
-        //    }
-        //}
-
-
-
-        private IEnumerable<AccountingCode> GetAccountingCodesFromCsv(string path)
+        private IEnumerable<AccountingCode> GetAccountingCodesFromCsv(string path, string tenantNo)
         {
             var filePath = Path.Combine(path, "AccountingCodes.txt");
             if (!File.Exists(filePath))
@@ -262,7 +249,6 @@ namespace CatalogService.Api.Infrastructure.Context
             var allLines = File.ReadAllLines(filePath, new UTF8Encoding(false));
             if (allLines.Length == 0) yield break;
 
-            // Header'ı okuyup ayraç tespiti
             var header = allLines[0];
             char delimiter = header.Contains(';') ? ';' : ',';
 
@@ -271,10 +257,8 @@ namespace CatalogService.Api.Infrastructure.Context
                 var raw = allLines[i];
                 if (string.IsNullOrWhiteSpace(raw)) continue;
 
-                // Başındaki boşlukları ve NBSP karakterlerini temizle
                 var line = raw.Replace('\u00A0', ' ').TrimStart();
 
-                // Ayracı ilk geçtiği yerden böl (açıklama içinde ayraç varsa bozulmasın)
                 int sep = line.IndexOf(delimiter);
                 if (sep < 0)
                 {
@@ -299,10 +283,7 @@ namespace CatalogService.Api.Infrastructure.Context
             }
         }
 
-
-
-
-        private IEnumerable<Expense> GetExpensesFromFiles(string contentPath)
+        private IEnumerable<Expense> GetExpensesFromFiles(string contentPath, string tenantNo)
         {
             var expenses = new List<Expense>();
             var expenseLines = File.ReadAllLines(Path.Combine(contentPath, "Expenses.txt")).Skip(1);
@@ -317,7 +298,7 @@ namespace CatalogService.Api.Infrastructure.Context
                 var expense = new Expense
                 {
                     ExpenseCode = expenseCode,
-                    PersonnelFullName = fields[1].Trim(),
+                    PersonnelFullName = $"{fields[1].Trim()}_{tenantNo}",
                     PersonnelAccountingCode = fields[2].Trim(),
                     ExpenseDate = DateTime.Parse(fields[3]),
                     ProjectCode = fields[4].Trim(),
@@ -331,7 +312,7 @@ namespace CatalogService.Api.Infrastructure.Context
                     ReceiptItems = new List<ReceiptItem>()
                 };
 
-                var relatedReceipts = receiptLines.Where(r => r[0] == expenseCode);
+                var relatedReceipts = receiptLines.Where(r => r[0].Trim() == expenseCode);
                 foreach (var r in relatedReceipts)
                 {
                     var receipt = new ReceiptItem
@@ -340,7 +321,7 @@ namespace CatalogService.Api.Infrastructure.Context
                         Type = r[1].Trim(),
                         AccountingCode = r[2].Trim(),
                         AccountingCodeDescription = r[3].Trim(),
-                        Description = r[4].Trim(),
+                        Description = $"{r[4].Trim()}_{tenantNo}",
                         Quantity = 1,
                         Unit = "Adet",
                         TotalAmount = decimal.Parse(r[5]),
@@ -350,7 +331,7 @@ namespace CatalogService.Api.Infrastructure.Context
                         ProductDetails = new List<ProductDetail>()
                     };
 
-                    var relatedProducts = productLines.Where(p => p[0] == r[7].Trim());
+                    var relatedProducts = productLines.Where(p => p[0].Trim() == r[7].Trim());
                     int rank = 1;
                     foreach (var p in relatedProducts)
                     {
@@ -373,8 +354,5 @@ namespace CatalogService.Api.Infrastructure.Context
 
             return expenses;
         }
-
     }
 }
-
-

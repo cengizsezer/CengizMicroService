@@ -25,12 +25,13 @@ namespace WebApp
             builder.Services.AddBlazoredLocalStorage();
             builder.Services.AddRadzenComponents();
             builder.Services.AddBlazoredSessionStorage();
+            builder.Services.AddScoped<Radzen.DialogService>();
             // Auth
             builder.Services.AddScoped<AuthenticationStateProvider, AuthStateProvider>();
             builder.Services.AddAuthorizationCore();
             builder.Services.AddScoped<AuthTokenHandler>();
             builder.Services.AddSingleton<AppStateManager>();
-
+            builder.Services.AddScoped<TenantHeaderHandler>();
             // Ortam bazlı API adresi
             var apiBaseAddress = builder.HostEnvironment.IsDevelopment()
                 ? "http://localhost:5000/"
@@ -40,7 +41,7 @@ namespace WebApp
             builder.Services.AddHttpClient("ApiGatewayHttpClient", client =>
             {
                 client.BaseAddress = new Uri(apiBaseAddress);
-            }).AddHttpMessageHandler<AuthTokenHandler>();
+            }).AddHttpMessageHandler<AuthTokenHandler>().AddHttpMessageHandler<TenantHeaderHandler>();
 
             builder.Services.AddScoped(sp =>
             {

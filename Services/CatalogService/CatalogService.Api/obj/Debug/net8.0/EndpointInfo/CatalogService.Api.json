@@ -287,6 +287,10 @@
       "Expense": {
         "type": "object",
         "properties": {
+          "tenantNo": {
+            "type": "string",
+            "nullable": true
+          },
           "id": {
             "type": "integer",
             "format": "int32"
@@ -471,6 +475,10 @@
       "ProductDetail": {
         "type": "object",
         "properties": {
+          "tenantNo": {
+            "type": "string",
+            "nullable": true
+          },
           "id": {
             "type": "integer",
             "format": "int32"
@@ -545,6 +553,10 @@
       "ReceiptItem": {
         "type": "object",
         "properties": {
+          "tenantNo": {
+            "type": "string",
+            "nullable": true
+          },
           "id": {
             "type": "integer",
             "format": "int32"

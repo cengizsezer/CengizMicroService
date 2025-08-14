@@ -18,11 +18,21 @@
     "Order": 0,
     "Parameters": [
       {
-        "Name": "loginRequestModel",
+        "Name": "model",
         "Type": "IdentityService.Application.Models.LoginRequestModel",
         "IsRequired": true
       }
     ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "IdentityService.Controllers.AuthController",
+    "Method": "Me",
+    "RelativePath": "api/Auth/me",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
     "ReturnTypes": []
   },
   {

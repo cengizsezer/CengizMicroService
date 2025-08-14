@@ -1,7 +1,9 @@
 ﻿#nullable enable
+using CatalogService.Api.Core.Base;
+
 namespace CatalogService.Api.Core.Domain
 {
-    public class ProductDetail
+    public class ProductDetail: TenantEntity
     {
         public int Id { get; set; }
 

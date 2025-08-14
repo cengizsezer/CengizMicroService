@@ -25,8 +25,8 @@ namespace CatalogService.Api.Infrastructure.Context
 
             var optionsBuilder = new DbContextOptionsBuilder<CatalogContext>()
                 .UseSqlServer(connectionString);
-
-            return new CatalogContext(optionsBuilder.Options);
+            var tenant = new DesignTimeTenantAccessor();
+            return new CatalogContext(optionsBuilder.Options, tenant);
         }
     }
 }

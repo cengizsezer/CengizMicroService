@@ -3,113 +3,39 @@
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
 @using WebApp.Application.Services.Interfaces
+@using Blazored.LocalStorage
+@using Radzen
+@using WebApp.Infrastructure
+@using WebApp.Pages.SubPages
 @inject NavigationManager NavigationManager
 @inject IIdentityService IdentityService
-@inject Microsoft.JSInterop.IJSRuntime JSRuntime
+@inject ILocalStorageService LocalStorage
+@inject DialogService DialogService
+@inject AppStateManager AppState
+@using WebApp.Domain.Models.User
 
 <style>
-    .login-container {
-        display: flex;
-        min-height: 100vh;
-        width: 100vw;
-    }
-
-    .login-left {
-        position: relative;
-        width: 66.66vw;
-        height: 100vh;
-        background-color: #f5f7fa;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 2rem;
-        text-align: center;
-        overflow: hidden;
-    }
-
-    .login-image {
-        width: 120%;
-        height: 120%;
-        object-fit: cover;
-        display: block;
-    }
-
-    .login-title-on-image {
-        position: absolute;
-        bottom: 5%;
-        left: 50%;
-        transform: translateX(-50%);
-        font-weight: 800;
-        font-size: 2rem;
-        color: white;
-        text-shadow: 0 0 10px rgba(0, 123, 255, 0.8);
-        z-index: 2;
-        text-align: center;
-    }
-
-    .login-right {
-        width: 33.33vw;
-        height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem;
-        background: linear-gradient(to bottom right, #f0f4ff, #ffffff);
-    }
-
-    .login-card {
-        width: 100%;
-        max-width: 600px;
-        padding: 2rem;
-        border-radius: 8px;
-        /* box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); */
-        background-color: transparent;
-    }
-
-    .login-logo-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-bottom: 10rem;
-        margin-top: -3rem;
-    }
-
-    .login-logo {
-        max-height: 200px;
-        width: auto;
-    }
-
-    .login-title {
-        margin-bottom: 1.5rem;
-        text-align: center;
-    }
-
-    .alternative-login {
-        text-align: center;
-        margin: 1rem 0;
-    }
-
-    .login-options {
-        display: flex;
-        align-items: center;
-        margin-bottom: 1rem;
-    }
-
-    .RadzenTextBox,
-    .RadzenPassword,
-    .RadzenButton {
-        width: 130% !important;}
+    .login-container { display:flex; min-height:100vh; width:100vw; }
+    .login-left { position:relative; width:66.66vw; height:100vh; background:#f5f7fa; display:flex; justify-content:center; align-items:center; padding:2rem; text-align:center; overflow:hidden; }
+    .login-image { width:120%; height:120%; object-fit:cover; display:block; }
+    .login-title-on-image { position:absolute; bottom:5%; left:50%; transform:translateX(-50%); font-weight:800; font-size:2rem; color:white; text-shadow:0 0 10px rgba(0,123,255,.8); z-index:2; text-align:center; }
+    .login-right { width:33.33vw; height:100vh; display:flex; align-items:center; justify-content:center; padding:2rem; background:linear-gradient(to bottom right,#f0f4ff,#fff); }
+    .login-card { width:100%; max-width:600px; padding:2rem; border-radius:8px; background-color:transparent; }
+    .login-logo-container { display:flex; justify-content:center; align-items:center; margin-bottom:10rem; margin-top:-3rem; }
+    .login-logo { max-height:200px; width:auto; }
+    .login-title { margin-bottom:1.5rem; text-align:center; }
+    .alternative-login { text-align:center; margin:1rem 0; }
+    .login-options { display:flex; align-items:center; margin-bottom:1rem; }
+    .RadzenTextBox, .RadzenPassword, .RadzenButton { width:130% !important; }
 </style>
 
 <div class="login-container">
     <div class="login-left">
         <img src="img/Login.jpeg" alt="Digital Accounting" class="login-image" />
-        @* <h2 class="login-title-on-image">DİJİTAL<br />MASRAF</h2> *@
     </div>
 
     <div class="login-right">
         <div class="login-card">
-            <!-- 🟦 BURASI: Logo alanı eklendi -->
             <div class="login-logo-container">
                 <img src="img/LogoWithText.png" alt="Dijital Masraf Logo" class="login-logo" />
             </div>
@@ -121,37 +47,37 @@
             <div class="alternative-login">
                 <RadzenText>
                     Firma Kodu veya Kullanıcı Kodu ile mi giriş yapıyorsunuz?
-                    <RadzenLink Text="Buraya tıklayınız" Path="#" Style="color: #3b82f6; margin-left: 5px;" />
+                    <RadzenLink Text="Buraya tıklayınız" Path="#" Style="color:#3b82f6; margin-left:5px;" />
                 </RadzenText>
             </div>
 
             @if (!string.IsNullOrEmpty(errorMessage))
             {
-                <RadzenLabel Text="@errorMessage" Style="color: #d32f2f; margin-bottom: 12px; text-align: center;" />
+                <RadzenLabel Text="@errorMessage" Style="color:#d32f2f; margin-bottom:12px; text-align:center;" />
             }
 
             <EditForm EditContext="@loginEditContext" OnValidSubmit="@OnLogin">
                 <DataAnnotationsValidator />
 
-                <RadzenTextBox @bind-Value="loginModel.Username" Placeholder="Kullanıcı Adı (veya E-posta)" Style="width: 100%; margin-bottom: 1rem;" Name="Username" />
+                <RadzenTextBox @bind-Value="loginModel.Username" Placeholder="Kullanıcı Adı (veya E-posta)" Style="width:100%; margin-bottom:1rem;" Name="Username" />
                 <ValidationMessage For="@(() => loginModel.Username)" />
 
-                <RadzenPassword @bind-Value="loginModel.Password" Placeholder="Şifre" Style="width: 100%; margin-bottom: 1rem;" Name="Password" />
+                <RadzenPassword @bind-Value="loginModel.Password" Placeholder="Şifre" Style="width:100%; margin-bottom:1rem;" Name="Password" />
                 <ValidationMessage For="@(() => loginModel.Password)" />
 
                 <div class="login-options">
-                    <RadzenCheckBox @bind-Value="rememberMe" Style="margin-right: 5px;" />
+                    <RadzenCheckBox @bind-Value="rememberMe" Style="margin-right:5px;" />
                     <RadzenLabel Text="Beni Hatırla" />
                 </div>
 
-                <RadzenLink Text="Şifremi Unuttum" Path="#" Style="color: #3b82f6; display: block; text-align: right; margin-bottom: 1rem;" />
+                <RadzenLink Text="Şifremi Unuttum" Path="#" Style="color:#3b82f6; display:block; text-align:right; margin-bottom:1rem;" />
 
                 <RadzenButton ButtonType="ButtonType.Submit" Disabled="@isLoading"
-                               Style="width: 100%; background-color: #3b82f6; color: white; font-weight: 600; border-radius: 25px; padding: 10px;">
+                              Style="width:100%; background-color:#3b82f6; color:white; font-weight:600; border-radius:25px; padding:10px;">
                     @if (isLoading)
                     {
-                        <div style="display: flex; align-items: center; justify-content: center;">
-                            <RadzenProgressCircle ShowValue="false" Style="width: 20px; height: 20px; margin-right: 8px;" />
+                        <div style="display:flex; align-items:center; justify-content:center;">
+                            <RadzenProgressCircle ShowValue="false" Style="width:20px; height:20px; margin-right:8px;" />
                             <span>Giriş Yapılıyor...</span>
                         </div>
                     }
@@ -162,10 +88,10 @@
                 </RadzenButton>
             </EditForm>
 
-            <div class="alternative-login" style="margin-top: 2rem;">
+            <div class="alternative-login" style="margin-top:2rem;">
                 <RadzenText>
                     Hesabınız yok mu?
-                    <RadzenLink Text="Kayıt Ol" Path="/register" Style="color: #3b82f6; margin-left: 5px;" />
+                    <RadzenLink Text="Kayıt Ol" Path="/register" Style="color:#3b82f6; margin-left:5px;" />
                 </RadzenText>
             </div>
         </div>
@@ -205,15 +131,41 @@
 
         try
         {
-            var success = await IdentityService.Login(loginModel.Username, loginModel.Password, rememberMe);
+            var result = await IdentityService.Login(loginModel.Username, loginModel.Password, rememberMe);
+            if (result is null) { errorMessage = "Geçersiz kullanıcı adı veya şifre."; return; }
 
-            if (success)
+            if (string.Equals(result.Role, "MaliIsler", StringComparison.OrdinalIgnoreCase) &&
+                result.Firmalar is not null && result.Firmalar.Count > 1)
             {
+                var firmsVm = result.Firmalar
+                    .Select(f => new FirmaDto { FirmaNo = f.FirmaNo, Ad = f.Ad, Vkn = f.Vkn })
+                    .ToList();
+
+                await DialogService.OpenAsync<FirmSelectDialog>(
+                    "Firma Seçimi",
+                    new Dictionary<string, object> { ["Firms"] = firmsVm },
+                    new DialogOptions
+                    {
+                        Width = "60vw",   // Tüm ekran genişliği
+                        Height = "80vh",  // Tüm ekran yüksekliği
+                        // Style = "padding:0;" // Kenar boşluğunu sıfırla
+                    }
+            );
+
                 NavigationManager.NavigateTo("/home");
             }
             else
             {
-                errorMessage = "Geçersiz kullanıcı adı veya şifre.";
+                var firm = result.Firmalar?.FirstOrDefault();
+                if (firm is not null)
+                {
+                    AppState.SelectedFirmId = firm.FirmaNo;
+                    AppState.SelectedFirmName = firm.Ad;
+                    await LocalStorage.SetItemAsync("SelectedFirmId", firm.FirmaNo);
+                    await LocalStorage.SetItemAsync("SelectedFirmName", firm.Ad);
+                    AppState.FirmChanged(this);
+                }
+                NavigationManager.NavigateTo("/home");
             }
         }
         catch (Exception ex)
@@ -225,4 +177,30 @@
             isLoading = false;
         }
     }
+
+    DialogSettings _settings;
+    public DialogSettings Settings
+    {
+        get
+        {
+            return _settings;
+        }
+        set
+        {
+            if (_settings != value)
+            {
+                _settings = value;
+            }
+        }
+    }
+
+
+    public class DialogSettings
+    {
+        public string Left { get; set; }
+        public string Top { get; set; }
+        public string Width { get; set; }
+        public string Height { get; set; }
+    }
+
 }

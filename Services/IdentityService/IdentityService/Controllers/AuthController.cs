@@ -2,8 +2,7 @@
 using IdentityService.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Threading.Tasks;
+using System.Security.Claims;
 
 namespace IdentityService.Controllers
 {
@@ -18,40 +17,50 @@ namespace IdentityService.Controllers
             _identityService = identityService;
         }
 
+        [AllowAnonymous]
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginRequestModel loginRequestModel)
+        public async Task<IActionResult> Login([FromBody] LoginRequestModel model)
         {
-            var result = await _identityService.Login(loginRequestModel);
+            var result = await _identityService.LoginAsync(model);
+            if (result is null) return Unauthorized("Kullanıcı adı veya şifre hatalı.");
 
-            if (result == null)
-                return Unauthorized("Kullanıcı adı veya şifre hatalı.");
-
+            // ÖNEMLİ: Login cevabında Role ve Firmalar dolu gelecek.
             return Ok(result);
         }
 
+        [AllowAnonymous]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequestModel model)
         {
-            var result = await _identityService.Register(model);
-            Console.WriteLine($"OnRegister: {model.UserName}  + {model.Password}");
-            if (!result)
-                return BadRequest("Bu kullanıcı zaten var.");
+            var ok = await _identityService.RegisterAsync(model);
+            if (!ok) return BadRequest("Bu kullanıcı zaten var.");
 
             return Ok(new RegisterResponseModel { Success = true, Message = "Kayıt başarılı" });
         }
 
+        [AllowAnonymous]
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestModel model)
         {
-            try
+            var result = await _identityService.RefreshTokenAsync(model);
+            return Ok(result);
+        }
+
+        // İstemci login sonrası profil + firmalar için kullanır
+        [Authorize]
+        [HttpGet("me")]
+        public async Task<IActionResult> Me()
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdStr, out var userId)) return Unauthorized();
+
+            var firms = await _identityService.GetUserFirmsAsync(userId);
+            return Ok(new
             {
-                var result = await _identityService.RefreshToken(model);
-                return Ok(result);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(ex.Message);
-            }
+                username = User.Identity?.Name,
+                role = User.FindFirstValue(ClaimTypes.Role),
+                firms
+            });
         }
 
         [Authorize(Roles = "Admin")]

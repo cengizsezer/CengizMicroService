@@ -62,6 +62,16 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
 
             builder.Property(e => e.ExpenseCenter)
                    .HasMaxLength(100);
+
+            builder.Property(e => e.TenantNo)
+              .IsRequired()
+              .HasMaxLength(16);
+
+            // Indexler
+            builder.HasIndex(e => new { e.TenantNo, e.FullName });
+            builder.HasIndex(e => new { e.TenantNo, e.NationalId });
+
+
         }
     }
 }

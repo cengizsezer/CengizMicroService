@@ -87,6 +87,7 @@
                       Complete="@OnComplete"
                       Style="width:100%" />
         <RadzenButton Text="Upload" Click="@OnUpload" class="rz-mt-4" />
+        <RadzenTextArea Value="@_extractedText" Rows="10" Style="width:100%; margin-top:1rem;" ReadOnly="true" />
         <RadzenText class="rz-mt-2">@_status</RadzenText>
     </RadzenCard>
 
@@ -100,7 +101,7 @@
     [Parameter] public bool ShowClose { get; set; } = true;
 
     Variant variant = Variant.Outlined;
-
+    private string _extractedText = "";
     private List<ProductDetail> _lsProductDetails = new();
     IEnumerable<string> companyNames;
 
@@ -236,6 +237,7 @@
                 ? dto.ExtractedText.Substring(0, 120) + "..."
                 : dto.ExtractedText ?? "";
 
+            _extractedText = dto.ExtractedText ?? "";
             _status = "Yükleme ve analiz tamam.";
         }
         catch (Exception ex)

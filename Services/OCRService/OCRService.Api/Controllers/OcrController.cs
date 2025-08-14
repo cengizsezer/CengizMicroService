@@ -1,9 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
-using OCRService.Api.Contracts;
 using OCRService.Api.Contracts.Dtos;
 using OCRService.Api.Services;
-using System.Globalization;
+using System.ComponentModel.DataAnnotations;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -11,6 +10,10 @@ public class OcrController : ControllerBase
 {
     private readonly OcrProcessor _ocr;
     private readonly OpenAiInterpreter _openai;
+    private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp", "application/pdf"
+    };
 
     public OcrController(OcrProcessor ocr, OpenAiInterpreter openai)
     {
@@ -18,15 +21,51 @@ public class OcrController : ControllerBase
         _openai = openai;
     }
 
-    [HttpPost("analyze")]
-    public async Task<ActionResult<AnalyzeResponseDto>> AnalyzeImage([FromForm] IFormFile file, CancellationToken ct)
+    // Form model (Swagger için en sorunsuz yol)
+    public sealed class AnalyzeImageRequest
     {
-        if (file is null || file.Length == 0) return BadRequest(new { error = "Dosya zorunludur" });
+        [Required]
+        public IFormFile File { get; set; } = default!;
+    }
 
-        await using var stream = file.OpenReadStream();
-        var extractedText = await _ocr.ExtractTextAsync(stream);
-        var interpreted = await _openai.InterpretAsync(extractedText, ct); // <-- OcrInterpretationDto?
-        Console.WriteLine("OpenAI raw JSON: " + interpreted);
+    [HttpPost("analyze")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(AnalyzeResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AnalyzeImage([FromForm] AnalyzeImageRequest request, CancellationToken ct)
+    {
+        var file = request.File;
+        if (file is null || file.Length == 0)
+            return BadRequest(new { error = "Dosya zorunludur." });
+
+        // Basit içerik tipi kontrolü (isteğe bağlı)
+        if (!string.IsNullOrEmpty(file.ContentType) && !AllowedContentTypes.Contains(file.ContentType))
+            return BadRequest(new { error = $"Desteklenmeyen içerik türü: {file.ContentType}" });
+
+        string extractedText;
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            extractedText = await _ocr.ExtractTextAsync(stream);
+        }
+        catch (Exception ex)
+        {
+            // Vision/IO hatası
+            return BadRequest(new { error = "OCR sırasında hata oluştu.", detail = ex.Message });
+        }
+
+        OcrInterpretationDto? interpreted;
+        try
+        {
+            interpreted = await _openai.InterpretAsync(extractedText, ct);
+        }
+        catch (Exception ex)
+        {
+            // Ağ/timeout vs. durumunda yine 200 dönüp boş DTO verebilirsin,
+            // ama burada 400 dönmeyi tercih ettim. İstersen 200 + boş DTO’ya çevirebilirsin.
+            return BadRequest(new { error = "OpenAI yorumlama sırasında hata oluştu.", detail = ex.Message });
+        }
+
         if (interpreted == null)
         {
             interpreted = new OcrInterpretationDto
@@ -38,17 +77,18 @@ public class OcrController : ControllerBase
             };
         }
 
-
+        // Debug log (console)
         Console.WriteLine("=== OCR Extracted Text ===");
         Console.WriteLine(extractedText);
         Console.WriteLine("=== Interpreted DTO ===");
         Console.WriteLine(JsonConvert.SerializeObject(interpreted, Formatting.Indented));
-        return Ok(new AnalyzeResponseDto
+
+        var response = new AnalyzeResponseDto
         {
             ExtractedText = extractedText,
-            Interpreted = interpreted // null olabilir; UI'da kontrol et
-        });
+            Interpreted = interpreted
+        };
+
+        return Ok(response);
     }
-
 }
-
