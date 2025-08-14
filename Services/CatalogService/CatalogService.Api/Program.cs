@@ -77,15 +77,20 @@ if (args.Contains("--seed-force"))
 
         using (var ctxOnce = new CatalogContext(options, new FixedTenantAccessor("schema")))
         {
-            logger.LogInformation("🗑️ Mevcut catalog shema veritabanı siliniyor...");
-            //await ctxOnce.Database.EnsureDeletedAsync(); // tüm veritabanını siler
-            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[ProductDetails]");
-            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[ReceiptItems]");
-            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[Expenses]");
-            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[AccountingCodes]");
-            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[Personnels]");
+            logger.LogInformation("🗑️ Mevcut catalog tablo verileri temizleniyor (varsa)...");
+
+            var tables = new[] { "ProductDetails", "ReceiptItems", "Expenses", "AccountingCodes", "Personnels" };
+
+            foreach (var t in tables)
+            {
+                ctxOnce.Database.ExecuteSqlRaw($@"
+IF OBJECT_ID(N'[catalog].[{t}]','U') IS NOT NULL
+    DELETE FROM [catalog].[{t}];
+");
+            }
+
             logger.LogInformation("🧱 Migration uygulanıyor...");
-            await ctxOnce.Database.MigrateAsync(); // migration'ları sıfırdan uygular
+            await ctxOnce.Database.MigrateAsync();
         }
 
         var seeder = new CatalogContextSeed();
