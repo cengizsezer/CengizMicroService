@@ -23,10 +23,10 @@
     {
       "UseServiceDiscovery": true,
       "ServiceName": "OCRService",
-      "DownstreamPathTemplate": "/api/auth/{everything}",
+      "DownstreamPathTemplate": "/api/ocr/{everything}",
       "DownstreamScheme": "http",
 
-      "UpstreamPathTemplate": "/OCR/{everything}",
+      "UpstreamPathTemplate": "/ocr/{everything}",
       "UpstreamHttpMethod": [ "Get", "Post", "Delete", "Put" ],
       "UpstreamScheme": "http"
     }
