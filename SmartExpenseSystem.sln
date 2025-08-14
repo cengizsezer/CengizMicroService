@@ -46,12 +46,12 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Nginx", "Nginx", "{F5E3CC63-52A5-4F28-8342-B51C1E8FA413}"
 	ProjectSection(SolutionItems) = preProject
 		Nginx\Dockerfile = Nginx\Dockerfile
-		nginx.conf = nginx.conf
+		Nginx\nginx.conf = Nginx\nginx.conf
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "conf.d", "conf.d", "{0B20C76B-62F2-4839-932E-6BADFB5FC08D}"
 	ProjectSection(SolutionItems) = preProject
-		dijitalmasraf.conf = dijitalmasraf.conf
+		Nginx\conf.d\dijitalmasraf.conf = Nginx\conf.d\dijitalmasraf.conf
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}"
