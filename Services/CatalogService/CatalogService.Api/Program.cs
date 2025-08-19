@@ -1,4 +1,5 @@
-﻿using CatalogService.Api.Core.Application.Mapping;
+﻿using CatalogService.Api.Controllers;
+using CatalogService.Api.Core.Application.Mapping;
 using CatalogService.Api.Extensions;
 using CatalogService.Api.Infrastructure;
 using CatalogService.Api.Infrastructure.Accessor;
@@ -33,7 +34,7 @@ Log.Logger = new LoggerConfiguration()
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 builder.Configuration.AddConfiguration(configuration);
-
+builder.Services.AddScoped<VehicleService>(); // domain servisin
 if (env == "Docker")
 {
     builder.WebHost.UseUrls("http://0.0.0.0:5004"); // container dışına açıl
@@ -54,6 +55,7 @@ builder.Services.AddHealthChecks()
     .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy());
 builder.Services.ConfigureConsul(configuration);
 builder.Services.AddAutoMapper(typeof(ExpenseProfile));
+builder.Services.AddAutoMapper(typeof(VehicleProfile));
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantAccessor, HttpTenantAccessor>();
 var app = builder.Build();

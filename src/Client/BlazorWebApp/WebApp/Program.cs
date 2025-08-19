@@ -48,11 +48,12 @@ namespace WebApp
                 var factory = sp.GetRequiredService<IHttpClientFactory>();
                 return factory.CreateClient("ApiGatewayHttpClient");
             });
-
+           
             // Servisler
             builder.Services.AddTransient<IIdentityService, IdentityService>();
             builder.Services.AddTransient<IExpenseService, ExpenseService>();
             builder.Services.AddTransient<IOcrService, OcrService>();
+            builder.Services.AddTransient<IVehicleService, VehicleService>();
 
             await builder.Build().RunAsync();
         }

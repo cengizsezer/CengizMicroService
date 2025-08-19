@@ -1,0 +1,68 @@
+﻿@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto
+@using Radzen
+@inject IVehicleService VehicleService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<div class="rz-pa-2">
+    <RadzenDataGrid Data="@Items" TItem="VehicleDto" AllowFiltering="false" AllowPaging="true" PageSize="15">
+        <Columns>
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Plate" Title="Plate" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Driver" Title="Driver" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Unit" Title="Unit" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Department" Title="Department" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Region" Title="Region" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Type" Title="Type" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Brand" Title="Brand" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Model" Title="Model" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Gear" Title="Gear" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Fuel" Title="Fuel" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Fleet" Title="Fleet" />
+
+            <RadzenDataGridColumn TItem="VehicleDto" Title="Actions" Width="120px">
+                <Template Context="row">
+                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                  Click="@(()=>RemoveRow(row))" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+
+    <div class="rz-mt-2 rz-text-right">
+        <RadzenButton Text="Cancel" Click="@Cancel" Style="margin-right:.5rem" />
+        <RadzenButton Text="Import" ButtonStyle="ButtonStyle.Primary" Click="@Submit" />
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<VehicleDto> Items { get; set; } = new(); // <-- Vehicles.razor'da "Items" gönderdik
+
+    void RemoveRow(VehicleDto row)
+    {
+        Items.Remove(row);
+        StateHasChanged();
+    }
+
+    async Task Submit()
+    {
+        if (Items.Count == 0)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Boş", Detail = "İçe aktarılacak satır yok." });
+            return;
+        }
+
+        var ok = await VehicleService.ImportAsync(Items);
+        if (ok)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Başarılı", Detail = "Araçlar eklendi." });
+            DialogService.Close(true);
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Hata", Detail = "Kayıt sırasında sorun oluştu." });
+        }
+    }
+
+    void Cancel() => DialogService.Close(false);
+}

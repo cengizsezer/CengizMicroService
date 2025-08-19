@@ -1,4 +1,4 @@
-﻿﻿@using Blazored.LocalStorage
+﻿@using Blazored.LocalStorage
 
 @inherits LayoutComponentBase
 @inject NavigationManager Navigation
@@ -14,21 +14,33 @@
 
 <RadzenLayout>
     <RadzenHeader>
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
-            <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
-            <RadzenLabel Text="Dijital Masraf" />
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0" Style="width:100%">
+        <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
+        <RadzenLabel Text="Dijital Masraf" />
 
-            <RadzenButton Variant="Variant.Text" Click="@OnLogout" Style="margin-left: auto; color:white">
-                <i class="fa-solid fa-right-from-bracket" style="font-size: 18px; margin-right: 5px;"></i>
-            </RadzenButton>
-        </RadzenStack>
-    </RadzenHeader>
+        <!-- SAĞ BLOK: hepsi birlikte sağa yaslanır -->
+        <div style="margin-left:auto; display:flex; align-items:center; gap:.5rem">
+            <RadzenProfileMenu Click="@OnProfileMenuClick">
+                <Template>
+                    <RadzenGravatar Email="user@example.com" />
+                </Template>
+                <ChildContent>
+                    <RadzenProfileMenuItem Text="Profil" Icon="account_circle" Path="/profile" />
+                    <RadzenProfileMenuItem Text="Çıkış"  Icon="logout" Value="logout" />
+                </ChildContent>
+            </RadzenProfileMenu>
+        </div>
+    </RadzenStack>
+</RadzenHeader>
+
 
     <RadzenSidebar Responsive="false" Style="width: max-content">
         <RadzenPanelMenu DisplayStyle="@(sidebarExpanded? MenuItemDisplayStyle.IconAndText: MenuItemDisplayStyle.Icon)" ShowArrow="false">
             <RadzenPanelMenuItem Text="Home" Icon="home" Path="/home" />
-            <RadzenPanelMenuItem Text="Osgb" Icon="dashboard" Path="/Osgb" />
-            <RadzenPanelMenuItem Text="Personel" Icon="people" Path="/personel" />
+            <RadzenPanelMenuItem Text="Home" Icon="motorcycle" Path="/vehicles" />
+            <RadzenPanelMenuItem Text="Osgb" Icon="
+markunread_mailbox" Path="/Osgb" />
+            <RadzenPanelMenuItem Text="Personel" Icon="dashboard" Path="/personel" />
             <RadzenPanelMenuItem Text="Settings" Icon="settings">
                 <RadzenPanelMenuItem Text="Account" Icon="account_circle" Path="/account" />
             </RadzenPanelMenuItem>
@@ -67,6 +79,27 @@
         IdentityService.Logout();
         Navigation.NavigateTo("/login");
     }
+
+   @code {
+    async Task LogoutFromMenu(MenuItemEventArgs args)   // <-- imza önemli
+    {
+        // gerekliyse token vs. temizle
+        await LocalStorage.RemoveItemAsync("authToken");
+
+        IdentityService.Logout();
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+
+    void OnProfileMenuClick(RadzenProfileMenuItem item)
+{
+    // Path verilirse Radzen zaten yönlendirir. Biz sadece özel durumları ele alıyoruz.
+    if (item?.Value?.ToString() == "logout")
+    {
+        IdentityService.Logout();
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+}
+}
 }
 
 <style>

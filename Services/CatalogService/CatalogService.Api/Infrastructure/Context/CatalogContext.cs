@@ -22,6 +22,7 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<ProductDetail> ProductDetails { get; set; }
         public DbSet<AccountingCode> AccountingCodes { get; set; }
         public DbSet<Personnel> Personnels { get; set; }
+        public DbSet<Vehicle> Vehicles { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -32,6 +33,7 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new ProductDetailEntityTypeConfiguration());
             builder.ApplyConfiguration(new AccountingCodeEntityTypeConfiguration());
             builder.ApplyConfiguration(new PersonnelEntityTypeConfiguration());
+            builder.ApplyConfiguration(new VehicleEntityTypeConfiguration());
 
             builder.Entity<Expense>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
             builder.Entity<ReceiptItem>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);

@@ -1,0 +1,238 @@
+﻿@page "/vehicles"
+@using Radzen
+@using System.Text.Json
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto
+@using Microsoft.JSInterop
+@using System.Linq
+@using WebApp.Utils
+@using WebApp.Application.Services.Interfaces
+@inject IVehicleService VehicleService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject IJSRuntime JS
+
+
+<PageTitle>Vehicles</PageTitle>
+
+<div class="rz-p-3">
+    <div class="rz-flex rz-ai-center rz-jc-between rz-mb-3">
+        <div class="rz-flex rz-ai-center rz-g-2">
+            <RadzenButton Text="Add Vehicle"
+                          Icon="add_circle"
+                          ButtonStyle="ButtonStyle.Primary"
+                          Click="@CreateVehicle" />
+
+            <!-- IMPORT: Excel -> backend 'api/vehicles/import-excel' -->
+            <RadzenUpload ChooseText="Import Excel"
+                          Url="/catalog/vehicles/parse-excel"
+                          Accept=".xlsx"
+                          Auto="true"
+                          Multiple="false"
+                          InputId="file" 
+                          Progress="@OnUploadProgress"
+                          Complete="@OnUploadComplete"
+                          Style="min-width:160px" />
+
+            <RadzenButton Text="Export Excel"
+                          Icon="download"
+                          ButtonStyle="ButtonStyle.Info"
+                          Disabled="@exporting"
+                          Click="@ExportExcel" />
+        </div>
+
+        <div class="rz-flex rz-ai-center rz-g-2">
+            <RadzenTextBox @bind-Value="search"
+                           Placeholder="Search (Plate, Driver, Unit, Department)"
+                           Style="width: 360px"
+                           Change="@(args => ApplySearch())" />
+        </div>
+    </div>
+
+    <RadzenDataGrid @ref="grid"
+                    Data="@view"
+                    TItem="VehicleDto"
+                    AllowFiltering="false"
+                    AllowSorting="true"
+                    AllowPaging="true"
+                    PageSize="20"
+                    RowDoubleClick="@OnRowDoubleClick">
+        <Columns>
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Id" Title="ID" Width="90px" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Plate" Title="Plate" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Driver" Title="Driver" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Unit" Title="Unit" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Department" Title="Department" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Region" Title="Region" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Type" Title="Type" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Brand" Title="Brand" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Model" Title="Model" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Gear" Title="Gear" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Fuel" Title="Fuel" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Fleet" Title="Fleet" />
+
+            <RadzenDataGridColumn TItem="VehicleDto" Title="Actions" Width="210px">
+                <Template Context="row">
+                    <RadzenButton Text="Edit" Icon="edit"
+                                  ButtonStyle="ButtonStyle.Warning"
+                                  Size="ButtonSize.Small"
+                                  Click="@(()=>EditVehicle(row))"
+                                  class="rz-mr-2" />
+                    <RadzenButton Text="Delete" Icon="delete"
+                                  ButtonStyle="ButtonStyle.Danger"
+                                  Size="ButtonSize.Small"
+                                  Click="@(()=>DeleteVehicle(row))" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</div>
+
+@code {
+    RadzenDataGrid<VehicleDto> grid;
+    List<VehicleDto> items = new();
+    List<VehicleDto> view = new(); // filtrelenmiş görünüm
+    string search;
+    bool exporting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    async Task ReloadAsync()
+    {
+        items = await VehicleService.GetAllAsync();
+        ApplySearch();
+        StateHasChanged();
+    }
+    async Task OnRowDoubleClick(DataGridRowMouseEventArgs<VehicleDto> args)
+    {
+        // args.Data = çift tıklanan satırın verisi
+        await EditVehicle(args.Data); // mevcut Edit akışını çağır
+    }
+    void ApplySearch()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            view = items.ToList();
+        }
+        else
+        {
+            var s = search.Trim();
+            view = items.Where(x =>
+                    (!string.IsNullOrEmpty(x.Plate) && x.Plate.Contains(s, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(x.Driver) && x.Driver.Contains(s, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(x.Unit) && x.Unit.Contains(s, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(x.Department) && x.Department.Contains(s, StringComparison.OrdinalIgnoreCase))
+                ).ToList();
+        }
+        grid?.Reload();
+    }
+   
+    async Task CreateVehicle()
+    {
+        var result = await DialogService.OpenAsync<CreateorUpdateVehicle>(
+            "Add Vehicle",
+            new Dictionary<string, object>
+            {
+                { "Action", UIActionEnum.Insert },
+                { "model", new VehicleDto() }
+            },
+            new DialogOptions { Width = "760px", CloseDialogOnOverlayClick = true });
+
+        if (result is true) await ReloadAsync();
+    }
+
+    async Task EditVehicle(VehicleDto row)
+    {
+        var result = await DialogService.OpenAsync<ImportVehiclesDialog>(
+            "Edit Vehicle",
+            new Dictionary<string, object>
+            {
+                { "Action", UIActionEnum.Update },
+                { "model", row }
+            },
+            new DialogOptions { Width = "760px", CloseDialogOnOverlayClick = true });
+
+        if (result is true) await ReloadAsync();
+    }
+
+    async Task DeleteVehicle(VehicleDto row)
+    {
+        var confirm = await DialogService.Confirm(
+            $"Delete vehicle '{row.Plate}'?", "Confirm",
+            new ConfirmOptions() { OkButtonText = "Delete", CancelButtonText = "Cancel" });
+
+        if (confirm == true)
+        {
+            var ok = await VehicleService.DeleteAsync(row.Id);
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = ok ? NotificationSeverity.Success : NotificationSeverity.Error,
+                Summary = ok ? "Deleted" : "Delete failed",
+                Duration = 2500
+            });
+
+            if (ok) await ReloadAsync();
+        }
+    }
+
+    async Task ExportExcel()
+    {
+        exporting = true;
+        try
+        {
+            var bytes = await VehicleService.ExportExcelAsync();
+            await JS.InvokeVoidAsync("downloadFileFromBytes",
+                $"vehicles_{DateTime.Now:yyyyMMdd_HHmm}.xlsx", bytes);
+        }
+        finally
+        {
+            exporting = false;
+        }
+    }
+
+    void OnUploadProgress(UploadProgressArgs args)
+    {
+        // İstersen progress bar göster
+        // args.Progress: 0..100
+    }
+
+    async Task OnUploadComplete(UploadCompleteEventArgs args)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(args.RawResponse))
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Import failed", Detail = "Sunucudan yanıt gelmedi." });
+                return;
+            }
+
+            var list = JsonSerializer.Deserialize<List<VehicleDto>>(args.RawResponse,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            if (list == null || list.Count == 0)
+            {
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Boş", Detail = "Excel'den veri okunamadı." });
+                return;
+            }
+
+            // Ön izleme dialogunu aç
+            var result = await DialogService.OpenAsync<ImportVehiclesDialog>(
+                "Import Vehicles",
+                new Dictionary<string, object>
+                {
+                { "Items", list }   // ImportVehiclesDialog'ta [Parameter] Items ile karşıla
+                },
+                new DialogOptions { Width = "960px", CloseDialogOnOverlayClick = true });
+
+            if (result is true)
+                await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Hata", Detail = ex.Message });
+        }
+    }
+}

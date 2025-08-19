@@ -7,7 +7,7 @@
       "DownstreamScheme": "http",
 
       "UpstreamPathTemplate": "/catalog/{everything}",
-      "UpstreamHttpMethod": [ "Get", "Post", "Delete", "Put" ],
+      "UpstreamHttpMethod": [ "Get", "Post", "Delete", "Put", "Options" ],
       "UpstreamScheme": "http"
     },
     {
@@ -17,7 +17,7 @@
       "DownstreamScheme": "http",
 
       "UpstreamPathTemplate": "/auth/{everything}",
-      "UpstreamHttpMethod": [ "Get", "Post", "Delete", "Put" ],
+      "UpstreamHttpMethod": [ "Get", "Post", "Delete", "Put", "Options" ],
       "UpstreamScheme": "http"
     },
     {
@@ -27,7 +27,7 @@
       "DownstreamScheme": "http",
 
       "UpstreamPathTemplate": "/ocr/{everything}",
-      "UpstreamHttpMethod": [ "Get", "Post", "Delete", "Put" ],
+      "UpstreamHttpMethod": [ "Get", "Post", "Delete", "Put", "Options" ],
       "UpstreamScheme": "http"
     }
 

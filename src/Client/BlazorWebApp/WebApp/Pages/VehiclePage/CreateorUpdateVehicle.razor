@@ -1,0 +1,149 @@
+﻿@using Microsoft.AspNetCore.Components.Forms
+@using Radzen
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto
+@using WebApp.Utils
+
+@using WebApp.Application.Services.Interfaces
+@inject IVehicleService VehicleService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<EditForm EditContext="_editContext" OnValidSubmit="OnValidSubmit">
+    <DataAnnotationsValidator />
+
+    <div class="rz-p-3" style="min-width:700px;">
+        <!-- Üst satır: Plaka + Sürücü -->
+        <div class="rz-grid rz-g-3 rz-mb-4">
+            <div class="rz-col-4">
+                <RadzenTextBox @bind-Value="model.Plate"
+                               Name="Plate"
+                               Placeholder="Plate (Plaka)"
+                               Style="width:100%" />
+                <ValidationMessage For="@(() => model.Plate)" />
+            </div>
+            <div class="rz-col-8">
+                <RadzenTextBox @bind-Value="model.Driver"
+                               Name="Driver"
+                               Placeholder="Driver (Sürücü)"
+                               Style="width:100%" />
+                <ValidationMessage For="@(() => model.Driver)" />
+            </div>
+        </div>
+
+        <!-- Orta satır: Birim / Bölüm / Bölge -->
+        <div class="rz-grid rz-g-3 rz-mb-4">
+            <div class="rz-col-4">
+                <RadzenTextBox @bind-Value="model.Unit"
+                               Name="Unit"
+                               Placeholder="Unit (Birim)"
+                               Style="width:100%" />
+                <ValidationMessage For="@(() => model.Unit)" />
+            </div>
+            <div class="rz-col-4">
+                <RadzenTextBox @bind-Value="model.Department"
+                               Name="Department"
+                               Placeholder="Department (Bölüm)"
+                               Style="width:100%" />
+                <ValidationMessage For="@(() => model.Department)" />
+            </div>
+            <div class="rz-col-4">
+                <RadzenTextBox @bind-Value="model.Region"
+                               Name="Region"
+                               Placeholder="Region (Bölge)"
+                               Style="width:100%" />
+                <ValidationMessage For="@(() => model.Region)" />
+            </div>
+        </div>
+
+        <!-- Açıklamalar -->
+        <div class="rz-mb-4">
+            <RadzenTextBox @bind-Value="model.Description1"
+                           Name="Description1"
+                           Placeholder="Description 1 (Açıklama-1)"
+                           Style="width:100%" />
+            <ValidationMessage For="@(() => model.Description1)" />
+        </div>
+        <div class="rz-mb-4">
+            <RadzenTextBox @bind-Value="model.Description2"
+                           Name="Description2"
+                           Placeholder="Description 2 (Açıklama-2)"
+                           Style="width:100%" />
+            <ValidationMessage For="@(() => model.Description2)" />
+        </div>
+
+        <!-- Araç teknik: Tip/Marka/Model/Vites/Yakıt/Filo -->
+        <div class="rz-grid rz-g-3 rz-mb-4">
+            <div class="rz-col-2">
+                <RadzenTextBox @bind-Value="model.Type" Name="Type" Placeholder="Type" Style="width:100%" />
+                <ValidationMessage For="@(() => model.Type)" />
+            </div>
+            <div class="rz-col-2">
+                <RadzenTextBox @bind-Value="model.Brand" Name="Brand" Placeholder="Brand" Style="width:100%" />
+                <ValidationMessage For="@(() => model.Brand)" />
+            </div>
+            <div class="rz-col-2">
+                <RadzenTextBox @bind-Value="model.Model" Name="Model" Placeholder="Model" Style="width:100%" />
+                <ValidationMessage For="@(() => model.Model)" />
+            </div>
+            <div class="rz-col-2">
+                <RadzenTextBox @bind-Value="model.Gear" Name="Gear" Placeholder="Gear (Vites)" Style="width:100%" />
+                <ValidationMessage For="@(() => model.Gear)" />
+            </div>
+            <div class="rz-col-2">
+                <RadzenTextBox @bind-Value="model.Fuel" Name="Fuel" Placeholder="Fuel (Yakıt)" Style="width:100%" />
+                <ValidationMessage For="@(() => model.Fuel)" />
+            </div>
+            <div class="rz-col-2">
+                <RadzenTextBox @bind-Value="model.Fleet" Name="Fleet" Placeholder="Fleet (Filo)" Style="width:100%" />
+                <ValidationMessage For="@(() => model.Fleet)" />
+            </div>
+        </div>
+
+        <div class="rz-mt-4 rz-text-right">
+            <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@Cancel" class="rz-mr-2" />
+            <RadzenButton Text="Save" ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" />
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public UIActionEnum Action { get; set; } = UIActionEnum.Insert;
+    [Parameter] public VehicleDto model { get; set; } = new();
+
+    private EditContext _editContext;
+
+    protected override void OnInitialized()
+    {
+        _editContext = new EditContext(model);
+    }
+
+    private async Task OnValidSubmit()
+    {
+        bool ok = Action == UIActionEnum.Insert
+            ? await VehicleService.CreateAsync(model)
+            : await VehicleService.UpdateAsync(model);
+
+        if (ok)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = Action == UIActionEnum.Insert ? "Vehicle created" : "Vehicle updated",
+                Duration = 2500
+            });
+            DialogService.Close(true);
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Operation failed",
+                Duration = 3000
+            });
+        }
+    }
+
+    private void Cancel() => DialogService.Close(false);
+}
