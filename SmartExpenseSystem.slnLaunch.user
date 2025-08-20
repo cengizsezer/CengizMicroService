@@ -11,6 +11,10 @@
         "Action": "Start"
       },
       {
+        "Path": "Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj",
+        "Action": "Start"
+      },
+      {
         "Path": "Services\\OCRService\\OCRService.Api\\OCRService.Api.csproj",
         "Action": "Start"
       },

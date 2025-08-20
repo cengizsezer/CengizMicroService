@@ -29,6 +29,16 @@
       "UpstreamPathTemplate": "/OCR/{everything}",
       "UpstreamHttpMethod": [ "Get", "Post", "Delete", "Put" ],
       "UpstreamScheme": "http"
+    },
+    {
+      "UseServiceDiscovery": true,
+      "ServiceName": "FileApiService",
+      "DownstreamPathTemplate": "/api/file/v1/{everything}",
+      "DownstreamScheme": "http",
+
+      "UpstreamPathTemplate": "/file/v1/{everything}",
+      "UpstreamHttpMethod": [ "Get", "Post", "Delete", "Put" ],
+      "UpstreamScheme": "http"
     }
     
   ],
