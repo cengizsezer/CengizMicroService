@@ -1,0 +1,233 @@
+﻿@page "/declarationpage"
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.Declaration
+@inject IFileApiService FileApi
+@inject IJSRuntime JS
+
+<h3>Beyanname Arşivi</h3>
+
+<RadzenFieldset Text="Filtre" Style="margin-bottom:10px">
+    <div class="grid">
+        <div class="col-12 md:col-2">
+            <RadzenLabel Text="Şirket (CompanyId)" />
+            <RadzenTextBox @bind-Value="CompanyId" Style="width:100%" />
+        </div>
+
+        <div class="col-6 md:col-2">
+            <RadzenLabel Text="Yıl" />
+            <RadzenNumeric @bind-Value="Year" Style="width:100%" />
+        </div>
+
+        <div class="col-6 md:col-2">
+            <RadzenLabel Text="Beyanname Türü" />
+            <RadzenDropDown @bind-Value="DeclType"
+                            Data="@DeclTypes"
+                            TextProperty="Text" ValueProperty="Value"
+                            Style="width:100%" />
+        </div>
+    </div>
+
+    <RadzenButton Icon="search" Text="Listele" Click="@Load" Style="margin-top:8px" />
+</RadzenFieldset>
+
+@if (loading)
+{
+    <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+}
+else if (RootNodes.Count == 0)
+{
+    <p>Sonuç yok.</p>
+}
+else
+{
+    <RadzenCard>
+        <RadzenTree Data="@RootNodes"
+                    Change="@OnChange">
+
+            <RadzenTreeLevel TextProperty="Text"
+                             ChildrenProperty="Children"
+                             HasChildren="@HasKids"
+                             Expanded="@ShouldExpand">
+
+                <!-- DİKKAT: Template context'i RadzenTreeItem'tır -->
+                <Template Context="item">
+                    @{
+                        // Bazı Radzen sürümlerinde item.Value yerine item.Data kullanılıyor.
+                        var node = item.Value as FileNode;
+                    }
+
+                    <div style="display:flex;align-items:center;gap:.5rem">
+                        <RadzenIcon Icon="@node?.Icon" />
+                        <span>@node?.Text</span>
+
+                        @if (node?.FileId is int fid)
+                        {
+                            <RadzenButton Icon="picture_as_pdf"
+                                          Size="ButtonSize.Small"
+                                          ButtonStyle="ButtonStyle.Light"
+                                          Click="@(async () => await Open(fid))"
+                                          Style="margin-left:.5rem" />
+                        }
+                    </div>
+                </Template>
+
+            </RadzenTreeLevel>
+        </RadzenTree>
+    </RadzenCard>
+
+
+
+}
+
+@code {
+    // ---------------- UI durum
+    string CompanyId = "201";
+    int Year = DateTime.Now.Year;
+    string DeclType = "KDV-1";
+    bool loading;
+
+    // Dropdown verisi
+    public record Pair(string Text, string Value);
+    List<Pair> DeclTypes = new()
+    {
+        new("KDV-1", "KDV-1"),
+        new("KDV-2", "KDV-2"),
+        new("Muhtasar", "MUHTASAR")
+    };
+
+    // ---------------- Tree modeli
+    public class FileNode
+    {
+        public string Text { get; set; } = "";
+        public string Icon { get; set; } = "folder";
+        public int? FileId { get; set; }                 // yaprakta PDF id
+        public List<FileNode> Children { get; set; } = new();
+        public int Level { get; set; }                   // 0:Yıl, 1:Ay, 2:Kategori, 3:Dosya
+    }
+
+    List<FileNode> RootNodes = new();
+    bool HasKids(object? data) => (data as FileNode)?.Children?.Any() == true;
+    protected override async Task OnInitializedAsync() => await Load();
+
+    async Task Load()
+    {
+        loading = true;
+        StateHasChanged();
+
+        // 12 ayı çek (gerekirse Task.WhenAll ile paralel hale getirilebilir)
+        var all = new List<FileInfoDto>();
+        for (var m = 1; m <= 12; m++)
+        {
+            var part = await FileApi.ListAsync(CompanyId, Year, m) ?? new();
+            all.AddRange(part);
+        }
+
+        // Seçilen beyanname türüne göre süz
+        all = all
+            .Where(x => string.Equals(x.DeclType, DeclType, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        RootNodes = BuildTree(all);
+
+        loading = false;
+    }
+
+    List<FileNode> BuildTree(IEnumerable<FileInfoDto> items)
+    {
+        var roots = new List<FileNode>();
+
+        // Tek kök: "2025 - KDV-1"
+        var yearNode = new FileNode
+        {
+            Text = $"{Year} - {DeclType}",
+            Icon = "calendar_month",
+            Level = 0
+        };
+
+        foreach (var byMonth in items.GroupBy(i => ParseMonth(i.Month)).OrderBy(g => g.Key))
+        {
+            var monthNode = new FileNode
+            {
+                Text = $"{byMonth.Key:00} - {MonthName(byMonth.Key)}",
+                Icon = "date_range",
+                Level = 1
+            };
+
+            // “Beyanname” ve “Tahakkuk” kategorileri (diğer DocType’lar da olduğu gibi görünür)
+            var byDocType = byMonth.GroupBy(i =>
+                string.Equals(i.DocType, "Beyanname", StringComparison.OrdinalIgnoreCase) ? "Beyanname" :
+                string.Equals(i.DocType, "Tahakkuk", StringComparison.OrdinalIgnoreCase) ? "Tahakkuk" :
+                i.DocType);
+
+            foreach (var cat in byDocType.OrderBy(g => g.Key))
+            {
+                var catNode = new FileNode
+                {
+                    Text = cat.Key,
+                    Icon = "folder_open",
+                    Level = 2
+                };
+
+                foreach (var f in cat.OrderByDescending(x => x.CreatedAtUtc))
+                {
+                    catNode.Children.Add(new FileNode
+                    {
+                        Text = f.FileName,
+                        Icon = "description",
+                        FileId = f.Id,
+                        Level = 3
+                    });
+                }
+
+                monthNode.Children.Add(catNode);
+            }
+
+            yearNode.Children.Add(monthNode);
+        }
+
+        if (yearNode.Children.Count > 0)
+            roots.Add(yearNode);
+
+        return roots;
+    }
+
+    // Hangi düğümler açık gelsin?
+    bool ShouldExpand(object data)
+       => (data as FileNode)?.FileId == null;
+
+    int ParseMonth(string month) => int.TryParse(month, out var m) ? Math.Clamp(m, 1, 12) : 1;
+
+    string MonthName(int m) => m switch
+    {
+        1 => "Ocak",
+        2 => "Şubat",
+        3 => "Mart",
+        4 => "Nisan",
+        5 => "Mayıs",
+        6 => "Haziran",
+        7 => "Temmuz",
+        8 => "Ağustos",
+        9 => "Eylül",
+        10 => "Ekim",
+        11 => "Kasım",
+        12 => "Aralık",
+        _ => m.ToString("00")
+    };
+
+    async Task OnChange(TreeEventArgs args)
+    {
+        if (args?.Value is FileNode n && n.FileId is int fid)
+            await Open(fid);
+    }
+
+    async Task Open(int id)
+    {
+        var dto = await FileApi.GetDownloadAsync(id);
+        if (!string.IsNullOrWhiteSpace(dto?.PresignedUrl))
+            await JS.InvokeVoidAsync("open", dto.PresignedUrl, "_blank");
+        else
+            await JS.InvokeVoidAsync("alert", "Presigned URL üretilemedi.");
+    }
+}
