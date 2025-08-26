@@ -64,7 +64,7 @@ namespace WebApp
             builder.Services.AddTransient<IExpenseService, ExpenseService>();
             builder.Services.AddTransient<IOcrService, OcrService>();
             builder.Services.AddTransient<IVehicleService, VehicleService>();
-            builder.Services.AddTransient<IFileApiService, FileApiService>();
+            //builder.Services.AddTransient<IFileApiService, FileApiService>();
 
             await builder.Build().RunAsync();
         }

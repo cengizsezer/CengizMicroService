@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\GitHub\\CengizMicroService\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|c:\\github\\cengizmicroservice\\services\\fileapiservice\\fileapiservice.api\\infrastructure\\minio\\miniooptions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|solutionrelative:services\\fileapiservice\\fileapiservice.api\\infrastructure\\minio\\miniooptions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -29,10 +33,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{0B20C76B-62F2-4839-932E-6BADFB5FC08D}|conf.d{0B20C76B-62F2-4839-932E-6BADFB5FC08D}|C:\\GitHub\\CengizMicroService\\Nginx\\conf.d\\minio-https.conf||{3B902123-F8A7-4915-9F01-361F908088D0}",
       "RelativeMoniker": "D:0:0:{0B20C76B-62F2-4839-932E-6BADFB5FC08D}|conf.d{0B20C76B-62F2-4839-932E-6BADFB5FC08D}|solutionrelative:Nginx\\conf.d\\minio-https.conf||{3B902123-F8A7-4915-9F01-361F908088D0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\application\\services\\expenseservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -161,7 +161,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 10,
           "Children": [
             {
               "$type": "Document",
@@ -203,32 +203,6 @@
               "IsPinned": true
             },
             {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "MinioOptions.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Minio\\MinioOptions.cs",
-              "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Minio\\MinioOptions.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Minio\\MinioOptions.cs",
-              "RelativeToolTip": "Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Minio\\MinioOptions.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAApAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-26T22:12:29.158Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "FileApiService.Api",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj",
-              "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj",
-              "RelativeToolTip": "Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj",
-              "ViewState": "AgIAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-08-26T22:11:57.783Z",
-              "EditorCaption": ""
-            },
-            {
               "$type": "Bookmark",
               "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
             },
@@ -246,7 +220,32 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 1,
+              "Title": "MinioOptions.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Minio\\MinioOptions.cs",
+              "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Minio\\MinioOptions.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Minio\\MinioOptions.cs",
+              "RelativeToolTip": "Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Minio\\MinioOptions.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAApAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-26T22:12:29.158Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "FileApiService.Api.csproj",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj",
+              "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj",
+              "RelativeToolTip": "Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-08-26T22:11:57.783Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
               "Title": "FileApiService.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\FileApiService.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\FileApiService.cs",
@@ -254,24 +253,24 @@
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\FileApiService.cs",
               "ViewState": "AgIAAEMAAAAAAAAAAAAowGYAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-24T13:15:50.555Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-08-24T13:15:50.555Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 0,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
               "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
-              "ViewState": "AgIAACIAAAAAAAAAAAAmwDoAAAAOAAAAAAAAAA==",
+              "ViewState": "AgIAACIAAAAAAAAAAAAmwD8AAABNAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-24T13:16:40.253Z"
+              "WhenOpened": "2025-08-24T13:16:40.253Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 7,
               "Title": "minio-https.conf",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Nginx\\conf.d\\minio-https.conf",
               "RelativeDocumentMoniker": "Nginx\\conf.d\\minio-https.conf",
@@ -283,7 +282,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 6,
               "Title": "dijitalmasraf.conf",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Nginx\\conf.d\\dijitalmasraf.conf",
               "RelativeDocumentMoniker": "Nginx\\conf.d\\dijitalmasraf.conf",
@@ -291,12 +290,11 @@
               "RelativeToolTip": "Nginx\\conf.d\\dijitalmasraf.conf",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAfAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-08-26T16:12:57.408Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-08-26T16:12:57.408Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "appsettings.Docker.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Configurations\\appsettings.Docker.json",
               "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Configurations\\appsettings.Docker.json",
@@ -304,12 +302,11 @@
               "RelativeToolTip": "Services\\FileApiService\\FileApiService.Api\\Configurations\\appsettings.Docker.json",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABwAAAADAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2025-08-26T16:11:45.938Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-08-26T16:11:45.938Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "appsettings.Development.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Configurations\\appsettings.Development.json",
               "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Configurations\\appsettings.Development.json",
@@ -317,8 +314,7 @@
               "RelativeToolTip": "Services\\FileApiService\\FileApiService.Api\\Configurations\\appsettings.Development.json",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABgAAAAYAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2025-08-26T16:12:02.577Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-08-26T16:12:02.577Z"
             },
             {
               "$type": "Document",
