@@ -12,7 +12,17 @@ namespace WebApp.Application.Services
         private readonly HttpClient _http;
 
         public FileApiService(HttpClient http) => _http = http;
-
+        private static readonly Dictionary<string, string> MimeByExt = new(StringComparer.OrdinalIgnoreCase)
+        {
+            [".pdf"] = "application/pdf",
+            [".png"] = "image/png",
+            [".jpg"] = "image/jpeg",
+            [".jpeg"] = "image/jpeg",
+            [".txt"] = "text/plain",
+            [".csv"] = "text/csv",
+            [".xlsx"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            [".docx"] = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        };
         public async Task<bool> UploadAsync(
             IBrowserFile file, string companyId, int year, int month,
             string declType, string docType, CancellationToken ct = default)
@@ -21,8 +31,20 @@ namespace WebApp.Application.Services
 
             // Dosya
             var stream = file.OpenReadStream(20 * 1024 * 1024, ct); // 20MB
+
+            // content-type fallback: eğer boş ya da octet-stream ise uzantıdan tahmin et
+            var contentType = file.ContentType;
+            if (string.IsNullOrWhiteSpace(contentType) || contentType == "application/octet-stream")
+            {
+                var ext = Path.GetExtension(file.Name);
+                if (!string.IsNullOrEmpty(ext) && MimeByExt.TryGetValue(ext, out var mime))
+                    contentType = mime;
+            }
+
             var fileContent = new StreamContent(stream);
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType ?? "application/octet-stream");
+            fileContent.Headers.ContentType =
+                new MediaTypeHeaderValue(contentType ?? "application/octet-stream");
+
             content.Add(fileContent, "file", file.Name);
 
             // Form alanları
