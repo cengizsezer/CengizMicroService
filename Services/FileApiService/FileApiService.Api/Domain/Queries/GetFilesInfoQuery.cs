@@ -5,5 +5,6 @@
         public string? CompanyId { get; init; }
         public string? Year { get; init; }
         public string? Month { get; init; } // "01".."12"
+        public string? DeclType { get; init; }
     }
 }

@@ -1,7 +1,6 @@
 ﻿using FileApiService.Api.Api.Configuration;
 using FileApiService.Api.Api.EndpointBuilders;
 using FileApiService.Api.Core.Abstractions;
-using FileApiService.Api.Core.Commands;
 using FileApiService.Api.Core.Extensions;
 using FileApiService.Api.Core.Queries;
 using FileApiService.Api.Core.Validation;

@@ -260,6 +260,16 @@
   },
   {
     "ContainingType": "CatalogService.Api.Controllers.VehiclesController",
+    "Method": "DeleteAll",
+    "RelativePath": "api/catalog/vehicles/alldelete",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Controllers.VehiclesController",
     "Method": "Export",
     "RelativePath": "api/catalog/vehicles/export",
     "HttpMethod": "GET",

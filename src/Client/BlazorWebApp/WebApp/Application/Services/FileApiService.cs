@@ -43,10 +43,26 @@ namespace WebApp.Application.Services
             return env?.Data == true;
         }
 
-        public Task<List<FileInfoDto>?> ListAsync(string companyId, int year, int month, CancellationToken ct = default)
-            => GetAndUnwrapAsync<List<FileInfoDto>>(
-                $"{Base}/files-info?companyId={companyId}&year={year}&month={month:00}", ct);
+        //public Task<List<FileInfoDto>?> ListAsync(string companyId, int year, int month, CancellationToken ct = default)
+        //    => GetAndUnwrapAsync<List<FileInfoDto>>(
+        //        $"{Base}/files-info?companyId={companyId}&year={year}&month={month:00}", ct);
 
+        public Task<List<FileInfoDto>?> ListAsync(string companyId, int year, int month, CancellationToken ct = default)
+        {
+            string url = $"{Base}/files-info?companyId={companyId}&year={year}&month={month}";
+            var list = GetAndUnwrapAsync<List<FileInfoDto>>(url, ct); 
+            return list; ;
+
+        }
+
+        public Task<List<FileInfoDto>?> ListAsyncForDeclType(string companyId, int year, int month, string declType, CancellationToken ct = default)
+        {
+            var url = $"{Base}/files-info?companyId={companyId}&year={year}&month={month}";
+            if (!string.IsNullOrWhiteSpace(declType))
+                url += $"&declType={Uri.EscapeDataString(declType)}";
+
+            return GetAndUnwrapAsync<List<FileInfoDto>>(url, ct);
+        }
         public Task<FileDto?> GetDownloadAsync(int id, CancellationToken ct = default)
             => GetAndUnwrapAsync<FileDto>($"{Base}/download?id={id}", ct);
 

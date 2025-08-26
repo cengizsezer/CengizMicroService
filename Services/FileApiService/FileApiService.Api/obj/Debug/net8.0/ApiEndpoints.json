@@ -47,6 +47,11 @@
         "Name": "month",
         "Type": "System.String",
         "IsRequired": false
+      },
+      {
+        "Name": "declType",
+        "Type": "System.String",
+        "IsRequired": false
       }
     ],
     "ReturnTypes": [

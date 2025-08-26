@@ -7,9 +7,10 @@
     <RadzenStack>
         <RadzenRow>
             <RadzenColumn Size="12" SizeMD="6" class="rz-p-4 rz-border-radius-1" Style="border: var(--rz-grid-cell-border)">
-                <RadzenText TextStyle="TextStyle.Subtitle1">Contact</RadzenText>
+                <RadzenText TextStyle="TextStyle.Subtitle1">Firma Bilgileri</RadzenText>
                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
-                    <RadzenImage Path="/images/default-logo.png" Style="width: 80px; height: 80px; border-radius: 50%" />
+                   @*  <RadzenImage Path="/images/default-logo.png" Style="width: 80px; height: 80px; border-radius: 50%" /> *@
+                    <RadzenIcon Icon="account_box" IconColor="@Colors.Info" Style="width: 80px; height: 80px; border-radius: 50%" />
                     <RadzenStack Gap="0" class="rz-text-truncate">
                         <RadzenText TextStyle="TextStyle.Overline" class="rz-mt-2 rz-my-0" Style="color: var(--rz-text-tertiary-color);">Firma Adı</RadzenText>
                         <RadzenText TextStyle="TextStyle.Body1" class="rz-text-truncate"><b>@Firm?.Ad</b></RadzenText>
@@ -19,7 +20,6 @@
                 </RadzenStack>
             </RadzenColumn>
             <RadzenColumn Size="12" SizeMD="6" class="rz-p-4 rz-border-radius-1" Style="border: var(--rz-grid-cell-border)">
-                <RadzenText TextStyle="TextStyle.Subtitle1">Delivery Information</RadzenText>
                 <RadzenStack Gap="0" class="rz-text-truncate">
                     <RadzenText TextStyle="TextStyle.Overline" class="rz-mt-2 rz-my-0" Style="color: var(--rz-text-tertiary-color);">Address</RadzenText>
                     <RadzenText TextStyle="TextStyle.Body1" class="rz-text-truncate"><b>""</b></RadzenText>

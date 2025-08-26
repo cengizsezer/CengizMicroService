@@ -13,7 +13,8 @@ namespace WebApp.Application.Services
         {
             _httpClient = httpClient;
         }
-
+        public async Task<bool> DeleteAllAsync()
+    => (await _httpClient.DeleteAsync($"{Base}/alldelete")).IsSuccessStatusCode;
         public async Task<List<VehicleDto>> GetAllAsync()
             => await _httpClient.GetFromJsonAsync<List<VehicleDto>>(Base)
                ?? new List<VehicleDto>();

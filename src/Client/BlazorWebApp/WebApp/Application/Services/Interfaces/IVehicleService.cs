@@ -11,5 +11,7 @@ namespace WebApp.Application.Services.Interfaces
         Task<bool> DeleteAsync(int id);
         Task<bool> ImportAsync(List<VehicleDto> items);
         Task<byte[]> ExportExcelAsync();
+
+        Task<bool> DeleteAllAsync();
     }
 }

@@ -9,10 +9,18 @@
 @inject ILocalStorageService LocalStorage
 @inject AppStateManager AppState
 
-<RadzenStack class="rz-p-0 rz-p-md-12" Style="height:100%; width:100%;">
-    <RadzenCard class="rz-p-4"
-                Variant="Variant.Outlined"
-                >
+
+<style>
+    .shadows div {
+        padding: 1rem;
+        width: 10rem;
+        text-align: center;
+    }
+</style>
+
+<RadzenStack class="shadow rz-p-0 rz-p-md-12 rz-background-color-primary-lighter" Style="height:100%; width:100%;">
+    <RadzenCard class="rz-p-4 rz-background-color-primary-lighter"
+                Variant="Variant.Outlined">
         <RadzenCarousel @ref="carousel"
                         PagerOverlay="false"
                         Interval="@interval"
@@ -25,7 +33,7 @@
                 {
                    
                     <RadzenCarouselItem>
-                        <RadzenCard class="rz-w-75">
+                        <RadzenCard class="shadow rz-w-75">
                             <FirmCardPage Firm="@f"
                                           ShowClose="false"
                                           ShowContinue="true"
@@ -37,8 +45,6 @@
         </RadzenCarousel>
     </RadzenCard>
 </RadzenStack>
-
-@* <RadzenCarouselItem Style="width:100%; height:100%;  display:flex; align-items:center; justify-content:center;"> *@
 
 @code {
     RadzenCarousel? carousel;

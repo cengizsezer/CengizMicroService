@@ -149,6 +149,13 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "declType",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {

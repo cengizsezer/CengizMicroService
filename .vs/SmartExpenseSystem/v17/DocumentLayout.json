@@ -3,52 +3,92 @@
   "WorkspaceRootPath": "C:\\GitHub\\CengizMicroService\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\cards\\addreceiptitemcardpage.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\cards\\addreceiptitemcardpage.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\pages\\vehiclepage\\vehicles.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\pages\\vehiclepage\\vehicles.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\layout\\mainlayout.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\layout\\mainlayout.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+      "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\controllers\\vehiclescontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\controllers\\vehiclescontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\application\\services\\vehicleservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\application\\services\\vehicleservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\application\\services\\interfaces\\ivehicleservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\application\\services\\interfaces\\ivehicleservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\controllers\\vehicleservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\controllers\\vehicleservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\contracts\\dtos\\vehicledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\contracts\\dtos\\vehicledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\shared\\dto\\vehicledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\shared\\dto\\vehicledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\pages\\declaration\\adddeclarationitem.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\pages\\declaration\\adddeclarationitem.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\pages\\declaration\\declarationpage.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\pages\\declaration\\declarationpage.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\application\\services\\interfaces\\ifileapiservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\application\\services\\interfaces\\ifileapiservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\infrastructure\\authtokenhandler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\infrastructure\\authtokenhandler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\shared\\dto\\declaration\\filedto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\shared\\dto\\declaration\\filedto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\infrastructure\\tenantheaderhandler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\infrastructure\\tenantheaderhandler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|c:\\github\\cengizmicroservice\\services\\fileapiservice\\fileapiservice.api\\domain\\dtos\\fileinfodto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|solutionrelative:services\\fileapiservice\\fileapiservice.api\\domain\\dtos\\fileinfodto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\infrastructure\\appstatemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\infrastructure\\appstatemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\shared\\dto\\declaration\\fileinfodto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\shared\\dto\\declaration\\fileinfodto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{8E39DAA1-037A-43AE-8D35-7F993949F4A9}|src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Web.ApiGateway.csproj|c:\\github\\cengizmicroservice\\src\\appgateways\\webappgateway\\web.apigateway\\configurations\\ocelot.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{8E39DAA1-037A-43AE-8D35-7F993949F4A9}|src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Web.ApiGateway.csproj|solutionrelative:src\\appgateways\\webappgateway\\web.apigateway\\configurations\\ocelot.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\extensions\\httpdataresponse.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\extensions\\httpdataresponse.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\application\\services\\interfaces\\iidentityservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\application\\services\\interfaces\\iidentityservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\layout\\navmenu.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\layout\\navmenu.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\application\\services\\expenseservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\application\\services\\expenseservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|c:\\github\\cengizmicroservice\\services\\fileapiservice\\fileapiservice.api\\domain\\dtos\\filedto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|solutionrelative:services\\fileapiservice\\fileapiservice.api\\domain\\dtos\\filedto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\application\\services\\identityservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\application\\services\\identityservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\infrastructure\\tenantheaderhandler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\infrastructure\\tenantheaderhandler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\application\\services\\fileapiservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\application\\services\\fileapiservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\pages\\vehiclepage\\importvehiclesdialog.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\pages\\vehiclepage\\importvehiclesdialog.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\pages\\vehiclepage\\createorupdatevehicle.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\pages\\vehiclepage\\createorupdatevehicle.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\core\\domain\\vehicle.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\core\\domain\\vehicle.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\infrastructure\\entityconfigurations\\vehicleentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\infrastructure\\entityconfigurations\\vehicleentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -58,33 +98,48 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 2,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "DeclarationPage.razor",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\DeclarationPage.razor",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\DeclarationPage.razor",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\DeclarationPage.razor",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\DeclarationPage.razor",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAYAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-08-23T12:00:06.785Z",
+              "DocumentIndex": 1,
+              "Title": "VehiclesController.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Controllers\\VehiclesController.cs",
+              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Controllers\\VehiclesController.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Controllers\\VehiclesController.cs",
+              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Controllers\\VehiclesController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAADEAAAAHAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-24T13:03:45.119Z",
+              "IsPinned": true,
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "VehicleService.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Controllers\\VehicleService.cs",
+              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Controllers\\VehicleService.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Controllers\\VehicleService.cs",
+              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Controllers\\VehicleService.cs",
+              "ViewState": "AgIAAI0AAAAAAAAAAAAmwKYAAAANAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-24T13:03:12.864Z",
               "IsPinned": true,
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "AddReceiptItemCardPage.razor",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Cards\\AddReceiptItemCardPage.razor",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Cards\\AddReceiptItemCardPage.razor",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Cards\\AddReceiptItemCardPage.razor",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Cards\\AddReceiptItemCardPage.razor",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAA==",
+              "Title": "Vehicles.razor",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\Vehicles.razor",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\Vehicles.razor",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\Vehicles.razor",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\Vehicles.razor",
+              "ViewState": "AgIAACoAAAAAAAAAAAAAADMAAAAxAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-08-23T15:19:43.803Z",
+              "WhenOpened": "2025-08-24T13:06:19.452Z",
+              "IsPinned": true,
               "EditorCaption": ""
             },
             {
@@ -105,132 +160,249 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
-              "Title": "NavMenu.razor",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Layout\\NavMenu.razor",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Layout\\NavMenu.razor",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Layout\\NavMenu.razor",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Layout\\NavMenu.razor",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-08-23T14:59:27.847Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "MainLayout.razor",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor",
-              "ViewState": "AgIAABIAAAAAAAAAAAAAACoAAABVAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-08-23T14:52:07.797Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
               "DocumentIndex": 8,
-              "Title": "HttpDataResponse.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Extensions\\HttpDataResponse.cs",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Extensions\\HttpDataResponse.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Extensions\\HttpDataResponse.cs",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Extensions\\HttpDataResponse.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-23T12:23:01.528Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 7,
-              "Title": "Program.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
-              "ViewState": "AgIAAA8AAAAAAAAAAAAAABoAAAA5AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-23T12:17:51.381Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 10,
-              "Title": "FileDto.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Domain\\Dtos\\FileDto.cs",
-              "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Domain\\Dtos\\FileDto.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Domain\\Dtos\\FileDto.cs",
-              "RelativeToolTip": "Services\\FileApiService\\FileApiService.Api\\Domain\\Dtos\\FileDto.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAABIAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-23T12:06:43.762Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "FileInfoDto.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Shared\\Dto\\Declaration\\FileInfoDto.cs",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Shared\\Dto\\Declaration\\FileInfoDto.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Shared\\Dto\\Declaration\\FileInfoDto.cs",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Shared\\Dto\\Declaration\\FileInfoDto.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-23T12:06:34.243Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "FileInfoDto.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Domain\\Dtos\\FileInfoDto.cs",
-              "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Domain\\Dtos\\FileInfoDto.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Domain\\Dtos\\FileInfoDto.cs",
-              "RelativeToolTip": "Services\\FileApiService\\FileApiService.Api\\Domain\\Dtos\\FileInfoDto.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAA0AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-23T12:06:17.424Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "FileDto.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Shared\\Dto\\Declaration\\FileDto.cs",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Shared\\Dto\\Declaration\\FileDto.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Shared\\Dto\\Declaration\\FileDto.cs",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Shared\\Dto\\Declaration\\FileDto.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-23T12:06:12.38Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "IFileApiService.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IFileApiService.cs",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IFileApiService.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IFileApiService.cs",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IFileApiService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAAwAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-23T12:02:31.472Z",
+              "Title": "DeclarationPage.razor",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\DeclarationPage.razor",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\DeclarationPage.razor",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\DeclarationPage.razor",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\DeclarationPage.razor",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-08-24T13:44:09.772Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 11,
+              "Title": "AppStateManager.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AppStateManager.cs",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AppStateManager.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AppStateManager.cs",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AppStateManager.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACAAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-24T13:35:08.605Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
               "Title": "TenantHeaderHandler.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\TenantHeaderHandler.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\TenantHeaderHandler.cs",
               "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\TenantHeaderHandler.cs",
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\TenantHeaderHandler.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABsAAAA7AAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-14T09:17:41.907Z",
+              "WhenOpened": "2025-08-24T13:35:39.632Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "VehicleDto.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Contracts\\Dtos\\VehicleDto.cs",
+              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Contracts\\Dtos\\VehicleDto.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Contracts\\Dtos\\VehicleDto.cs",
+              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Contracts\\Dtos\\VehicleDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-24T13:03:03.691Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "VehicleService.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\VehicleService.cs",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\VehicleService.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\VehicleService.cs",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\VehicleService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAA4AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-24T13:02:29.585Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "IVehicleService.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IVehicleService.cs",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IVehicleService.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IVehicleService.cs",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IVehicleService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAkAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-24T13:22:28.818Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "VehicleDto.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Shared\\Dto\\VehicleDto.cs",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Shared\\Dto\\VehicleDto.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Shared\\Dto\\VehicleDto.cs",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Shared\\Dto\\VehicleDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAABAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-24T14:35:24.267Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "AddDeclarationItem.razor",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\AddDeclarationItem.razor",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\AddDeclarationItem.razor",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\AddDeclarationItem.razor",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\AddDeclarationItem.razor",
+              "ViewState": "AgIAADYAAAAAAAAAAAAAAEkAAAARAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-08-24T13:44:13.69Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "AuthTokenHandler.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AuthTokenHandler.cs",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AuthTokenHandler.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AuthTokenHandler.cs",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AuthTokenHandler.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-24T13:35:38.093Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "ocelot.Development.json",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.Development.json",
+              "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.Development.json",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.Development.json",
+              "RelativeToolTip": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.Development.json",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAgwBUAAAAGAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-08-24T13:17:40.795Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
+              "ViewState": "AgIAABgAAAAAAAAAAAAmwD4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-24T13:16:40.253Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "IIdentityService.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IIdentityService.cs",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IIdentityService.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IIdentityService.cs",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IIdentityService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-24T13:16:32.724Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "IdentityService.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\IdentityService.cs",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\IdentityService.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\IdentityService.cs",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\IdentityService.cs",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-24T13:15:57.429Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "FileApiService.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\FileApiService.cs",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\FileApiService.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\FileApiService.cs",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\FileApiService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-24T13:15:50.555Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "ExpenseService.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\ExpenseService.cs",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\ExpenseService.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\ExpenseService.cs",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\ExpenseService.cs",
+              "ViewState": "AgIAAA8AAAAAAAAAAAA9wDMAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-24T13:15:41.177Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "ImportVehiclesDialog.razor",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\ImportVehiclesDialog.razor",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\ImportVehiclesDialog.razor",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\ImportVehiclesDialog.razor",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\ImportVehiclesDialog.razor",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACwAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-08-24T13:06:13.577Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "CreateorUpdateVehicle.razor",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\CreateorUpdateVehicle.razor",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\CreateorUpdateVehicle.razor",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\CreateorUpdateVehicle.razor",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\CreateorUpdateVehicle.razor",
+              "ViewState": "AgIAAGkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-08-24T13:06:57.862Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
+              "Title": "Vehicle.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Core\\Domain\\Vehicle.cs",
+              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Core\\Domain\\Vehicle.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Core\\Domain\\Vehicle.cs",
+              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Core\\Domain\\Vehicle.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-24T13:02:40.871Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 21,
+              "Title": "VehicleEntityTypeConfiguration.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Infrastructure\\EntityConfigurations\\VehicleEntityTypeConfiguration.cs",
+              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Infrastructure\\EntityConfigurations\\VehicleEntityTypeConfiguration.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Infrastructure\\EntityConfigurations\\VehicleEntityTypeConfiguration.cs",
+              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Infrastructure\\EntityConfigurations\\VehicleEntityTypeConfiguration.cs",
+              "ViewState": "AgIAABkAAAAAAAAAAAAmwD8AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-24T13:02:36.384Z",
               "EditorCaption": ""
             }
           ]

@@ -149,29 +149,18 @@ namespace CatalogService.Api.Controllers
             }
         }
 
-        // BULK IMPORT
-        public async Task<bool> ImportVehicles(List<VehicleDto> vehicles)
+        public async Task<bool> DeleteAllAsync(bool resetIdentity = false)
         {
             try
             {
-                var toDb = vehicles.Select(v => new Vehicle
-                {
-                    Plate = v.Plate?.Trim(),
-                    Driver = v.Driver,
-                    Unit = v.Unit,
-                    Department = v.Department,
-                    Description1 = v.Description1,
-                    Region = v.Region,
-                    Description2 = v.Description2,
-                    Type = v.Type,
-                    Brand = v.Brand,
-                    Model = v.Model,
-                    Gear = v.Gear,
-                    Fuel = v.Fuel,
-                    Fleet = v.Fleet
-                }).ToList();
+                // EF Core 7+ toplu silme (tek SQL)
+                await dBContext.Vehicles.ExecuteDeleteAsync();
 
-                await dBContext.BulkInsertAsync(toDb);
+                if (resetIdentity)
+                {
+                    // Sadece SQL Server için: IDENTITY yeniden başlat (bir sonraki 1 olur)
+                    await dBContext.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Vehicles', RESEED, 0);");
+                }
                 return true;
             }
             catch
@@ -179,6 +168,56 @@ namespace CatalogService.Api.Controllers
                 return false;
             }
         }
+
+
+        // BULK IMPORT
+        public async Task<bool> ImportVehicles(List<VehicleDto> vehicles)
+        {
+            try
+            {
+                // normalize plate (uppercase & trim)
+                foreach (var v in vehicles)
+                    v.Plate = (v.Plate ?? "").Trim().ToUpperInvariant();
+
+                // plakayı unique kabul edelim
+                var plates = vehicles.Select(v => v.Plate).Where(p => !string.IsNullOrEmpty(p)).Distinct().ToList();
+                var existing = await dBContext.Vehicles
+                    .Where(x => plates.Contains(x.Plate))
+                    .ToListAsync();
+
+                var toInsertOrUpdate = vehicles.Select(v =>
+                {
+                    var e = existing.FirstOrDefault(x => x.Plate == v.Plate);
+                    if (e == null) e = new Vehicle { Plate = v.Plate };
+                    e.Driver = v.Driver;
+                    e.Unit = v.Unit;
+                    e.Department = v.Department;
+                    e.Description1 = v.Description1;
+                    e.Region = v.Region;
+                    e.Description2 = v.Description2;
+                    e.Type = v.Type;
+                    e.Brand = v.Brand;
+                    e.Model = v.Model;
+                    e.Gear = v.Gear;
+                    e.Fuel = v.Fuel;
+                    e.Fleet = v.Fleet;
+                    return e;
+                }).ToList();
+
+                var bulkOptions = new BulkConfig
+                {
+                    UpdateByProperties = new List<string> { "Plate" } // plakaya göre upsert
+                };
+
+                await dBContext.BulkInsertOrUpdateAsync(toInsertOrUpdate, bulkOptions);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
 
         // EXPORT to EXCEL
         public async Task<byte[]> ExportToExcel()

@@ -1,4 +1,5 @@
 ﻿@page "/vehicles"
+@using Microsoft.AspNetCore.Components.Forms
 @using Radzen
 @using System.Text.Json
 @using WebApp.Application.Services
@@ -11,9 +12,10 @@
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 @inject IJSRuntime JS
+@inject HttpClient Http
+@inject NotificationService Notify
 
-
-<PageTitle>Vehicles</PageTitle>
+<PageTitle>ARACLAR</PageTitle>
 
 <div class="rz-p-3">
     <div class="rz-flex rz-ai-center rz-jc-between rz-mb-3">
@@ -21,24 +23,30 @@
             <RadzenButton Text="Add Vehicle"
                           Icon="add_circle"
                           ButtonStyle="ButtonStyle.Primary"
-                          Click="@CreateVehicle" />
+                          Click="@InsertRow" />
 
             <!-- IMPORT: Excel -> backend 'api/vehicles/import-excel' -->
-            <RadzenUpload ChooseText="Import Excel"
-                          Url="/catalog/vehicles/parse-excel"
-                          Accept=".xlsx"
-                          Auto="true"
+            <RadzenUpload @ref="excelUpload"
+                          Auto="false"
                           Multiple="false"
-                          InputId="file" 
-                          Progress="@OnUploadProgress"
-                          Complete="@OnUploadComplete"
-                          Style="min-width:160px" />
+                          Accept=".xlsx"
+                          Change="@OnExcelSelected" />
+
+            <RadzenButton Text="Import Excel"
+                          Click="@OnExcelUpload"
+                          Disabled="@(selectedExcel is null)" />
 
             <RadzenButton Text="Export Excel"
                           Icon="download"
                           ButtonStyle="ButtonStyle.Info"
                           Disabled="@exporting"
                           Click="@ExportExcel" />
+
+            <RadzenButton Text="Delete All"
+                          Icon="delete_forever"
+                          ButtonStyle="ButtonStyle.Danger"
+                          Disabled="@(view.Count == 0)"
+                          Click="@DeleteAll" />
         </div>
 
         <div class="rz-flex rz-ai-center rz-g-2">
@@ -48,44 +56,135 @@
                            Change="@(args => ApplySearch())" />
         </div>
     </div>
-
+    <div class="grid-wrap">
     <RadzenDataGrid @ref="grid"
                     Data="@view"
                     TItem="VehicleDto"
+                    EditMode="DataGridEditMode.Single"
+                    RowCreate="@OnCreateRow"
+                    RowUpdate="@OnUpdateRow"
                     AllowFiltering="false"
                     AllowSorting="true"
                     AllowPaging="true"
+                    AllowColumnResize="true"
+                        ColumnWidth="150px"
+                        IsLoading=@isLoading
                     PageSize="20"
                     RowDoubleClick="@OnRowDoubleClick">
         <Columns>
             <RadzenDataGridColumn TItem="VehicleDto" Property="Id" Title="ID" Width="90px" />
-            <RadzenDataGridColumn TItem="VehicleDto" Property="Plate" Title="Plate" />
-            <RadzenDataGridColumn TItem="VehicleDto" Property="Driver" Title="Driver" />
-            <RadzenDataGridColumn TItem="VehicleDto" Property="Unit" Title="Unit" />
-            <RadzenDataGridColumn TItem="VehicleDto" Property="Department" Title="Department" />
-            <RadzenDataGridColumn TItem="VehicleDto" Property="Region" Title="Region" />
-            <RadzenDataGridColumn TItem="VehicleDto" Property="Type" Title="Type" />
-            <RadzenDataGridColumn TItem="VehicleDto" Property="Brand" Title="Brand" />
-            <RadzenDataGridColumn TItem="VehicleDto" Property="Model" Title="Model" />
-            <RadzenDataGridColumn TItem="VehicleDto" Property="Gear" Title="Gear" />
-            <RadzenDataGridColumn TItem="VehicleDto" Property="Fuel" Title="Fuel" />
-            <RadzenDataGridColumn TItem="VehicleDto" Property="Fleet" Title="Fleet" />
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Plate" Title="Plate">
+                <EditTemplate Context="row">
+                    <RadzenTextBox @bind-Value="row.Plate" Name="Plate" Style="width:100%" />
+                    <RadzenRequiredValidator Component="Plate" Text="Plate is required" Popup="true" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
 
-            <RadzenDataGridColumn TItem="VehicleDto" Title="Actions" Width="210px">
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Driver" Title="Driver">
+                <EditTemplate Context="row">
+                    <RadzenTextBox @bind-Value="row.Driver" Style="width:100%" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Unit" Title="Unit">
+                <EditTemplate Context="row">
+                    <RadzenTextBox @bind-Value="row.Unit" Style="width:100%" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Department" Title="Department">
+                <EditTemplate Context="row">
+                    <RadzenTextBox @bind-Value="row.Department" Style="width:100%" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Description1" Title="Description1" Width="220px">
+                <EditTemplate Context="row">
+                    <RadzenTextArea @bind-Value="row.Description1" Rows="2" Style="width:100%" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Region" Title="Region">
+                <EditTemplate Context="row">
+                    <RadzenTextBox @bind-Value="row.Region" Style="width:100%" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Description2" Title="Description2" Width="220px">
+                <EditTemplate Context="row">
+                    <RadzenTextArea @bind-Value="row.Description2" Rows="2" Style="width:100%" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Type" Title="Type">
+                <EditTemplate Context="row">
+                    <RadzenTextBox @bind-Value="row.Type" Style="width:100%" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Brand" Title="Brand">
+                <EditTemplate Context="row">
+                    <RadzenTextBox @bind-Value="row.Brand" Style="width:100%" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Model" Title="Model">
+                <EditTemplate Context="row">
+                    <RadzenTextBox @bind-Value="row.Model" Style="width:100%" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Gear" Title="Gear">
+                <EditTemplate Context="row">
+                    <RadzenTextBox @bind-Value="row.Gear" Style="width:100%" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Fuel" Title="Fuel">
+                <EditTemplate Context="row">
+                    <RadzenTextBox @bind-Value="row.Fuel" Style="width:100%" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="VehicleDto" Property="Fleet" Title="Fleet">
+                <EditTemplate Context="row">
+                    <RadzenTextBox @bind-Value="row.Fleet" Style="width:100%" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="VehicleDto"
+                    Title="Actions"
+                    Width="210px"
+                    TextAlign="TextAlign.Center"
+                    Filterable="false"
+                    Sortable="false"
+                    Frozen="true"
+                    FrozenPosition="FrozenColumnPosition.Right">
                 <Template Context="row">
-                    <RadzenButton Text="Edit" Icon="edit"
+                    <RadzenButton Icon="edit"
                                   ButtonStyle="ButtonStyle.Warning"
                                   Size="ButtonSize.Small"
-                                  Click="@(()=>EditVehicle(row))"
-                                  class="rz-mr-2" />
-                    <RadzenButton Text="Delete" Icon="delete"
+                                  class="rz-mr-2"
+                                  Click="@(()=> EditRow(row))" />
+                    <RadzenButton Icon="delete"
                                   ButtonStyle="ButtonStyle.Danger"
                                   Size="ButtonSize.Small"
-                                  Click="@(()=>DeleteVehicle(row))" />
+                                  Click="@(()=> DeleteRow(row))" />
                 </Template>
+                <EditTemplate Context="row">
+                    <RadzenButton Icon="check"
+                                  ButtonStyle="ButtonStyle.Success"
+                                  Size="ButtonSize.Small"
+                                  class="rz-mr-2"
+                                  Click="@((args)=> SaveRow(row))" />
+                    <RadzenButton Icon="close"
+                                  ButtonStyle="ButtonStyle.Light"
+                                  Size="ButtonSize.Small"
+                                  Click="@((args)=> CancelEdit(row))" />
+                </EditTemplate>
             </RadzenDataGridColumn>
         </Columns>
     </RadzenDataGrid>
+    </div>
 </div>
 
 @code {
@@ -94,7 +193,45 @@
     List<VehicleDto> view = new(); // filtrelenmiş görünüm
     string search;
     bool exporting = false;
+    IBrowserFile? selectedExcel;
+    RadzenUpload? excelUpload;
+    bool isLoading = false;
+    void OnExcelSelected(UploadChangeEventArgs args)
+    {
+        selectedExcel = args.Files?.FirstOrDefault();
+        _ = OnExcelUpload(); // seçer seçmez otomatik başlat
+    }
 
+    async Task OnExcelUpload()
+    {
+        if (selectedExcel is null) return;
+
+        using var stream = selectedExcel.OpenReadStream(100_000_000);
+        using var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(stream);
+        fileContent.Headers.ContentType =
+            new System.Net.Http.Headers.MediaTypeHeaderValue(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        content.Add(fileContent, "file", selectedExcel.Name);
+
+        // HttpClient BaseAddress: http://localhost:5000/
+        var resp = await Http.PostAsync("/catalog/vehicles/parse-excel", content);
+        if (!resp.IsSuccessStatusCode)
+        {
+            var err = await resp.Content.ReadAsStringAsync();
+            NotificationService.Notify(NotificationSeverity.Error, "Parse hatası", err);
+            return;
+        }
+
+        var list = await resp.Content.ReadFromJsonAsync<List<VehicleDto>>() ?? new();
+
+        var ok = await DialogService.OpenAsync<ImportVehiclesDialog>(
+            "Import Vehicles",
+            new Dictionary<string, object> { { "Items", list } },
+            new DialogOptions { Width = "960px", CloseDialogOnOverlayClick = true });
+
+        if (ok is true) await ReloadAsync();
+    }
     protected override async Task OnInitializedAsync()
     {
         await ReloadAsync();
@@ -102,9 +239,11 @@
 
     async Task ReloadAsync()
     {
+        isLoading = true;
         items = await VehicleService.GetAllAsync();
         ApplySearch();
         StateHasChanged();
+        isLoading = false;
     }
     async Task OnRowDoubleClick(DataGridRowMouseEventArgs<VehicleDto> args)
     {
@@ -178,6 +317,29 @@
         }
     }
 
+    async Task DeleteAll()
+    {
+        var confirm = await DialogService.Confirm(
+            "Tüm araçlar silinecek ve ID sayaçları sıfırlanacak. Emin misiniz?",
+            "Onay",
+            new ConfirmOptions { OkButtonText = "Evet, Sil", CancelButtonText = "Vazgeç", ShowClose = false });
+
+        if (confirm == true)
+        {
+            var ok = await VehicleService.DeleteAllAsync();
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = ok ? NotificationSeverity.Success : NotificationSeverity.Error,
+                Summary = ok ? "Silindi" : "Silme başarısız",
+                Detail = ok ? "Tüm araçlar silindi." : "Sunucu silme sırasında hata döndü.",
+                Duration = 2500
+            });
+
+            if (ok) await ReloadAsync();
+        }
+    }
+
+
     async Task ExportExcel()
     {
         exporting = true;
@@ -234,5 +396,62 @@
         {
             NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = "Hata", Detail = ex.Message });
         }
+    }
+
+
+    async Task InsertRow()
+    {
+        var newItem = new VehicleDto();
+        await grid.InsertRow(newItem);
+    }
+
+    async Task EditRow(VehicleDto row)
+    {
+        await grid.EditRow(row);
+    }
+
+    async Task SaveRow(VehicleDto row)
+    {
+        await grid.UpdateRow(row); // → OnUpdateRow tetiklenir
+    }
+
+    void CancelEdit(VehicleDto row)
+    {
+        grid.CancelEditRow(row);
+    }
+
+    async Task OnCreateRow(VehicleDto row)
+    {
+        // Plate normalize DB tarafında da var ama UI'da da güvene alabiliriz
+        row.Plate = row.Plate?.Trim();
+
+        var ok = await VehicleService.CreateAsync(row);
+        if (!ok)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Create failed", "Kayıt eklenemedi.");
+            grid.CancelEditRow(row);
+            return;
+        }
+        await ReloadAsync(); // Id’nin güncellenmesi için taze liste
+    }
+
+    async Task OnUpdateRow(VehicleDto row)
+    {
+        row.Plate = row.Plate?.Trim();
+
+        var ok = await VehicleService.UpdateAsync(row);
+        if (!ok)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Update failed", "Kayıt güncellenemedi.");
+            grid.CancelEditRow(row);
+            return;
+        }
+        // İstersen sadece satırı bırakabilir veya tüm listeyi tazeleyebilirsin
+        // await ReloadAsync();
+    }
+
+    async Task DeleteRow(VehicleDto row)
+    {
+        await DeleteVehicle(row); // mevcut confirm akışını kullanıyoruz
     }
 }

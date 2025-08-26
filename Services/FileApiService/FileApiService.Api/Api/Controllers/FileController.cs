@@ -43,8 +43,9 @@ namespace FileApiService.Api.Api.Controllers
             [FromQuery] string? companyId,
             [FromQuery] string? year,
             [FromQuery] string? month,
+            [FromQuery] string? declType,
             [FromServices] IGetFilesInfoQueryHandler h,
             CancellationToken ct)
-            => h.HandleAsync(new GetFilesInfoQuery { CompanyId = companyId, Year = year, Month = month }, ct);
+            => h.HandleAsync(new GetFilesInfoQuery { CompanyId = companyId, Year = year, Month = month, DeclType = declType }, ct);
     }
 }

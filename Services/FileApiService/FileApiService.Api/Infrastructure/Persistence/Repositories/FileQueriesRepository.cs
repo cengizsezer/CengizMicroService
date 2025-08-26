@@ -32,32 +32,62 @@ namespace FileApiService.Api.Infrastructure.Persistence.Repositories
         }
 
         public Task<IEnumerable<FileInfoDto>> GetFilesInfo(CancellationToken ct)
-            => GetFilesInfo(null, null, null, ct);
-
-        public async Task<IEnumerable<FileInfoDto>> GetFilesInfo(string? companyId, string? year, string? month, CancellationToken ct)
+            => GetFilesInfo(null, null, null,null ,ct);
+        public async Task<int> CountFiles(string? companyId, string? year, string? month, CancellationToken ct)
         {
             var q = _db.Files.AsNoTracking().AsQueryable();
             if (!string.IsNullOrWhiteSpace(companyId)) q = q.Where(x => x.CompanyId == companyId);
             if (!string.IsNullOrWhiteSpace(year)) q = q.Where(x => x.Year == year);
             if (!string.IsNullOrWhiteSpace(month)) q = q.Where(x => x.Month == month);
+            return await q.CountAsync(ct);
+        }
+        public async Task<IEnumerable<FileInfoDto>> GetFilesInfo(
+      string? companyId, string? year, string? month, string? declTypeNorm, CancellationToken ct)
+        {
+            var q = _db.Files.AsNoTracking().AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(companyId)) q = q.Where(x => x.CompanyId == companyId);
+            if (!string.IsNullOrWhiteSpace(year)) q = q.Where(x => x.Year == year);
+            if (!string.IsNullOrWhiteSpace(month)) q = q.Where(x => x.Month == month);
+
+            if (!string.IsNullOrWhiteSpace(declTypeNorm))
+            {
+                // Sol tarafı SQL'de normalize ediyoruz:
+                q = q.Where(x =>
+                    (x.DeclType ?? "") != "" &&
+                    x.DeclType.Trim()
+                              .ToUpper()
+                              .Replace(" ", "")
+                              .Replace("_", "")
+                              .Replace("-", "")
+                              .Replace("\u00A0", "") // NBSP
+                              .Replace("\u2010", "") // HYPHEN
+                              .Replace("\u2011", "") // NON-BREAKING HYPHEN
+                              .Replace("\u2012", "") // FIGURE DASH
+                              .Replace("\u2013", "") // EN DASH
+                              .Replace("\u2014", "") // EM DASH
+                              .Replace("\u2212", "") // MINUS SIGN
+                    == declTypeNorm);
+            }
 
             return await q.OrderByDescending(x => x.CreatedAtUtc)
-                .Select(x => new FileInfoDto
-                {
-                    Id = x.Id,
-                    CompanyId = x.CompanyId,
-                    Year = x.Year,
-                    Month = x.Month,
-                    DeclType = x.DeclType,
-                    DocType = x.DocType,
-                    FileName = x.FileName,
-                    ContentType = x.ContentType,
-                    Length = x.Length,
-                    CreatedAtUtc = x.CreatedAtUtc,
-                    Key = x.Key
-                })
-                .ToListAsync(ct);
+                          .Select(x => new FileInfoDto
+                          {
+                              Id = x.Id,
+                              CompanyId = x.CompanyId,
+                              Year = x.Year,
+                              Month = x.Month,
+                              DeclType = x.DeclType,
+                              DocType = x.DocType,
+                              FileName = x.FileName,
+                              ContentType = x.ContentType,
+                              Length = x.Length,
+                              CreatedAtUtc = x.CreatedAtUtc,
+                              Key = x.Key
+                          })
+                          .ToListAsync(ct);
         }
+
     }
 
 }
