@@ -1,5 +1,6 @@
 ﻿using Blazored.LocalStorage;
 using Blazored.SessionStorage;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,7 +49,16 @@ namespace WebApp
                 var factory = sp.GetRequiredService<IHttpClientFactory>();
                 return factory.CreateClient("ApiGatewayHttpClient");
             });
-           
+            builder.Services.AddHttpClient<IFileApiService, FileApiService>((sp, http) =>
+            {
+                var nav = sp.GetRequiredService<NavigationManager>();
+                var baseUrl = builder.HostEnvironment.IsDevelopment()
+                    ? "http://localhost:5009/api/file/v1/"                  // DEV: direkt FileApiService
+                    : new Uri(new Uri(nav.BaseUri), "api/file/v1/").ToString(); // PROD: aynı origin (Nginx proxy)
+                http.BaseAddress = new Uri(baseUrl);
+            })
+ .AddHttpMessageHandler<AuthTokenHandler>()
+ .AddHttpMessageHandler<TenantHeaderHandler>();
             // Servisler
             builder.Services.AddTransient<IIdentityService, IdentityService>();
             builder.Services.AddTransient<IExpenseService, ExpenseService>();

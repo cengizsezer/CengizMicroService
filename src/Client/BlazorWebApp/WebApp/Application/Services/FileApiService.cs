@@ -10,8 +10,6 @@ namespace WebApp.Application.Services
     public class FileApiService : IFileApiService
     {
         private readonly HttpClient _http;
-        // İstersen BaseAddress kullan: _http.BaseAddress = new Uri("http://localhost:5009");
-        private const string Base = "http://localhost:5009/api/file/v1";
 
         public FileApiService(HttpClient http) => _http = http;
 
@@ -34,7 +32,7 @@ namespace WebApp.Application.Services
             content.Add(new StringContent(declType), "declType");
             content.Add(new StringContent(docType), "docType");
 
-            using var resp = await _http.PostAsync($"{Base}/upload", content, ct);
+            using var resp = await _http.PostAsync("upload", content, ct);
             var bodyStr = await resp.Content.ReadAsStringAsync(ct);
 
             if (!resp.IsSuccessStatusCode) return false;
@@ -49,7 +47,7 @@ namespace WebApp.Application.Services
 
         public Task<List<FileInfoDto>?> ListAsync(string companyId, int year, int month, CancellationToken ct = default)
         {
-            string url = $"{Base}/files-info?companyId={companyId}&year={year}&month={month}";
+            string url = $"files-info?companyId={companyId}&year={year}&month={month}";
             var list = GetAndUnwrapAsync<List<FileInfoDto>>(url, ct); 
             return list; ;
 
@@ -57,14 +55,14 @@ namespace WebApp.Application.Services
 
         public Task<List<FileInfoDto>?> ListAsyncForDeclType(string companyId, int year, int month, string declType, CancellationToken ct = default)
         {
-            var url = $"{Base}/files-info?companyId={companyId}&year={year}&month={month}";
+            var url = $"files-info?companyId={companyId}&year={year}&month={month}";
             if (!string.IsNullOrWhiteSpace(declType))
                 url += $"&declType={Uri.EscapeDataString(declType)}";
 
             return GetAndUnwrapAsync<List<FileInfoDto>>(url, ct);
         }
         public Task<FileDto?> GetDownloadAsync(int id, CancellationToken ct = default)
-            => GetAndUnwrapAsync<FileDto>($"{Base}/download?id={id}", ct);
+            => GetAndUnwrapAsync<FileDto>($"download?id={id}", ct);
 
         // -------- Helpers --------
         private async Task<T?> GetAndUnwrapAsync<T>(string url, CancellationToken ct)
