@@ -1,0 +1,341 @@
+name: dockercompose13332881914596172242
+services:
+  catalogseeder.api:
+    build:
+      context: C:\GitHub\CengizMicroService
+      dockerfile: Services/CatalogService/CatalogService.Api/Dockerfile
+    command:
+      - dotnet
+      - CatalogService.Api.dll
+      - --seed-force
+    container_name: c_catalogseeder
+    depends_on:
+      s_sqlserver:
+        condition: service_started
+        required: true
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+    external_links:
+      - c_graylog
+      - s_consul
+      - s_rabbitmq
+      - s_sqlserver
+    image: catalogserviceapi
+    networks:
+      net_backendservices: null
+  catalogservice.api:
+    build:
+      context: C:\GitHub\CengizMicroService
+      dockerfile: Services/CatalogService/CatalogService.Api/Dockerfile
+    container_name: c_catalogservice
+    depends_on:
+      s_consul:
+        condition: service_started
+        required: true
+      s_rabbitmq:
+        condition: service_started
+        required: true
+      s_sqlserver:
+        condition: service_started
+        required: true
+      web.apigateway:
+        condition: service_started
+        required: true
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:5004
+      ConsulConfig__Address: http://s_consul:8500
+      ConsulConfig__ServiceAddress: http://c_catalogservice:5004
+      ConsulConfig__ServiceId: Catalog
+      ConsulConfig__ServiceName: CatalogService
+    external_links:
+      - c_graylog
+      - s_consul
+      - s_rabbitmq
+      - s_sqlserver
+    image: catalogserviceapi
+    networks:
+      net_backendservices: null
+    ports:
+      - mode: ingress
+        target: 5004
+        published: "5004"
+        protocol: tcp
+  fileapiservice.api:
+    build:
+      context: C:\GitHub\CengizMicroService
+      dockerfile: Services/FileApiService/FileApiService.Api/Dockerfile
+    container_name: c_fileapiservice
+    depends_on:
+      s_consul:
+        condition: service_started
+        required: true
+      s_rabbitmq:
+        condition: service_started
+        required: true
+      s_sqlserver:
+        condition: service_started
+        required: true
+      web.apigateway:
+        condition: service_started
+        required: true
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:5009
+      ConsulConfig__Address: http://s_consul:8500
+      ConsulConfig__ServiceAddress: http://c_fileapiservice:5009
+      ConsulConfig__ServiceId: FileApi
+      ConsulConfig__ServiceName: FileApiService
+    external_links:
+      - c_graylog
+      - s_consul
+      - s_rabbitmq
+      - s_sqlserver
+    image: fileapiserviceapi
+    networks:
+      net_backendservices: null
+    ports:
+      - mode: ingress
+        target: 5009
+        published: "5009"
+        protocol: tcp
+  identityservice:
+    build:
+      context: C:\GitHub\CengizMicroService
+      dockerfile: Services/IdentityService/IdentityService/Dockerfile
+    container_name: c_identityservice
+    depends_on:
+      s_consul:
+        condition: service_started
+        required: true
+      s_rabbitmq:
+        condition: service_started
+        required: true
+      s_sqlserver:
+        condition: service_started
+        required: true
+      web.apigateway:
+        condition: service_started
+        required: true
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:5005
+      ConsulConfig__Address: http://s_consul:8500
+      ConsulConfig__ServiceAddress: http://c_identityservice:5005
+      ConsulConfig__ServiceId: Identity
+      ConsulConfig__ServiceName: IdentityService
+    external_links:
+      - c_graylog
+      - s_consul
+      - s_rabbitmq
+      - s_sqlserver
+    image: identityservice
+    networks:
+      net_backendservices: null
+    ports:
+      - mode: ingress
+        target: 5005
+        published: "5005"
+        protocol: tcp
+  nginx.public:
+    build:
+      context: C:\GitHub\CengizMicroService\Nginx
+      dockerfile: Dockerfile
+    container_name: c_nginx_public
+    depends_on:
+      web.apigateway:
+        condition: service_started
+        required: true
+      webapp:
+        condition: service_started
+        required: true
+    networks:
+      net_apigateway: null
+      net_backendservices: null
+      net_frontend: null
+    ports:
+      - mode: ingress
+        target: 80
+        published: "80"
+        protocol: tcp
+      - mode: ingress
+        target: 443
+        published: "443"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: /etc/letsencrypt
+        target: /etc/letsencrypt
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: volume
+        source: nginx_cache
+        target: /var/cache/nginx
+        volume: {}
+  ocrservice.api:
+    build:
+      context: C:\GitHub\CengizMicroService
+      dockerfile: Services/OCRService/OCRService.Api/Dockerfile
+    container_name: c_ocrservice
+    depends_on:
+      s_consul:
+        condition: service_started
+        required: true
+      s_rabbitmq:
+        condition: service_started
+        required: true
+      s_sqlserver:
+        condition: service_started
+        required: true
+      web.apigateway:
+        condition: service_started
+        required: true
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:5002
+      ConsulConfig__Address: http://s_consul:8500
+      ConsulConfig__ServiceAddress: http://c_ocrservice:5002
+      ConsulConfig__ServiceId: OCR
+      ConsulConfig__ServiceName: OCRService
+      GoogleVision__CredentialsPath: ""
+      OpenAI__ApiKey: ""
+    external_links:
+      - c_graylog
+      - s_consul
+      - s_rabbitmq
+      - s_sqlserver
+    image: ocrservice.api
+    networks:
+      net_backendservices: null
+    ports:
+      - mode: ingress
+        target: 5002
+        published: "5002"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: C:\GitHub\CengizMicroService\Services\OCRService\OCRService.Api\Config
+        target: /app/Services/OCRService/OCRService.Api/Config
+        read_only: true
+        bind:
+          create_host_path: true
+  s_consul:
+    container_name: c_consul
+    image: consul:1.15
+    networks:
+      net_apigateway: null
+      net_backendservices: null
+      net_frontend: null
+    ports:
+      - mode: ingress
+        target: 8500
+        published: "8500"
+        protocol: tcp
+      - mode: ingress
+        target: 8600
+        published: "8600"
+        protocol: tcp
+      - mode: ingress
+        target: 8600
+        published: "8600"
+        protocol: udp
+  s_rabbitmq:
+    container_name: c_rabbitmq
+    image: rabbitmq:3-management
+    networks:
+      net_apigateway: null
+      net_backendservices: null
+      net_frontend: null
+    ports:
+      - mode: ingress
+        target: 5672
+        published: "5672"
+        protocol: tcp
+      - mode: ingress
+        target: 15672
+        published: "15672"
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: rabbitmq
+        target: /var/lib/rabbitmq
+        volume: {}
+  s_sqlserver:
+    container_name: c_sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: 0-jofnvbsvCS!
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    networks:
+      net_backendservices: null
+    ports:
+      - mode: ingress
+        target: 1433
+        published: "1433"
+        protocol: tcp
+    user: root
+    volumes:
+      - type: volume
+        source: sqlserver_data
+        target: /var/opt/mssql/data
+        volume: {}
+      - type: volume
+        source: sqlserver_log
+        target: /var/opt/mssql/log
+        volume: {}
+  web.apigateway:
+    build:
+      context: C:\GitHub\CengizMicroService
+      dockerfile: src/AppGateways/WebAppGateway/Web.ApiGateway/Dockerfile
+    container_name: c_apigateway
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:5000
+    image: webapigateway
+    networks:
+      net_apigateway: null
+      net_backendservices: null
+    ports:
+      - mode: ingress
+        target: 5000
+        published: "5000"
+        protocol: tcp
+  webapp:
+    build:
+      context: C:\GitHub\CengizMicroService
+      dockerfile: src/Client/BlazorWebApp/WebApp/Dockerfile
+    container_name: c_blazorui
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    image: webapp
+    networks:
+      net_apigateway: null
+      net_frontend: null
+    ports:
+      - mode: ingress
+        target: 80
+        published: "2000"
+        protocol: tcp
+networks:
+  net_apigateway:
+    name: net_apigateway
+    driver: bridge
+    external: true
+  net_backendservices:
+    name: net_backendservices
+    driver: bridge
+    external: true
+  net_frontend:
+    name: net_frontend
+    driver: bridge
+    external: true
+volumes:
+  nginx_cache:
+    name: dockercompose13332881914596172242_nginx_cache
+  rabbitmq:
+    name: dockercompose13332881914596172242_rabbitmq
+  sqlserver_data:
+    name: dockercompose13332881914596172242_sqlserver_data
+  sqlserver_log:
+    name: dockercompose13332881914596172242_sqlserver_log

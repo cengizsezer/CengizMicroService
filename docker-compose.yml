@@ -30,6 +30,13 @@ services:
       dockerfile: Services/CatalogService/CatalogService.Api/Dockerfile
 
 
+  fileapiservice.api:
+    container_name: c_fileapiservice
+    image: ${DOCKER_REGISTRY-}fileapiserviceapi
+    build:
+      context: .
+      dockerfile: Services/FileApiService/FileApiService.Api/Dockerfile
+
   web.apigateway:
     container_name: c_apigateway
     image: ${DOCKER_REGISTRY-}webapigateway
@@ -64,3 +71,6 @@ services:
   s_consul:
     container_name: c_consul
     image: consul:1.15
+
+ 
+

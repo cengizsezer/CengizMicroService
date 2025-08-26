@@ -1,21 +1,9 @@
 {
-  "Serilog": {
-    "Using": [ "Serilog.Sinks.Graylog", "Serilog.Sinks.Console" ],
-    "MinimumLevel": "Information",
-    "WriteTo": [
-      {
-        "Name": "Graylog",
-        "Args": {
-          "hostnameOrAddress": "c_graylog",
-          "port": "12201",
-          "transportType": "Udp",
-          "facility": "OCRService"
-        }
-      }
-    ],
-
-    "Properties": {
-      "Application": "OCRService"
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
     }
-  }
+  },
+  "AllowedHosts": "*"
 }

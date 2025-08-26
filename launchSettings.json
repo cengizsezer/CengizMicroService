@@ -6,7 +6,8 @@
       "serviceActions": {
         "identityservice": "StartDebugging",
         "catalogservice.api": "StartDebugging",
-        "web.apigateway": "StartDebugging"
+        "web.apigateway": "StartDebugging",
+        "fileapiservice.api": "StartDebugging"
       }
     }
   }

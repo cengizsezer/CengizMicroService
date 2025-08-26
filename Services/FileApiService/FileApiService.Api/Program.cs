@@ -79,16 +79,47 @@ builder.Services.AddScoped<IFileCommandsRepository, FileCommandsRepository>();
 builder.Services.AddScoped<IFileQueriesRepository, FileQueriesRepository>();
 
 // MinIO
-var endpoint = builder.Configuration["Minio:Endpoint"] ?? "localhost:9000";
+//var endpoint = builder.Configuration["Minio:Endpoint"] ?? "localhost:9000";
+//var access = builder.Configuration["Minio:AccessKey"] ?? "admin";
+//var secret = builder.Configuration["Minio:SecretKey"] ?? "admin12345";
+//var withSSL = bool.TryParse(builder.Configuration["Minio:WithSSL"], out var ssl) && ssl;
+//var bucket = builder.Configuration["Minio:Bucket"] ?? "dijitalmasraf";
+
+//var minio = new MinioClient().WithEndpoint(endpoint).WithCredentials(access, secret).WithSSL(withSSL).Build();
+//builder.Services.AddSingleton<IMinioClient>(minio);
+//builder.Services.AddScoped<IFileStorage>(_ => new MinioFileStorage(minio, bucket));
+//builder.Services.AddScoped<IPresignUrlService>(_ => new MinioPresignUrlService(minio, bucket));
+var endpoint = builder.Configuration["Minio:Endpoint"] ?? "s_minio:9000";
 var access = builder.Configuration["Minio:AccessKey"] ?? "admin";
 var secret = builder.Configuration["Minio:SecretKey"] ?? "admin12345";
 var withSSL = bool.TryParse(builder.Configuration["Minio:WithSSL"], out var ssl) && ssl;
 var bucket = builder.Configuration["Minio:Bucket"] ?? "dijitalmasraf";
 
-var minio = new MinioClient().WithEndpoint(endpoint).WithCredentials(access, secret).WithSSL(withSSL).Build();
-builder.Services.AddSingleton<IMinioClient>(minio);
-builder.Services.AddScoped<IFileStorage>(_ => new MinioFileStorage(minio, bucket));
-builder.Services.AddScoped<IPresignUrlService>(_ => new MinioPresignUrlService(minio, bucket));
+var internalClient = new MinioClient()
+  .WithEndpoint(endpoint)
+  .WithCredentials(access, secret)
+  .WithSSL(withSSL)
+  .Build();
+
+builder.Services.AddSingleton<IMinioClient>(internalClient);
+builder.Services.AddScoped<IFileStorage>(_ => new MinioFileStorage(internalClient, bucket));
+
+// Sadece prod’da env veriyoruz → lokal bunu görmez, etkilenmez
+var publicHost = builder.Configuration["MinioPublic:Endpoint"];
+if (!string.IsNullOrWhiteSpace(publicHost))
+{
+    var publicClient = new MinioClient()
+      .WithEndpoint(publicHost)    // "s3.dijitalmasraf.com"
+      .WithCredentials(access, secret)
+      .WithSSL(true)
+      .Build();
+
+    builder.Services.AddScoped<IPresignUrlService>(_ => new MinioPresignUrlService(publicClient, bucket));
+}
+else
+{
+    builder.Services.AddScoped<IPresignUrlService>(_ => new MinioPresignUrlService(internalClient, bucket));
+}
 
 // Handlers
 builder.Services.AddScoped<IAddFilesCommandHandler, AddFilesCommandHandler>();

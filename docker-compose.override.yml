@@ -67,6 +67,35 @@ services:
       - s_consul
       - s_rabbitmq
       - s_sqlserver
+ 
+  fileapiservice.api:
+    container_name: c_fileapiservice        # ConsulConfig__ServiceAddress ile uyumlu
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:5009
+      - ConsulConfig__Address=http://s_consul:8500
+      - ConsulConfig__ServiceAddress=http://c_fileapiservice:5009
+      - ConsulConfig__ServiceName=FileApiService
+      - ConsulConfig__ServiceId=FileApi
+
+      - Minio__Endpoint=s_minio:9000       
+      - Minio__AccessKey=admin              
+      - Minio__SecretKey=admin12345
+      - Minio__WithSSL=false              
+      - Minio__Bucket=dijitalmasraf
+      - MinioPublic__Endpoint=s3.dijitalmasraf.com
+    ports:
+      - "5009:5009"
+    networks:
+      - net_backendservices
+    depends_on:
+      - web.apigateway
+      - s_sqlserver
+      - s_consul
+      - s_rabbitmq
+                
+     
+
 
   ocrservice.api:
     image: ocrservice.api
@@ -165,6 +194,7 @@ services:
       - net_apigateway
       - net_frontend
 
+ 
 
 networks:
   net_apigateway:
