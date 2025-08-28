@@ -8,25 +8,19 @@ namespace IdentityService.Domain.EntityConfigurations
     {
         public void Configure(EntityTypeBuilder<User> builder)
         {
-            // Identity'nin default tablosu zaten AspNetUsers, burada override edebilirsin:
-            builder.ToTable("Users", "identity");
+            // AspNetUsers yerine özelleştirilmiş tablo adı/şema:
+            builder.ToTable("Users", schema: "identity");
 
-            // Identity zaten PK ve IDENTITY ayarını yapıyor, tekrar tanımlamana gerek yok.
+            // IdentityUser<int> için PK/indices Identity tarafından zaten tanımlanıyor.
+            // Ek alan(lar) varsa burada konfigure edebilirsin.
 
-            builder.Property(u => u.Role)
-                   .HasMaxLength(20)
-                   .IsRequired();
+            // Legacy role alanını tuttuysan (opsiyonel):
+            builder.Property(u => u.LegacyRole).HasMaxLength(64);
 
-            builder.Property(u => u.RefreshToken)
-                   .HasMaxLength(255);
-
-            builder.Property(u => u.RefreshTokenExpiryTime)
-                   .IsRequired();
-
-            // Navigation property
-            builder.HasMany(u => u.UserFirmalar)
-                   .WithOne(uf => uf.User)
-                   .HasForeignKey(uf => uf.UserId);
+            builder.HasMany(u => u.UserTenants)
+                   .WithOne(ut => ut.User)
+                   .HasForeignKey(ut => ut.UserId)
+                   .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

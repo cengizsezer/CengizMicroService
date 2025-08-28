@@ -158,6 +158,8 @@
         editContext = new EditContext(registerModel);
     }
 
+    private string? errorMessage;
+
     private async Task OnRegister()
     {
         hasError = false;
@@ -166,21 +168,22 @@
 
         try
         {
-            bool isSuccess = await IdentityService.Register(registerModel.UserName, registerModel.Email, registerModel.Password);
+            var res = await IdentityService.Register(registerModel.UserName, registerModel.Email, registerModel.Password);
 
-            if (isSuccess)
+            if (res?.Success == true)
             {
                 NavigationManager.NavigateTo("/login");
             }
             else
             {
                 hasError = true;
+                errorMessage = res?.Message ?? "Kayıt başarısız.";
             }
         }
         catch (Exception ex)
         {
             hasError = true;
-            await JSRuntime.InvokeVoidAsync("console.error", $"\u274C Register hata: {ex.Message}");
+            errorMessage = "Bir hata oluştu: " + ex.Message;
         }
         finally
         {

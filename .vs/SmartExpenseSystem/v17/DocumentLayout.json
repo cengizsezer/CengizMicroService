@@ -3,151 +3,176 @@
   "WorkspaceRootPath": "C:\\GitHub\\CengizMicroService\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|c:\\github\\cengizmicroservice\\services\\fileapiservice\\fileapiservice.api\\configurations\\appsettings.docker.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|solutionrelative:services\\fileapiservice\\fileapiservice.api\\configurations\\appsettings.docker.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\domain\\entities\\tenant.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\domain\\entities\\tenant.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{81DDED9D-158B-E303-5F62-77A2896D2A5A}|docker-compose.dcproj|c:\\github\\cengizmicroservice\\docker-compose.override.yml||{8B382828-6202-11D1-8870-0000F87579D2}",
-      "RelativeMoniker": "D:0:0:{81DDED9D-158B-E303-5F62-77A2896D2A5A}|docker-compose.dcproj|solutionrelative:docker-compose.override.yml||{8B382828-6202-11D1-8870-0000F87579D2}"
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\domain\\entities\\usertenant.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\domain\\entities\\usertenant.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{81DDED9D-158B-E303-5F62-77A2896D2A5A}|docker-compose.dcproj|c:\\github\\cengizmicroservice\\docker-compose.yml||{8B382828-6202-11D1-8870-0000F87579D2}",
-      "RelativeMoniker": "D:0:0:{81DDED9D-158B-E303-5F62-77A2896D2A5A}|docker-compose.dcproj|solutionrelative:docker-compose.yml||{8B382828-6202-11D1-8870-0000F87579D2}"
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\domain\\entityconfigurations\\userentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\domain\\entityconfigurations\\userentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|c:\\github\\cengizmicroservice\\services\\fileapiservice\\fileapiservice.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|solutionrelative:services\\fileapiservice\\fileapiservice.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\domain\\entityconfigurations\\tenantentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\domain\\entityconfigurations\\tenantentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\domain\\entityconfigurations\\usertenantroleentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\domain\\entityconfigurations\\usertenantroleentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\domain\\entityconfigurations\\usertenantentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\domain\\entityconfigurations\\usertenantentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\persistence\\identitydbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\persistence\\identitydbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\domain\\entityconfigurations\\rolepermissionentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\domain\\entityconfigurations\\rolepermissionentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\domain\\entityconfigurations\\roleentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\domain\\entityconfigurations\\roleentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\domain\\entities\\usertenantrole.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\domain\\entities\\usertenantrole.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\domain\\entities\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\domain\\entities\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\application\\services\\identityservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\application\\services\\identityservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\application\\services\\iidentityservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\application\\services\\iidentityservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\application\\models\\loginresponsemodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\application\\models\\loginresponsemodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\application\\models\\loginrequestmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\application\\models\\loginrequestmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\persistence\\identitycontextseed.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\persistence\\identitycontextseed.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|c:\\github\\cengizmicroservice\\services\\fileapiservice\\fileapiservice.api\\infrastructure\\minio\\miniooptions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|solutionrelative:services\\fileapiservice\\fileapiservice.api\\infrastructure\\minio\\miniooptions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|c:\\github\\cengizmicroservice\\services\\fileapiservice\\fileapiservice.api\\fileapiservice.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
-      "RelativeMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|solutionrelative:services\\fileapiservice\\fileapiservice.api\\fileapiservice.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|c:\\github\\cengizmicroservice\\services\\fileapiservice\\fileapiservice.api\\configurations\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|solutionrelative:services\\fileapiservice\\fileapiservice.api\\configurations\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\application\\services\\fileapiservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\application\\services\\fileapiservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{0B20C76B-62F2-4839-932E-6BADFB5FC08D}|conf.d{0B20C76B-62F2-4839-932E-6BADFB5FC08D}|C:\\GitHub\\CengizMicroService\\Nginx\\conf.d\\dijitalmasraf.conf||{3B902123-F8A7-4915-9F01-361F908088D0}",
-      "RelativeMoniker": "D:0:0:{0B20C76B-62F2-4839-932E-6BADFB5FC08D}|conf.d{0B20C76B-62F2-4839-932E-6BADFB5FC08D}|solutionrelative:Nginx\\conf.d\\dijitalmasraf.conf||{3B902123-F8A7-4915-9F01-361F908088D0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{0B20C76B-62F2-4839-932E-6BADFB5FC08D}|conf.d{0B20C76B-62F2-4839-932E-6BADFB5FC08D}|C:\\GitHub\\CengizMicroService\\Nginx\\conf.d\\minio-https.conf||{3B902123-F8A7-4915-9F01-361F908088D0}",
-      "RelativeMoniker": "D:0:0:{0B20C76B-62F2-4839-932E-6BADFB5FC08D}|conf.d{0B20C76B-62F2-4839-932E-6BADFB5FC08D}|solutionrelative:Nginx\\conf.d\\minio-https.conf||{3B902123-F8A7-4915-9F01-361F908088D0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\application\\services\\expenseservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\application\\services\\expenseservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\extensions\\httpclientextension.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\extensions\\httpclientextension.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\pages\\loginpage.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\pages\\loginpage.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\application\\services\\identityservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\application\\services\\identityservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\application\\services\\ocrservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\application\\services\\ocrservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\application\\models\\selecttenantrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\application\\models\\selecttenantrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\application\\services\\vehicleservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\application\\services\\vehicleservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\pages\\subpages\\firmselectdialog.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\pages\\subpages\\firmselectdialog.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\pages\\declaration\\declarationpage.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\pages\\declaration\\declarationpage.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{F5E3CC63-52A5-4F28-8342-B51C1E8FA413}|Nginx{F5E3CC63-52A5-4F28-8342-B51C1E8FA413}|C:\\GitHub\\CengizMicroService\\Nginx\\Dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}",
-      "RelativeMoniker": "D:0:0:{F5E3CC63-52A5-4F28-8342-B51C1E8FA413}|Nginx{F5E3CC63-52A5-4F28-8342-B51C1E8FA413}|solutionrelative:Nginx\\Dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Sdks\\Microsoft.Docker.Sdk\\build\\Microsoft.VisualStudio.Docker.Compose.targets||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{F5E3CC63-52A5-4F28-8342-B51C1E8FA413}|Nginx{F5E3CC63-52A5-4F28-8342-B51C1E8FA413}|C:\\GitHub\\CengizMicroService\\Nginx\\nginx.conf||{3B902123-F8A7-4915-9F01-361F908088D0}",
-      "RelativeMoniker": "D:0:0:{F5E3CC63-52A5-4F28-8342-B51C1E8FA413}|Nginx{F5E3CC63-52A5-4F28-8342-B51C1E8FA413}|solutionrelative:Nginx\\nginx.conf||{3B902123-F8A7-4915-9F01-361F908088D0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|c:\\github\\cengizmicroservice\\services\\fileapiservice\\fileapiservice.api\\configurations\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|solutionrelative:services\\fileapiservice\\fileapiservice.api\\configurations\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|c:\\github\\cengizmicroservice\\services\\fileapiservice\\fileapiservice.api\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}",
-      "RelativeMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|solutionrelative:services\\fileapiservice\\fileapiservice.api\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\pages\\vehiclepage\\vehicles.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\pages\\vehiclepage\\vehicles.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\controllers\\vehiclescontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\controllers\\vehiclescontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\application\\services\\interfaces\\ivehicleservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\application\\services\\interfaces\\ivehicleservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\controllers\\vehicleservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\controllers\\vehicleservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\contracts\\dtos\\vehicledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\contracts\\dtos\\vehicledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\shared\\dto\\vehicledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\shared\\dto\\vehicledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\pages\\declaration\\adddeclarationitem.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\pages\\declaration\\adddeclarationitem.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\infrastructure\\authtokenhandler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\infrastructure\\authtokenhandler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\infrastructure\\tenantheaderhandler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\infrastructure\\tenantheaderhandler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\infrastructure\\appstatemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\infrastructure\\appstatemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{8E39DAA1-037A-43AE-8D35-7F993949F4A9}|src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Web.ApiGateway.csproj|c:\\github\\cengizmicroservice\\src\\appgateways\\webappgateway\\web.apigateway\\configurations\\ocelot.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{8E39DAA1-037A-43AE-8D35-7F993949F4A9}|src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Web.ApiGateway.csproj|solutionrelative:src\\appgateways\\webappgateway\\web.apigateway\\configurations\\ocelot.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\pages\\registerpage.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\pages\\registerpage.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\application\\services\\interfaces\\iidentityservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\application\\services\\interfaces\\iidentityservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\pages\\vehiclepage\\importvehiclesdialog.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\pages\\vehiclepage\\importvehiclesdialog.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\identityservice.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\identityservice.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\pages\\vehiclepage\\createorupdatevehicle.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\pages\\vehiclepage\\createorupdatevehicle.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\application\\mapping\\identitymappingprofile.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\application\\mapping\\identitymappingprofile.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\core\\domain\\vehicle.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\core\\domain\\vehicle.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\catalogservice.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\catalogservice.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\core\\application\\mapping\\expenseprofile.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\core\\application\\mapping\\expenseprofile.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\persistence\\identitydbcontextfactory.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\persistence\\identitydbcontextfactory.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\domain\\entityconfigurations\\refreshtokenentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\domain\\entityconfigurations\\refreshtokenentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\domain\\entityconfigurations\\permissionentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\domain\\entityconfigurations\\permissionentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\domain\\entities\\refreshtoken.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\domain\\entities\\refreshtoken.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\domain\\entities\\rolepermission.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\domain\\entities\\rolepermission.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\domain\\entities\\role.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\domain\\entities\\role.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\domain\\entities\\permission.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\domain\\entities\\permission.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\application\\dbregistration\\dbcontextregistration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\application\\dbregistration\\dbcontextregistration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\application\\models\\auth\\meresponsemodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\application\\models\\auth\\meresponsemodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\application\\models\\tenants\\usertenantroledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\application\\models\\tenants\\usertenantroledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\application\\models\\tenants\\usertenantdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\application\\models\\tenants\\usertenantdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\application\\models\\tenants\\permissiondto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\application\\models\\tenants\\permissiondto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\application\\models\\tenants\\roledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\application\\models\\tenants\\roledto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\application\\models\\tenants\\tenantdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\application\\models\\tenants\\tenantdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\infrastructure\\entityconfigurations\\vehicleentitytypeconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -161,47 +186,8 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 9,
+          "SelectedChildIndex": 10,
           "Children": [
-            {
-              "$type": "Document",
-              "DocumentIndex": 23,
-              "Title": "VehiclesController.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Controllers\\VehiclesController.cs",
-              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Controllers\\VehiclesController.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Controllers\\VehiclesController.cs",
-              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Controllers\\VehiclesController.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAADEAAAAHAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-24T13:03:45.119Z",
-              "IsPinned": true
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 25,
-              "Title": "VehicleService.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Controllers\\VehicleService.cs",
-              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Controllers\\VehicleService.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Controllers\\VehicleService.cs",
-              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Controllers\\VehicleService.cs",
-              "ViewState": "AgIAAI0AAAAAAAAAAAAmwKYAAAANAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-24T13:03:12.864Z",
-              "IsPinned": true
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 22,
-              "Title": "Vehicles.razor",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\Vehicles.razor",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\Vehicles.razor",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\Vehicles.razor",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\Vehicles.razor",
-              "ViewState": "AgIAACoAAAAAAAAAAAAAADMAAAAxAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-08-24T13:06:19.452Z",
-              "IsPinned": true
-            },
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
@@ -220,426 +206,554 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "Program.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
-              "ViewState": "AgIAACIAAAAAAAAAAAAmwD8AAABNAAAAAAAAAA==",
+              "DocumentIndex": 2,
+              "Title": "UserEntityTypeConfiguration.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\UserEntityTypeConfiguration.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\UserEntityTypeConfiguration.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\UserEntityTypeConfiguration.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\UserEntityTypeConfiguration.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAA1AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-24T13:16:40.253Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 9,
-              "Title": "dijitalmasraf.conf",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Nginx\\conf.d\\dijitalmasraf.conf",
-              "RelativeDocumentMoniker": "Nginx\\conf.d\\dijitalmasraf.conf",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Nginx\\conf.d\\dijitalmasraf.conf",
-              "RelativeToolTip": "Nginx\\conf.d\\dijitalmasraf.conf",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAfAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-08-26T16:12:57.408Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "appsettings.Docker.json",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Configurations\\appsettings.Docker.json",
-              "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Configurations\\appsettings.Docker.json",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Configurations\\appsettings.Docker.json",
-              "RelativeToolTip": "Services\\FileApiService\\FileApiService.Api\\Configurations\\appsettings.Docker.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAMAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2025-08-26T16:11:45.938Z",
+              "WhenOpened": "2025-08-28T16:07:28.723Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 3,
-              "Title": "Program.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Program.cs",
-              "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Program.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Program.cs",
-              "RelativeToolTip": "Services\\FileApiService\\FileApiService.Api\\Program.cs",
-              "ViewState": "AgIAALEAAAAAAAAAAAAmwNcAAAAKAAAAAAAAAA==",
+              "Title": "TenantEntityTypeConfiguration.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\TenantEntityTypeConfiguration.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\TenantEntityTypeConfiguration.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\TenantEntityTypeConfiguration.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\TenantEntityTypeConfiguration.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-26T16:10:48.409Z",
+              "WhenOpened": "2025-08-27T16:18:08.912Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "docker-compose.yml",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.yml",
-              "RelativeDocumentMoniker": "docker-compose.yml",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\docker-compose.yml",
-              "RelativeToolTip": "docker-compose.yml",
-              "ViewState": "AgIAAAkAAAAAAAAAAAAAACEAAAAkAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003775|",
-              "WhenOpened": "2025-08-26T16:05:58.998Z",
+              "DocumentIndex": 6,
+              "Title": "IdentityDbContext.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Persistence\\IdentityDbContext.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Persistence\\IdentityDbContext.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Persistence\\IdentityDbContext.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Persistence\\IdentityDbContext.cs",
+              "ViewState": "AgIAAAkAAAAAAAAAAAAqwBAAAAAkAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T15:50:40.705Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "UserTenantEntityTypeConfiguration.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\UserTenantEntityTypeConfiguration.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\UserTenantEntityTypeConfiguration.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\UserTenantEntityTypeConfiguration.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\UserTenantEntityTypeConfiguration.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T16:19:29.398Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "UserTenantRoleEntityTypeConfiguration.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\UserTenantRoleEntityTypeConfiguration.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\UserTenantRoleEntityTypeConfiguration.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\UserTenantRoleEntityTypeConfiguration.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\UserTenantRoleEntityTypeConfiguration.cs",
+              "ViewState": "AgIAAAUAAAAAAAAAAAAIwBkAAAAgAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T16:19:43.893Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "docker-compose.override.yml",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.override.yml",
-              "RelativeDocumentMoniker": "docker-compose.override.yml",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\docker-compose.override.yml",
-              "RelativeToolTip": "docker-compose.override.yml",
-              "ViewState": "AgIAADwAAAAAAAAAAAAAAF4AAAASAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003775|",
-              "WhenOpened": "2025-08-26T16:08:58.825Z",
+              "Title": "UserTenant.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\Entities\\UserTenant.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Domain\\Entities\\UserTenant.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\Entities\\UserTenant.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Domain\\Entities\\UserTenant.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T16:17:09.828Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Tenant.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\Entities\\Tenant.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Domain\\Entities\\Tenant.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\Entities\\Tenant.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Domain\\Entities\\Tenant.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T16:16:08.098Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "RolePermissionEntityTypeConfiguration.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\RolePermissionEntityTypeConfiguration.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\RolePermissionEntityTypeConfiguration.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\RolePermissionEntityTypeConfiguration.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\RolePermissionEntityTypeConfiguration.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAcAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T16:19:11.876Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "RoleEntityTypeConfiguration.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\RoleEntityTypeConfiguration.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\RoleEntityTypeConfiguration.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\RoleEntityTypeConfiguration.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\RoleEntityTypeConfiguration.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T16:18:25.911Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "UserTenantRole.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\Entities\\UserTenantRole.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Domain\\Entities\\UserTenantRole.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\Entities\\UserTenantRole.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Domain\\Entities\\UserTenantRole.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T16:17:28.98Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 10,
-              "Title": "minio-https.conf",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Nginx\\conf.d\\minio-https.conf",
-              "RelativeDocumentMoniker": "Nginx\\conf.d\\minio-https.conf",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Nginx\\conf.d\\minio-https.conf",
-              "RelativeToolTip": "Nginx\\conf.d\\minio-https.conf",
-              "ViewState": "AgIAABgAAAAAAAAAAAAAADAAAAAcAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-08-26T20:45:31.372Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 8,
-              "Title": "FileApiService.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\FileApiService.cs",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\FileApiService.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\FileApiService.cs",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\FileApiService.cs",
-              "ViewState": "AgIAAEMAAAAAAAAAAAAowGYAAAAAAAAAAAAAAA==",
+              "Title": "User.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\Entities\\User.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Domain\\Entities\\User.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\Entities\\User.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Domain\\Entities\\User.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAqwA0AAABDAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-24T13:15:50.555Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "FileApiService.Api.csproj",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj",
-              "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj",
-              "RelativeToolTip": "Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj",
-              "ViewState": "AgIAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-08-26T22:11:57.783Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "MinioOptions.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Minio\\MinioOptions.cs",
-              "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Minio\\MinioOptions.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Minio\\MinioOptions.cs",
-              "RelativeToolTip": "Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Minio\\MinioOptions.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAApAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-26T22:12:29.158Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 7,
-              "Title": "appsettings.Development.json",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Configurations\\appsettings.Development.json",
-              "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Configurations\\appsettings.Development.json",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Configurations\\appsettings.Development.json",
-              "RelativeToolTip": "Services\\FileApiService\\FileApiService.Api\\Configurations\\appsettings.Development.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABgAAAAYAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2025-08-26T16:12:02.577Z"
+              "WhenOpened": "2025-08-27T16:26:05.827Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 11,
-              "Title": "ExpenseService.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\ExpenseService.cs",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\ExpenseService.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\ExpenseService.cs",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\ExpenseService.cs",
-              "ViewState": "AgIAAA8AAAAAAAAAAAA9wDMAAAAAAAAAAAAAAA==",
+              "Title": "IdentityService.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Services\\IdentityService.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Application\\Services\\IdentityService.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Services\\IdentityService.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Application\\Services\\IdentityService.cs",
+              "ViewState": "AgIAABIAAAAAAAAAAAAiwCcAAABJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-24T13:15:41.177Z"
+              "WhenOpened": "2025-08-27T15:40:16.859Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 12,
-              "Title": "HttpClientExtension.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Extensions\\HttpClientExtension.cs",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Extensions\\HttpClientExtension.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Extensions\\HttpClientExtension.cs",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Extensions\\HttpClientExtension.cs",
-              "ViewState": "AgIAAAoAAAAAAAAAAAAgwB0AAABXAAAAAAAAAA==",
+              "Title": "IIdentityService.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Services\\IIdentityService.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Application\\Services\\IIdentityService.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Services\\IIdentityService.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Application\\Services\\IIdentityService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAhAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-26T21:15:17.609Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 14,
-              "Title": "OcrService.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\OcrService.cs",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\OcrService.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\OcrService.cs",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\OcrService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-26T21:14:14.176Z"
+              "WhenOpened": "2025-08-27T16:43:56.254Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 15,
-              "Title": "VehicleService.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\VehicleService.cs",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\VehicleService.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\VehicleService.cs",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\VehicleService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAA4AAAAAAAAAA==",
+              "Title": "LoginRequestModel.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Models\\LoginRequestModel.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Application\\Models\\LoginRequestModel.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Models\\LoginRequestModel.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Application\\Models\\LoginRequestModel.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAABKAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-24T13:02:29.585Z"
+              "WhenOpened": "2025-08-27T15:50:19.53Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "LoginResponseModel.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Models\\LoginResponseModel.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Application\\Models\\LoginResponseModel.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Models\\LoginResponseModel.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Application\\Models\\LoginResponseModel.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAA4AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T15:50:04.213Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 16,
-              "Title": "DeclarationPage.razor",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\DeclarationPage.razor",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\DeclarationPage.razor",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\DeclarationPage.razor",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\DeclarationPage.razor",
-              "ViewState": "AgIAAEEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-08-24T13:44:09.772Z"
+              "Title": "IdentityContextSeed.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Persistence\\IdentityContextSeed.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Persistence\\IdentityContextSeed.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Persistence\\IdentityContextSeed.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Persistence\\IdentityContextSeed.cs",
+              "ViewState": "AgIAAJkAAAAAAAAAAAAmwL8AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T15:50:39.318Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 13,
+              "Title": "AuthController.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Controllers\\AuthController.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Controllers\\AuthController.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Controllers\\AuthController.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Controllers\\AuthController.cs",
+              "ViewState": "AgIAABYAAAAAAAAAAAAgwCIAAAA6AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T15:40:46.32Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "LoginPage.razor",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\LoginPage.razor",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\LoginPage.razor",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\LoginPage.razor",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\LoginPage.razor",
+              "ViewState": "AgIAAIwAAAAAAAAAAAAmwJwAAAA6AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-08-28T16:56:03.814Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
+              "ViewState": "AgIAACgAAAAAAAAAAAAgwBMAAAA0AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-28T19:44:26.246Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Program.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Program.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Program.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Program.cs",
+              "ViewState": "AgIAAHsAAAAAAAAAAAAAAI8AAAAsAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-28T19:44:34.082Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
               "Title": "IdentityService.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\IdentityService.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\IdentityService.cs",
               "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\IdentityService.cs",
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\IdentityService.cs",
-              "ViewState": "AgIAAAwAAAAAAAAAAAAAACkAAAAyAAAAAAAAAA==",
+              "ViewState": "AgIAAEQAAAAAAAAAAAAwwFsAAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-24T13:15:57.429Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 17,
-              "Title": "Dockerfile",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Nginx\\Dockerfile",
-              "RelativeDocumentMoniker": "Nginx\\Dockerfile",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Nginx\\Dockerfile",
-              "RelativeToolTip": "Nginx\\Dockerfile",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAiAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-08-26T16:14:10.176Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 18,
-              "Title": "Microsoft.VisualStudio.Docker.Compose.targets",
-              "DocumentMoniker": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Sdks\\Microsoft.Docker.Sdk\\build\\Microsoft.VisualStudio.Docker.Compose.targets",
-              "RelativeDocumentMoniker": "..\\..\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Sdks\\Microsoft.Docker.Sdk\\build\\Microsoft.VisualStudio.Docker.Compose.targets",
-              "ToolTip": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Sdks\\Microsoft.Docker.Sdk\\build\\Microsoft.VisualStudio.Docker.Compose.targets",
-              "RelativeToolTip": "..\\..\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Sdks\\Microsoft.Docker.Sdk\\build\\Microsoft.VisualStudio.Docker.Compose.targets",
-              "ViewState": "AgIAAK8AAAAAAAAAAAAAwMkAAAAEAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003801|",
-              "WhenOpened": "2025-08-26T16:19:03.792Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 19,
-              "Title": "nginx.conf",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Nginx\\nginx.conf",
-              "RelativeDocumentMoniker": "Nginx\\nginx.conf",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Nginx\\nginx.conf",
-              "RelativeToolTip": "Nginx\\nginx.conf",
-              "ViewState": "AgIAADkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-08-26T16:13:44.549Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 20,
-              "Title": "appsettings.json",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Configurations\\appsettings.json",
-              "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Configurations\\appsettings.json",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Configurations\\appsettings.json",
-              "RelativeToolTip": "Services\\FileApiService\\FileApiService.Api\\Configurations\\appsettings.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2025-08-26T16:11:40.568Z"
+              "WhenOpened": "2025-08-28T17:01:26.025Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 21,
-              "Title": "Dockerfile",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Dockerfile",
-              "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Dockerfile",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Dockerfile",
-              "RelativeToolTip": "Services\\FileApiService\\FileApiService.Api\\Dockerfile",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB0AAAAvAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-08-26T16:07:35.745Z"
+              "Title": "SelectTenantRequest.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Models\\SelectTenantRequest.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Application\\Models\\SelectTenantRequest.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Models\\SelectTenantRequest.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Application\\Models\\SelectTenantRequest.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAA8AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T15:41:23.139Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 31,
-              "Title": "AppStateManager.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AppStateManager.cs",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AppStateManager.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AppStateManager.cs",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AppStateManager.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAACAAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-24T13:35:08.605Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 30,
-              "Title": "TenantHeaderHandler.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\TenantHeaderHandler.cs",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\TenantHeaderHandler.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\TenantHeaderHandler.cs",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\TenantHeaderHandler.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-24T13:35:39.632Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 26,
-              "Title": "VehicleDto.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Contracts\\Dtos\\VehicleDto.cs",
-              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Contracts\\Dtos\\VehicleDto.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Contracts\\Dtos\\VehicleDto.cs",
-              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Contracts\\Dtos\\VehicleDto.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-24T13:03:03.691Z"
+              "DocumentIndex": 22,
+              "Title": "FirmSelectDialog.razor",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\SubPages\\FirmSelectDialog.razor",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\SubPages\\FirmSelectDialog.razor",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\SubPages\\FirmSelectDialog.razor",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\SubPages\\FirmSelectDialog.razor",
+              "ViewState": "AgIAACcAAAAAAAAAAAAiwE0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-08-28T16:56:54.387Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 24,
-              "Title": "IVehicleService.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IVehicleService.cs",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IVehicleService.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IVehicleService.cs",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IVehicleService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAkAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-24T13:22:28.818Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 27,
-              "Title": "VehicleDto.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Shared\\Dto\\VehicleDto.cs",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Shared\\Dto\\VehicleDto.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Shared\\Dto\\VehicleDto.cs",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Shared\\Dto\\VehicleDto.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAABAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-24T14:35:24.267Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 28,
-              "Title": "AddDeclarationItem.razor",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\AddDeclarationItem.razor",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\AddDeclarationItem.razor",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\AddDeclarationItem.razor",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\AddDeclarationItem.razor",
-              "ViewState": "AgIAADYAAAAAAAAAAAAAAEkAAAARAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-08-24T13:44:13.69Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 29,
-              "Title": "AuthTokenHandler.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AuthTokenHandler.cs",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AuthTokenHandler.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AuthTokenHandler.cs",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Infrastructure\\AuthTokenHandler.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-24T13:35:38.093Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 32,
-              "Title": "ocelot.Development.json",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.Development.json",
-              "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.Development.json",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.Development.json",
-              "RelativeToolTip": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.Development.json",
-              "ViewState": "AgIAAA8AAAAAAAAAAAAgwBUAAAAGAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2025-08-24T13:17:40.795Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 33,
               "Title": "IIdentityService.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IIdentityService.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IIdentityService.cs",
               "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IIdentityService.cs",
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\Interfaces\\IIdentityService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAABeAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-28T17:01:38.225Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 23,
+              "Title": "RegisterPage.razor",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\RegisterPage.razor",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\RegisterPage.razor",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\RegisterPage.razor",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\RegisterPage.razor",
+              "ViewState": "AgIAAJ0AAAAAAAAAAAAmwLIAAAAgAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-08-28T17:03:40.122Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 25,
+              "Title": "IdentityService.csproj",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\IdentityService.csproj",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\IdentityService.csproj",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\IdentityService.csproj",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\IdentityService.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAABlAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-08-27T16:23:44.881Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 26,
+              "Title": "IdentityMappingProfile.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Mapping\\IdentityMappingProfile.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Application\\Mapping\\IdentityMappingProfile.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Mapping\\IdentityMappingProfile.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Application\\Mapping\\IdentityMappingProfile.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-24T13:16:32.724Z"
+              "WhenOpened": "2025-08-27T15:46:08.228Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 27,
+              "Title": "CatalogService.Api.csproj",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj",
+              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj",
+              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAABnAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-08-27T16:23:31.782Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 28,
+              "Title": "ExpenseProfile.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Core\\Application\\Mapping\\ExpenseProfile.cs",
+              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Core\\Application\\Mapping\\ExpenseProfile.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Core\\Application\\Mapping\\ExpenseProfile.cs",
+              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Core\\Application\\Mapping\\ExpenseProfile.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAALAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T16:23:24.147Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 29,
+              "Title": "IdentityDbContextFactory.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Persistence\\IdentityDbContextFactory.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Persistence\\IdentityDbContextFactory.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Persistence\\IdentityDbContextFactory.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Persistence\\IdentityDbContextFactory.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T16:21:24.949Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 30,
+              "Title": "RefreshTokenEntityTypeConfiguration.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\RefreshTokenEntityTypeConfiguration.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\RefreshTokenEntityTypeConfiguration.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\RefreshTokenEntityTypeConfiguration.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\RefreshTokenEntityTypeConfiguration.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T16:20:00.214Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 31,
+              "Title": "PermissionEntityTypeConfiguration.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\PermissionEntityTypeConfiguration.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\PermissionEntityTypeConfiguration.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\PermissionEntityTypeConfiguration.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Domain\\EntityConfigurations\\PermissionEntityTypeConfiguration.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAlAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T16:18:54.539Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 32,
+              "Title": "RefreshToken.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\Entities\\RefreshToken.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Domain\\Entities\\RefreshToken.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\Entities\\RefreshToken.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Domain\\Entities\\RefreshToken.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAjAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T16:17:47.943Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 33,
+              "Title": "RolePermission.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\Entities\\RolePermission.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Domain\\Entities\\RolePermission.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\Entities\\RolePermission.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Domain\\Entities\\RolePermission.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T16:16:54.453Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 34,
-              "Title": "ImportVehiclesDialog.razor",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\ImportVehiclesDialog.razor",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\ImportVehiclesDialog.razor",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\ImportVehiclesDialog.razor",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\ImportVehiclesDialog.razor",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAACwAAAAFAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-08-24T13:06:13.577Z"
+              "Title": "Role.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\Entities\\Role.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Domain\\Entities\\Role.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\Entities\\Role.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Domain\\Entities\\Role.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T16:16:39.863Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 35,
-              "Title": "CreateorUpdateVehicle.razor",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\CreateorUpdateVehicle.razor",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\CreateorUpdateVehicle.razor",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\CreateorUpdateVehicle.razor",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\VehiclePage\\CreateorUpdateVehicle.razor",
-              "ViewState": "AgIAAGkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-08-24T13:06:57.862Z"
+              "Title": "Permission.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\Entities\\Permission.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Domain\\Entities\\Permission.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Domain\\Entities\\Permission.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Domain\\Entities\\Permission.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T16:16:23.175Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 36,
-              "Title": "Vehicle.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Core\\Domain\\Vehicle.cs",
-              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Core\\Domain\\Vehicle.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Core\\Domain\\Vehicle.cs",
-              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Core\\Domain\\Vehicle.cs",
+              "Title": "DbContextRegistration.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\DbRegistration\\DbContextRegistration.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Application\\DbRegistration\\DbContextRegistration.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\DbRegistration\\DbContextRegistration.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Application\\DbRegistration\\DbContextRegistration.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-24T13:02:40.871Z"
+              "WhenOpened": "2025-08-27T15:50:36.381Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 37,
+              "Title": "MeResponseModel.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Models\\Auth\\MeResponseModel.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Application\\Models\\Auth\\MeResponseModel.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Models\\Auth\\MeResponseModel.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Application\\Models\\Auth\\MeResponseModel.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T15:49:39.009Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 38,
+              "Title": "UserTenantRoleDto.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\UserTenantRoleDto.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\UserTenantRoleDto.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\UserTenantRoleDto.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\UserTenantRoleDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T15:48:49.296Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 39,
+              "Title": "UserTenantDto.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\UserTenantDto.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\UserTenantDto.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\UserTenantDto.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\UserTenantDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T15:48:36.237Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 40,
+              "Title": "PermissionDto.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\PermissionDto.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\PermissionDto.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\PermissionDto.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\PermissionDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T15:48:21.169Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 41,
+              "Title": "RoleDto.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\RoleDto.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\RoleDto.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\RoleDto.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\RoleDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T15:48:02.237Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 42,
+              "Title": "TenantDto.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\TenantDto.cs",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\TenantDto.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\TenantDto.cs",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Application\\Models\\Tenants\\TenantDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAoAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-27T15:47:45.165Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 43,
               "Title": "VehicleEntityTypeConfiguration.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Infrastructure\\EntityConfigurations\\VehicleEntityTypeConfiguration.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Infrastructure\\EntityConfigurations\\VehicleEntityTypeConfiguration.cs",
               "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Infrastructure\\EntityConfigurations\\VehicleEntityTypeConfiguration.cs",
               "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Infrastructure\\EntityConfigurations\\VehicleEntityTypeConfiguration.cs",
-              "ViewState": "AgIAABkAAAAAAAAAAAAmwD8AAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAABYAAAAAAAAAAAAmwCgAAAAxAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-08-24T13:02:36.384Z"
             }

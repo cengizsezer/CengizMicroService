@@ -36,7 +36,7 @@
         }
       }
     },
-    "/api/Auth/register": {
+    "/api/Auth/select-tenant": {
       "post": {
         "tags": [
           "Auth"
@@ -45,17 +45,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RegisterRequestModel"
+                "$ref": "#/components/schemas/SelectTenantRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/RegisterRequestModel"
+                "$ref": "#/components/schemas/SelectTenantRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/RegisterRequestModel"
+                "$ref": "#/components/schemas/SelectTenantRequest"
               }
             }
           }
@@ -87,6 +87,37 @@
             "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/RefreshTokenRequestModel"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequestModel"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequestModel"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequestModel"
               }
             }
           }
@@ -173,6 +204,24 @@
             "nullable": true
           },
           "role": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SelectTenantRequest": {
+        "type": "object",
+        "properties": {
+          "userName": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenantNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "refreshToken": {
             "type": "string",
             "nullable": true
           }

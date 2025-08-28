@@ -1,4 +1,5 @@
 ﻿@using Radzen
+@using WebApp.Application.Services.Interfaces
 @using WebApp.Cards
 @using WebApp.Infrastructure
 @using Blazored.LocalStorage
@@ -8,7 +9,7 @@
 @inject NavigationManager Nav
 @inject ILocalStorageService LocalStorage
 @inject AppStateManager AppState
-
+@inject IIdentityService IdentityService
 
 <style>
     .shadows div {
@@ -57,6 +58,9 @@
     private async Task Continue(FirmaDto firm)
     {
         if (firm is null) return;
+
+        var selectRes = await IdentityService.SelectTenant(firm.FirmaNo);
+        await IdentityService.StoreTokens(selectRes.Token, selectRes.RefreshToken);
 
         AppState.SelectedFirmId = firm.FirmaNo;
         AppState.SelectedFirmName = firm.Ad;

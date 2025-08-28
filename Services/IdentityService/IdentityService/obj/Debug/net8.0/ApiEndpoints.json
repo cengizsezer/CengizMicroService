@@ -66,5 +66,21 @@
       }
     ],
     "ReturnTypes": []
+  },
+  {
+    "ContainingType": "IdentityService.Controllers.AuthController",
+    "Method": "SelectTenant",
+    "RelativePath": "api/Auth/select-tenant",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "req",
+        "Type": "IdentityService.Application.Models.SelectTenantRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
   }
 ]

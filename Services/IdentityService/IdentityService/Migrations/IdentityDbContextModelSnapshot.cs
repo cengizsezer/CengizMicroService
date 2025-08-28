@@ -22,7 +22,133 @@ namespace IdentityService.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("IdentityService.Domain.Entities.Firm", b =>
+            modelBuilder.Entity("IdentityService.Domain.Entities.Permission", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.ToTable("Permissions", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Key = "Expense.View"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Key = "Expense.Edit"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Key = "Beyanname.View"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Key = "Ilkyardim.View"
+                        });
+                });
+
+            modelBuilder.Entity("IdentityService.Domain.Entities.RefreshToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeviceId")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.ToTable("RefreshTokens", (string)null);
+                });
+
+            modelBuilder.Entity("IdentityService.Domain.Entities.Role", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("RolesApp", (string)null);
+                });
+
+            modelBuilder.Entity("IdentityService.Domain.Entities.RolePermission", b =>
+                {
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PermissionId")
+                        .HasColumnType("int");
+
+                    b.HasKey("RoleId", "PermissionId");
+
+                    b.HasIndex("PermissionId");
+
+                    b.ToTable("RolePermissions", (string)null);
+                });
+
+            modelBuilder.Entity("IdentityService.Domain.Entities.Tenant", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -32,19 +158,24 @@ namespace IdentityService.Migrations
 
                     b.Property<string>("Ad")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<string>("FirmaNo")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
 
                     b.Property<string>("Vkn")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Firms");
+                    b.HasIndex("FirmaNo")
+                        .IsUnique();
+
+                    b.ToTable("Tenants", (string)null);
                 });
 
             modelBuilder.Entity("IdentityService.Domain.Entities.User", b =>
@@ -69,6 +200,9 @@ namespace IdentityService.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
 
+                    b.Property<string>("LegacyRole")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
 
@@ -91,17 +225,6 @@ namespace IdentityService.Migrations
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
-
-                    b.Property<string>("RefreshToken")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("RefreshTokenExpiryTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
@@ -126,19 +249,37 @@ namespace IdentityService.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("IdentityService.Domain.Entities.UserFirm", b =>
+            modelBuilder.Entity("IdentityService.Domain.Entities.UserTenant", b =>
                 {
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
-                    b.Property<int>("FirmaId")
+                    b.Property<int>("TenantId")
                         .HasColumnType("int");
 
-                    b.HasKey("UserId", "FirmaId");
+                    b.HasKey("UserId", "TenantId");
 
-                    b.HasIndex("FirmaId");
+                    b.HasIndex("TenantId");
 
-                    b.ToTable("UserFirms");
+                    b.ToTable("UserTenants", (string)null);
+                });
+
+            modelBuilder.Entity("IdentityService.Domain.Entities.UserTenantRole", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserId", "TenantId", "RoleId");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("UserTenantRoles", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<int>", b =>
@@ -274,23 +415,59 @@ namespace IdentityService.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("IdentityService.Domain.Entities.UserFirm", b =>
+            modelBuilder.Entity("IdentityService.Domain.Entities.RolePermission", b =>
                 {
-                    b.HasOne("IdentityService.Domain.Entities.Firm", "Firma")
-                        .WithMany("UserFirmalar")
-                        .HasForeignKey("FirmaId")
+                    b.HasOne("IdentityService.Domain.Entities.Permission", "Permission")
+                        .WithMany("Roles")
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("IdentityService.Domain.Entities.Role", "Role")
+                        .WithMany("Permissions")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Permission");
+
+                    b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("IdentityService.Domain.Entities.UserTenant", b =>
+                {
+                    b.HasOne("IdentityService.Domain.Entities.Tenant", "Tenant")
+                        .WithMany("UserTenants")
+                        .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("IdentityService.Domain.Entities.User", "User")
-                        .WithMany("UserFirmalar")
+                        .WithMany("UserTenants")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Firma");
+                    b.Navigation("Tenant");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("IdentityService.Domain.Entities.UserTenantRole", b =>
+                {
+                    b.HasOne("IdentityService.Domain.Entities.Role", "Role")
+                        .WithMany("Users")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("IdentityService.Domain.Entities.UserTenant", null)
+                        .WithMany("Roles")
+                        .HasForeignKey("UserId", "TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Role");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
@@ -344,14 +521,31 @@ namespace IdentityService.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("IdentityService.Domain.Entities.Firm", b =>
+            modelBuilder.Entity("IdentityService.Domain.Entities.Permission", b =>
                 {
-                    b.Navigation("UserFirmalar");
+                    b.Navigation("Roles");
+                });
+
+            modelBuilder.Entity("IdentityService.Domain.Entities.Role", b =>
+                {
+                    b.Navigation("Permissions");
+
+                    b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("IdentityService.Domain.Entities.Tenant", b =>
+                {
+                    b.Navigation("UserTenants");
                 });
 
             modelBuilder.Entity("IdentityService.Domain.Entities.User", b =>
                 {
-                    b.Navigation("UserFirmalar");
+                    b.Navigation("UserTenants");
+                });
+
+            modelBuilder.Entity("IdentityService.Domain.Entities.UserTenant", b =>
+                {
+                    b.Navigation("Roles");
                 });
 #pragma warning restore 612, 618
         }

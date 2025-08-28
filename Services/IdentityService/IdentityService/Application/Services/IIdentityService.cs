@@ -9,5 +9,7 @@ namespace IdentityService.Application.Services
         Task<LoginResponseModel> RefreshTokenAsync(RefreshTokenRequestModel model);
 
         Task<List<FirmaDto>> GetUserFirmsAsync(int userId);
+
+        Task<LoginResponseModel> SelectTenantAsync(int userId, string tenantNo);
     }
 }

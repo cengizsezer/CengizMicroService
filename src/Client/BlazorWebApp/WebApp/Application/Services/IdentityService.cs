@@ -2,6 +2,7 @@
 using Blazored.SessionStorage;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using WebApp.Application.Services.Interfaces;
@@ -30,31 +31,32 @@ namespace WebApp.Application.Services
             this.authStateProvider = authStateProvider;
         }
 
+        // --- REGISTER --------------------------------------------------------
+
+        public async Task<RegisterResponseModel?> Register(string userName, string email, string password)
+        {
+            var payload = new RegisterRequestModel { UserName = userName, Email = email, Password = password };
+            return await httpClient.PostGetResponseAsync<RegisterResponseModel, RegisterRequestModel>("auth/register", payload);
+        }
+
+        // --- LOGIN (ACCESS YOK; sadece refresh + firmalar) -------------------
+
         public async Task<LoginResponseModel?> Login(string username, string password, bool rememberMe = false)
         {
-            var loginModel = new LoginRequestModel
-            {
-                Username = username,
-                Password = password,
-                RefreshToken = ""
-            };
+            var payload = new LoginRequestModel { Username = username, Password = password, RefreshToken = "" };
 
-            var result = await httpClient.PostGetResponseAsync<LoginResponseModel, LoginRequestModel>("auth/login", loginModel);
+            var result = await httpClient.PostGetResponseAsync<LoginResponseModel, LoginRequestModel>("auth/login", payload);
+            if (result is null) return null;
 
-            if (result == null)
-            {
-                Console.WriteLine("Login Hatası: Sunucudan geçerli yanıt alınamadı.");
-                return null;
-            }
+            // Access token bu aşamada YOK → header’ı temizle
+            httpClient.DefaultRequestHeaders.Authorization = null;
 
-            // Oturum bilgilerini SessionStorage’a yaz
+            // Oturum bilgileri
             await sessionStorage.SetItemAsync("username", result.Username);
-            await sessionStorage.SetItemAsync("token", result.Token);
             await sessionStorage.SetItemAsync("refresh_token", result.RefreshToken);
-            await sessionStorage.SetItemAsync("role", result.Role);
             await sessionStorage.SetItemAsync("firmalar", result.Firmalar);
 
-            // Eğer beni hatırla seçiliyse LocalStorage’a sadece kullanıcı adı ve şifreyi kaydet
+            // Beni hatırla
             if (rememberMe)
             {
                 await localStorage.SetItemAsync("saved_username", username);
@@ -66,31 +68,60 @@ namespace WebApp.Application.Services
                 await localStorage.RemoveItemAsync("saved_password");
             }
 
-            ((AuthStateProvider)authStateProvider).NotifyUserLogin(result.Username);
+            if (authStateProvider is AuthStateProvider asp)
+                asp.NotifyUserLogin(result.Username);
+
             return result;
         }
 
-        public async Task<bool> Register(string userName, string email, string password)
+        // --- SELECT TENANT (ACCESS üretir) ----------------------------------
+
+        public async Task<LoginResponseModel> SelectTenant(string firmaNo)
         {
-            var model = new { userName, email, password };
-            var result = await httpClient.PostGetResponseAsync<RegisterResponseModel, object>("auth/register", model);
-            return result?.Success == true;
+            var username = await sessionStorage.GetItemAsync<string>("username") ?? "";
+            var refresh = await sessionStorage.GetItemAsync<string>("refresh_token") ?? "";
+
+            var payload = new { UserName = username, TenantNo = firmaNo, RefreshToken = refresh };
+
+            var res = await httpClient.PostAsJsonAsync("auth/select-tenant", payload);
+            res.EnsureSuccessStatusCode();
+
+            var result = (await res.Content.ReadFromJsonAsync<LoginResponseModel>())!;
+            await StoreTokens(result.Token, result.RefreshToken);
+            return result;
         }
 
-        public async void Logout()
-        {
-            await sessionStorage.RemoveItemAsync("username");
-            await sessionStorage.RemoveItemAsync("token");
-            await sessionStorage.RemoveItemAsync("refresh_token");
-            await sessionStorage.RemoveItemAsync("role");
-            await sessionStorage.RemoveItemAsync("firmalar");
+        // --- TOKEN SAKLAMA + HEADER AYARLAMA --------------------------------
 
-            ((AuthStateProvider)authStateProvider).NotifyUserLogout();
-            httpClient.DefaultRequestHeaders.Authorization = null;
+        public async Task StoreTokens(string accessToken, string? refreshToken = null)
+        {
+            if (string.IsNullOrWhiteSpace(accessToken))
+                return;
+
+            await sessionStorage.SetItemAsync("token", accessToken);
+            httpClient.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", accessToken);
+
+            if (!string.IsNullOrWhiteSpace(refreshToken))
+                await sessionStorage.SetItemAsync("refresh_token", refreshToken);
         }
 
-        public async Task<string> GetUserName() => await sessionStorage.GetItemAsync<string>("username");
-        public async Task<string> GetUserToken() => await sessionStorage.GetItemAsync<string>("token");
+        // Uygulama yeniden yüklendiğinde header’ı geri kurmak için (App.razor OnAfterRender’ında çağır)
+        public async Task InitializeAuthHeaderFromSessionAsync()
+        {
+            var token = await sessionStorage.GetItemAsync<string>("token");
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", token);
+            }
+        }
+
+        // --- YARDIMCI OKUMALAR ---------------------------------------------
+
+        public async Task<string> GetUserName() => await sessionStorage.GetItemAsync<string>("username") ?? "";
+        public async Task<string> GetAccessToken() => await sessionStorage.GetItemAsync<string>("token") ?? "";
+        public async Task<string> GetRefreshToken() => await sessionStorage.GetItemAsync<string>("refresh_token") ?? "";
 
         public async Task<bool> IsLoggedIn()
         {
@@ -103,6 +134,21 @@ namespace WebApp.Application.Services
             var username = await localStorage.GetItemAsync<string>("saved_username") ?? "";
             var password = await localStorage.GetItemAsync<string>("saved_password") ?? "";
             return (username, password);
+        }
+
+        // --- LOGOUT ---------------------------------------------------------
+
+        public async void Logout()
+        {
+            await sessionStorage.RemoveItemAsync("username");
+            await sessionStorage.RemoveItemAsync("token");
+            await sessionStorage.RemoveItemAsync("refresh_token");
+            await sessionStorage.RemoveItemAsync("firmalar");
+
+            httpClient.DefaultRequestHeaders.Authorization = null;
+
+            if (authStateProvider is AuthStateProvider asp)
+                asp.NotifyUserLogout();
         }
     }
 }
