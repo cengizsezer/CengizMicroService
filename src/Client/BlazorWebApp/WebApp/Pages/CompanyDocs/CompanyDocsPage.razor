@@ -1,0 +1,183 @@
+﻿@page "/companydocspage"
+@using Newtonsoft.Json
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.CompanyDoc
+@inject IFileApiService FileApi
+@inject IJSRuntime _jsRuntime
+@inject DialogService DialogService
+<h3>Şirket Evrakları</h3>
+
+<RadzenFieldset Text="Filtre">
+    <div class="grid">
+        <div class="col-12 md:col-3">
+            <RadzenLabel Text="Şirket (CompanyId)" />
+            <RadzenTextBox @bind-Value="CompanyId" Style="width:100%" />
+        </div>
+        <div class="col-6 md:col-2">
+            <RadzenLabel Text="Yıl" />
+            <RadzenNumeric @bind-Value="Year" Style="width:100%" />
+        </div>
+        <div class="col-6 md:col-3">
+            <RadzenLabel Text="Evrak Tipi" />
+            <RadzenDropDown @bind-Value="DocCategory"
+                            Data="@DocCategories"
+                            TextProperty="Text" ValueProperty="Value" Style="width:100%" />
+        </div>
+    </div>
+    <div class="rz-p-0 rz-p-md-12">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" class="rz-p-4 rz-mb-6 rz-border-radius-1" Style="border: var(--rz-grid-cell-border);">
+            <RadzenButton ButtonStyle="ButtonStyle.Success"
+                          Icon="search"
+                          Text="Listele"
+                          Click="@(args => Load())" />
+            <RadzenButton ButtonStyle="ButtonStyle.Success"
+                          Icon="add_circle"
+                          Text="Ekle"
+                          Click="@(args => OnClickAddComponyDocsItem())" />
+        </RadzenStack>
+    </div>
+</RadzenFieldset>
+
+<RadzenDataGrid @ref="grid" Data="@Rows" TItem="CompanyDocInfoDto" RowSelect="@OnRowSelect" AllowPaging="true" PageSize="10">
+    <Columns>
+        <RadzenDataGridColumn TItem="CompanyDocInfoDto" Property="SequenceNo" Title="Sıra No" Width="90px" />
+        <RadzenDataGridColumn TItem="CompanyDocInfoDto" Property="DocCategory" Title="Evrak Tipi" />
+        <RadzenDataGridColumn TItem="CompanyDocInfoDto" Property="Description" Title="Açıklama" />
+        <RadzenDataGridColumn TItem="CompanyDocInfoDto" Property="Year" Title="Yıl" Width="90px" />
+        <RadzenDataGridColumn TItem="CompanyDocInfoDto" Title="PDF" Width="110px">
+            <Template Context="r">
+                <RadzenButton Icon="picture_as_pdf" Size="ButtonSize.Small" Click="@(() => Open(r.Id))" />
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    RadzenDataGrid<CompanyDocInfoDto> grid;
+    string CompanyId = "201";
+    int Year = DateTime.Now.Year;
+    string? DocCategory = null;
+
+    record Pair(string Text, string Value);
+    List<Pair> DocCategories = new()
+  {
+      new("Envanter Defteri", "ENVANTERDEFTERI"),
+      new("Vergi Levhası", "VERGILEVHASI"),
+      new("Ticaret Sicil Gazetesi", "TICARETSICILGAZETESI"),
+      new("Imza Sırküsü", "IMZASIRKUSU"),
+  };
+
+    List<CompanyDocInfoDto> Rows = new();
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    async Task Load()
+    {
+        var yearStr = Year > 0 ? Year.ToString() : null;
+        Rows = await FileApi.ListCompanyDocsAsync(CompanyId, yearStr, DocCategory) ?? new();
+        await InvokeAsync(() => grid?.Reload());
+    }
+
+    async Task Open(int id)
+    {
+        var dto = await FileApi.GetDownloadAsync(id);
+        if (!string.IsNullOrWhiteSpace(dto?.PresignedUrl))
+            await _jsRuntime.InvokeVoidAsync("open", dto.PresignedUrl, "_blank");
+    }
+
+    void OnRowSelect(CompanyDocInfoDto r) { /* satır seçimi istersen */ }
+
+    private async Task OnClickAddComponyDocsItem()
+    {
+        await LoadStateAsync();
+
+        await DialogService.OpenAsync<AddComponyDocsItem>("Yeni Dosya Ekle",
+               new(),
+               new DialogOptions()
+               {
+                   Resizable = true,
+                   Draggable = true,
+                   Resize = OnResize,
+                   Drag = OnDrag,
+                   Width = Settings != null ? Settings.Width : "700px",
+                   Height = Settings != null ? Settings.Height : "512px",
+                   Left = Settings != null ? Settings.Left : null,
+                   Top = Settings != null ? Settings.Top : null
+               });
+
+        await SaveStateAsync();
+    }
+    void OnDrag(System.Drawing.Point point)
+    {
+        _jsRuntime.InvokeVoidAsync("eval", $"console.log('Dialog drag. Left:{point.X}, Top:{point.Y}')");
+
+        if (Settings == null)
+        {
+            Settings = new DialogSettings();
+        }
+
+        Settings.Left = $"{point.X}px";
+        Settings.Top = $"{point.Y}px";
+
+        InvokeAsync(SaveStateAsync);
+    }
+
+    void OnResize(System.Drawing.Size size)
+    {
+        _jsRuntime.InvokeVoidAsync("eval", $"console.log('Dialog resize. Width:{size.Width}, Height:{size.Height}')");
+
+        if (Settings == null)
+        {
+            Settings = new DialogSettings();
+        }
+
+        Settings.Width = $"{size.Width}px";
+        Settings.Height = $"{size.Height}px";
+
+        InvokeAsync(SaveStateAsync);
+    }
+
+    DialogSettings _settings;
+    public DialogSettings Settings
+    {
+        get
+        {
+            return _settings;
+        }
+        set
+        {
+            if (_settings != value)
+            {
+                _settings = value;
+                InvokeAsync(SaveStateAsync);
+            }
+        }
+    }
+
+    public class DialogSettings
+    {
+        public string Left { get; set; }
+        public string Top { get; set; }
+        public string Width { get; set; }
+        public string Height { get; set; }
+    }
+
+    private async Task LoadStateAsync()
+    {
+        await Task.CompletedTask;
+
+        var result = await _jsRuntime.InvokeAsync<string>("window.localStorage.getItem", "DialogSettings");
+        if (!string.IsNullOrEmpty(result))
+        {
+            _settings = JsonConvert.DeserializeObject<DialogSettings>(result);
+        }
+    }
+
+    private async Task SaveStateAsync()
+    {
+        await Task.CompletedTask;
+        var serialized = JsonConvert.SerializeObject(Settings);
+        await _jsRuntime.InvokeVoidAsync("window.localStorage.setItem", "DialogSettings", serialized);
+    }
+    
+}

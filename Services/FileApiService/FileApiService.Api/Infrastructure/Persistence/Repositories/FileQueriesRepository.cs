@@ -32,7 +32,7 @@ namespace FileApiService.Api.Infrastructure.Persistence.Repositories
         }
 
         public Task<IEnumerable<FileInfoDto>> GetFilesInfo(CancellationToken ct)
-            => GetFilesInfo(null, null, null,null ,ct);
+            => GetFilesInfo(null, null, null,null,null ,ct);
         public async Task<int> CountFiles(string? companyId, string? year, string? month, CancellationToken ct)
         {
             var q = _db.Files.AsNoTracking().AsQueryable();
@@ -42,7 +42,7 @@ namespace FileApiService.Api.Infrastructure.Persistence.Repositories
             return await q.CountAsync(ct);
         }
         public async Task<IEnumerable<FileInfoDto>> GetFilesInfo(
-      string? companyId, string? year, string? month, string? declTypeNorm, CancellationToken ct)
+      string? companyId, string? year, string? month, string? declTypeNorm, string? docTypeNorm, CancellationToken ct)
         {
             var q = _db.Files.AsNoTracking().AsQueryable();
 
@@ -69,7 +69,25 @@ namespace FileApiService.Api.Infrastructure.Persistence.Repositories
                               .Replace("\u2212", "") // MINUS SIGN
                     == declTypeNorm);
             }
-
+            // docType normalize edilerek filtre
+            if (!string.IsNullOrWhiteSpace(docTypeNorm))
+            {
+                q = q.Where(x =>
+                    (x.DocType ?? "") != "" &&
+                    x.DocType.Trim()
+                             .ToUpper()
+                             .Replace(" ", "")
+                             .Replace("_", "")
+                             .Replace("-", "")
+                             .Replace("\u00A0", "")
+                             .Replace("\u2010", "")
+                             .Replace("\u2011", "")
+                             .Replace("\u2012", "")
+                             .Replace("\u2013", "")
+                             .Replace("\u2014", "")
+                             .Replace("\u2212", "")
+                    == docTypeNorm);
+            }
             return await q.OrderByDescending(x => x.CreatedAtUtc)
                           .Select(x => new FileInfoDto
                           {

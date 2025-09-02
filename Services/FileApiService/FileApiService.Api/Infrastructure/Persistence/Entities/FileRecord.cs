@@ -13,5 +13,8 @@
         public string ContentType { get; set; } = "application/pdf";
         public long Length { get; set; }
         public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+        public string? Description { get; set; } = default!;
+        public int? SequenceNo { get; set; } = default!;
     }
 }

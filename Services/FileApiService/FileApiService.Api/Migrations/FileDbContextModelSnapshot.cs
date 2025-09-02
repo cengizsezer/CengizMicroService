@@ -51,6 +51,10 @@ namespace FileApiService.Api.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
                     b.Property<string>("DocType")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -73,6 +77,9 @@ namespace FileApiService.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(2)
                         .HasColumnType("nvarchar(2)");
+
+                    b.Property<int?>("SequenceNo")
+                        .HasColumnType("int");
 
                     b.Property<string>("Year")
                         .IsRequired()

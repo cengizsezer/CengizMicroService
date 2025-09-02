@@ -33,11 +33,12 @@ namespace FileApiService.Api.Core.Queries
 
             // "KDV-1" → "KDV1"
             var declTypeNorm = string.IsNullOrWhiteSpace(q.DeclType) ? null : Normalizer.Canon(q.DeclType);
+            var docTypeNorm = string.IsNullOrWhiteSpace(q.DocType) ? null : Normalizer.Canon(q.DocType);
 
             // (Teşhis için faydalı log — sonra kapat)
             Console.WriteLine($"files-info: companyId={companyId}, year={year}, month={month2}, declTypeNorm={declTypeNorm}");
 
-            var list = await _repo.GetFilesInfo(companyId, year, month2, declTypeNorm, ct);
+            var list = await _repo.GetFilesInfo(companyId, year, month2, declTypeNorm, docTypeNorm,ct);
             return HttpDataResponses.AsOK(list);
         }
 

@@ -1,0 +1,160 @@
+﻿@page "/addcomponydocsitem"
+@using Newtonsoft.Json
+@using WebApp.Shared.Dto
+@inject Radzen.DialogService dialogService
+@inject NavigationManager NavManager
+@inject WebApp.Application.Services.Interfaces.IFileApiService FileApi
+@inject NavigationManager Nav
+@using Microsoft.AspNetCore.Components.Forms;
+
+
+<style>
+    #uploadWithDragAndDrop {
+        left: 0;
+        --rz-upload-button-bar-background-color: transparent;
+        --rz-upload-button-bar-padding: 0;
+    }
+
+        #uploadWithDragAndDrop .rz-fileupload-buttonbar .rz-fileupload-choose {
+            width: 100%;
+            text-align: center;
+            font-size: 16px;
+            padding: 100px 0;
+        }
+</style>
+
+<RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" Style="height: 100%;">
+    <RadzenStack>
+        <RadzenRow>
+            <RadzenColumn Size="12" SizeMD="6" class="rz-p-4 rz-border-radius-1" Style="border: var(--rz-grid-cell-border)">
+                <RadzenText TextStyle="TextStyle.Subtitle1">Beyanname Bilgileri</RadzenText>
+                <RadzenStack>
+                    <RadzenFormField Text="Yıl" Variant="@variant">
+                        <RadzenNumeric @bind-Value="Year" />
+                    </RadzenFormField>
+                    <RadzenFormField Text="Dosya Türü" Variant="@variant">
+                        <RadzenDropDownDataGrid Data="@DoclTypes" @bind-Value="@DocType" ValueProperty="Value" TextProperty="Text" TValue="string" />
+                    </RadzenFormField>
+                </RadzenStack>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeMD="6" class="rz-p-4 rz-border-radius-1" Style="border: var(--rz-grid-cell-border)">
+                <RadzenStack>
+                    <RadzenFormField Text="Oluşturulma Tarihi" Variant="@variant">
+                        <RadzenDatePicker @bind-Value="@createdAt" ShowTime="true" />
+                    </RadzenFormField>
+                    <RadzenFormField Text="Not" Variant="@variant">
+                        <RadzenTextArea @bind-Value="@_note" Rows="4" />
+                    </RadzenFormField>
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+
+    </RadzenStack>
+
+    <RadzenCard Variant="Variant.Outlined">
+        <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">PDF Yükle</RadzenText>
+
+        <RadzenUpload id="uploadWithDragAndDrop"
+                      @ref="upload"
+                      Auto="false"
+                      Multiple="false"
+                      Accept="application/pdf"
+                      Change="@OnFileSelected"
+                      Style="width:100%" />
+
+        <RadzenButton Text="Upload" Click="@OnUpload" class="rz-mt-4" Disabled="@(_selectedFile is null)" />
+        <RadzenText class="rz-mt-2">@_status</RadzenText>
+    </RadzenCard>
+
+    <RadzenStack Visible="@ShowClose" Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+        <RadzenButton Click="@((args) => dialogService.Close(true))" Variant="Variant.Flat" Text="Close" Style="width: 120px" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter] public bool ShowClose { get; set; } = true;
+
+    int Year = DateTime.Now.Year;
+    int Mount = DateTime.Now.Month; // (Month yazımını istersen düzelt)
+    string DeclType = "KDV-1";
+    string DocType = "ENVANTERDEFTERI"; // veya "TAHAKKUK" — senin akışına göre
+
+    public record DecTypePair(string Text, string Value);
+    List<DecTypePair> DeclTypes = new()
+    {
+        new("KDV-1", "KDV-1"),
+        new("KDV-2", "KDV-2"),
+        new("Muhtasar", "MUHTASAR")
+    };
+
+    public record DocTypePair(string Text, string Value);
+    List<DocTypePair> DoclTypes = new()
+    {
+        new("envanterdefteri", "ENVANTERDEFTERI"),
+        new("vergilevhası", "VERGILEVHASI"),
+        new("ticaretsicilgazetesi", "TICARETSICILGAZETESI"),
+        new("imzasirküsü", "IMZASIRKUSU"),
+    };
+
+
+    Variant variant = Variant.Outlined;
+
+    private string _note = "";
+    DateTime? createdAt = DateTime.Now;
+
+    private RadzenUpload upload;
+    private IBrowserFile? _selectedFile;
+    private string _status = "";
+    private string _companyId = "201"; // login’den/claim’den/route’dan alıyorsan orayı bağla
+
+    protected override Task OnInitializedAsync()
+    {
+        // İstersen FileApi HttpClient.BaseAddress'i burada ortama göre ayarla
+        return Task.CompletedTask;
+    }
+
+    private void OnFileSelected(UploadChangeEventArgs args)
+    {
+        _selectedFile = args.Files?.FirstOrDefault();
+        _status = _selectedFile is null
+            ? "Dosya seçilmedi."
+            : $"Seçildi: {_selectedFile.Name} ({_selectedFile.Size} bayt)";
+    }
+
+    private async Task OnUpload()
+    {
+        if (_selectedFile is null)
+        {
+            _status = "Lütfen bir PDF seçin.";
+            return;
+        }
+
+        try
+        {
+            _status = "Yükleniyor...";
+            var ok = await FileApi.UploadCompanyDocAsync(
+                _selectedFile,
+                companyId: _companyId,
+                year: Year,
+                docCategory: DocType,
+                description: _note,
+                ct: default
+            );
+
+            _status = ok ? "Yükleme tamamlandı ✅" : "Yükleme başarısız ❌";
+
+            // Temizlemek istersen:
+            _selectedFile = null;
+            // RadzenUpload için Clear metodu yoksa, kullanıcıya yeni seçim yaptır.
+            StateHasChanged();
+
+            // dialogService.Close(true);
+        }
+        catch (Exception ex)
+        {
+            _status = $"Yükleme hatası: {ex.Message}";
+        }
+    }
+}
+

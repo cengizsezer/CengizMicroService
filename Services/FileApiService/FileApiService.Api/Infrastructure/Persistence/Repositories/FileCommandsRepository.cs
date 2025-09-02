@@ -1,6 +1,9 @@
 ﻿using FileApiService.Api.Core.Abstractions;
 using FileApiService.Api.Domain.Dtos;
+using FileApiService.Api.Infrastructure.Persistence;
 using FileApiService.Api.Infrastructure.Persistence.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace FileApiService.Api.Infrastructure.Persistence.Repositories
 {
@@ -9,6 +12,7 @@ namespace FileApiService.Api.Infrastructure.Persistence.Repositories
         private readonly FileDbContext _db;
         public FileCommandsRepository(FileDbContext db) => _db = db;
 
+        // INSERT (genel kullanım)
         public async Task<int> AddFileMetaAsync(FileMetaDto dto, CancellationToken ct)
         {
             var rec = new FileRecord
@@ -22,11 +26,59 @@ namespace FileApiService.Api.Infrastructure.Persistence.Repositories
                 FileName = dto.FileName,
                 ContentType = dto.ContentType,
                 Length = dto.Length,
-                CreatedAtUtc = dto.CreatedAtUtc
+                CreatedAtUtc = dto.CreatedAtUtc,
+                  Description = dto.Description,
+                SequenceNo = dto.SequenceNo
             };
+
             _db.Files.Add(rec);
             await _db.SaveChangesAsync(ct);
             return rec.Id;
+        }
+
+        // UPSERT (şirket evrakları için: benzersiz = CompanyId + Year + DeclType('COMPANYDOC') + DocType)
+        public async Task UpsertCompanyDocMetaAsync(FileMetaDto dto, CancellationToken ct)
+        {
+            var existing = await _db.Files
+                .FirstOrDefaultAsync(x =>
+                    x.CompanyId == dto.CompanyId &&
+                    x.Year == dto.Year &&
+                    x.DeclType == "COMPANYDOC" &&
+                    x.DocType == dto.DocType, ct);
+
+            if (existing is null)
+            {
+                var rec = new FileRecord
+                {
+                    CompanyId = dto.CompanyId,
+                    Year = dto.Year,
+                    Month = null,              // şirket evraklarında ay yok
+                    DeclType = "COMPANYDOC",
+                    DocType = dto.DocType,       // ENVANTERDEFTERI, VERGILEVHASI, ...
+                    Key = dto.Key,
+                    FileName = dto.FileName,
+                    ContentType = dto.ContentType,
+                    Length = dto.Length,
+                    CreatedAtUtc = dto.CreatedAtUtc,
+                      Description = dto.Description,
+                    SequenceNo = dto.SequenceNo
+                };
+                _db.Files.Add(rec);
+            }
+            else
+            {
+                existing.Key = dto.Key;
+                existing.FileName = dto.FileName;
+                existing.ContentType = dto.ContentType;
+                existing.Length = dto.Length;
+                existing.CreatedAtUtc = dto.CreatedAtUtc;
+                existing.Description = dto.Description;
+                existing.SequenceNo = dto.SequenceNo;
+
+                _db.Files.Update(existing);
+            }
+
+            await _db.SaveChangesAsync(ct);
         }
     }
 }

@@ -1,5 +1,7 @@
-﻿using FileApiService.Api.Api.Files;
+﻿using Consul;
+using FileApiService.Api.Api.Files;
 using FileApiService.Api.Core.Abstractions;
+using FileApiService.Api.Core.Queries;
 using FileApiService.Api.Domain.Commands;
 using FileApiService.Api.Domain.Dtos;
 using FileApiService.Api.Domain.Queries;
@@ -33,6 +35,51 @@ namespace FileApiService.Api.Api.Controllers
             var res = await handler.HandleAsync(new AddFilesCommand(new[] { proxy }), ct);
             return Ok(res);
         }
+
+        [HttpPost("company-docs/upload")]
+        [Consumes("multipart/form-data")]
+        public async Task<ActionResult<HttpDataResponse<bool>>> UploadCompanyDoc(
+            [FromForm] IFormFile file,
+            [FromForm] string companyId,
+            [FromForm] string year,
+            [FromForm] string docCategory,         // ENVANTERDEFTERI | VERGILEVHASI | TICARETSICILGAZETESI | IMZASIRKULERI ...
+            [FromForm] string? description,        // opsiyonel
+            [FromForm] int? sequenceNo,            // opsiyonel
+            [FromServices] IAddCompanyDocCommandHandler handler,
+            CancellationToken ct)
+        {
+            if (file is null || file.Length == 0)
+                return BadRequest("Dosya zorunlu.");
+
+            var cmd = new AddCompanyDocCommand
+            {
+                File = new FormFileProxy(file),
+                CompanyId = companyId,
+                Year = year,
+                DocCategory = docCategory, // Normalizer içeride canon'layacak
+                Description = description,
+                SequenceNo = sequenceNo
+            };
+
+            var res = await handler.HandleAsync(cmd, ct);
+            return Ok(res);
+        }
+
+        [HttpGet("company-docs/info")]
+        public Task<HttpDataResponse<IEnumerable<CompanyDocInfoDto>>> ListCompanyDocs(
+         [FromQuery] string companyId,
+         [FromQuery] string? year,
+         [FromQuery] string? docCategory,   // ENVANTERDEFTERI vs.
+       
+         [FromServices] IGetCompanyDocsInfoQueryHandler h,
+         CancellationToken ct, [FromQuery] bool latestOnly = false)
+         => h.HandleAsync(new GetCompanyDocsInfoQuery
+         {
+             CompanyId = companyId,
+             Year = year,
+             DocCategory = docCategory,
+             LatestOnly = latestOnly
+         }, ct);
 
         [HttpGet("download")]
         public Task<HttpDataResponse<FileDto>> Download([FromQuery] int id, [FromServices] IDownloadFileQueryHandler h, CancellationToken ct)

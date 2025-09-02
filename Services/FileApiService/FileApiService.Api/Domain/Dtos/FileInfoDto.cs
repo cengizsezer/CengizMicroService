@@ -13,5 +13,8 @@
         public long Length { get; init; }
         public DateTime CreatedAtUtc { get; init; }
         public string Key { get; init; } = default!;
+
+        public string? Description { get; set; } = default!;
+        public int? SequenceNo { get; set; } = default!;
     }
 }

@@ -58,6 +58,9 @@ namespace FileApiService.Api.Infrastructure.Persistence.EntityConfigurations
             // indexler
             builder.HasIndex(x => new { x.CompanyId, x.Year, x.Month, x.DeclType, x.DocType });
             builder.HasIndex(x => x.Key).IsUnique();
+
+            builder.Property(x => x.Description).HasMaxLength(512);   // opsiyonel
+            builder.Property(x => x.SequenceNo);                      // int? zaten uygun
         }
     }
 }

@@ -1,9 +1,10 @@
 ﻿using Microsoft.AspNetCore.Components.Forms;
 using Newtonsoft.Json;
+using System.Net.Http.Headers;
 using WebApp.Application.Services.Interfaces;
 using WebApp.Extensions;
+using WebApp.Shared.Dto.CompanyDoc;
 using WebApp.Shared.Dto.Declaration;
-using System.Net.Http.Headers;
 
 namespace WebApp.Application.Services
 {
@@ -97,6 +98,42 @@ namespace WebApp.Application.Services
             var json = await res.Content.ReadAsStringAsync(ct);
             var env = JsonConvert.DeserializeObject<HttpDataResponse<T>>(json);
             return env.Data;
+        }
+
+
+        public async Task<bool> UploadCompanyDocAsync(
+    IBrowserFile file, string companyId, int year,
+    string docCategory, string? description = null, int? sequenceNo = null,
+    CancellationToken ct = default)
+        {
+            using var content = new MultipartFormDataContent();
+
+            var stream = file.OpenReadStream(20 * 1024 * 1024, ct);
+            var fileContent = new StreamContent(stream);
+            var contentType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/pdf" : file.ContentType;
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+            content.Add(fileContent, "file", file.Name);
+
+            content.Add(new StringContent(companyId), "companyId");
+            content.Add(new StringContent(docCategory), "docCategory");
+            content.Add(new StringContent(year.ToString()), "year");
+            if (!string.IsNullOrWhiteSpace(description)) content.Add(new StringContent(description), "description");
+            if (sequenceNo.HasValue) content.Add(new StringContent(sequenceNo.Value.ToString()), "sequenceNo");
+
+            using var resp = await _http.PostAsync("company-doc/upload", content, ct);
+            if (!resp.IsSuccessStatusCode) return false;
+
+            var json = await resp.Content.ReadAsStringAsync(ct);
+            var env = JsonConvert.DeserializeObject<HttpDataResponse<bool>>(json);
+            return env?.Data == true;
+        }
+
+        public Task<List<CompanyDocInfoDto>?> ListCompanyDocsAsync(string companyId, string? year = null, string? docCategory = null, CancellationToken ct = default)
+        {
+            var url = $"company-doc/list?companyId={Uri.EscapeDataString(companyId)}";
+            if (!string.IsNullOrWhiteSpace(year)) url += $"&year={Uri.EscapeDataString(year)}";
+            if (!string.IsNullOrWhiteSpace(docCategory)) url += $"&docCategory={Uri.EscapeDataString(docCategory)}";
+            return GetAndUnwrapAsync<List<CompanyDocInfoDto>>(url, ct);
         }
     }
 }
