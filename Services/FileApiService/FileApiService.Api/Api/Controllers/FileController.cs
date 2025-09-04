@@ -65,7 +65,7 @@ namespace FileApiService.Api.Api.Controllers
             return Ok(res);
         }
 
-        [HttpGet("company-docs/info")]
+        [HttpGet("company-docs/list")]
         public Task<HttpDataResponse<IEnumerable<CompanyDocInfoDto>>> ListCompanyDocs(
          [FromQuery] string companyId,
          [FromQuery] string? year,

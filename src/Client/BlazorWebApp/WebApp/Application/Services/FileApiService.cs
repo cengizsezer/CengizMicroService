@@ -120,7 +120,7 @@ namespace WebApp.Application.Services
             if (!string.IsNullOrWhiteSpace(description)) content.Add(new StringContent(description), "description");
             if (sequenceNo.HasValue) content.Add(new StringContent(sequenceNo.Value.ToString()), "sequenceNo");
 
-            using var resp = await _http.PostAsync("company-doc/upload", content, ct);
+            using var resp = await _http.PostAsync("company-docs/upload", content, ct);
             if (!resp.IsSuccessStatusCode) return false;
 
             var json = await resp.Content.ReadAsStringAsync(ct);
@@ -130,7 +130,7 @@ namespace WebApp.Application.Services
 
         public Task<List<CompanyDocInfoDto>?> ListCompanyDocsAsync(string companyId, string? year = null, string? docCategory = null, CancellationToken ct = default)
         {
-            var url = $"company-doc/list?companyId={Uri.EscapeDataString(companyId)}";
+            var url = $"company-docs/list?companyId={Uri.EscapeDataString(companyId)}";
             if (!string.IsNullOrWhiteSpace(year)) url += $"&year={Uri.EscapeDataString(year)}";
             if (!string.IsNullOrWhiteSpace(docCategory)) url += $"&docCategory={Uri.EscapeDataString(docCategory)}";
             return GetAndUnwrapAsync<List<CompanyDocInfoDto>>(url, ct);

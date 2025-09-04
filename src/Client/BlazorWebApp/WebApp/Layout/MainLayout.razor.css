@@ -74,4 +74,20 @@ main {
         padding-left: 2rem !important;
         padding-right: 1.5rem !important;
     }
+    .brand-line {
+        font-weight: 800;
+        color: #0b7285;
+        line-height: 1.05;
+        letter-spacing: .3px;
+    }
+
+    .brand-line-1 {
+        font-size: 18px;
+    }
+
+    .brand-line-2 {
+        font-size: 20px;
+        margin-top: -2px;
+    }
+
 }

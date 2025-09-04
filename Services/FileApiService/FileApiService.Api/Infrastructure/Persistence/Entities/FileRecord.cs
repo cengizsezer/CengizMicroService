@@ -5,7 +5,7 @@
         public int Id { get; set; }
         public string CompanyId { get; set; } = default!;
         public string Year { get; set; } = default!;
-        public string Month { get; set; } = default!;
+        public string? Month { get; set; } = default!;
         public string DeclType { get; set; } = default!;
         public string DocType { get; set; } = default!;
         public string Key { get; set; } = default!;

@@ -58,14 +58,14 @@ public async override Task<AuthenticationState> GetAuthenticationStateAsync()
             var authState = Task.FromResult(new AuthenticationState(cp));
 
             NotifyAuthenticationStateChanged(authState);
-            appState.LoginChanged(null);
+            appState.LoginChanged();
         }
 
         public void NotifyUserLogout()
         {
             var authState = Task.FromResult(anonymous);
             NotifyAuthenticationStateChanged(authState);
-            appState.LoginChanged(null);
+            appState.LoginChanged();
         }
     }
 }

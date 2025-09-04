@@ -24,7 +24,7 @@ namespace FileApiService.Api.Infrastructure.Persistence.EntityConfigurations
                    .HasMaxLength(4);   // "2025"
 
             builder.Property(x => x.Month)
-                   .IsRequired()
+                   .IsRequired(false)
                    .HasMaxLength(2);   // "01".."12"
 
             builder.Property(x => x.DeclType)

@@ -74,7 +74,6 @@ namespace FileApiService.Api.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<string>("Month")
-                        .IsRequired()
                         .HasMaxLength(2)
                         .HasColumnType("nvarchar(2)");
 

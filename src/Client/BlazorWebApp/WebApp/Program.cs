@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using WebApp.Application.Services;
 using WebApp.Application.Services.Interfaces;
 using WebApp.Infrastructure;
+using WebApp.Manager;
 using WebApp.Utils;
 
 namespace WebApp
@@ -43,7 +44,7 @@ namespace WebApp
             {
                 client.BaseAddress = new Uri(apiBaseAddress);
             }).AddHttpMessageHandler<AuthTokenHandler>().AddHttpMessageHandler<TenantHeaderHandler>();
-
+            builder.Services.AddScoped<IAppSessionManager, AppSessionManager>();
             builder.Services.AddScoped(sp =>
             {
                 var factory = sp.GetRequiredService<IHttpClientFactory>();

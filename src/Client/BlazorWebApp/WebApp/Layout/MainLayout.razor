@@ -1,28 +1,59 @@
 ﻿@using Blazored.LocalStorage
-
+@using WebApp.Manager
+@using WebApp.Pages.SubPages
 @inherits LayoutComponentBase
-@inject NavigationManager Navigation
-@inject IIdentityService IdentityService
 @using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services
 @using WebApp.Application.Services.Interfaces
-@inject ILocalStorageService LocalStorage
+@using WebApp.Domain.Models.User
+@using WebApp.Infrastructure
+
 
 <RadzenNotification />
 <RadzenDialog />
 
 <RadzenLayout>
     <RadzenHeader>
-    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0" Style="width:100%">
-        <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
-        <RadzenLabel Text="Dijital Masraf" />
+        <RadzenStack Orientation="Orientation.Horizontal"
+                     AlignItems="AlignItems.Center" Gap="1rem" Style="width:100%">
+            <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
+
+            <RadzenImage Path="logo.jpeg" AlternateText="Logo"
+                         Style="height:56px; width:auto; border-radius:12px;" />
+
+            <!-- Yazılar için dikey stack -->
+            <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Start" Gap="2px">
+                <span class="brand-line brand-line-1">DİJİTAL</span>
+                <span class="brand-line brand-line-2">MASRAF</span>
+            </RadzenStack>
+       
+
 
         <!-- SAĞ BLOK: hepsi birlikte sağa yaslanır -->
         <div style="margin-left:auto; display:flex; align-items:center; gap:.5rem">
+             <RadzenButton Size="ButtonSize.Small"
+                  Icon="sync_alt"
+                  Text="Firma Değiştir"
+                              Click="@OnChangeFirmClick" />
+
+    <!-- Aktif firma adı -->
+    <div class="rz-text-secondary" style="white-space:nowrap;">
+                    <RadzenIcon Icon="domain" Style="vertical-align:middle; margin-right:.25rem;" />
+                    @if (string.IsNullOrWhiteSpace(CurrentFirmName))
+                    {
+                        <em>Firma seçilmedi</em>
+                    }
+                    else
+                    {
+                        <strong>@CurrentFirmName</strong>
+                        @* İstersen vergi no vs:
+               <span class="rz-text-muted">(@CurrentFirm.TaxNo)</span> *@
+                    }
+    </div>
             <RadzenProfileMenu Click="@OnProfileMenuClick">
                 <Template>
-                    <RadzenGravatar Email="user@example.com" />
+                    <RadzenGravatar Email="cengizsezer7@gmail.com" />
                 </Template>
                 <ChildContent>
                     <RadzenProfileMenuItem Text="Profil" Icon="account_circle" Path="/profile" />
@@ -36,12 +67,17 @@
 
     <RadzenSidebar Responsive="false" Style="width: max-content">
         <RadzenPanelMenu DisplayStyle="@(sidebarExpanded? MenuItemDisplayStyle.IconAndText: MenuItemDisplayStyle.Icon)" ShowArrow="false">
-            <RadzenPanelMenuItem Text="Anasayfa" Icon="home" Path="/home" />
-            <RadzenPanelMenuItem Text="Araçlar" Icon="motorcycle" Path="/vehicles" />
+            <RadzenPanelMenuItem Text="İs Takip" Icon="home">
+                <RadzenPanelMenuItem Text="Takvim" Icon="account_circle" Path="/calendarpage" />
+            </RadzenPanelMenuItem>
+            <RadzenPanelMenuItem Text="E-Masraf" Icon="settings">
+                <RadzenPanelMenuItem Text="Onay" Icon="account_circle" Path="/approvalpage" />
+                <RadzenPanelMenuItem Text="Osgb" Icon="markunread_mailbox" Path="/Osgb" />
+                <RadzenPanelMenuItem Text="Personel" Icon="dashboard" Path="/personel" />
+            </RadzenPanelMenuItem>
+            <RadzenPanelMenuItem Text="Sirket Araçları" Icon="motorcycle" Path="/vehicles" />
             <RadzenPanelMenuItem Text="Beyannameler" Icon="description" Path="/declarationpage" />
             <RadzenPanelMenuItem Text="Sirket Evrakları" Icon="description" Path="/companydocspage" />
-            <RadzenPanelMenuItem Text="Osgb" Icon="markunread_mailbox" Path="/Osgb" />
-            <RadzenPanelMenuItem Text="Personel" Icon="dashboard" Path="/personel" />
             <RadzenPanelMenuItem Text="Settings" Icon="settings">
                 <RadzenPanelMenuItem Text="Account" Icon="account_circle" Path="/account" />
             </RadzenPanelMenuItem>
@@ -74,34 +110,115 @@
 
 @code {
     bool sidebarExpanded = false;
+    string CurrentFirmName { get; set; } = string.Empty;
+
+    [Inject] IAppSessionManager SessionManager { get; set; } = default!;
+    [Inject] AppStateManager AppState { get; set; } = default!;
+    [Inject] DialogService DialogService { get; set; } = default!;
+    [Inject] ILocalStorageService LocalStorage { get; set; } = default!;
+    [Inject] IIdentityService IdentityService { get; set; } = default!;
+    [Inject] NavigationManager Navigation { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // sayfa yenilemelerinde oturumu geri getir
+        await SessionManager.RestoreAsync();
+
+        // mevcut seçili firmayı göster
+        CurrentFirmName = AppState.SelectedFirmName;
+
+        // event abonelikleri
+        AppState.StateChanged += OnAppStateChanged;
+        SessionManager.FirmChanged += OnFirmChanged;
+        SessionManager.AuthChanged += OnAuthChanged;
+    }
+
+    // AppState event'i (enum'lu)
+    private async void OnAppStateChanged(AppStateEvent ev)
+    {
+        if (ev == AppStateEvent.FirmChanged)
+        {
+            CurrentFirmName = AppState.SelectedFirmName;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    // Manager event'leri
+    private async void OnFirmChanged(FirmaDto firm)
+    {
+        CurrentFirmName = firm?.Ad ?? string.Empty;
+        await InvokeAsync(StateHasChanged);
+    }
+    private async void OnAuthChanged()
+    {
+        // gerekirse auth değişiminde ek işlemler
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // Firma değiştirme butonu
+    private async Task OnChangeFirmClick()
+    {
+        // varsa manager’dan kullan; yoksa servisten çek
+        var firms = SessionManager.Firms?.ToList();
+        if (firms == null || firms.Count == 0)
+            return;
+
+        var result = await DialogService.OpenAsync<FirmSelectDialog>(
+            "Firma Seç",
+            new() { ["Firms"] = firms },
+            new DialogOptions { Width = "60vw", Height = "70vh", CloseDialogOnOverlayClick = true, Resizable = true, Draggable = true }
+        );
+
+        // Dialog, seçili firmayı döndürsün: DialogService.Close(secilenFirma)
+        if (result is FirmaDto chosen)
+        {
+            await SessionManager.SelectFirmAsync(chosen);   // ✅ token + AppState + storage tek noktada
+            // Gerekirse: Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+        }
+    }
 
     private async Task OnLogout()
     {
-        IdentityService.Logout();
-        Navigation.NavigateTo("/login");
-    }
-
-   @code {
-    async Task LogoutFromMenu(MenuItemEventArgs args)   // <-- imza önemli
-    {
-        // gerekliyse token vs. temizle
-        await LocalStorage.RemoveItemAsync("authToken");
-
+        await LocalStorage.RemoveItemAsync("authToken"); // varsa ekstra kalıntı
+        await SessionManager.ClearAsync();               // ✅ tüm oturum verisini temizler
         IdentityService.Logout();
         Navigation.NavigateTo("/login", forceLoad: true);
+    }
+
+    public void Dispose()
+    {
+        AppState.StateChanged -= OnAppStateChanged;
+        SessionManager.FirmChanged -= OnFirmChanged;
+        SessionManager.AuthChanged -= OnAuthChanged;
+    }
+
+    async Task LogoutFromMenu(MenuItemEventArgs args)
+    {
+        await OnLogout();
     }
 
     void OnProfileMenuClick(RadzenProfileMenuItem item)
-{
-    // Path verilirse Radzen zaten yönlendirir. Biz sadece özel durumları ele alıyoruz.
-    if (item?.Value?.ToString() == "logout")
     {
-        IdentityService.Logout();
-        Navigation.NavigateTo("/login", forceLoad: true);
+        if (item?.Value?.ToString() == "logout")
+            _ = OnLogout();
+    }
+
+    // (opsiyonel) dialog ayarları
+    DialogSettings _settings;
+    public DialogSettings Settings
+    {
+        get => _settings;
+        set { if (_settings != value) _settings = value; }
+    }
+    public class DialogSettings
+    {
+        public string Left { get; set; }
+        public string Top { get; set; }
+        public string Width { get; set; }
+        public string Height { get; set; }
     }
 }
-}
-}
+
 
 <style>
     .rz-scheduler-navigation button {

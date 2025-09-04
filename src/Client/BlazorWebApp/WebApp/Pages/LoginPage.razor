@@ -1,4 +1,5 @@
-﻿@page "/login"
+﻿@page "/"
+@page "/login"
 @layout AuthLayout
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
@@ -6,6 +7,7 @@
 @using Blazored.LocalStorage
 @using Radzen
 @using WebApp.Infrastructure
+@using WebApp.Manager
 @using WebApp.Pages.SubPages
 @inject NavigationManager NavigationManager
 @inject IIdentityService IdentityService
@@ -13,7 +15,7 @@
 @inject DialogService DialogService
 @inject AppStateManager AppState
 @using WebApp.Domain.Models.User
-
+@inject IAppSessionManager SessionManager
 <style>
     .login-container { display:flex; min-height:100vh; width:100vw; }
     .login-left { position:relative; width:66.66vw; height:100vh; background:#f5f7fa; display:flex; justify-content:center; align-items:center; padding:2rem; text-align:center; overflow:hidden; }
@@ -104,7 +106,7 @@
     private bool isLoading = false;
     private string errorMessage;
     private bool rememberMe = true;
-
+   
     public class LoginModel
     {
         [Required(ErrorMessage = "Kullanıcı adı zorunludur")]
@@ -122,7 +124,6 @@
         loginModel.Username = savedUsername;
         loginModel.Password = savedPassword;
     }
-
     private async Task OnLogin()
     {
         isLoading = true;
@@ -131,50 +132,15 @@
 
         try
         {
-            var result = await IdentityService.Login(loginModel.Username, loginModel.Password, rememberMe);
-            if (result is null) { errorMessage = "Geçersiz kullanıcı adı veya şifre."; return; }
+            var loginRes = await IdentityService.Login(loginModel.Username, loginModel.Password, rememberMe);
+            if (loginRes is null) { errorMessage = "Geçersiz kullanıcı adı veya şifre."; return; }
 
-            var firms = result.Firmalar ?? new List<FirmaDto>();
+            await SessionManager.InitializeFromLoginAsync(loginRes, rememberMe);
 
-            // 1) 0 firma -> hiçbir yere gitme, mesaj göster
-            if (firms.Count == 0)
-            {
-                errorMessage = "Bu kullanıcıya atanmış firma bulunamadı. Lütfen yetkiliye başvurun.";
-                return;
-            }
+            var ok = await SessionManager.EnsureFirmSelectedAsync(); // gerekirse dialogu kendi açar ve seçer
+            if (!ok) { errorMessage = "Firma seçimi yapılmadı."; return; }
 
-            // 2) Birden fazla firma -> diyalog aç, sonucu bekle
-            if (firms.Count > 1)
-            {
-                var ok = await DialogService.OpenAsync<FirmSelectDialog>(
-                    "Firma Seçimi",
-                    new Dictionary<string, object> { ["Firms"] = firms },
-                    new DialogOptions { Width = "60vw", Height = "80vh" }
-                );
-
-                if (ok is bool b && b)
-                {
-                    NavigationManager.NavigateTo("/home");
-                }
-                // İptal ederse hiçbir şey yapma
-            }
-            else
-            {
-                // 3) Tek firma -> arka planda SelectTenant, sonra home
-                var firm = firms[0];
-
-                // IdentityService.SelectTenant() içinde username + refresh session'dan okunmalı
-                var selectRes = await IdentityService.SelectTenant(firm.FirmaNo);
-                await IdentityService.StoreTokens(selectRes.Token, selectRes.RefreshToken);
-
-                AppState.SelectedFirmId = firm.FirmaNo;
-                AppState.SelectedFirmName = firm.Ad;
-                await LocalStorage.SetItemAsync("SelectedFirmId", firm.FirmaNo);
-                await LocalStorage.SetItemAsync("SelectedFirmName", firm.Ad);
-                AppState.FirmChanged(this);
-
-                NavigationManager.NavigateTo("/home");
-            }
+            NavigationManager.NavigateTo("/calendarpage");
         }
         catch (Exception ex)
         {
@@ -185,6 +151,69 @@
             isLoading = false;
         }
     }
+
+    // private async Task OnLogin()
+    // {
+    //     isLoading = true;
+    //     errorMessage = null;
+    //     StateHasChanged();
+
+    //     try
+    //     {
+    //         var result = await IdentityService.Login(loginModel.Username, loginModel.Password, rememberMe);
+    //         if (result is null) { errorMessage = "Geçersiz kullanıcı adı veya şifre."; return; }
+    //         await SessionManager.InitializeFromLoginAsync(result, rememberMe);
+    //         var firms = result.Firmalar ?? new List<FirmaDto>();
+
+    //         // 1) 0 firma -> hiçbir yere gitme, mesaj göster
+    //         if (firms.Count == 0)
+    //         {
+    //             errorMessage = "Bu kullanıcıya atanmış firma bulunamadı. Lütfen yetkiliye başvurun.";
+    //             return;
+    //         }
+
+    //         // 2) Birden fazla firma -> diyalog aç, sonucu bekle
+    //         if (firms.Count > 1)
+    //         {
+    //             var ok = await DialogService.OpenAsync<FirmSelectDialog>(
+    //                 "Firma Seçimi",
+    //                 new Dictionary<string, object> { ["Firms"] = firms },
+    //                 new DialogOptions { Width = "60vw", Height = "80vh" }
+    //             );
+
+    //             if (ok is bool b && b)
+    //             {
+    //                 NavigationManager.NavigateTo("/home");
+    //             }
+    //             // İptal ederse hiçbir şey yapma
+    //         }
+    //         else
+    //         {
+    //             // 3) Tek firma -> arka planda SelectTenant, sonra home
+    //             var firm = firms[0];
+
+    //             // IdentityService.SelectTenant() içinde username + refresh session'dan okunmalı
+    //             var selectRes = await IdentityService.SelectTenant(firm.FirmaNo);
+    //             await IdentityService.StoreTokens(selectRes.Token, selectRes.RefreshToken);
+    //             AppState.SetSelectedFirm(firm.FirmaNo, firm.Ad);
+    //             // AppState.SelectedFirmId = firm.FirmaNo;
+    //             // AppState.SelectedFirmName = firm.Ad;
+    //             await LocalStorage.SetItemAsync("SelectedFirmId", firm.FirmaNo);
+    //             await LocalStorage.SetItemAsync("SelectedFirmName", firm.Ad);
+    //             // AppState.FirmChanged(this);
+
+    //             NavigationManager.NavigateTo("/home");
+    //         }
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         errorMessage = "Bir hata oluştu: " + ex.Message;
+    //     }
+    //     finally
+    //     {
+    //         isLoading = false;
+    //     }
+    // }
 
 
     

@@ -61,16 +61,16 @@
 
         var selectRes = await IdentityService.SelectTenant(firm.FirmaNo);
         await IdentityService.StoreTokens(selectRes.Token, selectRes.RefreshToken);
-
-        AppState.SelectedFirmId = firm.FirmaNo;
-        AppState.SelectedFirmName = firm.Ad;
-        AppState.FirmChanged(this);
+        AppState.SetSelectedFirm(firm.FirmaNo, firm.Ad);
+        // AppState.SelectedFirmId = firm.FirmaNo;
+        // AppState.SelectedFirmName = firm.Ad;
+        // AppState.FirmChanged(this);
 
         await LocalStorage.SetItemAsync("SelectedFirmId", firm.FirmaNo);
         await LocalStorage.SetItemAsync("SelectedFirmName", firm.Ad);
 
         DialogService.Close(true);
-        Nav.NavigateTo("/home");
+        Nav.NavigateTo("/calendarpage");
     }
 }
 

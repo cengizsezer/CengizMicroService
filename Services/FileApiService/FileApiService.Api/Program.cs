@@ -1,6 +1,7 @@
 ﻿using FileApiService.Api.Api.Configuration;
 using FileApiService.Api.Api.EndpointBuilders;
 using FileApiService.Api.Core.Abstractions;
+using FileApiService.Api.Core.Commands;
 using FileApiService.Api.Core.Extensions;
 using FileApiService.Api.Core.Queries;
 using FileApiService.Api.Core.Validation;
@@ -126,9 +127,12 @@ builder.Services.AddScoped<IAddFilesCommandHandler, AddFilesCommandHandler>();
 builder.Services.AddScoped<IGetFilesInfoQueryHandler, GetFilesInfoQueryHandler>();
 builder.Services.AddScoped<IDownloadFileQueryHandler, DownloadFileQueryHandler>();
 builder.Services.AddScoped<IFileByOptionsValidator, FileByOptionsValidator>();
+builder.Services.AddScoped<IAddCompanyDocCommandHandler, AddCompanyDocCommandHandler>();
+builder.Services.AddScoped<IGetCompanyDocsInfoQueryHandler, GetCompanyDocsInfoQueryHandler>();
 
 // Validators (Validot + custom)
 builder.Services.AddScoped<IAddFilesCommandValidator, AddFilesCommandValidator>();
+builder.Services.AddScoped<IAddCompanyDocCommandValidator, AddCompanyDocCommandValidator>();
 builder.Services.AddValidotSingleton<DownloadFileQuerySpecificationHolder, DownloadFileQuery>();
 builder.Services.AddValidotSingleton<AddFileCommandSpecificationHolder, AddFilesCommand>();
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>

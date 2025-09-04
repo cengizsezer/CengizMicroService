@@ -1,6 +1,7 @@
 ﻿@page "/logout"
 @using WebApp.Application.Services.Interfaces
-
+@using WebApp.Manager
+@inject IAppSessionManager SessionManager
 @inject NavigationManager NavigationManager
 @inject IIdentityService IdentityService
 
@@ -14,6 +15,7 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
+        await SessionManager.ClearAsync();
         IdentityService.Logout(); // örnek logout işlemi
         await Task.Delay(1000); // animasyon görünsün diye kısa gecikme
         NavigationManager.NavigateTo("/login", true);
