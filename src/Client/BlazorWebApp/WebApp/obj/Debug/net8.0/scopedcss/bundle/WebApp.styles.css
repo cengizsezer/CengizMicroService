@@ -92,6 +92,17 @@ main[b-jzswhejw2w] {
     }
 
 }
+
+/* MainLayout.razor.css */
+[b-jzswhejw2w] button.firma-btn.rz-button {
+    background-color: #0b7285 !important;
+    border-color: #0b7285 !important;
+    color: #fff !important;
+}
+
+    [b-jzswhejw2w] button.firma-btn.rz-button:hover {
+        filter: brightness(.92);
+    }
 /* /Layout/NavMenu.razor.rz.scp.css */
 .navbar-toggler[b-hz8r36apm9] {
     background-color: rgba(255, 255, 255, 0.1);

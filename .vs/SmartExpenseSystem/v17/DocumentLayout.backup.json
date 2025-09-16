@@ -3,6 +3,14 @@
   "WorkspaceRootPath": "C:\\GitHub\\CengizMicroService\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\layout\\mainlayout.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\layout\\mainlayout.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\layout\\mainlayout.razor.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}",
+      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\layout\\mainlayout.razor.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\pages\\business followup\\calendarpage.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\pages\\business followup\\calendarpage.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
@@ -55,10 +63,6 @@
       "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\wwwroot\\css\\app.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\layout\\mainlayout.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\layout\\mainlayout.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\layout\\authlayout.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\layout\\authlayout.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
@@ -69,10 +73,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\manager\\appsessionmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\manager\\appsessionmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\layout\\mainlayout.razor.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}",
-      "RelativeMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|solutionrelative:src\\client\\blazorwebapp\\webapp\\layout\\mainlayout.razor.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{EEA6B069-1718-4234-8E5E-D81DFB9AC747}|src\\Client\\BlazorWebApp\\WebApp\\WebApp.csproj|c:\\github\\cengizmicroservice\\src\\client\\blazorwebapp\\webapp\\wwwroot\\index.html||{40D31677-CBC0-4297-A9EF-89D907823A98}",
@@ -458,7 +458,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 10,
+          "SelectedChildIndex": 3,
           "Children": [
             {
               "$type": "Document",
@@ -501,20 +501,21 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 0,
               "Title": "MainLayout.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor",
               "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor",
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor",
-              "ViewState": "AgIAAMMAAAAAAAAAAAAUwB0AAAAHAAAAAAAAAA==",
+              "ViewState": "AgIAAAYAAAAAAAAAAAAmwCUAAAAsAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
               "WhenOpened": "2025-09-02T21:52:59.195Z",
-              "IsPinned": true
+              "IsPinned": true,
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 16,
               "Title": "IAppSessionManager.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Manager\\IAppSessionManager.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Manager\\IAppSessionManager.cs",
@@ -544,32 +545,19 @@
             {
               "$type": "Document",
               "DocumentIndex": 2,
-              "Title": "AddAppointmentPage.razor",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Business FollowUp\\AddAppointmentPage.razor",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Business FollowUp\\AddAppointmentPage.razor",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Business FollowUp\\AddAppointmentPage.razor",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Business FollowUp\\AddAppointmentPage.razor",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAACwAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-09-04T21:00:25.837Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
               "Title": "CalendarPage.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Business FollowUp\\CalendarPage.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Business FollowUp\\CalendarPage.razor",
               "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Business FollowUp\\CalendarPage.razor",
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Business FollowUp\\CalendarPage.razor",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAA6AAAAAAAAAA==",
+              "ViewState": "AgIAABgAAAAAAAAAAAAAAH8AAAAoAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
               "WhenOpened": "2025-09-04T20:57:09.398Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 3,
               "Title": "EditAppointmentPage.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Business FollowUp\\EditAppointmentPage.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Business FollowUp\\EditAppointmentPage.razor",
@@ -577,12 +565,36 @@
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Business FollowUp\\EditAppointmentPage.razor",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABwAAAAwAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-09-04T21:01:17.482Z",
+              "WhenOpened": "2025-09-04T21:01:17.482Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "MainLayout.razor.css",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor.css",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor.css",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor.css",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor.css",
+              "ViewState": "AgIAABMAAAAAAAAAAAAQwGEAAAAlAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
+              "WhenOpened": "2025-09-04T20:40:53.235Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
+              "Title": "AddAppointmentPage.razor",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Business FollowUp\\AddAppointmentPage.razor",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Business FollowUp\\AddAppointmentPage.razor",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Business FollowUp\\AddAppointmentPage.razor",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Business FollowUp\\AddAppointmentPage.razor",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACwAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-09-04T21:00:25.837Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
               "Title": "Appointment.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\Appointment.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\Appointment.cs",
@@ -590,12 +602,11 @@
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Domain\\Models\\Appointment.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAcAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-04T20:59:43.8Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-04T20:59:43.8Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 6,
               "Title": "ApprovalPage.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\ApprovalPage.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\ApprovalPage.razor",
@@ -603,12 +614,11 @@
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\ApprovalPage.razor",
               "ViewState": "AgIAALEAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-09-02T18:42:10.287Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-02T18:42:10.287Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 7,
               "Title": "dijitalmasraf.conf",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Nginx\\conf.d\\dijitalmasraf.conf",
               "RelativeDocumentMoniker": "Nginx\\conf.d\\dijitalmasraf.conf",
@@ -616,12 +626,11 @@
               "RelativeToolTip": "Nginx\\conf.d\\dijitalmasraf.conf",
               "ViewState": "AgIAAAMAAAAAAAAAAAAAABwAAAAfAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-09-16T21:43:23.538Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-16T21:43:23.538Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 9,
               "Title": "docker-compose.yml",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.yml",
               "RelativeDocumentMoniker": "docker-compose.yml",
@@ -633,7 +642,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 8,
               "Title": "docker-compose.override.yml",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.override.yml",
               "RelativeDocumentMoniker": "docker-compose.override.yml",
@@ -645,7 +654,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 10,
               "Title": "minio-https.conf",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Nginx\\conf.d\\minio-https.conf",
               "RelativeDocumentMoniker": "Nginx\\conf.d\\minio-https.conf",
@@ -657,7 +666,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 14,
               "Title": "app.css",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\wwwroot\\css\\app.css",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\wwwroot\\css\\app.css",
@@ -669,7 +678,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 13,
               "Title": "Index.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Index.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Index.razor",
@@ -681,7 +690,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 12,
               "Title": "LoginPage.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\LoginPage.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\LoginPage.razor",
@@ -693,7 +702,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 11,
               "Title": "FirmSelectDialog.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\SubPages\\FirmSelectDialog.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\SubPages\\FirmSelectDialog.razor",
@@ -705,7 +714,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 15,
               "Title": "AuthLayout.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Layout\\AuthLayout.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Layout\\AuthLayout.razor",
@@ -717,7 +726,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 17,
               "Title": "AppSessionManager.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Manager\\AppSessionManager.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Manager\\AppSessionManager.cs",
@@ -726,18 +735,6 @@
               "ViewState": "AgIAAAAAAAAAAAAAAAAAADAAAABFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-09-04T19:13:11.788Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 17,
-              "Title": "MainLayout.razor.css",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor.css",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor.css",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor.css",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Layout\\MainLayout.razor.css",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAFoAAAAFAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
-              "WhenOpened": "2025-09-04T20:40:53.235Z"
             },
             {
               "$type": "Document",

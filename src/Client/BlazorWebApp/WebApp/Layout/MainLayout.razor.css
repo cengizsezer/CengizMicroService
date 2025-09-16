@@ -91,3 +91,14 @@ main {
     }
 
 }
+
+/* MainLayout.razor.css */
+::deep button.firma-btn.rz-button {
+    background-color: #0b7285 !important;
+    border-color: #0b7285 !important;
+    color: #fff !important;
+}
+
+    ::deep button.firma-btn.rz-button:hover {
+        filter: brightness(.92);
+    }
