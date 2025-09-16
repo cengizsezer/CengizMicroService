@@ -93,7 +93,11 @@ services:
       - s_sqlserver
       - s_consul
       - s_rabbitmq
-                
+    external_links:
+      - c_graylog
+      - s_consul
+      - s_rabbitmq
+      - s_sqlserver            
      
 
 
