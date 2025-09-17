@@ -18,6 +18,7 @@ namespace FileApiService.Api.Core.Queries
                 month: null,
                 declType: "COMPANYDOC",
                 docType: q.DocCategory,
+                
                 ct: ct);
 
             // FileMetaDto -> CompanyDocInfoDto

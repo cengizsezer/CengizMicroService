@@ -27,7 +27,9 @@ namespace FileApiService.Api.Infrastructure.Persistence.Repositories
                 FileName = r.FileName,
                 ContentType = r.ContentType,
                 Length = r.Length,
-                CreatedAtUtc = r.CreatedAtUtc
+                CreatedAtUtc = r.CreatedAtUtc,
+                Description = r.Description,
+                SequenceNo = r.SequenceNo
             });
         }
 
@@ -101,7 +103,10 @@ namespace FileApiService.Api.Infrastructure.Persistence.Repositories
                               ContentType = x.ContentType,
                               Length = x.Length,
                               CreatedAtUtc = x.CreatedAtUtc,
-                              Key = x.Key
+                              Key = x.Key,
+
+                               Description = x.Description,
+                              SequenceNo = x.SequenceNo
                           })
                           .ToListAsync(ct);
         }

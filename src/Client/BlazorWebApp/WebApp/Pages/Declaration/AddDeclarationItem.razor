@@ -1,11 +1,13 @@
 ﻿@page "/adddeclarationitem"
 @using Newtonsoft.Json
+@using WebApp.Infrastructure
 @using WebApp.Shared.Dto
 @inject Radzen.DialogService dialogService
 @inject NavigationManager NavManager
 @inject WebApp.Application.Services.Interfaces.IFileApiService FileApi
 @inject NavigationManager Nav
 @using Microsoft.AspNetCore.Components.Forms;
+@inject AppStateManager AppState
 
 
 <style>
@@ -110,7 +112,7 @@
     private RadzenUpload upload;
     private IBrowserFile? _selectedFile;
     private string _status = "";
-    private string _companyId = "201"; // login’den/claim’den/route’dan alıyorsan orayı bağla
+  
 
     protected override Task OnInitializedAsync()
     {
@@ -139,7 +141,7 @@
             _status = "Yükleniyor...";
             var ok = await FileApi.UploadAsync(
                 _selectedFile,
-                companyId: _companyId,
+                companyId: AppState.SelectedFirmId,
                 year: Year,
                 month: Mount,
                 declType: DeclType,

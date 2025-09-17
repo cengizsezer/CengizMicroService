@@ -1,18 +1,20 @@
 ﻿@page "/companydocspage"
 @using Newtonsoft.Json
 @using WebApp.Application.Services.Interfaces
+@using WebApp.Infrastructure
 @using WebApp.Shared.Dto.CompanyDoc
 @inject IFileApiService FileApi
 @inject IJSRuntime _jsRuntime
 @inject DialogService DialogService
+@inject AppStateManager AppState
 <h3>Şirket Evrakları</h3>
 
 <RadzenFieldset Text="Filtre">
     <div class="grid">
-        <div class="col-12 md:col-3">
+       @*  <div class="col-12 md:col-3">
             <RadzenLabel Text="Şirket (CompanyId)" />
             <RadzenTextBox @bind-Value="CompanyId" Style="width:100%" />
-        </div>
+        </div> *@
         <div class="col-6 md:col-2">
             <RadzenLabel Text="Yıl" />
             <RadzenNumeric @bind-Value="Year" Style="width:100%" />
@@ -54,7 +56,7 @@
 
 @code {
     RadzenDataGrid<CompanyDocInfoDto> grid;
-    string CompanyId = "201";
+  
     int Year = DateTime.Now.Year;
     string? DocCategory = null;
 
@@ -74,8 +76,25 @@
     async Task Load()
     {
         var yearStr = Year > 0 ? Year.ToString() : null;
-        Rows = await FileApi.ListCompanyDocsAsync(CompanyId, yearStr, DocCategory) ?? new();
+        //Rows = await FileApi.ListCompanyDocsAsync(CompanyId, yearStr, DocCategory) ?? new();
+        Rows = await FileApi.ListCompanyDocsAsync(AppState.SelectedFirmId, yearStr, DocCategory) ?? new();
+        // Önce istediğin görüntü sırasını belirle:
+        Rows = Rows
+            .OrderBy(x => x.DocCategory)               // kategori bazlı
+            .ThenBy(x => x.Year)                        // istersen yıl bazlı
+            .ThenBy(x => x.CreatedAtUtc)               // eskiden yeniye
+            .ToList();
+
+        // Grup bazında 1..n ver:
+        foreach (var grp in Rows.GroupBy(x => new { x.DocCategory, x.Year })) // yalnızca kategoriye göre istersen Year'ı çıkar
+        {
+            int i = 1;
+            foreach (var r in grp)
+                r.SequenceNo = i++;
+        }
+
         await InvokeAsync(() => grid?.Reload());
+       
     }
 
     async Task Open(int id)

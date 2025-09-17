@@ -23,6 +23,11 @@
         "IsRequired": false
       },
       {
+        "Name": "description",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
         "Name": "latestOnly",
         "Type": "System.Boolean",
         "IsRequired": false

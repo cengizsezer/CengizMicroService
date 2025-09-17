@@ -3,21 +3,17 @@
 @using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
+@using WebApp.Infrastructure
 @using WebApp.Shared.Dto.Declaration
 @inject IFileApiService FileApi
 @inject IJSRuntime _jsRuntime
 @using Microsoft.JSInterop
 @inject DialogService DialogService
-
+@inject AppStateManager AppState
 <h3>Beyanname Arşivi</h3>
 
 <RadzenFieldset Text="Filtre" Style="margin-bottom:10px">
     <div class="grid">
-        <div class="col-12 md:col-2">
-            <RadzenLabel Text="Şirket (CompanyId)" />
-            <RadzenTextBox @bind-Value="CompanyId" Style="width:100%" />
-        </div>
-
         <div class="col-6 md:col-2">
             <RadzenLabel Text="Yıl" />
             <RadzenNumeric @bind-Value="Year" Style="width:100%" />
@@ -101,7 +97,7 @@ else
 
 @code {
     // ---------------- UI durum
-    string CompanyId = "201";
+ 
     int Year = DateTime.Now.Year;
     
     string DeclType = "KDV-1";
@@ -139,7 +135,8 @@ else
         var all = new List<FileInfoDto>();
         for (var m = 1; m <= 12; m++)
         {
-            var part = await FileApi.ListAsyncForDeclType(CompanyId, Year, m, DeclType) ?? new();
+            //var part = await FileApi.ListAsyncForDeclType(CompanyId, Year, m, DeclType) ?? new();
+            var part = await FileApi.ListAsyncForDeclType(AppState.SelectedFirmId, Year, m, DeclType) ?? new();
             all.AddRange(part);
         }
 

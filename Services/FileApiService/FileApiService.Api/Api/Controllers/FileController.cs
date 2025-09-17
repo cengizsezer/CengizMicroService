@@ -69,8 +69,9 @@ namespace FileApiService.Api.Api.Controllers
         public Task<HttpDataResponse<IEnumerable<CompanyDocInfoDto>>> ListCompanyDocs(
          [FromQuery] string companyId,
          [FromQuery] string? year,
-         [FromQuery] string? docCategory,   // ENVANTERDEFTERI vs.
-       
+         [FromQuery] string? docCategory,
+         [FromQuery] string? description,// ENVANTERDEFTERI vs.
+
          [FromServices] IGetCompanyDocsInfoQueryHandler h,
          CancellationToken ct, [FromQuery] bool latestOnly = false)
          => h.HandleAsync(new GetCompanyDocsInfoQuery
@@ -78,6 +79,7 @@ namespace FileApiService.Api.Api.Controllers
              CompanyId = companyId,
              Year = year,
              DocCategory = docCategory,
+             Description= description,
              LatestOnly = latestOnly
          }, ct);
 
