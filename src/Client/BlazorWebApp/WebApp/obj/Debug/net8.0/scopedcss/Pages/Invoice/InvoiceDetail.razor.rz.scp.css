@@ -1,0 +1,21 @@
+[b-2sirbme9g4] .rz-alert.status-alert,
+[b-2sirbme9g4] .rz-alert.approver-alert {
+    background: #eafaf1 !important;
+    border: 1px solid #c9efd9 !important;
+    color: #0f5132 !important;
+    border-radius: 12px;
+}
+
+    [b-2sirbme9g4] .rz-alert.status-alert .rz-text-secondary,
+    [b-2sirbme9g4] .rz-alert.status-alert .rz-icon,
+    [b-2sirbme9g4] .rz-alert.approver-alert .rz-text-secondary,
+    [b-2sirbme9g4] .rz-alert.approver-alert .rz-icon {
+        color: #0f5132 !important;
+    }
+
+    [b-2sirbme9g4] .rz-alert.status-alert .rz-button,
+    [b-2sirbme9g4] .rz-alert.approver-alert .rz-button {
+        background: #0f766e !important;
+        border-color: #0f766e !important;
+        color: #fff !important;
+    }

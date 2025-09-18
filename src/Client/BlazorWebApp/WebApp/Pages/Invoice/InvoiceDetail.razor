@@ -1,0 +1,521 @@
+﻿@page "/invoices/mock"
+@using System.Globalization
+@inject NavigationManager Nav
+@inject DialogService Dialog
+@inject NotificationService NotificationService
+
+<PageTitle>Gelen Faturalar</PageTitle>
+
+@if (vm is null)
+{
+    <div class="rz-p-3">
+        <RadzenSkeleton Height="32px" />
+        <RadzenSkeleton Height="600px" class="rz-mt-2" />
+    </div>
+}
+else
+{
+
+    <RadzenRow Class="rz-px-2 rz-pt-2">
+        <!-- SOL SÜTUN -->
+        <RadzenColumn Size="12" SizeMD="6">
+            <h3 class="rz-mt-0">Gelen Faturalar</h3>
+
+            <RadzenFieldset>
+                <ChildContent>
+                    <RadzenRow Class="rz-gap-2">
+                        <RadzenColumn Size="12">
+                            <RadzenTextBox @bind-Value="vm.IlgiliDepartman" ReadOnly="true" Style="width:100%" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenDropDown Data="@firmalar" TextProperty="Name" ValueProperty="Id"
+                                            @bind-Value="vm.FirmaId" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                            Placeholder="Firma" Style="width:100%" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenDropDown Data="@cariler" TextProperty="Name" ValueProperty="Id"
+                                            @bind-Value="vm.CariId" Placeholder="Cari" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                            AllowClear="true" Style="width:100%" />
+                        </RadzenColumn>
+
+                        <!-- Vergi/Kod tablolu başlık -->
+                        <RadzenColumn Size="12">
+                            <RadzenDataGrid TItem="VergiKodVm" Data="@vm.VergiKodOzet" Density="Density.Compact"
+                                            ShowPagingSummary="false" AllowPaging="false" AllowSorting="false"
+                                            class="rz-border-0 rz-shadow-0">
+                                <Columns>
+                                    <RadzenDataGridColumn TItem="VergiKodVm" Property="VergiNo" Title="Vergi No" />
+                                    <RadzenDataGridColumn TItem="VergiKodVm" Property="VergiDairesi" Title="Vergi Dairesi" />
+                                    <RadzenDataGridColumn TItem="VergiKodVm" Property="Kod" Title="Kod" />
+                                    <RadzenDataGridColumn TItem="VergiKodVm" Property="Aciklama" Title="Açıklama" />
+                                    <RadzenDataGridColumn TItem="VergiKodVm" Property="OzelKod2" Title="Özel Kod 2" />
+                                    <RadzenDataGridColumn TItem="VergiKodVm" Property="OzelKod3" Title="Özel Kod 3" />
+                                </Columns>
+                            </RadzenDataGrid>
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenTextBox @bind-Value="vm.FaturaNo" ReadOnly="true" Style="width:100%" />
+                            <RadzenLabel Text="Fatura No" class="rz-text-secondary rz-text-sm" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenTextBox Value="@vm.FaturaTarihiStr" ReadOnly="true" Style="width:100%" />
+                            <RadzenLabel Text="Fatura Tarihi" class="rz-text-secondary rz-text-sm" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenTextBox @bind-Value="vm.FaturaTipi" ReadOnly="true" Style="width:100%" />
+                            <RadzenLabel Text="Fatura Tipi" class="rz-text-secondary rz-text-sm" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenTextBox @bind-Value="vm.FaturaProfili" ReadOnly="true" Style="width:100%" />
+                            <RadzenLabel Text="Fatura Profili" class="rz-text-secondary rz-text-sm" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenTextBox Value="@vm.OnaylanmaTarihiStr" ReadOnly="true" Style="width:100%" />
+                            <RadzenLabel Text="Onaylanma Tarihi" class="rz-text-secondary rz-text-sm" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="6">
+                            <RadzenTextBox @bind-Value="vm.OnaylayanKisi" ReadOnly="true" Style="width:100%" />
+                            <RadzenLabel Text="Onaylayan Kişi" class="rz-text-secondary rz-text-sm" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12">
+                            <RadzenHtmlEditor @bind-Value="vm.Aciklama" Style="height:140px" />
+                            <RadzenLabel Text="Açıklama" class="rz-text-secondary rz-text-sm" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <RadzenDropDown Data="@odemeDurumlari" @bind-Value="vm.OdemeDurumu" Style="width:100%" Placeholder="Ödeme Durumu" />
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <RadzenDropDown Data="@odemeTipleri" @bind-Value="vm.OdemeTipi" Style="width:100%" Placeholder="Ödeme Tipi" />
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <RadzenNumeric @bind-Value="vm.KrediKartiSon4Hane" TValue="int?" Style="width:100%" Placeholder="Kredi Kartı Son 4 Hanesi" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12">
+                            <RadzenTextBox @bind-Value="vm.PlakaSozlesmeNo" Style="width:100%" Placeholder="Plaka / Sözleşme No / Abone No" />
+                        </RadzenColumn>
+                    </RadzenRow>
+                </ChildContent>
+            </RadzenFieldset>
+
+            <!-- FATURA SATIRLARI -->
+            <RadzenCard class="rz-mt-3">
+                <div class="rz-font-bold rz-mb-2">Fatura Satırları</div>
+
+                <RadzenDataGrid @ref="linesGrid" TItem="InvoiceLineEditDto" Data="@vm.EditLines"
+                                AllowSorting="false" AllowFiltering="false" AllowPaging="false"
+                                Density="Density.Compact">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="InvoiceLineEditDto" Title="#" Width="60px">
+                            <Template Context="row">@((vm.EditLines.IndexOf(row))+1)</Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn TItem="InvoiceLineEditDto" Property="Kod" Title="KODU" />
+                        <RadzenDataGridColumn TItem="InvoiceLineEditDto" Property="HizmetAciklamasi" Title="HİZMET AÇIKLAMASI" />
+                        <RadzenDataGridColumn TItem="InvoiceLineEditDto" Property="Aciklama" Title="AÇIKLAMA" />
+                        <RadzenDataGridColumn TItem="InvoiceLineEditDto" Property="Proje" Title="PROJE" />
+                        <RadzenDataGridColumn TItem="InvoiceLineEditDto" Property="MasrafMerkezi" Title="MASRAF MERKEZİ" />
+                        <RadzenDataGridColumn TItem="InvoiceLineEditDto" Property="MasrafMerkeziAciklamasi" Title="MASRAF MERKEZİ AÇIKLAMASI" />
+                        <RadzenDataGridColumn TItem="InvoiceLineEditDto" Property="Miktar" Title="MİKTAR" TextAlign="TextAlign.Right" />
+                        <RadzenDataGridColumn TItem="InvoiceLineEditDto" Property="KiraGun" Title="KİRA GÜN" TextAlign="TextAlign.Right" />
+                        <RadzenDataGridColumn TItem="InvoiceLineEditDto" Property="Birim" Title="BİRİM" />
+                        <RadzenDataGridColumn TItem="InvoiceLineEditDto" Property="BirimFiyat" Title="BİRİM FİYAT" TextAlign="TextAlign.Right" />
+                        <RadzenDataGridColumn TItem="InvoiceLineEditDto" Property="Tutar" Title="TUTAR" TextAlign="TextAlign.Right">
+                            <Template Context="r">@Fmt(r.Tutar)</Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+
+                <div class="rz-mt-2 rz-flex rz-gap-2">
+                    <RadzenButton Text="Satır Ekle" Icon="add" Click="@AddLine" />
+                    <RadzenButton Text="Seçili Satırları Aktar" Icon="content_paste" ButtonStyle="ButtonStyle.Secondary"
+                                  Click="@ApplyPastedLines" />
+                </div>
+
+                <div class="rz-mt-2">
+                    <div class="rz-text-secondary rz-text-sm rz-mb-1">
+                        Excel'den kopyalayıp yapıştırabilirsiniz (TAB ayrımlı). Her satır: Kod | Hizmet Açıklaması | Açıklama | Proje | Masraf Merkezi | Masraf Merkezi Açıklaması | Miktar | Kira Gün | Birim | Birim Fiyat
+                    </div>
+                    <RadzenTextArea @bind-Value="pasteBuffer" Style="width:100%;height:120px" />
+                </div>
+            </RadzenCard>
+
+            <!-- KDV KATEGORİ ÖZET -->
+            <RadzenCard class="rz-mt-3">
+                <div class="rz-font-bold rz-mb-2">Kategori (KDV)</div>
+
+                <RadzenDataGrid TItem="VatCategoryDto" Data="@vm.KdvKategorileri" AllowPaging="false" AllowSorting="false"
+                                Density="Density.Compact">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="VatCategoryDto" Property="Kategori" Title="Kategori" />
+                        <RadzenDataGridColumn TItem="VatCategoryDto" Property="KdvOrani" Title="KDV Oranı" TextAlign="TextAlign.Right" />
+                        <RadzenDataGridColumn TItem="VatCategoryDto" Property="ToplamKdvTutar" Title="Toplam KDV Tutarı" TextAlign="TextAlign.Right">
+                            <Template Context="r">@Fmt(r.ToplamKdvTutar)</Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="VatCategoryDto" Property="KdvMatrah" Title="KDV Matrah" TextAlign="TextAlign.Right">
+                            <Template Context="r">@Fmt(r.KdvMatrah)</Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+
+                <div class="rz-flex rz-justify-end rz-mt-2 rz-gap-4">
+                    <div><b>Ara Toplam:</b> @Fmt(vm.AraToplam)</div>
+                    <div><b>Genel Toplam (KDV Matrahı + KDV):</b> @Fmt(vm.GenelToplam)</div>
+                </div>
+            </RadzenCard>
+
+            <!-- DİĞER ALANLAR + KAYDET -->
+            <RadzenCard class="rz-mt-3">
+                <RadzenRow Class="rz-gap-2">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenDropDown Data="@satinalmaTurlari" @bind-Value="vm.SatinalmaFaturaTuru" Style="width:100%" Placeholder="Satınalma Fatura Türü" />
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenDropDown Data="@satisTurlari" @bind-Value="vm.SatisFaturasiTuru" Style="width:100%" Placeholder="Satış Faturası Türü" />
+                    </RadzenColumn>
+
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenTextBox @bind-Value="vm.FaturaArkaAciklama1" Style="width:100%" Placeholder="Fatura Arka Açıklama 1" MaxLength="50" />
+                        <div class="rz-text-secondary rz-text-sm">Kalan Karakter: @(50 - (vm.FaturaArkaAciklama1?.Length ?? 0))</div>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenTextBox @bind-Value="vm.FaturaBelgeNo" Style="width:100%" Placeholder="Fatura Belge No" MaxLength="32" />
+                        <div class="rz-text-secondary rz-text-sm">Kalan Karakter: @(32 - (vm.FaturaBelgeNo?.Length ?? 0))</div>
+                    </RadzenColumn>
+
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenTextBox @bind-Value="vm.FaturaArkaAciklama2" Style="width:100%" Placeholder="Fatura Arka Açıklama 2" MaxLength="50" />
+                        <div class="rz-text-secondary rz-text-sm">Kalan Karakter: @(50 - (vm.FaturaArkaAciklama2?.Length ?? 0))</div>
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenTextBox @bind-Value="vm.FaturaProjeKodu" Style="width:100%" Placeholder="Fatura Proje Kodu" />
+                    </RadzenColumn>
+
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenDatePicker @bind-Value="vm.GuncellenmeTarihi" ReadOnly="true" Style="width:100%" />
+                        <RadzenLabel Text="Güncellenme Tarihi" class="rz-text-secondary rz-text-sm" />
+                    </RadzenColumn>
+                </RadzenRow>
+
+                <div class="rz-mt-3">
+                    <RadzenButton Text="KAYDET" Icon="save" Size="ButtonSize.Medium" Click="@Save" />
+                    <RadzenButton Text="Geri" Icon="arrow_back" ButtonStyle="ButtonStyle.Light" class="rz-ml-2"
+                                  Click="@GoBack" />
+                </div>
+            </RadzenCard>
+        </RadzenColumn>
+
+        <!-- SAĞ SÜTUN -->
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenCard class="rz-sticky-right">
+                <div class="rz-font-bold rz-mb-2">Gelen Faturalar</div>
+
+                <!-- 1) DURUM -->
+                <!-- 1) DURUM -->
+                <RadzenAlert Style="margin:0 0 12px 0; background:#eafaf1; border:1px solid #c9efd9; color:#0f5132; border-radius:12px;">
+                    <ChildContent>
+                        <div class="rz-flex rz-justify-between rz-items-center rz-flex-wrap rz-gap-2">
+                            <div>
+                                <div class="rz-font-semibold">Durum</div>
+                                <div class="rz-text-secondary rz-mt-1" style="color:#0f5132">@vm.DurumAltBaslik</div>
+                            </div>
+                            <div class="rz-flex rz-gap-2">
+                                <RadzenButton Text="Logoya kaydet" Icon="save" Click="@SaveToLogo" />
+                                <RadzenButton Text="Onay Kaydını Aktar" Icon="check" Click="@TransferApproval" />
+                            </div>
+                        </div>
+                    </ChildContent>
+                </RadzenAlert>
+
+                <!-- 2) ONAYLAYAN KİŞİ -->
+                <RadzenAlert Style="margin:0 0 12px 0; background:#eafaf1; border:1px solid #c9efd9; color:#0f5132; border-radius:12px;">
+                    <ChildContent>
+                        <div class="rz-flex rz-items-center rz-gap-2">
+                            <RadzenIcon Icon="person" />
+                            <div class="rz-font-semibold">Onaylayan Kişi</div>
+                            <span class="info-chip" style="background:#fff; border:1px solid #c9efd9; color:#0f5132; padding:4px 10px; border-radius:9999px;">
+                                @vm.OnaylayanKisi
+                            </span>
+                        </div>
+                    </ChildContent>
+                </RadzenAlert>
+
+
+
+                <div style="height:540px;">
+                    @if (!string.IsNullOrWhiteSpace(pdfSrc))
+                    {
+                        <iframe src="@pdfSrc" style="width:100%;height:100%;border:none"></iframe>
+                    }
+                    else
+                    {
+                        <div class="rz-text-secondary">PDF bulunamadı.</div>
+                    }
+                </div>
+
+                <div class="rz-mt-3">
+                    <RadzenTextBox @bind-Value="vm.PdfUrl" Style="width:100%" ReadOnly="true" />
+                    <RadzenLabel Text="Fatura PDF" class="rz-text-secondary rz-text-sm" />
+                </div>
+
+                <!-- Dosya Ekle/Attachments -->
+                <div class="rz-mt-3">
+                    <div class="rz-font-bold rz-mb-1">Fatura detayı dosyaları</div>
+                    <RadzenUpload ChooseText="Dosyaları Seç" Url="about:blank" Multiple="true" Accept="application/pdf,image/*"
+                                  Change="@OnUploadChange" />
+                    <div class="rz-mt-2">
+                        @foreach (var f in vm.Attachments)
+                        {
+                            <div class="rz-flex rz-justify-between rz-items-center rz-border-bottom rz-py-1">
+                                <a href="@f.Url" target="_blank">@f.Name</a>
+                                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                              Click="@(()=>RemoveAttachment(f))" />
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Yansıtma -->
+                <div class="rz-mt-3">
+                    <RadzenTextBox @bind-Value="vm.YansitilacakCari" Style="width:100%" Placeholder="Yansıtılacak Cari" />
+                    <div class="rz-mt-2 rz-flex rz-gap-2 rz-items-center">
+                        <RadzenTextBox @bind-Value="vm.YansitmaExcelLink" Style="width:100%" Placeholder="Yansıtma Exceli (Link)" />
+                        <RadzenButton Text="Link" ButtonStyle="ButtonStyle.Light" />
+                        <RadzenUpload ChooseText="Dosyaları Seç" Url="about:blank" Multiple="true" Change="@OnYansitmaUpload" />
+                    </div>
+                    <div class="rz-mt-2">
+                        <RadzenTextArea @bind-Value="vm.YansitmaOnayMesaji" Style="width:100%;height:120px" Placeholder="Yansıtma onay mesajı" />
+                    </div>
+                </div>
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
+}
+
+
+@code {
+    InvoiceDetailVm? vm;
+    string? pdfSrc;
+    string pasteBuffer = string.Empty;
+    RadzenDataGrid<InvoiceLineEditDto>? linesGrid;
+
+    // lookups (mock)
+    List<PickItem> firmalar = new();
+    List<PickItem> cariler = new();
+    List<string> odemeDurumlari = new() { "Seçiniz...", "Ödendi", "Beklemede", "Kısmi" };
+    List<string> odemeTipleri = new() { "Banka Havalesi", "Kredi Kartı", "Nakit" };
+    List<string> satinalmaTurlari = new() { "Seçiniz...", "Hizmet", "Mal" };
+    List<string> satisTurlari = new() { "Seçiniz...", "Temel Fatura", "İade" };
+
+    protected override Task OnInitializedAsync()
+    {
+        // --- MOCK DATA ---
+        firmalar = new() { new() { Id = 1, Name = "Tez Medikal" }, new() { Id = 2, Name = "Bizklinik" } };
+        cariler = new() { new() { Id = 1, Name = "ARAS KARGO YURTİÇİ YURTDIŞI TAŞIM" } };
+
+        vm = new InvoiceDetailVm
+        {
+            Id = 612,
+            IlgiliDepartman = "Muhasebe - MUH",
+            FirmaId = 1,
+            CariId = 1,
+            VergiKodOzet = new()
+            {
+                new() { VergiNo = "0720039666", VergiDairesi = "BÜYÜK MÜKELLEFLER", Kod = "320.01.00020", Aciklama = "KARGO", OzelKod2 = "SATINALMA", OzelKod3 = "" }
+            },
+            FaturaNo = "AAA2025001989082",
+            FaturaTarihi = new DateTime(2025, 9, 18, 0, 0, 0),
+            FaturaTipi = "Satış Faturası",
+            FaturaProfili = "Temel Fatura",
+            OnaylayanKisi = "Yildiray ÇINAR",
+            OnaylanmaTarihi = new DateTime(2025, 9, 18, 11, 54, 27),
+            DurumAltBaslik = "Satın Alma Entegrasyonu",
+            DurumEtiketi = "ONAYLANDI",
+            PdfUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+            Aciklama = "",
+            OdemeDurumu = "Seçiniz...",
+            OdemeTipi = "Banka Havalesi",
+            KrediKartiSon4Hane = null,
+            PlakaSozlesmeNo = "",
+            EditLines = new()
+            {
+                new() { Kod = "ARAS STANDART DOSYA", HizmetAciklamasi = "DOSYA", Miktar = 46, Birim = "Adet", BirimFiyat = 74.68m, Tutar = 3435.26m },
+                new() { Kod = "ARAS STANDART KARGO", HizmetAciklamasi = "KARGO", Miktar = 7, Birim = "Adet", BirimFiyat = 111.23m, Tutar = 778.61m },
+                new() { Kod = "SEVK SMS", HizmetAciklamasi = "SMS", Miktar = 1, Birim = "Adet", BirimFiyat = 1.00m, Tutar = 1.00m },
+                new() { Kod = "SMS-GÖNDERİCİYE", HizmetAciklamasi = "SMS-GÖNDERİCİYE", Miktar = 1, Birim = "Adet", BirimFiyat = 1.00m, Tutar = 1.00m }
+            },
+            KdvKategorileri = new()
+            {
+                new() { Kategori = "%0", KdvOrani = 0, ToplamKdvTutar = 0, KdvMatrah = 4215.87m }
+            },
+            AraToplam = 0,
+            GenelToplam = 4215.87m,
+            SatinalmaFaturaTuru = "Seçiniz...",
+            SatisFaturasiTuru = "Seçiniz...",
+            FaturaArkaAciklama1 = string.Empty,
+            FaturaArkaAciklama2 = string.Empty,
+            FaturaBelgeNo = string.Empty,
+            FaturaProjeKodu = string.Empty,
+            GuncellenmeTarihi = DateTime.Now,
+            Attachments = new() { new() { Id = 1, Name = "Fatura.pdf", Url = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" } },
+            YansitmaEkleri = new()
+        };
+
+        pdfSrc = vm.PdfUrl;
+        return Task.CompletedTask;
+    }
+
+    string Fmt(decimal? v) => (v ?? 0m).ToString("N2", new CultureInfo("tr-TR"));
+
+    void GoBack() => Nav.NavigateTo("/invoices");
+
+    void AddLine()
+    {
+        vm?.EditLines.Add(new InvoiceLineEditDto { Miktar = 0, BirimFiyat = 0, Birim = "Adet" });
+        linesGrid?.Reload();
+    }
+
+    void ApplyPastedLines()
+    {
+        if (vm is null || string.IsNullOrWhiteSpace(pasteBuffer)) return;
+        var lines = pasteBuffer.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var line in lines)
+        {
+            var cols = line.Split('\t');
+            var dto = new InvoiceLineEditDto();
+            if (cols.Length > 0) dto.Kod = cols[0];
+            if (cols.Length > 1) dto.HizmetAciklamasi = cols[1];
+            if (cols.Length > 2) dto.Aciklama = cols[2];
+            if (cols.Length > 3) dto.Proje = cols[3];
+            if (cols.Length > 4) dto.MasrafMerkezi = cols[4];
+            if (cols.Length > 5) dto.MasrafMerkeziAciklamasi = cols[5];
+            if (cols.Length > 6 && decimal.TryParse(cols[6], out var miktar)) dto.Miktar = miktar;
+            if (cols.Length > 7 && decimal.TryParse(cols[7], out var kiragun)) dto.KiraGun = kiragun;
+            if (cols.Length > 8) dto.Birim = cols[8];
+            if (cols.Length > 9 && decimal.TryParse(cols[9], out var bf)) dto.BirimFiyat = bf;
+            dto.Tutar = (dto.Miktar ?? 0) * (dto.BirimFiyat ?? 0);
+            vm.EditLines.Add(dto);
+        }
+        pasteBuffer = string.Empty;
+        linesGrid?.Reload();
+    }
+
+    void Save()
+    {
+        NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Mock", Detail = "Kaydedildi (mock)", Duration = 2500 });
+    }
+
+    void SaveToLogo() => NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Info, Summary = "Mock", Detail = "Logoya kaydet (mock)", Duration = 2500 });
+    void TransferApproval() => NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Info, Summary = "Mock", Detail = "Onay kaydı aktar (mock)", Duration = 2500 });
+
+    void OnUploadChange(UploadChangeEventArgs args)
+    {
+        foreach (var f in args.Files)
+        {
+            vm!.Attachments.Add(new AttachmentVm { Id = vm.Attachments.Count + 1, Name = f.Name, Url = "#" });
+        }
+    }
+
+    void OnYansitmaUpload(UploadChangeEventArgs args)
+    {
+        foreach (var f in args.Files)
+        {
+            vm!.YansitmaEkleri.Add(new AttachmentVm { Id = vm.YansitmaEkleri.Count + 1, Name = f.Name, Url = "#" });
+        }
+    }
+
+    void RemoveAttachment(AttachmentVm f) => vm!.Attachments.Remove(f);
+
+    // --- DTOs (mock)
+    public class PickItem { public int Id { get; set; } public string Name { get; set; } = ""; }
+
+    public class VergiKodVm
+    {
+        public string VergiNo { get; set; } = "";
+        public string VergiDairesi { get; set; } = "";
+        public string Kod { get; set; } = "";
+        public string Aciklama { get; set; } = "";
+        public string OzelKod2 { get; set; } = "";
+        public string OzelKod3 { get; set; } = "";
+    }
+
+    public class AttachmentVm { public int Id { get; set; } public string Name { get; set; } = ""; public string Url { get; set; } = ""; }
+
+    public class VatCategoryDto
+    {
+        public string Kategori { get; set; } = "";
+        public decimal KdvOrani { get; set; }
+        public decimal ToplamKdvTutar { get; set; }
+        public decimal KdvMatrah { get; set; }
+    }
+
+    public class InvoiceLineEditDto
+    {
+        public string? Kod { get; set; }
+        public string? HizmetAciklamasi { get; set; }
+        public string? Aciklama { get; set; }
+        public string? Proje { get; set; }
+        public string? MasrafMerkezi { get; set; }
+        public string? MasrafMerkeziAciklamasi { get; set; }
+        public decimal? Miktar { get; set; }
+        public decimal? KiraGun { get; set; }
+        public string? Birim { get; set; }
+        public decimal? BirimFiyat { get; set; }
+        public decimal? Tutar { get; set; }
+    }
+
+    public class InvoiceDetailVm
+    {
+        public int Id { get; set; }
+        public string IlgiliDepartman { get; set; } = "Muhasebe - MUH";
+        public int? FirmaId { get; set; }
+        public int? CariId { get; set; }
+        public List<VergiKodVm> VergiKodOzet { get; set; } = new();
+        public string FaturaNo { get; set; } = "";
+        public DateTime FaturaTarihi { get; set; }
+        public string FaturaTarihiStr => FaturaTarihi.ToString("dd/MM/yyyy");
+        public string FaturaTipi { get; set; } = "";
+        public string FaturaProfili { get; set; } = "";
+        public string OnaylayanKisi { get; set; } = "";
+        public DateTime? OnaylanmaTarihi { get; set; }
+        public string OnaylanmaTarihiStr => OnaylanmaTarihi?.ToString("dd/MM/yyyy HH:mm") ?? "";
+        public string DurumAltBaslik { get; set; } = "Satın Alma Entegrasyonu";
+        public string DurumEtiketi { get; set; } = "ONAYLANDI";
+        public string? PdfUrl { get; set; }
+        public string? Aciklama { get; set; }
+        public string? OdemeDurumu { get; set; }
+        public string? OdemeTipi { get; set; }
+        public int? KrediKartiSon4Hane { get; set; }
+        public string? PlakaSozlesmeNo { get; set; }
+        public List<InvoiceLineEditDto> EditLines { get; set; } = new();
+        public List<VatCategoryDto> KdvKategorileri { get; set; } = new();
+        public decimal AraToplam { get; set; }
+        public decimal GenelToplam { get; set; }
+        public string? SatinalmaFaturaTuru { get; set; }
+        public string? SatisFaturasiTuru { get; set; }
+        public string? FaturaArkaAciklama1 { get; set; }
+        public string? FaturaArkaAciklama2 { get; set; }
+        public string? FaturaBelgeNo { get; set; }
+        public string? FaturaProjeKodu { get; set; }
+        public DateTime GuncellenmeTarihi { get; set; } = DateTime.Now;
+        public List<AttachmentVm> Attachments { get; set; } = new();
+        public List<AttachmentVm> YansitmaEkleri { get; set; } = new();
+        public string? YansitilacakCari { get; set; }
+        public string? YansitmaExcelLink { get; set; }
+        public string? YansitmaOnayMesaji { get; set; }
+    }
+}
+
+<style>
+    .rz-sticky-right { position: sticky; top: 12px; }
+</style>
