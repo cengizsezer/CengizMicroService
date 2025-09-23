@@ -1,0 +1,948 @@
+name: dockercompose13332881914596172242
+services:
+  catalogseeder.api:
+    build:
+      context: C:\GitHub\CengizMicroService
+      dockerfile: Services/CatalogService/CatalogService.Api/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Debug
+        LAUNCHING_FROM_VS: "true"
+      labels:
+        com.microsoft.created-by: visual-studio
+        com.microsoft.visual-studio.project-name: CatalogService.Api
+      target: base
+    command:
+      - dotnet
+      - CatalogService.Api.dll
+      - --seed-force
+    container_name: c_catalogseeder
+    depends_on:
+      s_sqlserver:
+        condition: service_started
+        required: true
+    entrypoint:
+      - dotnet
+      - --roll-forward
+      - Major
+      - /VSTools/DistrolessHelper/DistrolessHelper.dll
+      - --wait
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_LOGGING__CONSOLE__DISABLECOLORS: "true"
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+      NUGET_FALLBACK_PACKAGES: /.nuget/fallbackpackages
+    external_links:
+      - c_graylog
+      - s_consul
+      - s_rabbitmq
+      - s_sqlserver
+    image: catalogserviceapi:dev
+    labels:
+      com.microsoft.visualstudio.debuggee.arguments: ' --additionalProbingPath /.nuget/packages --additionalProbingPath /.nuget/fallbackpackages  ""'
+      com.microsoft.visualstudio.debuggee.killprogram: dotnet --roll-forward Major /VSTools/DistrolessHelper/DistrolessHelper.dll --stop dotnet
+      com.microsoft.visualstudio.debuggee.program: dotnet
+      com.microsoft.visualstudio.debuggee.workingdirectory: /app
+    networks:
+      net_backendservices: null
+    tty: true
+    volumes:
+      - type: bind
+        source: C:\GitHub\CengizMicroService\Services\CatalogService\CatalogService.Api
+        target: /app
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\GitHub\CengizMicroService
+        target: /src
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\vsdbg\vs2017u5
+        target: /remote_debugger
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\.nuget\packages
+        target: /.nuget/packages
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files (x86)\Microsoft Visual Studio\Shared\NuGetPackages
+        target: /.nuget/fallbackpackages
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\ASP.NET\Https
+        target: /root/.aspnet/https
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\ASP.NET\Https
+        target: /home/app/.aspnet/https
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\Microsoft\UserSecrets
+        target: /root/.microsoft/usersecrets
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\Microsoft\UserSecrets
+        target: /home/app/.microsoft/usersecrets
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Sdks\Microsoft.Docker.Sdk\tools\linux-x64\net8.0
+        target: /VSTools
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\HotReload
+        target: /HotReloadAgent
+        read_only: true
+        bind:
+          create_host_path: true
+  catalogservice.api:
+    build:
+      context: C:\GitHub\CengizMicroService
+      dockerfile: Services/CatalogService/CatalogService.Api/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Debug
+        LAUNCHING_FROM_VS: "true"
+      labels:
+        com.microsoft.created-by: visual-studio
+        com.microsoft.visual-studio.project-name: CatalogService.Api
+      target: base
+    container_name: c_catalogservice
+    depends_on:
+      s_consul:
+        condition: service_started
+        required: true
+      s_rabbitmq:
+        condition: service_started
+        required: true
+      s_sqlserver:
+        condition: service_started
+        required: true
+      web.apigateway:
+        condition: service_started
+        required: true
+    entrypoint:
+      - dotnet
+      - --roll-forward
+      - Major
+      - /VSTools/DistrolessHelper/DistrolessHelper.dll
+      - --wait
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_LOGGING__CONSOLE__DISABLECOLORS: "true"
+      ASPNETCORE_URLS: http://+:5004
+      ConsulConfig__Address: http://s_consul:8500
+      ConsulConfig__ServiceAddress: http://c_catalogservice:5004
+      ConsulConfig__ServiceId: Catalog
+      ConsulConfig__ServiceName: CatalogService
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+      NUGET_FALLBACK_PACKAGES: /.nuget/fallbackpackages
+    external_links:
+      - c_graylog
+      - s_consul
+      - s_rabbitmq
+      - s_sqlserver
+    image: catalogserviceapi:dev
+    labels:
+      com.microsoft.visualstudio.debuggee.arguments: ' --additionalProbingPath /.nuget/packages --additionalProbingPath /.nuget/fallbackpackages  ""'
+      com.microsoft.visualstudio.debuggee.killprogram: dotnet --roll-forward Major /VSTools/DistrolessHelper/DistrolessHelper.dll --stop dotnet
+      com.microsoft.visualstudio.debuggee.program: dotnet
+      com.microsoft.visualstudio.debuggee.workingdirectory: /app
+    networks:
+      net_backendservices: null
+    ports:
+      - mode: ingress
+        target: 5004
+        published: "5004"
+        protocol: tcp
+    tty: true
+    volumes:
+      - type: bind
+        source: C:\GitHub\CengizMicroService\Services\CatalogService\CatalogService.Api
+        target: /app
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\GitHub\CengizMicroService
+        target: /src
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\vsdbg\vs2017u5
+        target: /remote_debugger
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\.nuget\packages
+        target: /.nuget/packages
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files (x86)\Microsoft Visual Studio\Shared\NuGetPackages
+        target: /.nuget/fallbackpackages
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\ASP.NET\Https
+        target: /root/.aspnet/https
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\ASP.NET\Https
+        target: /home/app/.aspnet/https
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\Microsoft\UserSecrets
+        target: /root/.microsoft/usersecrets
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\Microsoft\UserSecrets
+        target: /home/app/.microsoft/usersecrets
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Sdks\Microsoft.Docker.Sdk\tools\linux-x64\net8.0
+        target: /VSTools
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\HotReload
+        target: /HotReloadAgent
+        read_only: true
+        bind:
+          create_host_path: true
+  fileapiservice.api:
+    build:
+      context: C:\GitHub\CengizMicroService
+      dockerfile: Services/FileApiService/FileApiService.Api/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Debug
+        LAUNCHING_FROM_VS: "true"
+      labels:
+        com.microsoft.created-by: visual-studio
+        com.microsoft.visual-studio.project-name: FileApiService.Api
+      target: base
+    container_name: c_fileapiservice
+    depends_on:
+      s_consul:
+        condition: service_started
+        required: true
+      s_rabbitmq:
+        condition: service_started
+        required: true
+      s_sqlserver:
+        condition: service_started
+        required: true
+      web.apigateway:
+        condition: service_started
+        required: true
+    entrypoint:
+      - dotnet
+      - --roll-forward
+      - Major
+      - /VSTools/DistrolessHelper/DistrolessHelper.dll
+      - --wait
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_LOGGING__CONSOLE__DISABLECOLORS: "true"
+      ASPNETCORE_URLS: http://+:5009
+      ConsulConfig__Address: http://s_consul:8500
+      ConsulConfig__ServiceAddress: http://c_fileapiservice:5009
+      ConsulConfig__ServiceId: FileApi
+      ConsulConfig__ServiceName: FileApiService
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+      Minio__AccessKey: admin
+      Minio__Bucket: dijitalmasraf
+      Minio__Endpoint: minio:9000
+      Minio__SecretKey: admin12345
+      Minio__WithSSL: "false"
+      MinioPublic__Endpoint: s3.dijitalmasraf.com
+      NUGET_FALLBACK_PACKAGES: /.nuget/fallbackpackages
+    external_links:
+      - c_graylog
+      - s_consul
+      - s_rabbitmq
+      - s_sqlserver
+    image: fileapiserviceapi:dev
+    labels:
+      com.microsoft.visualstudio.debuggee.arguments: ' --additionalProbingPath /.nuget/packages --additionalProbingPath /.nuget/fallbackpackages  ""'
+      com.microsoft.visualstudio.debuggee.killprogram: dotnet --roll-forward Major /VSTools/DistrolessHelper/DistrolessHelper.dll --stop dotnet
+      com.microsoft.visualstudio.debuggee.program: dotnet
+      com.microsoft.visualstudio.debuggee.workingdirectory: /app
+    networks:
+      net_backendservices: null
+    ports:
+      - mode: ingress
+        target: 5009
+        published: "5009"
+        protocol: tcp
+    tty: true
+    volumes:
+      - type: bind
+        source: C:\GitHub\CengizMicroService\Services\FileApiService\FileApiService.Api
+        target: /app
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\GitHub\CengizMicroService
+        target: /src
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\vsdbg\vs2017u5
+        target: /remote_debugger
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\.nuget\packages
+        target: /.nuget/packages
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files (x86)\Microsoft Visual Studio\Shared\NuGetPackages
+        target: /.nuget/fallbackpackages
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\ASP.NET\Https
+        target: /root/.aspnet/https
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\ASP.NET\Https
+        target: /home/app/.aspnet/https
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\Microsoft\UserSecrets
+        target: /root/.microsoft/usersecrets
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\Microsoft\UserSecrets
+        target: /home/app/.microsoft/usersecrets
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Sdks\Microsoft.Docker.Sdk\tools\linux-x64\net8.0
+        target: /VSTools
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\HotReload
+        target: /HotReloadAgent
+        read_only: true
+        bind:
+          create_host_path: true
+  identityservice:
+    build:
+      context: C:\GitHub\CengizMicroService
+      dockerfile: Services/IdentityService/IdentityService/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Debug
+        LAUNCHING_FROM_VS: "true"
+      labels:
+        com.microsoft.created-by: visual-studio
+        com.microsoft.visual-studio.project-name: IdentityService
+      target: base
+    container_name: c_identityservice
+    depends_on:
+      s_consul:
+        condition: service_started
+        required: true
+      s_rabbitmq:
+        condition: service_started
+        required: true
+      s_sqlserver:
+        condition: service_started
+        required: true
+      web.apigateway:
+        condition: service_started
+        required: true
+    entrypoint:
+      - dotnet
+      - --roll-forward
+      - Major
+      - /VSTools/DistrolessHelper/DistrolessHelper.dll
+      - --wait
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_LOGGING__CONSOLE__DISABLECOLORS: "true"
+      ASPNETCORE_URLS: http://+:5005
+      ConsulConfig__Address: http://s_consul:8500
+      ConsulConfig__ServiceAddress: http://c_identityservice:5005
+      ConsulConfig__ServiceId: Identity
+      ConsulConfig__ServiceName: IdentityService
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+      NUGET_FALLBACK_PACKAGES: /.nuget/fallbackpackages
+    external_links:
+      - c_graylog
+      - s_consul
+      - s_rabbitmq
+      - s_sqlserver
+    image: identityservice:dev
+    labels:
+      com.microsoft.visualstudio.debuggee.arguments: ' --additionalProbingPath /.nuget/packages --additionalProbingPath /.nuget/fallbackpackages  "/app/bin/Debug/net8.0/IdentityService.dll"'
+      com.microsoft.visualstudio.debuggee.killprogram: dotnet --roll-forward Major /VSTools/DistrolessHelper/DistrolessHelper.dll --stop dotnet
+      com.microsoft.visualstudio.debuggee.program: dotnet
+      com.microsoft.visualstudio.debuggee.workingdirectory: /app
+    networks:
+      net_backendservices: null
+    ports:
+      - mode: ingress
+        target: 5005
+        published: "5005"
+        protocol: tcp
+    tty: true
+    volumes:
+      - type: bind
+        source: C:\GitHub\CengizMicroService\Services\IdentityService\IdentityService
+        target: /app
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\GitHub\CengizMicroService
+        target: /src
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\vsdbg\vs2017u5
+        target: /remote_debugger
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\.nuget\packages
+        target: /.nuget/packages
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files (x86)\Microsoft Visual Studio\Shared\NuGetPackages
+        target: /.nuget/fallbackpackages
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\ASP.NET\Https
+        target: /root/.aspnet/https
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\ASP.NET\Https
+        target: /home/app/.aspnet/https
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\Microsoft\UserSecrets
+        target: /root/.microsoft/usersecrets
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\Microsoft\UserSecrets
+        target: /home/app/.microsoft/usersecrets
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Sdks\Microsoft.Docker.Sdk\tools\linux-x64\net8.0
+        target: /VSTools
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\HotReload
+        target: /HotReloadAgent
+        read_only: true
+        bind:
+          create_host_path: true
+  nginx.public:
+    build:
+      context: C:\GitHub\CengizMicroService\Nginx
+      dockerfile: Dockerfile
+    container_name: c_nginx_public
+    depends_on:
+      web.apigateway:
+        condition: service_started
+        required: true
+      webapp:
+        condition: service_started
+        required: true
+    networks:
+      net_apigateway: null
+      net_backendservices: null
+      net_frontend: null
+    ports:
+      - mode: ingress
+        target: 80
+        published: "80"
+        protocol: tcp
+      - mode: ingress
+        target: 443
+        published: "443"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: /etc/letsencrypt
+        target: /etc/letsencrypt
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: volume
+        source: nginx_cache
+        target: /var/cache/nginx
+        volume: {}
+  ocrservice.api:
+    build:
+      context: C:\GitHub\CengizMicroService
+      dockerfile: Services/OCRService/OCRService.Api/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Debug
+        LAUNCHING_FROM_VS: "true"
+      labels:
+        com.microsoft.created-by: visual-studio
+        com.microsoft.visual-studio.project-name: OCRService.Api
+      target: base
+    container_name: c_ocrservice
+    depends_on:
+      s_consul:
+        condition: service_started
+        required: true
+      s_rabbitmq:
+        condition: service_started
+        required: true
+      s_sqlserver:
+        condition: service_started
+        required: true
+      web.apigateway:
+        condition: service_started
+        required: true
+    entrypoint:
+      - dotnet
+      - --roll-forward
+      - Major
+      - /VSTools/DistrolessHelper/DistrolessHelper.dll
+      - --wait
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_LOGGING__CONSOLE__DISABLECOLORS: "true"
+      ASPNETCORE_URLS: http://+:5002
+      ConsulConfig__Address: http://s_consul:8500
+      ConsulConfig__ServiceAddress: http://c_ocrservice:5002
+      ConsulConfig__ServiceId: OCR
+      ConsulConfig__ServiceName: OCRService
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+      GoogleVision__CredentialsPath: ""
+      NUGET_FALLBACK_PACKAGES: /.nuget/fallbackpackages
+      OpenAI__ApiKey: ""
+    external_links:
+      - c_graylog
+      - s_consul
+      - s_rabbitmq
+      - s_sqlserver
+    image: ocrservice.api:dev
+    labels:
+      com.microsoft.visualstudio.debuggee.arguments: ' --additionalProbingPath /.nuget/packages --additionalProbingPath /.nuget/fallbackpackages  ""'
+      com.microsoft.visualstudio.debuggee.killprogram: dotnet --roll-forward Major /VSTools/DistrolessHelper/DistrolessHelper.dll --stop dotnet
+      com.microsoft.visualstudio.debuggee.program: dotnet
+      com.microsoft.visualstudio.debuggee.workingdirectory: /app
+    networks:
+      net_backendservices: null
+    ports:
+      - mode: ingress
+        target: 5002
+        published: "5002"
+        protocol: tcp
+    tty: true
+    volumes:
+      - type: bind
+        source: C:\Program Files (x86)\Microsoft Visual Studio\Shared\NuGetPackages
+        target: /.nuget/fallbackpackages
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\.nuget\packages
+        target: /.nuget/packages
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\HotReload
+        target: /HotReloadAgent
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Sdks\Microsoft.Docker.Sdk\tools\linux-x64\net8.0
+        target: /VSTools
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\GitHub\CengizMicroService\Services\OCRService\OCRService.Api
+        target: /app
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\GitHub\CengizMicroService\Services\OCRService\OCRService.Api\Config
+        target: /app/Services/OCRService/OCRService.Api/Config
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\ASP.NET\Https
+        target: /home/app/.aspnet/https
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\Microsoft\UserSecrets
+        target: /home/app/.microsoft/usersecrets
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\vsdbg\vs2017u5
+        target: /remote_debugger
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\ASP.NET\Https
+        target: /root/.aspnet/https
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\Microsoft\UserSecrets
+        target: /root/.microsoft/usersecrets
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\GitHub\CengizMicroService
+        target: /src
+        bind:
+          create_host_path: true
+  s_consul:
+    container_name: c_consul
+    image: consul:1.15
+    networks:
+      net_apigateway: null
+      net_backendservices: null
+      net_frontend: null
+    ports:
+      - mode: ingress
+        target: 8500
+        published: "8500"
+        protocol: tcp
+      - mode: ingress
+        target: 8600
+        published: "8600"
+        protocol: tcp
+      - mode: ingress
+        target: 8600
+        published: "8600"
+        protocol: udp
+  s_rabbitmq:
+    container_name: c_rabbitmq
+    image: rabbitmq:3-management
+    networks:
+      net_apigateway: null
+      net_backendservices: null
+      net_frontend: null
+    ports:
+      - mode: ingress
+        target: 5672
+        published: "5672"
+        protocol: tcp
+      - mode: ingress
+        target: 15672
+        published: "15672"
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: rabbitmq
+        target: /var/lib/rabbitmq
+        volume: {}
+  s_sqlserver:
+    container_name: c_sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: 0-jofnvbsvCS!
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    networks:
+      net_backendservices: null
+    ports:
+      - mode: ingress
+        target: 1433
+        published: "1433"
+        protocol: tcp
+    user: root
+    volumes:
+      - type: volume
+        source: sqlserver_data
+        target: /var/opt/mssql/data
+        volume: {}
+      - type: volume
+        source: sqlserver_log
+        target: /var/opt/mssql/log
+        volume: {}
+  web.apigateway:
+    build:
+      context: C:\GitHub\CengizMicroService
+      dockerfile: src/AppGateways/WebAppGateway/Web.ApiGateway/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Debug
+        LAUNCHING_FROM_VS: "true"
+      labels:
+        com.microsoft.created-by: visual-studio
+        com.microsoft.visual-studio.project-name: Web.ApiGateway
+      target: base
+    container_name: c_apigateway
+    entrypoint:
+      - dotnet
+      - --roll-forward
+      - Major
+      - /VSTools/DistrolessHelper/DistrolessHelper.dll
+      - --wait
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_LOGGING__CONSOLE__DISABLECOLORS: "true"
+      ASPNETCORE_URLS: http://+:5000
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+      NUGET_FALLBACK_PACKAGES: /.nuget/fallbackpackages
+    image: webapigateway:dev
+    labels:
+      com.microsoft.visualstudio.debuggee.arguments: ' --additionalProbingPath /.nuget/packages --additionalProbingPath /.nuget/fallbackpackages  "/app/bin/Debug/net8.0/Web.ApiGateway.dll"'
+      com.microsoft.visualstudio.debuggee.killprogram: dotnet --roll-forward Major /VSTools/DistrolessHelper/DistrolessHelper.dll --stop dotnet
+      com.microsoft.visualstudio.debuggee.program: dotnet
+      com.microsoft.visualstudio.debuggee.workingdirectory: /app
+    networks:
+      net_apigateway: null
+      net_backendservices: null
+    ports:
+      - mode: ingress
+        target: 5000
+        published: "5000"
+        protocol: tcp
+    tty: true
+    volumes:
+      - type: bind
+        source: C:\GitHub\CengizMicroService\src\AppGateways\WebAppGateway\Web.ApiGateway
+        target: /app
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\GitHub\CengizMicroService
+        target: /src
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\vsdbg\vs2017u5
+        target: /remote_debugger
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\.nuget\packages
+        target: /.nuget/packages
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files (x86)\Microsoft Visual Studio\Shared\NuGetPackages
+        target: /.nuget/fallbackpackages
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\ASP.NET\Https
+        target: /root/.aspnet/https
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\ASP.NET\Https
+        target: /home/app/.aspnet/https
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\Microsoft\UserSecrets
+        target: /root/.microsoft/usersecrets
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\Microsoft\UserSecrets
+        target: /home/app/.microsoft/usersecrets
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Sdks\Microsoft.Docker.Sdk\tools\linux-x64\net8.0
+        target: /VSTools
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\HotReload
+        target: /HotReloadAgent
+        read_only: true
+        bind:
+          create_host_path: true
+  webapp:
+    build:
+      context: C:\GitHub\CengizMicroService
+      dockerfile: src/Client/BlazorWebApp/WebApp/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Debug
+        LAUNCHING_FROM_VS: "true"
+      labels:
+        com.microsoft.created-by: visual-studio
+        com.microsoft.visual-studio.project-name: WebApp
+      target: build-env
+    container_name: c_blazorui
+    entrypoint:
+      - dotnet
+      - --roll-forward
+      - Major
+      - /VSTools/DistrolessHelper/DistrolessHelper.dll
+      - --wait
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_LOGGING__CONSOLE__DISABLECOLORS: "true"
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+      NUGET_FALLBACK_PACKAGES: /.nuget/fallbackpackages
+    image: webapp:dev
+    labels:
+      com.microsoft.visualstudio.debuggee.arguments: ' --additionalProbingPath /.nuget/packages --additionalProbingPath /.nuget/fallbackpackages  ""'
+      com.microsoft.visualstudio.debuggee.killprogram: dotnet --roll-forward Major /VSTools/DistrolessHelper/DistrolessHelper.dll --stop dotnet
+      com.microsoft.visualstudio.debuggee.program: dotnet
+      com.microsoft.visualstudio.debuggee.workingdirectory: /app
+    networks:
+      net_apigateway: null
+      net_frontend: null
+    ports:
+      - mode: ingress
+        target: 80
+        published: "2000"
+        protocol: tcp
+    tty: true
+    volumes:
+      - type: bind
+        source: C:\GitHub\CengizMicroService\src\Client\BlazorWebApp\WebApp
+        target: /app
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\GitHub\CengizMicroService
+        target: /src
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\vsdbg\vs2017u5
+        target: /remote_debugger
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\.nuget\packages
+        target: /.nuget/packages
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files (x86)\Microsoft Visual Studio\Shared\NuGetPackages
+        target: /.nuget/fallbackpackages
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\ASP.NET\Https
+        target: /root/.aspnet/https
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\ASP.NET\Https
+        target: /home/app/.aspnet/https
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\Microsoft\UserSecrets
+        target: /root/.microsoft/usersecrets
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\cengi\AppData\Roaming\Microsoft\UserSecrets
+        target: /home/app/.microsoft/usersecrets
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Sdks\Microsoft.Docker.Sdk\tools\linux-x64\net8.0
+        target: /VSTools
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\HotReload
+        target: /HotReloadAgent
+        read_only: true
+        bind:
+          create_host_path: true
+networks:
+  net_apigateway:
+    name: net_apigateway
+    driver: bridge
+    external: true
+  net_backendservices:
+    name: net_backendservices
+    driver: bridge
+    external: true
+  net_frontend:
+    name: net_frontend
+    driver: bridge
+    external: true
+volumes:
+  nginx_cache:
+    name: dockercompose13332881914596172242_nginx_cache
+  rabbitmq:
+    name: dockercompose13332881914596172242_rabbitmq
+  sqlserver_data:
+    name: dockercompose13332881914596172242_sqlserver_data
+  sqlserver_log:
+    name: dockercompose13332881914596172242_sqlserver_log

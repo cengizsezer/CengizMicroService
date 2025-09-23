@@ -56,6 +56,7 @@ builder.Services.AddHealthChecks()
 builder.Services.ConfigureConsul(configuration);
 builder.Services.AddAutoMapper(typeof(ExpenseProfile));
 builder.Services.AddAutoMapper(typeof(VehicleProfile));
+builder.Services.AddAutoMapper(typeof(EducationProfile));
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantAccessor, HttpTenantAccessor>();
 var app = builder.Build();

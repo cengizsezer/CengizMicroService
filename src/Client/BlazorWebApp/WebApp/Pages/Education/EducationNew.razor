@@ -1,0 +1,90 @@
+﻿@page "/education/new"
+@using Radzen
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto
+@using WebApp.Shared.Dto.Education
+@using Microsoft.AspNetCore.Components.Forms
+
+@inject EducationService Store
+@inject NavigationManager Nav
+@inject NotificationService NotificationService
+
+<h3>Yeni Soru-Cevap</h3>
+
+<RadzenCard class="rz-p-4">
+    <EditForm Model="@model"
+              OnValidSubmit="@Save"
+              OnInvalidSubmit="@OnInvalid">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="grid">
+            <div class="col-12">
+                <RadzenLabel Text="Başlık (zorunlu)" />
+                <RadzenTextBox @bind-Value="model.Title" Style="width:100%" />
+                <ValidationMessage For="@(() => model.Title)" />
+            </div>
+
+            <div class="col-12">
+                <RadzenLabel Text="Cevap (düz metin)" />
+                <RadzenTextArea @bind-Value="model.BodyText"
+                                Style="width:100%; min-height:200px" />
+            </div>
+
+            <div class="col-12 text-right">
+                <RadzenButton Text="Vazgeç"
+                              Click="@(()=> Nav.NavigateTo("/education"))"
+                              class="rz-mr-2" />
+                <RadzenButton Text="Kaydet"
+                              ButtonStyle="ButtonStyle.Primary"
+                              ButtonType="ButtonType.Submit" />
+            </div>
+        </div>
+    </EditForm>
+</RadzenCard>
+
+@code {
+    CreateEducationItemDto model = new();
+
+    async Task Save()
+    {
+        Console.WriteLine("[EditForm] Save() CALISTI (VALID)");
+
+        if (string.IsNullOrWhiteSpace(model.Title))
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Eksik bilgi",
+                Detail = "Başlık zorunludur."
+            });
+            return;
+        }
+
+        var created = await Store.CreateAsync(model);
+        if (created is null)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = "Kayıt başarısız."
+            });
+            return;
+        }
+
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Success,
+            Summary = "Eklendi",
+            Detail = $"“{model.Title}” oluşturuldu."
+        });
+
+        Nav.NavigateTo("/education");
+    }
+
+    void OnInvalid(EditContext _)
+    {
+        Console.WriteLine("[EditForm] OnInvalidSubmit (INVALID) — doğrulama hataları var.");
+    }
+}

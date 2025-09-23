@@ -1,11 +1,13 @@
 ﻿using CatalogService.Api.Core.Base;
 using CatalogService.Api.Core.Domain;
+using CatalogService.Api.Core.Domain.Education;
 using CatalogService.Api.Infrastructure.EntityConfigurations;
 using CatalogService.Api.Infrastructure.Interface;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Emit;
 using System.Threading.Tasks;
 
 namespace CatalogService.Api.Infrastructure.Context
@@ -23,7 +25,7 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<AccountingCode> AccountingCodes { get; set; }
         public DbSet<Personnel> Personnels { get; set; }
         public DbSet<Vehicle> Vehicles { get; set; }
-
+        public DbSet<EducationItem> EducationItems { get; set; } = default!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -34,6 +36,7 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new AccountingCodeEntityTypeConfiguration());
             builder.ApplyConfiguration(new PersonnelEntityTypeConfiguration());
             builder.ApplyConfiguration(new VehicleEntityTypeConfiguration());
+            builder.ApplyConfiguration(new EducationItemEntityTypeConfiguration());
 
             builder.Entity<Expense>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
             builder.Entity<ReceiptItem>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);

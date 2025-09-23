@@ -1,0 +1,133 @@
+﻿@page "/education"
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto
+@using WebApp.Shared.Dto.Education
+
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject EducationService Store
+@inject NavigationManager Nav
+
+<RadzenCard class="rz-mb-2 rz-p-3">
+    <div class="grid align-items-center">
+        <div class="col-12 md:col-6">
+            <RadzenTextBox @bind-Value="search"
+                           Change="@(_ => LoadAsync())"
+                           Placeholder="Arama: başlık veya içerikte ara..."
+                           Style="width:100%" />
+        </div>
+        <div class="col-12 md:col-6 text-right">
+            <RadzenButton Text="Temizle" class="rz-mr-2"
+                          Click="@(()=> { search = string.Empty; _ = LoadAsync(); })" />
+            <RadzenButton Text="Yeni Soru-Cevap Ekle" Icon="add_circle"
+                          ButtonStyle="ButtonStyle.Primary"
+                          Click="@(()=> Nav.NavigateTo("/education/new"))" class="rz-mr-2" />
+            <RadzenButton Text="Collapse all" class="rz-mr-2" Click="@CollapseAll" />
+            <RadzenButton Text="Expand all" Click="@ExpandAll" />
+        </div>
+    </div>
+</RadzenCard>
+
+<div class="rz-p-sm-12">
+    <RadzenAlert Style="margin-bottom:.75rem"
+                 Visible="@(!Items.Any())"
+                 Severity="AlertSeverity.Info">
+        Kayıt bulunamadı.
+    </RadzenAlert>
+
+    <RadzenAccordion Multiple="true">
+        <Items>
+            @foreach (var item in Items)
+            {
+                <RadzenAccordionItem Text="@item.Title" @bind-Selected="@item.Selected">
+                    <div class="qa-actions">
+                        <RadzenButton Icon="delete"
+                                      ButtonStyle="ButtonStyle.Danger"
+                                      Size="ButtonSize.Small"
+                                      class="rz-mr-2"
+                                      Click="@(async ()=> await DeleteItemAsync(item))" />
+                    </div>
+
+                    <div class="qa-block text-plain">
+                        @item.BodyText
+                    </div>
+                </RadzenAccordionItem>
+            }
+        </Items>
+    </RadzenAccordion>
+</div>
+
+@code {
+    string search = string.Empty;
+
+    // API DTO'su
+    List<EducationItemDto> Items = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    async Task LoadAsync()
+    {
+        var page = await Store.GetAsync(pageIndex: 0, pageSize: 100, q: search);
+        Items = page.Data?.ToList() ?? new();   // IEnumerable -> List
+        foreach (var i in Items) i.Selected = false;
+    }
+
+    async Task DeleteItemAsync(EducationItemDto item)
+    {
+        var ok = await DialogService.Confirm(
+            $"“{item.Title}” silinsin mi?",
+            "Silme Onayı",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç", ShowClose = true });
+
+        if (ok == true)
+        {
+            var success = await Store.DeleteAsync(item.Id);
+            if (success)
+            {
+                Items.Remove(item);
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Info,
+                    Summary = "Silindi",
+                    Detail = $"“{item.Title}” kaldırıldı."
+                });
+                StateHasChanged();
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Hata",
+                    Detail = "Silme başarısız."
+                });
+            }
+        }
+    }
+
+    void CollapseAll() { foreach (var i in Items) i.Selected = false; }
+    void ExpandAll() { foreach (var i in Items) i.Selected = true; }
+}
+
+
+<style>
+    .qa-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: .5rem;
+    }
+
+    .qa-block {
+        line-height: 1.6;
+    }
+
+    .text-plain {
+        white-space: pre-wrap;
+    }
+    /* düz metinde \n => yeni satır */
+    .text-right {
+        text-align: right;
+    }
+</style>

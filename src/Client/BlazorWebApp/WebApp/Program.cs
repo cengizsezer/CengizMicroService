@@ -28,12 +28,14 @@ namespace WebApp
             builder.Services.AddRadzenComponents();
             builder.Services.AddBlazoredSessionStorage();
             builder.Services.AddScoped<Radzen.DialogService>();
+            builder.Services.AddScoped<IEducationService, EducationService>();
             // Auth
             builder.Services.AddScoped<AuthenticationStateProvider, AuthStateProvider>();
             builder.Services.AddAuthorizationCore();
             builder.Services.AddScoped<AuthTokenHandler>();
             builder.Services.AddSingleton<AppStateManager>();
             builder.Services.AddScoped<TenantHeaderHandler>();
+            builder.Services.AddScoped<EducationService>();
             // Ortam bazlı API adresi
             var apiBaseAddress = builder.HostEnvironment.IsDevelopment()
                 ? "http://localhost:5000/"
