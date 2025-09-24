@@ -1,0 +1,86 @@
+﻿@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.Education
+
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject IEducationService EducationService
+
+<RadzenTemplateForm TItem="EducationForm"
+                    Data="@Form"
+                    Submit="@OnSubmit">
+
+    <RadzenStack Gap="1rem">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
+            <RadzenLabel Text="Başlık" />
+            <RadzenTextBox @bind-Value="Form.Title" Name="Title" Style="width:100%" />
+            <RadzenRequiredValidator Component="Title" Text="Başlık zorunlu" />
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
+            <RadzenLabel Text="İçerik" />
+            <RadzenTextArea @bind-Value="Form.BodyText" Name="BodyText" Rows="12" Style="width:100%" />
+            <RadzenRequiredValidator Component="BodyText" Text="İçerik zorunlu" />
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+            <RadzenButton Text="Vazgeç" Click="@Cancel" />
+            <RadzenButton ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" Text="Kaydet" Icon="save" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenTemplateForm>
+
+@code {
+    // Parent’tan gelen mevcut kayıt (ID burada)
+    [Parameter] public EducationItemDto Model { get; set; } = new();
+
+    // Tek form state (mutable) — DTO’ya bind etmiyoruz
+    private EducationForm Form { get; set; } = new();
+
+    protected override void OnInitialized()
+    {
+        Form.Title = Model.Title ?? string.Empty;
+        Form.BodyText = Model.BodyText ?? string.Empty;
+    }
+
+    // RadzenTemplateForm.Submit: Func<EducationForm, Task>
+    private async Task OnSubmit(EducationForm _)
+    {
+        var dto = new UpdateEducationItemDto
+        {
+            Title = Form.Title?.Trim(),
+            BodyText = Form.BodyText?.Trim()
+        };
+
+        var updated = await EducationService.UpdateAsync(Model.Id, dto);
+
+        if (updated is not null)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Güncellendi",
+                Detail = "Kayıt başarıyla güncellendi."
+            });
+            DialogService.Close(true);   // parent: if (ok) => listeyi yenile
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = "Güncelleme başarısız."
+            });
+        }
+    }
+
+    private void Cancel() => DialogService.Close(false);
+
+    public class EducationForm
+    {
+        public string Title { get; set; } = "";
+        public string BodyText { get; set; } = "";
+    }
+}

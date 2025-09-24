@@ -36,6 +36,7 @@ namespace WebApp
             builder.Services.AddSingleton<AppStateManager>();
             builder.Services.AddScoped<TenantHeaderHandler>();
             builder.Services.AddScoped<EducationService>();
+            builder.Services.AddScoped<IUserAdminService, UserAdminService>();
             // Ortam bazlı API adresi
             var apiBaseAddress = builder.HostEnvironment.IsDevelopment()
                 ? "http://localhost:5000/"

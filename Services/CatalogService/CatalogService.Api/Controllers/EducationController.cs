@@ -20,7 +20,7 @@ namespace CatalogService.Api.Controllers
         {
             _mapper = mapper;
             _db = db;
-            _db.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
+            
         }
 
         // GET api/catalog/education?p=0&ps=20&q=...&orderBy=createdAtDesc|createdAtAsc|titleAsc|titleDesc
@@ -111,14 +111,20 @@ namespace CatalogService.Api.Controllers
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         public async Task<IActionResult> UpdateAsync(int id, [FromBody] UpdateEducationItemDto dto)
         {
-            var e = await _db.EducationItems.FirstOrDefaultAsync(x => x.Id == id);
+            // 1) Bu sorgu tracked döner
+            var e = await _db.EducationItems
+                .AsTracking()
+                .FirstOrDefaultAsync(x => x.Id == id);
+
             if (e is null) return NotFound();
 
-            _db.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
+            // 2) Global davranışı kurcalama (bu satırı tamamen kaldır)
+            // _db.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
 
             if (!string.IsNullOrWhiteSpace(dto.Title)) e.Title = dto.Title.Trim();
             if (dto.BodyText is not null) e.BodyText = dto.BodyText;
             if (dto.IsPublished is not null) e.IsPublished = dto.IsPublished.Value;
+
             e.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
@@ -126,6 +132,23 @@ namespace CatalogService.Api.Controllers
             var result = _mapper.Map<EducationItemDto>(e);
             return Ok(result);
         }
+        //public async Task<IActionResult> UpdateAsync(int id, [FromBody] UpdateEducationItemDto dto)
+        //{
+        //    var e = await _db.EducationItems.FirstOrDefaultAsync(x => x.Id == id);
+        //    if (e is null) return NotFound();
+
+        //    _db.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
+
+        //    if (!string.IsNullOrWhiteSpace(dto.Title)) e.Title = dto.Title.Trim();
+        //    if (dto.BodyText is not null) e.BodyText = dto.BodyText;
+        //    if (dto.IsPublished is not null) e.IsPublished = dto.IsPublished.Value;
+        //    e.UpdatedAt = DateTime.UtcNow;
+
+        //    await _db.SaveChangesAsync();
+
+        //    var result = _mapper.Map<EducationItemDto>(e);
+        //    return Ok(result);
+        //}
 
         // DELETE api/catalog/education/5
         [HttpDelete("{id:int}")]

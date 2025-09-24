@@ -1,0 +1,71 @@
+﻿@using Radzen
+@using Radzen.Blazor
+@using WebApp.Shared.Dto.Admin
+@using WebApp.Application.Services.Interfaces
+
+@inject DialogService Dialog
+@inject NotificationService Notif
+@inject IUserAdminService Admin
+
+<RadzenTemplateForm TItem="UserEditDto" Data="@Model" Submit="@OnSubmit">
+    <RadzenCard class="rz-p-3">
+        <RadzenStack Gap="1rem">
+            <RadzenTextBox Name="DisplayName" @bind-Value="Model.DisplayName" Style="width:100%" Placeholder="Ad Soyad" />
+            <RadzenRequiredValidator Component="DisplayName" Text="Ad Soyad zorunlu" />
+
+            <RadzenTextBox Name="Email" @bind-Value="Model.Email" Style="width:100%" Placeholder="E-posta" />
+            <RadzenRequiredValidator Component="Email" Text="E-posta zorunlu" />
+            <RadzenRegexValidator Component="Email"
+                                  Text="Geçerli bir e-posta girin"
+                                  Pattern="@EmailRegex" />
+
+            <RadzenTextBox Name="Phone" @bind-Value="Model.Phone" Style="width:100%" Placeholder="Telefon" />
+
+            @if (Model.Id == 0)
+            {
+                @* Yeni kullanıcı: şifre zorunlu *@
+                <RadzenPassword Name="Password" @bind-Value="Model.Password" Style="width:100%" Placeholder="Şifre" />
+                <RadzenRequiredValidator Component="Password" Text="Şifre zorunlu" />
+            }
+            else
+            {
+                @* Düzenleme: şifre opsiyonel *@
+                <RadzenPassword Name="Password" @bind-Value="Model.Password" Style="width:100%" Placeholder="(Opsiyonel) Yeni şifre" />
+                <RadzenHint Text="Boş bırakırsanız şifre değişmez." />
+            }
+
+            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton Text="Vazgeç" Click="@(()=>Dialog.Close(false))" />
+                <RadzenButton Text="Kaydet" Icon="save" ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" />
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenCard>
+</RadzenTemplateForm>
+
+@code {
+    // E-posta regex (Razor'da @ kaçış sorununa girmemek için sabit)
+    private const string EmailRegex = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
+
+    [Parameter] public UserEditDto Model { get; set; } = new();
+
+    private async Task OnSubmit(UserEditDto _)
+    {
+        bool ok = Model.Id == 0
+            ? await Admin.CreateUserAsync(Model)
+            : await Admin.UpdateUserAsync(Model.Id, Model);
+
+        if (ok)
+        {
+            Dialog.Close(true);
+        }
+        else
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = "Kullanıcı kaydedilemedi."
+            });
+        }
+    }
+}

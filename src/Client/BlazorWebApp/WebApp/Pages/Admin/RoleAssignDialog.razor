@@ -1,0 +1,69 @@
+﻿@using Radzen
+@using Radzen.Blazor
+@using WebApp.Shared.Dto.Admin
+@using WebApp.Application.Services.Interfaces
+
+@inject IUserAdminService Admin
+@inject DialogService Dialog
+@inject NotificationService Notif
+
+<RadzenCard class="rz-p-3">
+    <RadzenStack Gap="1rem">
+        <RadzenLabel Text="Roller" />
+
+        <RadzenDropDown Multiple="true"
+                        AllowClear="true"
+                        Style="width:100%"
+                        Data="@allRoles"
+                        TextProperty="Name"
+                        ValueProperty="Name"
+                        @bind-Value="@selectedRoles" />
+
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+            <RadzenButton Text="Vazgeç" Click="@(() => Dialog.Close(false))" />
+            <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" Click="@Save" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenCard>
+
+@code {
+    [Parameter] public int UserId { get; set; }
+
+    List<RoleDto> allRoles = new();
+    IList<string> selectedRoles = new List<string>();
+    bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            allRoles = await Admin.GetAllRolesAsync();
+            selectedRoles = (await Admin.GetUserRolesAsync(UserId)) ?? new List<string>();
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Save()
+    {
+        if (loading) return;
+
+        var ok = await Admin.SetUserRolesAsync(UserId, selectedRoles.ToList());
+        if (ok)
+        {
+            Dialog.Close(true);
+        }
+        else
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = "Roller güncellenemedi."
+            });
+        }
+    }
+}

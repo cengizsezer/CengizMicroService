@@ -4,28 +4,56 @@
 @using WebApp.Application.Services
 @using WebApp.Shared.Dto
 @using WebApp.Shared.Dto.Education
+@* Eğer dialogu Shared klasörüne koyarsan, aşağıyı açmayı düşünebilirsin:
+@using WebApp.Shared // (proje ns'ine göre)
+*@
 
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 @inject EducationService Store
 @inject NavigationManager Nav
 
+<style>
+    .qa-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: .5rem;
+    }
+
+    .qa-block {
+        line-height: 1.6;
+    }
+
+    .text-plain {
+        white-space: pre-wrap;
+    }
+    /* düz metinde \n => yeni satır */
+    .text-right {
+        text-align: right;
+    }
+</style>
+
 <RadzenCard class="rz-mb-2 rz-p-3">
-    <div class="grid align-items-center">
+    <!-- ALTTA BOŞLUK İÇİN rz-mb-2 EKLEDİK -->
+    <div class="grid align-items-center rz-mb-2">
         <div class="col-12 md:col-6">
             <RadzenTextBox @bind-Value="search"
                            Change="@(_ => LoadAsync())"
                            Placeholder="Arama: başlık veya içerikte ara..."
                            Style="width:100%" />
         </div>
-        <div class="col-12 md:col-6 text-right">
-            <RadzenButton Text="Temizle" class="rz-mr-2"
-                          Click="@(()=> { search = string.Empty; _ = LoadAsync(); })" />
-            <RadzenButton Text="Yeni Soru-Cevap Ekle" Icon="add_circle"
-                          ButtonStyle="ButtonStyle.Primary"
-                          Click="@(()=> Nav.NavigateTo("/education/new"))" class="rz-mr-2" />
-            <RadzenButton Text="Collapse all" class="rz-mr-2" Click="@CollapseAll" />
-            <RadzenButton Text="Expand all" Click="@ExpandAll" />
+
+        <!-- SOL İÇ BOŞLUK İÇİN rz-pl-2 EKLEDİK (inline style'ı kaldır) -->
+        <div class="col-12 md:col-6 text-right rz-pl-2">
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" JustifyContent="JustifyContent.End">
+                <RadzenButton Text="Temizle" class="rz-mr-2"
+                              Click="@(()=> { search = string.Empty; _ = LoadAsync(); })" />
+                <RadzenButton Text="Yeni Soru-Cevap Ekle" Icon="add_circle"
+                              ButtonStyle="ButtonStyle.Primary"
+                              Click="@(()=> Nav.NavigateTo("/education/new"))" class="rz-mr-2" />
+                <RadzenButton Text="Collapse all" class="rz-mr-2" Click="@CollapseAll" />
+                <RadzenButton Text="Expand all" Click="@ExpandAll" />
+            </RadzenStack>
         </div>
     </div>
 </RadzenCard>
@@ -37,12 +65,19 @@
         Kayıt bulunamadı.
     </RadzenAlert>
 
-    <RadzenAccordion Multiple="true">
+    <RadzenAccordion Multiple="true" @key="Items">
         <Items>
             @foreach (var item in Items)
             {
-                <RadzenAccordionItem Text="@item.Title" @bind-Selected="@item.Selected">
+                <RadzenAccordionItem @key="item.Id"
+                                     Text="@item.Title"
+                                     @bind-Selected="@item.Selected">
                     <div class="qa-actions">
+                        <RadzenButton Icon="edit"
+                                      ButtonStyle="ButtonStyle.Light"
+                                      Size="ButtonSize.Small"
+                                      class="rz-mr-2"
+                                      Click="@(async ()=> await EditItemAsync(item))" />
                         <RadzenButton Icon="delete"
                                       ButtonStyle="ButtonStyle.Danger"
                                       Size="ButtonSize.Small"
@@ -70,8 +105,10 @@
     async Task LoadAsync()
     {
         var page = await Store.GetAsync(pageIndex: 0, pageSize: 100, q: search);
-        Items = page.Data?.ToList() ?? new();   // IEnumerable -> List
+        Items = page.Data?.ToList() ?? new();
         foreach (var i in Items) i.Selected = false;
+
+        await InvokeAsync(StateHasChanged);
     }
 
     async Task DeleteItemAsync(EducationItemDto item)
@@ -107,27 +144,36 @@
         }
     }
 
+    // YENİ: Düzenleme dialogu
+    async Task EditItemAsync(EducationItemDto item)
+    {
+        var ok = await DialogService.OpenAsync<EducationEditDialog>(
+            "Soru–Cevap Düzenle",
+            new Dictionary<string, object>
+            {
+                ["Model"] = item
+            },
+            new DialogOptions
+            {
+                Width = "60vw",
+                Height = "70vh",
+                CloseDialogOnOverlayClick = true,
+                Resizable = true,
+                Draggable = true
+            }
+        );
+
+        if (ok is bool b && b)
+        {
+            // backend güncellemiş, yeniden listeyi çek
+            await LoadAsync();
+           
+        }
+    }
+
+
     void CollapseAll() { foreach (var i in Items) i.Selected = false; }
     void ExpandAll() { foreach (var i in Items) i.Selected = true; }
 }
 
 
-<style>
-    .qa-actions {
-        display: flex;
-        justify-content: flex-end;
-        margin-bottom: .5rem;
-    }
-
-    .qa-block {
-        line-height: 1.6;
-    }
-
-    .text-plain {
-        white-space: pre-wrap;
-    }
-    /* düz metinde \n => yeni satır */
-    .text-right {
-        text-align: right;
-    }
-</style>

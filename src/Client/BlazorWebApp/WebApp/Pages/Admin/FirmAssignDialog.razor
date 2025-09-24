@@ -1,0 +1,85 @@
+﻿@using Radzen
+@using Radzen.Blazor
+@using WebApp.Shared.Dto.Admin
+@using WebApp.Application.Services.Interfaces
+
+@inject IUserAdminService Admin
+@inject DialogService Dialog
+@inject NotificationService Notif
+
+
+
+<RadzenCard class="rz-p-3">
+    <RadzenStack Gap="1rem">
+        <RadzenLabel Text="Firma" />
+        <RadzenDropDown Data="@firms"
+                        TextProperty="Name"
+                        ValueProperty="Id"
+                        @bind-Value="@selectedFirmId"
+                        Style="width:100%"
+                        AllowClear="true"
+                        Placeholder="Firma seçiniz">
+            <Template Context="f">
+                @if (f is FirmDto fd)
+                {
+                    <span>@fd.Name (@fd.FirmaNo)</span>
+                }
+            </Template>
+        </RadzenDropDown>
+
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+            <RadzenButton Text="Vazgeç" Click="@(()=>Dialog.Close(false))" />
+            <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" Click="@Save" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenCard>
+
+@code {
+    [Parameter] public int UserId { get; set; }
+
+    List<FirmDto> firms = new();
+    int? selectedFirmId;
+    bool loading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        loading = true;
+        try
+        {
+            firms = await Admin.GetFirmsAsync();
+            selectedFirmId = await Admin.GetUserFirmIdAsync(UserId);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task Save()
+    {
+        if (loading) return;
+
+        if (selectedFirmId is null)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Eksik bilgi",
+                Detail = "Lütfen bir firma seçiniz."
+            });
+            return;
+        }
+
+        var ok = await Admin.SetUserFirmAsync(UserId, selectedFirmId);
+        if (ok) Dialog.Close(true);
+        else
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = "Firma atanırken bir sorun oluştu."
+            });
+        }
+    }
+}

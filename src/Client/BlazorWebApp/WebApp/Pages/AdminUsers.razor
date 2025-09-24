@@ -1,0 +1,182 @@
+﻿@page "/admin/users"
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Pages.Admin
+@using WebApp.Shared.Dto.Admin
+@inject IUserAdminService Admin
+@inject DialogService Dialog
+@inject NotificationService Notif
+
+<RadzenCard class="rz-p-3">
+    <div class="grid align-items-center rz-mb-2">
+        <div class="col-12 md:col-6">
+            <RadzenTextBox @bind-Value="search" Placeholder="Kullanıcı ara: ad / e-posta"
+                           Style="width:100%" Change="@(_ => Reload())" />
+        </div>
+        <div class="col-12 md:col-6 rz-text-align-right">
+            <RadzenButton Text="Yenile" class="rz-mr-2" Click="@Reload" />
+            <RadzenButton Text="Yeni Kullanıcı" Icon="person_add" ButtonStyle="ButtonStyle.Primary"
+                          Click="@Create" />
+        </div>
+    </div>
+
+    <RadzenDataGrid TItem="UserListItemDto" Data="@users" AllowPaging="true" PageSize="20"
+                    AllowSorting="true" AllowFiltering="false" RowSelect="@Edit"
+                    LogicalFilterOperator="LogicalFilterOperator.And">
+        <Columns>
+            <RadzenDataGridColumn TItem="UserListItemDto" Property="DisplayName" Title="Ad Soyad" />
+            <RadzenDataGridColumn TItem="UserListItemDto" Property="Email" Title="E-posta" />
+            <RadzenDataGridColumn TItem="UserListItemDto" Property="FirmName" Title="Firma" />
+            <RadzenDataGridColumn TItem="UserListItemDto" Title="Roller">
+                <Template Context="u">
+                    @if (u?.Roles is { Length: > 0 })
+                    {
+                        @string.Join(", ", u.Roles)
+                    }
+                    else
+                    {
+                        <span class="rz-text-muted">—</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="UserListItemDto" Title="İşlemler" Width="180px">
+                <Template Context="u">
+                    <RadzenButton Icon="edit" Size="ButtonSize.Small" class="rz-mr-2"
+                                  Click="@(async _ => await Edit(u))" />
+                    <RadzenButton Icon="security" Size="ButtonSize.Small" class="rz-mr-2"
+                                  Click="@(async _ => await AssignRoles(u))" />
+                    <RadzenButton Icon="domain" Size="ButtonSize.Small" class="rz-mr-2"
+                                  Click="@(async _ => await AssignFirm(u))" />
+                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                  Click="@(async _ => await Delete(u))" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</RadzenCard>
+
+@code {
+    string search = "";
+    List<UserListItemDto> users = new();
+
+    protected override async Task OnInitializedAsync() => await Load();
+    async Task Reload() => await Load();
+
+    async Task Load()
+    {
+        var page = await Admin.GetUsersAsync(q: search, pageIndex: 0, pageSize: 50);
+        users = page.Data?.ToList() ?? new();
+    }
+
+    async Task Create()
+    {
+        var ok = await Dialog.OpenAsync<UserEditDialog>("Yeni Kullanıcı",
+                    new() { ["Model"] = new UserEditDto() },
+                    new DialogOptions { Width = "600px" });
+
+        if (ok is bool b && b)
+        {
+            await Load();
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Başarılı",
+                Detail = "Kullanıcı oluşturuldu."
+            });
+        }
+    }
+
+    async Task Edit(UserListItemDto u)
+    {
+        var full = await Admin.GetUserByIdAsync(u.Id);
+        var ok = await Dialog.OpenAsync<UserEditDialog>($"{u.DisplayName} – Düzenle",
+                    new()
+                    {
+                        ["Model"] = new UserEditDto
+                        {
+                            Id = full.Id,
+                            DisplayName = full.DisplayName,
+                            Email = full.Email,
+                            Phone = full.Phone
+                        }
+                    },
+                    new DialogOptions { Width = "600px" });
+
+        if (ok is bool b && b)
+        {
+            await Load();
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Güncellendi",
+                Detail = "Kullanıcı güncellendi."
+            });
+        }
+    }
+
+    async Task AssignRoles(UserListItemDto u)
+    {
+        var ok = await Dialog.OpenAsync<RoleAssignDialog>($"{u.DisplayName} – Roller",
+                    new() { ["UserId"] = u.Id },
+                    new DialogOptions { Width = "520px", Height = "70vh" });
+
+        if (ok is bool b && b)
+        {
+            await Load();
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Güncellendi",
+                Detail = "Roller güncellendi."
+            });
+        }
+    }
+
+    async Task AssignFirm(UserListItemDto u)
+    {
+        var ok = await Dialog.OpenAsync<FirmAssignDialog>($"{u.DisplayName} – Firma",
+                    new() { ["UserId"] = u.Id },
+                    new DialogOptions { Width = "520px", Height = "60vh" });
+
+        if (ok is bool b && b)
+        {
+            await Load();
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Güncellendi",
+                Detail = "Firma güncellendi."
+            });
+        }
+    }
+
+    async Task Delete(UserListItemDto u)
+    {
+        var confirm = await Dialog.Confirm($"{u.DisplayName} silinsin mi?", "Onay",
+                        new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+        if (confirm == true)
+        {
+            var ok = await Admin.DeleteUserAsync(u.Id);
+            if (ok)
+            {
+                await Load();
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Silindi",
+                    Detail = "Kullanıcı silindi."
+                });
+            }
+            else
+            {
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Hata",
+                    Detail = "Silme başarısız."
+                });
+            }
+        }
+    }
+}
