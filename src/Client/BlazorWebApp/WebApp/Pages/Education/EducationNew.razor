@@ -50,7 +50,8 @@
     {
         Console.WriteLine("[EditForm] Save() CALISTI (VALID)");
 
-        if (string.IsNullOrWhiteSpace(model.Title))
+        var title = model.Title?.Trim();
+        if (string.IsNullOrWhiteSpace(title))
         {
             NotificationService.Notify(new NotificationMessage
             {
@@ -61,14 +62,16 @@
             return;
         }
 
-        var created = await Store.CreateAsync(model);
-        if (created is null)
+        model.Title = title;
+
+        var (created, error) = await Store.CreateAsync(model);
+        if (error is not null)
         {
             NotificationService.Notify(new NotificationMessage
             {
                 Severity = NotificationSeverity.Error,
                 Summary = "Hata",
-                Detail = "Kayıt başarısız."
+                Detail = error // Backend’in döndürdüğü mesaj (örn: "Title is required.")
             });
             return;
         }
@@ -86,5 +89,12 @@
     void OnInvalid(EditContext _)
     {
         Console.WriteLine("[EditForm] OnInvalidSubmit (INVALID) — doğrulama hataları var.");
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Warning,
+            Summary = "Eksik / Hatalı bilgi",
+            Detail = "Lütfen işaretli alanları düzeltin."
+        });
     }
+
 }

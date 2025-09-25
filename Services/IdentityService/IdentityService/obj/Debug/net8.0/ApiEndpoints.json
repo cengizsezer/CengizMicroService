@@ -103,32 +103,6 @@
   },
   {
     "ContainingType": "IdentityService.Controllers.AdminController",
-    "Method": "GetUser",
-    "RelativePath": "api/auth/admin/users/{id}",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "id",
-        "Type": "System.Int32",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": [
-      {
-        "Type": "IdentityService.Application.Models.Admin.UserEditDto",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 200
-      }
-    ]
-  },
-  {
-    "ContainingType": "IdentityService.Controllers.AdminController",
     "Method": "UpdateUser",
     "RelativePath": "api/auth/admin/users/{id}",
     "HttpMethod": "PUT",

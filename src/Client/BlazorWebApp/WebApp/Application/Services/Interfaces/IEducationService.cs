@@ -8,7 +8,11 @@ namespace WebApp.Application.Services.Interfaces
     {
         Task<PaginatedItemsViewModel<EducationItemDto>> GetAsync(int pageIndex = 0, int pageSize = 20, string? q = null, string orderBy = "createdAtDesc");
         Task<EducationItemDto?> GetByIdAsync(int id);
-        Task<EducationItemDto?> CreateAsync(CreateEducationItemDto dto, CancellationToken ct = default);
+
+        Task<(EducationItemDto? Data, string? Error)> CreateAsync(
+     CreateEducationItemDto dto, CancellationToken ct = default)
+           ;
+        //Task<EducationItemDto?> CreateAsync(CreateEducationItemDto dto, CancellationToken ct = default);
         Task<EducationItemDto?> UpdateAsync(int id, UpdateEducationItemDto dto, CancellationToken ct = default);
         Task<bool> DeleteAsync(int id, CancellationToken ct = default);
     }

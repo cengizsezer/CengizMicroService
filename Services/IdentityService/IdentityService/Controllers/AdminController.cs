@@ -23,10 +23,68 @@ public class AdminController : ControllerBase
         _userMgr = userMgr;
     }
 
+
+
+
+   
+
     // -------- USERS LIST ---------------------------------------------------
+    //[HttpGet("users")]
+    //public async Task<ActionResult<PageDto<UserListItemDto>>> GetUsers(
+    //    [FromQuery] int p = 0, [FromQuery] int ps = 50, [FromQuery] string? q = null)
+    //{
+    //    var usersQ = _db.Users.AsQueryable();
+
+    //    if (!string.IsNullOrWhiteSpace(q))
+    //    {
+    //        q = q.Trim();
+    //        usersQ = usersQ.Where(x =>
+    //            x.UserName!.Contains(q) ||
+    //            (x.Email != null && x.Email.Contains(q)));
+    //    }
+
+    //    var count = await usersQ.CountAsync();
+
+    //    var users = await usersQ
+    //        .OrderBy(x => x.UserName)
+    //        .Skip(p * ps).Take(ps)
+    //        .Select(u => new UserListItemDto
+    //        {
+    //            Id = u.Id,
+    //            DisplayName = u.UserName ?? "",
+    //            Email = u.Email ?? ""
+    //        })
+    //        .ToListAsync();
+
+    //    // Rolleri doldur (quick & simple)
+    //    foreach (var u in users)
+    //    {
+    //        var roles = await (from utr in _db.UserTenantRoles
+    //                           join r in _db.RolesApp on utr.RoleId equals r.Id
+    //                           where utr.UserId == u.Id
+    //                           select r.Name).Distinct().ToListAsync();
+    //        u.Roles = roles.ToArray();
+
+    //        // İstersen "aktif firma" olarak ilk tenant adını yazalım
+    //        u.FirmName = await (from ut in _db.UserTenants
+    //                            join t in _db.Tenants on ut.TenantId equals t.Id
+    //                            where ut.UserId == u.Id
+    //                            select t.Ad).FirstOrDefaultAsync();
+    //    }
+
+    //    return Ok(new PageDto<UserListItemDto>
+    //    {
+    //        PageIndex = p,
+    //        PageSize = ps,
+    //        Count = count,
+    //        Data = users
+    //    });
+    //}
+
+    // -------- USER CRUD ----------------------------------------------------
     [HttpGet("users")]
     public async Task<ActionResult<PageDto<UserListItemDto>>> GetUsers(
-        [FromQuery] int p = 0, [FromQuery] int ps = 50, [FromQuery] string? q = null)
+     [FromQuery] int p = 0, [FromQuery] int ps = 50, [FromQuery] string? q = null)
     {
         var usersQ = _db.Users.AsQueryable();
 
@@ -47,25 +105,26 @@ public class AdminController : ControllerBase
             {
                 Id = u.Id,
                 DisplayName = u.UserName ?? "",
-                Email = u.Email ?? ""
+                Email = u.Email ?? "",
+
+                // İlk tenant adı (aktif firma gibi göstermek için)
+                FirmName = (
+                    from ut in _db.UserTenants
+                    join t in _db.Tenants on ut.TenantId equals t.Id
+                    where ut.UserId == u.Id
+                    select t.Ad
+                ).FirstOrDefault(),
+
+                // Kullanıcının tüm rolleri (tenant fark etmeksizin benzersiz)
+                Roles = (
+                    from utr in _db.UserTenantRoles
+                    join r in _db.RolesApp on utr.RoleId equals r.Id
+                    where utr.UserId == u.Id
+                    select r.Name
+                ).Distinct().ToArray()
             })
+            .AsNoTracking()
             .ToListAsync();
-
-        // Rolleri doldur (quick & simple)
-        foreach (var u in users)
-        {
-            var roles = await (from utr in _db.UserTenantRoles
-                               join r in _db.RolesApp on utr.RoleId equals r.Id
-                               where utr.UserId == u.Id
-                               select r.Name).Distinct().ToListAsync();
-            u.Roles = roles.ToArray();
-
-            // İstersen "aktif firma" olarak ilk tenant adını yazalım
-            u.FirmName = await (from ut in _db.UserTenants
-                                join t in _db.Tenants on ut.TenantId equals t.Id
-                                where ut.UserId == u.Id
-                                select t.Ad).FirstOrDefaultAsync();
-        }
 
         return Ok(new PageDto<UserListItemDto>
         {
@@ -76,34 +135,20 @@ public class AdminController : ControllerBase
         });
     }
 
-    // -------- USER CRUD ----------------------------------------------------
-    [HttpGet("users/{id:int}")]
-    public async Task<ActionResult<UserEditDto>> GetUser(int id)
-    {
-        var u = await _db.Users.FindAsync(id);
-        if (u is null) return NotFound();
-
-        return Ok(new UserEditDto
-        {
-            Id = u.Id,
-            DisplayName = u.UserName ?? "",
-            Email = u.Email ?? "",
-            Phone = u.PhoneNumber
-        });
-    }
-
     [HttpPost("users")]
     public async Task<IActionResult> CreateUser([FromBody] UserEditDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.DisplayName) || string.IsNullOrWhiteSpace(dto.Email))
-            return BadRequest("Zorunlu alanlar eksik.");
+        // ✅ Artık UserName ve Email zorunlu
+        if (string.IsNullOrWhiteSpace(dto.UserName) || string.IsNullOrWhiteSpace(dto.Email))
+            return BadRequest("UserName ve Email zorunlu.");
 
         var user = new User
         {
-            UserName = dto.DisplayName,
+            UserName = dto.UserName,    // ✅ UserName kullan
             Email = dto.Email,
             EmailConfirmed = true,
             PhoneNumber = dto.Phone
+            // DisplayName için ayrı bir alan yoksa şimdilik claim ya da ayrı tabloya yazabilirsin (opsiyonel)
         };
 
         var pwd = string.IsNullOrWhiteSpace(dto.Password) ? "Temp123!" : dto.Password!;
@@ -119,12 +164,11 @@ public class AdminController : ControllerBase
         var u = await _db.Users.FindAsync(id);
         if (u is null) return NotFound();
 
-        u.UserName = dto.DisplayName;
+        u.UserName = dto.UserName;   // ✅ UserName güncelle
         u.Email = dto.Email;
         u.PhoneNumber = dto.Phone;
         await _db.SaveChangesAsync();
 
-        // Şifre değişimi istenirse
         if (!string.IsNullOrWhiteSpace(dto.Password))
         {
             var token = await _userMgr.GeneratePasswordResetTokenAsync(u);

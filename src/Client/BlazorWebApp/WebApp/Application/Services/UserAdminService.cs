@@ -18,8 +18,14 @@
         public Task<UserEditDto> GetUserByIdAsync(int id)
             => _http.GetFromJsonAsync<UserEditDto>($"{Base}/users/{id}");
 
-        public async Task<bool> CreateUserAsync(UserEditDto dto)
-            => (await _http.PostAsJsonAsync($"{Base}/users", dto)).IsSuccessStatusCode;
+        public async Task<(bool ok, string? err)> CreateUserAsync(UserEditDto dto)
+        {
+            var resp = await _http.PostAsJsonAsync($"{Base}/users", dto);
+            if (resp.IsSuccessStatusCode) return (true, null);
+
+            var err = await resp.Content.ReadAsStringAsync();
+            return (false, err);
+        }
 
         public async Task<bool> UpdateUserAsync(int id, UserEditDto dto)
             => (await _http.PutAsJsonAsync($"{Base}/users/{id}", dto)).IsSuccessStatusCode;

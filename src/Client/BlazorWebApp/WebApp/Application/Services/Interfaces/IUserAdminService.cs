@@ -7,7 +7,7 @@ namespace WebApp.Application.Services.Interfaces
         // Users
         Task<PageDto<UserListItemDto>> GetUsersAsync(int pageIndex = 0, int pageSize = 50, string? q = null);
         Task<UserEditDto> GetUserByIdAsync(int id);
-        Task<bool> CreateUserAsync(UserEditDto dto);
+        Task<(bool ok, string? err)> CreateUserAsync(UserEditDto dto);
         Task<bool> UpdateUserAsync(int id, UserEditDto dto);
         Task<bool> DeleteUserAsync(int id);
 

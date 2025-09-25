@@ -28,31 +28,52 @@ namespace WebApp
             builder.Services.AddRadzenComponents();
             builder.Services.AddBlazoredSessionStorage();
             builder.Services.AddScoped<Radzen.DialogService>();
-            builder.Services.AddScoped<IEducationService, EducationService>();
+           
             // Auth
             builder.Services.AddScoped<AuthenticationStateProvider, AuthStateProvider>();
             builder.Services.AddAuthorizationCore();
             builder.Services.AddScoped<AuthTokenHandler>();
             builder.Services.AddSingleton<AppStateManager>();
             builder.Services.AddScoped<TenantHeaderHandler>();
-            builder.Services.AddScoped<EducationService>();
-            builder.Services.AddScoped<IUserAdminService, UserAdminService>();
-            // Ortam bazlı API adresi
-            var apiBaseAddress = builder.HostEnvironment.IsDevelopment()
-                ? "http://localhost:5000/"
-                : "https://www.dijitalmasraf.com/";
 
-            // HttpClient yapılandırması
-            builder.Services.AddHttpClient("ApiGatewayHttpClient", client =>
+            var apiBaseAddress = builder.HostEnvironment.IsDevelopment()
+               ? "http://localhost:5000/"
+               : "https://www.dijitalmasraf.com/";
+
+            builder.Services.AddHttpClient("ApiGatewayCorridor", c =>
             {
-                client.BaseAddress = new Uri(apiBaseAddress);
-            }).AddHttpMessageHandler<AuthTokenHandler>().AddHttpMessageHandler<TenantHeaderHandler>();
-            builder.Services.AddScoped<IAppSessionManager, AppSessionManager>();
+                c.BaseAddress = new Uri(apiBaseAddress);
+                // İstersen default header vb. ekleyebilirsin
+                // c.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            })
+            .AddHttpMessageHandler<AuthTokenHandler>()
+            .AddHttpMessageHandler<TenantHeaderHandler>();
+
+            // Bu koridoru isteyenlere verelim:
             builder.Services.AddScoped(sp =>
-            {
-                var factory = sp.GetRequiredService<IHttpClientFactory>();
-                return factory.CreateClient("ApiGatewayHttpClient");
-            });
+                sp.GetRequiredService<IHttpClientFactory>().CreateClient("ApiGatewayCorridor"));
+
+            // === Servislerin hepsi tek koridordan beslensin ===
+            builder.Services.AddScoped<IEducationService>(sp =>
+                new EducationService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("ApiGatewayCorridor")));
+
+            builder.Services.AddScoped<IUserAdminService>(sp =>
+                new UserAdminService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("ApiGatewayCorridor")));
+
+            builder.Services.AddScoped<IExpenseService>(sp =>
+                new ExpenseService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("ApiGatewayCorridor")));
+
+            builder.Services.AddScoped<IOcrService>(sp =>
+                new OcrService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("ApiGatewayCorridor")));
+
+            builder.Services.AddScoped<IVehicleService>(sp =>
+                new VehicleService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("ApiGatewayCorridor")));
+
+
+
+
+
+
             builder.Services.AddHttpClient<IFileApiService, FileApiService>((sp, http) =>
             {
                 var nav = sp.GetRequiredService<NavigationManager>();
@@ -63,12 +84,18 @@ namespace WebApp
             })
  .AddHttpMessageHandler<AuthTokenHandler>()
  .AddHttpMessageHandler<TenantHeaderHandler>();
-            // Servisler
+
+
+
+            builder.Services.AddScoped<IAppSessionManager, AppSessionManager>();
             builder.Services.AddTransient<IIdentityService, IdentityService>();
-            builder.Services.AddTransient<IExpenseService, ExpenseService>();
-            builder.Services.AddTransient<IOcrService, OcrService>();
-            builder.Services.AddTransient<IVehicleService, VehicleService>();
-            //builder.Services.AddTransient<IFileApiService, FileApiService>();
+            // Servisler
+
+            //builder.Services.AddTransient<IExpenseService, ExpenseService>();
+            //builder.Services.AddTransient<IOcrService, OcrService>();
+            //builder.Services.AddTransient<IVehicleService, VehicleService>();
+            //builder.Services.AddScoped<IUserAdminService, UserAdminService>();
+            //builder.Services.AddScoped<IEducationService, EducationService>();
 
             await builder.Build().RunAsync();
         }

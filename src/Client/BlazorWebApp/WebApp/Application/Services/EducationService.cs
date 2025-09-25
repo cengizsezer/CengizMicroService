@@ -29,37 +29,37 @@ namespace WebApp.Application.Services
         public async Task<EducationItemDto?> GetByIdAsync(int id)
             => await _httpClient.GetResponseAsync<EducationItemDto>($"{Prefix}/{id}");
 
-        public async Task<EducationItemDto?> CreateAsync(CreateEducationItemDto dto, CancellationToken ct = default)
+        public async Task<(EducationItemDto? Data, string? Error)> CreateAsync(
+       CreateEducationItemDto dto, CancellationToken ct = default)
         {
             try
             {
                 var json = JsonSerializer.Serialize(dto, JsonOpts);
                 Console.WriteLine($"[Education Create] POST {Prefix} body={json}");
 
-                var resp = await _httpClient.PostAsJsonAsync(Prefix, dto, ct);
+                using var resp = await _httpClient.PostAsJsonAsync(Prefix, dto, ct);
+                var respText = await resp.Content.ReadAsStringAsync(ct);
 
                 Console.WriteLine($"[Education Create] => {(int)resp.StatusCode} {resp.StatusCode}");
-                var body = await resp.Content.ReadAsStringAsync(ct);
-                if (!string.IsNullOrWhiteSpace(body))
-                    Console.WriteLine($"[Education Create] response body: {body}");
+                if (!string.IsNullOrWhiteSpace(respText))
+                    Console.WriteLine($"[Education Create] response body: {respText}");
 
                 if (resp.IsSuccessStatusCode)
-                    return await resp.Content.ReadFromJsonAsync<EducationItemDto>(cancellationToken: ct);
+                {
+                    var obj = await resp.Content.ReadFromJsonAsync<EducationItemDto>(cancellationToken: ct);
+                    return (obj, null);
+                }
 
-                // 404/401/400 v.b. durumlarda null dön
-                return null;
-            }
-            catch (HttpRequestException ex)
-            {
-                Console.Error.WriteLine($"[Education Create] HttpRequestException: {ex.Message}");
-                return null;
+                // ProblemDetails veya düz string olabilir – çağırana mesajı verelim
+                return (null, string.IsNullOrWhiteSpace(respText) ? resp.StatusCode.ToString() : respText);
             }
             catch (Exception ex)
             {
                 Console.Error.WriteLine($"[Education Create] Exception: {ex}");
-                return null;
+                return (null, ex.Message);
             }
         }
+
 
         public async Task<EducationItemDto?> UpdateAsync(int id, UpdateEducationItemDto dto, CancellationToken ct = default)
         {
