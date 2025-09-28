@@ -13,7 +13,6 @@
 @inject NotificationService NotificationService
 @inject IJSRuntime JS
 @inject HttpClient Http
-@inject NotificationService Notify
 
 <PageTitle>ARACLAR</PageTitle>
 
@@ -199,7 +198,7 @@
     void OnExcelSelected(UploadChangeEventArgs args)
     {
         selectedExcel = args.Files?.FirstOrDefault();
-        _ = OnExcelUpload(); // seçer seçmez otomatik başlat
+        // _ = OnExcelUpload(); // seçer seçmez otomatik başlat
     }
 
     async Task OnExcelUpload()
@@ -224,7 +223,7 @@
         }
 
         var list = await resp.Content.ReadFromJsonAsync<List<VehicleDto>>() ?? new();
-
+       
         var ok = await DialogService.OpenAsync<ImportVehiclesDialog>(
             "Import Vehicles",
             new Dictionary<string, object> { { "Items", list } },

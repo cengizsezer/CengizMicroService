@@ -72,9 +72,15 @@ namespace WebApp.Manager
 
             // Çoklu firma -> diyalog
             var result = await _dialog.OpenAsync<FirmSelectDialog>(
-                "Firma Seçimi",
-                new Dictionary<string, object> { ["Firms"] = _firms },
-                new DialogOptions { Width = "60vw", Height = "80vh" });
+    "Firma Seçimi",
+    new() { ["Firms"] = _firms },
+    new DialogOptions
+    {
+        Width = "60vw",
+        Height = "80vh",
+        CssClass = "firm-dialog",
+        CloseDialogOnOverlayClick = true
+    });
 
             if (result is FirmaDto chosen)
             {

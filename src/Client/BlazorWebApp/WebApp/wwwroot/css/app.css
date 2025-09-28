@@ -1,4 +1,4 @@
-html, body {
+﻿html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
@@ -111,4 +111,198 @@ code {
 
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
+}
+
+
+/* Satırı tam genişlik yap ve içeriği sağa it */
+.app-sidebar .side-toolbar {
+    display: flex;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 8px 0 8px; /* üstteki */
+}
+
+/* alttaki için biraz daha boşluk */
+.app-sidebar .toggle-btn-bottom.side-toolbar {
+    padding: 8px;
+}
+
+/* Butonu sağa yapıştır */
+.app-sidebar .side-toolbar .rz-button {
+    margin-left: auto;
+}
+
+:root {
+    --brand-width: 260px;
+    --header-height: 64px;
+    --cut: 28px; /* diyagonal derinlik */
+}
+
+/* Kapsayıcı */
+.brand-wedge {
+    position: relative;
+    flex: 0 0 var(--brand-width);
+    height: var(--header-height);
+}
+
+    /* Beyaz plaka: clip burada */
+    .brand-wedge .brand-inner {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-left: 12px;
+        background: #fff;
+        /*border-radius: 12px 0 0 12px;*/ /* sadece sol köşeler */
+        border-radius: 0;
+        box-shadow: 0 2px 10px rgba(0,0,0,.06);
+        /* SENİN sevdiğin hesap */
+        clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% 100%, 0% 100%);
+    }
+
+    /* Mor dolgu üçgeni: clip'lenmez, diyagonale “sıfır kaçık” oturur */
+    .brand-wedge::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 0;
+        height: 100%;
+        width: var(--cut); /* 28px ile aynı */
+        background: var(--rz-primary, #5b55e3); /* Radzen header rengi */
+        clip-path: polygon(0 0, 100% 0, 100% 100%); /* sağ üçgen */
+        pointer-events: none;
+    }
+
+
+/* Marka metni için font */
+.app-header .brand-text {
+    font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Satır stilleri */
+.app-header .brand-line {
+    display: inline-block; /* gradyan için önemli */
+    line-height: 1.05;
+    letter-spacing: .3px;
+}
+
+/* Üst/alt satır boyut ve ağırlık */
+.app-header .brand-line-1 {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.app-header .brand-line-2 {
+    font-weight: 800;
+    font-size: 18px;
+    margin-top: 2px;
+}
+
+/* Mor gradyan METİN */
+.app-header .brand-line {
+    background: linear-gradient(90deg, var(--rz-primary, #5b55e3) 0%, #6a63f1 55%, #5ac4f7 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent; /* Chrome/Safari */
+    color: transparent; /* diğerleri */
+}
+
+/* Fallback: gradyan desteklemeyen tarayıcılar tek mor görsün */
+@supports not (-webkit-background-clip: text) {
+    .app-header .brand-line {
+        color: var(--rz-primary, #5b55e3) !important;
+    }
+}
+
+/* (Opsiyonel) MASRAF'ı az sağa kaydırmak istersen: */
+/* .app-header .brand-line-2{ padding-left: .4ch; } */
+/* Dış sarmalayıcı; sadece spacing için */
+/* Geçici teşhis: elemanı yakalıyor muyuz? */
+/* Teşhis: gerçekten bu node’u seçiyor muyuz? ilk denemede açık bırak */
+/* kapsülü ortala */
+/* Dialog’ın kendi beyaz panelini kaldır */
+.firm-dialog .rz-dialog,
+.firm-dialog .rz-dialog-content {
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+/* Başlığı da gizlemek istersen */
+.firm-dialog .rz-dialog-titlebar {
+    display: none !important;
+}
+
+/* Wrapper: içeriği modala ortala */
+.firm-dialog .pill-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 0;
+}
+
+/* Mor kapsül (oval) */
+.firm-dialog .pill-bg {
+    width: min(980px, 86vw); /* yatay genişlik */
+    height: 340px; /* daha küçük = daha oval */
+    background: linear-gradient(90deg, var(--rz-primary,#5b55e3), #6a63f1);
+    border-radius: 9999px;
+    padding: 28px 40px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 12px 32px rgba(0,0,0,.12);
+}
+
+/* Carousel içeriğini ortala */
+.firm-dialog .chooser-carousel .rz-carousel-items {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+/* Orta beyaz kart */
+.firm-dialog .firm-card {
+    width: min(820px, 92%);
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.08);
+    margin: 0 auto;
+}
+
+/* Okların dikey ortası */
+.firm-dialog .chooser-carousel .rz-carousel-prev,
+.firm-dialog .chooser-carousel .rz-carousel-next {
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+    /* Ok buton görünümü */
+    .firm-dialog .chooser-carousel .rz-carousel-prev .rz-button,
+    .firm-dialog .chooser-carousel .rz-carousel-next .rz-button {
+        width: 40px;
+        height: 40px;
+        border-radius: 9999px;
+        background: #fff;
+        color: var(--rz-primary,#5b55e3);
+        border: none;
+        box-shadow: 0 6px 16px rgba(0,0,0,.15);
+    }
+
+/* Pager noktaları */
+.firm-dialog .chooser-carousel .rz-carousel-indicators {
+    bottom: 10px;
+}
+
+@media (max-width: 992px) {
+    .firm-dialog .pill-bg {
+        width: 92vw;
+        height: 300px;
+        padding: 20px 24px;
+    }
+
+    .firm-dialog .firm-card {
+        width: 94%;
+    }
 }

@@ -87,9 +87,16 @@ namespace WebApp.Application.Services
             res.EnsureSuccessStatusCode();
 
             var result = (await res.Content.ReadFromJsonAsync<LoginResponseModel>())!;
+
+            // 1) Token’ları yaz
             await StoreTokens(result.Token, result.RefreshToken);
+
+            // 2) Tenant’ı yaz (handler buradan okuyacak)
+            await sessionStorage.SetItemAsync("tenantNo", firmaNo);
+
             return result;
         }
+
 
         // --- TOKEN SAKLAMA + HEADER AYARLAMA --------------------------------
 

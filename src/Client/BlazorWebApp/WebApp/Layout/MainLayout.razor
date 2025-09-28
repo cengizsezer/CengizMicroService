@@ -1,122 +1,140 @@
 ﻿@using Blazored.LocalStorage
+@using WebApp.Infrastructure
 @using WebApp.Manager
-@using WebApp.Pages.SubPages
 @inherits LayoutComponentBase
 @using Radzen
 @using Radzen.Blazor
-@using WebApp.Application.Services
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Domain.Models.User
-@using WebApp.Infrastructure
-
+@using WebApp.Pages.SubPages
 
 <RadzenNotification />
 <RadzenDialog />
 
-<RadzenLayout>
-    <RadzenHeader>
-        <RadzenStack Orientation="Orientation.Horizontal"
-                     AlignItems="AlignItems.Center" Gap="1rem" Style="width:100%">
-            <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
+<!-- 👇 özel sarmalayıcı: expanded/collapsed sınıfını buraya basıyoruz -->
+<div class="app-shell @(isCollapsed ? "collapsed" : "expanded")">
+    <RadzenLayout>
+        <RadzenHeader class="app-header">
+            <RadzenStack Orientation="Orientation.Horizontal"
+                         AlignItems="AlignItems.Center"
+                         Gap="1rem"
+                         Style="width:100%">
+                
+                  <div class="brand-wedge">
+                 <div class="brand-inner">
+                <RadzenImage Path="logo.jpeg" AlternateText="Logo"
+                             Style="height:56px; width:auto; border-radius:12px;" />
+                        <div class="brand-text">
+                <RadzenStack Orientation="Orientation.Vertical"
+                             AlignItems="AlignItems.Start" Gap="2px">
+                    <span class="brand-line brand-line-1">DİJİTAL</span>
+                    <span class="brand-line brand-line-2">   MASRAF</span>
+                </RadzenStack>
+                        </div>
+                    </div>
+                </div>
 
-            <RadzenImage Path="logo.jpeg" AlternateText="Logo"
-                         Style="height:56px; width:auto; border-radius:12px;" />
+                <div style="margin-left:auto; display:flex; align-items:center; gap:.5rem">
+                    <RadzenButton Size="ButtonSize.Small"
+                                  ButtonStyle="ButtonStyle.Info"
+                                  Icon="sync_alt"
+                                  Text="Firma Değiştir"
+                                  class="firma-btn"
+                                  Click="@OnChangeFirmClick" />
 
-            <!-- Yazılar için dikey stack -->
-            <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Start" Gap="2px">
-                <span class="brand-line brand-line-1">DİJİTAL</span>
-                <span class="brand-line brand-line-2">MASRAF</span>
+                    <div class="rz-text-secondary" style="white-space:nowrap;">
+                        <RadzenIcon Icon="domain" style="vertical-align:middle; margin-right:.25rem;" />
+                        @if (string.IsNullOrWhiteSpace(CurrentFirmName))
+                        {
+                            <em>Firma seçilmedi</em>
+                        }
+                        else
+                        {
+                            <strong>@CurrentFirmName</strong>
+                        }
+                    </div>
+
+                    <RadzenProfileMenu Click="@OnProfileMenuClick">
+                        <Template>
+                            <RadzenGravatar Email="cengizsezer7@gmail.com" />
+                        </Template>
+                        <ChildContent>
+                            <RadzenProfileMenuItem Text="Profil" Icon="account_circle" Path="/profile" />
+                            <RadzenProfileMenuItem Text="Çıkış" Icon="logout" Value="logout" />
+                        </ChildContent>
+                    </RadzenProfileMenu>
+                </div>
             </RadzenStack>
-       
+        </RadzenHeader>
 
+        <RadzenSidebar class="app-sidebar" Responsive="false" Style="width: max-content">
+            <!-- daralınca icon-only; genişken ikon+metin -->
+            <div class="toggle-btn-top side-toolbar">
+                <RadzenButton Size="ButtonSize.Small"
+                              Icon="@(isCollapsed ? "chevron_right" : "chevron_left")"
+                              Click="@ToggleSidebar" />
+            </div>
+            <RadzenPanelMenu class="app-panelmenu" DisplayStyle="@(isCollapsed? MenuItemDisplayStyle.Icon: MenuItemDisplayStyle.IconAndText)" ShowArrow="false">
+                             
+                
+                <RadzenPanelMenuItem Text="Görevler" Icon="home">
+                    <RadzenPanelMenuItem Text="Takvim" Icon="event" Path="/calendarpage" />
+                    <RadzenPanelMenuItem Text="Görevlerim" Icon="event" Path="/AssingnedTaskPage" />
+                </RadzenPanelMenuItem>
 
-        <!-- SAĞ BLOK: hepsi birlikte sağa yaslanır -->
-        <div style="margin-left:auto; display:flex; align-items:center; gap:.5rem">
-             <RadzenButton Size="ButtonSize.Small"
-                           Icon="sync_alt"
-                           Text="Firma Değiştir"
-                           class="firma-btn"
-                           Style="background:#0b7285; border-color:#0b7285; color:#fff"
-                           Click="@OnChangeFirmClick" />
+                <RadzenPanelMenuItem Text="E-Masraf" Icon="assignment">
+                    <RadzenPanelMenuItem Text="Onay" Icon="check" Path="/approvalpage" />
+                    <RadzenPanelMenuItem Text="Osgb" Icon="markunread_mailbox" Path="/Osgb" />
+                    <RadzenPanelMenuItem Text="Personel" Icon="group" Path="/personel" />
+                </RadzenPanelMenuItem>
+                <RadzenPanelMenuItem Text="E-Fatura" Icon="assignment" Path="/invoices/mock" />
+                <RadzenPanelMenuItem Text="Şirket Araçları" Icon="motorcycle" Path="/vehicles" />
+                <RadzenPanelMenuItem Text="Beyannameler" Icon="description" Path="/declarationpage" />
+                <RadzenPanelMenuItem Text="Şirket Evrakları" Icon="book" Path="/companydocspage" />
+                
+                <RadzenPanelMenuItem Text="Eğitim" Icon="chrome_reader_mode" Path="/education" />
 
-    <!-- Aktif firma adı -->
-    <div class="rz-text-secondary" style="white-space:nowrap;">
-                    <RadzenIcon Icon="domain" Style="vertical-align:middle; margin-right:.25rem;" />
-                    @if (string.IsNullOrWhiteSpace(CurrentFirmName))
-                    {
-                        <em>Firma seçilmedi</em>
-                    }
-                    else
-                    {
-                        <strong>@CurrentFirmName</strong>
-                        @* İstersen vergi no vs:
-               <span class="rz-text-muted">(@CurrentFirm.TaxNo)</span> *@
-                    }
-    </div>
-            <RadzenProfileMenu Click="@OnProfileMenuClick">
-                <Template>
-                    <RadzenGravatar Email="cengizsezer7@gmail.com" />
-                </Template>
-                <ChildContent>
-                    <RadzenProfileMenuItem Text="Profil" Icon="account_circle" Path="/profile" />
-                    <RadzenProfileMenuItem Text="Çıkış"  Icon="logout" Value="logout" />
-                </ChildContent>
-            </RadzenProfileMenu>
-        </div>
-    </RadzenStack>
-</RadzenHeader>
+                <RadzenPanelMenuItem Text="Settings" Icon="settings">
+                    <RadzenPanelMenuItem Text="Account" Icon="account_circle" Path="/account" />
+                    <RadzenPanelMenuItem Text="Admin" Icon="admin_panel_settings" Path="/admin/users" />
+                </RadzenPanelMenuItem>
+            </RadzenPanelMenu>
 
+            <div class="toggle-btn-bottom side-toolbar">
+                <RadzenButton Size="ButtonSize.Small"
+                              Icon="@(isCollapsed ? "chevron_right" : "chevron_left")"
+                              Click="@ToggleSidebar" />
+            </div>
+        </RadzenSidebar>
 
-    <RadzenSidebar Responsive="false" Style="width: max-content">
-        <RadzenPanelMenu DisplayStyle="@(sidebarExpanded? MenuItemDisplayStyle.IconAndText: MenuItemDisplayStyle.Icon)" ShowArrow="false">
-            <RadzenPanelMenuItem Text="İs Takip" Icon="home">
-                <RadzenPanelMenuItem Text="Takvim" Icon="account_circle" Path="/calendarpage" />
-            </RadzenPanelMenuItem>
-            <RadzenPanelMenuItem Text="E-Masraf" Icon="settings">
-                <RadzenPanelMenuItem Text="Onay" Icon="account_circle" Path="/approvalpage" />
-                <RadzenPanelMenuItem Text="Osgb" Icon="markunread_mailbox" Path="/Osgb" />
-                <RadzenPanelMenuItem Text="Personel" Icon="dashboard" Path="/personel" />
-            </RadzenPanelMenuItem>
-            <RadzenPanelMenuItem Text="Sirket Araçları" Icon="motorcycle" Path="/vehicles" />
-            <RadzenPanelMenuItem Text="Beyannameler" Icon="description" Path="/declarationpage" />
-            <RadzenPanelMenuItem Text="Sirket Evrakları" Icon="book" Path="/companydocspage" />
-            <RadzenPanelMenuItem Text="Fatura Detayı" Icon="
-assignment" Path="/invoices/mock" />
-            <RadzenPanelMenuItem Text="Eğitim" Icon="
-chrome_reader_mode" Path="/education" />
-            <RadzenPanelMenuItem Text="Settings" Icon="settings">
-                <RadzenPanelMenuItem Text="Account" Icon="account_circle" Path="/account" />
-                <RadzenPanelMenuItem Text="Admin" Icon="account_circle" Path="/admin/users" />
-            </RadzenPanelMenuItem>
-        </RadzenPanelMenu>
-    </RadzenSidebar>
+        <RadzenBody>
+            <div class="rz-p-4">
+                @Body
+            </div>
+        </RadzenBody>
 
-    <RadzenBody>
-        <div class="rz-p-4">
-            @Body
-        </div>
-    </RadzenBody>
-
-    <RadzenFooter>
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Style="padding: 10px; background: #1E1E1E; color: white;">
-            <RadzenLabel>
-                © @DateTime.Now.Year Dijital Masraf, keep it simple - All rights reserved.
-            </RadzenLabel>
-
-            <RadzenStack Orientation="Orientation.Horizontal" Gap="10px">
-                <RadzenLink Href="https://github.com/cengizsezer" Target="_blank">
-                    <i class="fab fa-github" style="color: white; font-size: 20px;"></i>
-                </RadzenLink>
-                <RadzenLink Href="https://www.tezmedikal.com.tr/" Target="_blank">
-                    <i class="fab fa-linkedin" style="color: white; font-size: 20px;"></i>
-                </RadzenLink>
+        <RadzenFooter>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                         JustifyContent="JustifyContent.SpaceBetween"
+                         Style="padding: 10px; background: #1E1E1E; color: white;">
+                <RadzenLabel>
+                    © @DateTime.Now.Year Dijital Masraf, keep it simple - All rights reserved.
+                </RadzenLabel>
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="10px">
+                    <RadzenLink Href="https://github.com/cengizsezer" Target="_blank">
+                        <i class="fab fa-github" style="color: white; font-size: 20px;"></i>
+                    </RadzenLink>
+                    <RadzenLink Href="https://www.tezmedikal.com.tr/" Target="_blank">
+                        <i class="fab fa-linkedin" style="color: white; font-size: 20px;"></i>
+                    </RadzenLink>
+                </RadzenStack>
             </RadzenStack>
-        </RadzenStack>
-    </RadzenFooter>
-</RadzenLayout>
+        </RadzenFooter>
+    </RadzenLayout>
+</div>
 
 @code {
-    bool sidebarExpanded = false;
+    bool isCollapsed = false; // başlangıçta açık
     string CurrentFirmName { get; set; } = string.Empty;
 
     [Inject] IAppSessionManager SessionManager { get; set; } = default!;
@@ -126,21 +144,18 @@ chrome_reader_mode" Path="/education" />
     [Inject] IIdentityService IdentityService { get; set; } = default!;
     [Inject] NavigationManager Navigation { get; set; } = default!;
 
+    void ToggleSidebar() => isCollapsed = !isCollapsed;
+
     protected override async Task OnInitializedAsync()
     {
-        // sayfa yenilemelerinde oturumu geri getir
         await SessionManager.RestoreAsync();
-
-        // mevcut seçili firmayı göster
         CurrentFirmName = AppState.SelectedFirmName;
 
-        // event abonelikleri
         AppState.StateChanged += OnAppStateChanged;
         SessionManager.FirmChanged += OnFirmChanged;
         SessionManager.AuthChanged += OnAuthChanged;
     }
 
-    // AppState event'i (enum'lu)
     private async void OnAppStateChanged(AppStateEvent ev)
     {
         if (ev == AppStateEvent.FirmChanged)
@@ -150,44 +165,32 @@ chrome_reader_mode" Path="/education" />
         }
     }
 
-    // Manager event'leri
     private async void OnFirmChanged(FirmaDto firm)
     {
         CurrentFirmName = firm?.Ad ?? string.Empty;
         await InvokeAsync(StateHasChanged);
     }
-    private async void OnAuthChanged()
-    {
-        // gerekirse auth değişiminde ek işlemler
-        await InvokeAsync(StateHasChanged);
-    }
 
-    // Firma değiştirme butonu
+    private async void OnAuthChanged() => await InvokeAsync(StateHasChanged);
+
     private async Task OnChangeFirmClick()
     {
-        // varsa manager’dan kullan; yoksa servisten çek
         var firms = SessionManager.Firms?.ToList();
-        if (firms == null || firms.Count == 0)
-            return;
+        if (firms is null || firms.Count == 0) return;
 
         var result = await DialogService.OpenAsync<FirmSelectDialog>(
             "Firma Seç",
             new() { ["Firms"] = firms },
-            new DialogOptions { Width = "60vw", Height = "70vh", CloseDialogOnOverlayClick = true, Resizable = true, Draggable = true }
-        );
+            new DialogOptions { Width = "60vw", Height = "70vh", CloseDialogOnOverlayClick = true, Resizable = true, Draggable = true });
 
-        // Dialog, seçili firmayı döndürsün: DialogService.Close(secilenFirma)
         if (result is FirmaDto chosen)
-        {
-            await SessionManager.SelectFirmAsync(chosen);   // ✅ token + AppState + storage tek noktada
-            // Gerekirse: Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
-        }
+            await SessionManager.SelectFirmAsync(chosen);
     }
 
     private async Task OnLogout()
     {
-        await LocalStorage.RemoveItemAsync("authToken"); // varsa ekstra kalıntı
-        await SessionManager.ClearAsync();               // ✅ tüm oturum verisini temizler
+        await LocalStorage.RemoveItemAsync("authToken");
+        await SessionManager.ClearAsync();
         IdentityService.Logout();
         Navigation.NavigateTo("/login", forceLoad: true);
     }
@@ -199,37 +202,9 @@ chrome_reader_mode" Path="/education" />
         SessionManager.AuthChanged -= OnAuthChanged;
     }
 
-    async Task LogoutFromMenu(MenuItemEventArgs args)
-    {
-        await OnLogout();
-    }
-
     void OnProfileMenuClick(RadzenProfileMenuItem item)
     {
         if (item?.Value?.ToString() == "logout")
             _ = OnLogout();
     }
-
-    // (opsiyonel) dialog ayarları
-    DialogSettings _settings;
-    public DialogSettings Settings
-    {
-        get => _settings;
-        set { if (_settings != value) _settings = value; }
-    }
-    public class DialogSettings
-    {
-        public string Left { get; set; }
-        public string Top { get; set; }
-        public string Width { get; set; }
-        public string Height { get; set; }
-    }
 }
-
-
-<style>
-    .rz-scheduler-navigation button {
-        pointer-events: none;
-        opacity: 0.5;
-    }
-</style>

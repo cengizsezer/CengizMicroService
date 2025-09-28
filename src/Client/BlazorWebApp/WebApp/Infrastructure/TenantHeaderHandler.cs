@@ -1,35 +1,30 @@
-﻿
-using Blazored.LocalStorage;
+﻿using Blazored.SessionStorage;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace WebApp.Infrastructure
 {
-
-    public class TenantHeaderHandler : DelegatingHandler
+    /// <summary>
+    /// Seçili tenant bilgisini başlığa koyar (X-Tenant-No).
+    /// </summary>
+    public sealed class TenantHeaderHandler : DelegatingHandler
     {
-        private readonly ILocalStorageService _localStorage;
-        private readonly AppStateManager _appState;
+        private readonly ISessionStorageService _session;
 
-        public TenantHeaderHandler(ILocalStorageService localStorage, AppStateManager appState)
+        public TenantHeaderHandler(ISessionStorageService session) => _session = session;
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
-            _localStorage = localStorage;
-            _appState = appState;
-        }
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            var firmId = _appState.SelectedFirmId ?? await _localStorage.GetItemAsync<string>("SelectedFirmId");
-
-            if (!string.IsNullOrWhiteSpace(firmId))
+            // Login->firmayı seçtiğinde IdentityService.SelectTenant içinde: await session.SetItemAsync("tenantNo", "201");
+            var tenantNo = await _session.GetItemAsync<string>("tenantNo");
+            if (!string.IsNullOrWhiteSpace(tenantNo))
             {
-                request.Headers.Remove("X-Tenant-Id"); // Çakışma olmasın
-                request.Headers.Add("X-Tenant-Id", firmId);
+                request.Headers.Remove("X-Tenant-No");
+                request.Headers.Add("X-Tenant-No", tenantNo);
             }
 
-            return await base.SendAsync(request, cancellationToken);
+            return await base.SendAsync(request, ct);
         }
     }
-
 }

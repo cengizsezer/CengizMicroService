@@ -32,28 +32,29 @@ namespace WebApp
             // Auth
             builder.Services.AddScoped<AuthenticationStateProvider, AuthStateProvider>();
             builder.Services.AddAuthorizationCore();
-            builder.Services.AddScoped<AuthTokenHandler>();
+           
             builder.Services.AddSingleton<AppStateManager>();
+
+
+            builder.Services.AddScoped<AuthTokenHandler>();
             builder.Services.AddScoped<TenantHeaderHandler>();
 
             var apiBaseAddress = builder.HostEnvironment.IsDevelopment()
-               ? "http://localhost:5000/"
-               : "https://www.dijitalmasraf.com/";
+                ? "http://localhost:5000/"
+                : "https://www.dijitalmasraf.com/";
 
             builder.Services.AddHttpClient("ApiGatewayCorridor", c =>
             {
                 c.BaseAddress = new Uri(apiBaseAddress);
-                // İstersen default header vb. ekleyebilirsin
-                // c.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             })
             .AddHttpMessageHandler<AuthTokenHandler>()
             .AddHttpMessageHandler<TenantHeaderHandler>();
 
-            // Bu koridoru isteyenlere verelim:
+            // Bu koridoru isteyenlere verelim
             builder.Services.AddScoped(sp =>
                 sp.GetRequiredService<IHttpClientFactory>().CreateClient("ApiGatewayCorridor"));
 
-            // === Servislerin hepsi tek koridordan beslensin ===
+            // Servisler tek koridordan beslensin
             builder.Services.AddScoped<IEducationService>(sp =>
                 new EducationService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("ApiGatewayCorridor")));
 
@@ -68,10 +69,6 @@ namespace WebApp
 
             builder.Services.AddScoped<IVehicleService>(sp =>
                 new VehicleService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("ApiGatewayCorridor")));
-
-
-
-
 
 
             builder.Services.AddHttpClient<IFileApiService, FileApiService>((sp, http) =>

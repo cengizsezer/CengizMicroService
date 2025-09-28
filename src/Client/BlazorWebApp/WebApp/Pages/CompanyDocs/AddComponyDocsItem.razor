@@ -89,6 +89,8 @@
         new("vergilevhası", "VERGILEVHASI"),
         new("ticaretsicilgazetesi", "TICARETSICILGAZETESI"),
         new("imzasirküsü", "IMZASIRKUSU"),
+        new("Faaliyet Belgesi", "FAALIYETBELGESI"),
+        new("Yoklama Fişi", "YOKLAMAFISI"),
     };
 
 
@@ -143,7 +145,7 @@
             // RadzenUpload için Clear metodu yoksa, kullanıcıya yeni seçim yaptır.
             StateHasChanged();
 
-            // dialogService.Close(true);
+             dialogService.Close(true);
         }
         catch (Exception ex)
         {

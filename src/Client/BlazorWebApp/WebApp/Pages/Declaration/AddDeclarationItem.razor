@@ -93,7 +93,9 @@
     {
         new("KDV-1", "KDV-1"),
         new("KDV-2", "KDV-2"),
-        new("Muhtasar", "MUHTASAR")
+        new("Muhtasar", "MUHTASAR"),
+        new("Kurumlar", "KURUMLAR"),
+        new("Damga", "DAMGA")
     };
 
     public record DocTypePair(string Text, string Value);
@@ -112,7 +114,7 @@
     private RadzenUpload upload;
     private IBrowserFile? _selectedFile;
     private string _status = "";
-  
+
 
     protected override Task OnInitializedAsync()
     {
@@ -155,6 +157,7 @@
             _selectedFile = null;
             // RadzenUpload için Clear metodu yoksa, kullanıcıya yeni seçim yaptır.
             StateHasChanged();
+            dialogService.Close(true);
         }
         catch (Exception ex)
         {
