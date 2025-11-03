@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\GitHub\\CengizMicroService\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{42C0F09E-003A-491D-8665-45715702D5F8}|Services\\NotificationService\\NotificationService.Console\\NotificationService.Console.csproj|c:\\github\\cengizmicroservice\\services\\notificationservice\\notificationservice.console\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}",
       "RelativeMoniker": "D:0:0:{42C0F09E-003A-491D-8665-45715702D5F8}|Services\\NotificationService\\NotificationService.Console\\NotificationService.Console.csproj|solutionrelative:services\\notificationservice\\notificationservice.console\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}"
     },
@@ -17,10 +21,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{81DDED9D-158B-E303-5F62-77A2896D2A5A}|docker-compose.dcproj|c:\\github\\cengizmicroservice\\docker-compose.override.yml||{8B382828-6202-11D1-8870-0000F87579D2}",
       "RelativeMoniker": "D:0:0:{81DDED9D-158B-E303-5F62-77A2896D2A5A}|docker-compose.dcproj|solutionrelative:docker-compose.override.yml||{8B382828-6202-11D1-8870-0000F87579D2}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}",
-      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\identityservice.http||{5703B403-55E7-4C63-8C88-A8F52C7A45C5}",
@@ -109,7 +109,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 4,
+          "SelectedChildIndex": 10,
           "Children": [
             {
               "$type": "Document",
@@ -165,13 +165,13 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "Dockerfile",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\NotificationService\\NotificationService.Console\\Dockerfile",
               "RelativeDocumentMoniker": "Services\\NotificationService\\NotificationService.Console\\Dockerfile",
               "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\NotificationService\\NotificationService.Console\\Dockerfile",
               "RelativeToolTip": "Services\\NotificationService\\NotificationService.Console\\Dockerfile",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABcAAAAIAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
               "WhenOpened": "2025-11-03T10:51:15.129Z",
               "IsPinned": true,
@@ -195,19 +195,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": ".dockerignore",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\.dockerignore",
-              "RelativeDocumentMoniker": ".dockerignore",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\.dockerignore",
-              "RelativeToolTip": ".dockerignore",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAPAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-11-03T12:52:30.808Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "docker-compose.yml",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.yml",
               "RelativeDocumentMoniker": "docker-compose.yml",
@@ -219,7 +207,32 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 0,
+              "Title": "Dockerfile",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Dockerfile",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Dockerfile",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Dockerfile",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Dockerfile",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAABJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-03T12:04:56.016Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": ".dockerignore",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\.dockerignore",
+              "RelativeDocumentMoniker": ".dockerignore",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\.dockerignore",
+              "RelativeToolTip": ".dockerignore",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAPAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-03T12:52:30.808Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
               "Title": "docker-compose.override.yml",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.override.yml",
               "RelativeDocumentMoniker": "docker-compose.override.yml",
@@ -228,18 +241,6 @@
               "ViewState": "AgIAAHUAAAAAAAAAAAAAAIIAAAANAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003775|",
               "WhenOpened": "2025-11-03T10:44:27.318Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "Dockerfile",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Dockerfile",
-              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Dockerfile",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Dockerfile",
-              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Dockerfile",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAACEAAAAiAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-11-03T12:04:56.016Z"
             },
             {
               "$type": "Document",

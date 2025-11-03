@@ -13,10 +13,10 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Services/IdentityService/IdentityService/IdentityService.csproj", "Services/IdentityService/IdentityService/"]
 
-COPY ["src/Event/EventBus.Factory/EventBus.Factory.csproj", "src/Event/EventBus.Factory/"]
-COPY ["src/Event/EventBus.AzureServiceBus/EventBus.AzureServiceBus.csproj", "src/Event/EventBus.AzureServiceBus/"]
-COPY ["src/Event/EventBus.Base/EventBus.Base.csproj", "src/Event/EventBus.Base/"]
-COPY ["src/Event/EventBus.RabbitMQ/EventBus.RabbitMQ.csproj", "src/Event/EventBus.RabbitMQ/"]
+COPY ["EventBus.Base/EventBus.Base.csproj", "EventBus.Base/"]
+COPY ["EventBus.Factory/EventBus.Factory.csproj", "EventBus.Factory/"]
+COPY ["EventBus.AzureServiceBus/EventBus.AzureServiceBus.csproj", "EventBus.AzureServiceBus/"]
+COPY ["EventBus.RabbitMQ/EventBus.RabbitMQ.csproj", "EventBus.RabbitMQ/"]
 
 RUN dotnet restore "./Services/IdentityService/IdentityService/IdentityService.csproj"
 COPY . .
