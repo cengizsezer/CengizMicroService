@@ -6,29 +6,28 @@ USER $APP_UID
 WORKDIR /app
 
 
-# -------- build/publish ----------
+# ---- build ----
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
-# 1) Sadece gerekli .csproj'ları doğru path'lerden kopyala (repo yapına göre!)
-COPY ["src/Event/EventBus.Base/EventBus.Base.csproj", "src/Event/EventBus.Base/"]
-COPY ["src/Event/EventBus.Factory/EventBus.Factory.csproj", "src/Event/EventBus.Factory/"]
-COPY ["src/Event/EventBus.AzureServiceBus/EventBus.AzureServiceBus.csproj", "src/Event/EventBus.AzureServiceBus/"]
-COPY ["src/Event/EventBus.RabbitMQ/EventBus.RabbitMQ.csproj", "src/Event/EventBus.RabbitMQ/"]
+# SADECE .csproj'ları kopyala (DOĞRU YOLLAR)
+COPY ["EventBus.Base/EventBus.Base.csproj", "EventBus.Base/"]
+COPY ["EventBus.Factory/EventBus.Factory.csproj", "EventBus.Factory/"]
+COPY ["EventBus.AzureServiceBus/EventBus.AzureServiceBus.csproj", "EventBus.AzureServiceBus/"]
+COPY ["EventBus.RabbitMQ/EventBus.RabbitMQ.csproj", "EventBus.RabbitMQ/"]
 COPY ["Services/NotificationService/NotificationService.Console/NotificationService.Console.csproj", "Services/NotificationService/NotificationService.Console/"]
 
-# 2) Proje bazlı restore (solution adıyla uğraşma)
+# Restore
 RUN dotnet restore "Services/NotificationService/NotificationService.Console/NotificationService.Console.csproj"
 
-# 3) Tüm kaynakları al
+# TÜM kaynakları kopyala
 COPY . .
 
-# 4) Build & publish
-WORKDIR "/src/Services/NotificationService/NotificationService.Console"
-RUN dotnet publish "NotificationService.Console.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+# Publish
+WORKDIR /src/Services/NotificationService/NotificationService.Console
+RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
 
-# -------- final ----------
+# ---- final ----
 FROM mcr.microsoft.com/dotnet/runtime:8.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
