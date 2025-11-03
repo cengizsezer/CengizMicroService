@@ -28,7 +28,7 @@ WORKDIR /src/Services/NotificationService/NotificationService.Console
 RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
 
 # ---- final ----
-FROM mcr.microsoft.com/dotnet/runtime:8.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet","NotificationService.Console.dll"]
