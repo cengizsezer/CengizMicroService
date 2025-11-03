@@ -29,13 +29,22 @@ public class Program
             System.Console.Error.WriteLine("SERILOG-SELFLOG: " + m));
 #endif
 
+       
+
         var appConfig = BuildConfiguration();
         var serilogConfig = BuildSerilogConfiguration();
 
+        System.Console.WriteLine(">>> ENV: " + Env);
+        System.Console.WriteLine(">>> DB: " + appConfig.GetConnectionString("DatabaseConnection"));
+        System.Console.WriteLine(">>> MQ Host: " + appConfig["RabbitMQ:HostName"]);
+
+
         // Global logger (Host başlamadan önce)
         Log.Logger = new LoggerConfiguration()
-            .ReadFrom.Configuration(serilogConfig)
-            .CreateLogger();
+     .MinimumLevel.Debug()
+     .WriteTo.Console()
+     .ReadFrom.Configuration(serilogConfig)
+     .CreateLogger();
         Log.Information("NS fallback console logger OK");
         try
         {

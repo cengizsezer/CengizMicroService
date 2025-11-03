@@ -9,13 +9,12 @@
 	</PropertyGroup>
 
 	<!-- Config dosyalarını çıktıya kopyala -->
+
 	<ItemGroup>
-		<Content Include="Configurations\serilog.json" CopyToOutputDirectory="PreserveNewest" />
-		<Content Include="Configurations\serilog.Development.json" CopyToOutputDirectory="PreserveNewest" />
-		<Content Include="Configurations\serilog.Docker.json" CopyToOutputDirectory="PreserveNewest" />
-		<Content Include="Configurations\appsettings.json" CopyToOutputDirectory="PreserveNewest" />
-		<Content Include="Configurations\appsettings.Development.json" CopyToOutputDirectory="PreserveNewest" />
-		<Content Include="Configurations\appsettings.Docker.json" CopyToOutputDirectory="PreserveNewest" />
+		<Content Include="Configurations\**\*.json">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+			<CopyToPublishDirectory>Always</CopyToPublishDirectory>
+		</Content>
 	</ItemGroup>
 
 	<ItemGroup>
