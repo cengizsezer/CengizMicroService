@@ -7,6 +7,22 @@
       "RelativeMoniker": "D:0:0:{42C0F09E-003A-491D-8665-45715702D5F8}|Services\\NotificationService\\NotificationService.Console\\NotificationService.Console.csproj|solutionrelative:services\\notificationservice\\notificationservice.console\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}"
     },
     {
+      "AbsoluteMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|c:\\github\\cengizmicroservice\\services\\identityservice\\identityservice\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{0461E531-5183-431A-A66A-12EB1D52B757}|Services\\IdentityService\\IdentityService\\IdentityService.csproj|solutionrelative:services\\identityservice\\identityservice\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|c:\\github\\cengizmicroservice\\services\\fileapiservice\\fileapiservice.api\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{B8A1BE48-0566-48B0-9D53-9F2BBA367681}|Services\\FileApiService\\FileApiService.Api\\FileApiService.Api.csproj|solutionrelative:services\\fileapiservice\\fileapiservice.api\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\dockerfile||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\catalogservice.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\catalogservice.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{81DDED9D-158B-E303-5F62-77A2896D2A5A}|docker-compose.dcproj|c:\\github\\cengizmicroservice\\docker-compose.yml||{8B382828-6202-11D1-8870-0000F87579D2}",
       "RelativeMoniker": "D:0:0:{81DDED9D-158B-E303-5F62-77A2896D2A5A}|docker-compose.dcproj|solutionrelative:docker-compose.yml||{8B382828-6202-11D1-8870-0000F87579D2}"
     },
@@ -86,7 +102,7 @@
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 14,
               "Title": "IDeleteFileCommandHandler.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Core\\Abstractions\\IDeleteFileCommandHandler.cs",
               "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Core\\Abstractions\\IDeleteFileCommandHandler.cs",
@@ -99,7 +115,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 15,
               "Title": "IFileCommandsRepository.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Core\\Abstractions\\IFileCommandsRepository.cs",
               "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Core\\Abstractions\\IFileCommandsRepository.cs",
@@ -112,7 +128,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 17,
               "Title": "DeleteFileCommandHandler.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Core\\Commands\\DeleteFileCommandHandler.cs",
               "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Core\\Commands\\DeleteFileCommandHandler.cs",
@@ -125,7 +141,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 16,
               "Title": "IFileQueriesRepository.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Core\\Abstractions\\IFileQueriesRepository.cs",
               "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Core\\Abstractions\\IFileQueriesRepository.cs",
@@ -144,35 +160,62 @@
               "RelativeDocumentMoniker": "Services\\NotificationService\\NotificationService.Console\\Dockerfile",
               "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\NotificationService\\NotificationService.Console\\Dockerfile",
               "RelativeToolTip": "Services\\NotificationService\\NotificationService.Console\\Dockerfile",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB8AAAA4AAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAABHAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
               "WhenOpened": "2025-11-03T10:51:15.129Z",
+              "IsPinned": true,
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 2,
-              "Title": "docker-compose.override.yml",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.override.yml",
-              "RelativeDocumentMoniker": "docker-compose.override.yml",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\docker-compose.override.yml",
-              "RelativeToolTip": "docker-compose.override.yml",
-              "ViewState": "AgIAAFEAAAAAAAAAAAAAAGwAAAASAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003775|",
-              "WhenOpened": "2025-11-03T10:44:27.318Z",
+              "Title": "Dockerfile",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Dockerfile",
+              "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Dockerfile",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Dockerfile",
+              "RelativeToolTip": "Services\\FileApiService\\FileApiService.Api\\Dockerfile",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-03T12:07:46.72Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "Dockerfile",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Dockerfile",
+              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Dockerfile",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Dockerfile",
+              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Dockerfile",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-03T12:07:14.969Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "docker-compose.yml",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.yml",
-              "RelativeDocumentMoniker": "docker-compose.yml",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\docker-compose.yml*",
-              "RelativeToolTip": "docker-compose.yml*",
-              "ViewState": "AgIAACEAAAAAAAAAAAAAAEAAAABVAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003775|",
-              "WhenOpened": "2025-11-03T10:44:09.598Z",
+              "Title": "Dockerfile",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Dockerfile",
+              "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Dockerfile",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Dockerfile",
+              "RelativeToolTip": "Services\\IdentityService\\IdentityService\\Dockerfile",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAABWAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-11-03T12:04:56.016Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "CatalogService.Api",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj",
+              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj",
+              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-11-03T12:07:22.41Z",
               "EditorCaption": ""
             },
             {
@@ -193,7 +236,31 @@
             },
             {
               "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "docker-compose.override.yml",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.override.yml",
+              "RelativeDocumentMoniker": "docker-compose.override.yml",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\docker-compose.override.yml",
+              "RelativeToolTip": "docker-compose.override.yml",
+              "ViewState": "AgIAAFEAAAAAAAAAAAAAAGwAAAASAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003775|",
+              "WhenOpened": "2025-11-03T10:44:27.318Z"
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 5,
+              "Title": "docker-compose.yml",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.yml",
+              "RelativeDocumentMoniker": "docker-compose.yml",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\docker-compose.yml",
+              "RelativeToolTip": "docker-compose.yml",
+              "ViewState": "AgIAACEAAAAAAAAAAAAAAEAAAABVAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003775|",
+              "WhenOpened": "2025-11-03T10:44:09.598Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
               "Title": "IFileStorage.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Core\\Abstractions\\IFileStorage.cs",
               "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Core\\Abstractions\\IFileStorage.cs",
@@ -205,7 +272,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 8,
               "Title": "FileApiService.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\FileApiService.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\FileApiService.cs",
@@ -217,7 +284,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 7,
               "Title": "DeclarationPage.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\DeclarationPage.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\DeclarationPage.razor",
@@ -225,12 +292,11 @@
               "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\DeclarationPage.razor",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAaAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2025-10-25T14:50:44.568Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-25T14:50:44.568Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 10,
               "Title": "MinioFileStorage.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Minio\\MinioFileStorage.cs",
               "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Minio\\MinioFileStorage.cs",
@@ -242,7 +308,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 12,
               "Title": "FileRecord.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Persistence\\Entities\\FileRecord.cs",
               "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Persistence\\Entities\\FileRecord.cs",
@@ -254,7 +320,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 13,
               "Title": "FileDbContext.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Persistence\\Entities\\FileDbContext.cs",
               "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Persistence\\Entities\\FileDbContext.cs",
@@ -266,7 +332,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 11,
               "Title": "FileCommandsRepository.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Persistence\\Repositories\\FileCommandsRepository.cs",
               "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Persistence\\Repositories\\FileCommandsRepository.cs",
@@ -278,7 +344,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 19,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Program.cs",
               "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Program.cs",
@@ -290,7 +356,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 18,
               "Title": "FileController.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Api\\Controllers\\FileController.cs",
               "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Api\\Controllers\\FileController.cs",
@@ -302,7 +368,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 20,
               "Title": "FileQueriesRepository.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Persistence\\Repositories\\FileQueriesRepository.cs",
               "RelativeDocumentMoniker": "Services\\FileApiService\\FileApiService.Api\\Infrastructure\\Persistence\\Repositories\\FileQueriesRepository.cs",
@@ -314,7 +380,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 21,
               "Title": "AddDeclarationItem.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\AddDeclarationItem.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Declaration\\AddDeclarationItem.razor",

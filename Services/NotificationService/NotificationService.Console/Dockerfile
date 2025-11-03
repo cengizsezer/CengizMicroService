@@ -15,6 +15,7 @@ COPY ["src/Event/EventBus.Factory/EventBus.Factory.csproj", "src/Event/EventBus.
 COPY ["src/Event/EventBus.AzureServiceBus/EventBus.AzureServiceBus.csproj", "src/Event/EventBus.AzureServiceBus/"]
 COPY ["src/Event/EventBus.Base/EventBus.Base.csproj", "src/Event/EventBus.Base/"]
 COPY ["src/Event/EventBus.RabbitMQ/EventBus.RabbitMQ.csproj", "src/Event/EventBus.RabbitMQ/"]
+
 RUN dotnet restore "./Services/NotificationService/NotificationService.Console/NotificationService.Console.csproj"
 COPY . .
 WORKDIR "/src/Services/NotificationService/NotificationService.Console"
