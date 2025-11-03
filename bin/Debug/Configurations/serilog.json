@@ -1,9 +1,21 @@
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
+﻿{
+  "Serilog": {
+    "Using": [ "Serilog.Sinks.Graylog", "Serilog.Sinks.Console" ],
+    "MinimumLevel": "Information",
+    "WriteTo": [
+      {
+        "Name": "Graylog",
+        "Args": {
+          "hostnameOrAddress": "localhost",
+          "port": "12201",
+          "transportType": "Udp",
+          "facility": "NotificationService"
+        }
+      }
+    ],
+
+    "Properties": {
+      "Application": "NotificationService"
     }
-  },
-  "AllowedHosts": "*"
+  }
 }

@@ -1,4 +1,4 @@
-{
+﻿{
   "Serilog": {
     "Using": [ "Serilog.Sinks.Graylog", "Serilog.Sinks.Console" ],
     "MinimumLevel": "Information",
@@ -9,16 +9,13 @@
           "hostnameOrAddress": "c_graylog",
           "port": "12201",
           "transportType": "Udp",
-          "facility": "FileApiService"
+          "facility": "NotificationService"
         }
-      },
-      {
-        "Name": "Console"
       }
     ],
 
     "Properties": {
-      "Application": "FileApiService"
+      "Application": "NotificationService"
     }
   }
 }

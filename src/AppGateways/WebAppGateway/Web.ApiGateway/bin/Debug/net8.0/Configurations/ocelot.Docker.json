@@ -17,7 +17,7 @@
       "DownstreamScheme": "http",
 
       "UpstreamPathTemplate": "/auth/{everything}",
-      "UpstreamHttpMethod": [ "Get", "Post", "Delete", "Put" ],
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS" ],
       "UpstreamScheme": "http"
     },
     {
@@ -27,7 +27,7 @@
       "DownstreamScheme": "http",
 
       "UpstreamPathTemplate": "/ocr/{everything}",
-      "UpstreamHttpMethod": [ "Get", "Post", "Delete", "Put" ],
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS" ],
       "UpstreamScheme": "http"
     },
     {
@@ -37,7 +37,7 @@
       "DownstreamScheme": "http",
 
       "UpstreamPathTemplate": "/file/v1/{everything}",
-      "UpstreamHttpMethod": [ "Get", "Post", "Delete", "Put" ],
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS" ],
       "UpstreamScheme": "http"
     }
 
