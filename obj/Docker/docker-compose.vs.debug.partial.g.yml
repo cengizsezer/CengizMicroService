@@ -139,34 +139,6 @@ services:
     tty: true
 
   notificationservice:
-    image: notificationservice:dev
-    build:
-      args:
-        LAUNCHING_FROM_VS: true
-        BUILD_CONFIGURATION: Debug
-      target: base
-      labels:
-        com.microsoft.created-by: "visual-studio"
-        com.microsoft.visual-studio.project-name: "NotificationService.Console"
-    environment:
-      - NUGET_FALLBACK_PACKAGES=/.nuget/fallbackpackages
-    volumes:
-      - C:\GitHub\CengizMicroService\Services\NotificationService\NotificationService.Console:/app:rw
-      - C:\GitHub\CengizMicroService:/src:rw
-      - C:\Users\cengi\vsdbg\vs2017u5:/remote_debugger:rw
-      - C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Sdks\Microsoft.Docker.Sdk\tools\linux-x64\net8.0:/VSTools:ro
-      - C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\HotReload:/HotReloadAgent:ro
-      - C:\Users\cengi\.nuget\packages:/.nuget/packages:ro
-      - C:\Program Files (x86)\Microsoft Visual Studio\Shared\NuGetPackages:/.nuget/fallbackpackages:ro
-    entrypoint: "dotnet --roll-forward Major /VSTools/DistrolessHelper/DistrolessHelper.dll --wait"
-    labels:
-      com.microsoft.visualstudio.debuggee.program: "dotnet"
-      com.microsoft.visualstudio.debuggee.arguments: " --additionalProbingPath /.nuget/packages --additionalProbingPath /.nuget/fallbackpackages  \"\""
-      com.microsoft.visualstudio.debuggee.workingdirectory: "/app"
-      com.microsoft.visualstudio.debuggee.killprogram: "dotnet --roll-forward Major /VSTools/DistrolessHelper/DistrolessHelper.dll --stop dotnet"
-    tty: true
-
-  notificationservice.console:
     image: notificationserviceconsole:dev
     build:
       args:

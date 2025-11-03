@@ -58,8 +58,7 @@ services:
       dockerfile: Dockerfile
 
   notificationservice:
-    container_name: c_notificationservice
-    image: ${DOCKER_REGISTRY-}notificationservice
+    image: ${DOCKER_REGISTRY-}notificationserviceconsole
     build:
       context: .
       dockerfile: Services/NotificationService/NotificationService.Console/Dockerfile
@@ -80,9 +79,5 @@ services:
  
 
 
-  notificationservice.console:
-    image: ${DOCKER_REGISTRY-}notificationserviceconsole
-    build:
-      context: .
-      dockerfile: Services/NotificationService/NotificationService.Console/Dockerfile
+ 
 
