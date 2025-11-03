@@ -1,115 +1,234 @@
-﻿@page "/AssingnedTaskPage"
-
+﻿@page "/AssignedTaskPage"
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.Scheduling
+@inject IJobsApi JobsApi
+@inject AuthenticationStateProvider Auth // me.Id lazım olabilir
+@using System.Security.Claims;
 <h3>ATANMIŞ GÖREVLER</h3>
 
-<RadzenDropZoneContainer TItem="MyTask" Data="data"
+<RadzenDropZoneContainer TItem="TaskCardVm" Data="data"
                          ItemSelector="@ItemSelector"
                          ItemRender="@OnItemRender"
                          CanDrop="@CanDrop"
                          Drop="@OnDrop">
     <ChildContent>
         <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" Wrap="FlexWrap.Wrap" class="rz-p-12">
-            <RadzenDropZone Value="Status.NotStarted" class="rz-display-flex rz-flex-column rz-background-color-warning-lighter rz-border-warning-light rz-border-radius-2 rz-p-4" Style="flex: 1; gap: 1rem;">
+            <RadzenDropZone Value="JobStatus.NotStarted" class="rz-display-flex rz-flex-column rz-background-color-warning-lighter rz-border-warning-light rz-border-radius-2 rz-p-4" Style="flex: 1; gap: 1rem;">
                 <RadzenText Text="Not started" TextStyle="TextStyle.Subtitle2" />
             </RadzenDropZone>
-
-            <RadzenDropZone Value="Status.Started" class="rz-display-flex rz-flex-column rz-background-color-info-lighter rz-border-info-light rz-border-radius-2 rz-p-4" Style="flex: 1; gap: 1rem;">
+            <RadzenDropZone Value="JobStatus.Started" class="rz-display-flex rz-flex-column rz-background-color-info-lighter rz-border-info-light rz-border-radius-2 rz-p-4" Style="flex: 1; gap: 1rem;">
                 <RadzenText Text="Started" TextStyle="TextStyle.Subtitle2" />
             </RadzenDropZone>
-
-            <RadzenDropZone Value="Status.Completed" class="rz-display-flex rz-flex-column rz-background-color-success-lighter rz-border-success-light rz-border-radius-2 rz-p-4" Style="flex: 1; gap: 1rem;">
+            <RadzenDropZone Value="JobStatus.Completed" class="rz-display-flex rz-flex-column rz-background-color-success-lighter rz-border-success-light rz-border-radius-2 rz-p-4" Style="flex: 1; gap: 1rem;">
                 <RadzenText Text="Completed" TextStyle="TextStyle.Subtitle2" />
             </RadzenDropZone>
-
-            <RadzenDropZone Value="Status.Deleted" class="rz-display-flex rz-flex-column rz-background-color-danger-lighter rz-border-danger-light rz-border-radius-2 rz-p-4" Style="flex: 1; gap: 1rem;">
+            <RadzenDropZone Value="JobStatus.Deleted" class="rz-display-flex rz-flex-column rz-background-color-danger-lighter rz-border-danger-light rz-border-radius-2 rz-p-4" Style="flex: 1; gap: 1rem;">
                 <RadzenText Text="Drop here to delete" TextStyle="TextStyle.Subtitle2" />
             </RadzenDropZone>
         </RadzenStack>
     </ChildContent>
     <Template>
-        <strong>@context.Name</strong>
+        <div class="rz-card rz-variant-filled rz-background-color-primary-light rz-color-on-primary-light rz-p-3">
+            <strong>@context.Title</strong><br />
+            <small>@(context.Start.ToString("g")) - @(context.End.ToString("g"))</small><br />
+            <span>@context.Description</span>
+        </div>
     </Template>
 </RadzenDropZoneContainer>
 
-<style>
-    .rz-can-drop {
-        background-color: var(--rz-background-color-primary);
-    }
-</style>
-
 @code {
-    // Filter items by zone value
-    Func<MyTask, RadzenDropZone<MyTask>, bool> ItemSelector = (item, zone) => item.Status == (Status)zone.Value && item.Status != Status.Deleted;
-
-    Func<RadzenDropZoneItemEventArgs<MyTask>, bool> CanDrop = request =>
+    // Data
+    IList<TaskCardVm> data = new List<TaskCardVm>();
+    protected override async Task OnInitializedAsync()
     {
-        // Allow item drop only in the same zone, in "Deleted" zone or in the next/previous zone.
-        return request.FromZone == request.ToZone || (Status)request.ToZone.Value == Status.Deleted ||
-            Math.Abs((int)request.Item.Status - (int)request.ToZone.Value) == 1;
-    };
+        var authState = await Auth.GetAuthenticationStateAsync();
+        var user = authState.User;
 
-    void OnItemRender(RadzenDropZoneItemRenderEventArgs<MyTask> args)
+        // Birden fazla olası claim key’i dene
+        var meId =
+            user.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
+            user.FindFirst("sub")?.Value ??
+            user.FindFirst("uid")?.Value ??
+            user.FindFirst("nameid")?.Value; // bazı provider’lar böyle yazar
+
+        // meId yoksa, geçici olarak assigneeId parametresi göndermeden çekelim (UI boş kalmasın)
+        var jobs = await JobsApi.GetRangeAsync(DateTime.Today.AddDays(-7),
+                                               DateTime.Today.AddDays(30),
+                                               assigneeId: string.IsNullOrWhiteSpace(meId) ? null : meId);
+
+        // Eğer API tarafında assignee filtresi henüz net değilse, client’ta da süzelim:
+        var filtered = string.IsNullOrWhiteSpace(meId)
+            ? jobs // meId yoksa hepsini göster
+            : jobs.Where(j => j.Assignments.Any(a => a.UserId == meId && a.Status != JobStatus.Deleted));
+
+        data = filtered.SelectMany(j => j.Assignments
+                    .Where(a => (string.IsNullOrWhiteSpace(meId) || a.UserId == meId) && a.Status != JobStatus.Deleted)
+                    .Select(a => new TaskCardVm
+                    {
+                        JobId = j.Id,
+                        AssignmentId = a.Id,
+                        Status = a.Status,
+                        Title = j.Title,
+                        Description = j.Description,
+                        Start = j.Start,
+                        End = j.End,
+                        Me = a
+                    }))
+                .ToList();
+    }
+    // protected override async Task OnInitializedAsync()
+    // {
+    //     // me.Id → eğer Auth provider’dan okuyabiliyorsan al; alamazsan backend GetRange assigneeId parametresiz çağırıp client'ta filtreleme de yapabilirsin.
+    //     var jobs = await JobsApi.GetRangeAsync(DateTime.Today.AddDays(-7), DateTime.Today.AddDays(30));
+    //     // Backend zaten tenant filtresi yapıyor; assignment'ları tek tek kartlaştır:
+    //     data = jobs.SelectMany(j => j.Assignments.Select(a => new TaskCardVm
+    //     {
+    //         AssignmentId = a.Id,
+    //         Status = a.Status,
+    //         Title = j.Title,
+    //         Description = j.Description,
+    //         Start = j.Start,
+    //         End = j.End,
+    //         Me = a // istersen sakla
+    //     })).ToList();
+    // }
+
+    // Zone filtreleri
+    Func<TaskCardVm, RadzenDropZone<TaskCardVm>, bool> ItemSelector =
+        (item, zone) => item.Status == (JobStatus)zone.Value && item.Status != JobStatus.Deleted;
+
+    Func<RadzenDropZoneItemEventArgs<TaskCardVm>, bool> CanDrop = request =>
+        request.FromZone == request.ToZone ||
+        (JobStatus)request.ToZone.Value == JobStatus.Deleted ||
+        Math.Abs((int)request.Item.Status - (int)request.ToZone.Value) == 1;
+
+    void OnItemRender(RadzenDropZoneItemRenderEventArgs<TaskCardVm> args)
     {
-        // Customize item appearance
-        if (args.Item.Name == "Task2")
-        {
-            args.Attributes["draggable"] = "false";
-            args.Attributes["style"] = "cursor:not-allowed";
-            args.Attributes["class"] = "rz-card rz-variant-flat rz-background-color-primary-lighter rz-color-on-primary-lighter";
-        }
-        else
-        {
-            args.Attributes["class"] = "rz-card rz-variant-filled rz-background-color-primary-light rz-color-on-primary-light";
-        }
-
-        // Do not render item if deleted
-        args.Visible = args.Item.Status != Status.Deleted;
+        args.Visible = args.Item.Status != JobStatus.Deleted;
     }
 
-    void OnDrop(RadzenDropZoneItemEventArgs<MyTask> args)
+    async void OnDrop(RadzenDropZoneItemEventArgs<TaskCardVm> args)
     {
-        if (args.FromZone != args.ToZone)
+        if (args.FromZone == args.ToZone && args.ToItem == args.Item) return;
+
+        var toStatus = (JobStatus)args.ToZone.Value;
+
+        // Tam silme: "Deleted" sütunu
+        if (toStatus == JobStatus.Deleted)
         {
-            // update item zone
-            args.Item.Status = (Status)args.ToZone.Value;
+            // (İsteğe bağlı) emin misin?
+            // if (!await ConfirmAsync("Bu iş herkesten silinecek, emin misiniz?")) return;
+
+            try
+            {
+                await JobsApi.DeleteAsync(args.Item.JobId); // 👈 job’u sil
+                                                            // aynı job’a ait tüm kartları listeden çıkar
+                var toRemove = data.Where(d => d.JobId == args.Item.JobId).ToList();
+                foreach (var x in toRemove) data.Remove(x);
+                StateHasChanged();
+            }
+            catch
+            {
+                // (İsteğe bağlı) toast / error göster
+            }
+            return;
+        }
+
+        // Eski davranış: kolonlar arası normal geçiş → assignment status güncelle
+        var old = args.Item.Status;
+        args.Item.Status = toStatus;
+
+        try
+        {
+            await JobsApi.UpdateAssignmentStatusAsync(args.Item.AssignmentId, args.Item.Status);
+        }
+        catch
+        {
+            args.Item.Status = old;
+            StateHasChanged();
+            return;
         }
 
         if (args.ToItem != null && args.ToItem != args.Item)
         {
-            // reorder items in same zone or place the item at specific index in new zone
             data.Remove(args.Item);
             data.Insert(data.IndexOf(args.ToItem), args.Item);
         }
+
+        StateHasChanged();
     }
 
-    IList<MyTask> data;
+    // async void OnDrop(RadzenDropZoneItemEventArgs<TaskCardVm> args)
+    // {
+    //     if (args.FromZone == args.ToZone && args.ToItem == args.Item) return;
 
-    protected override void OnInitialized()
-    {
-        data = Enumerable.Range(0, 5)
-            .Select(i =>
-                new MyTask()
-                {
-                    Id = i,
-                    Name = $"Task{i}",
-                    Status = i < 3 ? Status.NotStarted : Status.Started
-                })
-            .ToList();
-    }
+    //     var old = args.Item.Status;
+    //     args.Item.Status = (JobStatus)args.ToZone.Value;
 
-    public class MyTask
-    {
-        public int Id { get; set; }
-        public string Name { get; set; }
-        public Status Status { get; set; } = Status.NotStarted;
-    }
+    //     try
+    //     {
+    //         await JobsApi.UpdateAssignmentStatusAsync(args.Item.AssignmentId, args.Item.Status);
 
-    public enum Status
+    //         // Deleted'a taşındıysa UI’dan tamamen kaldır
+    //         if (args.Item.Status == JobStatus.Deleted)
+    //         {
+    //             data.Remove(args.Item);
+    //             StateHasChanged();
+    //             return;
+    //         }
+    //     }
+    //     catch
+    //     {
+    //         args.Item.Status = old; // geri al
+    //         StateHasChanged();
+    //         return;
+    //     }
+
+    //     if (args.ToItem != null && args.ToItem != args.Item)
+    //     {
+    //         data.Remove(args.Item);
+    //         data.Insert(data.IndexOf(args.ToItem), args.Item);
+    //     }
+
+    //     StateHasChanged();
+    // }
+
+    // async void OnDrop(RadzenDropZoneItemEventArgs<TaskCardVm> args)
+    // {
+    //     if (args.FromZone == args.ToZone && args.ToItem == args.Item) return;
+
+    //     var old = args.Item.Status;
+    //     args.Item.Status = (JobStatus)args.ToZone.Value;
+
+    //     try
+    //     {
+    //         await JobsApi.UpdateAssignmentStatusAsync(args.Item.AssignmentId, args.Item.Status);
+    //     }
+    //     catch
+    //     {
+    //         // Hata olursa geri al (örn. başkasının işini taşımaya çalıştıysa 403 gelir)
+    //         args.Item.Status = old;
+    //         // istersen toast göster
+    //     }
+
+    //     if (args.ToItem != null && args.ToItem != args.Item)
+    //     {
+    //         data.Remove(args.Item);
+    //         data.Insert(data.IndexOf(args.ToItem), args.Item);
+    //     }
+
+    //     StateHasChanged();
+    // }
+
+    public class TaskCardVm
     {
-        NotStarted,
-        Started,
-        Completed,
-        Deleted
+        public long JobId { get; set; }
+        public long AssignmentId { get; set; }
+        public JobStatus Status { get; set; }
+        public string Title { get; set; } = "";
+        public string? Description { get; set; }
+        public DateTime Start { get; set; }
+        public DateTime End { get; set; }
+        public JobAssignmentDto? Me { get; set; }
     }
 }
-

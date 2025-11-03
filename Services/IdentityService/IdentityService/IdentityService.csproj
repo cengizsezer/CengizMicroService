@@ -32,4 +32,13 @@
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.12.1" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="IntegrationEvents\EventHandlers\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\EventBus.Base\EventBus.Base.csproj" />
+		<ProjectReference Include="..\..\..\EventBus.Factory\EventBus.Factory.csproj" />
+	</ItemGroup>
+
 </Project>

@@ -1,8 +1,8 @@
-﻿using CatalogService.Api.Infrastructure.Interface;
+﻿using CatalogService.Api.Infrastructure.Accessor;
 
 namespace CatalogService.Api.Infrastructure.Context
 {
-    public sealed class DesignTimeTenantAccessor : ITenantAccessor
+    public sealed class DesignTimeTenantAccessor : IHttpCurrentTenant
     {
         private readonly string? _tenant;
         public DesignTimeTenantAccessor(string? tenant = null)

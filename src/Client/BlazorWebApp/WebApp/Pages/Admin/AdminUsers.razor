@@ -21,13 +21,18 @@
         </div>
     </div>
 
-    <RadzenDataGrid TItem="UserListItemDto" Data="@users" AllowPaging="true" PageSize="20"
-                    AllowSorting="true" AllowFiltering="false" RowSelect="@Edit"
-                    LogicalFilterOperator="LogicalFilterOperator.And">
+    <RadzenDataGrid TItem="UserListItemDto"
+                    Data="@users"
+                    AllowPaging="true" PageSize="20"
+                    AllowSorting="true"
+                    AllowFiltering="false"
+                    LogicalFilterOperator="LogicalFilterOperator.And" >
+
         <Columns>
             <RadzenDataGridColumn TItem="UserListItemDto" Property="DisplayName" Title="Ad Soyad" />
             <RadzenDataGridColumn TItem="UserListItemDto" Property="Email" Title="E-posta" />
             <RadzenDataGridColumn TItem="UserListItemDto" Property="FirmName" Title="Firma" />
+
             <RadzenDataGridColumn TItem="UserListItemDto" Title="Roller">
                 <Template Context="u">
                     @if (u?.Roles is { Length: > 0 })
@@ -40,16 +45,20 @@
                     }
                 </Template>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="UserListItemDto" Title="İşlemler" Width="180px">
+
+            <RadzenDataGridColumn TItem="UserListItemDto" Title="İşlemler" Width="220px">
                 <Template Context="u">
-                    <RadzenButton Icon="edit" Size="ButtonSize.Small" class="rz-mr-2"
-                                  Click="@(async _ => await Edit(u))" />
-                    <RadzenButton Icon="security" Size="ButtonSize.Small" class="rz-mr-2"
-                                  Click="@(async _ => await AssignRoles(u))" />
-                    <RadzenButton Icon="domain" Size="ButtonSize.Small" class="rz-mr-2"
-                                  Click="@(async _ => await AssignFirm(u))" />
-                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
-                                  Click="@(async _ => await Delete(u))" />
+                    <!-- olay satıra balonlanmasın -->
+                    <span @onclick:stopPropagation @onkeydown:stopPropagation>
+                        <RadzenButton Icon="edit" Size="ButtonSize.Small" class="rz-mr-2"
+                                      Click="@(async _ => await Edit(u))" />
+                        <RadzenButton Icon="security" Size="ButtonSize.Small" class="rz-mr-2"
+                                      Click="@(async _ => await AssignRoles(u))" />
+                        <RadzenButton Icon="domain" Size="ButtonSize.Small" class="rz-mr-2"
+                                      Click="@(async _ => await AssignFirm(u))" />
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                      Click="@(async _ => await Delete(u))" />
+                    </span>
                 </Template>
             </RadzenDataGridColumn>
         </Columns>
@@ -59,6 +68,7 @@
 @code {
     string search = "";
     List<UserListItemDto> users = new();
+    UserListItemDto? selected = null;
 
     protected override async Task OnInitializedAsync() => await Load();
     async Task Reload() => await Load();
@@ -72,8 +82,8 @@
     async Task Create()
     {
         var ok = await Dialog.OpenAsync<UserEditDialog>("Yeni Kullanıcı",
-                    new() { ["Model"] = new UserEditDto() },
-                    new DialogOptions { Width = "600px" });
+            new() { ["Model"] = new UserEditDto() },
+            new DialogOptions { Width = "600px" });
 
         if (ok is bool b && b)
         {
@@ -91,17 +101,17 @@
     {
         var full = await Admin.GetUserByIdAsync(u.Id);
         var ok = await Dialog.OpenAsync<UserEditDialog>($"{u.DisplayName} – Düzenle",
-                    new()
-                    {
-                        ["Model"] = new UserEditDto
-                        {
-                            Id = full.Id,
-                            DisplayName = full.DisplayName,
-                            Email = full.Email,
-                            Phone = full.Phone
-                        }
-                    },
-                    new DialogOptions { Width = "600px" });
+            new()
+            {
+                ["Model"] = new UserEditDto
+                {
+                    Id = full.Id,
+                    DisplayName = full.DisplayName,
+                    Email = full.Email,
+                    Phone = full.Phone
+                }
+            },
+            new DialogOptions { Width = "600px" });
 
         if (ok is bool b && b)
         {
@@ -118,8 +128,8 @@
     async Task AssignRoles(UserListItemDto u)
     {
         var ok = await Dialog.OpenAsync<RoleAssignDialog>($"{u.DisplayName} – Roller",
-                    new() { ["UserId"] = u.Id },
-                    new DialogOptions { Width = "520px", Height = "70vh" });
+            new() { ["UserId"] = u.Id },
+            new DialogOptions { Width = "520px", Height = "70vh" });
 
         if (ok is bool b && b)
         {
@@ -136,8 +146,8 @@
     async Task AssignFirm(UserListItemDto u)
     {
         var ok = await Dialog.OpenAsync<FirmAssignDialog>($"{u.DisplayName} – Firma",
-                    new() { ["UserId"] = u.Id },
-                    new DialogOptions { Width = "520px", Height = "60vh" });
+            new() { ["UserId"] = u.Id },
+            new DialogOptions { Width = "520px", Height = "60vh" });
 
         if (ok is bool b && b)
         {
@@ -154,7 +164,8 @@
     async Task Delete(UserListItemDto u)
     {
         var confirm = await Dialog.Confirm($"{u.DisplayName} silinsin mi?", "Onay",
-                        new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+
         if (confirm == true)
         {
             var ok = await Admin.DeleteUserAsync(u.Id);

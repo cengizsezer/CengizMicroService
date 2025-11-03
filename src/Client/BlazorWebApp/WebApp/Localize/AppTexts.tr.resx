@@ -1,0 +1,37 @@
+﻿<root>
+	<resheader name="resmimetype">
+		<value>text/microsoft-resx</value>
+	</resheader>
+	<resheader name="version">
+		<value>2.0</value>
+	</resheader>
+	<resheader name="reader">
+		<value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<resheader name="writer">
+		<value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+
+	<data name="AddAppointment.Title" xml:space="preserve"><value>Başlık</value></data>
+	<data name="AddAppointment.Description" xml:space="preserve"><value>Açıklama</value></data>
+	<data name="AddAppointment.Start" xml:space="preserve"><value>Başlangıç</value></data>
+	<data name="AddAppointment.End" xml:space="preserve"><value>Bitiş</value></data>
+	<data name="AddAppointment.Assignees" xml:space="preserve"><value>Atananlar</value></data>
+	<data name="AddAppointment.AlarmToggle" xml:space="preserve"><value>Alarm kur</value></data>
+	<data name="AddAppointment.RemindPrevDay" xml:space="preserve"><value>1 gün önce 08:00’te</value></data>
+	<data name="AddAppointment.RemindOnDay" xml:space="preserve"><value>Görev günü 08:00’te</value></data>
+	<data name="AddAppointment.Timezone" xml:space="preserve"><value>Saat dilimi</value></data>
+	<data name="AddAppointment.EnterEmail" xml:space="preserve"><value>E-posta gir</value></data>
+	<data name="AddAppointment.Email" xml:space="preserve"><value>E-posta</value></data>
+	<data name="AddAppointment.Save" xml:space="preserve"><value>Kaydet</value></data>
+
+	<data name="Hint.OnDayPast" xml:space="preserve"><value>Bugün 08:00 geçtiği için bugüne hatırlatma ayarlanamaz.</value></data>
+	<data name="Hint.PrevDayNotPossible" xml:space="preserve"><value>Görev tarihi bugün veya geçmişte olduğu için 1 gün önce hatırlatma ayarlanamaz.</value></data>
+	<data name="Hint.PrevDayTooLate" xml:space="preserve"><value>Yarın için 1 gün önce 08:00 hatırlatmasının saati geçti.</value></data>
+
+	<data name="Validation.TitleRequired" xml:space="preserve"><value>Başlık zorunlu</value></data>
+	<data name="Validation.StartRequired" xml:space="preserve"><value>Başlangıç zorunlu</value></data>
+	<data name="Validation.EndRequired" xml:space="preserve"><value>Bitiş zorunlu</value></data>
+	<data name="Validation.EmailRequired" xml:space="preserve"><value>E-posta zorunlu</value></data>
+	<data name="Validation.EmailInvalid" xml:space="preserve"><value>Geçerli bir e-posta adresi girin</value></data>
+</root>

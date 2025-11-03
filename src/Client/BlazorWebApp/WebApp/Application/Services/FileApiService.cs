@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components.Forms;
 using Newtonsoft.Json;
+using System.Net;
 using System.Net.Http.Headers;
 using WebApp.Application.Services.Interfaces;
 using WebApp.Extensions;
@@ -74,6 +75,21 @@ namespace WebApp.Application.Services
             var list = GetAndUnwrapAsync<List<FileInfoDto>>(url, ct); 
             return list; ;
 
+        }
+
+        public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)
+        {
+            // Diğer endpoint’lerin pattern’ine uyarak: delete?id=123
+            using var resp = await _http.DeleteAsync($"delete?id={id}", ct);
+
+            // API’niz 204 NoContent dönüyorsa direkt true
+            if (resp.StatusCode == HttpStatusCode.NoContent) return true;
+
+            if (!resp.IsSuccessStatusCode) return false;
+
+            var json = await resp.Content.ReadAsStringAsync(ct);
+            var env = JsonConvert.DeserializeObject<HttpDataResponse<bool>>(json);
+            return env?.Data == true;
         }
 
         public Task<List<FileInfoDto>?> ListAsyncForDeclType(string companyId, int year, int month, string declType, CancellationToken ct = default)

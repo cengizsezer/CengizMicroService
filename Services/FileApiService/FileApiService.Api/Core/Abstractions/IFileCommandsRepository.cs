@@ -1,4 +1,5 @@
 ﻿using FileApiService.Api.Domain.Dtos;
+using FluentResults;
 
 namespace FileApiService.Api.Core.Abstractions
 {
@@ -6,5 +7,6 @@ namespace FileApiService.Api.Core.Abstractions
     {
         Task<int> AddFileMetaAsync(FileMetaDto dto, CancellationToken ct);
         Task UpsertCompanyDocMetaAsync(FileMetaDto dto, CancellationToken ct); // NEW
+        Task DeleteFileMetaAsync(int id, CancellationToken ct);
     }
 }

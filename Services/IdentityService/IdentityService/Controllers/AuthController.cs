@@ -1,12 +1,15 @@
-﻿using IdentityService.Application.Models;
+﻿using Azure.Core;
+using EventBus.Base.Abstraction;
+using IdentityService.Application.Models;
 using IdentityService.Application.Services;
 using IdentityService.Domain.Entities;
 using IdentityService.Persistence;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using IdentityService.IntegrationEvents.Event;
 
 namespace IdentityService.Controllers
 {
@@ -17,15 +20,17 @@ namespace IdentityService.Controllers
         private readonly IIdentityService _identityService;
         private readonly IdentityDbContext _context;
         private readonly UserManager<User> _userManager;
-
+        private readonly IEventBus _eventBus;
         public AuthController(
             IIdentityService identityService,
             IdentityDbContext context,
-            UserManager<User> userManager)
+            UserManager<User> userManager
+            , IEventBus eventBus)
         {
             _identityService = identityService;
             _context = context;
             _userManager = userManager;
+            _eventBus = eventBus;
         }
 
         [AllowAnonymous]
@@ -79,9 +84,26 @@ namespace IdentityService.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequestModel model)
         {
-            var ok = await _identityService.RegisterAsync(model);
-            if (!ok) return BadRequest("Bu kullanıcı zaten var.");
-            return Ok(new RegisterResponseModel { Success = true, Message = "Kayıt başarılı" });
+           
+            var result = await _identityService.RegisterAsync(model); // => RegisterResult
+            
+            if (result.Success)
+            {
+                // Publish SUCCESS
+                var registerSuccessEvent = new UserRegisterSuccessIntegrationEvent(result.Email);
+                _eventBus.Publish(registerSuccessEvent);
+
+                return Ok(new RegisterResponseModel { Success = true, Message = "Kayıt başarılı" });
+            }
+            else
+            {
+                // Publish FAILED (ör: zaten var, policy fail, vb.)
+                var registerFailedEvent= new UserRegisterFailedIntegrationEvent(result.Email, result.ErrorMessage ?? "Kayıt başarısız");
+                _eventBus.Publish(registerFailedEvent);
+
+
+                return BadRequest(result.ErrorMessage ?? "Kayıt başarısız");
+            }
         }
 
         // Aktif profil bilgileri

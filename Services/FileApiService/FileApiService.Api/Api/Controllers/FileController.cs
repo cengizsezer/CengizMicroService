@@ -96,5 +96,17 @@ namespace FileApiService.Api.Api.Controllers
             [FromServices] IGetFilesInfoQueryHandler h,
             CancellationToken ct)
             => h.HandleAsync(new GetFilesInfoQuery { CompanyId = companyId, Year = year, Month = month, DeclType = declType }, ct);
+
+
+        [HttpDelete("delete")]
+        public async Task<ActionResult<HttpDataResponse<bool>>> Delete(
+    [FromQuery] int id,
+    [FromServices] IDeleteFileCommandHandler handler,
+    CancellationToken ct)
+        {
+            var companyId = User.FindFirst("company_id")?.Value; // varsa
+            var res = await handler.HandleAsync(new DeleteFileCommand(id, companyId), ct);
+            return Ok(res); // { data: true/false } — sizin pattern’le uyumlu
+        }
     }
 }

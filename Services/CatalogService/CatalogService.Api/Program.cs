@@ -1,16 +1,26 @@
-﻿using CatalogService.Api.Controllers;
-using CatalogService.Api.Core.Application.Mapping;
-using CatalogService.Api.Extensions;
+﻿using CatalogService.Api.Extensions;
+using CatalogService.Api.Features.Education.Mapping;
+using CatalogService.Api.Features.Expenses.Mapping;
+using CatalogService.Api.Features.Jobs.Service;
+using CatalogService.Api.Features.Vehicles.Mapping;
+using CatalogService.Api.Features.Vehicles.Service;
 using CatalogService.Api.Infrastructure;
 using CatalogService.Api.Infrastructure.Accessor;
+using CatalogService.Api.Infrastructure.Auth;
 using CatalogService.Api.Infrastructure.Context;
-using CatalogService.Api.Infrastructure.Interface;
+using EventBus.Base;
+using EventBus.Base.Abstraction;
+using EventBus.Factory;
 using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using RabbitMQ.Client;
 using Serilog;
+using System.Text;
 
 var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
 
@@ -35,6 +45,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 builder.Configuration.AddConfiguration(configuration);
 builder.Services.AddScoped<VehicleService>(); // domain servisin
+
 if (env == "Docker")
 {
     builder.WebHost.UseUrls("http://0.0.0.0:5004"); // container dışına açıl
@@ -58,7 +69,66 @@ builder.Services.AddAutoMapper(typeof(ExpenseProfile));
 builder.Services.AddAutoMapper(typeof(VehicleProfile));
 builder.Services.AddAutoMapper(typeof(EducationProfile));
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ITenantAccessor, HttpTenantAccessor>();
+builder.Services.AddScoped<IHttpCurrentTenant, HttpCurrentTenant>();
+builder.Services.AddScoped<IJobService, JobService>();
+builder.Services.AddScoped<IHttpCurrentUser, HttpCurrentUser>();
+builder.Services.AddTransient<AuthForwardingHandler>();
+builder.Services.AddAuthorization();
+
+builder.Services.AddSingleton<IEventBus>(sp =>
+{
+    var cfg = builder.Configuration;
+    var factory = new ConnectionFactory
+    {
+        HostName = cfg["RabbitMQ:HostName"] ?? "localhost",
+        Port = int.TryParse(cfg["RabbitMQ:Port"], out var p) ? p : 5672,
+        UserName = cfg["RabbitMQ:UserName"] ?? "guest",
+        Password = cfg["RabbitMQ:Password"] ?? "guest",
+        AutomaticRecoveryEnabled = true
+    };
+
+    var ebCfg = new EventBusConfig
+    {
+        ConnectionRetryCount = 5,
+        EventNameSuffix = "IntegrationEvent",
+        SubscriberClientAppName = "CatalogService",   // sadece isim
+        EventBusType = EventBusType.RabbitMQ,
+        Connection = factory
+    };
+
+    return EventBusFactory.Create(ebCfg, sp);
+});
+
+builder.Services.AddCors(opt =>
+{
+    opt.AddPolicy("wasm", p => p
+        .WithOrigins("http://localhost:2000")
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials());
+});
+
+builder.Services.AddAuthentication(o =>
+{
+    o.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    o.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(o =>
+{
+    o.RequireHttpsMetadata = false; // dev
+    var jwt = builder.Configuration.GetSection("Jwt");
+    o.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidIssuer = jwt["Issuer"],
+        ValidateAudience = true,
+        ValidAudience = jwt["Audience"],
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["SigningKey"]!)),
+        ValidateLifetime = true
+    };
+});
+
 var app = builder.Build();
 
 if (args.Contains("--seed-force"))
@@ -208,11 +278,14 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
+    app.UseDeveloperExceptionPage(); // swagger'ın hemen üstü/altı fark etmez
     app.UseSwaggerUI();
 }
 
 // Middleware
 app.UseHttpsRedirection();
+app.UseCors("wasm");
+app.UseAuthentication();
 app.UseAuthorization();
 
 // Routing

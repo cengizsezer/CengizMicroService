@@ -7,7 +7,7 @@
       "DownstreamScheme": "http",
 
       "UpstreamPathTemplate": "/catalog/{everything}",
-      "UpstreamHttpMethod": [ "Get", "Post", "Delete", "Put" ],
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS" ],
       "UpstreamScheme": "http"
     },
     {

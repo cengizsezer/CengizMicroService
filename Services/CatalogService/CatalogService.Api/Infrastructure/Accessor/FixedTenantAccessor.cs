@@ -1,8 +1,6 @@
-﻿using CatalogService.Api.Infrastructure.Interface;
-
-namespace CatalogService.Api.Infrastructure.Accessor
+﻿namespace CatalogService.Api.Infrastructure.Accessor
 {
-    public sealed class FixedTenantAccessor : ITenantAccessor
+    public sealed class FixedTenantAccessor : IHttpCurrentTenant
     {
         public FixedTenantAccessor(string? tenantNo) => CurrentTenantNo = tenantNo;
         public string? CurrentTenantNo { get; }

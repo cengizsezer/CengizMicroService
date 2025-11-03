@@ -1,5 +1,6 @@
 ﻿namespace WebApp.Application.Services
 {
+    using System.Net;
     using System.Net.Http.Json;
     using WebApp.Application.Services.Interfaces;
     using WebApp.Shared.Dto.Admin;
@@ -45,8 +46,22 @@
         public Task<List<FirmDto>> GetFirmsAsync()
             => _http.GetFromJsonAsync<List<FirmDto>>($"{Base}/firms");
 
-        public Task<int?> GetUserFirmIdAsync(int userId)
-            => _http.GetFromJsonAsync<int?>($"{Base}/users/{userId}/firm");
+        public async Task<int?> GetUserFirmIdAsync(int userId)
+        {
+            var resp = await _http.GetAsync($"auth/admin/users/{userId}/firm");
+            if (!resp.IsSuccessStatusCode)
+                return null;
+
+            // 204 (No Content) kontrolü
+            if (resp.StatusCode == HttpStatusCode.NoContent)
+                return null;
+
+            // boş body kontrolü
+            if (resp.Content.Headers.ContentLength == 0)
+                return null;
+
+            return await resp.Content.ReadFromJsonAsync<int?>();
+        }
 
         public async Task<bool> SetUserFirmAsync(int userId, int? firmId)
             => (await _http.PutAsJsonAsync($"{Base}/users/{userId}/firm", new { firmId })).IsSuccessStatusCode;

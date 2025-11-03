@@ -1,133 +1,224 @@
 ﻿@page "/calendarpage"
-@using WebApp.Domain.Models
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.Scheduling
 @inject DialogService DialogService
+@inject IJobsApi JobsApi
+@inject NotificationService Notif
+@inject AuthenticationStateProvider Auth
+@using System.Security.Claims;
 
-@* <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" class="rz-p-4 rz-mb-6 rz-border-radius-1" Style="border: var(--rz-grid-cell-border);">
-    <RadzenLabel Text="Schedule Start Month:" />
-    <RadzenSelectBar @bind-Value="@startMonth" TextProperty="Text" ValueProperty="Value" Data="@(Enum.GetValues(typeof(Month)).Cast<Month>().Select(t => new { Text = $"{t}", Value = t }))" Size="ButtonSize.Small" class="rz-display-xl-flex" />
-</RadzenStack> *@
 
-<RadzenScheduler @ref=@scheduler SlotRender=@OnSlotRender style="height: 768px;" TItem="Appointment" Data=@appointments StartProperty="Start" EndProperty="End"
-TextProperty="Text" SelectedIndex="0"
-SlotSelect=@OnSlotSelect AppointmentSelect=@OnAppointmentSelect AppointmentRender=@OnAppointmentRender MonthSelect=@OnMonthSelect>
+<RadzenScheduler @ref="scheduler"
+                 TItem="AppointmentVm"
+                 Data="@appointments"
+                 StartProperty="Start" EndProperty="End" TextProperty="Text"
+                 SelectedIndex="0"
+                 SlotRender="@OnSlotRender"
+                 SlotSelect="@OnSlotSelect"
+                 AppointmentSelect="@OnAppointmentSelect"
+                 AppointmentRender="@OnAppointmentRender"
+                 MonthSelect="@OnMonthSelect"
+                 style="height: 768px;">
     <RadzenMonthView />
-   @*  <RadzenYearPlannerView StartMonth="@startMonth" />
-    <RadzenYearTimelineView StartMonth="@startMonth" /> *@
     <RadzenYearView StartMonth="@startMonth" />
 </RadzenScheduler>
 
-
-
 @code {
-    RadzenScheduler<Appointment> scheduler;
- 
-    Dictionary<DateTime, string> events = new Dictionary<DateTime, string>();
-    Month startMonth = Month.January;
+    RadzenScheduler<AppointmentVm> scheduler;
 
-    IList<Appointment> appointments = new List<Appointment>
+    Month startMonth = Month.January;
+    List<AppointmentVm> appointments = new();
+
+    protected override async Task OnInitializedAsync()
     {
-        new Appointment { Start = DateTime.Today.AddDays(-2), End = DateTime.Today.AddDays(-2), Text = "Beyanname" },
-        new Appointment { Start = DateTime.Today.AddDays(-11), End = DateTime.Today.AddDays(-10), Text = "Day off" },
-        new Appointment { Start = DateTime.Today.AddDays(-10), End = DateTime.Today.AddDays(-8), Text = "Work from home" },
-        new Appointment { Start = DateTime.Today.AddHours(10), End = DateTime.Today.AddHours(12), Text = "Online meeting" },
-        new Appointment { Start = DateTime.Today.AddHours(10), End = DateTime.Today.AddHours(13), Text = "Skype call" },
-        new Appointment { Start = DateTime.Today.AddHours(14), End = DateTime.Today.AddHours(14).AddMinutes(30), Text = "Dentist appointment" },
-        new Appointment { Start = DateTime.Today.AddDays(1), End = DateTime.Today.AddDays(7), Text = "Vacation" },
-        new Appointment { Start = DateTime.Today.AddDays(21).AddHours(10), End = DateTime.Today.AddDays(21).AddHours(11), Text = "Client #1" },
-        new Appointment { Start = DateTime.Today.AddDays(21).AddHours(11), End = DateTime.Today.AddDays(21).AddHours(12), Text = "Client #2" },
-        new Appointment { Start = DateTime.Today.AddDays(21).AddHours(12), End = DateTime.Today.AddDays(21).AddHours(13), Text = "Client #3" },
-        new Appointment { Start = DateTime.Today.AddDays(21).AddHours(13), End = DateTime.Today.AddDays(21).AddHours(14), Text = "Client #4" },
-        new Appointment { Start = DateTime.Today.AddDays(17).AddHours(10), End = DateTime.Today.AddDays(17).AddHours(11), Text = "Client #1" },
-        new Appointment { Start = DateTime.Today.AddDays(17).AddHours(11), End = DateTime.Today.AddDays(17).AddHours(12), Text = "Client #2" },
-        new Appointment { Start = DateTime.Today.AddDays(18).AddHours(10), End = DateTime.Today.AddDays(18).AddHours(11), Text = "Client #1" },
-        new Appointment { Start = DateTime.Today.AddDays(18).AddHours(11), End = DateTime.Today.AddDays(18).AddHours(12), Text = "Client #2" },
-        new Appointment { Start = DateTime.Today.AddDays(18).AddHours(12), End = DateTime.Today.AddDays(18).AddHours(13), Text = "Client #3" },
-        new Appointment { Start = DateTime.Today.AddDays(18).AddHours(13), End = DateTime.Today.AddDays(18).AddHours(14), Text = "Client #4" },
-        new Appointment { Start = DateTime.Today.AddDays(18).AddHours(14), End = DateTime.Today.AddDays(23).AddHours(15), Text = "Client #5" },
-        new Appointment { Start = DateTime.Today.AddDays(6).AddHours(10), End = DateTime.Today.AddDays(6).AddHours(11), Text = "Client #1" },
-        new Appointment { Start = DateTime.Today.AddDays(6).AddHours(11), End = DateTime.Today.AddDays(6).AddHours(12), Text = "Client #2" },
-        new Appointment { Start = DateTime.Today.AddDays(6).AddHours(12), End = DateTime.Today.AddDays(6).AddHours(13), Text = "Client #3" },
-        new Appointment { Start = DateTime.Today.AddDays(6).AddHours(13), End = DateTime.Today.AddDays(6).AddHours(14), Text = "Client #4" },
-        new Appointment { Start = DateTime.Today.AddDays(7).AddHours(10), End = DateTime.Today.AddDays(7).AddHours(11), Text = "Client #1" },
-        new Appointment { Start = DateTime.Today.AddDays(7).AddHours(11), End = DateTime.Today.AddDays(7).AddHours(12), Text = "Client #2" },
-        new Appointment { Start = DateTime.Today.AddDays(8).AddHours(10), End = DateTime.Today.AddDays(8).AddHours(11), Text = "Client #1" },
-        new Appointment { Start = DateTime.Today.AddDays(8).AddHours(11), End = DateTime.Today.AddDays(8).AddHours(12), Text = "Client #2" },
-        new Appointment { Start = DateTime.Today.AddDays(9).AddHours(10), End = DateTime.Today.AddDays(9).AddHours(11), Text = "Client #1" },
-        new Appointment { Start = DateTime.Today.AddDays(9).AddHours(11), End = DateTime.Today.AddDays(9).AddHours(12), Text = "Client #2" },
-        new Appointment { Start = DateTime.Today.AddDays(13).AddHours(10), End = DateTime.Today.AddDays(16).AddHours(11), Text = "Client #1" },
-        new Appointment { Start = DateTime.Today.AddDays(13).AddHours(11), End = DateTime.Today.AddDays(16).AddHours(12), Text = "Client #2" },
-        new Appointment { Start = DateTime.Today.AddDays(13).AddHours(12), End = DateTime.Today.AddDays(13).AddHours(13), Text = "Client #3" },
-        new Appointment { Start = DateTime.Today.AddDays(13).AddHours(13), End = DateTime.Today.AddDays(16).AddHours(14), Text = "Client #4" },
-        new Appointment { Start = DateTime.Today.AddDays(13).AddHours(14), End = DateTime.Today.AddDays(16).AddHours(15), Text = "Client #5" },
-    };
+        await LoadMonth(DateTime.Today);
+    }
+    // async Task LoadMonth(DateTime anyDayInMonth)
+    // {
+    //     try
+    //     {
+    //         var from = new DateTime(anyDayInMonth.Year, anyDayInMonth.Month, 1, 0, 0, 0, DateTimeKind.Local);
+    //         var to = from.AddMonths(1).AddTicks(-1);
+
+    //         var jobs = await JobsApi.GetRangeAsync(from, to);
+    //         appointments = jobs.Select(j => new AppointmentVm
+    //         {
+    //             JobId = j.Id,
+    //             Start = j.Start,
+    //             End = j.End,
+    //             Text = j.Title,
+    //             Title = j.Title,
+    //             Description = j.Description ?? "",
+    //             AssigneeIds = j.Assignments.Select(a => a.UserId).ToList(),
+    //             AssigneeNames = j.Assignments.Select(a => a.UserName).ToList()
+    //         }).ToList();
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         appointments = new(); // UI ayakta kalsın
+    //         Notif.Notify(new NotificationMessage
+    //         {
+    //             Severity = NotificationSeverity.Warning,
+    //             Summary = "Kayıtlar yüklenemedi",
+    //             Detail = ex.Message, // prod’da daha genel bir mesaj verilebilir
+    //             Duration = 4000
+    //         });
+    //     }
+
+    //     await scheduler?.Reload();
+    //     StateHasChanged();
+    // }
+
+
+    async Task LoadMonth(DateTime anyDayInMonth)
+    {
+        var from = new DateTime(anyDayInMonth.Year, anyDayInMonth.Month, 1, 0, 0, 0, DateTimeKind.Local);
+        var to = from.AddMonths(1).AddTicks(-1);
+
+        var auth = await Auth.GetAuthenticationStateAsync();
+        var meId =
+            auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? auth.User.FindFirst("nameid")?.Value
+            ?? auth.User.FindFirst("sub")?.Value
+            ?? auth.User.FindFirst("uid")?.Value;
+
+        // DEBUG: bir kere bakıp doğrula
+        Console.WriteLine($"[Calendar] meId = {meId ?? "<null>"}");
+
+        // meId yoksa assignee filtresi göndermeyelim
+        var jobs = string.IsNullOrWhiteSpace(meId)
+            ? await JobsApi.GetRangeAsync(from, to)
+            : await JobsApi.GetRangeAsync(from, to, assigneeId: meId);
+
+        // meId varsa hem user hem Deleted filtresi; yoksa sadece Deleted filtresi
+        appointments = jobs
+            .Where(j => j.Assignments.Any(a =>
+                (string.IsNullOrWhiteSpace(meId) || a.UserId == meId) &&
+                a.Status != JobStatus.Deleted))
+            .Select(j => new AppointmentVm
+            {
+                JobId = j.Id,
+                Start = j.Start,
+                End = j.End,
+                Text = j.Title,
+                Title = j.Title,
+                Description = j.Description ?? "",
+                AssigneeIds = j.Assignments
+                               .Where(a => a.Status != JobStatus.Deleted)
+                               .Select(a => a.UserId).ToList(),
+                AssigneeNames = j.Assignments
+                                 .Where(a => a.Status != JobStatus.Deleted)
+                                 .Select(a => a.UserName).ToList()
+            })
+            .ToList();
+
+        await scheduler?.Reload();
+        StateHasChanged();
+    }
+
+
+
+    // async Task LoadMonth(DateTime anyDayInMonth)
+    // {
+    //     var from = new DateTime(anyDayInMonth.Year, anyDayInMonth.Month, 1, 0, 0, 0, DateTimeKind.Local);
+    //     var to = from.AddMonths(1).AddTicks(-1);
+
+    //     var jobs = await JobsApi.GetRangeAsync(from, to); // backend çağrısı
+    //     appointments = jobs.Select(j => new AppointmentVm
+    //     {
+    //         JobId = j.Id,
+    //         Start = j.Start,
+    //         End = j.End,
+    //         Text = j.Title,
+    //         Title = j.Title,
+    //         Description = j.Description ?? "",
+    //         AssigneeIds = j.Assignments.Select(a => a.UserId).ToList(),     // <-- IDs
+    //         AssigneeNames = j.Assignments.Select(a => a.UserName).ToList()  // <-- sadece gösterim için
+    //     }).ToList();
+
+    //     await scheduler?.Reload();
+    //     StateHasChanged();
+    // }
 
     void OnSlotRender(SchedulerSlotRenderEventArgs args)
     {
-        // Highlight today in month view
         if (args.View.Text == "Month" && args.Start.Date == DateTime.Today)
-        {
             args.Attributes["style"] = "background: var(--rz-scheduler-highlight-background-color, rgba(255,220,40,.2));";
-        }
 
-        // Draw a line for new year if start month is not January
         if ((args.View.Text == "Planner" || args.View.Text == "Timeline") && args.Start.Month == 12 && startMonth != Month.January)
-        {
             args.Attributes["style"] = "border-bottom: thick double var(--rz-base-600);";
-        }
 
-        // Color the slot depending on number of appointments for that day
-        if (args.Appointments.Count() > 4)
-        {
-            args.Attributes["style"] = "background: #ffabab;";
-        }
-        else if (args.Appointments.Count() > 2)
-        {
-            args.Attributes["style"] = "background: #ffc988;";
-        }
-        else if (args.Appointments.Count() > 0)
-        {
-            args.Attributes["style"] = "background: #c3ffc3;";
-        }
+        if (args.Appointments.Count() > 4) args.Attributes["style"] = "background: #ffabab;";
+        else if (args.Appointments.Count() > 2) args.Attributes["style"] = "background: #ffc988;";
+        else if (args.Appointments.Count() > 0) args.Attributes["style"] = "background: #c3ffc3;";
     }
 
     async Task OnSlotSelect(SchedulerSlotSelectEventArgs args)
     {
-       
+        if (args.View.Text == "Year") return;
 
-        if(args.View.Text != "Year")
-        {            
-            Appointment data = await DialogService.OpenAsync<AddAppointmentPage>("Add Appointment",
-                new Dictionary<string, object> { { "Start", args.Start }, { "End", args.End } });
+        // Add dialog: CreateJobRequest döndüreceğiz
+        var createReq = await DialogService.OpenAsync<AddAppointmentPage>("Add Appointment",
+            new Dictionary<string, object> { { "Start", args.Start }, { "End", args.End } });
 
-            if (data != null)
-            {
-                appointments.Add(data);
-                // Either call the Reload method or reassign the Data property of the Scheduler
-                await scheduler.Reload();
-            }
-        }
-    }
-
-    async Task OnMonthSelect(SchedulerMonthSelectEventArgs args)
-    {
-        await Task.CompletedTask;
-    }
-
-    async Task OnAppointmentSelect(SchedulerAppointmentSelectEventArgs<Appointment> args)
-    {
-
-        await DialogService.OpenAsync<EditAppointmentPage>("Edit Appointment", new Dictionary<string, object> { { "Appointment", args.Data } });
-
-        await scheduler.Reload();
-    }
-
-    void OnAppointmentRender(SchedulerAppointmentRenderEventArgs<Appointment> args)
-    {
-        // Never call StateHasChanged in AppointmentRender - would lead to infinite loop
-
-        if (args.Data.Text == "Beyanname")
+        if (createReq is CreateJobRequest req)
         {
-            args.Attributes["style"] = "background: red";
+            await JobsApi.CreateAsync(req);                            // backend’e kaydet
+            await LoadMonth(args.Start);                               // ayı tazele
         }
+    }
+
+    async Task OnMonthSelect(Radzen.SchedulerMonthSelectEventArgs args)
+    {
+        var start = args.MonthStart;                  // örn: 2025-10-01 00:00
+        var end = start.AddMonths(1).AddTicks(-1);  // ayın son anı
+
+        await LoadMonth(start); // veya: await LoadRange(start, end);
+    }
+
+    async Task OnAppointmentSelect(SchedulerAppointmentSelectEventArgs<AppointmentVm> args)
+    {
+        var current = args.Data;
+
+        var result = await DialogService.OpenAsync<AddAppointmentPage>(
+            $"{current.Title} – Edit",
+            new Dictionary<string, object>
+            {
+                ["Start"] = current.Start,
+                ["End"] = current.End,
+                ["InitialTitle"] = current.Title,
+                ["InitialDescription"] = current.Description,
+                ["InitialAssigneeIds"] = current.AssigneeIds // List<string>
+            }
+        );
+
+        // Dialog iptal edildiyse null döner
+        if (result is not CreateJobRequest req)
+            return;
+
+        // CreateJobRequest’te Id yok; güncellenecek kaydın Id’si mevcut randevudan gelir
+        await JobsApi.UpdateAsync(current.JobId, req);
+
+        await LoadMonth(current.Start); // ekranda tazele
+    }
+
+
+
+    void OnAppointmentRender(SchedulerAppointmentRenderEventArgs<AppointmentVm> args)
+    {
+        if (args.Data.Text?.Equals("Beyanname", StringComparison.OrdinalIgnoreCase) == true)
+            args.Attributes["style"] = "background: red";
+    }
+
+    public class AppointmentVm
+    {
+        public long JobId { get; set; }
+        public DateTime Start { get; set; }
+        public DateTime End { get; set; }
+        public string Text { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public List<string> AssigneeIds { get; set; } = new();   // IDs
+        public List<string> AssigneeNames { get; set; } = new(); // UI gösterimi
     }
 }

@@ -1,11 +1,14 @@
 ﻿using Consul;
 using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Ocelot.DependencyInjection;
 using Ocelot.Middleware;
 using Ocelot.Provider.Consul;
+using System.Text;
 using Web.ApiGateway.Extensions;
 using Web.ApiGateway.Infrastructure;
 
@@ -44,10 +47,30 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new() { Title = "Web.ApiGateway", Version = "v1" });
 });
 
-builder.Services.ConfigureAuth(builder.Configuration);
+//builder.Services.ConfigureAuth(builder.Configuration);
 
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddTransient<HttpClientDelegatingHandler>();
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
+    {
+        o.RequireHttpsMetadata = false; // DEV
+        var jwt = builder.Configuration.GetSection("Jwt");
+        o.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwt["Issuer"],            // "identityserver.tr"
+            ValidateAudience = true,
+            ValidAudience = jwt["Audience"],        // "identityclient.tr"
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwt["SigningKey"]!)  // aynı key!
+            ),
+            ValidateLifetime = true
+        };
+    });
 
 builder.Services.AddHttpClient("basket", c =>
 {

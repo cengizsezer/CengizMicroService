@@ -71,16 +71,29 @@ namespace WebApp.Manager
             }
 
             // Çoklu firma -> diyalog
+    //        var result = await _dialog.OpenAsync<FirmSelectDialog>(
+    //"Firma Seçimi",
+    //new() { ["Firms"] = _firms },
+    //new DialogOptions
+    //{
+    //    Width = "60vw",
+    //    Height = "80vh",
+    //    CssClass = "firm-dialog",
+    //    CloseDialogOnOverlayClick = true
+    //});
+
+
+
             var result = await _dialog.OpenAsync<FirmSelectDialog>(
-    "Firma Seçimi",
-    new() { ["Firms"] = _firms },
-    new DialogOptions
-    {
-        Width = "60vw",
-        Height = "80vh",
-        CssClass = "firm-dialog",
-        CloseDialogOnOverlayClick = true
-    });
+   "Firma Seçimi",
+   new() { ["Firms"] = _firms },
+   new DialogOptions
+   {
+       Width = Settings != null ? Settings.Width : "1120px",
+       Height = null,
+       Left = Settings != null ? Settings.Left : null,
+       Top = Settings != null ? Settings.Top : null
+   });
 
             if (result is FirmaDto chosen)
             {
@@ -91,6 +104,30 @@ namespace WebApp.Manager
             return false; // iptal edildi
         }
 
+        DialogSettings _settings;
+        public DialogSettings Settings
+        {
+            get
+            {
+                return _settings;
+            }
+            set
+            {
+                if (_settings != value)
+                {
+                    _settings = value;
+                    
+                }
+            }
+        }
+
+        public class DialogSettings
+        {
+            public string Left { get; set; }
+            public string Top { get; set; }
+            public string Width { get; set; }
+            public string Height { get; set; }
+        }
         public async Task SelectFirmAsync(FirmaDto firm)
         {
             if (firm == null) return;

@@ -99,7 +99,18 @@ services:
       - s_rabbitmq
       - s_sqlserver            
      
-
+  notificationservice:
+    tty: true
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    networks:
+      - net_backendservices
+    depends_on:
+      - s_rabbitmq
+    external_links:
+      - c_graylog
+      - s_consul
+      - s_rabbitmq
 
   ocrservice.api:
     image: ocrservice.api

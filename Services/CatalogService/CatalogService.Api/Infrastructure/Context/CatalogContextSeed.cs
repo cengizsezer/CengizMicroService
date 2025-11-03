@@ -1,4 +1,4 @@
-﻿using CatalogService.Api.Core.Domain;
+﻿using CatalogService.Api.Features.Expenses.Domain;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

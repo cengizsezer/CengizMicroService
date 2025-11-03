@@ -12,6 +12,10 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Services/IdentityService/IdentityService/IdentityService.csproj", "Services/IdentityService/IdentityService/"]
+COPY ["src/Event/EventBus.Factory/EventBus.Factory.csproj", "src/BuildingBlocks/EventBus/EventBus.Factory/"]
+COPY ["src/Event/EventBus.AzureServiceBus/EventBus.AzureServiceBus.csproj", "src/BuildingBlocks/EventBus/EventBus.AzureServiceBus/"]
+COPY ["src/Event/EventBus.Base/EventBus.Base.csproj", "src/BuildingBlocks/EventBus/EventBus.Base/"]
+COPY ["src/Event/EventBus.RabbitMQ/EventBus.RabbitMQ.csproj", "src/BuildingBlocks/EventBus/EventBus.RabbitMQ/"]
 RUN dotnet restore "./Services/IdentityService/IdentityService/IdentityService.csproj"
 COPY . .
 WORKDIR "/src/Services/IdentityService/IdentityService"

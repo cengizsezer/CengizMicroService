@@ -123,6 +123,32 @@
   },
   {
     "ContainingType": "FileApiService.Api.Api.Controllers.FileController",
+    "Method": "Delete",
+    "RelativePath": "api/file/v1/delete",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SmallApiToolkit.Core.Response.HttpDataResponse\u00601[[System.Boolean, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "FileApiService.Api.Api.Controllers.FileController",
     "Method": "Download",
     "RelativePath": "api/file/v1/download",
     "HttpMethod": "GET",

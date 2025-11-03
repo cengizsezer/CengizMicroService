@@ -11,43 +11,43 @@
 @inject AppStateManager AppState
 @inject IIdentityService IdentityService
 
-<style>
-    .shadows div {
-        padding: 1rem;
-        width: 10rem;
-        text-align: center;
-    }
-</style>
+<RadzenDialogStyle Width="1120px" />
 
-<RadzenStack class="shadow rz-p-0 rz-p-md-12 rz-background-color-primary-lighter" Style="height:100%; width:100%;">
-    <RadzenCard class="rz-p-4 rz-background-color-primary-lighter"
-                Variant="Variant.Outlined">
-        <RadzenCarousel @ref="carousel"
-                        PagerOverlay="false"
-                        Interval="@interval"
-                        ButtonShade="Shade.Default"
-                        Style="height:500px"
-                        Auto="@auto">
-           
-            <Items>
-                @foreach (var f in Firms ?? Enumerable.Empty<FirmaDto>())
-                {
-                   
-                    <RadzenCarouselItem>
-                        <RadzenCard class="shadow rz-w-75">
-                            <FirmCardPage Firm="@f"
-                                          ShowClose="false"
-                                          ShowContinue="true"
-                                          OnContinue="Continue" />
-                        </RadzenCard>
-                    </RadzenCarouselItem>
-                }
-            </Items>
-        </RadzenCarousel>
-    </RadzenCard>
-</RadzenStack>
+<div class="firm-dialog">
+  <div class="pill-wrap">
+    <div class="pill-bg">
 
+      <!-- Orta beyaz kart -->
+      <div class="firm-card">
+                <RadzenCard class="rz-p-4 rz-background-color-primary-lighter"
+                            Variant="Variant.Outlined">
+                    <RadzenCarousel @ref="carousel"
+                                    PagerOverlay="false"
+                                    Interval="@interval"
+                                    ButtonShade="Shade.Default"
+                                    Style="height:500px"
+                                    Auto="@auto">
 
+                        <Items>
+                            @foreach (var f in Firms ?? Enumerable.Empty<FirmaDto>())
+                            {
+
+                                <RadzenCarouselItem>
+                                    <RadzenCard class="shadow rz-w-75">
+                                        <FirmCardPage Firm="@f"
+                                                      ShowClose="false"
+                                                      ShowContinue="true"
+                                                      OnContinue="Continue" />
+                                    </RadzenCard>
+                                </RadzenCarouselItem>
+                            }
+                        </Items>
+                    </RadzenCarousel>
+                </RadzenCard>
+      </div>
+    </div>
+  </div>
+</div>
 
 @code {
     RadzenCarousel? carousel;
@@ -74,6 +74,4 @@
         DialogService.Close(true);
         Nav.NavigateTo("/calendarpage");
     }
-}
-
-
+    }

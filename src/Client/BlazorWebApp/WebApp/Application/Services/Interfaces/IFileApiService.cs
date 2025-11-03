@@ -19,5 +19,7 @@ namespace WebApp.Application.Services.Interfaces
 
 
         Task<List<CompanyDocInfoDto>?> ListCompanyDocsAsync(string companyId, string? year = null, string? docCategory = null, CancellationToken ct = default);
+
+        Task<bool> DeleteAsync(int id, CancellationToken ct = default);
     }
 }

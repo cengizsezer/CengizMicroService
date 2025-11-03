@@ -214,95 +214,288 @@ code {
     }
 }
 
-/* (Opsiyonel) MASRAF'ı az sağa kaydırmak istersen: */
-/* .app-header .brand-line-2{ padding-left: .4ch; } */
-/* Dış sarmalayıcı; sadece spacing için */
-/* Geçici teşhis: elemanı yakalıyor muyuz? */
-/* Teşhis: gerçekten bu node’u seçiyor muyuz? ilk denemede açık bırak */
-/* kapsülü ortala */
-/* Dialog’ın kendi beyaz panelini kaldır */
-.firm-dialog .rz-dialog,
-.firm-dialog .rz-dialog-content {
-    background: transparent !important;
-    box-shadow: none !important;
+/* Dialog: iç scroll yok, yuvarlak dış hat */
+.rz-dialog .rz-dialog-content {
     padding: 0 !important;
-}
-
-/* Başlığı da gizlemek istersen */
-.firm-dialog .rz-dialog-titlebar {
-    display: none !important;
-}
-
-/* Wrapper: içeriği modala ortala */
-.firm-dialog .pill-wrap {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px 0;
-}
-
-/* Mor kapsül (oval) */
-.firm-dialog .pill-bg {
-    width: min(980px, 86vw); /* yatay genişlik */
-    height: 340px; /* daha küçük = daha oval */
-    background: linear-gradient(90deg, var(--rz-primary,#5b55e3), #6a63f1);
-    border-radius: 9999px;
-    padding: 28px 40px;
-    position: relative;
+    max-height: 88vh;
     overflow: hidden;
-    box-shadow: 0 12px 32px rgba(0,0,0,.12);
 }
 
-/* Carousel içeriğini ortala */
-.firm-dialog .chooser-carousel .rz-carousel-items {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.rz-dialog {
+    border-radius: 24px;
+    overflow: hidden;
+}
+
+/* SAHNE (örnekteki açık gri arka plan ve ince çerçeve) */
+.firm-dialog .pill-wrap {
+    padding: 16px 24px;
+}
+
+.firm-dialog .pill-bg {
+    width: 100%;
+    max-width: 1080px; /* sahne genişliği */
+    margin: 0 auto;
+    height: auto; /* içerik kadar uzasın */
+    background: #f5f6fa; /* açık gri */
+    border: 1px solid #e6e8ef; /* ince çerçeve */
+    border-radius: 14px; /* örnekteki gibi yumuşak köşe */
+    padding: 28px; /* iç boşluk */
+    box-shadow: 0 8px 22px rgba(0,0,0,.08); /* çok hafif dış gölge */
+    box-sizing: border-box;
+}
+
+/* İÇ BEYAZ KART (örnekteki küçük kart) */
+.firm-dialog .firm-card {
+    width: min(860px, 90%); /* kartı küçülttük */
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px 18px 14px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.06);
+    box-sizing: border-box;
+}
+
+/* Carousel yerleşimi */
+.firm-dialog .chooser-carousel {
     height: 100%;
 }
 
-/* Orta beyaz kart */
-.firm-dialog .firm-card {
-    width: min(820px, 92%);
-    background: #fff;
-    border-radius: 16px;
-    padding: 16px;
-    box-shadow: 0 8px 24px rgba(0,0,0,.08);
+    .firm-dialog .chooser-carousel .rz-carousel-items {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+.firm-dialog .firm-slide {
+    width: min(820px,100%);
     margin: 0 auto;
 }
 
-/* Okların dikey ortası */
-.firm-dialog .chooser-carousel .rz-carousel-prev,
-.firm-dialog .chooser-carousel .rz-carousel-next {
-    top: 50%;
-    transform: translateY(-50%);
+/* Üstteki iki bilgi kutusu için hafif kontur (varsa) */
+.firm-dialog .firm-card .info-card,
+.firm-dialog .firm-card .addr-card,
+.firm-dialog .firm-card .box,
+.firm-dialog .firm-card .rz-panel {
+    border: 1px solid #e6e8ef !important;
+    background: #fafbff !important;
+    border-radius: 8px !important;
 }
 
-    /* Ok buton görünümü */
-    .firm-dialog .chooser-carousel .rz-carousel-prev .rz-button,
-    .firm-dialog .chooser-carousel .rz-carousel-next .rz-button {
-        width: 40px;
-        height: 40px;
-        border-radius: 9999px;
-        background: #fff;
-        color: var(--rz-primary,#5b55e3);
-        border: none;
-        box-shadow: 0 6px 16px rgba(0,0,0,.15);
+/* DataGrid: köşeleri yuvarla, başlık açık gri, iç scroll yok */
+.firm-dialog .rz-datatable {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #e6e8ef;
+}
+
+.firm-dialog .rz-datatable-header,
+.firm-dialog .rz-datatable-header .rz-datatable-thead > tr > th {
+    background: #f1f3f9;
+    border-color: #e6e8ef;
+}
+
+.firm-dialog .rz-datatable-wrapper {
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+.firm-dialog .rz-datatable-table {
+    table-layout: fixed;
+}
+
+.firm-dialog .rz-datatable-tbody td:first-child {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Carousel oklarını örnekteki gibi sade yap */
+.chooser-carousel .rz-carousel-prev,
+.chooser-carousel .rz-carousel-next {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: transparent !important;
+    border: 0;
+    box-shadow: none;
+    color: #2f3542;
+}
+
+.chooser-carousel .rz-carousel-prev {
+    left: -6px;
+}
+
+.chooser-carousel .rz-carousel-next {
+    right: -6px;
+}
+
+    .chooser-carousel .rz-carousel-prev .rz-button-text,
+    .chooser-carousel .rz-carousel-next .rz-button-text {
+        display: none;
     }
 
 /* Pager noktaları */
-.firm-dialog .chooser-carousel .rz-carousel-indicators {
-    bottom: 10px;
+.chooser-carousel .rz-carousel-pages {
+    margin-top: 12px;
 }
 
-@media (max-width: 992px) {
+    .chooser-carousel .rz-carousel-pages .rz-page {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #cfd4e6;
+        margin: 0 4px;
+    }
+
+        .chooser-carousel .rz-carousel-pages .rz-page.rz-state-active {
+            background: #3b3f58;
+        }
+
+/* Mobil uyum */
+@media (max-width:720px) {
+    .firm-dialog .pill-wrap {
+        padding: 12px;
+    }
+
     .firm-dialog .pill-bg {
-        width: 92vw;
-        height: 300px;
-        padding: 20px 24px;
+        padding: 16px;
     }
 
     .firm-dialog .firm-card {
-        width: 94%;
+        width: 96%;
+        padding: 14px;
+    }
+
+    .firm-dialog .firm-slide {
+        width: 100%;
+    }
+
+    .chooser-carousel .rz-carousel-prev {
+        left: 2px;
+    }
+
+    .chooser-carousel .rz-carousel-next {
+        right: 2px;
     }
 }
+
+/* Eski özel oklar kalmışsa görüntüyü bozuyor → kapat */
+.firm-dialog .nav-arrow {
+    display: none !important;
+}
+
+/* Sahne: dikey + yatay tam merkezleme, üst/alt eşit boşluk */
+.firm-dialog .pill-bg {
+    display: flex; /* merkezleme için */
+    flex-direction: column; /* dikey akış */
+    justify-content: center; /* dikey merkez */
+    align-items: center; /* yatay merkez */
+    padding-block: 32px; /* ÜST=ALT eşit boşluk */
+}
+
+/* Beyaz kart: flex içinde gerçek merkez; dış margin’leri sıfırla */
+.firm-dialog .firm-card {
+    margin: 0; /* auto değil, net merkezleme */
+}
+
+    /* (Radzen) Carousel pager noktaları kartın içinde kalsın */
+    .firm-dialog .firm-card .rz-carousel-pages {
+        margin-top: 12px;
+    }
+
+.firm-dialog .pill-bg > .rz-carousel-pages {
+    display: none;
+}
+/* dışarı taşarsa gizle */
+
+/* --- OKLARI DIŞA TAŞI VE KESİLMESİN --- */
+
+/* Okların bulunduğu kapsayıcı kesinlikle konum referansı olsun */
+.firm-dialog .chooser-carousel {
+    position: relative;
+}
+
+/* Kart ve sahne ok taşmasına izin versin */
+.firm-dialog .pill-bg,
+.firm-dialog .firm-card,
+.firm-dialog .chooser-carousel {
+    overflow: visible !important;
+}
+
+/* Radzen okları: sahnenin içine, kartın DIŞINA al */
+.chooser-carousel .rz-carousel-prev,
+.chooser-carousel .rz-carousel-next {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #fff !important; /* gri zeminde net görünsün */
+    color: #2f3542;
+    border: 0;
+    box-shadow: 0 6px 20px rgba(0,0,0,.12);
+    z-index: 3;
+}
+
+/* Kart kenarından gri sahneye doğru taşı (negatif offset) */
+.chooser-carousel .rz-carousel-prev {
+    left: -84px;
+}
+
+.chooser-carousel .rz-carousel-next {
+    right: -84px;
+}
+
+/* Ekran daraldıkça biraz içeri çek */
+@media (max-width: 1200px) {
+    .chooser-carousel .rz-carousel-prev {
+        left: -32px;
+    }
+
+    .chooser-carousel .rz-carousel-next {
+        right: -32px;
+    }
+}
+
+@media (max-width: 720px) {
+    .chooser-carousel .rz-carousel-prev {
+        left: 4px;
+    }
+
+    .chooser-carousel .rz-carousel-next {
+        right: 4px;
+    }
+}
+
+/* Ok buton iç yazısını gizli tut (sadece ikon) */
+.chooser-carousel .rz-carousel-prev .rz-button-text,
+.chooser-carousel .rz-carousel-next .rz-button-text {
+    display: none;
+}
+
+/* X More Dialog icin */
+
+:where(.rz-scheduler-more) .rz-dialog {
+    width: 720px !important; /* istediğin genişlik */
+    max-width: none !important;
+}
+
+:where(.rz-scheduler-more) .rz-dialog-content {
+    max-height: 70vh; /* ekranın 70%’i kadar yükseklik */
+    overflow: auto; /* içerik scroll olsun */
+}
+
+/* Bazı Radzen sürümlerinde 'popup' sınıfı kullanılıyor; güvene almak için: */
+:where(.rz-scheduler) :where(.rz-popup) {
+    width: 720px !important;
+    max-width: none !important;
+}
+
+    :where(.rz-scheduler) :where(.rz-popup) .rz-dialog-content {
+        max-height: 70vh;
+        overflow: auto;
+    }

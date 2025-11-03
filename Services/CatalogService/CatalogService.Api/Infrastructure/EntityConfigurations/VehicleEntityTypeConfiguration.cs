@@ -1,4 +1,4 @@
-﻿using CatalogService.Api.Core.Domain;
+﻿using CatalogService.Api.Features.Vehicles.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

@@ -1,4 +1,7 @@
-﻿using HealthChecks.UI.Client;
+﻿using EventBus.Base;
+using EventBus.Base.Abstraction;
+using EventBus.Factory;
+using HealthChecks.UI.Client;
 using IdentityService.Application.ConsulRegistration;
 using IdentityService.Application.DbRegistration;
 using IdentityService.Application.Services;
@@ -57,23 +60,57 @@ try
 .AddEntityFrameworkStores<IdentityDbContext>()
 .AddSignInManager<SignInManager<User>>();
 
-   
+
     // Authentication
-    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(o =>
+    builder.Services
+     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+     .AddJwtBearer(o =>
+     {
+         o.RequireHttpsMetadata = false; // DEV için, prod'da true yap
+         o.TokenValidationParameters = new TokenValidationParameters
+         {
+             ValidateIssuer = true,
+             ValidateAudience = true,
+             ValidateLifetime = true,
+             ValidateIssuerSigningKey = true,
+
+             ValidIssuer = builder.Configuration["Jwt:Issuer"],        // identityserver.tr
+             ValidAudience = builder.Configuration["Jwt:Audience"],    // identityclient.tr
+             IssuerSigningKey = new SymmetricSecurityKey(
+                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SigningKey"]!) // <--- anahtar adı düzeltildi
+             )
+         };
+     });
+
+
+
+    builder.Services.AddSingleton<IEventBus>(sp =>
     {
-        o.TokenValidationParameters = new TokenValidationParameters
+        var cfg = sp.GetRequiredService<IConfiguration>();
+        var host = cfg["RabbitMQ:HostName"] ?? "localhost";
+        var port = int.TryParse(cfg["RabbitMQ:Port"], out var p) ? p : 5672;
+
+        var factory = new RabbitMQ.Client.ConnectionFactory
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+            HostName = host,
+            Port = port,
+            UserName = cfg["RabbitMQ:UserName"] ?? "guest",
+            Password = cfg["RabbitMQ:Password"] ?? "guest",
+            AutomaticRecoveryEnabled = true
         };
+
+        var ebCfg = new EventBusConfig
+        {
+            ConnectionRetryCount = 5,
+            EventNameSuffix = "IntegrationEvent",
+            SubscriberClientAppName = builder.Environment.ApplicationName,
+            EventBusType = EventBusType.RabbitMQ,
+            Connection = factory
+        };
+
+        return EventBusFactory.Create(ebCfg, sp);
     });
+
 
     builder.Services.AddAuthorization();
 

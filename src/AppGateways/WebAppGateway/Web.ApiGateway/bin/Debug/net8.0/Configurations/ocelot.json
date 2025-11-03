@@ -3,12 +3,31 @@
     {
       "UseServiceDiscovery": true,
       "ServiceName": "CatalogService",
+      "DownstreamPathTemplate": "/api/catalog/jobs/assignments/{assignmentId}/status",
+      "DownstreamScheme": "http",
+
+      "UpstreamPathTemplate": "/catalog/jobs/assignments/{assignmentId}/status",
+      "UpstreamHttpMethod": [ "PATCH" ],
+
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "UseServiceDiscovery": true,
+      "ServiceName": "CatalogService",
       "DownstreamPathTemplate": "/api/catalog/{everything}",
       "DownstreamScheme": "http",
 
       "UpstreamPathTemplate": "/catalog/{everything}",
-      "UpstreamHttpMethod": [ "Get", "Post", "Delete", "Put", "Options" ],
-      "UpstreamScheme": "http"
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS" ],
+      "UpstreamScheme": "http",
+
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
     },
     {
       "UseServiceDiscovery": true,
@@ -40,7 +59,7 @@
       "UpstreamHttpMethod": [ "Get", "Post", "Delete", "Put" ],
       "UpstreamScheme": "http"
     }
-    
+
   ],
   "GlobalConfiguration": {
     //"BaseUrl": "http://webapigateway.api:5000",

@@ -10,6 +10,8 @@
 @using Microsoft.JSInterop
 @inject DialogService DialogService
 @inject AppStateManager AppState
+
+@inject NotificationService Notifications
 <h3>Beyanname Arşivi</h3>
 
 <RadzenFieldset Text="Filtre" Style="margin-bottom:10px">
@@ -83,6 +85,12 @@ else
                                           ButtonStyle="ButtonStyle.Light"
                                           Click="@(async () => await Open(fid))"
                                           Style="margin-left:.5rem" />
+
+                            <RadzenButton Icon="delete"
+                                          Size="ButtonSize.Small"
+                                          ButtonStyle="ButtonStyle.Danger"
+                                          Disabled="@deleting"
+                                          Click="@(async () => await DeleteFile(fid))" />
                         }
                     </div>
                 </Template>
@@ -128,31 +136,87 @@ else
     List<FileNode> RootNodes = new();
     bool HasKids(object? data) => (data as FileNode)?.Children?.Any() == true;
     protected override async Task OnInitializedAsync() => await Load();
+    bool deleting;
+    async Task DeleteFile(int id)
+    {
+        var ok = await DialogService.Confirm("Bu dosyayı silmek istediğinize emin misiniz?",
+                                             "Silme Onayı",
+                                             new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+        if (ok != true) return;
 
+        deleting = true; StateHasChanged();
+        try
+        {
+            var success = await FileApi.DeleteAsync(id);
+            if (success)
+            {
+                await Load();
+                Notifications.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Silindi",
+                    Detail = $"Dosya (ID: {id}) silindi."
+                });
+            }
+            else
+            {
+                Notifications.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Warning,
+                    Summary = "Silinemedi",
+                    Detail = "Sunucu silme işlemini onaylamadı."
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Notifications.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = ex.Message
+            });
+        }
+        finally { deleting = false; StateHasChanged(); }
+    }
+
+    // async Task Load()
+    // {
+    //     loading = true;
+    //     StateHasChanged();
+
+    //     // 12 ayı çek (gerekirse Task.WhenAll ile paralel hale getirilebilir)
+    //     var all = new List<FileInfoDto>();
+    //     for (var m = 1; m <= 12; m++)
+    //     {
+    //         //var part = await FileApi.ListAsyncForDeclType(CompanyId, Year, m, DeclType) ?? new();
+    //         var part = await FileApi.ListAsyncForDeclType(AppState.SelectedFirmId, Year, m, DeclType) ?? new();
+    //         all.AddRange(part);
+    //     }
+
+    //     // Seçilen beyanname türüne göre süz
+    //     // all = all
+    //     //     .Where(x => string.Equals(x.DeclType, DeclType, StringComparison.OrdinalIgnoreCase))
+    //     //     .ToList();
+
+    //     RootNodes = BuildTree(all);
+
+    //     loading = false;
+    // }
     async Task Load()
     {
-        loading = true;
-        StateHasChanged();
+        loading = true; StateHasChanged();
 
-        // 12 ayı çek (gerekirse Task.WhenAll ile paralel hale getirilebilir)
-        var all = new List<FileInfoDto>();
-        for (var m = 1; m <= 12; m++)
-        {
-            //var part = await FileApi.ListAsyncForDeclType(CompanyId, Year, m, DeclType) ?? new();
-            var part = await FileApi.ListAsyncForDeclType(AppState.SelectedFirmId, Year, m, DeclType) ?? new();
-            all.AddRange(part);
-        }
+        var tasks = Enumerable.Range(1, 12)
+            .Select(m => FileApi.ListAsyncForDeclType(AppState.SelectedFirmId, Year, m, DeclType)!)
+            .ToArray();
 
-        // Seçilen beyanname türüne göre süz
-        // all = all
-        //     .Where(x => string.Equals(x.DeclType, DeclType, StringComparison.OrdinalIgnoreCase))
-        //     .ToList();
+        var results = await Task.WhenAll(tasks);
+        var all = results.SelectMany(x => x ?? Enumerable.Empty<FileInfoDto>()).ToList();
 
         RootNodes = BuildTree(all);
-
         loading = false;
     }
-   
 
     private async Task OnClickAddDeclarationItem()
     {

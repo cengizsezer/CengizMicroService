@@ -1,11 +1,14 @@
 ﻿using Blazored.LocalStorage;
 using Blazored.SessionStorage;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
 using Radzen;
 using System;
+using System.Globalization;
 using System.Net.Http;
 using System.Threading.Tasks;
 using WebApp.Application.Services;
@@ -36,8 +39,8 @@ namespace WebApp
             builder.Services.AddSingleton<AppStateManager>();
 
 
-            builder.Services.AddScoped<AuthTokenHandler>();
-            builder.Services.AddScoped<TenantHeaderHandler>();
+            builder.Services.AddTransient<AuthTokenHandler>();
+            builder.Services.AddTransient<TenantHeaderHandler>();
 
             var apiBaseAddress = builder.HostEnvironment.IsDevelopment()
                 ? "http://localhost:5000/"
@@ -70,6 +73,14 @@ namespace WebApp
             builder.Services.AddScoped<IVehicleService>(sp =>
                 new VehicleService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("ApiGatewayCorridor")));
 
+            // 🔹 YENİ: JobsApi
+            builder.Services.AddScoped<IJobsApi>(sp =>
+                new JobsApi(sp.GetRequiredService<IHttpClientFactory>().CreateClient("ApiGatewayCorridor")));
+
+            // 🔹 YENİ (opsiyonel): UsersService — Identity dropdown için
+            builder.Services.AddScoped<IUsersService>(sp =>
+                new UsersService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("ApiGatewayCorridor")));
+
 
             builder.Services.AddHttpClient<IFileApiService, FileApiService>((sp, http) =>
             {
@@ -86,6 +97,7 @@ namespace WebApp
 
             builder.Services.AddScoped<IAppSessionManager, AppSessionManager>();
             builder.Services.AddTransient<IIdentityService, IdentityService>();
+            builder.Services.AddScoped<LanguageService>();
             // Servisler
 
             //builder.Services.AddTransient<IExpenseService, ExpenseService>();
@@ -93,8 +105,37 @@ namespace WebApp
             //builder.Services.AddTransient<IVehicleService, VehicleService>();
             //builder.Services.AddScoped<IUserAdminService, UserAdminService>();
             //builder.Services.AddScoped<IEducationService, EducationService>();
+            //builder.Services.AddLocalization(o => o.ResourcesPath = "Resources");
+            builder.Services.AddLocalization();
+            // (İstersen dil listeni burada tutabilirsin)
+            var supported = new[] { "tr-TR", "en-US" };
 
-            await builder.Build().RunAsync();
+            // --- BURADAN SONRASI ÖNEMLİ: KÜLTÜRÜ SET ET ---
+            var host = builder.Build();
+
+            // 1) Tarayıcı/localStorage’dan kültürü oku (yoksa TR)
+            var js = host.Services.GetRequiredService<IJSRuntime>();
+            var ls = host.Services.GetRequiredService<ILocalStorageService>();
+
+            // Önce LocalStorage’a bak (kendi anahtarın)
+            var saved = await ls.GetItemAsStringAsync("culture");
+            if (string.IsNullOrWhiteSpace(saved))
+            {
+                // Yoksa tarayıcı dilini dene (ör. "tr-TR", "en-US")
+                try
+                {
+                    saved = await js.InvokeAsync<string>("blazorCulture.get"); // aşağıdaki JS
+                }
+                catch { /* yoksa boş geç */ }
+            }
+            var culture = string.IsNullOrWhiteSpace(saved) ? "tr-TR" : saved;
+
+            CultureInfo.DefaultThreadCurrentCulture = new CultureInfo(culture);
+            CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo(culture);
+
+
+
+            await host.RunAsync();
         }
     }
 }

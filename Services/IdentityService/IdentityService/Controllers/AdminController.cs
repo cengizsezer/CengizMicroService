@@ -24,63 +24,6 @@ public class AdminController : ControllerBase
     }
 
 
-
-
-   
-
-    // -------- USERS LIST ---------------------------------------------------
-    //[HttpGet("users")]
-    //public async Task<ActionResult<PageDto<UserListItemDto>>> GetUsers(
-    //    [FromQuery] int p = 0, [FromQuery] int ps = 50, [FromQuery] string? q = null)
-    //{
-    //    var usersQ = _db.Users.AsQueryable();
-
-    //    if (!string.IsNullOrWhiteSpace(q))
-    //    {
-    //        q = q.Trim();
-    //        usersQ = usersQ.Where(x =>
-    //            x.UserName!.Contains(q) ||
-    //            (x.Email != null && x.Email.Contains(q)));
-    //    }
-
-    //    var count = await usersQ.CountAsync();
-
-    //    var users = await usersQ
-    //        .OrderBy(x => x.UserName)
-    //        .Skip(p * ps).Take(ps)
-    //        .Select(u => new UserListItemDto
-    //        {
-    //            Id = u.Id,
-    //            DisplayName = u.UserName ?? "",
-    //            Email = u.Email ?? ""
-    //        })
-    //        .ToListAsync();
-
-    //    // Rolleri doldur (quick & simple)
-    //    foreach (var u in users)
-    //    {
-    //        var roles = await (from utr in _db.UserTenantRoles
-    //                           join r in _db.RolesApp on utr.RoleId equals r.Id
-    //                           where utr.UserId == u.Id
-    //                           select r.Name).Distinct().ToListAsync();
-    //        u.Roles = roles.ToArray();
-
-    //        // İstersen "aktif firma" olarak ilk tenant adını yazalım
-    //        u.FirmName = await (from ut in _db.UserTenants
-    //                            join t in _db.Tenants on ut.TenantId equals t.Id
-    //                            where ut.UserId == u.Id
-    //                            select t.Ad).FirstOrDefaultAsync();
-    //    }
-
-    //    return Ok(new PageDto<UserListItemDto>
-    //    {
-    //        PageIndex = p,
-    //        PageSize = ps,
-    //        Count = count,
-    //        Data = users
-    //    });
-    //}
-
     // -------- USER CRUD ----------------------------------------------------
     [HttpGet("users")]
     public async Task<ActionResult<PageDto<UserListItemDto>>> GetUsers(
@@ -133,6 +76,34 @@ public class AdminController : ControllerBase
             Count = count,
             Data = users
         });
+    }
+
+    [HttpGet("users/{id:int}")]
+    public async Task<ActionResult<UserEditDto>> GetUser(int id)
+    {
+        var u = await _db.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        if (u is null) return NotFound();
+
+        var firmId = await _db.UserTenants
+            .Where(x => x.UserId == id)
+            .Select(x => x.TenantId)
+            .FirstOrDefaultAsync();
+
+        var roles = await (from utr in _db.UserTenantRoles
+                           join r in _db.RolesApp on utr.RoleId equals r.Id
+                           where utr.UserId == id
+                           select r.Name).Distinct().ToListAsync();
+
+        var dto = new UserEditDto
+        {
+            Id = u.Id,
+            UserName = u.UserName ?? "",
+            Email = u.Email ?? "",
+            Phone = u.PhoneNumber ?? ""
+           
+        };
+
+        return Ok(dto);
     }
 
     [HttpPost("users")]
@@ -240,7 +211,7 @@ public class AdminController : ControllerBase
     {
         var first = await _db.UserTenants.Where(x => x.UserId == id).Select(x => x.TenantId).FirstOrDefaultAsync();
         if (first == 0) return Ok(null);
-        return Ok(first);
+        return Ok(first == 0 ? (int?)null : first);
     }
 
     // tek firma ata (varsa diğerlerini temizle)

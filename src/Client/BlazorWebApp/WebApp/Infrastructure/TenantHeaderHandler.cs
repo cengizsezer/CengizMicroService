@@ -20,8 +20,8 @@ namespace WebApp.Infrastructure
             var tenantNo = await _session.GetItemAsync<string>("tenantNo");
             if (!string.IsNullOrWhiteSpace(tenantNo))
             {
-                request.Headers.Remove("X-Tenant-No");
-                request.Headers.Add("X-Tenant-No", tenantNo);
+                request.Headers.Remove("x-tenant-no");
+                request.Headers.Add("x-tenant-no", tenantNo);
             }
 
             return await base.SendAsync(request, ct);

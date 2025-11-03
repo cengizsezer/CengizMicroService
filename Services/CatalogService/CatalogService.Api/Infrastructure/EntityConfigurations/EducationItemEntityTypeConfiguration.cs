@@ -1,4 +1,4 @@
-﻿using CatalogService.Api.Core.Domain.Education;
+﻿using CatalogService.Api.Features.Education.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

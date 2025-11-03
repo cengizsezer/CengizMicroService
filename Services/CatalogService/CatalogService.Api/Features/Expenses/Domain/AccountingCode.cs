@@ -1,0 +1,12 @@
+﻿using CatalogService.Api.Infrastructure.Domain;
+
+namespace CatalogService.Api.Features.Expenses.Domain
+{
+    public class AccountingCode: TenantEntity
+    {
+        public int Id { get; set; }
+
+        public string Code { get; set; } = string.Empty; // Hesap Kodu, örn: 740.01.01.00001
+        public string Description { get; set; } = string.Empty; // Açıklama, örn: BRÜT ÜCRET GİD.
+    }
+}

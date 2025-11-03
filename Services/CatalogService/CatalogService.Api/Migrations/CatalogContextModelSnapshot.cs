@@ -22,37 +22,7 @@ namespace CatalogService.Api.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("CatalogService.Api.Core.Domain.AccountingCode", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("TenantNo")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TenantNo", "Code");
-
-                    b.ToTable("AccountingCodes", "catalog");
-                });
-
-            modelBuilder.Entity("CatalogService.Api.Core.Domain.Education.EducationItem", b =>
+            modelBuilder.Entity("CatalogService.Api.Features.Education.Domain.EducationItem", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -90,7 +60,37 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("EducationItems", "catalog");
                 });
 
-            modelBuilder.Entity("CatalogService.Api.Core.Domain.Expense", b =>
+            modelBuilder.Entity("CatalogService.Api.Features.Expenses.Domain.AccountingCode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(25)
+                        .HasColumnType("nvarchar(25)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("TenantNo")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantNo", "Code");
+
+                    b.ToTable("AccountingCodes", "catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.Expenses.Domain.Expense", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -162,7 +162,7 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("Expenses", "catalog");
                 });
 
-            modelBuilder.Entity("CatalogService.Api.Core.Domain.Personnel", b =>
+            modelBuilder.Entity("CatalogService.Api.Features.Expenses.Domain.Personnel", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -259,7 +259,7 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("Personnels", "catalog");
                 });
 
-            modelBuilder.Entity("CatalogService.Api.Core.Domain.ProductDetail", b =>
+            modelBuilder.Entity("CatalogService.Api.Features.Expenses.Domain.ProductDetail", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -299,7 +299,7 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("ProductDetails", "catalog");
                 });
 
-            modelBuilder.Entity("CatalogService.Api.Core.Domain.ReceiptItem", b =>
+            modelBuilder.Entity("CatalogService.Api.Features.Expenses.Domain.ReceiptItem", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -379,7 +379,111 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("ReceiptItems", "catalog");
                 });
 
-            modelBuilder.Entity("CatalogService.Api.Core.Domain.Vehicle", b =>
+            modelBuilder.Entity("CatalogService.Api.Features.Jobs.Domain.Job", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedById")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("CreatedByName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime>("DeletedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateTime>("End")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("Start")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TenantNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedById")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantNo", "Start", "End");
+
+                    b.ToTable("Jobs", "catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.Jobs.Domain.JobAssignment", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("JobId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("UserName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("JobId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("JobAssignments", "catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.Vehicles.Domain.Vehicle", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -460,9 +564,9 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("Vehicles", (string)null);
                 });
 
-            modelBuilder.Entity("CatalogService.Api.Core.Domain.ProductDetail", b =>
+            modelBuilder.Entity("CatalogService.Api.Features.Expenses.Domain.ProductDetail", b =>
                 {
-                    b.HasOne("CatalogService.Api.Core.Domain.ReceiptItem", "ReceiptItem")
+                    b.HasOne("CatalogService.Api.Features.Expenses.Domain.ReceiptItem", "ReceiptItem")
                         .WithMany("ProductDetails")
                         .HasForeignKey("ReceiptItemId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -471,9 +575,9 @@ namespace CatalogService.Api.Migrations
                     b.Navigation("ReceiptItem");
                 });
 
-            modelBuilder.Entity("CatalogService.Api.Core.Domain.ReceiptItem", b =>
+            modelBuilder.Entity("CatalogService.Api.Features.Expenses.Domain.ReceiptItem", b =>
                 {
-                    b.HasOne("CatalogService.Api.Core.Domain.Expense", "Expense")
+                    b.HasOne("CatalogService.Api.Features.Expenses.Domain.Expense", "Expense")
                         .WithMany("ReceiptItems")
                         .HasForeignKey("ExpenseId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -482,14 +586,30 @@ namespace CatalogService.Api.Migrations
                     b.Navigation("Expense");
                 });
 
-            modelBuilder.Entity("CatalogService.Api.Core.Domain.Expense", b =>
+            modelBuilder.Entity("CatalogService.Api.Features.Jobs.Domain.JobAssignment", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.Jobs.Domain.Job", "Job")
+                        .WithMany("Assignments")
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Job");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.Expenses.Domain.Expense", b =>
                 {
                     b.Navigation("ReceiptItems");
                 });
 
-            modelBuilder.Entity("CatalogService.Api.Core.Domain.ReceiptItem", b =>
+            modelBuilder.Entity("CatalogService.Api.Features.Expenses.Domain.ReceiptItem", b =>
                 {
                     b.Navigation("ProductDetails");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.Jobs.Domain.Job", b =>
+                {
+                    b.Navigation("Assignments");
                 });
 #pragma warning restore 612, 618
         }

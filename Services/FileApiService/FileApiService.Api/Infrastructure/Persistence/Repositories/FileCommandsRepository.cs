@@ -2,6 +2,7 @@
 using FileApiService.Api.Domain.Dtos;
 using FileApiService.Api.Infrastructure.Persistence;
 using FileApiService.Api.Infrastructure.Persistence.Entities;
+using FluentResults;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
@@ -12,6 +13,15 @@ namespace FileApiService.Api.Infrastructure.Persistence.Repositories
         private readonly FileDbContext _db;
         public FileCommandsRepository(FileDbContext db) => _db = db;
 
+
+        public async Task DeleteFileMetaAsync(int id, CancellationToken ct)
+        {
+            var rec = await _db.Files.FirstOrDefaultAsync(x => x.Id == id, ct);
+            if (rec == null) return;
+
+            _db.Files.Remove(rec);                // Soft delete istiyorsan burada işaretle
+            await _db.SaveChangesAsync(ct);
+        }
         // INSERT (genel kullanım)
         public async Task<int> AddFileMetaAsync(FileMetaDto dto, CancellationToken ct)
         {

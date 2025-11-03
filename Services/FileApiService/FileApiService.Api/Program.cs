@@ -78,7 +78,7 @@ builder.Services.ConfigureDbContext(configuration);
 // Repos
 builder.Services.AddScoped<IFileCommandsRepository, FileCommandsRepository>();
 builder.Services.AddScoped<IFileQueriesRepository, FileQueriesRepository>();
-
+builder.Services.AddScoped<IDeleteFileCommandHandler, DeleteFileCommandHandler>();
 // MinIO
 //var endpoint = builder.Configuration["Minio:Endpoint"] ?? "localhost:9000";
 //var access = builder.Configuration["Minio:AccessKey"] ?? "admin";

@@ -1,4 +1,5 @@
 ﻿using IdentityService.Application.Models;
+using IdentityService.Application.Models.Register;
 using IdentityService.Domain.Entities;
 using IdentityService.Persistence;
 using Microsoft.AspNetCore.Identity;
@@ -91,10 +92,21 @@ namespace IdentityService.Application.Services
         }
 
         // 3) REGISTER: basit hali
-        public async Task<bool> RegisterAsync(RegisterRequestModel model)
+        public async Task<RegisterResult> RegisterAsync(RegisterRequestModel model)
         {
             var existingUser = await _userManager.FindByNameAsync(model.UserName);
-            if (existingUser != null) return false;
+
+            if (existingUser != null )
+            {
+                return new RegisterResult(
+                    Success: false,
+                    UserId: default,
+                    Email: model.Email,
+                    FullName: model.UserName,
+                    ErrorMessage: "Bu kullanıcı zaten var."
+                );
+            }
+          
 
             var user = new User
             {
@@ -105,7 +117,25 @@ namespace IdentityService.Application.Services
             };
 
             var result = await _userManager.CreateAsync(user, model.Password);
-            return result.Succeeded;
+
+            if (!result.Succeeded)
+            {
+                var error = string.Join("; ", result.Errors.Select(e => e.Description));
+                return new RegisterResult(
+                    Success: false,
+                    UserId: default,
+                    Email: model.Email,
+                    FullName: model.UserName,
+                    ErrorMessage: error
+                );
+            }
+            return new RegisterResult(
+        Success: true,
+        UserId: user.Id,          // NOT: Id tipin Guid değilse aşağıdaki nota bak
+        Email: user.Email!,
+        FullName: user.UserName,
+        ErrorMessage: null
+    );
         }
 
         // 4) REFRESH: rotasyon + reuse koruması (minimum)
@@ -222,7 +252,10 @@ namespace IdentityService.Application.Services
             foreach (var r in roles) claims.Add(new Claim(ClaimTypes.Role, r));
             foreach (var p in permissions) claims.Add(new Claim("perm", p));
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+            //var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+            var signingKey = _configuration["Jwt:SigningKey"]
+                 ?? _configuration["Jwt:Key"]; // (opsiyonel fallback)
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey!));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
@@ -237,29 +270,32 @@ namespace IdentityService.Application.Services
         }
 
         // Eski nötr token (geri uyumluluk için istersen kalsın)
-        private string GenerateJwtToken(User user)
-        {
-            var claims = new List<Claim>
-            {
-                new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new(ClaimTypes.Name, user.UserName!)
-            };
-            if (!string.IsNullOrWhiteSpace(user.LegacyRole))
-                claims.Add(new Claim(ClaimTypes.Role, user.LegacyRole));
+        //private string GenerateJwtToken(User user)
+        //{
+        //    var claims = new List<Claim>
+        //    {
+        //        new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+        //        new(ClaimTypes.Name, user.UserName!)
+        //    };
+        //    if (!string.IsNullOrWhiteSpace(user.LegacyRole))
+        //        claims.Add(new Claim(ClaimTypes.Role, user.LegacyRole));
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        //    //var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+        //    var signingKey = _configuration["Jwt:SigningKey"]
+        //         ?? _configuration["Jwt:Key"]; // (opsiyonel fallback)
+        //    var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey!));
+        //    var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
-                claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(15),
-                signingCredentials: creds
-            );
+        //    var token = new JwtSecurityToken(
+        //        issuer: _configuration["Jwt:Issuer"],
+        //        audience: _configuration["Jwt:Audience"],
+        //        claims: claims,
+        //        expires: DateTime.UtcNow.AddMinutes(15),
+        //        signingCredentials: creds
+        //    );
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
+        //    return new JwtSecurityTokenHandler().WriteToken(token);
+        //}
 
         private static string GenerateRefreshToken()
             => Convert.ToBase64String(Guid.NewGuid().ToByteArray());

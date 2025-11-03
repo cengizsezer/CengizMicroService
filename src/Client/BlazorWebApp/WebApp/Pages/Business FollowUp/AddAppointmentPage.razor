@@ -1,45 +1,281 @@
-﻿@using WebApp.Domain.Models
+﻿@page "/add-appointment"
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.Scheduling
+@using WebApp.Shared.Dto.Admin
+
+@inject IUserAdminService Admin
 @inject DialogService DialogService
 
-<RadzenTemplateForm TItem="Appointment" Data="@model" Submit=@OnSubmit>
+@using WebApp.Localize
+
+@inject Microsoft.Extensions.Localization.IStringLocalizer<WebApp.Localize.AppTexts> T
+
+<RadzenTemplateForm TItem="CreateJobRequest" Data="@model" Submit="@OnSubmit">
     <RadzenStack Gap="1rem">
+
+        <!-- Title -->
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
-            <RadzenLabel Text="Title" Style="width: 4rem;" />
-            <RadzenTextBox @bind-Value="@model.Text" Name="Text" Style="width: 12rem;" />
-            <RadzenRequiredValidator Component="Text" Text="Title is required" />
+            <RadzenLabel Text="@T[TextKeys.AddAppointment_Title]" Style="width: 6rem;" />
+            <RadzenTextBox @bind-Value="model.Title" Name="Title" Style="width: 18rem;" />
+            <RadzenRequiredValidator Component="Title" Text="@T[TextKeys.Validation_TitleRequired]" />
         </RadzenStack>
+
+        <!-- Description -->
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
-            <RadzenLabel Text="Start" Style="width: 4rem;" />
-            <RadzenDatePicker @bind-Value="@model.Start" Name="Start" ShowTime="true" Style="width: 12rem;" />
-            <RadzenRequiredValidator Component="Start" Text="Start is required" />
+            <RadzenLabel Text="@T[TextKeys.AddAppointment_Description]" Style="width: 6rem;" />
+            <RadzenTextBox @bind-Value="model.Description" Name="Description" Style="width: 24rem;" />
         </RadzenStack>
+
+        <!-- Start -->
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
-            <RadzenLabel Text="End" Style="width: 4rem;" />
-            <RadzenDatePicker Name="End" @bind-Value="@model.End" ShowTime="true" Style="width: 12rem;" />
-            <RadzenRequiredValidator Component="End" Text="End is required" />
+            <RadzenLabel Text="@T[TextKeys.AddAppointment_Start]" Style="width: 6rem;" />
+            <RadzenDatePicker @bind-Value="model.Start" Name="Start" ShowTime="true" Style="width: 16rem;" />
+            <RadzenRequiredValidator Component="Start" Text="@T[TextKeys.Validation_StartRequired]" />
         </RadzenStack>
+
+        <!-- End -->
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
+            <RadzenLabel Text="@T[TextKeys.AddAppointment_End]" Style="width: 6rem;" />
+            <RadzenDatePicker @bind-Value="model.End" Name="End" ShowTime="true" Style="width: 16rem;" />
+            <RadzenRequiredValidator Component="End" Text="@T[TextKeys.Validation_EndRequired]" />
+        </RadzenStack>
+
+        <!-- Assignees -->
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
+            <RadzenLabel Text="@T[TextKeys.AddAppointment_Assignees]" Style="width: 6rem;" />
+            <RadzenDropDown Data="@users"
+                            TextProperty="FullName"
+                            ValueProperty="Id"
+                            Multiple="true"
+                            TValue="IList<string>"
+                            @bind-Value="selectedAssignees"
+                            Placeholder="Kişi seçiniz..."
+                            AllowClear="true"
+                            Style="width: 24rem;" />
+        </RadzenStack>
+
+        <!-- Alarm toggle -->
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+            <RadzenCheckBox @bind-Value="model.AlarmEnabled" Name="AlarmEnabled" />
+            <RadzenLabel Text="@T[TextKeys.AddAppointment_AlarmToggle]" Component="AlarmEnabled" Style="margin-left:.5rem" />
+        </RadzenStack>
+
+        <!-- Alarm details -->
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap" Style="gap:1.25rem;">
+            <div>
+                <RadzenCheckBox @bind-Value="model.RemindOneDayBefore"
+                                Name="RemindOneDayBefore"
+                                Disabled="@(!model.AlarmEnabled || DisabledPrevDay)" />
+                <RadzenLabel Text="@T[TextKeys.AddAppointment_RemindPrevDay]" Component="RemindOneDayBefore" Style="margin-left:.5rem" />
+                @if (DisabledPrevDay && !string.IsNullOrEmpty(PrevDayHintKey))
+                {
+                    <RadzenHint Text="@T[PrevDayHintKey]" />
+                }
+            </div>
+
+            <div>
+                <RadzenCheckBox @bind-Value="model.RemindOnDay"
+                                Name="RemindOnDay"
+                                Disabled="@(!model.AlarmEnabled || DisabledOnDay)" />
+                <RadzenLabel Text="@T[TextKeys.AddAppointment_RemindOnDay]" Component="RemindOnDay" Style="margin-left:.5rem" />
+                @if (DisabledOnDay)
+                {
+                    <RadzenHint Text="@T[TextKeys.Hint_OnDayPast]" />
+                }
+            </div>
+
+            <div style="display:flex;align-items:center;gap:.5rem;">
+                <RadzenLabel Text="@T[TextKeys.AddAppointment_Timezone]" />
+                <RadzenDropDown @bind-Value="model.Timezone"
+                                Data="@timezones"
+                                Style="width:16rem;"
+                                AllowClear="false" />
+            </div>
+           
+
+        </RadzenStack>
+
+        <!-- Send To -->
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
+            <RadzenFieldset Text="@T[TextKeys.AddAppointment_EnterEmail]">
+                <RadzenStack Gap="2rem" class="rz-p-4 rz-p-md-12">
+                    <RadzenRow AlignItems="AlignItems.Center" RowGap="0.25rem">
+                        <RadzenColumn Size="12" SizeMD="4" class="rz-text-align-start rz-text-align-md-end">
+                            <RadzenLabel Text="@T[TextKeys.AddAppointment_Email]" Component="RecipientEmail" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="8">
+                            <RadzenTextBox Name="RecipientEmail"
+                                           @bind-Value="model.RecipientEmail"
+                                           Style="display:block;width:100%;"
+                                           Placeholder="user@gmail.com" />
+
+                            <RadzenRequiredValidator Component="RecipientEmail"
+                                                     Text="@T[TextKeys.Validation_EmailRequired]"
+                                                     Popup="@popup"
+                                                     Style="position:absolute" />
+
+                            <RadzenEmailValidator Component="RecipientEmail"
+                                                  Text="@T[TextKeys.Validation_EmailInvalid]"
+                                                  Popup="@popup"
+                                                  Style="position:absolute" />
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenStack>
+            </RadzenFieldset>
+        </RadzenStack>
+
+        <!-- Submit -->
         <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End">
-            <RadzenButton ButtonType="ButtonType.Submit" Text="Save" />
+            <RadzenButton ButtonType="ButtonType.Submit" Text="@T[TextKeys.AddAppointment_Save]" />
         </RadzenStack>
+
     </RadzenStack>
 </RadzenTemplateForm>
+
 @code {
-    [Parameter]
-    public DateTime Start { get; set; }
+    [Parameter] public DateTime Start { get; set; }
+    [Parameter] public DateTime End { get; set; }
+    [Parameter] public string? InitialTitle { get; set; }
+    [Parameter] public string? InitialDescription { get; set; }
+    [Parameter] public IList<string>? InitialAssigneeIds { get; set; }
 
-    [Parameter]
-    public DateTime End { get; set; }
-
-    Appointment model = new Appointment();
-
-    protected override void OnParametersSet()
+    CreateJobRequest model = new()
     {
-        model.Start = Start;
-        model.End = End;
+        Title = "",
+        Description = "",
+        AssigneeIds = new List<string>(),
+        AlarmEnabled = true,
+        RemindOneDayBefore = true,
+        RemindOnDay = true,
+        Timezone = "Europe/Istanbul",
+        RecipientEmail = ""
+    };
+
+    class UserMiniDto
+    {
+        public string Id { get; set; } = default!;
+        public string FullName { get; set; } = default!;
     }
 
-    void OnSubmit(Appointment model)
+    IList<string> selectedAssignees = new List<string>();
+    List<UserMiniDto> users = new();
+
+    string[] timezones = new[]
     {
+        "Europe/Istanbul",
+        "UTC",
+        "Europe/Berlin",
+        "Europe/London"
+    };
+
+    bool DisabledOnDay => !model.AlarmEnabled || IsOnDayReminderPast();
+    bool DisabledPrevDay => !model.AlarmEnabled || IsPrevDayReminderPast();
+    string PrevDayHintKey => BuildPrevDayHintKey(); // ← artık key döndürüyoruz
+    bool popup;
+
+    bool IsOnDayReminderPast()
+    {
+        var (today, nowLocal) = GetTodayAndNowInModelTz();
+        var due = GetDueDateInModelTz();
+
+        if (due < today) return true;
+        if (due > today) return false;
+        return nowLocal.TimeOfDay >= TimeSpan.FromHours(8);
+    }
+
+    bool IsPrevDayReminderPast()
+    {
+        var (today, nowLocal) = GetTodayAndNowInModelTz();
+        var due = GetDueDateInModelTz();
+        var diffDays = (due - today).TotalDays;
+
+        if (diffDays <= 0) return true;
+        if (diffDays >= 2) return false;
+        return nowLocal.TimeOfDay >= TimeSpan.FromHours(8);
+    }
+
+    // HINT için KEY üreten versiyon
+    string BuildPrevDayHintKey()
+    {
+        var (today, nowLocal) = GetTodayAndNowInModelTz();
+        var due = GetDueDateInModelTz();
+        var diffDays = (due - today).TotalDays;
+
+        if (diffDays <= 0) return TextKeys.Hint_PrevDayNotPossible;
+        if (diffDays == 1 && nowLocal.TimeOfDay >= TimeSpan.FromHours(8))
+            return TextKeys.Hint_PrevDayTooLate;
+
+        return string.Empty;
+    }
+
+    (DateTime today, DateTime nowLocal) GetTodayAndNowInModelTz()
+    {
+        var tzId = model.Timezone ?? TimeZoneInfo.Local.Id;
+        var tzi = TimeZoneInfo.FindSystemTimeZoneById(tzId);
+        var nowLocal = TimeZoneInfo.ConvertTime(DateTime.UtcNow, tzi);
+        return (nowLocal.Date, nowLocal);
+    }
+
+    DateTime GetDueDateInModelTz()
+    {
+        var tzId = model.Timezone ?? TimeZoneInfo.Local.Id;
+        var tzi = TimeZoneInfo.FindSystemTimeZoneById(tzId);
+        var start = model.Start;
+
+        if (start.Kind == DateTimeKind.Utc)
+            start = TimeZoneInfo.ConvertTimeFromUtc(start, tzi);
+        else if (start.Kind == DateTimeKind.Local)
+            start = TimeZoneInfo.ConvertTime(start, tzi);
+
+        return start.Date;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        model.Start = Start;
+        model.End   = End;
+
+        var page = await Admin.GetUsersAsync(pageIndex: 0, pageSize: 200, q: "");
+        var data = page?.Data ?? Array.Empty<UserListItemDto>();
+        users = data.Select(u => new UserMiniDto
+        {
+            Id = u.Id.ToString(),
+            FullName = u.DisplayName ?? u.Email
+        }).ToList();
+
+        if (!string.IsNullOrWhiteSpace(InitialTitle))       model.Title = InitialTitle;
+        if (!string.IsNullOrWhiteSpace(InitialDescription)) model.Description = InitialDescription;
+        selectedAssignees = (InitialAssigneeIds?.ToList() ?? new List<string>());
+
+
+        var rm = new System.Resources.ResourceManager(
+          "WebApp.Localize.AppTexts", typeof(WebApp.Localize.AppTexts).Assembly);
+
+        var v1 = rm.GetString("AddAppointment.Title", System.Globalization.CultureInfo.CurrentUICulture);
+        Console.WriteLine($"RM Test: {v1 ?? "<null>"}");
+    }
+
+    async Task OnSubmit(CreateJobRequest _)
+    {
+        if (model.End < model.Start) return;
+
+        model.RecipientEmail = (model.RecipientEmail ?? "").Trim().ToLowerInvariant();
+        model.AssigneeIds = selectedAssignees?.ToList() ?? new List<string>();
+
+        if (!model.AlarmEnabled)
+        {
+            model.RemindOneDayBefore = false;
+            model.RemindOnDay = false;
+        }
+        else if (DisabledOnDay)
+        {
+            model.RemindOnDay = false;
+        }
+
         DialogService.Close(model);
+        await Task.CompletedTask;
     }
 }

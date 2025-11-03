@@ -3,6 +3,10 @@
     "Name": "New Profile",
     "Projects": [
       {
+        "Path": "Services\\NotificationService\\NotificationService.Console\\NotificationService.Console.csproj",
+        "Action": "Start"
+      },
+      {
         "Path": "Services\\IdentityService\\IdentityService\\IdentityService.csproj",
         "Action": "Start"
       },

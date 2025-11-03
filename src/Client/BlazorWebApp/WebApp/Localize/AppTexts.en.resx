@@ -1,0 +1,38 @@
+﻿<root>
+	<resheader name="resmimetype">
+		<value>text/microsoft-resx</value>
+	</resheader>
+	<resheader name="version">
+		<value>2.0</value>
+	</resheader>
+	<resheader name="reader">
+		<value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+	<resheader name="writer">
+		<value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</resheader>
+
+	<data name="AddAppointment.Title" xml:space="preserve"><value>Title</value></data>
+	<data name="AddAppointment.Description" xml:space="preserve"><value>Description</value></data>
+	<data name="AddAppointment.Start" xml:space="preserve"><value>Start</value></data>
+	<data name="AddAppointment.End" xml:space="preserve"><value>End</value></data>
+	<data name="AddAppointment.Assignees" xml:space="preserve"><value>Assignees</value></data>
+	<data name="AddAppointment.AlarmToggle" xml:space="preserve"><value>Enable alarm</value></data>
+	<data name="AddAppointment.RemindPrevDay" xml:space="preserve"><value>1 day before at 08:00</value></data>
+	<data name="AddAppointment.RemindOnDay" xml:space="preserve"><value>On the day at 08:00</value></data>
+	<data name="AddAppointment.Timezone" xml:space="preserve"><value>Timezone</value></data>
+	<data name="AddAppointment.EnterEmail" xml:space="preserve"><value>Enter email</value></data>
+	<data name="AddAppointment.Email" xml:space="preserve"><value>Email</value></data>
+	<data name="AddAppointment.Save" xml:space="preserve"><value>Save</value></data>
+
+	<data name="Hint.OnDayPast" xml:space="preserve"><value>It’s past 08:00 today, you can’t set a reminder for today.</value></data>
+	<data name="Hint.PrevDayNotPossible" xml:space="preserve"><value>Since the task date is today or in the past, a “1 day before” reminder can’t be set.</value></data>
+	<data name="Hint.PrevDayTooLate" xml:space="preserve"><value>It’s too late to set “1 day before at 08:00” for tomorrow.</value></data>
+
+	<data name="Validation.TitleRequired" xml:space="preserve"><value>Title is required</value></data>
+	<data name="Validation.StartRequired" xml:space="preserve"><value>Start is required</value></data>
+	<data name="Validation.EndRequired" xml:space="preserve"><value>End is required</value></data>
+	<data name="Validation.EmailRequired" xml:space="preserve"><value>Email is required</value></data>
+	<data name="Validation.EmailInvalid" xml:space="preserve"><value>Provide a valid email address</value></data>
+</root>
+
