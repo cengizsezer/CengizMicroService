@@ -128,7 +128,7 @@ public class Program
                 .Build();
 
             Log.Information("NotificationService started (env: {Env})", Env);
-
+            
             await host.RunAsync();
         }
         catch (Exception ex)
@@ -139,6 +139,8 @@ public class Program
         {
             Log.CloseAndFlush();
         }
+
+       
     }
 
     private static IConfiguration BuildConfiguration() =>

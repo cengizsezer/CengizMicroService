@@ -6,29 +6,31 @@ USER $APP_UID
 WORKDIR /app
 
 
-# ---- build ----
+# ---- BUILD ----
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# SADECE .csproj'ları kopyala (DOĞRU YOLLAR)
-COPY ["EventBus.Base/EventBus.Base.csproj", "EventBus.Base/"]
-COPY ["EventBus.Factory/EventBus.Factory.csproj", "EventBus.Factory/"]
-COPY ["EventBus.AzureServiceBus/EventBus.AzureServiceBus.csproj", "EventBus.AzureServiceBus/"]
-COPY ["EventBus.RabbitMQ/EventBus.RabbitMQ.csproj", "EventBus.RabbitMQ/"]
+# Sadece kendi projesini kopyala
 COPY ["Services/NotificationService/NotificationService.Console/NotificationService.Console.csproj", "Services/NotificationService/NotificationService.Console/"]
 
 # Restore
 RUN dotnet restore "Services/NotificationService/NotificationService.Console/NotificationService.Console.csproj"
 
-# TÜM kaynakları kopyala
+# Tüm kaynakları kopyala
 COPY . .
 
-# Publish
+# Publish et
 WORKDIR /src/Services/NotificationService/NotificationService.Console
 RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
 
-# ---- final ----
+# ---- FINAL ----
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
+
+# Yayınlanan dosyaları kopyala
 COPY --from=build /app/publish .
-ENTRYPOINT ["dotnet","NotificationService.Console.dll"]
+
+# Config dosyalarını dahil et (appsettings.json, serilog.json vs)
+COPY Services/NotificationService/NotificationService.Console/Configurations /app/Configurations
+
+ENTRYPOINT ["dotnet", "NotificationService.Console.dll"]
