@@ -36,11 +36,19 @@
 	  <PackageReference Include="Serilog.Sinks.Graylog" Version="3.1.1" />
 	  <PackageReference Include="Serilog.Settings.Configuration" Version="8.0.4" />
   </ItemGroup>
+
+
 	<ItemGroup>
-		<None Update="Configurations\appsettings.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		<None Update="Configurations\appsettings*.json">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</None>
+		<None Update="appsettings*.json">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</None>
 	</ItemGroup>
+
+
+
 	<ItemGroup>
 	  <Folder Include="Features\Education\Service\" />
 	  <Folder Include="Features\Expenses\Service\" />
