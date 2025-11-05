@@ -1,71 +1,106 @@
-﻿using Blazored.LocalStorage;
-using Blazored.SessionStorage;
+﻿using Blazored.SessionStorage;
 using Microsoft.AspNetCore.Components.Authorization;
-using System;
-using System.Net.Http;
+using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Headers;
 using System.Security.Claims;
-using System.Threading.Tasks;
-using WebApp.Extensions;
 using WebApp.Infrastructure;
 
-
-namespace WebApp.Utils
+public class AuthStateProvider : AuthenticationStateProvider
 {
-    public class AuthStateProvider : AuthenticationStateProvider
+    private readonly ISessionStorageService session;
+    private readonly HttpClient client;
+    private readonly AuthenticationState anonymous;
+    private readonly AppStateManager appState;
+
+    public AuthStateProvider(
+        ISessionStorageService sessionStorageService,
+        HttpClient Client,
+        AppStateManager appState)
     {
-        private readonly ILocalStorageService localStorageService;
-        private readonly HttpClient client;
-        private readonly AuthenticationState anonymous;
-        private readonly AppStateManager appState;
-        private readonly ISessionStorageService sessionStorageService;
+        session = sessionStorageService;
+        client = Client;
+        this.appState = appState;
+        anonymous = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+    }
 
-        public AuthStateProvider(ISessionStorageService sessionStorageService, HttpClient Client, AppStateManager appState)
+    public override async Task<AuthenticationState> GetAuthenticationStateAsync()
+    {
+        var token = await session.GetItemAsync<string>("token");
+        if (string.IsNullOrWhiteSpace(token))
+            return anonymous;
+
+        try
         {
-            this.sessionStorageService = sessionStorageService;
-            client = Client;
-            anonymous = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
-            this.appState = appState;
-        }
-
-
-public async override Task<AuthenticationState> GetAuthenticationStateAsync()
-        {
-            var apiToken = await sessionStorageService.GetItemAsync<string>("token");
-            if (string.IsNullOrWhiteSpace(apiToken))
-                return anonymous;
-
-            var userName = await sessionStorageService.GetItemAsync<string>("username");
-
-            var cp = new ClaimsPrincipal(new ClaimsIdentity(new[]
-            {
-        new Claim(ClaimTypes.Name, userName)
-    }, "jwtAuthType"));
-
+            // Authorization header'ı kur
             client.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiToken);
+                new AuthenticationHeaderValue("Bearer", token);
 
-            return new AuthenticationState(cp);
-        }
+            // JWT'yi çöz
+            var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
 
-        public void NotifyUserLogin(String userName)
-        {
-            var cp = new ClaimsPrincipal(new ClaimsIdentity(new[]
+            // Tüm claim'leri temel al
+            var claims = jwt.Claims.ToList();
+
+            // İsim claim'i yoksa, unique_name / sub'tan üret
+            if (!claims.Any(c => c.Type == ClaimTypes.Name))
             {
-                new Claim(ClaimTypes.Name, userName)
+                var uname = jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.UniqueName)?.Value
+                            ?? jwt.Claims.FirstOrDefault(c => c.Type == "unique_name")?.Value
+                            ?? jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub)?.Value
+                            ?? "";
+                if (!string.IsNullOrWhiteSpace(uname))
+                    claims.Add(new Claim(ClaimTypes.Name, uname));
+            }
 
-            }, "jwtAuthType"));
+            // Roller: "role" VEYA ClaimTypes.Role -> ClaimTypes.Role olarak tekille
+            var roleValues = jwt.Claims
+                .Where(c => c.Type == "role" || c.Type == ClaimTypes.Role)
+                .Select(c => c.Value)
+                .Distinct()
+                .ToList();
 
-            var authState = Task.FromResult(new AuthenticationState(cp));
+            foreach (var r in roleValues)
+            {
+                var hasRole = claims.Any(c => c.Type == ClaimTypes.Role && c.Value == r);
+                if (!hasRole)
+                    claims.Add(new Claim(ClaimTypes.Role, r));
+            }
 
-            NotifyAuthenticationStateChanged(authState);
-            appState.LoginChanged();
+            // Tenant no ("tn") varsa aynen ekli
+            var tn = jwt.Claims.FirstOrDefault(c => c.Type == "tn")?.Value;
+            if (!string.IsNullOrWhiteSpace(tn) &&
+                !claims.Any(c => c.Type == "tn"))
+            {
+                claims.Add(new Claim("tn", tn));
+            }
+
+            var identity = new ClaimsIdentity(claims, authenticationType: "jwt");
+            var principal = new ClaimsPrincipal(identity);
+            return new AuthenticationState(principal);
         }
-
-        public void NotifyUserLogout()
+        catch
         {
-            var authState = Task.FromResult(anonymous);
-            NotifyAuthenticationStateChanged(authState);
-            appState.LoginChanged();
+            // Token bozuk ise güvenli şekilde anonim dön
+            client.DefaultRequestHeaders.Authorization = null;
+            return anonymous;
         }
+    }
+
+
+    // Token/tenant değiştiğinde UI’yi yeniletmek için tek bir helper
+    public void NotifyAuthChanged()
+    {
+        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        appState.LoginChanged();
+    }
+
+    // (İstersen bunları da NotifyAuthChanged'e yönlendirebilirsin)
+    public void NotifyUserLogin(string _)
+        => NotifyAuthChanged();
+
+    public void NotifyUserLogout()
+    {
+        NotifyAuthenticationStateChanged(Task.FromResult(anonymous));
+        appState.LoginChanged();
     }
 }

@@ -16,6 +16,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 
 var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
@@ -60,27 +62,48 @@ try
 .AddEntityFrameworkStores<IdentityDbContext>()
 .AddSignInManager<SignInManager<User>>();
 
+    JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+    JwtSecurityTokenHandler.DefaultOutboundClaimTypeMap.Clear();
 
-    // Authentication
     builder.Services
-     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-     .AddJwtBearer(o =>
-     {
-         o.RequireHttpsMetadata = false; // DEV için, prod'da true yap
-         o.TokenValidationParameters = new TokenValidationParameters
-         {
-             ValidateIssuer = true,
-             ValidateAudience = true,
-             ValidateLifetime = true,
-             ValidateIssuerSigningKey = true,
+      .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+      .AddJwtBearer(o =>
+      {
+          o.RequireHttpsMetadata = false;
+          o.TokenValidationParameters = new TokenValidationParameters
+          {
+              ValidateIssuer = true,
+              ValidateAudience = true,
+              ValidateIssuerSigningKey = true,
+              ValidateLifetime = true,
+              ValidIssuer = builder.Configuration["Jwt:Issuer"],
+              ValidAudience = builder.Configuration["Jwt:Audience"],
+              IssuerSigningKey = new SymmetricSecurityKey(
+                  Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SigningKey"]!)
+              ),
+              RoleClaimType = ClaimTypes.Role // [Authorize(Roles="…")] için
+          };
+      });
+    //// Authentication
+    //builder.Services
+    // .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    // .AddJwtBearer(o =>
+    // {
+    //     o.RequireHttpsMetadata = false; // DEV için, prod'da true yap
+    //     o.TokenValidationParameters = new TokenValidationParameters
+    //     {
+    //         ValidateIssuer = true,
+    //         ValidateAudience = true,
+    //         ValidateLifetime = true,
+    //         ValidateIssuerSigningKey = true,
 
-             ValidIssuer = builder.Configuration["Jwt:Issuer"],        // identityserver.tr
-             ValidAudience = builder.Configuration["Jwt:Audience"],    // identityclient.tr
-             IssuerSigningKey = new SymmetricSecurityKey(
-                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SigningKey"]!) // <--- anahtar adı düzeltildi
-             )
-         };
-     });
+    //         ValidIssuer = builder.Configuration["Jwt:Issuer"],        // identityserver.tr
+    //         ValidAudience = builder.Configuration["Jwt:Audience"],    // identityclient.tr
+    //         IssuerSigningKey = new SymmetricSecurityKey(
+    //             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SigningKey"]!) // <--- anahtar adı düzeltildi
+    //         )
+    //     };
+    // });
 
 
 
@@ -181,6 +204,59 @@ try
         var seeder = new IdentityContextSeed();
         seeder.SeedAsync(context, env, logger,true).Wait();
     });
+
+    // ... MapControllers, MapHealthChecks, RegisterWithConsul vs. SONRASINA, app.Run()'DAN ÖNCE
+    using (var scope = app.Services.CreateScope())
+    {
+        var sp = scope.ServiceProvider;
+        var logger = sp.GetRequiredService<ILogger<Program>>();
+        var userMgr = sp.GetRequiredService<UserManager<User>>();
+        var roleMgr = sp.GetRequiredService<RoleManager<IdentityRole<int>>>();
+
+        // 1) Admin rolü garanti
+        if (!await roleMgr.RoleExistsAsync("Admin"))
+        {
+            var createRole = await roleMgr.CreateAsync(new IdentityRole<int>("Admin"));
+            if (!createRole.Succeeded)
+                logger.LogError("Admin rolü oluşturulamadı: {Err}",
+                    string.Join(", ", createRole.Errors.Select(e => e.Description)));
+        }
+
+        // 2) admin kullanıcısını bul
+        var admin = await userMgr.FindByNameAsync("admin"); // veya FindByEmailAsync("admin@example.com")
+        if (admin is null)
+        {
+            logger.LogWarning("admin kullanıcısı bulunamadı, şimdi oluşturalım.");
+            var create = await userMgr.CreateAsync(new User
+            {
+                UserName = "admin",
+                Email = "admin@example.com",
+                EmailConfirmed = true
+            }, "Admin123!");
+            if (!create.Succeeded)
+            {
+                logger.LogError("admin oluşturulamadı: {Err}",
+                    string.Join(", ", create.Errors.Select(e => e.Description)));
+            }
+            else
+            {
+                admin = await userMgr.FindByNameAsync("admin");
+            }
+        }
+
+        // 3) Role ekle
+        if (admin != null && !await userMgr.IsInRoleAsync(admin, "Admin"))
+        {
+            var addRole = await userMgr.AddToRoleAsync(admin, "Admin");
+            if (!addRole.Succeeded)
+                logger.LogError("admin -> Admin rolü atanamadı: {Err}",
+                    string.Join(", ", addRole.Errors.Select(e => e.Description)));
+            else
+                logger.LogInformation("admin kullanıcısına Admin rolü atandı.");
+        }
+    }
+
+
 
     if (app.Environment.IsDevelopment())
     {

@@ -1,9 +1,10 @@
-﻿using WebApp.Shared.Dto.Scheduling;
+﻿using WebApp.Shared.Dto.Admin;
+using WebApp.Shared.Dto.Scheduling;
 
 namespace WebApp.Application.Services.Interfaces
 {
     public interface IUsersService
     {
-        Task<List<UserMiniDto>> SearchAsync(string? search = null, int page = 0, int pageSize = 50, CancellationToken ct = default);
+        Task<PageDto<UserListItemDto>> GetUsersAsync(int pageIndex = 0, int pageSize = 50, string? q = null);
     }
 }

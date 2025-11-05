@@ -96,7 +96,11 @@
 
                 <RadzenPanelMenuItem Text="Settings" Icon="settings">
                     <RadzenPanelMenuItem Text="Account" Icon="account_circle" Path="/account" />
-                    <RadzenPanelMenuItem Text="Admin" Icon="admin_panel_settings" Path="/admin/users" />
+                    <AuthorizeView Roles="Admin">
+                        <Authorized>
+                            <RadzenPanelMenuItem Text="Admin" Icon="admin_panel_settings" Path="/admin/users" />
+                        </Authorized>
+                    </AuthorizeView>
                 </RadzenPanelMenuItem>
             </RadzenPanelMenu>
 

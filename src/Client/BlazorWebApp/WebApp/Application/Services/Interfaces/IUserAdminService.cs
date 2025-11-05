@@ -7,10 +7,10 @@ namespace WebApp.Application.Services.Interfaces
         // Users
         Task<PageDto<UserListItemDto>> GetUsersAsync(int pageIndex = 0, int pageSize = 50, string? q = null);
         Task<UserEditDto> GetUserByIdAsync(int id);
-        Task<(bool ok, string? err)> CreateUserAsync(UserEditDto dto);
+        Task<(bool ok, string? err)> CreateUserAsync(NewUserDto dto);
         Task<bool> UpdateUserAsync(int id, UserEditDto dto);
         Task<bool> DeleteUserAsync(int id);
-
+        Task AdminChangePasswordAsync(int userId, UserChangePasswordDto dto);
         // Roles
         Task<List<RoleDto>> GetAllRolesAsync();
         Task<IList<string>> GetUserRolesAsync(int userId);
@@ -18,7 +18,7 @@ namespace WebApp.Application.Services.Interfaces
 
         // Firms (Tenants)
         Task<List<FirmDto>> GetFirmsAsync();
-        Task<int?> GetUserFirmIdAsync(int userId);
-        Task<bool> SetUserFirmAsync(int userId, int? firmId);
+        Task<List<UserFirmDto>> GetUserFirmsAsync(int userId);
+        Task SetUserFirmsAsync(int userId, SetUserFirmsRequest req);
     }
 }

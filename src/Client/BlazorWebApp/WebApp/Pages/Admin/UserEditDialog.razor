@@ -41,24 +41,7 @@
                            Style="width:100%"
                            Placeholder="Telefon" />
 
-            @if (Model.Id == 0)
-            {
-                <!-- Yeni kullanıcı: şifre zorunlu -->
-                <RadzenPassword Name="Password"
-                                @bind-Value="Model.Password"
-                                Style="width:100%"
-                                Placeholder="Şifre" />
-                <RadzenRequiredValidator Component="Password" Text="Şifre zorunlu" />
-            }
-            else
-            {
-                <!-- Düzenleme: şifre opsiyonel -->
-                <RadzenPassword Name="Password"
-                                @bind-Value="Model.Password"
-                                Style="width:100%"
-                                Placeholder="(Opsiyonel) Yeni şifre" />
-                <RadzenHint Text="Boş bırakırsanız şifre değişmez." />
-            }
+           
 
             <RadzenStack Orientation="Orientation.Horizontal"
                          JustifyContent="JustifyContent.End"
@@ -73,6 +56,25 @@
 </RadzenTemplateForm>
 
 @code {
+
+     // @if (Model.Id == 0)
+     //        {
+     //            <!-- Yeni kullanıcı: şifre zorunlu -->
+     //            <RadzenPassword Name="Password"
+     //                            @bind-Value="Model.Password"
+     //                            Style="width:100%"
+     //                            Placeholder="Şifre" />
+     //            <RadzenRequiredValidator Component="Password" Text="Şifre zorunlu" />
+     //        }
+     //        else
+     //        {
+     //            <!-- Düzenleme: şifre opsiyonel -->
+     //            <RadzenPassword Name="Password"
+     //                            @bind-Value="Model.Password"
+     //                            Style="width:100%"
+     //                            Placeholder="(Opsiyonel) Yeni şifre" />
+     //            <RadzenHint Text="Boş bırakırsanız şifre değişmez." />
+     //        }
     private const string EmailRegex = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
 
     [Parameter] public UserEditDto Model { get; set; } = new();
@@ -83,25 +85,7 @@
         if (string.IsNullOrWhiteSpace(Model.DisplayName))
             Model.DisplayName = Model.UserName?.Trim() ?? "";
 
-        if (Model.Id == 0)
-        {
-            var (ok, err) = await Admin.CreateUserAsync(Model);
-            if (ok)
-            {
-                Dialog.Close(true);
-                return;
-            }
-
-            // Backend’ten gelen mesajı göster (ör: DuplicateUserName, PasswordTooShort vs.)
-            Notif.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Error,
-                Summary = "Kayıt başarısız",
-                Detail = string.IsNullOrWhiteSpace(err) ? "Kullanıcı kaydedilemedi." : err
-            });
-            return;
-        }
-
+       
         // Güncelleme
         var updated = await Admin.UpdateUserAsync(Model.Id, Model);
         if (updated)

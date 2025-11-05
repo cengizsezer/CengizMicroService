@@ -95,7 +95,7 @@
     "Parameters": [
       {
         "Name": "dto",
-        "Type": "IdentityService.Application.Models.Admin.UserEditDto",
+        "Type": "IdentityService.Application.Models.Admin.NewUserDto",
         "IsRequired": true
       }
     ],
@@ -166,8 +166,8 @@
   },
   {
     "ContainingType": "IdentityService.Controllers.AdminController",
-    "Method": "GetUserFirm",
-    "RelativePath": "api/auth/admin/users/{id}/firm",
+    "Method": "GetUserFirms",
+    "RelativePath": "api/auth/admin/users/{id}/firms",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
@@ -180,7 +180,7 @@
     ],
     "ReturnTypes": [
       {
-        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "Type": "System.Collections.Generic.List\u00601[[IdentityService.Application.Models.UserFirmDto, IdentityService, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
         "MediaTypes": [
           "text/plain",
           "application/json",
@@ -192,8 +192,29 @@
   },
   {
     "ContainingType": "IdentityService.Controllers.AdminController",
-    "Method": "SetUserFirm",
-    "RelativePath": "api/auth/admin/users/{id}/firm",
+    "Method": "AddUserFirm",
+    "RelativePath": "api/auth/admin/users/{id}/firms",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "IdentityService.Application.Models.UserFirmAssignDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "IdentityService.Controllers.AdminController",
+    "Method": "SetUserFirms",
+    "RelativePath": "api/auth/admin/users/{id}/firms",
     "HttpMethod": "PUT",
     "IsController": true,
     "Order": 0,
@@ -204,8 +225,50 @@
         "IsRequired": true
       },
       {
-        "Name": "body",
-        "Type": "System.Object",
+        "Name": "req",
+        "Type": "IdentityService.Application.Models.SetUserFirmsRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "IdentityService.Controllers.AdminController",
+    "Method": "RemoveUserFirm",
+    "RelativePath": "api/auth/admin/users/{id}/firms/{tenantId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "tenantId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "IdentityService.Controllers.AdminController",
+    "Method": "AdminChangePassword",
+    "RelativePath": "api/auth/admin/users/{id}/password",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "IdentityService.Application.Models.Admin.UserChangePasswordDto",
         "IsRequired": true
       }
     ],
@@ -331,5 +394,41 @@
       }
     ],
     "ReturnTypes": []
+  },
+  {
+    "ContainingType": "IdentityService.Controllers.AuthController",
+    "Method": "GetUsers",
+    "RelativePath": "api/Auth/users",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "p",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "ps",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "q",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "IdentityService.Application.Models.Admin.PageDto\u00601[[IdentityService.Application.Models.Admin.UserListItemDto, IdentityService, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
   }
 ]

@@ -1,4 +1,6 @@
-﻿@page "/admin/users"
+﻿@attribute [Authorize(Roles = "Admin")]
+@page "/admin/users"
+@using Microsoft.AspNetCore.Authorization
 @using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
@@ -11,8 +13,11 @@
 <RadzenCard class="rz-p-3">
     <div class="grid align-items-center rz-mb-2">
         <div class="col-12 md:col-6">
-            <RadzenTextBox @bind-Value="search" Placeholder="Kullanıcı ara: ad / e-posta"
-                           Style="width:100%" Change="@(_ => Reload())" />
+            <RadzenTextBox @bind-Value="search"
+                           Placeholder="Kullanıcı ara: ad / e-posta"
+                           Style="width:100%" />
+            <RadzenButton Text="Ara" Icon="search" Click="@Reload" />
+
         </div>
         <div class="col-12 md:col-6 rz-text-align-right">
             <RadzenButton Text="Yenile" class="rz-mr-2" Click="@Reload" />
@@ -58,6 +63,11 @@
                                       Click="@(async _ => await AssignFirm(u))" />
                         <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
                                       Click="@(async _ => await Delete(u))" />
+                        <RadzenButton Icon="lock"
+                                      Size="ButtonSize.Small"
+                                      class="rz-mr-2"
+                                      ButtonStyle="ButtonStyle.Info"
+                                      Click="@(async _ => await ChangePassword(u))" />
                     </span>
                 </Template>
             </RadzenDataGridColumn>
@@ -79,10 +89,27 @@
         users = page.Data?.ToList() ?? new();
     }
 
+    async Task ChangePassword(UserListItemDto u)
+    {
+        var ok = await Dialog.OpenAsync<AdminChangeUserPasswordDialog>($"{u.DisplayName} – Şifre Değiştir",
+            new() { ["UserId"] = u.Id },
+            new DialogOptions { Width = "480px" });
+
+        if (ok is bool b && b)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Güncellendi",
+                Detail = "Şifre başarıyla değiştirildi."
+            });
+        }
+    }
+
     async Task Create()
     {
-        var ok = await Dialog.OpenAsync<UserEditDialog>("Yeni Kullanıcı",
-            new() { ["Model"] = new UserEditDto() },
+        var ok = await Dialog.OpenAsync<UserCreateDialog>("Yeni Kullanıcı",
+            new() { ["Model"] = new NewUserDto() },
             new DialogOptions { Width = "600px" });
 
         if (ok is bool b && b)

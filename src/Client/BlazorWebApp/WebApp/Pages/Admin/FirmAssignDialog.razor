@@ -7,79 +7,105 @@
 @inject DialogService Dialog
 @inject NotificationService Notif
 
-
-
 <RadzenCard class="rz-p-3">
     <RadzenStack Gap="1rem">
-        <RadzenLabel Text="Firma" />
-        <RadzenDropDown Data="@firms"
-                        TextProperty="Name"
-                        ValueProperty="Id"
-                        @bind-Value="@selectedFirmId"
-                        Style="width:100%"
-                        AllowClear="true"
-                        Placeholder="Firma seçiniz">
-            <Template Context="f">
-                @if (f is FirmDto fd)
-                {
-                    <span>@fd.Name (@fd.FirmaNo)</span>
-                }
-            </Template>
-        </RadzenDropDown>
+        <RadzenLabel Text="Firmalar" />
+
+        <RadzenCheckBoxList TValue="int"
+                            Data="@firmOptions"
+                            TextProperty="Text"
+                            ValueProperty="Id"
+                            @bind-Value="@selectedFirmIds"
+                            Style="width:100%" />
 
         <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
-            <RadzenButton Text="Vazgeç" Click="@(()=>Dialog.Close(false))" />
-            <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" Click="@Save" />
+            <RadzenButton Text="Vazgeç" Click="@(() => Dialog.Close(false))" />
+            <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" Click="@Save" Disabled="@loading" />
         </RadzenStack>
     </RadzenStack>
+
+    @if (loading)
+    {
+        <div class="rz-mt-3">
+            <RadzenProgressBar Value="100" Mode="ProgressBarMode.Indeterminate" />
+        </div>
+    }
 </RadzenCard>
 
 @code {
     [Parameter] public int UserId { get; set; }
 
-    List<FirmDto> firms = new();
-    int? selectedFirmId;
-    bool loading;
+    // UI için seçenek listesi
+    private List<FirmOption> firmOptions = new();
+    // CheckBoxList için doğru tip: IEnumerable<int>
+    private IEnumerable<int> selectedFirmIds = Array.Empty<int>();
+    private bool loading;
 
     protected override async Task OnInitializedAsync()
     {
         loading = true;
         try
         {
-            firms = await Admin.GetFirmsAsync();
-            selectedFirmId = await Admin.GetUserFirmIdAsync(UserId);
+            var firms = await Admin.GetFirmsAsync();
+
+            // Ekranda "Ad (FirmaNo)" gösterelim; FirmaNo boşsa sadece Ad
+            firmOptions = firms.Select(f => new FirmOption
+            {
+                Id = f.Id,
+                Text = string.IsNullOrWhiteSpace(f.FirmaNo) ? f.Name : $"{f.Name} ({f.FirmaNo})"
+            })
+            .OrderBy(x => x.Text)
+            .ToList();
+
+            // Kullanıcının mevcut firmaları
+            var userFirms = await Admin.GetUserFirmsAsync(UserId); // List<UserFirmDto>
+            selectedFirmIds = userFirms.Select(x => x.TenantId).ToList();
         }
-        finally
-        {
-            loading = false;
-        }
+        finally { loading = false; }
     }
 
     private async Task Save()
     {
         if (loading) return;
-
-        if (selectedFirmId is null)
+        loading = true;
+        try
         {
+            var req = new SetUserFirmsRequest
+            {
+                Firms = selectedFirmIds.Select(tid => new UserFirmAssignDto
+                {
+                    TenantId = tid,
+                    Roles = null // rollere dokunma
+                }).ToList()
+            };
+
+            await Admin.SetUserFirmsAsync(UserId, req);
+
             Notif.Notify(new NotificationMessage
             {
-                Severity = NotificationSeverity.Warning,
-                Summary = "Eksik bilgi",
-                Detail = "Lütfen bir firma seçiniz."
+                Severity = NotificationSeverity.Success,
+                Summary = "Kaydedildi",
+                Detail = "Kullanıcının firma yetkileri güncellendi."
             });
-            return;
-        }
 
-        var ok = await Admin.SetUserFirmAsync(UserId, selectedFirmId);
-        if (ok) Dialog.Close(true);
-        else
+            Dialog.Close(true);
+        }
+        catch (Exception ex)
         {
             Notif.Notify(new NotificationMessage
             {
                 Severity = NotificationSeverity.Error,
                 Summary = "Hata",
-                Detail = "Firma atanırken bir sorun oluştu."
+                Detail = ex.Message
             });
         }
+        finally { loading = false; }
+    }
+
+    // basit display view-model
+    private class FirmOption
+    {
+        public int Id { get; set; }
+        public string Text { get; set; } = "";
     }
 }

@@ -6,6 +6,7 @@
 @using WebApp.Shared.Dto.Admin
 
 @inject IUserAdminService Admin
+@inject IUsersService UsersService
 @inject DialogService DialogService
 
 @using WebApp.Localize
@@ -238,7 +239,7 @@
         model.Start = Start;
         model.End   = End;
 
-        var page = await Admin.GetUsersAsync(pageIndex: 0, pageSize: 200, q: "");
+        var page = await UsersService.GetUsersAsync(pageIndex: 0, pageSize: 200, q: "");
         var data = page?.Data ?? Array.Empty<UserListItemDto>();
         users = data.Select(u => new UserMiniDto
         {

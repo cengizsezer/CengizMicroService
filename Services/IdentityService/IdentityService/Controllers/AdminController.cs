@@ -1,4 +1,5 @@
-﻿using IdentityService.Application.Models.Admin;
+﻿using IdentityService.Application.Models;
+using IdentityService.Application.Models.Admin;
 using IdentityService.Application.Models.Tenants;
 using IdentityService.Domain.Entities;
 using IdentityService.Persistence;
@@ -107,7 +108,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpPost("users")]
-    public async Task<IActionResult> CreateUser([FromBody] UserEditDto dto)
+    public async Task<IActionResult> CreateUser([FromBody] NewUserDto dto)
     {
         // ✅ Artık UserName ve Email zorunlu
         if (string.IsNullOrWhiteSpace(dto.UserName) || string.IsNullOrWhiteSpace(dto.Email))
@@ -129,25 +130,47 @@ public class AdminController : ControllerBase
         return Ok();
     }
 
+    [HttpPost("users/{id:int}/password")]
+    public async Task<IActionResult> AdminChangePassword(int id, [FromBody] UserChangePasswordDto dto)
+    {
+        var u = await _userMgr.FindByIdAsync(id.ToString());
+        if (u is null) return NotFound();
+
+        if (!_userMgr.SupportsUserPassword)
+            return StatusCode(501, "Password store is not supported.");
+
+        // Token’a gerek yok: remove + add
+        await _userMgr.RemovePasswordAsync(u);
+        var r = await _userMgr.AddPasswordAsync(u, dto.NewPassword);
+        if (!r.Succeeded) return BadRequest(string.Join(", ", r.Errors.Select(e => e.Description)));
+
+        return NoContent();
+    }
+
+
     [HttpPut("users/{id:int}")]
     public async Task<IActionResult> UpdateUser(int id, [FromBody] UserEditDto dto)
     {
-        var u = await _db.Users.FindAsync(id);
+        var u = await _userMgr.FindByIdAsync(id.ToString());
         if (u is null) return NotFound();
 
-        u.UserName = dto.UserName;   // ✅ UserName güncelle
-        u.Email = dto.Email;
-        u.PhoneNumber = dto.Phone;
-        await _db.SaveChangesAsync();
-
-        if (!string.IsNullOrWhiteSpace(dto.Password))
+        // Normalize/unique için UserManager kullan
+        if (dto.UserName != u.UserName)
         {
-            var token = await _userMgr.GeneratePasswordResetTokenAsync(u);
-            var ok = await _userMgr.ResetPasswordAsync(u, token, dto.Password);
-            if (!ok.Succeeded) return BadRequest(string.Join(", ", ok.Errors.Select(e => e.Description)));
+            var r1 = await _userMgr.SetUserNameAsync(u, dto.UserName);
+            if (!r1.Succeeded) return BadRequest(string.Join(", ", r1.Errors.Select(e => e.Description)));
+        }
+        if (dto.Email != u.Email)
+        {
+            var r2 = await _userMgr.SetEmailAsync(u, dto.Email);
+            if (!r2.Succeeded) return BadRequest(string.Join(", ", r2.Errors.Select(e => e.Description)));
         }
 
-        return Ok();
+        u.PhoneNumber = dto.Phone;
+        var r = await _userMgr.UpdateAsync(u);
+        if (!r.Succeeded) return BadRequest(string.Join(", ", r.Errors.Select(e => e.Description)));
+
+        return NoContent();
     }
 
     [HttpDelete("users/{id:int}")]
@@ -202,40 +225,147 @@ public class AdminController : ControllerBase
     }
 
     // -------- FIRMS (TENANTS) ---------------------------------------------
+    [HttpGet("users/{id:int}/firms")]
+    public async Task<ActionResult<List<UserFirmDto>>> GetUserFirms(int id)
+    {
+        var q =
+            from ut in _db.UserTenants
+            join t in _db.Tenants on ut.TenantId equals t.Id
+            where ut.UserId == id
+            select new UserFirmDto
+            {
+                TenantId = t.Id,
+                TenantName = t.Ad,
+                Roles = (
+                    from utr in _db.UserTenantRoles
+                    join r in _db.RolesApp on utr.RoleId equals r.Id
+                    where utr.UserId == id && utr.TenantId == t.Id
+                    select r.Name
+                ).ToList()
+            };
+
+        return Ok(await q.AsNoTracking().ToListAsync());
+    }
+
     [HttpGet("firms")]
     public async Task<ActionResult<List<FirmDto>>> GetFirms()
-        => Ok(await _db.Tenants.Select(t => new FirmDto { Id = t.Id, Name = t.Ad, FirmaNo = t.FirmaNo }).ToListAsync());
+    => Ok(await _db.Tenants
+        .Select(t => new FirmDto
+        {
+            Id = t.Id,
+            Name = t.Ad,
+            FirmaNo = t.FirmaNo
+        })
+        .AsNoTracking()
+        .ToListAsync());
 
-    [HttpGet("users/{id:int}/firm")]
-    public async Task<ActionResult<int?>> GetUserFirm(int id)
+    [HttpPost("users/{id:int}/firms")]
+    public async Task<IActionResult> AddUserFirm(int id, [FromBody] UserFirmAssignDto dto)
     {
-        var first = await _db.UserTenants.Where(x => x.UserId == id).Select(x => x.TenantId).FirstOrDefaultAsync();
-        if (first == 0) return Ok(null);
-        return Ok(first == 0 ? (int?)null : first);
-    }
+        var okTenant = await _db.Tenants.AnyAsync(t => t.Id == dto.TenantId);
+        if (!okTenant) return BadRequest("Firma yok.");
 
-    // tek firma ata (varsa diğerlerini temizle)
-    [HttpPut("users/{id:int}/firm")]
-    public async Task<IActionResult> SetUserFirm(int id, [FromBody] dynamic body)
-    {
-        int? firmId = (int?)body?.firmId;
-        if (firmId is null) return BadRequest("firmId zorunlu.");
+        var ut = await _db.UserTenants.SingleOrDefaultAsync(x => x.UserId == id && x.TenantId == dto.TenantId);
+        if (ut is null)
+            _db.UserTenants.Add(new UserTenant { UserId = id, TenantId = dto.TenantId });
 
-        var u = await _db.Users.FindAsync(id);
-        if (u is null) return NotFound();
+        if (dto.Roles is not null && dto.Roles.Count > 0)
+        {
+            var roleMap = await _db.RolesApp
+                .Where(r => dto.Roles.Contains(r.Name))
+                .ToDictionaryAsync(r => r.Name, r => r.Id);
 
-        var existsFirm = await _db.Tenants.AnyAsync(t => t.Id == firmId);
-        if (!existsFirm) return BadRequest("Firma bulunamadı.");
+            var existing = await _db.UserTenantRoles
+                .Where(x => x.UserId == id && x.TenantId == dto.TenantId)
+                .ToListAsync();
 
-        var existing = _db.UserTenants.Where(x => x.UserId == id);
-        _db.UserTenants.RemoveRange(existing);
-        _db.UserTenants.Add(new UserTenant { UserId = id, TenantId = firmId.Value });
+            // merge: mevcut olmayanları ekle
+            var existingNames = (
+                from e in existing
+                join r in _db.RolesApp on e.RoleId equals r.Id
+                select r.Name
+            ).ToHashSet();
 
-        // Roller (opsiyonel): firmayı değiştirince roller kalsın istersen bu kısmı sil
-        var roles = await _db.UserTenantRoles.Where(x => x.UserId == id).ToListAsync();
-        _db.UserTenantRoles.RemoveRange(roles);
+            foreach (var rn in dto.Roles.Distinct())
+                if (!existingNames.Contains(rn) && roleMap.TryGetValue(rn, out var rid))
+                    _db.UserTenantRoles.Add(new UserTenantRole { UserId = id, TenantId = dto.TenantId, RoleId = rid });
+        }
 
         await _db.SaveChangesAsync();
-        return Ok();
+        return NoContent();
     }
+
+    [HttpDelete("users/{id:int}/firms/{tenantId:int}")]
+    public async Task<IActionResult> RemoveUserFirm(int id, int tenantId)
+    {
+        var ut = await _db.UserTenants.SingleOrDefaultAsync(x => x.UserId == id && x.TenantId == tenantId);
+        if (ut is null) return NoContent();
+
+        _db.UserTenants.Remove(ut);
+        var utr = _db.UserTenantRoles.Where(x => x.UserId == id && x.TenantId == tenantId);
+        _db.UserTenantRoles.RemoveRange(utr);
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+    [HttpPut("users/{id:int}/firms")]
+    public async Task<IActionResult> SetUserFirms(int id, [FromBody] SetUserFirmsRequest req)
+    {
+        if (req?.Firms is null) return BadRequest("Firms gereklidir.");
+
+        var tenantIds = req.Firms.Select(f => f.TenantId).Distinct().ToList();
+        var existsAll = await _db.Tenants.CountAsync(t => tenantIds.Contains(t.Id)) == tenantIds.Count;
+        if (!existsAll) return BadRequest("Geçersiz firmalar var.");
+
+        // ---- 1) UserTenants: gelen set’e eşitle ----
+        var currentUT = await _db.UserTenants.Where(x => x.UserId == id).ToListAsync();
+        var currentTenantIds = currentUT.Select(x => x.TenantId).ToHashSet();
+
+        var toRemoveUT = currentUT.Where(x => !tenantIds.Contains(x.TenantId)).ToList();
+        _db.UserTenants.RemoveRange(toRemoveUT);
+
+        var toAddTenantIds = tenantIds.Where(tid => !currentTenantIds.Contains(tid)).ToList();
+        foreach (var tid in toAddTenantIds)
+            _db.UserTenants.Add(new UserTenant { UserId = id, TenantId = tid });
+
+        await _db.SaveChangesAsync();
+
+        // ---- 2) UserTenantRoles: SADECE Roles alanı GÖNDERİLMİŞ firmalarda değiştir ----
+        var firmsWithRoles = req.Firms.Where(f => f.Roles != null).ToList();
+        if (firmsWithRoles.Count > 0)
+        {
+            var roleNames = firmsWithRoles.SelectMany(f => f.Roles!).Distinct().ToList();
+            var roleMap = await _db.RolesApp
+                .Where(r => roleNames.Contains(r.Name))
+                .ToDictionaryAsync(r => r.Name, r => r.Id);
+
+            // İlgili tenantlar için mevcut rolleri temizle
+            var targetTenantIds = firmsWithRoles.Select(f => f.TenantId).Distinct().ToList();
+            var currentRoles = await _db.UserTenantRoles
+                .Where(x => x.UserId == id && targetTenantIds.Contains(x.TenantId))
+                .ToListAsync();
+            _db.UserTenantRoles.RemoveRange(currentRoles);
+
+            // Gönderilen rolleri ekle
+            foreach (var firm in firmsWithRoles)
+            {
+                foreach (var rn in firm.Roles!.Distinct())
+                {
+                    if (!roleMap.TryGetValue(rn, out var rid)) return BadRequest($"Geçersiz rol: {rn}");
+                    _db.UserTenantRoles.Add(new UserTenantRole
+                    {
+                        UserId = id,
+                        TenantId = firm.TenantId,
+                        RoleId = rid
+                    });
+                }
+            }
+
+            await _db.SaveChangesAsync();
+        }
+
+        return NoContent();
+    }
+
+
 }

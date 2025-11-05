@@ -1,0 +1,107 @@
+﻿@using Radzen
+@using Radzen.Blazor
+@using WebApp.Shared.Dto.Admin
+@using WebApp.Application.Services.Interfaces
+
+@inject DialogService Dialog
+@inject NotificationService Notif
+@inject IUserAdminService Admin
+
+<RadzenTemplateForm TItem="NewUserDto" Data="@Model" Submit="@OnSubmit">
+    <RadzenCard class="rz-p-3">
+        <RadzenStack Gap="1rem">
+
+            <!-- ✔ ZORUNLU: UserName -->
+            <RadzenTextBox Name="UserName"
+                           @bind-Value="Model.UserName"
+                           Style="width:100%"
+                           Placeholder="Kullanıcı adı (login)"/>
+            <RadzenRequiredValidator Component="UserName" Text="Kullanıcı adı zorunlu" />
+
+            <!-- ℹ Opsiyonel: Görünen ad -->
+            <RadzenTextBox Name="DisplayName"
+                           @bind-Value="Model.DisplayName"
+                           Style="width:100%"
+                           Placeholder="Ad Soyad (görünen ad)"/>
+            <RadzenHint Text="Boş bırakılırsa kullanıcı adı kullanılacak." />
+
+            <!-- ✔ ZORUNLU: E-posta -->
+            <RadzenTextBox Name="Email"
+                           @bind-Value="Model.Email"
+                           Style="width:100%"
+                           Placeholder="E-posta" />
+            <RadzenRequiredValidator Component="Email" Text="E-posta zorunlu" />
+            <RadzenRegexValidator Component="Email"
+                                  Text="Geçerli bir e-posta girin"
+                                  Pattern="@EmailRegex" />
+
+            <!-- Opsiyonel: Telefon -->
+            <RadzenTextBox Name="Phone"
+                           @bind-Value="Model.Phone"
+                           Style="width:100%"
+                           Placeholder="Telefon" />
+
+            @if (Model.Id == 0)
+            {
+                <!-- Yeni kullanıcı: şifre zorunlu -->
+                <RadzenPassword Name="Password"
+                                @bind-Value="Model.Password"
+                                Style="width:100%"
+                                Placeholder="Şifre" />
+                <RadzenRequiredValidator Component="Password" Text="Şifre zorunlu" />
+            }
+            else
+            {
+                <!-- Düzenleme: şifre opsiyonel -->
+                <RadzenPassword Name="Password"
+                                @bind-Value="Model.Password"
+                                Style="width:100%"
+                                Placeholder="(Opsiyonel) Yeni şifre" />
+                <RadzenHint Text="Boş bırakırsanız şifre değişmez." />
+            }
+
+            <RadzenStack Orientation="Orientation.Horizontal"
+                         JustifyContent="JustifyContent.End"
+                         Gap="0.5rem">
+                <RadzenButton Text="Vazgeç" Click="@(()=>Dialog.Close(false))" />
+                <RadzenButton Text="Kaydet" Icon="save"
+                              ButtonStyle="ButtonStyle.Primary"
+                              ButtonType="ButtonType.Submit" />
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenCard>
+</RadzenTemplateForm>
+
+@code {
+    private const string EmailRegex = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
+
+    [Parameter] public NewUserDto Model { get; set; } = new();
+
+    private async Task OnSubmit(NewUserDto _)
+    {
+        // DisplayName boşsa UserName'e düş
+        if (string.IsNullOrWhiteSpace(Model.DisplayName))
+            Model.DisplayName = Model.UserName?.Trim() ?? "";
+
+        if (Model.Id == 0)
+        {
+            var (ok, err) = await Admin.CreateUserAsync(Model);
+            if (ok)
+            {
+                Dialog.Close(true);
+                return;
+            }
+
+            // Backend’ten gelen mesajı göster (ör: DuplicateUserName, PasswordTooShort vs.)
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Kayıt başarısız",
+                Detail = string.IsNullOrWhiteSpace(err) ? "Kullanıcı kaydedilemedi." : err
+            });
+            return;
+        }
+       
+    }
+
+}

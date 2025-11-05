@@ -9,6 +9,7 @@ using WebApp.Application.Services.Interfaces;
 using WebApp.Domain.Models.User;
 using WebApp.Extensions;
 using WebApp.Utils;
+using static System.Net.WebRequestMethods;
 
 namespace WebApp.Application.Services
 {
@@ -88,14 +89,18 @@ namespace WebApp.Application.Services
 
             var result = (await res.Content.ReadFromJsonAsync<LoginResponseModel>())!;
 
-            // 1) Token’ları yaz
+            // 1) Access & refresh token'ı kaydet + Authorization header'ı ayarla
             await StoreTokens(result.Token, result.RefreshToken);
 
-            // 2) Tenant’ı yaz (handler buradan okuyacak)
+            // 2) Seçilen tenant'ı sakla (delegating handler vs. buradan okuyacaksa)
             await sessionStorage.SetItemAsync("tenantNo", firmaNo);
+
+            // 3) UI'ye "kimlik değişti" sinyali ver (rol/claim değişimleri için)
+            (authStateProvider as AuthStateProvider)?.NotifyAuthChanged();
 
             return result;
         }
+
 
 
         // --- TOKEN SAKLAMA + HEADER AYARLAMA --------------------------------
@@ -142,6 +147,7 @@ namespace WebApp.Application.Services
             var password = await localStorage.GetItemAsync<string>("saved_password") ?? "";
             return (username, password);
         }
+
 
         // --- LOGOUT ---------------------------------------------------------
 

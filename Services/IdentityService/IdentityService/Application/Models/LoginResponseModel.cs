@@ -16,6 +16,7 @@ namespace IdentityService.Application.Models
         public List<string> Permissions { get; set; } = new();
 
         public List<FirmaDto> Firmalar { get; set; } = new();
+        
     }
 
 }

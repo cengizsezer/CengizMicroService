@@ -140,6 +140,31 @@ namespace IdentityService.Persistence
             var cengiz = await EnsureUser("cengiz.sezer", "cengiz@example.com", "Mali123!");
             var serkan = await EnsureUser("serkan.keser", "serkan@example.com", "Idari123!");
 
+            //////////////////////////////////////////
+            //var roleManager = context.GetService<RoleManager<IdentityRole<int>>>();
+
+            //// Identity rolü yoksa oluştur
+            //if (!await roleManager.RoleExistsAsync("Admin"))
+            //{
+            //    var createRole = await roleManager.CreateAsync(new IdentityRole<int>("Admin"));
+            //    if (!createRole.Succeeded)
+            //    {
+            //        var msg = string.Join(", ", createRole.Errors.Select(e => e.Description));
+            //        logger.LogWarning("AspNetRoles -> Admin oluşturulamadı: {Err}", msg);
+            //    }
+            //}
+
+            //// admin kullanıcısını Identity rolüne ekle
+            //var adminIdentity = await userManager.FindByNameAsync("admin");
+            //if (adminIdentity != null && !await userManager.IsInRoleAsync(adminIdentity, "Admin"))
+            //{
+            //    var addRes = await userManager.AddToRoleAsync(adminIdentity, "Admin");
+            //    if (!addRes.Succeeded)
+            //    {
+            //        var msg = string.Join(", ", addRes.Errors.Select(e => e.Description));
+            //        logger.LogWarning("Admin rolü admin kullanıcısına eklenemedi: {Err}", msg);
+            //    }
+            //}
             // === 5) User ↔ Tenant eşlemeleri + Tenant içi Roller (UserTenantRole) ===
             async Task EnsureUserTenantRole(User u, Tenant t, Role role)
             {

@@ -31,8 +31,8 @@ namespace IdentityService.Application.Services
             _configuration = configuration;
         }
 
-        // 1) LOGIN: yalnızca kullanıcıyı doğrula + refresh üret + firma listesini dön
-        // (Access token'ı tenant seçimiyle üreteceğiz.)
+         //1) LOGIN: yalnızca kullanıcıyı doğrula + refresh üret + firma listesini dön
+         //(Access token'ı tenant seçimiyle üreteceğiz.)
         public async Task<LoginResponseModel?> LoginAsync(LoginRequestModel model)
         {
             Console.WriteLine($"[ID] DB = {_context.Database.GetDbConnection().DataSource}/{_context.Database.GetDbConnection().Database}");
@@ -78,6 +78,9 @@ namespace IdentityService.Application.Services
         }
 
         // 2) Kullanıcının firma listesi
+
+
+
         public async Task<List<FirmaDto>> GetUserFirmsAsync(int userId)
         {
             return await _context.UserTenants
@@ -240,45 +243,18 @@ namespace IdentityService.Application.Services
         // ==== PRIVATE HELPERS ====
 
         // Yeni: tenant + role + permission claim'li token
-        private string GenerateJwtToken(User user, string tenantNo, IEnumerable<string> roles, IEnumerable<string> permissions)
-        {
-            var claims = new List<Claim>
-            {
-                new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new(ClaimTypes.Name, user.UserName!),
-                new("tn", tenantNo)
-            };
-
-            foreach (var r in roles) claims.Add(new Claim(ClaimTypes.Role, r));
-            foreach (var p in permissions) claims.Add(new Claim("perm", p));
-
-            //var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
-            var signingKey = _configuration["Jwt:SigningKey"]
-                 ?? _configuration["Jwt:Key"]; // (opsiyonel fallback)
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey!));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
-                claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(20), // kısa ömürlü access
-                signingCredentials: creds
-            );
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
-
-        // Eski nötr token (geri uyumluluk için istersen kalsın)
-        //private string GenerateJwtToken(User user)
+        //private string GenerateJwtToken(User user, string tenantNo, IEnumerable<string> roles, IEnumerable<string> permissions)
         //{
+            
         //    var claims = new List<Claim>
         //    {
         //        new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-        //        new(ClaimTypes.Name, user.UserName!)
+        //        new(ClaimTypes.Name, user.UserName!),
+        //        new("tn", tenantNo)
         //    };
-        //    if (!string.IsNullOrWhiteSpace(user.LegacyRole))
-        //        claims.Add(new Claim(ClaimTypes.Role, user.LegacyRole));
+
+        //    foreach (var r in roles) claims.Add(new Claim(ClaimTypes.Role, r));
+        //    foreach (var p in permissions) claims.Add(new Claim("perm", p));
 
         //    //var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
         //    var signingKey = _configuration["Jwt:SigningKey"]
@@ -290,13 +266,61 @@ namespace IdentityService.Application.Services
         //        issuer: _configuration["Jwt:Issuer"],
         //        audience: _configuration["Jwt:Audience"],
         //        claims: claims,
-        //        expires: DateTime.UtcNow.AddMinutes(15),
+        //        expires: DateTime.UtcNow.AddMinutes(20), // kısa ömürlü access
         //        signingCredentials: creds
         //    );
 
         //    return new JwtSecurityTokenHandler().WriteToken(token);
         //}
 
+        private string GenerateJwtToken(
+    User user,
+    string tenantNo,
+    IEnumerable<string> roles,
+    IEnumerable<string> permissions)
+        {
+            var claims = new List<Claim>
+    {
+        // Standart kimlik claim'leri
+        new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+        new(JwtRegisteredClaimNames.UniqueName, user.UserName ?? string.Empty),
+        new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+
+        // .NET’in beklediği kimlik claim’leri
+        new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+        new(ClaimTypes.Name, user.UserName ?? string.Empty),
+
+        // Multi-tenant işaretin
+        new("tn", tenantNo)
+    };
+
+            // 🔑 Roller: Hem ClaimTypes.Role hem de "role"
+            foreach (var r in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, r)); // [Authorize(Roles="…")]
+                claims.Add(new Claim("role", r));          // Ocelot RouteClaimsRequirement "role"
+            }
+
+            // İzinler
+            foreach (var p in permissions)
+                claims.Add(new Claim("perm", p));
+
+            // İmza anahtarı
+            var signingKey = _configuration["Jwt:SigningKey"] ?? _configuration["Jwt:Key"];
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey!));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                claims: claims,
+                notBefore: DateTime.UtcNow,
+                expires: DateTime.UtcNow.AddMinutes(20),
+                signingCredentials: creds
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
         private static string GenerateRefreshToken()
             => Convert.ToBase64String(Guid.NewGuid().ToByteArray());
     }
