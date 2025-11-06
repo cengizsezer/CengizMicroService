@@ -1,11 +1,12 @@
 ﻿@page "/education/new"
 @using Radzen
 @using WebApp.Application.Services
+@using WebApp.Application.Services.Interfaces
 @using WebApp.Shared.Dto
 @using WebApp.Shared.Dto.Education
 @using Microsoft.AspNetCore.Components.Forms
 
-@inject EducationService Store
+@inject IEducationService Store
 @inject NavigationManager Nav
 @inject NotificationService NotificationService
 
