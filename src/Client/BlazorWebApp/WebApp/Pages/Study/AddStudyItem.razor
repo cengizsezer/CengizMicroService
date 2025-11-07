@@ -1,0 +1,188 @@
+﻿@page "/addstudyitem"
+@using Newtonsoft.Json
+@using WebApp.Infrastructure
+@using WebApp.Shared.Dto
+@inject Radzen.DialogService dialogService
+@inject NavigationManager NavManager
+@inject WebApp.Application.Services.Interfaces.IFileApiService FileApi
+@inject NavigationManager Nav
+@using Microsoft.AspNetCore.Components.Forms
+@inject AppStateManager AppState
+
+<style>
+    #uploadWithDragAndDrop {
+        left: 0;
+        --rz-upload-button-bar-background-color: transparent;
+        --rz-upload-button-bar-padding: 0;
+    }
+
+        #uploadWithDragAndDrop .rz-fileupload-buttonbar .rz-fileupload-choose {
+            width: 100%;
+            text-align: center;
+            font-size: 16px;
+            padding: 100px 0;
+        }
+</style>
+
+<RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" Style="height: 100%;">
+    <RadzenStack>
+        <RadzenRow>
+            <RadzenColumn Size="12" SizeMD="6" class="rz-p-4 rz-border-radius-1" Style="border: var(--rz-grid-cell-border)">
+                <RadzenText TextStyle="TextStyle.Subtitle1">Ders / Bölüm / Konu</RadzenText>
+                <RadzenStack>
+                    <RadzenFormField Text="Yıl" Variant="@variant">
+                        <RadzenNumeric @bind-Value="Year" />
+                    </RadzenFormField>
+
+                    <RadzenFormField Text="Ders" Variant="@variant">
+                        <RadzenDropDownDataGrid Data="@Lessons" @bind-Value="@LessonCode" ValueProperty="Value" TextProperty="Text" TValue="string" />
+                    </RadzenFormField>
+
+                    <RadzenFormField Text="Bölüm No" Variant="@variant">
+                        <RadzenNumeric @bind-Value="@SectionNo" Min="1" Max="99" />
+                    </RadzenFormField>
+
+                    <RadzenFormField Text="Konu" Variant="@variant">
+                        <RadzenDropDownDataGrid Data="@Topics" @bind-Value="@TopicName" ValueProperty="Value" TextProperty="Text" TValue="string" />
+                    </RadzenFormField>
+                </RadzenStack>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeMD="6" class="rz-p-4 rz-border-radius-1" Style="border: var(--rz-grid-cell-border)">
+                <RadzenStack>
+                    <RadzenFormField Text="Oluşturulma Tarihi" Variant="@variant">
+                        <RadzenDatePicker @bind-Value="@createdAt" ShowTime="true" />
+                    </RadzenFormField>
+                    <RadzenFormField Text="Not" Variant="@variant">
+                        <RadzenTextArea @bind-Value="@_note" Rows="4" />
+                    </RadzenFormField>
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenStack>
+
+    <RadzenCard Variant="Variant.Outlined">
+        <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">PDF Yükle</RadzenText>
+
+        <RadzenUpload id="uploadWithDragAndDrop"
+                      @ref="upload"
+                      Auto="false"
+                      Multiple="false"
+                      Accept="application/pdf"
+                      Change="@OnFileSelected"
+                      Style="width:100%" />
+
+        <RadzenButton Text="Upload" Click="@OnUpload" class="rz-mt-4" Disabled="@(_selectedFile is null)" />
+        <RadzenText class="rz-mt-2">@_status</RadzenText>
+    </RadzenCard>
+
+    <RadzenStack Visible="@ShowClose" Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+        <RadzenButton Click="@((args) => dialogService.Close(true))" Variant="Variant.Flat" Text="Close" Style="width: 120px" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter] public bool ShowClose { get; set; } = true;
+
+    // === Eski alanların Study karşılıkları ===
+    // Year: aynı kalıyor (istersen sınav yılı gibi kullan)
+    // DeclType -> LessonCode
+    // Month -> SectionNo
+    // DocType -> TopicName
+
+    int Year = DateTime.Now.Year;
+    int SectionNo = Math.Clamp(DateTime.Now.Month, 1, 12);  // Bölüm no için başlangıç
+    string LessonCode = "FIN_TABLO";                        // Varsayılan ders
+    string TopicName = "KONU 1";                            // Varsayılan konu
+
+    public record Pair(string Text, string Value);
+
+    // Ders listesi (backend'de DeclType olarak gidecek)
+    List<Pair> Lessons = new()
+    {
+        new("Finansal Tablolar Analizi", "FIN_TABLO"),
+        new("Finansal Muhasebe",       "FINANS"),
+        new("Vergi Mevzuatı Ve Uygulaması", "VERGI"),
+        new("Muhasebe Denetimi", "DENETIM"),
+        new("Hukuk", "HUKUK"),
+        new("Meslek Hukuku", "MESLEKHUKUK"),
+        new("Sermaye Piyasası Mevzuatı", "SERMAYE"),
+        new("Maliyet Muhasebesi", "MAALIYET")
+    };
+
+    // Konu listesi (backend'de DocType olarak gidecek)
+    // List<Pair> Topics = new()
+    // {
+    //     new("Konu 1", "KONU 1"),
+    //     new("Konu 2", "KONU 2"),
+    //     new("Konu 3", "KONU 3"),
+    //     new("Konu 4", "KONU 4"),
+    //     new("Konu 5", "KONU 5"),
+    //     new("Konu 6", "KONU 6"),
+    //     new("Konu 7", "KONU 7"),
+    //     new("Konu 8", "KONU 8"),
+    // };
+
+    List<Pair> Topics = Enumerable.Range(1, 30)
+    .Select(i => new Pair($"Konu {i}", $"KONU {i}"))
+    .ToList();
+
+    Variant variant = Variant.Outlined;
+
+    private string _note = "";
+    DateTime? createdAt = DateTime.Now;
+
+    private RadzenUpload upload;
+    private IBrowserFile? _selectedFile;
+    private string _status = "";
+
+    protected override Task OnInitializedAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    private void OnFileSelected(UploadChangeEventArgs args)
+    {
+        _selectedFile = args.Files?.FirstOrDefault();
+        _status = _selectedFile is null
+            ? "Dosya seçilmedi."
+            : $"Seçildi: {_selectedFile.Name} ({_selectedFile.Size} bayt)";
+    }
+
+    private async Task OnUpload()
+    {
+        if (_selectedFile is null)
+        {
+            _status = "Lütfen bir PDF seçin.";
+            return;
+        }
+
+        try
+        {
+            _status = "Yükleniyor...";
+
+            // Backend imzasını aynen kullanıyoruz:
+            // companyId, year, month, declType, docType
+            var ok = await FileApi.UploadAsync(
+                _selectedFile,
+                companyId: AppState.SelectedFirmId,
+                year: Year,
+                month: SectionNo,       // Month -> BölümNo
+                declType: LessonCode,   // DeclType -> LessonCode
+                docType: TopicName,     // DocType -> TopicName
+                ct: default
+            );
+
+            _status = ok ? "Yükleme tamamlandı ✅" : "Yükleme başarısız ❌";
+
+            _selectedFile = null;
+            StateHasChanged();
+
+            dialogService.Close(true);
+        }
+        catch (Exception ex)
+        {
+            _status = $"Yükleme hatası: {ex.Message}";
+        }
+    }
+}

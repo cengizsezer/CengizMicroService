@@ -1,0 +1,379 @@
+﻿@page "/study"
+@using Newtonsoft.Json
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Infrastructure
+@using WebApp.Shared.Dto.Declaration
+@inject IFileApiService FileApi
+@inject IJSRuntime _jsRuntime
+@using Microsoft.JSInterop
+@inject DialogService DialogService
+@inject AppStateManager AppState
+@inject NotificationService Notifications
+
+<h3>Ders Arşivi</h3>
+
+<RadzenFieldset Text="Filtre" Style="margin-bottom:10px">
+    <div class="grid">
+        <div class="col-6 md:col-2">
+            <RadzenLabel Text="Yıl" />
+            <RadzenNumeric @bind-Value="Year" Style="width:100%" />
+        </div>
+
+        <div class="col-6 md:col-3">
+            <RadzenLabel Text="Ders" />
+            <RadzenDropDown @bind-Value="LessonCode"
+                            Data="@Lessons"
+                            TextProperty="Text" ValueProperty="Value"
+                            Style="width:100%" />
+        </div>
+    </div>
+
+    <div class="rz-p-0 rz-p-md-12">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" class="rz-p-4 rz-mb-6 rz-border-radius-1" Style="border: var(--rz-grid-cell-border);">
+            <RadzenButton ButtonStyle="ButtonStyle.Primary"
+                          Icon="search"
+                          Text="Listele"
+                          Click="@(args => Load())" />
+            <RadzenButton ButtonStyle="ButtonStyle.Success"
+                          Icon="add_circle"
+                          Text="Ekle"
+                          Click="@(args => OnClickAddFile())" />
+        </RadzenStack>
+    </div>
+</RadzenFieldset>
+
+@if (loading)
+{
+    <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" ShowValue="false" />
+}
+else if (RootNodes.Count == 0)
+{
+    <p>Sonuç yok.</p>
+}
+else
+{
+    <RadzenCard>
+        <RadzenTree Data="@RootNodes"
+                    Change="@OnChange">
+
+            <RadzenTreeLevel TextProperty="Text"
+                             ChildrenProperty="Children"
+                             HasChildren="@HasKids"
+                             Expanded="@ShouldExpand">
+                <Template Context="item">
+                    @{
+                        var node = item.Value as FileNode; // bazı Radzen sürümlerinde item.Data olabilir
+                    }
+
+                    <div style="display:flex;align-items:center;gap:.5rem">
+                        <RadzenIcon Icon="@node?.Icon" />
+                        <span>@node?.Text</span>
+
+                        @if (node?.FileId is int fid)
+                        {
+                            <RadzenButton Icon="picture_as_pdf"
+                                          Size="ButtonSize.Small"
+                                          ButtonStyle="ButtonStyle.Light"
+                                          Click="@(async () => await Open(fid))"
+                                          Style="margin-left:.5rem" />
+
+                            <RadzenButton Icon="delete"
+                                          Size="ButtonSize.Small"
+                                          ButtonStyle="ButtonStyle.Danger"
+                                          Disabled="@deleting"
+                                          Click="@(async () => await DeleteFile(fid))" />
+                        }
+                    </div>
+                </Template>
+            </RadzenTreeLevel>
+        </RadzenTree>
+    </RadzenCard>
+}
+
+@code {
+    // ---------------- UI durum
+    int Year = DateTime.Now.Year;
+
+    // Ders seçimleri (DeclType yerine)
+    string LessonCode = "FIN_TABLO"; // varsayılan
+    public record Pair(string Text, string Value);
+    List<Pair> Lessons = new()
+    {
+        new("Finansal Tablolar Analizi", "FIN_TABLO"),
+        new("Finansal Muhasebe",       "FINANS"),
+        new("Vergi Mevzuatı Ve Uygulaması", "VERGI"),
+        new("Muhasebe Denetimi", "DENETIM"),
+        new("Hukuk", "HUKUK"),
+        new("Meslek Hukuku", "MESLEKHUKUK"),
+        new("Sermaye Piyasası Mevzuatı", "SERMAYE"),
+        new("Maliyet Muhasebesi", "MAALIYET")
+    };
+
+    bool loading;
+
+    // ---------------- Tree modeli
+    public class FileNode
+    {
+        public string Text { get; set; } = "";
+        public string Icon { get; set; } = "folder";
+        public int? FileId { get; set; }                 // yaprakta PDF id
+        public List<FileNode> Children { get; set; } = new();
+        public int Level { get; set; }                   // 0:Ders, 1:Bölüm, 2:Konu, 3:Dosya
+    }
+
+    List<FileNode> RootNodes = new();
+    bool HasKids(object? data) => (data as FileNode)?.Children?.Any() == true;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    bool deleting;
+    async Task DeleteFile(int id)
+    {
+        var ok = await DialogService.Confirm("Bu dosyayı silmek istediğinize emin misiniz?",
+                                             "Silme Onayı",
+                                             new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+        if (ok != true) return;
+
+        deleting = true; StateHasChanged();
+        try
+        {
+            var success = await FileApi.DeleteAsync(id);
+            if (success)
+            {
+                await Load();
+                Notifications.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Silindi",
+                    Detail = $"Dosya (ID: {id}) silindi."
+                });
+            }
+            else
+            {
+                Notifications.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Warning,
+                    Summary = "Silinemedi",
+                    Detail = "Sunucu silme işlemini onaylamadı."
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Notifications.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = ex.Message
+            });
+        }
+        finally { deleting = false; StateHasChanged(); }
+    }
+
+    // Ders=DeclType, Bölüm=Month(1..12), Konu=DocType mantığıyla mevcut endpoint'i kullanıyoruz.
+    async Task Load()
+    {
+        loading = true; StateHasChanged();
+
+        var tasks = Enumerable.Range(1, 12)
+            .Select(sectionNo => FileApi.ListAsyncForDeclType(AppState.SelectedFirmId, Year, sectionNo, LessonCode)!)
+            .ToArray();
+
+        var results = await Task.WhenAll(tasks);
+        var all = results.SelectMany(x => x ?? Enumerable.Empty<FileInfoDto>()).ToList();
+
+        RootNodes = BuildTree(all);
+        loading = false;
+    }
+
+    private async Task OnClickAddFile()
+    {
+        await LoadStateAsync();
+
+        // Mevcut upload dialog'unu aynen kullanıyoruz; ismini değiştirmene gerek yok.
+        await DialogService.OpenAsync<AddStudyItem>("Yeni Dosya Ekle",
+               new(),
+               new DialogOptions()
+               {
+                   Resizable = true,
+                   Draggable = true,
+                   Resize = OnResize,
+                   Drag = OnDrag,
+                   Width = Settings != null ? Settings.Width : "700px",
+                   Height = Settings != null ? Settings.Height : "512px",
+                   Left = Settings != null ? Settings.Left : null,
+                   Top = Settings != null ? Settings.Top : null
+               });
+
+        await SaveStateAsync();
+    }
+
+    void OnDrag(System.Drawing.Point point)
+    {
+        _jsRuntime.InvokeVoidAsync("eval", $"console.log('Dialog drag. Left:{point.X}, Top:{point.Y}')");
+
+        if (Settings == null)
+        {
+            Settings = new DialogSettings();
+        }
+
+        Settings.Left = $"{point.X}px";
+        Settings.Top = $"{point.Y}px";
+
+        InvokeAsync(SaveStateAsync);
+    }
+
+    void OnResize(System.Drawing.Size size)
+    {
+        _jsRuntime.InvokeVoidAsync("eval", $"console.log('Dialog resize. Width:{size.Width}, Height:{size.Height}')");
+
+        if (Settings == null)
+        {
+            Settings = new DialogSettings();
+        }
+
+        Settings.Width = $"{size.Width}px";
+        Settings.Height = $"{size.Height}px";
+
+        InvokeAsync(SaveStateAsync);
+    }
+
+    DialogSettings _settings;
+    public DialogSettings Settings
+    {
+        get => _settings;
+        set
+        {
+            if (_settings != value)
+            {
+                _settings = value;
+                InvokeAsync(SaveStateAsync);
+            }
+        }
+    }
+
+    public class DialogSettings
+    {
+        public string Left { get; set; }
+        public string Top { get; set; }
+        public string Width { get; set; }
+        public string Height { get; set; }
+    }
+
+    private async Task LoadStateAsync()
+    {
+        await Task.CompletedTask;
+
+        var result = await _jsRuntime.InvokeAsync<string>("window.localStorage.getItem", "DialogSettings");
+        if (!string.IsNullOrEmpty(result))
+        {
+            _settings = JsonConvert.DeserializeObject<DialogSettings>(result);
+        }
+    }
+
+    private async Task SaveStateAsync()
+    {
+        await Task.CompletedTask;
+        var serialized = JsonConvert.SerializeObject(Settings);
+        await _jsRuntime.InvokeVoidAsync("window.localStorage.setItem", "DialogSettings", serialized);
+    }
+
+    List<FileNode> BuildTree(IEnumerable<FileInfoDto> items)
+    {
+        var roots = new List<FileNode>();
+
+        // Kök: "Ders - Yıl"
+        var lessonText = Lessons.FirstOrDefault(x => x.Value == LessonCode)?.Text ?? LessonCode;
+        var root = new FileNode
+        {
+            Text = $"{lessonText} - {Year}",
+            Icon = "school",
+            Level = 0
+        };
+
+        // 1. seviye: Bölümler (ay yerine)
+        foreach (var bySection in items.GroupBy(i => ParseSection(i.Month)).OrderBy(g => g.Key))
+        {
+            var sectionNode = new FileNode
+            {
+                Text = $"{bySection.Key:00} - {SectionName(bySection.Key)}",
+                Icon = "layers",
+                Level = 1
+            };
+
+            // 2. seviye: Konular (DocType yerine)
+            var byTopic = bySection.GroupBy(i => TopicName(i.DocType));
+
+            foreach (var topic in byTopic.OrderBy(g => g.Key))
+            {
+                var topicNode = new FileNode
+                {
+                    Text = topic.Key, // "Konu 1" / "Konu 2" / "Konu 3"...
+                    Icon = "folder_open",
+                    Level = 2
+                };
+
+                foreach (var f in topic.OrderByDescending(x => x.CreatedAtUtc))
+                {
+                    topicNode.Children.Add(new FileNode
+                    {
+                        Text = f.FileName,
+                        Icon = "description",
+                        FileId = f.Id,
+                        Level = 3
+                    });
+                }
+
+                sectionNode.Children.Add(topicNode);
+            }
+
+            root.Children.Add(sectionNode);
+        }
+
+        if (root.Children.Count > 0)
+            roots.Add(root);
+
+        return roots;
+    }
+
+    // Hangi düğümler açık gelsin?
+    bool ShouldExpand(object data)
+       => (data as FileNode)?.FileId == null;
+
+    // Ay -> Bölüm No (1..99 güvenlik payı)
+    int ParseSection(string monthLike) => int.TryParse(monthLike, out var s) ? Math.Clamp(s, 1, 99) : 1;
+    string SectionName(int s) => $"Bölüm {s}";
+
+    // DocType => Konu adı eşlemesi
+    string TopicName(string? docType)
+    {
+        if (string.IsNullOrWhiteSpace(docType)) return "Konu";
+
+        var d = docType.Trim();
+        if (d.Equals("Beyanname", StringComparison.OrdinalIgnoreCase)) return "Konu 1";
+        if (d.Equals("Tahakkuk", StringComparison.OrdinalIgnoreCase)) return "Konu 2";
+
+        // Eğer DocType "Konu 3" gibi geliyorsa aynen kullan:
+        if (d.StartsWith("Konu", StringComparison.OrdinalIgnoreCase)) return d;
+
+        // Aksi halde generic isim:
+        return $"Konu: {d}";
+    }
+
+    async Task OnChange(TreeEventArgs args)
+    {
+        if (args?.Value is FileNode n && n.FileId is int fid)
+            await Open(fid);
+    }
+
+    async Task Open(int id)
+    {
+        var dto = await FileApi.GetDownloadAsync(id);
+        if (!string.IsNullOrWhiteSpace(dto?.PresignedUrl))
+            await _jsRuntime.InvokeVoidAsync("open", dto.PresignedUrl, "_blank");
+        else
+            await _jsRuntime.InvokeVoidAsync("alert", "Presigned URL üretilemedi.");
+    }
+}
