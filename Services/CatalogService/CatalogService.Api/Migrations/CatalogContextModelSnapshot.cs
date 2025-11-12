@@ -22,6 +22,227 @@ namespace CatalogService.Api.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("CatalogService.Api.Features.AccountPlan.AccountNode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Order")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<int?>("ParentId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("Level", "Order");
+
+                    b.HasIndex("ParentId", "Order");
+
+                    b.ToTable("AccountNodes", "catalog");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "1",
+                            Level = 1,
+                            Name = "Dönen Varlıklar",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "10",
+                            Level = 2,
+                            Name = "Hazır Değerler",
+                            Order = 10,
+                            ParentId = 1
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Code = "100",
+                            Description = "İşletmenin kasa mevcudu.",
+                            Level = 3,
+                            Name = "Kasa",
+                            Order = 100,
+                            ParentId = 2
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Code = "101",
+                            Level = 3,
+                            Name = "Alınan Çekler",
+                            Order = 101,
+                            ParentId = 2
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Code = "102",
+                            Level = 3,
+                            Name = "Bankalar",
+                            Order = 102,
+                            ParentId = 2
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Code = "103",
+                            Level = 3,
+                            Name = "Verilen Çekler ve Ödeme Emirleri (-)",
+                            Order = 103,
+                            ParentId = 2
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Code = "108",
+                            Level = 3,
+                            Name = "Diğer Hazır Değerler",
+                            Order = 108,
+                            ParentId = 2
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Code = "11",
+                            Level = 2,
+                            Name = "Menkul Kıymetler",
+                            Order = 11,
+                            ParentId = 1
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Code = "110",
+                            Level = 3,
+                            Name = "Hisse Senetleri",
+                            Order = 110,
+                            ParentId = 8
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Code = "111",
+                            Level = 3,
+                            Name = "Özel Kesim Tahvil, Senet ve Bonoları",
+                            Order = 111,
+                            ParentId = 8
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Code = "112",
+                            Level = 3,
+                            Name = "Kamu Kesimi Tahvil, Senet ve Bonoları",
+                            Order = 112,
+                            ParentId = 8
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Code = "118",
+                            Level = 3,
+                            Name = "Diğer Menkul Kıymetler",
+                            Order = 118,
+                            ParentId = 8
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Code = "119",
+                            Level = 3,
+                            Name = "Menkul Kıymetler Değer Düşüklüğü Karşılığı (-)",
+                            Order = 119,
+                            ParentId = 8
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Code = "12",
+                            Level = 2,
+                            Name = "Ticari Alacaklar",
+                            Order = 12,
+                            ParentId = 1
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Code = "120",
+                            Level = 3,
+                            Name = "Alıcılar",
+                            Order = 120,
+                            ParentId = 14
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Code = "121",
+                            Level = 3,
+                            Name = "Alacak Senetleri",
+                            Order = 121,
+                            ParentId = 14
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Code = "127",
+                            Level = 3,
+                            Name = "Diğer Ticari Alacaklar",
+                            Order = 127,
+                            ParentId = 14
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Code = "128",
+                            Level = 3,
+                            Name = "Şüpheli Ticari Alacaklar",
+                            Order = 128,
+                            ParentId = 14
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Code = "129",
+                            Level = 3,
+                            Name = "Şüpheli Ticari Alacaklar Karşılığı (-)",
+                            Order = 129,
+                            ParentId = 14
+                        });
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.Education.Domain.EducationItem", b =>
                 {
                     b.Property<int>("Id")
@@ -564,6 +785,16 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("Vehicles", (string)null);
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.AccountPlan.AccountNode", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.AccountPlan.AccountNode", "Parent")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Parent");
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.Expenses.Domain.ProductDetail", b =>
                 {
                     b.HasOne("CatalogService.Api.Features.Expenses.Domain.ReceiptItem", "ReceiptItem")
@@ -595,6 +826,11 @@ namespace CatalogService.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Job");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.AccountPlan.AccountNode", b =>
+                {
+                    b.Navigation("Children");
                 });
 
             modelBuilder.Entity("CatalogService.Api.Features.Expenses.Domain.Expense", b =>

@@ -1,4 +1,5 @@
 ﻿using CatalogService.Api.Extensions;
+using CatalogService.Api.Features.AccountPlan;
 using CatalogService.Api.Features.Education.Mapping;
 using CatalogService.Api.Features.Expenses.Mapping;
 using CatalogService.Api.Features.Jobs.Service;
@@ -74,7 +75,7 @@ builder.Services.AddScoped<IJobService, JobService>();
 builder.Services.AddScoped<IHttpCurrentUser, HttpCurrentUser>();
 builder.Services.AddTransient<AuthForwardingHandler>();
 builder.Services.AddAuthorization();
-
+builder.Services.AddScoped<IAccountPlanService, AccountPlanService>();
 builder.Services.AddSingleton<IEventBus>(sp =>
 {
     var cfg = builder.Configuration;

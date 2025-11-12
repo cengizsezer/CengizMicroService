@@ -81,6 +81,9 @@ namespace WebApp
             builder.Services.AddScoped<IUsersService>(sp =>
                 new UsersService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("ApiGatewayCorridor")));
 
+            builder.Services.AddScoped<IAccountPlanClient>(sp =>
+               new AccountPlanClient(sp.GetRequiredService<IHttpClientFactory>().CreateClient("ApiGatewayCorridor")));
+
 
             builder.Services.AddHttpClient<IFileApiService, FileApiService>((sp, http) =>
             {
