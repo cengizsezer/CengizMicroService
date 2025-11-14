@@ -47,7 +47,7 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new JobEntityTypeConfiguration());
             builder.ApplyConfiguration(new JobAssignmentEntityTypeConfiguration());
             builder.ApplyConfiguration(new AccountNodesEntityTypeConfiguration());
-            AccountPlanSeed.Seed(builder);
+            //AccountPlanSeed.Seed(builder);
             builder.Entity<Expense>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
             builder.Entity<ReceiptItem>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
             builder.Entity<ProductDetail>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);

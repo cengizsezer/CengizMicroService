@@ -7,11 +7,15 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
 {
     public class AccountNodesEntityTypeConfiguration : IEntityTypeConfiguration<AccountNode>
     {
-        public void Configure(EntityTypeBuilder<CatalogService.Api.Features.AccountPlan.AccountNode> builder)
+        public void Configure(EntityTypeBuilder<AccountNode> builder)
         {
             builder.ToTable("AccountNodes", CatalogContext.DEFAULT_SCHEMA);
 
             builder.HasKey(x => x.Id);
+
+            // 🔴 BUNU EKLE
+            builder.Property(x => x.Id)
+                   .ValueGeneratedNever();  // Id'yi EF tarafından üretilmeyecek yap
 
             builder.Property(x => x.Code)
                    .IsRequired()
@@ -22,10 +26,10 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
                    .HasMaxLength(200);
 
             builder.Property(x => x.Description)
-                   .HasMaxLength(2000); // İstersen nvarchar(max)
+                   .HasMaxLength(2000);
 
             builder.Property(x => x.Notes)
-        .HasColumnType("nvarchar(max)"); // Notlar uzun olabilir
+                   .HasColumnType("nvarchar(max)");
 
             builder.Property(x => x.Level)
                    .IsRequired();
@@ -37,17 +41,16 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(x => x.ParentId)
                    .IsRequired(false);
 
-            // Self-referencing ilişki
             builder.HasOne(x => x.Parent)
                    .WithMany(x => x.Children)
                    .HasForeignKey(x => x.ParentId)
                    .OnDelete(DeleteBehavior.Restrict);
 
-            // Indexler
-            builder.HasIndex(x => x.Code).IsUnique();                // TDHP'de kod tekil
-            builder.HasIndex(x => new { x.ParentId, x.Order });      // ağaç sıralama
-            builder.HasIndex(x => new { x.Level, x.Order });         // listelemeler
+            builder.HasIndex(x => x.Code).IsUnique();
+            builder.HasIndex(x => new { x.ParentId, x.Order });
+            builder.HasIndex(x => new { x.Level, x.Order });
         }
+
     }
 }
 

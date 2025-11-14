@@ -268,6 +268,8 @@ using (var scope = app.Services.CreateScope())
         {
             using var ctx = new CatalogContext(options, new FixedTenantAccessor(t));
             await seeder.SeedAsync(ctx, envHost, logger, new[] { t }, force: true);
+            await AccountPlanSeed.SeedAsync(ctx, logger);
+
         }
     }
     catch (Exception ex)
