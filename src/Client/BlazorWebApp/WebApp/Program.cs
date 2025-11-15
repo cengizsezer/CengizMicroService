@@ -11,6 +11,7 @@ using System;
 using System.Globalization;
 using System.Net.Http;
 using System.Threading.Tasks;
+using WebApp.Application.Handler;
 using WebApp.Application.Services;
 using WebApp.Application.Services.Interfaces;
 using WebApp.Infrastructure;
@@ -37,7 +38,7 @@ namespace WebApp
             builder.Services.AddAuthorizationCore();
            
             builder.Services.AddSingleton<AppStateManager>();
-
+            builder.Services.AddTransient<RefreshTokenCorridor>();
 
             builder.Services.AddTransient<AuthTokenHandler>();
             builder.Services.AddTransient<TenantHeaderHandler>();
@@ -46,12 +47,18 @@ namespace WebApp
                 ? "http://localhost:5000/"
                 : "https://www.dijitalmasraf.com/";
 
+            builder.Services.AddHttpClient("GatewayBare", c =>
+            {
+                c.BaseAddress = new Uri(apiBaseAddress);
+            });
+
             builder.Services.AddHttpClient("ApiGatewayCorridor", c =>
             {
                 c.BaseAddress = new Uri(apiBaseAddress);
             })
             .AddHttpMessageHandler<AuthTokenHandler>()
-            .AddHttpMessageHandler<TenantHeaderHandler>();
+            .AddHttpMessageHandler<TenantHeaderHandler>()
+            .AddHttpMessageHandler<RefreshTokenCorridor>();
 
             // Bu koridoru isteyenlere verelim
             builder.Services.AddScoped(sp =>
@@ -94,7 +101,8 @@ namespace WebApp
                 http.BaseAddress = new Uri(baseUrl);
             })
  .AddHttpMessageHandler<AuthTokenHandler>()
- .AddHttpMessageHandler<TenantHeaderHandler>();
+ .AddHttpMessageHandler<TenantHeaderHandler>()
+            .AddHttpMessageHandler<RefreshTokenCorridor>();
 
 
 
