@@ -24,12 +24,9 @@ public class Program
     public static async Task Main(string[] args)
     {
 #if DEBUG
-        // Serilog kendi hatalarını konsola yazsın (DNS/Graylog vs.)
         Serilog.Debugging.SelfLog.Enable(m =>
             System.Console.Error.WriteLine("SERILOG-SELFLOG: " + m));
 #endif
-
-       
 
         var appConfig = BuildConfiguration();
         var serilogConfig = BuildSerilogConfiguration();
@@ -38,20 +35,19 @@ public class Program
         System.Console.WriteLine(">>> DB: " + appConfig.GetConnectionString("DatabaseConnection"));
         System.Console.WriteLine(">>> MQ Host: " + appConfig["RabbitMQ:HostName"]);
 
-
-        // Global logger (Host başlamadan önce)
         Log.Logger = new LoggerConfiguration()
-     .MinimumLevel.Debug()
-     .WriteTo.Console()
-     .ReadFrom.Configuration(serilogConfig)
-     .CreateLogger();
+            .MinimumLevel.Debug()
+            .WriteTo.Console()
+            .ReadFrom.Configuration(serilogConfig)
+            .CreateLogger();
+
         Log.Information("NS fallback console logger OK");
+
         try
         {
             Log.Information("NotificationService starting... (env: {Env})", Env);
 
             var host = Host.CreateDefaultBuilder(args)
-                // Serilog’u Host logging pipeline’ına bağla (CONFIG’TEN)
                 .UseSerilog((ctx, services, loggerCfg) =>
                     loggerCfg.ReadFrom.Configuration(serilogConfig)
                              .Enrich.FromLogContext())
@@ -77,7 +73,7 @@ public class Program
                     services.AddTransient<TaskUpdatedHandler>();
                     services.AddTransient<TaskDeletedHandler>();
 
-                    // Quartz: her gün 08:00 (Europe/Istanbul)
+                    // Quartz
                     services.AddQuartz(q =>
                     {
                         q.UseMicrosoftDependencyInjectionJobFactory();
@@ -85,20 +81,13 @@ public class Program
                         var jobKey = new JobKey("DailyRemindersJob");
                         q.AddJob<DailyRemindersJob>(o => o.WithIdentity(jobKey));
                         q.AddTrigger(t => t
-          .ForJob(jobKey)
-          .WithIdentity("DailyReminders_DevEveryMinute")
-          .StartNow()
-          .WithSimpleSchedule(x => x
-              .WithIntervalInMinutes(1)
-              .RepeatForever()
-              .WithMisfireHandlingInstructionFireNow())
-      );
-                        //q.AddTrigger(t => t
-                        //    .ForJob(jobKey)
-                        //    .WithIdentity("DailyRemindersTrigger")
-                        //    .WithCronSchedule("0 0 8 * * ?", x => x
-                        //        .InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("Europe/Istanbul"))
-                        //        .WithMisfireHandlingInstructionFireAndProceed()));
+                            .ForJob(jobKey)
+                            .WithIdentity("DailyReminders_DevEveryMinute")
+                            .StartNow()
+                            .WithSimpleSchedule(x => x
+                                .WithIntervalInMinutes(1)
+                                .RepeatForever()
+                                .WithMisfireHandlingInstructionFireNow()));
                     });
                     services.AddQuartzHostedService(opt => opt.WaitForJobsToComplete = true);
 
@@ -136,8 +125,18 @@ public class Program
                 })
                 .Build();
 
+            // 🔹🔹🔹 BURASI YENİ: MIGRATION ÇAĞRISI 🔹🔹🔹
+            using (var scope = host.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
+                Log.Information("NotificationService - applying migrations...");
+                await db.Database.MigrateAsync();
+                Log.Information("NotificationService - migrations OK.");
+            }
+            // 🔹🔹🔹 BURASI YENİ BİTİŞ 🔹🔹🔹
+
             Log.Information("NotificationService started (env: {Env})", Env);
-            
+
             await host.RunAsync();
         }
         catch (Exception ex)
@@ -148,8 +147,6 @@ public class Program
         {
             Log.CloseAndFlush();
         }
-
-       
     }
 
     private static IConfiguration BuildConfiguration() =>
