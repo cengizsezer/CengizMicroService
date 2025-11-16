@@ -7,7 +7,7 @@
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Domain.Models.User
 @using WebApp.Pages.SubPages
-
+@using System.Globalization;
 <RadzenNotification />
 <RadzenDialog />
 
@@ -56,13 +56,14 @@
 
                     <RadzenProfileMenu Click="@OnProfileMenuClick">
                         <Template>
-                            <RadzenGravatar Email="cengizsezer7@gmail.com" />
+                            <div class="avatar-initials">@UserInitials</div>
                         </Template>
                         <ChildContent>
                             <RadzenProfileMenuItem Text="Profil" Icon="account_circle" Path="/profile" />
                             <RadzenProfileMenuItem Text="Çıkış" Icon="logout" Value="logout" />
                         </ChildContent>
                     </RadzenProfileMenu>
+
                 </div>
             </RadzenStack>
         </RadzenHeader>
@@ -215,5 +216,37 @@
     {
         if (item?.Value?.ToString() == "logout")
             _ = OnLogout();
+    }
+    string UserInitials => GetInitials(UserFullName);
+
+    // Burayı kendi user modeline göre ayarlarsın.
+    // Şimdilik örnek olarak:
+    string UserFullName
+        => "Cengiz Sezer" // eğer böyle bir property'n varsa
+           ?? "Cengiz Sezer";                      // yoksa şimdilik sabit dursun
+
+
+    private string GetInitials(string fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+            return "?";
+
+        var parts = fullName
+            .Trim()
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        // Tek kelimelik isimse: ilk 2 harf (CE gibi)
+        if (parts.Length == 1)
+        {
+            var name = parts[0];
+            var len = Math.Min(2, name.Length);
+            return name[..len].ToUpper(new CultureInfo("tr-TR"));
+        }
+
+        // Birden fazla kelimeyse: ilk + son kelimenin ilk harfi (Cengiz Sezer -> CS)
+        char first = parts[0][0];
+        char last = parts[^1][0];
+
+        return $"{char.ToUpper(first, new CultureInfo("tr-TR"))}{char.ToUpper(last, new CultureInfo("tr-TR"))}";
     }
 }
