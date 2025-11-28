@@ -34,11 +34,39 @@ namespace WebApp.Application.Services
 
         // --- REGISTER --------------------------------------------------------
 
+        //public async Task<RegisterResponseModel?> Register(string userName, string email, string password)
+        //{
+        //    var payload = new RegisterRequestModel { UserName = userName, Email = email, Password = password };
+        //    return await httpClient.PostGetResponseAsync<RegisterResponseModel, RegisterRequestModel>("auth/register", payload);
+        //}
+
         public async Task<RegisterResponseModel?> Register(string userName, string email, string password)
         {
-            var payload = new RegisterRequestModel { UserName = userName, Email = email, Password = password };
-            return await httpClient.PostGetResponseAsync<RegisterResponseModel, RegisterRequestModel>("auth/register", payload);
+            var payload = new RegisterRequestModel
+            {
+                UserName = userName,
+                Email = email,
+                Password = password
+            };
+
+            var response = await httpClient.PostAsJsonAsync("auth/register", payload);
+
+            // Başarılı durumda JSON parse et
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<RegisterResponseModel>();
+            }
+
+            // 400 / 409 gibi hatalarda backend'den gelen text'i oku
+            var errorText = await response.Content.ReadAsStringAsync();
+
+            return new RegisterResponseModel
+            {
+                Success = false,
+                Message = errorText
+            };
         }
+
 
         // --- LOGIN (ACCESS YOK; sadece refresh + firmalar) -------------------
 

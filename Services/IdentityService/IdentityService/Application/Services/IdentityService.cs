@@ -97,33 +97,48 @@ namespace IdentityService.Application.Services
         // 3) REGISTER: basit hali
         public async Task<RegisterResult> RegisterAsync(RegisterRequestModel model)
         {
-            var existingUser = await _userManager.FindByNameAsync(model.UserName);
-
-            if (existingUser != null )
+            // 🔍 1) UserName kontrolü
+            var existingByUsername = await _userManager.FindByNameAsync(model.UserName);
+            if (existingByUsername != null)
             {
                 return new RegisterResult(
                     Success: false,
                     UserId: default,
                     Email: model.Email,
                     FullName: model.UserName,
-                    ErrorMessage: "Bu kullanıcı zaten var."
+                    ErrorMessage: "Bu kullanıcı adı zaten kullanılıyor."
                 );
             }
-          
 
+            // 🔍 2) Email kontrolü
+            var existingByEmail = await _userManager.FindByEmailAsync(model.Email);
+            if (existingByEmail != null)
+            {
+                return new RegisterResult(
+                    Success: false,
+                    UserId: default,
+                    Email: model.Email,
+                    FullName: model.UserName,
+                    ErrorMessage: "Bu e-posta adresiyle zaten kayıt olunmuş."
+                );
+            }
+
+            // 🆕 3) User nesnesini oluştur
             var user = new User
             {
                 UserName = model.UserName,
                 Email = model.Email,
-                // Role alanı legacy; asıl rol/izin yönetimi UserTenantRole üzerinden yapılacak.
                 LegacyRole = model.Role ?? "User"
             };
 
+            // 🔐 4) Identity kullanarak kullanıcı oluştur
             var result = await _userManager.CreateAsync(user, model.Password);
 
             if (!result.Succeeded)
             {
-                var error = string.Join("; ", result.Errors.Select(e => e.Description));
+                // Identity error’larını Türkçeye çevirme (opsiyon ama tavsiye ederim)
+                var error = MapIdentityErrors(result.Errors);
+
                 return new RegisterResult(
                     Success: false,
                     UserId: default,
@@ -132,14 +147,61 @@ namespace IdentityService.Application.Services
                     ErrorMessage: error
                 );
             }
+
+            // 🎉 5) Başarılı dönüş
             return new RegisterResult(
-        Success: true,
-        UserId: user.Id,          // NOT: Id tipin Guid değilse aşağıdaki nota bak
-        Email: user.Email!,
-        FullName: user.UserName,
-        ErrorMessage: null
-    );
+                Success: true,
+                UserId: user.Id,
+                Email: user.Email!,
+                FullName: user.UserName,
+                ErrorMessage: null
+            );
         }
+        private string MapIdentityErrors(IEnumerable<IdentityError> errors)
+        {
+            var messages = new List<string>();
+
+            foreach (var err in errors)
+            {
+                switch (err.Code)
+                {
+                    case "DuplicateUserName":
+                        messages.Add("Bu kullanıcı adı zaten kullanılıyor.");
+                        break;
+
+                    case "DuplicateEmail":
+                        messages.Add("Bu e-posta adresi zaten kayıtlı.");
+                        break;
+
+                    case "PasswordTooShort":
+                        messages.Add("Şifre çok kısa. Minimum uzunluk şartını sağlamıyor.");
+                        break;
+
+                    case "PasswordRequiresNonAlphanumeric":
+                        messages.Add("Şifre en az bir özel karakter içermelidir.");
+                        break;
+
+                    case "PasswordRequiresDigit":
+                        messages.Add("Şifre en az bir rakam içermelidir.");
+                        break;
+
+                    case "PasswordRequiresLower":
+                        messages.Add("Şifre en az bir küçük harf içermelidir.");
+                        break;
+
+                    case "PasswordRequiresUpper":
+                        messages.Add("Şifre en az bir büyük harf içermelidir.");
+                        break;
+
+                    default:
+                        messages.Add(err.Description); // fallback
+                        break;
+                }
+            }
+
+            return string.Join(" ", messages);
+        }
+
 
         // 4) REFRESH: rotasyon + reuse koruması (minimum)
         public async Task<LoginResponseModel> RefreshTokenAsync(RefreshTokenRequestModel model)
