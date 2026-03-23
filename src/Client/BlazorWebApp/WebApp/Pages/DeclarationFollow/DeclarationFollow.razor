@@ -1,0 +1,466 @@
+﻿@page "/beyanname-takip"
+@using System.Globalization
+@using CatalogService.Api.Features.Declarations.Dtos
+@using CatalogService.Api.Features.Declarations.Entities
+@using Microsoft.AspNetCore.Authorization
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Manager
+@inject DialogService DialogService
+@inject IDeclarationApiService DeclarationApiService
+@inject ICustomerCompanyApiService CustomerCompanyApiService
+@inject IPermissionService PermissionService
+@inject NavigationManager Navigation
+
+<PageTitle>Beyanname Takip</PageTitle>
+
+<RadzenStack Gap="1rem" class="rz-p-4">
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+        <RadzenText Text="Beyanname Takip" TextStyle="TextStyle.H4" class="rz-mb-3" />
+
+        <RadzenButton Text="Yeni Beyanname Ekle"
+                      Icon="add_circle"
+                      Click="@OpenCreateDialog" />
+    </RadzenStack>
+
+    <RadzenCard Variant="Variant.Outlined">
+        <RadzenRow Gap="1rem" AlignItems="AlignItems.End">
+            <RadzenColumn Size="12" SizeMD="3">
+                <RadzenFormField Text="Yıl" Style="width:100%">
+                    <RadzenDropDown @bind-Value="selectedYear"
+                                    Data="@years"
+                                    Style="width:100%" />
+                </RadzenFormField>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeMD="3">
+                <RadzenFormField Text="Ay" Style="width:100%">
+                    <RadzenDropDown @bind-Value="selectedMonth"
+                                    Data="@months"
+                                    TextProperty="Text"
+                                    ValueProperty="Value"
+                                    Style="width:100%" />
+                </RadzenFormField>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeMD="3">
+                <RadzenFormField Text="Firma" Style="width:100%">
+                    <RadzenDropDown Data="@customerCompanies"
+                                    TextProperty="CompanyName"
+                                    ValueProperty="Id"
+                                    @bind-Value="selectedCompanyId"
+                                    Style="width:100%"
+                                    Placeholder="Firma seçiniz" />
+                </RadzenFormField>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeMD="2">
+                <RadzenFormField Text="Tür" Style="width:100%">
+                    <RadzenDropDown @bind-Value="selectedDeclarationType"
+                                    Data="@declarationTypes"
+                                    AllowClear="true"
+                                    Placeholder="Tümü"
+                                    Style="width:100%" />
+                </RadzenFormField>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeMD="1">
+                <RadzenButton Text="Getir"
+                              Icon="search"
+                              Click="@LoadData"
+                              Style="width:100%" />
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenCard>
+
+    <RadzenRow Gap="1rem">
+        <RadzenColumn Size="12" SizeMD="3">
+            <RadzenCard class="rz-p-3">
+                <RadzenText Text="Bu Ay Toplam Vergi" TextStyle="TextStyle.Body1" />
+                <RadzenText Text="@monthlyTotal.ToString("C", trCulture)" TextStyle="TextStyle.H5" />
+            </RadzenCard>
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="3">
+            <RadzenCard class="rz-p-3">
+                <RadzenText Text="Bu Ay Ödenen" TextStyle="TextStyle.Body1" />
+                <RadzenText Text="@monthlyPaid.ToString("C", trCulture)" TextStyle="TextStyle.H5" />
+            </RadzenCard>
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="3">
+            <RadzenCard class="rz-p-3">
+                <RadzenText Text="Bu Ay Bekleyen" TextStyle="TextStyle.Body1" />
+                <RadzenText Text="@monthlyPending.ToString("C", trCulture)" TextStyle="TextStyle.H5" />
+            </RadzenCard>
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="3">
+            <RadzenCard class="rz-p-3">
+                <RadzenText Text="Bu Yıl Toplam Vergi" TextStyle="TextStyle.Body1" />
+                <RadzenText Text="@(yearlySummary?.TotalAmount.ToString("C", trCulture) ?? "₺0,00")"
+                            TextStyle="TextStyle.H5" />
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenDataGrid @ref="grid"
+                    Data="@(monthlyData ?? new List<CompanyMonthlySummaryDto>())"
+                    TItem="CompanyMonthlySummaryDto"
+                    AllowPaging="true"
+                    PageSize="10"
+                    AllowSorting="true"
+                    ExpandMode="DataGridExpandMode.Single"
+                    RowRender="@RowRender">
+
+        <Template Context="company">
+            <div class="rz-p-3" style="background:#fafafa; border-radius:8px;">
+                <RadzenDataGrid Data="@(company.Declarations ?? new List<DeclarationDto>())"
+                                TItem="DeclarationDto"
+                                AllowPaging="false"
+                                AllowSorting="true">
+                    <Columns>
+                        <RadzenDataGridColumn Property="DeclarationType" Title="Beyanname Türü" />
+
+                        <RadzenDataGridColumn Property="Amount" Title="Tutar">
+                            <Template Context="item">
+                                @item.Amount.ToString("C", trCulture)
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn Property="DueDate" Title="Son Tarih">
+                            <Template Context="item">
+                                @item.DueDate.ToString("dd.MM.yyyy")
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn Title="Beyanname Durumu">
+                            <Template Context="item">
+                                <RadzenBadge Text="@GetDeclarationStatusText(item.DeclarationStatus)"
+                                             BadgeStyle="@GetDeclarationBadgeStyle(item.DeclarationStatus)" />
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn Title="Ödeme Durumu">
+                            <Template Context="item">
+                                <RadzenBadge Text="@GetPaymentStatusText(item.PaymentStatus)"
+                                             BadgeStyle="@GetPaymentBadgeStyle(item.PaymentStatus)" />
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn Property="Note" Title="Not" />
+
+                        <RadzenDataGridColumn Title="İşlem" Width="150px">
+                            <Template Context="item">
+                                <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                                    <RadzenButton Icon="edit"
+                                                  Size="ButtonSize.Small"
+                                                  Click="@(args => OpenEditDialog(item))" />
+
+                                    <RadzenButton Icon="delete"
+                                                  Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Danger"
+                                                  Click="@(args => DeleteDeclaration(item))" />
+                                </RadzenStack>
+                            </Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+            </div>
+        </Template>
+
+        <Columns>
+            <RadzenDataGridColumn Property="CompanyName" Title="Firma" />
+
+            <RadzenDataGridColumn Property="TotalAmount" Title="Aylık Toplam Vergi">
+                <Template Context="item">
+                    @item.TotalAmount.ToString("C", trCulture)
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn Property="DeclarationCount" Title="Beyanname Sayısı" />
+            <RadzenDataGridColumn Property="ApprovedCount" Title="Onaylanan" />
+            <RadzenDataGridColumn Property="PaidCount" Title="Ödenen" />
+
+            <RadzenDataGridColumn Property="PendingAmount" Title="Bekleyen">
+                <Template Context="item">
+                    @item.PendingAmount.ToString("C", trCulture)
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+
+</RadzenStack>
+
+@code {
+    private readonly CultureInfo trCulture = new("tr-TR");
+    [Parameter] public List<CustomerCompanyDto> Companies { get; set; } = new();
+    private RadzenDataGrid<CompanyMonthlySummaryDto>? grid;
+   
+    private List<CompanyMonthlySummaryDto> monthlyData = new();
+    private YearlyTaxSummaryDto? yearlySummary;
+    [Inject] IAppSessionManager SessionManager { get; set; } = default!;
+    private int selectedYear = DateTime.Now.Year;
+    private int selectedMonth = DateTime.Now.Month;
+    private string? selectedTenantNo;
+    private string? selectedDeclarationType;
+    private List<CustomerCompanyDto> customerCompanies = new();
+    private List<int> years = new();
+    private List<MonthOption> months = new();
+    private List<DropdownOption> companyOptions = new();
+    private int? selectedCompanyId;
+    private List<string> declarationTypes = new()
+    {
+        "KDV-1",
+        "KDV-2",
+        "Stopaj Muhtasar",
+        "Ücret Muhtasar",
+        "SGK",
+        "Damga Vergisi",
+        "Geçici Vergi",
+        "Kurumlar Vergisi"
+    };
+
+    private decimal monthlyTotal => monthlyData?.Sum(x => x.TotalAmount) ?? 0;
+    private decimal monthlyPaid => monthlyData?.Sum(x => x.PaidAmount) ?? 0;
+    private decimal monthlyPending => monthlyData?.Sum(x => x.PendingAmount) ?? 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // 🔥 1. Session restore
+            await SessionManager.RestoreAsync();
+
+            // 🔥 2. Permission check (artık token hazır)
+            var canView = await PermissionService.HasPermissionAsync("BeyannameTakip.View");
+
+            if (!canView)
+            {
+                Navigation.NavigateTo("/unauthorized");
+                return;
+            }
+
+            // 🔥 3. UI init
+            years = Enumerable.Range(DateTime.Now.Year - 3, 6).ToList();
+
+            months = new()
+        {
+            new MonthOption(1, "Ocak"),
+            new MonthOption(2, "Şubat"),
+            new MonthOption(3, "Mart"),
+            new MonthOption(4, "Nisan"),
+            new MonthOption(5, "Mayıs"),
+            new MonthOption(6, "Haziran"),
+            new MonthOption(7, "Temmuz"),
+            new MonthOption(8, "Ağustos"),
+            new MonthOption(9, "Eylül"),
+            new MonthOption(10, "Ekim"),
+            new MonthOption(11, "Kasım"),
+            new MonthOption(12, "Aralık")
+        };
+
+            // 🔥 4. API çağrıları
+            customerCompanies = await CustomerCompanyApiService.GetAllAsync();
+
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[BeyannameTakip INIT ERROR]: {ex.Message}");
+        }
+    }
+    private async Task DeleteDeclaration(DeclarationDto item)
+    {
+        var confirmed = await DialogService.Confirm(
+            $"{item.DeclarationType} kaydını silmek istiyor musunuz?",
+            "Kayıt Sil",
+            new ConfirmOptions
+            {
+                OkButtonText = "Sil",
+                CancelButtonText = "Vazgeç"
+            });
+
+        if (confirmed == true)
+        {
+            var ok = await DeclarationApiService.DeleteAsync(item.Id);
+
+            if (ok)
+            {
+                await LoadData();
+            }
+        }
+    }
+
+   
+   
+    private async Task LoadData()
+    {
+        try
+        {
+            monthlyData = await DeclarationApiService.GetMonthlySummaryAsync(
+                selectedYear,
+                selectedMonth,
+                selectedTenantNo,
+                selectedDeclarationType) ?? new();
+
+            yearlySummary = await DeclarationApiService.GetYearlySummaryAsync(
+                selectedYear,
+                selectedTenantNo);
+
+            companyOptions = monthlyData
+                .Select(x => new DropdownOption(x.TenantNo, x.CompanyName))
+                .GroupBy(x => x.Value)
+                .Select(g => g.First())
+                .OrderBy(x => x.Text)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[BeyannameTakip LoadData ERROR] {ex.Message}");
+
+            monthlyData = new();
+            yearlySummary = null;
+            companyOptions = new();
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var model = new CreateDeclarationRequest
+        {
+            Year = selectedYear,
+            Month = selectedMonth,
+            DueDate = DateTime.Today,
+            DeclarationStatus = DeclarationStatus.Draft,
+            PaymentStatus = PaymentStatus.Pending
+        };
+
+        var result = await DialogService.OpenAsync<DeclarationFormDialog>(
+    "Yeni Beyanname Ekle",
+    new Dictionary<string, object>
+    {
+        { "Model", model },
+        { "Companies", customerCompanies }
+    },
+    new DialogOptions
+    {
+        Width = "700px",
+        Height = "800px",
+        Resizable = true,
+        Draggable = true
+    });
+
+        if (result is CreateDeclarationRequest request)
+        {
+            var createdId = await DeclarationApiService.CreateAsync(request);
+
+            if (createdId.HasValue)
+            {
+                await LoadData();
+            }
+        }
+    }
+
+    private async Task OpenEditDialog(DeclarationDto item)
+    {
+        var model = new CreateDeclarationRequest
+        {
+            TenantNo = item.TenantNo,
+            CompanyName = item.CompanyName,
+            DeclarationType = item.DeclarationType,
+            Year = item.Year,
+            Month = item.Month,
+            Amount = item.Amount,
+            DueDate = item.DueDate,
+            DeclarationStatus = item.DeclarationStatus,
+            PaymentStatus = item.PaymentStatus,
+            PaymentDate = item.PaymentDate,
+            Note = item.Note
+        };
+
+        var result = await DialogService.OpenAsync<DeclarationFormDialog>(
+    "Beyanname Düzenle",
+    new Dictionary<string, object>
+    {
+        { "Model", model },
+        { "Companies", customerCompanies }
+    },
+    new DialogOptions
+    {
+        Width = "700px",
+        Height = "800px",
+        Resizable = true,
+        Draggable = true
+    });
+
+        if (result is CreateDeclarationRequest form)
+        {
+            var updateRequest = new UpdateDeclarationRequest
+            {
+                TenantNo = form.TenantNo,
+                CompanyName = form.CompanyName,
+                DeclarationType = form.DeclarationType,
+                Year = form.Year,
+                Month = form.Month,
+                Amount = form.Amount,
+                DueDate = form.DueDate,
+                DeclarationStatus = form.DeclarationStatus,
+                PaymentStatus = form.PaymentStatus,
+                PaymentDate = form.PaymentDate,
+                Note = form.Note
+            };
+
+            var ok = await DeclarationApiService.UpdateAsync(item.Id, updateRequest);
+
+            if (ok)
+            {
+                await LoadData();
+            }
+        }
+    }
+
+    private void RowRender(RowRenderEventArgs<CompanyMonthlySummaryDto> args)
+    {
+        args.Expandable = args.Data?.Declarations != null && args.Data.Declarations.Any();
+    }
+
+    private static string GetDeclarationStatusText(DeclarationStatus status) => status switch
+    {
+        DeclarationStatus.Draft => "Taslak",
+        DeclarationStatus.Preparing => "Hazırlanıyor",
+        DeclarationStatus.Ready => "Hazır",
+        DeclarationStatus.Approved => "Onaylandı",
+        DeclarationStatus.Submitted => "Gönderildi",
+        _ => status.ToString()
+    };
+
+    private static string GetPaymentStatusText(PaymentStatus status) => status switch
+    {
+        PaymentStatus.Pending => "Bekliyor",
+        PaymentStatus.Planned => "Planlandı",
+        PaymentStatus.Paid => "Ödendi",
+        _ => status.ToString()
+    };
+
+    private static BadgeStyle GetDeclarationBadgeStyle(DeclarationStatus status) => status switch
+    {
+        DeclarationStatus.Draft => BadgeStyle.Secondary,
+        DeclarationStatus.Preparing => BadgeStyle.Warning,
+        DeclarationStatus.Ready => BadgeStyle.Info,
+        DeclarationStatus.Approved => BadgeStyle.Success,
+        DeclarationStatus.Submitted => BadgeStyle.Primary,
+        _ => BadgeStyle.Light
+    };
+
+    private static BadgeStyle GetPaymentBadgeStyle(PaymentStatus status) => status switch
+    {
+        PaymentStatus.Pending => BadgeStyle.Warning,
+        PaymentStatus.Planned => BadgeStyle.Info,
+        PaymentStatus.Paid => BadgeStyle.Success,
+        _ => BadgeStyle.Light
+    };
+
+    public record MonthOption(int Value, string Text);
+    public record DropdownOption(string Value, string Text);
+}

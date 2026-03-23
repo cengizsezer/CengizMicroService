@@ -1,4 +1,5 @@
-﻿using CatalogService.Api.Features.Expenses.Domain;
+﻿using CatalogService.Api.Features.Declarations.Entities;
+using CatalogService.Api.Features.Expenses.Domain;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -59,6 +60,54 @@ namespace CatalogService.Api.Infrastructure.Context
             Console.WriteLine($"🚀 [Seeder] Tenant {tenantNo} seeding başladı…");
             Console.WriteLine($"📂 setupDirPath: {setupDirPath}");
             Console.WriteLine($"🧠 Database: {context.Database.GetDbConnection().ConnectionString}");
+            // ========== CUSTOMER COMPANIES ==========
+            // ========== CUSTOMER COMPANIES ==========
+            var companies = GetCustomerCompaniesForTenant(tenantNo).ToList();
+
+            if (companies.Count > 0)
+            {
+                var existing = await context.CustomerCompanies
+                    .IgnoreQueryFilters()
+                    .Where(x => x.TenantNo == tenantNo)
+                    .Select(x => new
+                    {
+                        CompanyName = x.CompanyName.Trim().ToLower(),
+                        TaxNumber = (x.TaxNumber ?? "").Trim()
+                    })
+                    .ToListAsync();
+
+                var toAdd = companies
+                    .Where(c => !existing.Any(e =>
+                        e.CompanyName == c.CompanyName.Trim().ToLower() &&
+                        e.TaxNumber == (c.TaxNumber ?? "").Trim()))
+                    .ToList();
+
+                Console.WriteLine($"[Seed:{tenantNo}] CustomerCompany toplam seed listesi: {companies.Count}");
+                Console.WriteLine($"[Seed:{tenantNo}] CustomerCompany eklenecek adet: {toAdd.Count}");
+
+                if (toAdd.Count > 0)
+                {
+                    await context.CustomerCompanies.AddRangeAsync(toAdd);
+
+                    try
+                    {
+                        await context.SaveChangesAsync();
+                        logger.LogInformation("[Seed:{Tenant}] ✅ CustomerCompanies kaydedildi. Eklenen: {Count}", tenantNo, toAdd.Count);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"❌ ({tenantNo}) CustomerCompanies kaydedilirken hata: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"[Seed:{tenantNo}] ℹ️ Yeni CustomerCompany yok, atlandı.");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[Seed:{tenantNo}] ℹ️ Seed listesinde CustomerCompany yok.");
+            }
 
             // ========== PERSONNEL ==========
             bool hasPersonnels = await context.Personnels.IgnoreQueryFilters().AnyAsync(p => p.TenantNo == tenantNo);
@@ -164,7 +213,28 @@ namespace CatalogService.Api.Infrastructure.Context
         }
 
         // ---------------- CSV PARSERS (Aynen bırakıldı) ----------------
+        private IEnumerable<CustomerCompany> GetCustomerCompaniesForTenant(string tenantNo)
+        {
+            if (tenantNo == "500") // PKF Istanbul
+            {
+                return new List<CustomerCompany>
+        {
+            new() { TenantNo = "500", CompanyName = "PKF Aday Bağımsız Denetim A.Ş.", TaxNumber = "1000000005", IsActive = true },
+             new() { TenantNo = "500", CompanyName = "PKF İSTANBUL SMMM", TaxNumber = "1000000003", IsActive = true },
+            new() { TenantNo = "500", CompanyName = "PKF İSTANBUL YMMM", TaxNumber = "1000000004", IsActive = true },
+             new() { TenantNo = "500", CompanyName = "PKF Kurumsal Strateji", TaxNumber = "1000000006", IsActive = true },
+            new() { TenantNo = "500", CompanyName = "PKF PROGROUP", TaxNumber = "1000000002", IsActive = true },
+           new() { TenantNo = "500", CompanyName = "PKF RİSK", TaxNumber = "1000000001", IsActive = true },
+            new() { TenantNo = "500", CompanyName = "PKF İstanbul Yönetim Danışmanlık", TaxNumber = "1000000007", IsActive = true },
+            new() { TenantNo = "500", CompanyName = "PKF Teknoloji", TaxNumber = "1000000008", IsActive = true },
+            new() { TenantNo = "500", CompanyName = "DGR Kurumsal", TaxNumber = "1000000009", IsActive = true },
+            new() { TenantNo = "500", CompanyName = "Elif Gülce", TaxNumber = "1000000010", IsActive = true },
+            new() { TenantNo = "500", CompanyName = "Zeynep Potur", TaxNumber = "1000000011", IsActive = true }
+        };
+            }
 
+            return Enumerable.Empty<CustomerCompany>();
+        }
         private IEnumerable<Personnel> GetPersonnelsFromCsv(string path, string tenantNo)
         {
             var filePath = Path.Combine(path, "Personnels.txt");

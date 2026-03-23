@@ -70,6 +70,8 @@ namespace WebApp.StartupExtensions.ServiceExtensions
 
         public static IServiceCollection AddApiClients(this IServiceCollection services)
         {
+            services.AddScoped<IDeclarationApiService>(sp =>
+    new DeclarationApiService(sp.GetRequiredService<HttpClient>()));
             // Factory pattern for API clients
             services.AddScoped<IEducationService>(sp =>
                 new EducationService(sp.GetRequiredService<HttpClient>()));
@@ -94,6 +96,13 @@ namespace WebApp.StartupExtensions.ServiceExtensions
 
             services.AddScoped<IAccountPlanClient>(sp =>
                 new AccountPlanClient(sp.GetRequiredService<HttpClient>()));
+
+            services.AddScoped<ICustomerCompanyApiService>(sp =>
+                new CustomerCompanyApiService(sp.GetRequiredService<HttpClient>()));
+
+            services.AddScoped<IPermissionService, PermissionService>();
+
+
 
             return services;
         }

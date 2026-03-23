@@ -1,6 +1,7 @@
 ﻿@using Blazored.LocalStorage
 @using WebApp.Infrastructure
 @using WebApp.Manager
+@inject IPermissionService PermissionService
 @inherits LayoutComponentBase
 @using Radzen
 @using Radzen.Blazor
@@ -75,7 +76,71 @@
                               Icon="@(isCollapsed ? "chevron_right" : "chevron_left")"
                               Click="@ToggleSidebar" />
             </div>
-            <RadzenPanelMenu class="app-panelmenu" DisplayStyle="@(isCollapsed? MenuItemDisplayStyle.Icon: MenuItemDisplayStyle.IconAndText)" ShowArrow="false">
+
+            
+            <RadzenPanelMenu class="app-panelmenu"
+                 DisplayStyle="@(isCollapsed ? MenuItemDisplayStyle.Icon : MenuItemDisplayStyle.IconAndText)"
+                 ShowArrow="false">
+
+                @if (canViewCalendar)
+                {
+                    <RadzenPanelMenuItem Text="Görevler" Icon="home">
+                        <RadzenPanelMenuItem Text="Takvim" Icon="event" Path="/calendarpage" />
+                        <RadzenPanelMenuItem Text="Görevlerim" Icon="event" Path="/AssignedTaskPage" />
+                    </RadzenPanelMenuItem>
+                }
+                @if (canViewVehicleList)
+                {
+                    <RadzenPanelMenuItem Text="Şirket Araçları"
+                                         Icon="motorcycle"
+                                         Path="/vehicles" />
+                }
+
+                @if (canViewBeyannameTakip)
+                {
+                    <RadzenPanelMenuItem Text="Beyanname Takip"
+                                         Icon="receipt_long"
+                                         Path="/beyanname-takip" />
+                }
+
+
+
+                <AuthorizeView Roles="Admin">
+        <Authorized>
+          @*   <RadzenPanelMenuItem Text="Görevler" Icon="home">
+                <RadzenPanelMenuItem Text="Takvim" Icon="event" Path="/calendarpage" />
+                <RadzenPanelMenuItem Text="Görevlerim" Icon="event" Path="/AssignedTaskPage" />
+            </RadzenPanelMenuItem> *@
+
+            <RadzenPanelMenuItem Text="E-Masraf" Icon="assignment">
+                <RadzenPanelMenuItem Text="Onay" Icon="check" Path="/approvalpage" />
+                <RadzenPanelMenuItem Text="Osgb" Icon="markunread_mailbox" Path="/Osgb" />
+                <RadzenPanelMenuItem Text="Personel" Icon="group" Path="/personel" />
+            </RadzenPanelMenuItem>
+
+            <RadzenPanelMenuItem Text="E-Fatura" Icon="assignment" Path="/invoices/mock" />
+            <RadzenPanelMenuItem Text="Beyannameler" Icon="description" Path="/declarationpage" />
+            <RadzenPanelMenuItem Text="Şirket Evrakları" Icon="book" Path="/companydocspage" />
+
+            <RadzenPanelMenuItem Text="SMM Dersler" Icon="book">
+                <RadzenPanelMenuItem Text="Finansal Tablolar" Icon="book" Path="/study" />
+                <RadzenPanelMenuItem Text="Hesap Planı" Icon="book" Path="/hesap-plani" />
+            </RadzenPanelMenuItem>
+
+            <RadzenPanelMenuItem Text="Eğitim" Icon="chrome_reader_mode" Path="/education" />
+
+            <RadzenPanelMenuItem Text="Settings" Icon="settings">
+                <RadzenPanelMenuItem Text="Account" Icon="account_circle" Path="/account" />
+                <RadzenPanelMenuItem Text="Admin" Icon="admin_panel_settings" Path="/admin/users" />
+            </RadzenPanelMenuItem>
+        </Authorized>
+    </AuthorizeView>
+</RadzenPanelMenu>
+            
+            
+            
+            
+            @* <RadzenPanelMenu class="app-panelmenu" DisplayStyle="@(isCollapsed? MenuItemDisplayStyle.Icon: MenuItemDisplayStyle.IconAndText)" ShowArrow="false">
                              
                 
                 <RadzenPanelMenuItem Text="Görevler" Icon="home">
@@ -92,6 +157,17 @@
                 <RadzenPanelMenuItem Text="Şirket Araçları" Icon="motorcycle" Path="/vehicles" />
                 <RadzenPanelMenuItem Text="Beyannameler" Icon="description" Path="/declarationpage" />
                 <RadzenPanelMenuItem Text="Şirket Evrakları" Icon="book" Path="/companydocspage" />
+               
+
+                @if (canViewBeyannameTakip)
+                {
+                    <RadzenPanelMenuItem Text="Beyanname Takip" Icon="receipt_long" Path="/beyanname-takip" />
+                }
+
+                @if (canViewVehicleList)
+                {
+                    <RadzenPanelMenuItem Text="Şirket Araçları" Icon="motorcycle" Path="/vehicles" />
+                }
 
                 <RadzenPanelMenuItem Text="SMM Dersler" Icon="book">
                     <RadzenPanelMenuItem Text="Finansal Tablolar" Icon="book" Path="/study" />
@@ -108,7 +184,7 @@
                         </Authorized>
                     </AuthorizeView>
                 </RadzenPanelMenuItem>
-            </RadzenPanelMenu>
+            </RadzenPanelMenu> *@
 
             <div class="toggle-btn-bottom side-toolbar">
                 <RadzenButton Size="ButtonSize.Small"
@@ -155,6 +231,13 @@
     [Inject] NavigationManager Navigation { get; set; } = default!;
 
     void ToggleSidebar() => isCollapsed = !isCollapsed;
+    private bool canViewBeyannameTakip;
+    private bool canViewVehicleList;
+    private bool canViewExpenses;
+    private bool canViewEducation;
+    private bool canViewSettings;
+    private bool canViewCalendar;
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -164,6 +247,19 @@
         AppState.StateChanged += OnAppStateChanged;
         SessionManager.FirmChanged += OnFirmChanged;
         SessionManager.AuthChanged += OnAuthChanged;
+
+        await LoadPermissionsAsync();
+    }
+
+
+    private async Task LoadPermissionsAsync()
+    {
+        canViewBeyannameTakip = await PermissionService.HasPermissionAsync("BeyannameTakip.View");
+        canViewVehicleList = await PermissionService.HasPermissionAsync("Vehicle.View"); // veya VehicleList.View
+        canViewExpenses = await PermissionService.HasPermissionAsync("Expense.View");
+        canViewEducation = await PermissionService.HasPermissionAsync("Education.View");
+        canViewSettings = await PermissionService.HasPermissionAsync("Settings.View");
+        canViewCalendar = await PermissionService.HasPermissionAsync("Calendarpage.View");
     }
 
     private async void OnAppStateChanged(AppStateEvent ev)
@@ -181,7 +277,12 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private async void OnAuthChanged() => await InvokeAsync(StateHasChanged);
+    private async void OnAuthChanged()
+    {
+        await LoadPermissionsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+  
 
     private async Task OnChangeFirmClick()
     {

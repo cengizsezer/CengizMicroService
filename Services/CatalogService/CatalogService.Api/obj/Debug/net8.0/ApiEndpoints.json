@@ -138,6 +138,147 @@
     ]
   },
   {
+    "ContainingType": "CatalogService.Api.Features.Declarations.Controllers.CustomerCompaniesController",
+    "Method": "GetAll",
+    "RelativePath": "api/catalog/CustomerCompanies",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.Declarations.Dtos.CustomerCompanyDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Declarations.Controllers.DeclarationsController",
+    "Method": "Create",
+    "RelativePath": "api/catalog/Declarations",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Declarations.Dtos.CreateDeclarationRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Declarations.Controllers.DeclarationsController",
+    "Method": "Update",
+    "RelativePath": "api/catalog/Declarations/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Declarations.Dtos.UpdateDeclarationRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Declarations.Controllers.DeclarationsController",
+    "Method": "Delete",
+    "RelativePath": "api/catalog/Declarations/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Declarations.Controllers.DeclarationsController",
+    "Method": "GetCompanyYearlySummary",
+    "RelativePath": "api/catalog/Declarations/company-yearly-summary",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "year",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Declarations.Controllers.DeclarationsController",
+    "Method": "GetMonthlySummary",
+    "RelativePath": "api/catalog/Declarations/monthly-summary",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "year",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "month",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "tenantNo",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "declarationType",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Declarations.Controllers.DeclarationsController",
+    "Method": "GetYearlySummary",
+    "RelativePath": "api/catalog/Declarations/yearly-summary",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "year",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "tenantNo",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "CatalogService.Api.Features.Education.Controller.EducationController",
     "Method": "GetPagedAsync",
     "RelativePath": "api/catalog/education",

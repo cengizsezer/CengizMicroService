@@ -1,4 +1,5 @@
 ﻿using CatalogService.Api.Features.AccountPlan;
+using CatalogService.Api.Features.Declarations.Entities;
 using CatalogService.Api.Features.Education.Domain;
 using CatalogService.Api.Features.Expenses.Domain;
 using CatalogService.Api.Features.Jobs.Domain;
@@ -31,7 +32,8 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<EducationItem> EducationItems { get; set; } = default!;
         public DbSet<Job> Jobs { get; set; } = default!;
         public DbSet<JobAssignment> JobAssignments { get; set; } = default!;
-
+        public DbSet<Declaration> Declarations { get; set; }
+        public DbSet<CustomerCompany> CustomerCompanies => Set<CustomerCompany>();
         public DbSet<AccountNode> AccountNodes => Set<AccountNode>();
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -47,6 +49,8 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new JobEntityTypeConfiguration());
             builder.ApplyConfiguration(new JobAssignmentEntityTypeConfiguration());
             builder.ApplyConfiguration(new AccountNodesEntityTypeConfiguration());
+            builder.ApplyConfiguration(new DeclarationEntityTypeConfiguration());
+            builder.ApplyConfiguration(new CustomerCompanyTypeConfiguration());
             //AccountPlanSeed.Seed(builder);
             builder.Entity<Expense>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
             builder.Entity<ReceiptItem>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
@@ -54,6 +58,7 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.Entity<AccountingCode>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
             builder.Entity<Personnel>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
             builder.Entity<Job>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
+            builder.Entity<CustomerCompany>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)

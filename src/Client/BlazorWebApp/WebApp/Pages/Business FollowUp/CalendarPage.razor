@@ -6,7 +6,8 @@
 @inject NotificationService Notif
 @inject AuthenticationStateProvider Auth
 @using System.Security.Claims;
-
+@inject IPermissionService PermissionService
+@inject NavigationManager Navigation
 
 <RadzenScheduler @ref="scheduler"
                  TItem="AppointmentVm"
@@ -31,6 +32,13 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var canView = await PermissionService.HasPermissionAsync("Calendarpage.View");
+
+        if (!canView)
+        {
+            Navigation.NavigateTo("/unauthorized");
+            return;
+        }
         await LoadMonth(DateTime.Today);
     }
     // async Task LoadMonth(DateTime anyDayInMonth)

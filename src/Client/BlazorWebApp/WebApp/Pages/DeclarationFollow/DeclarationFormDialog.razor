@@ -1,0 +1,177 @@
+﻿@using CatalogService.Api.Features.Declarations.Dtos
+@using CatalogService.Api.Features.Declarations.Entities
+@inject DialogService DialogService
+
+<RadzenTemplateForm TItem="CreateDeclarationRequest" Data="@Model" Submit="@OnSubmit">
+    <RadzenStack Gap="1rem">
+
+        <RadzenFormField Text="Firma" Style="width:100%">
+            <RadzenDropDown Data="@Companies"
+                            TextProperty="CompanyName"
+                            ValueProperty="Id"
+                            @bind-Value="selectedCompanyId"
+                            Change="@OnCompanyChanged"
+                            Style="width:100%"
+                            Placeholder="Firma seçiniz" />
+        </RadzenFormField>
+
+        <RadzenFormField Text="Beyanname Türü" Style="width:100%">
+            <RadzenDropDown @bind-Value="Model.DeclarationType"
+                            Data="@declarationTypes"
+                            Style="width:100%" />
+        </RadzenFormField>
+
+        <RadzenRow Gap="1rem">
+            <RadzenColumn Size="6">
+                <RadzenFormField Text="Yıl" Style="width:100%">
+                    <RadzenNumeric @bind-Value="Model.Year" Style="width:100%" />
+                </RadzenFormField>
+            </RadzenColumn>
+
+            <RadzenColumn Size="6">
+                <RadzenFormField Text="Ay" Style="width:100%">
+                    <RadzenDropDown @bind-Value="Model.Month"
+                                    Data="@months"
+                                    TextProperty="Text"
+                                    ValueProperty="Value"
+                                    Style="width:100%" />
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenFormField Text="Tutar" Style="width:100%">
+            <RadzenNumeric @bind-Value="Model.Amount" Style="width:100%" />
+        </RadzenFormField>
+
+        <RadzenFormField Text="Son Tarih" Style="width:100%">
+            <RadzenDatePicker @bind-Value="Model.DueDate"
+                              Style="width:100%"
+                              DateFormat="dd.MM.yyyy" />
+        </RadzenFormField>
+
+        <RadzenFormField Text="Beyanname Durumu" Style="width:100%">
+            <RadzenDropDown @bind-Value="Model.DeclarationStatus"
+                            Data="@declarationStatusOptions"
+                            TextProperty="Text"
+                            ValueProperty="Value"
+                            Style="width:100%" />
+        </RadzenFormField>
+
+        <RadzenFormField Text="Ödeme Durumu" Style="width:100%">
+            <RadzenDropDown @bind-Value="Model.PaymentStatus"
+                            Data="@paymentStatusOptions"
+                            TextProperty="Text"
+                            ValueProperty="Value"
+                            Style="width:100%" />
+        </RadzenFormField>
+
+        <RadzenFormField Text="Ödeme Tarihi" Style="width:100%">
+            <RadzenDatePicker @bind-Value="Model.PaymentDate"
+                              Style="width:100%"
+                              DateFormat="dd.MM.yyyy" />
+        </RadzenFormField>
+
+        <RadzenFormField Text="Not" Style="width:100%">
+            <RadzenTextArea @bind-Value="Model.Note"
+                            Style="width:100%"
+                            Rows="4" />
+        </RadzenFormField>
+
+        <RadzenStack Orientation="Orientation.Horizontal"
+                     JustifyContent="JustifyContent.End"
+                     Gap="0.5rem">
+            <RadzenButton Text="İptal"
+                          ButtonStyle="ButtonStyle.Light"
+                          Click="@Cancel" />
+            <RadzenButton Text="Kaydet"
+                          ButtonType="ButtonType.Submit" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public CreateDeclarationRequest Model { get; set; } = new();
+    [Parameter] public List<CustomerCompanyDto> Companies { get; set; } = new();
+
+    private int? selectedCompanyId;
+
+    private List<string> declarationTypes = new()
+    {
+       "KDV-1",
+        "KDV-2",
+        "Stopaj Muhtasar",
+        "Ücret Muhtasar",
+        "SGK",
+        "Damga Vergisi",
+        "Geçici Vergi",
+        "Kurumlar Vergisi"
+    };
+
+    private List<MonthOption> months = new()
+    {
+        new(1, "Ocak"), new(2, "Şubat"), new(3, "Mart"), new(4, "Nisan"),
+        new(5, "Mayıs"), new(6, "Haziran"), new(7, "Temmuz"), new(8, "Ağustos"),
+        new(9, "Eylül"), new(10, "Ekim"), new(11, "Kasım"), new(12, "Aralık")
+    };
+
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrWhiteSpace(Model.CompanyName) && Companies.Any())
+        {
+            var selected = Companies.FirstOrDefault(x => x.CompanyName == Model.CompanyName);
+            if (selected is not null)
+            {
+                selectedCompanyId = selected.Id;
+            }
+        }
+    }
+
+    private List<StatusOption<DeclarationStatus>> declarationStatusOptions = new()
+{
+    new("Taslak", DeclarationStatus.Draft),
+    new("Hazırlanıyor", DeclarationStatus.Preparing),
+    new("Hazır", DeclarationStatus.Ready),
+    new("Onaylandı", DeclarationStatus.Approved),
+    new("Gönderildi", DeclarationStatus.Submitted)
+};
+
+    private List<StatusOption<PaymentStatus>> paymentStatusOptions = new()
+{
+    new("Bekliyor", PaymentStatus.Pending),
+    new("Planlandı", PaymentStatus.Planned),
+    new("Ödendi", PaymentStatus.Paid)
+};
+
+    public record StatusOption<T>(string Text, T Value);
+
+
+    private void OnCompanyChanged(object? value)
+    {
+        if (value is null) return;
+
+        var id = Convert.ToInt32(value);
+        var company = Companies.FirstOrDefault(x => x.Id == id);
+        if (company is null) return;
+
+        // mevcut declaration yapısını bozmadan hızlı geçiş
+        Model.CompanyName = company.CompanyName;
+
+        // şimdilik müşteri kodunu TenantNo gibi kullanacaksan burada doldurabilirsin
+        // ama ideal çözüm ileride Model.CustomerCompanyId olacaktır
+        Model.TenantNo = id.ToString();
+    }
+
+    private Task OnSubmit(CreateDeclarationRequest args)
+    {
+        DialogService.Close(args);
+        return Task.CompletedTask;
+    }
+
+    private void Cancel()
+    {
+        DialogService.Close(null);
+    }
+
+    public record MonthOption(int Value, string Text);
+}

@@ -1,5 +1,6 @@
 ﻿using CatalogService.Api.Extensions;
 using CatalogService.Api.Features.AccountPlan;
+using CatalogService.Api.Features.Declarations.Services;
 using CatalogService.Api.Features.Education.Mapping;
 using CatalogService.Api.Features.Expenses.Mapping;
 using CatalogService.Api.Features.Jobs.Service;
@@ -76,6 +77,9 @@ builder.Services.AddScoped<IHttpCurrentUser, HttpCurrentUser>();
 builder.Services.AddTransient<AuthForwardingHandler>();
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<IAccountPlanService, AccountPlanService>();
+builder.Services.AddScoped<IDeclarationQueryService, DeclarationQueryService>();
+builder.Services.AddScoped<IDeclarationCommandService, DeclarationCommandService>();
+builder.Services.AddScoped<ICustomerCompanyQueryService, CustomerCompanyQueryService>();
 builder.Services.AddSingleton<IEventBus>(sp =>
 {
     var cfg = builder.Configuration;
@@ -168,7 +172,7 @@ IF OBJECT_ID(N'[catalog].[{t}]','U') IS NOT NULL
         }
 
         var seeder = new CatalogContextSeed();
-        var tenants = new[] { "201", "106", "108", "105", "107" };
+        var tenants = new[] { "201", "106", "108", "105", "107","500" };
 
         // 🔑 Her tenant için sabit accessor ile AYRI bir context
         foreach (var t in tenants)
@@ -261,7 +265,7 @@ using (var scope = app.Services.CreateScope())
         }
 
         var seeder = new CatalogContextSeed();
-        var tenants = new[] { "201", "106", "108", "105", "107" };
+        var tenants = new[] { "201", "106", "108", "105", "107" ,"500" };
 
         // 🔑 Her tenant için sabit accessor ile AYRI bir context
         foreach (var t in tenants)

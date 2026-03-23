@@ -65,6 +65,20 @@ namespace IdentityService.Persistence
             var pExpenseEdit = await GetOrCreatePermAsync("Expense.Edit", "Masraf düzenleme");
             var pBeyannameView = await GetOrCreatePermAsync("Beyanname.View", "Beyanname sayfasını görme");
             var pIlkyardimView = await GetOrCreatePermAsync("Ilkyardim.View", "İlkyardım sayfasını görme");
+            var pVehicleView = await GetOrCreatePermAsync("Vehicle.View", "Araç listesi sayfasını görme");
+            var pVehicleEdit = await GetOrCreatePermAsync("Vehicle.Edit", "Araç listesi düzenleme");
+            var pEducationView = await GetOrCreatePermAsync("Education.View", "Egitim görüntüleme");
+            var pSettingsView = await GetOrCreatePermAsync("Settings.View", "Ayarlar görüntüleme");
+            var pCalendarpageView = await GetOrCreatePermAsync("Calendarpage.View", "Ayarlar görüntüleme");
+
+           
+            var pBeyannameTakipView = await GetOrCreatePermAsync(
+    "BeyannameTakip.View",
+    "Beyanname takip sayfasını görme");
+
+            var pBeyannameTakipEdit = await GetOrCreatePermAsync(
+    "BeyannameTakip.Edit",
+    "Beyanname takip sayfasında düzenleme yapma");
 
             // === 2) Roles (custom) ===
             var rAdmin = await GetOrCreateRoleAsync("Admin");
@@ -72,13 +86,17 @@ namespace IdentityService.Persistence
             var rMaliIsler = await GetOrCreateRoleAsync("MaliIsler");
             var rIdariIsler = await GetOrCreateRoleAsync("IdariIsler");
             var rIlkyardim = await GetOrCreateRoleAsync("Ilkyardim");
+            var pkf = await GetOrCreateRoleAsync("pkf");
 
             // Role → Permission eşlemeleri (örnek politika)
             await LinkRolePermAsync(rMaliIsler, pExpenseView);
             await LinkRolePermAsync(rMaliIsler, pExpenseEdit);
             await LinkRolePermAsync(rMaliIsler, pBeyannameView);
-
+            await LinkRolePermAsync(pkf, pBeyannameTakipView);
+            await LinkRolePermAsync(pkf, pVehicleView);
+            await LinkRolePermAsync(pkf, pVehicleEdit);
             await LinkRolePermAsync(rIlkyardim, pIlkyardimView);
+            await LinkRolePermAsync(pkf, pCalendarpageView);
 
             // Personel temel görüntüleyebilir (istersen ekle/çıkar)
             await LinkRolePermAsync(rPersonel, pExpenseView);
@@ -105,6 +123,7 @@ namespace IdentityService.Persistence
             var t108 = await AddTenantIfMissing("108", "Tezmed Eğitim Danışmanlık ve İnovatif Çözümler A.Ş", "8410902637");
             var t105 = await AddTenantIfMissing("105", "Tez Filo Kiralama Ve Yönetim Hiz.A.Ş", "8420327005");
             var t107 = await AddTenantIfMissing("107", "Tezmed Holding A.Ş", "8420323654");
+            var t500 = await AddTenantIfMissing("500", "PKF Istanbul SMMM A.Ş", "1234567890");
 
             // === 4) Users (ASP.NET Identity kullanıcıları) ===
             var userManager = context.GetService<UserManager<User>>();
@@ -139,6 +158,7 @@ namespace IdentityService.Persistence
             var perso = await EnsureUser("ismail.perso", "ismail@example.com", "Perso123!");
             var cengiz = await EnsureUser("cengiz.sezer", "cengiz@example.com", "Mali123!");
             var serkan = await EnsureUser("serkan.keser", "serkan@example.com", "Idari123!");
+            var pkfadmin = await EnsureUser("pkfadmin", "pkfadmin@example.com", "Pkf03!");
 
             //////////////////////////////////////////
             //var roleManager = context.GetService<RoleManager<IdentityRole<int>>>();
@@ -204,11 +224,13 @@ namespace IdentityService.Persistence
             await EnsureUserTenantRole(serkan, t107, rIdariIsler);
 
             // admin → tüm tenantlarda Admin
-            foreach (var t in new[] { t201, t106, t108, t105, t107 })
+            foreach (var t in new[] { t201, t106, t108, t105, t107, t500 })
                 await EnsureUserTenantRole(admin, t, rAdmin);
 
             // ismail.perso → 201 Personel
             await EnsureUserTenantRole(perso, t201, rPersonel);
+
+            await EnsureUserTenantRole(pkfadmin, t500, pkf);
 
             logger.LogInformation("Identity seed tamamlandı.");
         }

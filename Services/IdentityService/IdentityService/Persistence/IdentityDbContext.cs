@@ -19,6 +19,7 @@ namespace IdentityService.Persistence
         public DbSet<UserTenant> UserTenants => Set<UserTenant>();
         public DbSet<UserTenantRole> UserTenantRoles => Set<UserTenantRole>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+       
         public IdentityDbContext(DbContextOptions<IdentityDbContext> options) : base(options) { }
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -31,6 +32,7 @@ namespace IdentityService.Persistence
             builder.ApplyConfiguration(new UserTenantEntityTypeConfiguration());
             builder.ApplyConfiguration(new UserTenantRoleEntityTypeConfiguration());
             builder.ApplyConfiguration(new RefreshTokenEntityTypeConfiguration());
+          
            
 
             builder.Entity<Permission>().HasData(
