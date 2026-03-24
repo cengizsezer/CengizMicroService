@@ -7,12 +7,12 @@ namespace WebApp.Application.Services.Interfaces
         Task<List<CompanyMonthlySummaryDto>> GetMonthlySummaryAsync(
             int year,
             int month,
-            string? tenantNo = null,
+            int? customerCompanyId = null,
             string? declarationType = null);
 
         Task<YearlyTaxSummaryDto?> GetYearlySummaryAsync(
             int year,
-            string? tenantNo = null);
+            int? customerCompanyId = null);
 
         Task<int?> CreateAsync(CreateDeclarationRequest request);
         Task<bool> UpdateAsync(int id, UpdateDeclarationRequest request);

@@ -7,5 +7,6 @@
 
         public string? TenantNo { get; set; }
         public string? DeclarationType { get; set; }
+        public int? CustomerCompanyId { get; set; }
     }
 }

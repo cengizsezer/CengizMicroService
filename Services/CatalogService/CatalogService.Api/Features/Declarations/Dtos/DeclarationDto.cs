@@ -17,5 +17,6 @@ namespace CatalogService.Api.Features.Declarations.Dtos
         public PaymentStatus PaymentStatus { get; set; }
         public DateTime? PaymentDate { get; set; }
         public string? Note { get; set; }
+        public int CustomerCompanyId { get; set; }
     }
 }

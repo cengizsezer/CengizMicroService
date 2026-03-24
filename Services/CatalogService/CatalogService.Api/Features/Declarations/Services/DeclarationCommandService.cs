@@ -2,6 +2,7 @@
 using CatalogService.Api.Features.Declarations.Entities;
 using CatalogService.Api.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
+using System.Xml.Linq;
 
 namespace CatalogService.Api.Features.Declarations.Services
 {
@@ -18,9 +19,9 @@ namespace CatalogService.Api.Features.Declarations.Services
         {
             var entity = new Declaration
             {
-                TenantNo = request.TenantNo.Trim(),
-                CompanyName = request.CompanyName.Trim(),
-                DeclarationType = request.DeclarationType.Trim(),
+                TenantNo = request.TenantNo?.Trim() ?? string.Empty,
+                CompanyName = request.CompanyName?.Trim() ?? string.Empty,
+                DeclarationType = request.DeclarationType?.Trim() ?? string.Empty,
                 Year = request.Year,
                 Month = request.Month,
                 Amount = request.Amount,
@@ -28,7 +29,9 @@ namespace CatalogService.Api.Features.Declarations.Services
                 DeclarationStatus = request.DeclarationStatus,
                 PaymentStatus = request.PaymentStatus,
                 PaymentDate = request.PaymentDate,
-                Note = request.Note
+                Note = request.Note,
+                CustomerCompanyId = request.CustomerCompanyId,
+                
             };
 
             _context.Declarations.Add(entity);
@@ -44,9 +47,9 @@ namespace CatalogService.Api.Features.Declarations.Services
             if (entity is null)
                 throw new Exception("Declaration not found");
 
-            entity.TenantNo = request.TenantNo.Trim();
-            entity.CompanyName = request.CompanyName.Trim();
-            entity.DeclarationType = request.DeclarationType.Trim();
+            entity.TenantNo = request.TenantNo?.Trim() ?? string.Empty;
+            entity.CompanyName = request.CompanyName?.Trim() ?? string.Empty;
+            entity.DeclarationType = request.DeclarationType?.Trim() ?? string.Empty;
             entity.Year = request.Year;
             entity.Month = request.Month;
             entity.Amount = request.Amount;
@@ -55,6 +58,7 @@ namespace CatalogService.Api.Features.Declarations.Services
             entity.PaymentStatus = request.PaymentStatus;
             entity.PaymentDate = request.PaymentDate;
             entity.Note = request.Note;
+            entity.CustomerCompanyId = request.CustomerCompanyId;
 
             await _context.SaveChangesAsync();
         }

@@ -6,19 +6,28 @@
     <RadzenStack Gap="1rem">
 
         <RadzenFormField Text="Firma" Style="width:100%">
-            <RadzenDropDown Data="@Companies"
+            <RadzenDropDown Name="CustomerCompany"
+                            Data="@Companies"
                             TextProperty="CompanyName"
                             ValueProperty="Id"
                             @bind-Value="selectedCompanyId"
                             Change="@OnCompanyChanged"
                             Style="width:100%"
                             Placeholder="Firma seçiniz" />
+            <RadzenRequiredValidator Component="CustomerCompany"
+                                     Text="Firma seçiniz."
+                                     Popup="true" />
         </RadzenFormField>
 
         <RadzenFormField Text="Beyanname Türü" Style="width:100%">
-            <RadzenDropDown @bind-Value="Model.DeclarationType"
+            <RadzenDropDown Name="DeclarationType"
+                            @bind-Value="Model.DeclarationType"
                             Data="@declarationTypes"
                             Style="width:100%" />
+
+            <RadzenRequiredValidator Component="DeclarationType"
+                                     Text="Beyanname türü seçiniz."
+                                     Popup="true" />
         </RadzenFormField>
 
         <RadzenRow Gap="1rem">
@@ -97,14 +106,14 @@
 
     private List<string> declarationTypes = new()
     {
-       "KDV-1",
-        "KDV-2",
-        "Stopaj Muhtasar",
-        "Ücret Muhtasar",
+        "0015 KDV-1",
+        "4017 KDV-2",
+        "0003 STOPAJ MUHTASAR",
+        "0095 UCRET MUHTASAR",
         "SGK",
-        "Damga Vergisi",
-        "Geçici Vergi",
-        "Kurumlar Vergisi"
+        "0040 DAMGA VERGISI",
+        "0033 GECİCİ VERGI",
+        "0010 KURUMLAR VERGISI"
     };
 
     private List<MonthOption> months = new()
@@ -154,12 +163,8 @@
         var company = Companies.FirstOrDefault(x => x.Id == id);
         if (company is null) return;
 
-        // mevcut declaration yapısını bozmadan hızlı geçiş
+        Model.CustomerCompanyId = company.Id;
         Model.CompanyName = company.CompanyName;
-
-        // şimdilik müşteri kodunu TenantNo gibi kullanacaksan burada doldurabilirsin
-        // ama ideal çözüm ileride Model.CustomerCompanyId olacaktır
-        Model.TenantNo = id.ToString();
     }
 
     private Task OnSubmit(CreateDeclarationRequest args)

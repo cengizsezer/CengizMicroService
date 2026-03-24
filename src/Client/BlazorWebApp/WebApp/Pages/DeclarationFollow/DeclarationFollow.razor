@@ -49,13 +49,15 @@
                                     TextProperty="CompanyName"
                                     ValueProperty="Id"
                                     @bind-Value="selectedCompanyId"
+                                    AllowClear="true"
+                                    Change="@OnCompanyFilterChanged"
                                     Style="width:100%"
                                     Placeholder="Firma seçiniz" />
                 </RadzenFormField>
             </RadzenColumn>
 
             <RadzenColumn Size="12" SizeMD="2">
-                <RadzenFormField Text="Tür" Style="width:100%">
+                <RadzenFormField Text="Beyanname Türü" Style="width:100%">
                     <RadzenDropDown @bind-Value="selectedDeclarationType"
                                     Data="@declarationTypes"
                                     AllowClear="true"
@@ -202,7 +204,7 @@
     [Inject] IAppSessionManager SessionManager { get; set; } = default!;
     private int selectedYear = DateTime.Now.Year;
     private int selectedMonth = DateTime.Now.Month;
-    private string? selectedTenantNo;
+   
     private string? selectedDeclarationType;
     private List<CustomerCompanyDto> customerCompanies = new();
     private List<int> years = new();
@@ -211,20 +213,30 @@
     private int? selectedCompanyId;
     private List<string> declarationTypes = new()
     {
-        "KDV-1",
-        "KDV-2",
-        "Stopaj Muhtasar",
-        "Ücret Muhtasar",
+        "0015 KDV-1",
+        "4017 KDV-2",
+        "0003 STOPAJ MUHTASAR",
+        "0095 UCRET MUHTASAR",
         "SGK",
-        "Damga Vergisi",
-        "Geçici Vergi",
-        "Kurumlar Vergisi"
+        "0040 DAMGA VERGISI",
+        "0033 GECİCİ VERGI",
+        "0010 KURUMLAR VERGISI"
     };
 
     private decimal monthlyTotal => monthlyData?.Sum(x => x.TotalAmount) ?? 0;
     private decimal monthlyPaid => monthlyData?.Sum(x => x.PaidAmount) ?? 0;
     private decimal monthlyPending => monthlyData?.Sum(x => x.PendingAmount) ?? 0;
 
+    private void OnCompanyFilterChanged(object? value)
+    {
+        if (value == null)
+        {
+            selectedCompanyId = null;
+            return;
+        }
+
+        selectedCompanyId = Convert.ToInt32(value);
+    }
     protected override async Task OnInitializedAsync()
     {
         try
@@ -301,19 +313,14 @@
             monthlyData = await DeclarationApiService.GetMonthlySummaryAsync(
                 selectedYear,
                 selectedMonth,
-                selectedTenantNo,
+                selectedCompanyId,
                 selectedDeclarationType) ?? new();
 
             yearlySummary = await DeclarationApiService.GetYearlySummaryAsync(
                 selectedYear,
-                selectedTenantNo);
+                selectedCompanyId);
 
-            companyOptions = monthlyData
-                .Select(x => new DropdownOption(x.TenantNo, x.CompanyName))
-                .GroupBy(x => x.Value)
-                .Select(g => g.First())
-                .OrderBy(x => x.Text)
-                .ToList();
+           
         }
         catch (Exception ex)
         {
@@ -321,7 +328,7 @@
 
             monthlyData = new();
             yearlySummary = null;
-            companyOptions = new();
+           
         }
     }
 
@@ -366,7 +373,7 @@
     {
         var model = new CreateDeclarationRequest
         {
-            TenantNo = item.TenantNo,
+            CustomerCompanyId = item.CustomerCompanyId,
             CompanyName = item.CompanyName,
             DeclarationType = item.DeclarationType,
             Year = item.Year,
@@ -398,7 +405,7 @@
         {
             var updateRequest = new UpdateDeclarationRequest
             {
-                TenantNo = form.TenantNo,
+                CustomerCompanyId = form.CustomerCompanyId,
                 CompanyName = form.CompanyName,
                 DeclarationType = form.DeclarationType,
                 Year = form.Year,
@@ -410,7 +417,6 @@
                 PaymentDate = form.PaymentDate,
                 Note = form.Note
             };
-
             var ok = await DeclarationApiService.UpdateAsync(item.Id, updateRequest);
 
             if (ok)
@@ -427,8 +433,8 @@
 
     private static string GetDeclarationStatusText(DeclarationStatus status) => status switch
     {
-        DeclarationStatus.Draft => "Taslak",
         DeclarationStatus.Preparing => "Hazırlanıyor",
+        DeclarationStatus.Draft => "Taslak",
         DeclarationStatus.Ready => "Hazır",
         DeclarationStatus.Approved => "Onaylandı",
         DeclarationStatus.Submitted => "Gönderildi",
@@ -445,8 +451,8 @@
 
     private static BadgeStyle GetDeclarationBadgeStyle(DeclarationStatus status) => status switch
     {
-        DeclarationStatus.Draft => BadgeStyle.Secondary,
         DeclarationStatus.Preparing => BadgeStyle.Warning,
+        DeclarationStatus.Draft => BadgeStyle.Secondary,
         DeclarationStatus.Ready => BadgeStyle.Info,
         DeclarationStatus.Approved => BadgeStyle.Success,
         DeclarationStatus.Submitted => BadgeStyle.Primary,

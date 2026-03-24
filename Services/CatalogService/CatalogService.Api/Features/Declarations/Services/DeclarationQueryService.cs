@@ -17,17 +17,16 @@ namespace CatalogService.Api.Features.Declarations.Services
         public async Task<List<CompanyMonthlySummaryDto>> GetMonthlySummaryAsync(
             int year,
             int month,
-            string? tenantNo = null,
+            int? customerCompanyId = null,
             string? declarationType = null)
         {
             var query = _context.Declarations
                 .AsNoTracking()
                 .Where(x => x.Year == year && x.Month == month);
 
-            if (!string.IsNullOrWhiteSpace(tenantNo))
+            if (customerCompanyId.HasValue)
             {
-                tenantNo = tenantNo.Trim();
-                query = query.Where(x => x.TenantNo == tenantNo);
+                query = query.Where(x => x.CustomerCompanyId == customerCompanyId.Value);
             }
 
             if (!string.IsNullOrWhiteSpace(declarationType))
@@ -42,22 +41,24 @@ namespace CatalogService.Api.Features.Declarations.Services
                 .ToListAsync();
 
             var result = declarations
-                .GroupBy(x => new { x.TenantNo, x.CompanyName })
+                .GroupBy(x => new { x.CustomerCompanyId, x.TenantNo, x.CompanyName })
                 .Select(g => new CompanyMonthlySummaryDto
                 {
+                    CustomerCompanyId = g.Key.CustomerCompanyId,
                     TenantNo = g.Key.TenantNo,
                     CompanyName = g.Key.CompanyName,
                     Year = year,
                     Month = month,
                     DeclarationCount = g.Count(),
-                    ApprovedCount = g.Count(x => x.DeclarationStatus==DeclarationStatus.Approved),
-                    PaidCount = g.Count(x => x.PaymentStatus==PaymentStatus.Pending),
+                    ApprovedCount = g.Count(x => x.DeclarationStatus == DeclarationStatus.Approved),
+                    PaidCount = g.Count(x => x.PaymentStatus == PaymentStatus.Paid),
                     TotalAmount = g.Sum(x => x.Amount),
-                    PaidAmount = g.Where(x => x.PaymentStatus == PaymentStatus.Pending).Sum(x => x.Amount),
-                    PendingAmount = g.Where(x => x.PaymentStatus != PaymentStatus.Pending).Sum(x => x.Amount),
+                    PaidAmount = g.Where(x => x.PaymentStatus == PaymentStatus.Paid).Sum(x => x.Amount),
+                    PendingAmount = g.Where(x => x.PaymentStatus != PaymentStatus.Paid).Sum(x => x.Amount),
                     Declarations = g.Select(x => new DeclarationDto
                     {
                         Id = x.Id,
+                        CustomerCompanyId = x.CustomerCompanyId,
                         TenantNo = x.TenantNo,
                         CompanyName = x.CompanyName,
                         DeclarationType = x.DeclarationType,
@@ -79,16 +80,15 @@ namespace CatalogService.Api.Features.Declarations.Services
             return result;
         }
 
-        public async Task<YearlyTaxSummaryDto> GetYearlySummaryAsync(int year, string? tenantNo = null)
+        public async Task<YearlyTaxSummaryDto> GetYearlySummaryAsync(int year, int? customerCompanyId = null)
         {
             var query = _context.Declarations
                 .AsNoTracking()
                 .Where(x => x.Year == year);
 
-            if (!string.IsNullOrWhiteSpace(tenantNo))
+            if (customerCompanyId.HasValue)
             {
-                tenantNo = tenantNo.Trim();
-                query = query.Where(x => x.TenantNo == tenantNo);
+                query = query.Where(x => x.CustomerCompanyId == customerCompanyId.Value);
             }
 
             var declarations = await query.ToListAsync();
@@ -97,10 +97,10 @@ namespace CatalogService.Api.Features.Declarations.Services
             {
                 Year = year,
                 TotalAmount = declarations.Sum(x => x.Amount),
-                PaidAmount = declarations.Where(x => x.PaymentStatus == PaymentStatus.Pending).Sum(x => x.Amount),
-                PendingAmount = declarations.Where(x => x.PaymentStatus != PaymentStatus.Pending).Sum(x => x.Amount),
+                PaidAmount = declarations.Where(x => x.PaymentStatus == PaymentStatus.Paid).Sum(x => x.Amount),
+                PendingAmount = declarations.Where(x => x.PaymentStatus != PaymentStatus.Paid).Sum(x => x.Amount),
                 TotalCompanyCount = declarations
-                    .Select(x => x.TenantNo)
+                    .Select(x => x.CustomerCompanyId)
                     .Distinct()
                     .Count(),
                 TotalDeclarationCount = declarations.Count
@@ -115,16 +115,17 @@ namespace CatalogService.Api.Features.Declarations.Services
                 .ToListAsync();
 
             var result = declarations
-                .GroupBy(x => new { x.TenantNo, x.CompanyName })
+                .GroupBy(x => new { x.CustomerCompanyId, x.TenantNo, x.CompanyName })
                 .Select(g => new CompanyYearlySummaryDto
                 {
+                    CustomerCompanyId = g.Key.CustomerCompanyId,
                     TenantNo = g.Key.TenantNo,
                     CompanyName = g.Key.CompanyName,
                     Year = year,
                     DeclarationCount = g.Count(),
                     TotalAmount = g.Sum(x => x.Amount),
-                    PaidAmount = g.Where(x => x.PaymentStatus == PaymentStatus.Pending).Sum(x => x.Amount),
-                    PendingAmount = g.Where(x => x.PaymentStatus != PaymentStatus.Pending).Sum(x => x.Amount)
+                    PaidAmount = g.Where(x => x.PaymentStatus == PaymentStatus.Paid).Sum(x => x.Amount),
+                    PendingAmount = g.Where(x => x.PaymentStatus != PaymentStatus.Paid).Sum(x => x.Amount)
                 })
                 .OrderByDescending(x => x.TotalAmount)
                 .ToList();

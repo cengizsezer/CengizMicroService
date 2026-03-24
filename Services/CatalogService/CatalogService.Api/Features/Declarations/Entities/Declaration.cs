@@ -19,5 +19,6 @@
 
         public DateTime? PaymentDate { get; set; }
         public string? Note { get; set; }
+        public int CustomerCompanyId { get; set; }
     }
 }

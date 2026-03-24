@@ -8,5 +8,6 @@
         public decimal PendingAmount { get; set; }
         public int TotalCompanyCount { get; set; }
         public int TotalDeclarationCount { get; set; }
+        public int CustomerCompanyId { get; set; }
     }
 }

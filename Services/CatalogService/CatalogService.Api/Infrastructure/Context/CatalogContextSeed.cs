@@ -219,17 +219,19 @@ namespace CatalogService.Api.Infrastructure.Context
             {
                 return new List<CustomerCompany>
         {
-            new() { TenantNo = "500", CompanyName = "PKF Aday Bağımsız Denetim A.Ş.", TaxNumber = "1000000005", IsActive = true },
-             new() { TenantNo = "500", CompanyName = "PKF İSTANBUL SMMM", TaxNumber = "1000000003", IsActive = true },
-            new() { TenantNo = "500", CompanyName = "PKF İSTANBUL YMMM", TaxNumber = "1000000004", IsActive = true },
-             new() { TenantNo = "500", CompanyName = "PKF Kurumsal Strateji", TaxNumber = "1000000006", IsActive = true },
-            new() { TenantNo = "500", CompanyName = "PKF PROGROUP", TaxNumber = "1000000002", IsActive = true },
-           new() { TenantNo = "500", CompanyName = "PKF RİSK", TaxNumber = "1000000001", IsActive = true },
-            new() { TenantNo = "500", CompanyName = "PKF İstanbul Yönetim Danışmanlık", TaxNumber = "1000000007", IsActive = true },
-            new() { TenantNo = "500", CompanyName = "PKF Teknoloji", TaxNumber = "1000000008", IsActive = true },
-            new() { TenantNo = "500", CompanyName = "DGR Kurumsal", TaxNumber = "1000000009", IsActive = true },
-            new() { TenantNo = "500", CompanyName = "Elif Gülce", TaxNumber = "1000000010", IsActive = true },
-            new() { TenantNo = "500", CompanyName = "Zeynep Potur", TaxNumber = "1000000011", IsActive = true }
+            new() { TenantNo = "500", CompanyName = "PKF ADAY BAGIMSIZ DENETIM A.Ş", TaxNumber = "0070511435", IsActive = true },
+             new() { TenantNo = "500", CompanyName = "PKF İSTANBUL SMMM A.Ş", TaxNumber = "7300717173", IsActive = true },
+            new() { TenantNo = "500", CompanyName = "PKF İSTANBUL YMMM A.Ş", TaxNumber = "7300751015", IsActive = true },
+             new() { TenantNo = "500", CompanyName = "PKF ISTANBUL KURUMSAL STRATEJI VE FIN.DAN.A.Ş", TaxNumber = "7300732391", IsActive = true },
+            new() { TenantNo = "500", CompanyName = "PKF PROGROUP KURUMSAL YÖNETİM DAN. A.Ş", TaxNumber = "7300562233", IsActive = true },
+           new() { TenantNo = "500", CompanyName = "PKF RISK YONETIMI SUR.VE DAN.HIZ.A.Ş", TaxNumber = "7300873900", IsActive = true },
+            new() { TenantNo = "500", CompanyName = "PKF ISTANBUL YONETIM DAN.A.Ş", TaxNumber = "7300718456", IsActive = true },
+            new() { TenantNo = "500", CompanyName = "PKF TEKNOLOJI A.Ş", TaxNumber = "7300866854", IsActive = true },
+            new() { TenantNo = "500", CompanyName = "DGR IÇ VE DIS TIC A.Ş", TaxNumber = "2951070824", IsActive = true },
+             new() { TenantNo = "500", CompanyName = "TRUD KURUMSAL VE FIN.DAN.A.Ş", TaxNumber = "8591306661", IsActive = true },
+            new() { TenantNo = "500", CompanyName = "ELIF GULCE OZDEMIR", TaxNumber = "37015473178", IsActive = true },
+            new() { TenantNo = "500", CompanyName = "ZEYNEP POTUR", TaxNumber = "57031494384", IsActive = true },
+           
         };
             }
 

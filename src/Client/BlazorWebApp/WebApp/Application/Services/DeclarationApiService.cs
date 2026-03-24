@@ -10,7 +10,6 @@ namespace WebApp.Application.Services
     {
         private readonly HttpClient _httpClient;
 
-        // gateway prefix
         private const string Prefix = "/catalog/declarations";
 
         public DeclarationApiService(HttpClient httpClient)
@@ -21,28 +20,39 @@ namespace WebApp.Application.Services
         public async Task<List<CompanyMonthlySummaryDto>> GetMonthlySummaryAsync(
             int year,
             int month,
-            string? tenantNo = null,
+            int? customerCompanyId = null,
             string? declarationType = null)
         {
-            var url = $"{Prefix}/monthly-summary?year={year}&month={month}";
+            var query = new List<string>
+            {
+                $"year={year}",
+                $"month={month}"
+            };
 
-            if (!string.IsNullOrWhiteSpace(tenantNo))
-                url += $"&tenantNo={Uri.EscapeDataString(tenantNo)}";
+            if (customerCompanyId.HasValue)
+                query.Add($"customerCompanyId={customerCompanyId.Value}");
 
             if (!string.IsNullOrWhiteSpace(declarationType))
-                url += $"&declarationType={Uri.EscapeDataString(declarationType)}";
+                query.Add($"declarationType={Uri.EscapeDataString(declarationType)}");
+
+            var url = $"{Prefix}/monthly-summary?{string.Join("&", query)}";
 
             return await _httpClient.GetResponseAsync<List<CompanyMonthlySummaryDto>>(url);
         }
 
         public async Task<YearlyTaxSummaryDto?> GetYearlySummaryAsync(
             int year,
-            string? tenantNo = null)
+            int? customerCompanyId = null)
         {
-            var url = $"{Prefix}/yearly-summary?year={year}";
+            var query = new List<string>
+            {
+                $"year={year}"
+            };
 
-            if (!string.IsNullOrWhiteSpace(tenantNo))
-                url += $"&tenantNo={Uri.EscapeDataString(tenantNo)}";
+            if (customerCompanyId.HasValue)
+                query.Add($"customerCompanyId={customerCompanyId.Value}");
+
+            var url = $"{Prefix}/yearly-summary?{string.Join("&", query)}";
 
             return await _httpClient.GetResponseAsync<YearlyTaxSummaryDto>(url);
         }

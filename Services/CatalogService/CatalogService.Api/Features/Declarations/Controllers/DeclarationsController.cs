@@ -23,19 +23,19 @@ namespace CatalogService.Api.Features.Declarations.Controllers
         public async Task<IActionResult> GetMonthlySummary(
             [FromQuery] int year,
             [FromQuery] int month,
-            [FromQuery] string? tenantNo,
+            [FromQuery] int? customerCompanyId ,
             [FromQuery] string? declarationType)
         {
-            var result = await _queryService.GetMonthlySummaryAsync(year, month, tenantNo, declarationType);
+            var result = await _queryService.GetMonthlySummaryAsync(year, month, customerCompanyId, declarationType);
             return Ok(result);
         }
 
         [HttpGet("yearly-summary")]
         public async Task<IActionResult> GetYearlySummary(
             [FromQuery] int year,
-            [FromQuery] string? tenantNo)
+            [FromQuery] int? customerCompanyId)
         {
-            var result = await _queryService.GetYearlySummaryAsync(year, tenantNo);
+            var result = await _queryService.GetYearlySummaryAsync(year, customerCompanyId);
             return Ok(result);
         }
 
@@ -45,7 +45,7 @@ namespace CatalogService.Api.Features.Declarations.Controllers
             var result = await _queryService.GetCompanyYearlySummaryAsync(year);
             return Ok(result);
         }
-
+         
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateDeclarationRequest request)
         {

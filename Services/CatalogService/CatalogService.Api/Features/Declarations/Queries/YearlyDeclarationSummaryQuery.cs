@@ -4,5 +4,6 @@
     {
         public int Year { get; set; }
         public string? TenantNo { get; set; }
+        public int? CustomerCompanyId { get; set; }
     }
 }

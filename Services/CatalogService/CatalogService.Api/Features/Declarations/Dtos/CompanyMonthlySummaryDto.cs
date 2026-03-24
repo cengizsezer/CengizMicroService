@@ -17,5 +17,6 @@
         public decimal PendingAmount { get; set; }
 
         public List<DeclarationDto> Declarations { get; set; } = new();
+        public int CustomerCompanyId { get; set; }
     }
 }
