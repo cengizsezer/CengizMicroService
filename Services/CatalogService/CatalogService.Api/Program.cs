@@ -184,6 +184,9 @@ IF OBJECT_ID(N'[catalog].[{t}]','U') IS NOT NULL
 
             logger.LogInformation("🧱 Migration uygulanıyor...");
             await ctxOnce.Database.MigrateAsync();
+
+            logger.LogInformation("💼 Payroll seed uygulanıyor...");
+            await PayrollSeedData.SeedAsync(ctxOnce);
         }
 
         var seeder = new CatalogContextSeed();

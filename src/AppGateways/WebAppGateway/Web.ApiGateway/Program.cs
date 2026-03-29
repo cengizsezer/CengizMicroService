@@ -82,11 +82,26 @@ builder.Services.AddHttpClient("catalog", c =>
     c.BaseAddress = new Uri(builder.Configuration["urls:catalog"]);
 }).AddHttpMessageHandler<HttpClientDelegatingHandler>();
 
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("CorsPolicy", policy =>
+//    {
+//        policy.SetIsOriginAllowed(_ => true)
+//              .AllowAnyMethod()
+//              .AllowAnyHeader()
+//              .AllowCredentials();
+//    });
+
+
+//});
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("CorsPolicy", policy =>
     {
-        policy.SetIsOriginAllowed(_ => true)
+        policy.WithOrigins(
+                "https://dijitalmasraf.com",
+                "https://www.dijitalmasraf.com")
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
