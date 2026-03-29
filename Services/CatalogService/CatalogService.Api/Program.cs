@@ -122,7 +122,10 @@ builder.Services.AddSingleton<IEventBus>(sp =>
 builder.Services.AddCors(opt =>
 {
     opt.AddPolicy("wasm", p => p
-        .WithOrigins("http://localhost:2000")
+        .WithOrigins(
+            "http://localhost:2000",
+            "https://dijitalmasraf.com",
+            "https://www.dijitalmasraf.com")
         .AllowAnyHeader()
         .AllowAnyMethod()
         .AllowCredentials());
