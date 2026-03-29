@@ -891,5 +891,53 @@
         "StatusCode": 200
       }
     ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
+    "Method": "GetBootstrap",
+    "RelativePath": "api/public/payroll/bootstrap",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "year",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
+    "Method": "Calculate",
+    "RelativePath": "api/public/payroll/calculate",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Payroll.Dtos.Requests.CalculatePayrollRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
+    "Method": "GetParametersByYear",
+    "RelativePath": "api/public/payroll/parameters/{year}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "year",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
   }
 ]

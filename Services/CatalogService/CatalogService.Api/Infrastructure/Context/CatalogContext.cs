@@ -3,6 +3,8 @@ using CatalogService.Api.Features.Declarations.Entities;
 using CatalogService.Api.Features.Education.Domain;
 using CatalogService.Api.Features.Expenses.Domain;
 using CatalogService.Api.Features.Jobs.Domain;
+using CatalogService.Api.Features.Payroll.Entities;
+using CatalogService.Api.Features.Payroll.Persistence.Configurations;
 using CatalogService.Api.Features.Vehicles.Domain;
 using CatalogService.Api.Infrastructure.Accessor;
 using CatalogService.Api.Infrastructure.Domain;
@@ -36,6 +38,11 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<CustomerCompany> CustomerCompanies => Set<CustomerCompany>();
         public DbSet<AccountNode> AccountNodes => Set<AccountNode>();
 
+        public DbSet<PayrollParameter> PayrollParameters => Set<PayrollParameter>();
+        public DbSet<PayrollTaxBracket> PayrollTaxBrackets => Set<PayrollTaxBracket>();
+        public DbSet<PayrollDisabilityExemption> PayrollDisabilityExemptions => Set<PayrollDisabilityExemption>();
+
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -51,6 +58,11 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new AccountNodesEntityTypeConfiguration());
             builder.ApplyConfiguration(new DeclarationEntityTypeConfiguration());
             builder.ApplyConfiguration(new CustomerCompanyTypeConfiguration());
+
+
+            SetBuilderPKFConfiguration(builder);
+
+
             //AccountPlanSeed.Seed(builder);
             builder.Entity<Expense>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
             builder.Entity<ReceiptItem>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
@@ -59,6 +71,14 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.Entity<Personnel>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
             builder.Entity<Job>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
             builder.Entity<CustomerCompany>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
+        }
+
+
+        public void SetBuilderPKFConfiguration(ModelBuilder builder)
+        {
+            builder.ApplyConfiguration(new PayrollDisabilityExemptionConfiguration());
+            builder.ApplyConfiguration(new PayrollParameterConfiguration());
+            builder.ApplyConfiguration(new PayrollTaxBracketConfiguration());
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)

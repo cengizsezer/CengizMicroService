@@ -17,6 +17,16 @@
     {
       "UseServiceDiscovery": true,
       "ServiceName": "CatalogService",
+      "DownstreamPathTemplate": "/api/public/payroll/{everything}",
+      "DownstreamScheme": "http",
+
+      "UpstreamPathTemplate": "/api/public/payroll/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS" ],
+      "UpstreamScheme": "http"
+    },
+    {
+      "UseServiceDiscovery": true,
+      "ServiceName": "CatalogService",
       "DownstreamPathTemplate": "/api/catalog/{everything}",
       "DownstreamScheme": "http",
 

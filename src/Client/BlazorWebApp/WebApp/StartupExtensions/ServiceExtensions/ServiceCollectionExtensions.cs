@@ -9,6 +9,7 @@ using WebApp.Application.Services;
 using WebApp.Application.Services.Interfaces;
 using WebApp.Infrastructure;
 using WebApp.Manager;
+using WebApp.Pages.Payroll.Services;
 using WebApp.StartupExtensions.Culture;
 
 namespace WebApp.StartupExtensions.ServiceExtensions
@@ -32,6 +33,14 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             services.AddTransient<RefreshTokenCorridor>();
             services.AddTransient<AuthTokenHandler>();
             services.AddTransient<TenantHeaderHandler>();
+
+            return services;
+        }
+
+        public static IServiceCollection AddPkfPageServices(this IServiceCollection services) 
+        {
+
+            services.AddScoped<IPayrollApiService, PayrollApiService>();
 
             return services;
         }

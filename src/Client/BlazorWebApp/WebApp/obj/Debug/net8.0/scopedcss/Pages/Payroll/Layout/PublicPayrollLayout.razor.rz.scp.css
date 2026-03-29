@@ -1,0 +1,36 @@
+.public-payroll-layout[b-0gztsyy4l7] {
+    min-height: 100vh;
+    background: #f3f3f3;
+}
+
+/* HEADER */
+.public-payroll-header[b-0gztsyy4l7] {
+    height: 86px;
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+}
+
+/* HEADER INNER */
+.public-payroll-header-inner[b-0gztsyy4l7] {
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+/* LOGO */
+.public-payroll-logo[b-0gztsyy4l7] {
+    height: 68px;
+    width: auto;
+    display: block;
+}
+
+/* MAIN */
+.public-payroll-main[b-0gztsyy4l7] {
+    padding: 20px 0 32px 0;
+}

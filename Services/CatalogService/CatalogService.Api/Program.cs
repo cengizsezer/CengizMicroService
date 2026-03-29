@@ -4,6 +4,9 @@ using CatalogService.Api.Features.Declarations.Services;
 using CatalogService.Api.Features.Education.Mapping;
 using CatalogService.Api.Features.Expenses.Mapping;
 using CatalogService.Api.Features.Jobs.Service;
+using CatalogService.Api.Features.Payroll.Persistence.Seeds;
+using CatalogService.Api.Features.Payroll.Services;
+using CatalogService.Api.Features.Payroll.Services.Interfaces;
 using CatalogService.Api.Features.Vehicles.Mapping;
 using CatalogService.Api.Features.Vehicles.Service;
 using CatalogService.Api.Infrastructure;
@@ -13,6 +16,7 @@ using CatalogService.Api.Infrastructure.Context;
 using EventBus.Base;
 using EventBus.Base.Abstraction;
 using EventBus.Factory;
+using FluentValidation;
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -22,6 +26,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using RabbitMQ.Client;
 using Serilog;
+using System.Reflection;
 using System.Text;
 
 var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
@@ -70,6 +75,15 @@ builder.Services.ConfigureConsul(configuration);
 builder.Services.AddAutoMapper(typeof(ExpenseProfile));
 builder.Services.AddAutoMapper(typeof(VehicleProfile));
 builder.Services.AddAutoMapper(typeof(EducationProfile));
+
+builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
+});
+
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IHttpCurrentTenant, HttpCurrentTenant>();
 builder.Services.AddScoped<IJobService, JobService>();
@@ -80,6 +94,7 @@ builder.Services.AddScoped<IAccountPlanService, AccountPlanService>();
 builder.Services.AddScoped<IDeclarationQueryService, DeclarationQueryService>();
 builder.Services.AddScoped<IDeclarationCommandService, DeclarationCommandService>();
 builder.Services.AddScoped<ICustomerCompanyQueryService, CustomerCompanyQueryService>();
+builder.Services.AddScoped<IPayrollCalculationEngine, PayrollCalculationEngine>();
 builder.Services.AddSingleton<IEventBus>(sp =>
 {
     var cfg = builder.Configuration;
@@ -251,17 +266,52 @@ using (var scope = app.Services.CreateScope())
         //    ctxOnce.Database.Migrate();
         //}
 
+//        using (var ctxOnce = new CatalogContext(options, new FixedTenantAccessor("schema")))
+//        {
+//            logger.LogInformation("🗑️Catalog verileri temizleniyor ve şema kontrol ediliyor...");
+//            //await ctxOnce.Database.EnsureDeletedAsync(); // tüm veritabanını siler
+//            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[ProductDetails]");
+//            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[ReceiptItems]");
+//            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[Expenses]");
+//            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[AccountingCodes]");
+//            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[Personnels]");
+//            ctxOnce.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf') EXEC('CREATE SCHEMA pkf');"
+//);
+//            logger.LogInformation("🧱 Migration uygulanıyor...");
+//            await ctxOnce.Database.MigrateAsync(); // migration'ları sıfırdan uygular
+//            await PayrollSeedData.SeedAsync(ctxOnce);
+
+//        }
+
         using (var ctxOnce = new CatalogContext(options, new FixedTenantAccessor("schema")))
         {
-            logger.LogInformation("🗑️ Mevcut catalog shema veritabanı siliniyor...");
-            //await ctxOnce.Database.EnsureDeletedAsync(); // tüm veritabanını siler
-            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[ProductDetails]");
-            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[ReceiptItems]");
-            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[Expenses]");
-            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[AccountingCodes]");
-            ctxOnce.Database.ExecuteSqlRaw("DELETE FROM [catalog].[Personnels]");
+            logger.LogInformation("🧹 Catalog verileri temizleniyor ve şema kontrol ediliyor...");
+
+            ctxOnce.Database.ExecuteSqlRaw(@"
+IF OBJECT_ID(N'[catalog].[ProductDetails]', 'U') IS NOT NULL
+    DELETE FROM [catalog].[ProductDetails];
+
+IF OBJECT_ID(N'[catalog].[ReceiptItems]', 'U') IS NOT NULL
+    DELETE FROM [catalog].[ReceiptItems];
+
+IF OBJECT_ID(N'[catalog].[Expenses]', 'U') IS NOT NULL
+    DELETE FROM [catalog].[Expenses];
+
+IF OBJECT_ID(N'[catalog].[AccountingCodes]', 'U') IS NOT NULL
+    DELETE FROM [catalog].[AccountingCodes];
+
+IF OBJECT_ID(N'[catalog].[Personnels]', 'U') IS NOT NULL
+    DELETE FROM [catalog].[Personnels];
+
+IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf')
+    EXEC('CREATE SCHEMA pkf');
+");
+
             logger.LogInformation("🧱 Migration uygulanıyor...");
-            await ctxOnce.Database.MigrateAsync(); // migration'ları sıfırdan uygular
+            await ctxOnce.Database.MigrateAsync();
+
+            logger.LogInformation("💼 Payroll seed uygulanıyor...");
+            await PayrollSeedData.SeedAsync(ctxOnce);
         }
 
         var seeder = new CatalogContextSeed();
