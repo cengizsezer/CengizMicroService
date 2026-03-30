@@ -3,6 +3,14 @@
   "WorkspaceRootPath": "C:\\GitHub\\CengizMicroService\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{0B20C76B-62F2-4839-932E-6BADFB5FC08D}|conf.d{0B20C76B-62F2-4839-932E-6BADFB5FC08D}|C:\\GitHub\\CengizMicroService\\Nginx\\conf.d\\dijitalmasraf.conf||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{0B20C76B-62F2-4839-932E-6BADFB5FC08D}|conf.d{0B20C76B-62F2-4839-932E-6BADFB5FC08D}|solutionrelative:Nginx\\conf.d\\dijitalmasraf.conf||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F5E3CC63-52A5-4F28-8342-B51C1E8FA413}|Nginx{F5E3CC63-52A5-4F28-8342-B51C1E8FA413}|C:\\GitHub\\CengizMicroService\\Nginx\\nginx.conf||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{F5E3CC63-52A5-4F28-8342-B51C1E8FA413}|Nginx{F5E3CC63-52A5-4F28-8342-B51C1E8FA413}|solutionrelative:Nginx\\nginx.conf||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|c:\\github\\cengizmicroservice\\services\\catalogservice\\catalogservice.api\\features\\payroll\\entities\\payrollparameter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{1912A3E3-D86E-480E-ABD3-F16C7B59A23C}|Services\\CatalogService\\CatalogService.Api\\CatalogService.Api.csproj|solutionrelative:services\\catalogservice\\catalogservice.api\\features\\payroll\\entities\\payrollparameter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -294,11 +302,11 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 19,
+          "SelectedChildIndex": 10,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 5,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Program.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Program.cs",
@@ -311,7 +319,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 57,
+              "DocumentIndex": 59,
               "Title": "CatalogContext.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Context\\CatalogContext.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Context\\CatalogContext.cs",
@@ -324,7 +332,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 42,
+              "DocumentIndex": 44,
               "Title": "PayrollCalculationEngine.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Services\\PayrollCalculationEngine.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Services\\PayrollCalculationEngine.cs",
@@ -337,7 +345,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 48,
+              "DocumentIndex": 50,
               "Title": "AccountPlanClient.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\AccountPlanClient.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\AccountPlanClient.cs",
@@ -350,7 +358,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 32,
+              "DocumentIndex": 34,
               "Title": "PayrollApiService.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Services\\PayrollApiService.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Services\\PayrollApiService.cs",
@@ -363,7 +371,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 43,
+              "DocumentIndex": 45,
               "Title": "PayrollPublicController.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Controllers\\PayrollPublicController.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Controllers\\PayrollPublicController.cs",
@@ -376,7 +384,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 44,
+              "DocumentIndex": 46,
               "Title": "ocelot.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.json",
               "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.json",
@@ -389,7 +397,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 47,
+              "DocumentIndex": 49,
               "Title": "JobsController.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Jobs\\Controller\\JobsController.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Jobs\\Controller\\JobsController.cs",
@@ -402,7 +410,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 4,
               "Title": "PayrollParameterDto.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Dtos\\Shared\\PayrollParameterDto.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Dtos\\Shared\\PayrollParameterDto.cs",
@@ -412,6 +420,32 @@
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-03-28T11:27:45.914Z",
               "IsPinned": true
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "nginx.conf",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Nginx\\nginx.conf",
+              "RelativeDocumentMoniker": "Nginx\\nginx.conf",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Nginx\\nginx.conf",
+              "RelativeToolTip": "Nginx\\nginx.conf",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2026-03-30T20:00:06.753Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "dijitalmasraf.conf",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Nginx\\conf.d\\dijitalmasraf.conf",
+              "RelativeDocumentMoniker": "Nginx\\conf.d\\dijitalmasraf.conf",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Nginx\\conf.d\\dijitalmasraf.conf",
+              "RelativeToolTip": "Nginx\\conf.d\\dijitalmasraf.conf",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAAwAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2026-03-30T19:59:57.004Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Bookmark",
@@ -431,80 +465,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "PayrollSeedData.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Persistence\\Seeds\\PayrollSeedData.cs",
-              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Persistence\\Seeds\\PayrollSeedData.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Persistence\\Seeds\\PayrollSeedData.cs",
-              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Persistence\\Seeds\\PayrollSeedData.cs",
-              "ViewState": "AgIAABIAAAAAAAAAAAAowCMAAABPAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-28T11:28:01.156Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 7,
-              "Title": "Program.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
-              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
-              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAnAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-30T17:54:43.592Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 11,
-              "Title": "20260329135027_AddPayrollModuleNew.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Migrations\\20260329135027_AddPayrollModuleNew.cs",
-              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Migrations\\20260329135027_AddPayrollModuleNew.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Migrations\\20260329135027_AddPayrollModuleNew.cs",
-              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Migrations\\20260329135027_AddPayrollModuleNew.cs",
-              "ViewState": "AgIAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-29T22:00:58.256Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 8,
-              "Title": "20260329220019_FixPayrollColumns.cs",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Migrations\\20260329220019_FixPayrollColumns.cs",
-              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Migrations\\20260329220019_FixPayrollColumns.cs",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Migrations\\20260329220019_FixPayrollColumns.cs",
-              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Migrations\\20260329220019_FixPayrollColumns.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAAjAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-29T22:00:52.737Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 9,
-              "Title": "docker-compose.override.yml",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.override.yml",
-              "RelativeDocumentMoniker": "docker-compose.override.yml",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\docker-compose.override.yml",
-              "RelativeToolTip": "docker-compose.override.yml",
-              "ViewState": "AgIAAMEAAAAAAAAAAAAowNcAAAASAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003775|",
-              "WhenOpened": "2026-03-29T21:41:21.434Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 12,
-              "Title": "docker-compose.yml",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.yml",
-              "RelativeDocumentMoniker": "docker-compose.yml",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\docker-compose.yml",
-              "RelativeToolTip": "docker-compose.yml",
-              "ViewState": "AgIAAC4AAAAAAAAAAADwv1MAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003775|",
-              "WhenOpened": "2026-03-29T21:41:06.727Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 2,
               "Title": "PayrollParameter.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Entities\\PayrollParameter.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Entities\\PayrollParameter.cs",
@@ -517,7 +478,79 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 9,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
+              "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
+              "RelativeToolTip": "src\\Client\\BlazorWebApp\\WebApp\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAnAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-30T17:54:43.592Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "PayrollSeedData.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Persistence\\Seeds\\PayrollSeedData.cs",
+              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Persistence\\Seeds\\PayrollSeedData.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Persistence\\Seeds\\PayrollSeedData.cs",
+              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Persistence\\Seeds\\PayrollSeedData.cs",
+              "ViewState": "AgIAABIAAAAAAAAAAAAowCMAAABPAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-28T11:28:01.156Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "20260329135027_AddPayrollModuleNew.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Migrations\\20260329135027_AddPayrollModuleNew.cs",
+              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Migrations\\20260329135027_AddPayrollModuleNew.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Migrations\\20260329135027_AddPayrollModuleNew.cs",
+              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Migrations\\20260329135027_AddPayrollModuleNew.cs",
+              "ViewState": "AgIAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-29T22:00:58.256Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "20260329220019_FixPayrollColumns.cs",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Migrations\\20260329220019_FixPayrollColumns.cs",
+              "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Migrations\\20260329220019_FixPayrollColumns.cs",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Migrations\\20260329220019_FixPayrollColumns.cs",
+              "RelativeToolTip": "Services\\CatalogService\\CatalogService.Api\\Migrations\\20260329220019_FixPayrollColumns.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAAjAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-29T22:00:52.737Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "docker-compose.override.yml",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.override.yml",
+              "RelativeDocumentMoniker": "docker-compose.override.yml",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\docker-compose.override.yml",
+              "RelativeToolTip": "docker-compose.override.yml",
+              "ViewState": "AgIAAMEAAAAAAAAAAAAowNcAAAASAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003775|",
+              "WhenOpened": "2026-03-29T21:41:21.434Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "docker-compose.yml",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.yml",
+              "RelativeDocumentMoniker": "docker-compose.yml",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\docker-compose.yml",
+              "RelativeToolTip": "docker-compose.yml",
+              "ViewState": "AgIAAC4AAAAAAAAAAADwv1MAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003775|",
+              "WhenOpened": "2026-03-29T21:41:06.727Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
               "Title": "SeedMode.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Seeding\\SeedMode.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Seeding\\SeedMode.cs",
@@ -529,7 +562,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 7,
               "Title": "RetryHelper.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Seeding\\RetryHelper.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Seeding\\RetryHelper.cs",
@@ -541,7 +574,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 6,
               "Title": "SeedRunner.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Seeding\\SeedRunner.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Infrastructure\\Seeding\\SeedRunner.cs",
@@ -553,7 +586,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 15,
               "Title": "docker-compose.dcproj",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\docker-compose.dcproj",
               "RelativeDocumentMoniker": "docker-compose.dcproj",
@@ -565,7 +598,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 20,
               "Title": "PayrollDisabilityExemption.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Entities\\PayrollDisabilityExemption.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Entities\\PayrollDisabilityExemption.cs",
@@ -577,7 +610,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 12,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Program.cs",
               "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Program.cs",
@@ -589,7 +622,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 19,
               "Title": "PayrollTaxBracket.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Entities\\PayrollTaxBracket.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Entities\\PayrollTaxBracket.cs",
@@ -601,7 +634,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 18,
               "Title": "PayrollDisabilityExemptionConfiguration.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Persistence\\Configurations\\PayrollDisabilityExemptionConfiguration.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Persistence\\Configurations\\PayrollDisabilityExemptionConfiguration.cs",
@@ -613,7 +646,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 17,
               "Title": "PayrollParameterConfiguration.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Persistence\\Configurations\\PayrollParameterConfiguration.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Persistence\\Configurations\\PayrollParameterConfiguration.cs",
@@ -625,7 +658,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 16,
               "Title": "PayrollTaxBracketConfiguration.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Persistence\\Configurations\\PayrollTaxBracketConfiguration.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Persistence\\Configurations\\PayrollTaxBracketConfiguration.cs",
@@ -637,7 +670,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 19,
+              "DocumentIndex": 21,
               "Title": "PayrollMonthResultDto.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Dtos\\Responses\\PayrollMonthResultDto.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Dtos\\Responses\\PayrollMonthResultDto.cs",
@@ -649,7 +682,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 20,
+              "DocumentIndex": 22,
               "Title": "PayrollMonthInputDto.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Dtos\\Requests\\PayrollMonthInputDto.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Dtos\\Requests\\PayrollMonthInputDto.cs",
@@ -661,7 +694,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 21,
+              "DocumentIndex": 23,
               "Title": "CalculatePayrollRequest.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Dtos\\Requests\\CalculatePayrollRequest.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Dtos\\Requests\\CalculatePayrollRequest.cs",
@@ -673,7 +706,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 22,
+              "DocumentIndex": 24,
               "Title": "ocelot.Docker.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.Docker.json",
               "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.Docker.json",
@@ -685,7 +718,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 23,
+              "DocumentIndex": 25,
               "Title": "ocelot.Development.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.Development.json",
               "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.Development.json",
@@ -697,7 +730,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 24,
+              "DocumentIndex": 26,
               "Title": "appsettings.Development.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\appsettings.Development.json",
               "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\appsettings.Development.json",
@@ -709,7 +742,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 25,
+              "DocumentIndex": 27,
               "Title": "appsettings.Docker.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\appsettings.Docker.json",
               "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\appsettings.Docker.json",
@@ -721,7 +754,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 26,
+              "DocumentIndex": 28,
               "Title": "IdentityContextSeed.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\IdentityService\\IdentityService\\Persistence\\IdentityContextSeed.cs",
               "RelativeDocumentMoniker": "Services\\IdentityService\\IdentityService\\Persistence\\IdentityContextSeed.cs",
@@ -733,7 +766,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 27,
+              "DocumentIndex": 29,
               "Title": "PayrollCalculator.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Page\\PayrollCalculator.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Page\\PayrollCalculator.razor",
@@ -745,7 +778,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 31,
+              "DocumentIndex": 33,
               "Title": "index.html",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\wwwroot\\index.html",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\wwwroot\\index.html",
@@ -757,7 +790,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 34,
+              "DocumentIndex": 36,
               "Title": "PayrollParameterDto.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Model\\PayrollParameterDto.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Model\\PayrollParameterDto.cs",
@@ -769,7 +802,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 35,
+              "DocumentIndex": 37,
               "Title": "PayrollCalculatorState.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Model\\PayrollCalculatorState.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Model\\PayrollCalculatorState.cs",
@@ -781,7 +814,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 28,
+              "DocumentIndex": 30,
               "Title": "PayrollCalculator.razor.css",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Page\\PayrollCalculator.razor.css",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Page\\PayrollCalculator.razor.css",
@@ -793,7 +826,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 36,
+              "DocumentIndex": 38,
               "Title": "PayrollMonthInputModel.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Model\\PayrollMonthInputModel.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Model\\PayrollMonthInputModel.cs",
@@ -805,7 +838,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 30,
+              "DocumentIndex": 32,
               "Title": "PublicPayrollLayout.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Layout\\PublicPayrollLayout.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Layout\\PublicPayrollLayout.razor",
@@ -817,7 +850,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 29,
+              "DocumentIndex": 31,
               "Title": "PublicPayrollLayout.razor.css",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Layout\\PublicPayrollLayout.razor.css",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Layout\\PublicPayrollLayout.razor.css",
@@ -829,7 +862,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 37,
+              "DocumentIndex": 39,
               "Title": "PayrollMonthInputDto.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Model\\PayrollMonthInputDto.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Model\\PayrollMonthInputDto.cs",
@@ -841,7 +874,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 33,
+              "DocumentIndex": 35,
               "Title": "PayrollCalculatorBootstrapDto.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Model\\PayrollCalculatorBootstrapDto.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Model\\PayrollCalculatorBootstrapDto.cs",
@@ -853,7 +886,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 38,
+              "DocumentIndex": 40,
               "Title": "CalculatePayrollResponse.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Model\\CalculatePayrollResponse.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Model\\CalculatePayrollResponse.cs",
@@ -865,7 +898,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 39,
+              "DocumentIndex": 41,
               "Title": "CalculatePayrollRequest.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Model\\CalculatePayrollRequest.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Model\\CalculatePayrollRequest.cs",
@@ -877,7 +910,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 40,
+              "DocumentIndex": 42,
               "Title": "GetPayrollParametersByYearQueryHandler.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Queries\\GetPayrollParametersByYear\\GetPayrollParametersByYearQueryHandler.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Queries\\GetPayrollParametersByYear\\GetPayrollParametersByYearQueryHandler.cs",
@@ -889,7 +922,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 41,
+              "DocumentIndex": 43,
               "Title": "GetPayrollCalculatorBootstrapQueryHandler.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Queries\\GetPayrollCalculatorBootstrap\\GetPayrollCalculatorBootstrapQueryHandler.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Queries\\GetPayrollCalculatorBootstrap\\GetPayrollCalculatorBootstrapQueryHandler.cs",
@@ -901,7 +934,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 45,
+              "DocumentIndex": 47,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\appsettings.json",
               "RelativeDocumentMoniker": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\appsettings.json",
@@ -913,7 +946,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 46,
+              "DocumentIndex": 48,
               "Title": "JobsApi.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\JobsApi.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Application\\Services\\JobsApi.cs",
@@ -925,7 +958,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 49,
+              "DocumentIndex": 51,
               "Title": "Startup.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\StartupExtensions\\Startup.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\StartupExtensions\\Startup.cs",
@@ -937,7 +970,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 51,
+              "DocumentIndex": 53,
               "Title": "IPayrollApiService.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Services\\IPayrollApiService.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Services\\IPayrollApiService.cs",
@@ -949,7 +982,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 50,
+              "DocumentIndex": 52,
               "Title": "ServiceCollectionExtensions.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\StartupExtensions\\ServiceExtensions\\ServiceCollectionExtensions.cs",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\StartupExtensions\\ServiceExtensions\\ServiceCollectionExtensions.cs",
@@ -961,7 +994,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 52,
+              "DocumentIndex": 54,
               "Title": "PayrollHeader.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Component\\PayrollHeader.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Component\\PayrollHeader.razor",
@@ -973,7 +1006,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 53,
+              "DocumentIndex": 55,
               "Title": "PayrollGrid.razor",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Component\\PayrollGrid.razor",
               "RelativeDocumentMoniker": "src\\Client\\BlazorWebApp\\WebApp\\Pages\\Payroll\\Component\\PayrollGrid.razor",
@@ -985,7 +1018,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 55,
+              "DocumentIndex": 57,
               "Title": "CalculatePayrollCommand.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Commands\\CalculatePayroll\\CalculatePayrollCommand.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Commands\\CalculatePayroll\\CalculatePayrollCommand.cs",
@@ -997,7 +1030,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 54,
+              "DocumentIndex": 56,
               "Title": "CalculatePayrollCommandValidator.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Commands\\CalculatePayroll\\CalculatePayrollCommandValidator.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Commands\\CalculatePayroll\\CalculatePayrollCommandValidator.cs",
@@ -1009,7 +1042,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 56,
+              "DocumentIndex": 58,
               "Title": "CalculatePayrollCommandHandler.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Commands\\CalculatePayroll\\CalculatePayrollCommandHandler.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Commands\\CalculatePayroll\\CalculatePayrollCommandHandler.cs",
@@ -1021,7 +1054,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 58,
+              "DocumentIndex": 60,
               "Title": "PayrollMonthCalculationResult.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Services\\Models\\PayrollMonthCalculationResult.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Services\\Models\\PayrollMonthCalculationResult.cs",
@@ -1033,7 +1066,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 59,
+              "DocumentIndex": 61,
               "Title": "PayrollCalculationContext.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Services\\Models\\PayrollCalculationContext.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Services\\Models\\PayrollCalculationContext.cs",
@@ -1045,7 +1078,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 60,
+              "DocumentIndex": 62,
               "Title": "IPayrollCalculationEngine.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Services\\Interfaces\\IPayrollCalculationEngine.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Services\\Interfaces\\IPayrollCalculationEngine.cs",
@@ -1057,7 +1090,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 61,
+              "DocumentIndex": 63,
               "Title": "GetPayrollParametersByYearQuery.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Queries\\GetPayrollParametersByYear\\GetPayrollParametersByYearQuery.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Queries\\GetPayrollParametersByYear\\GetPayrollParametersByYearQuery.cs",
@@ -1069,7 +1102,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 62,
+              "DocumentIndex": 64,
               "Title": "GetPayrollCalculatorBootstrapQuery.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Queries\\GetPayrollCalculatorBootstrap\\GetPayrollCalculatorBootstrapQuery.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Queries\\GetPayrollCalculatorBootstrap\\GetPayrollCalculatorBootstrapQuery.cs",
@@ -1081,7 +1114,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 63,
+              "DocumentIndex": 65,
               "Title": "PayrollEmployeeType.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Enums\\PayrollEmployeeType.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Enums\\PayrollEmployeeType.cs",
@@ -1093,7 +1126,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 64,
+              "DocumentIndex": 66,
               "Title": "PayrollDisabilityType.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Enums\\PayrollDisabilityType.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Enums\\PayrollDisabilityType.cs",
@@ -1105,7 +1138,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 65,
+              "DocumentIndex": 67,
               "Title": "PayrollCalculationType.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Enums\\PayrollCalculationType.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Enums\\PayrollCalculationType.cs",
@@ -1117,7 +1150,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 66,
+              "DocumentIndex": 68,
               "Title": "PayrollTaxBracketDto.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Dtos\\Shared\\PayrollTaxBracketDto.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Dtos\\Shared\\PayrollTaxBracketDto.cs",
@@ -1129,7 +1162,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 67,
+              "DocumentIndex": 69,
               "Title": "PayrollDisabilityExemptionDto.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Dtos\\Shared\\PayrollDisabilityExemptionDto.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Dtos\\Shared\\PayrollDisabilityExemptionDto.cs",
@@ -1141,7 +1174,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 68,
+              "DocumentIndex": 70,
               "Title": "PayrollTotalsDto.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Dtos\\Responses\\PayrollTotalsDto.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Dtos\\Responses\\PayrollTotalsDto.cs",
@@ -1153,7 +1186,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 69,
+              "DocumentIndex": 71,
               "Title": "PayrollCalculatorBootstrapDto.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Dtos\\Responses\\PayrollCalculatorBootstrapDto.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Dtos\\Responses\\PayrollCalculatorBootstrapDto.cs",
@@ -1165,7 +1198,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 70,
+              "DocumentIndex": 72,
               "Title": "CalculatePayrollResponse.cs",
               "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Dtos\\Responses\\CalculatePayrollResponse.cs",
               "RelativeDocumentMoniker": "Services\\CatalogService\\CatalogService.Api\\Features\\Payroll\\Dtos\\Responses\\CalculatePayrollResponse.cs",
