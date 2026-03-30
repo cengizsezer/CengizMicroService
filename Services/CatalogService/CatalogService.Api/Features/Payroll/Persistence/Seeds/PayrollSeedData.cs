@@ -35,7 +35,7 @@ namespace CatalogService.Api.Features.Payroll.Persistence.Seeds
 
                 // Yeni doğru yaklaşım: sabit istisna değil, asgari ücret brütü
                 MinimumWageGrossAmount = 33030.00m,
-
+                MinimumWageIncomeTaxExemptionMonthly = 0m,
                 MealExemptionDailyTax = 0m,
                 MealExemptionDailySgk = 0m,
                 TransportExemptionDailyTax = 0m,

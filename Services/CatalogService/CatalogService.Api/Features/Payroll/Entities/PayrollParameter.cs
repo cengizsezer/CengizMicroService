@@ -11,6 +11,8 @@
         public decimal StampTaxRate { get; set; }
         public decimal BesEmployeeRate { get; set; }
 
+        public decimal MinimumWageIncomeTaxExemptionMonthly { get; set; }
+
         // Asgari ücret brütü
         public decimal MinimumWageGrossAmount { get; set; }
 
