@@ -8,21 +8,28 @@ namespace CatalogService.Api.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<decimal>(
-                name: "MinimumWageGrossAmount",
-                schema: "pkf",
-                table: "PayrollParameters",
-                type: "decimal(18,2)",
-                nullable: false,
-                defaultValue: 0m);
+            migrationBuilder.Sql(@"
+IF COL_LENGTH('pkf.PayrollParameters', 'MinimumWageGrossAmount') IS NULL
+BEGIN
+    ALTER TABLE [pkf].[PayrollParameters]
+    ADD [MinimumWageGrossAmount] decimal(18,2) NOT NULL 
+    CONSTRAINT [DF_PayrollParameters_MinimumWageGrossAmount] DEFAULT (0.0);
+END
+");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "MinimumWageGrossAmount",
-                schema: "pkf",
-                table: "PayrollParameters");
+            migrationBuilder.Sql(@"
+IF COL_LENGTH('pkf.PayrollParameters', 'MinimumWageGrossAmount') IS NOT NULL
+BEGIN
+    ALTER TABLE [pkf].[PayrollParameters]
+    DROP CONSTRAINT [DF_PayrollParameters_MinimumWageGrossAmount];
+
+    ALTER TABLE [pkf].[PayrollParameters]
+    DROP COLUMN [MinimumWageGrossAmount];
+END
+");
         }
     }
 }

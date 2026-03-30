@@ -99,12 +99,13 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("CorsPolicy", policy =>
     {
-        policy.WithOrigins(
-                "https://dijitalmasraf.com",
-                "https://www.dijitalmasraf.com")
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials();
+        policy
+            .SetIsOriginAllowed(origin =>
+                origin == "https://dijitalmasraf.com" ||
+                origin == "https://www.dijitalmasraf.com")
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
     });
 });
 
