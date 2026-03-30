@@ -12,6 +12,7 @@
         public decimal BesEmployeeRate { get; set; }
 
         public decimal MinimumWageIncomeTaxExemptionMonthly { get; set; }
+        public decimal MinimumWageStampTaxExemptionMonthly { get; set; }
 
         // Asgari ücret brütü
         public decimal MinimumWageGrossAmount { get; set; }
