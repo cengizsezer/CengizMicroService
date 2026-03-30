@@ -13,6 +13,7 @@ using CatalogService.Api.Infrastructure;
 using CatalogService.Api.Infrastructure.Accessor;
 using CatalogService.Api.Infrastructure.Auth;
 using CatalogService.Api.Infrastructure.Context;
+using CatalogService.Api.Infrastructure.Seeding;
 using EventBus.Base;
 using EventBus.Base.Abstraction;
 using EventBus.Factory;
@@ -154,6 +155,14 @@ builder.Services.AddAuthentication(o =>
 
 var app = builder.Build();
 
+
+if (args.Contains("--seed-force"))
+{
+    var runner = new SeedRunner(app.Services);
+    await runner.RunAsync(SeedMode.PayrollOnly);
+    return;
+}
+
 //if (args.Contains("--seed-force"))
 //{
 //    using var scope = app.Services.CreateScope();
@@ -233,108 +242,108 @@ var app = builder.Build();
 //    //return;
 //}
 
-if (args.Contains("--seed-force"))
-{
-    using var scope = app.Services.CreateScope();
-    var services = scope.ServiceProvider;
-    var logger = services.GetRequiredService<ILogger<CatalogContextSeed>>();
-    var envHost = services.GetRequiredService<IWebHostEnvironment>();
-    var options = services.GetRequiredService<DbContextOptions<CatalogContext>>();
+//if (args.Contains("--seed-force"))
+//{
+//    using var scope = app.Services.CreateScope();
+//    var services = scope.ServiceProvider;
+//    var logger = services.GetRequiredService<ILogger<CatalogContextSeed>>();
+//    var envHost = services.GetRequiredService<IWebHostEnvironment>();
+//    var options = services.GetRequiredService<DbContextOptions<CatalogContext>>();
 
-    var seedSucceeded = false;
-    string? seedErrorMessage = null;
-    Exception? seedException = null;
+//    var seedSucceeded = false;
+//    string? seedErrorMessage = null;
+//    Exception? seedException = null;
 
-    try
-    {
-        logger.LogInformation("========================================");
-        logger.LogInformation("🚀 SEED-FORCE BAŞLADI");
-        logger.LogInformation("Environment: {Environment}", envHost.EnvironmentName);
-        logger.LogInformation("========================================");
+//    try
+//    {
+//        logger.LogInformation("========================================");
+//        logger.LogInformation("🚀 SEED-FORCE BAŞLADI");
+//        logger.LogInformation("Environment: {Environment}", envHost.EnvironmentName);
+//        logger.LogInformation("========================================");
 
-        using (var ctxOnce = new CatalogContext(options, new FixedTenantAccessor("schema")))
-        {
-            logger.LogInformation("🧹 Catalog verileri temizleniyor ve şema kontrol ediliyor...");
+//        using (var ctxOnce = new CatalogContext(options, new FixedTenantAccessor("schema")))
+//        {
+//            logger.LogInformation("🧹 Catalog verileri temizleniyor ve şema kontrol ediliyor...");
 
-            ctxOnce.Database.ExecuteSqlRaw(@"
-IF OBJECT_ID(N'[catalog].[ProductDetails]', 'U') IS NOT NULL
-    DELETE FROM [catalog].[ProductDetails];
+//            ctxOnce.Database.ExecuteSqlRaw(@"
+//IF OBJECT_ID(N'[catalog].[ProductDetails]', 'U') IS NOT NULL
+//    DELETE FROM [catalog].[ProductDetails];
 
-IF OBJECT_ID(N'[catalog].[ReceiptItems]', 'U') IS NOT NULL
-    DELETE FROM [catalog].[ReceiptItems];
+//IF OBJECT_ID(N'[catalog].[ReceiptItems]', 'U') IS NOT NULL
+//    DELETE FROM [catalog].[ReceiptItems];
 
-IF OBJECT_ID(N'[catalog].[Expenses]', 'U') IS NOT NULL
-    DELETE FROM [catalog].[Expenses];
+//IF OBJECT_ID(N'[catalog].[Expenses]', 'U') IS NOT NULL
+//    DELETE FROM [catalog].[Expenses];
 
-IF OBJECT_ID(N'[catalog].[AccountingCodes]', 'U') IS NOT NULL
-    DELETE FROM [catalog].[AccountingCodes];
+//IF OBJECT_ID(N'[catalog].[AccountingCodes]', 'U') IS NOT NULL
+//    DELETE FROM [catalog].[AccountingCodes];
 
-IF OBJECT_ID(N'[catalog].[Personnels]', 'U') IS NOT NULL
-    DELETE FROM [catalog].[Personnels];
+//IF OBJECT_ID(N'[catalog].[Personnels]', 'U') IS NOT NULL
+//    DELETE FROM [catalog].[Personnels];
 
-IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf')
-    EXEC('CREATE SCHEMA pkf');
-");
+//IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf')
+//    EXEC('CREATE SCHEMA pkf');
+//");
 
-            logger.LogInformation("🧱 Migration uygulanıyor...");
-            await ctxOnce.Database.MigrateAsync();
+//            logger.LogInformation("🧱 Migration uygulanıyor...");
+//            await ctxOnce.Database.MigrateAsync();
 
-            logger.LogInformation("💼 Payroll seed uygulanıyor...");
-            await PayrollSeedData.SeedAsync(ctxOnce);
-        }
+//            logger.LogInformation("💼 Payroll seed uygulanıyor...");
+//            await PayrollSeedData.SeedAsync(ctxOnce);
+//        }
 
-        var seeder = new CatalogContextSeed();
-        var tenants = new[] { "201", "106", "108", "105", "107", "500" };
+//        var seeder = new CatalogContextSeed();
+//        var tenants = new[] { "201", "106", "108", "105", "107", "500" };
 
-        foreach (var t in tenants)
-        {
-            logger.LogInformation("🏢 Tenant seed başlıyor: {Tenant}", t);
+//        foreach (var t in tenants)
+//        {
+//            logger.LogInformation("🏢 Tenant seed başlıyor: {Tenant}", t);
 
-            using var ctx = new CatalogContext(options, new FixedTenantAccessor(t));
-            await seeder.SeedAsync(ctx, envHost, logger, new[] { t }, force: true);
-            await AccountPlanSeed.SeedAsync(ctx, logger);
+//            using var ctx = new CatalogContext(options, new FixedTenantAccessor(t));
+//            await seeder.SeedAsync(ctx, envHost, logger, new[] { t }, force: true);
+//            await AccountPlanSeed.SeedAsync(ctx, logger);
 
-            logger.LogInformation("✅ Tenant seed tamamlandı: {Tenant}", t);
-        }
+//            logger.LogInformation("✅ Tenant seed tamamlandı: {Tenant}", t);
+//        }
 
-        seedSucceeded = true;
-    }
-    catch (Exception ex)
-    {
-        seedSucceeded = false;
-        seedException = ex;
-        seedErrorMessage = ex.Message;
+//        seedSucceeded = true;
+//    }
+//    catch (Exception ex)
+//    {
+//        seedSucceeded = false;
+//        seedException = ex;
+//        seedErrorMessage = ex.Message;
 
-        logger.LogError(ex, "❌ Seed-force sırasında hata oluştu.");
-    }
-    finally
-    {
-        logger.LogInformation("========================================");
+//        logger.LogError(ex, "❌ Seed-force sırasında hata oluştu.");
+//    }
+//    finally
+//    {
+//        logger.LogInformation("========================================");
 
-        if (seedSucceeded)
-        {
-            logger.LogInformation("✅ SEED-FORCE BAŞARILI TAMAMLANDI");
-        }
-        else
-        {
-            logger.LogWarning("⚠️ SEED-FORCE HATA İLE TAMAMLANDI");
-            logger.LogWarning("Hata Özeti: {ErrorMessage}", seedErrorMessage);
+//        if (seedSucceeded)
+//        {
+//            logger.LogInformation("✅ SEED-FORCE BAŞARILI TAMAMLANDI");
+//        }
+//        else
+//        {
+//            logger.LogWarning("⚠️ SEED-FORCE HATA İLE TAMAMLANDI");
+//            logger.LogWarning("Hata Özeti: {ErrorMessage}", seedErrorMessage);
 
-            if (seedException is Microsoft.Data.SqlClient.SqlException sqlEx)
-            {
-                logger.LogWarning("SQL Error Number: {ErrorNumber}", sqlEx.Number);
-                logger.LogWarning("SQL Error State : {ErrorState}", sqlEx.State);
-                logger.LogWarning("SQL Error Class : {ErrorClass}", sqlEx.Class);
-            }
+//            if (seedException is Microsoft.Data.SqlClient.SqlException sqlEx)
+//            {
+//                logger.LogWarning("SQL Error Number: {ErrorNumber}", sqlEx.Number);
+//                logger.LogWarning("SQL Error State : {ErrorState}", sqlEx.State);
+//                logger.LogWarning("SQL Error Class : {ErrorClass}", sqlEx.Class);
+//            }
 
-            logger.LogWarning("Not: Uygulama Jenkins pipeline'ını kırmızıya düşürmeden Exit 0 ile kapanacaktır.");
-        }
+//            logger.LogWarning("Not: Uygulama Jenkins pipeline'ını kırmızıya düşürmeden Exit 0 ile kapanacaktır.");
+//        }
 
-        logger.LogInformation("========================================");
-    }
+//        logger.LogInformation("========================================");
+//    }
 
-    return;
-}
+//    return;
+//}
 // Migration & Seed
 //using (var scope = app.Services.CreateScope())
 //{
