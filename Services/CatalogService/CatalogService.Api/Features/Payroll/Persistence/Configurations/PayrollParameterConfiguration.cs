@@ -50,8 +50,15 @@ namespace CatalogService.Api.Features.Payroll.Persistence.Configurations
             builder.Property(x => x.MonthlyBoardMemberExemption)
                 .HasPrecision(18, 2);
 
+            builder.Property(x => x.MinimumWageIncomeTaxExemptionMonthly).HasPrecision(18, 2);
+            builder.Property(x => x.MinimumWageStampTaxExemptionMonthly).HasPrecision(18, 2);
+            builder.Property(x => x.RetiredSgkEmployeeRate).HasPrecision(18, 4);
+            builder.Property(x => x.RetiredUnemploymentEmployeeRate).HasPrecision(18, 4);
+
             builder.Property(x => x.IsActive)
                 .HasDefaultValue(true);
+
+
         }
     }
 }
