@@ -1,16 +1,19 @@
 ﻿@layout PublicPayrollLayout
 @page "/payroll-calculator"
+@using Radzen
+@using WebApp.Pages.Payroll.Component
 @using WebApp.Pages.Payroll.Layout
 @using WebApp.Pages.Payroll.Model
 @using WebApp.Pages.Payroll.Services
 @inject IPayrollApiService PayrollApiService
+@inject DialogService DialogService
 
 <PageTitle>İşçi Ücret Hesaplama</PageTitle>
 
 <div class="payroll-page">
     <div class="payroll-container">
 
-        <h1 class="page-title">İşçi Bordrosu</h1>
+        <h1 class="page-title">@(IsHonorarium ? "Huzur Hakkı Hesaplama" : "Ücret Bordrosu")</h1>
 
         <div class="payroll-top-text">
             Yemek Bedeli (Günlük İstisna) GVK ve DV Açısından:
@@ -66,34 +69,48 @@
                                 Change="@(_ => TriggerRecalculateAsync())" />
             </div>
 
-            <div class="filter-item switch-item">
-                <label>&nbsp;</label>
-                <div class="switch-wrap">
-                    <RadzenCheckBox @bind-Value="model.IsJanitor"
-                                    Change="@((bool value) => OnJanitorChanged(value))" />
-                    <span>Kapıcı</span>
+            @if (!IsHonorarium)
+            {
+                <div class="filter-item switch-item">
+                    <label>&nbsp;</label>
+                    <div class="switch-wrap">
+                        <RadzenCheckBox @bind-Value="model.IsJanitor"
+                                        Change="@((bool value) => OnJanitorChanged(value))" />
+                        <span>Kapıcı</span>
+                    </div>
                 </div>
-            </div>
 
-            <div class="filter-item switch-item">
-                <label>&nbsp;</label>
-                <div class="switch-wrap">
-                    <RadzenCheckBox @bind-Value="model.HasMandatoryBes"
-                                    Change="@((bool value) => TriggerRecalculateAsync())" />
-                    <span>Zorunlu BES</span>
+                <div class="filter-item switch-item">
+                    <label>&nbsp;</label>
+                    <div class="switch-wrap">
+                        <RadzenCheckBox @bind-Value="model.HasMandatoryBes"
+                                        Change="@((bool value) => TriggerRecalculateAsync())" />
+                        <span>Zorunlu BES</span>
+                    </div>
                 </div>
-            </div>
 
-            <div class="filter-item">
-                <label>Engel Durumu</label>
-                <RadzenDropDown TValue="int"
-                                Data="@disabilityTypes"
-                                TextProperty="Text"
-                                ValueProperty="Value"
-                                @bind-Value="model.DisabilityType"
-                                Style="width:140px;"
-                                Change="@(_ => TriggerRecalculateAsync())" />
-            </div>
+                <div class="filter-item">
+                    <label>Engel Durumu</label>
+                    <RadzenDropDown TValue="int"
+                                    Data="@disabilityTypes"
+                                    TextProperty="Text"
+                                    ValueProperty="Value"
+                                    @bind-Value="model.DisabilityType"
+                                    Style="width:140px;"
+                                    Change="@(_ => TriggerRecalculateAsync())" />
+                </div>
+            }
+
+            @if (IsHonorarium)
+            {
+                <div class="filter-item action-link">
+                    <label>&nbsp;</label>
+                    <RadzenButton Text="Kar Dağıtımı Karşılaştırma"
+                                  Icon="compare_arrows"
+                                  Click="@OpenComparisonPopup"
+                                  ButtonStyle="ButtonStyle.Light" />
+                </div>
+            }
 
             <div class="filter-item action-link">
                 <label>&nbsp;</label>
@@ -102,80 +119,157 @@
         </div>
 
         <div class="table-wrapper">
-            <table class="payroll-table">
-                <thead>
-                    <tr>
-                        <th>Aylar</th>
-                        <th>Tutar</th>
-                        <th>Brüt Ücret</th>
-                        <th>SGK İşçi</th>
-                        <th>İSP İşçi</th>
-                        <th>Gelir V. Matrahı</th>
-                        <th>Kümülatif Matrah</th>
-                        <th>Gelir Vergisi</th>
-                        <th>İstisna Gelir V.</th>
-                        <th>Ödenecek Gelir Ver.</th>
-                        <th>Damga Vergisi</th>
-                        <th>İstisna D.V.</th>
-                        <th>Ödenecek Damga V.</th>
-                        <th>Kesintiler Toplamı</th>
-                        <th>Net Ücret</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    @for (int i = 0; i < monthInputs.Count; i++)
-                    {
-                        var input = monthInputs[i];
-                        var monthResult = GetMonthResult(input.Month);
-
+            @if (!IsHonorarium)
+            {
+                <table class="payroll-table">
+                    <thead>
                         <tr>
-                            <td>@input.MonthName</td>
-
-                            <td class="input-cell">
-                                <div class="input-wrap">
-                                    <RadzenNumeric TValue="decimal"
-                                                   Value="input.Amount"
-                                                   Style="width:100%;"
-                                                   Format="N2"
-                                                   Change="@(args => OnAmountChangedAsync(input, args))" />
-                                </div>
-                            </td>
-
-                            <td>@FormatMoney(monthResult?.GrossSalary)</td>
-                            <td>@FormatMoney(monthResult?.SgkEmployeeAmount)</td>
-                            <td>@FormatMoney(monthResult?.UnemploymentEmployeeAmount)</td>
-                            <td>@FormatMoney(monthResult?.IncomeTaxBase)</td>
-                            <td>@FormatMoney(monthResult?.CumulativeIncomeTaxBase)</td>
-                            <td>@FormatMoney(monthResult?.CalculatedIncomeTax)</td>
-                            <td>@FormatMoney(monthResult?.IncomeTaxExemption)</td>
-                            <td>@FormatMoney(monthResult?.PayableIncomeTax)</td>
-                            <td>@FormatMoney(monthResult?.CalculatedStampTax)</td>
-                            <td>@FormatMoney(monthResult?.StampTaxExemption)</td>
-                            <td>@FormatMoney(monthResult?.PayableStampTax)</td>
-                            <td>@FormatMoney(monthResult?.TotalDeductions)</td>
-                            <td>@FormatMoney(monthResult?.NetSalary)</td>
+                            <th>Aylar</th>
+                            <th>Tutar</th>
+                            <th>Brüt Ücret</th>
+                            <th>SGK İşçi</th>
+                            <th>İSP İşçi</th>
+                            <th>Gelir V. Matrahı</th>
+                            <th>Kümülatif Matrah</th>
+                            <th>Gelir Vergisi</th>
+                            <th>İstisna Gelir V.</th>
+                            <th>Ödenecek Gelir Ver.</th>
+                            <th>Damga Vergisi</th>
+                            <th>İstisna D.V.</th>
+                            <th>Ödenecek Damga V.</th>
+                            <th>Kesintiler Toplamı</th>
+                            <th>Net Ücret</th>
                         </tr>
-                    }
+                    </thead>
 
-                    <tr class="total-row">
-                        <td colspan="2">Toplam...</td>
-                        <td>@FormatMoney(result?.Totals.TotalGrossSalary)</td>
-                        <td>@FormatMoney(result?.Totals.TotalSgkEmployeeAmount)</td>
-                        <td>@FormatMoney(result?.Totals.TotalUnemploymentEmployeeAmount)</td>
-                        <td>@FormatMoney(result?.Totals.TotalIncomeTaxBase)</td>
-                        <td>@FormatMoney(result?.Totals.TotalIncomeTaxBase)</td>
-                        <td>@FormatMoney(result?.Totals.TotalCalculatedIncomeTax)</td>
-                        <td>@FormatMoney(result?.Totals.TotalIncomeTaxExemption)</td>
-                        <td>@FormatMoney(result?.Totals.TotalPayableIncomeTax)</td>
-                        <td>@FormatMoney(result?.Totals.TotalCalculatedStampTax)</td>
-                        <td>@FormatMoney(result?.Totals.TotalStampTaxExemption)</td>
-                        <td>@FormatMoney(result?.Totals.TotalPayableStampTax)</td>
-                        <td>@FormatMoney(result?.Totals.TotalDeductions)</td>
-                        <td>@FormatMoney(result?.Totals.TotalNetSalary)</td>
-                    </tr>
-                </tbody>
-            </table>
+                    <tbody>
+                        @for (int i = 0; i < monthInputs.Count; i++)
+                        {
+                            var input = monthInputs[i];
+                            var monthResult = GetMonthResult(input.Month);
+
+                            <tr>
+                                <td>@input.MonthName</td>
+
+                                <td class="input-cell">
+                                    <div class="input-wrap">
+                                        <RadzenNumeric TValue="decimal"
+                                                       Value="input.Amount"
+                                                       Style="width:100%;"
+                                                       Format="N2"
+                                                       Change="@(args => OnAmountChangedAsync(input, args))" />
+                                    </div>
+                                </td>
+
+                                <td>@FormatMoney(monthResult?.GrossSalary)</td>
+                                <td>@FormatMoney(monthResult?.SgkEmployeeAmount)</td>
+                                <td>@FormatMoney(monthResult?.UnemploymentEmployeeAmount)</td>
+                                <td>@FormatMoney(monthResult?.IncomeTaxBase)</td>
+                                <td>@FormatMoney(monthResult?.CumulativeIncomeTaxBase)</td>
+                                <td>@FormatMoney(monthResult?.CalculatedIncomeTax)</td>
+                                <td>@FormatMoney(monthResult?.IncomeTaxExemption)</td>
+                                <td>@FormatMoney(monthResult?.PayableIncomeTax)</td>
+                                <td>@FormatMoney(monthResult?.CalculatedStampTax)</td>
+                                <td>@FormatMoney(monthResult?.StampTaxExemption)</td>
+                                <td>@FormatMoney(monthResult?.PayableStampTax)</td>
+                                <td>@FormatMoney(monthResult?.TotalDeductions)</td>
+                                <td>@FormatMoney(monthResult?.NetSalary)</td>
+                            </tr>
+                        }
+
+                        <tr class="total-row">
+                            <td colspan="2">Toplam...</td>
+                            <td>@FormatMoney(result?.Totals?.TotalGrossSalary)</td>
+                            <td>@FormatMoney(result?.Totals?.TotalSgkEmployeeAmount)</td>
+                            <td>@FormatMoney(result?.Totals?.TotalUnemploymentEmployeeAmount)</td>
+                            <td>@FormatMoney(result?.Totals?.TotalIncomeTaxBase)</td>
+                            <td>@FormatMoney(result?.Totals?.TotalIncomeTaxBase)</td>
+                            <td>@FormatMoney(result?.Totals?.TotalCalculatedIncomeTax)</td>
+                            <td>@FormatMoney(result?.Totals?.TotalIncomeTaxExemption)</td>
+                            <td>@FormatMoney(result?.Totals?.TotalPayableIncomeTax)</td>
+                            <td>@FormatMoney(result?.Totals?.TotalCalculatedStampTax)</td>
+                            <td>@FormatMoney(result?.Totals?.TotalStampTaxExemption)</td>
+                            <td>@FormatMoney(result?.Totals?.TotalPayableStampTax)</td>
+                            <td>@FormatMoney(result?.Totals?.TotalDeductions)</td>
+                            <td>@FormatMoney(result?.Totals?.TotalNetSalary)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <table class="payroll-table">
+                    <thead>
+                        <tr>
+                            <th>Aylar</th>
+                            <th>Tutar</th>
+                            <th>Brüt Huzur Hakkı</th>
+                            <th>Gelir V. Matrahı</th>
+                            <th>Kümülatif Matrah</th>
+                            <th>Gelir Vergisi</th>
+                            <th>İstisna Gelir V.</th>
+                            <th>Ödenecek Gelir Ver.</th>
+                            <th>Damga Vergisi</th>
+                            <th>İstisna D.V.</th>
+                            <th>Ödenecek Damga V.</th>
+                            <th>Kesintiler Toplamı</th>
+                            <th>Vergi Yükü</th>
+                            <th>Net Huzur Hakkı</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @for (int i = 0; i < monthInputs.Count; i++)
+                        {
+                            var input = monthInputs[i];
+                            var monthResult = GetHonorariumMonthResult(input.Month);
+
+                            <tr>
+                                <td>@input.MonthName</td>
+
+                                <td class="input-cell">
+                                    <div class="input-wrap">
+                                        <RadzenNumeric TValue="decimal"
+                                                       Value="input.Amount"
+                                                       Style="width:100%;"
+                                                       Format="N2"
+                                                       Change="@(args => OnAmountChangedAsync(input, args))" />
+                                    </div>
+                                </td>
+
+                                <td>@FormatMoney(monthResult?.GrossHonorarium)</td>
+                                <td>@FormatMoney(monthResult?.IncomeTaxBase)</td>
+                                <td>@FormatMoney(monthResult?.CumulativeIncomeTaxBase)</td>
+                                <td>@FormatMoney(monthResult?.CalculatedIncomeTax)</td>
+                                <td>@FormatMoney(monthResult?.IncomeTaxExemption)</td>
+                                <td>@FormatMoney(monthResult?.PayableIncomeTax)</td>
+                                <td>@FormatMoney(monthResult?.CalculatedStampTax)</td>
+                                <td>@FormatMoney(monthResult?.StampTaxExemption)</td>
+                                <td>@FormatMoney(monthResult?.PayableStampTax)</td>
+                                <td>@FormatMoney(monthResult?.TotalDeductions)</td>
+                                <td>@FormatPercent(monthResult?.TaxBurdenRate)</td>
+                                <td>@FormatMoney(monthResult?.NetHonorarium)</td>
+                            </tr>
+                        }
+
+                        <tr class="total-row">
+                            <td colspan="2">Toplam...</td>
+                            <td>@FormatMoney(result?.HonorariumTotals?.TotalGrossHonorarium)</td>
+                            <td>@FormatMoney(result?.HonorariumTotals?.TotalIncomeTaxBase)</td>
+                            <td>@FormatMoney(result?.HonorariumTotals?.TotalIncomeTaxBase)</td>
+                            <td>@FormatMoney(result?.HonorariumTotals?.TotalCalculatedIncomeTax)</td>
+                            <td>@FormatMoney(result?.HonorariumTotals?.TotalIncomeTaxExemption)</td>
+                            <td>@FormatMoney(result?.HonorariumTotals?.TotalPayableIncomeTax)</td>
+                            <td>@FormatMoney(result?.HonorariumTotals?.TotalCalculatedStampTax)</td>
+                            <td>@FormatMoney(result?.HonorariumTotals?.TotalStampTaxExemption)</td>
+                            <td>@FormatMoney(result?.HonorariumTotals?.TotalPayableStampTax)</td>
+                            <td>@FormatMoney(result?.HonorariumTotals?.TotalDeductions)</td>
+                            <td>@FormatPercent(result?.HonorariumTotals?.AverageTaxBurdenRate)</td>
+                            <td>@FormatMoney(result?.HonorariumTotals?.TotalNetHonorarium)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            }
         </div>
 
         <div class="payroll-info-text">
@@ -203,6 +297,7 @@
     private string? errorMessage;
     private CancellationTokenSource? debounceCts;
 
+    private bool IsHonorarium => model.EmployeeType == 3;
     private List<int> yearOptions = new() { 2025, 2026, 2027 };
 
     private List<LookupItem> calculationTypes = new()
@@ -214,7 +309,8 @@
     private List<LookupItem> employeeTypes = new()
     {
         new() { Value = 1, Text = "Normal Çalışan" },
-        new() { Value = 2, Text = "Emekli Çalışan" }
+        new() { Value = 2, Text = "Emekli Çalışan" },
+        new() { Value = 3, Text = "Huzur Hakkı" }
     };
 
     private List<LookupItem> disabilityTypes = new()
@@ -224,6 +320,11 @@
         new() { Value = 2, Text = "2. Derece" },
         new() { Value = 3, Text = "3. Derece" }
     };
+
+    protected override void OnInitialized()
+    {
+        monthInputs = BuildDefaultMonths();
+    }
 
     private List<PayrollMonthInputModel> BuildDefaultMonths()
     {
@@ -244,11 +345,6 @@
         };
     }
 
-    protected override void OnInitialized()
-    {
-        monthInputs = BuildDefaultMonths();
-    }
-
     private async Task OnAmountChangedAsync(PayrollMonthInputModel item, object? value)
     {
         var amount = value is decimal dec ? dec : 0m;
@@ -267,7 +363,6 @@
     private async Task OnJanitorChanged(bool value)
     {
         model.IsJanitor = value;
-        model.EmployeeType = value ? 2 : 1;
         await TriggerRecalculateAsync();
     }
 
@@ -302,6 +397,9 @@
                 EmployeeType = model.EmployeeType,
                 HasMandatoryBes = model.HasMandatoryBes,
                 DisabilityType = model.DisabilityType,
+                IncludeMinimumWageExemption = model.IncludeMinimumWageExemption,
+                IncludeStampTax = model.IncludeStampTax,
+                IncludeEmployerCost = model.IncludeEmployerCost,
                 StartMonth = 1,
                 PreviousCumulativeTaxBase = model.PreviousCumulativeTaxBase,
                 Months = monthInputs
@@ -333,14 +431,58 @@
         }
     }
 
+    private async Task OpenComparisonPopup()
+    {
+        await DialogService.OpenAsync<HonorariumComparisonDialog>(
+            "",
+            new Dictionary<string, object>
+            {
+            { "GrossAmount", GetCurrentHonorariumGrossTotal() },
+            { "TaxCost", GetCurrentHonorariumTaxCost() },
+            { "NetReceived", GetCurrentHonorariumNetAmount() }
+            },
+            new DialogOptions
+            {
+                Width = "1200px",
+                Height = "720px",
+                Resizable = false,
+                Draggable = true
+            });
+    }
+    private decimal GetCurrentHonorariumTaxCost()
+    {
+        return result?.HonorariumTotals?.TotalDeductions ?? 0m;
+    }
+
+    private decimal GetCurrentHonorariumNetAmount()
+    {
+        return result?.HonorariumTotals?.TotalNetHonorarium ?? 0m;
+    }
+   
+
     private PayrollMonthResultDto? GetMonthResult(int month)
     {
         return result?.Months?.FirstOrDefault(x => x.Month == month);
     }
 
+    private HonorariumPayrollMonthResultDto? GetHonorariumMonthResult(int month)
+    {
+        return result?.HonorariumMonths?.FirstOrDefault(x => x.Month == month);
+    }
+
+    private decimal GetCurrentHonorariumGrossTotal()
+    {
+        return result?.HonorariumTotals?.TotalGrossHonorarium ?? 0m;
+    }
+
     private string FormatMoney(decimal? value)
     {
         return value.HasValue ? value.Value.ToString("N2") : "0,00";
+    }
+
+    private string FormatPercent(decimal? value)
+    {
+        return value.HasValue ? $"%{value.Value:N2}" : "%0,00";
     }
 
     private class LookupItem
@@ -358,5 +500,9 @@
         public bool HasMandatoryBes { get; set; }
         public int DisabilityType { get; set; } = 0;
         public decimal PreviousCumulativeTaxBase { get; set; }
+
+        public bool IncludeMinimumWageExemption { get; set; } = true;
+        public bool IncludeStampTax { get; set; } = true;
+        public bool IncludeEmployerCost { get; set; } = false;
     }
 }

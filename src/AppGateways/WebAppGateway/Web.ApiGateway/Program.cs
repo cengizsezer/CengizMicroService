@@ -102,7 +102,7 @@ builder.Services.AddCors(options =>
         policy
             .SetIsOriginAllowed(origin =>
                 origin == "https://dijitalmasraf.com" ||
-                origin == "https://www.dijitalmasraf.com")
+                origin == "https://www.dijitalmasraf.com" || origin == "http://localhost:2000" || origin == "https://localhost:2000")
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials();

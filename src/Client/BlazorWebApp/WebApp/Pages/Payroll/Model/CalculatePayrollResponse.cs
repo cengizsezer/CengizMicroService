@@ -10,6 +10,9 @@
 
         public List<PayrollMonthResultDto> Months { get; set; } = new();
         public PayrollTotalsDto Totals { get; set; } = new();
+
+        public List<HonorariumPayrollMonthResultDto> HonorariumMonths { get; set; } = new();
+        public HonorariumPayrollTotalsDto? HonorariumTotals { get; set; }
     }
 
     public class PayrollMonthResultDto

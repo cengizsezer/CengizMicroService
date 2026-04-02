@@ -1,0 +1,353 @@
+﻿@using Radzen
+@inject DialogService DialogService
+
+<div class="comparison-dialog">
+    <div class="comparison-toolbar">
+        <div>
+            <h2 class="comparison-title">Huzur Hakkı vs Kar Dağıtımı Karşılaştırma</h2>
+            <div class="comparison-subtitle">
+                Aynı tutarın farklı ödeme yöntemlerine göre vergi ve net etkisi
+            </div>
+        </div>
+
+        <div class="comparison-toolbar-actions">
+            <RadzenButton Text="Excel’e Aktar"
+                          Icon="description"
+                          ButtonStyle="ButtonStyle.Light" />
+            <RadzenButton Text="Detayları Genişlet"
+                          Icon="expand_more"
+                          ButtonStyle="ButtonStyle.Light" />
+        </div>
+    </div>
+
+    <div class="comparison-table-wrap">
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Huzur Hakkı</th>
+                    <th>Kar Dağıtımı</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Brüt Tutar</td>
+                    <td>@FormatMoney(HonorariumGrossAmount)</td>
+                    <td>@FormatMoney(DividendGrossAmount)</td>
+                </tr>
+
+                <tr>
+                    <td>Vergi Maliyeti</td>
+                    <td>@FormatMoney(HonorariumTaxCost)</td>
+                    <td>–</td>
+                </tr>
+
+                <tr>
+                    <td>Stopaj</td>
+                    <td>–</td>
+                    <td>@FormatMoney(DividendWithholdingTax)</td>
+                </tr>
+
+                <tr>
+                    <td>Beyan Sınırı</td>
+                    <td>–</td>
+                    <td>@FormatMoney(DeclarationThreshold)</td>
+                </tr>
+
+                <tr>
+                    <td>Gelir Vergisi Beyannamesi</td>
+                    <td>–</td>
+                    <td>@FormatMoney(IncomeTaxReturnAmount)</td>
+                </tr>
+
+                <tr>
+                    <td>Net Ele Geçen</td>
+                    <td>@FormatMoney(HonorariumNetReceived)</td>
+                    <td>@FormatMoney(DividendNetReceived)</td>
+                </tr>
+
+                <tr>
+                    <td>İlave Vergi / Ödenecek Vergi</td>
+                    <td>–</td>
+                    <td>@FormatMoney(AdditionalTaxPayable)</td>
+                </tr>
+
+                <tr>
+                    <td>Şirket Gideri</td>
+                    <td>✔ Evet</td>
+                    <td>✘ Hayır</td>
+                </tr>
+
+                <tr class="final-net-row">
+                    <td>Nihai Net</td>
+                    <td class="negative-net">@FormatMoney(HonorariumFinalNet)</td>
+                    <td class="@(DividendFinalNet > HonorariumFinalNet ? "positive-net" : "")">
+                        @FormatMoney(DividendFinalNet)
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="comparison-summary">
+        <div class="summary-icon">✔</div>
+        <div class="summary-content">
+            <div class="summary-title">Avantajlı Yöntem: @AdvantageTitle</div>
+            <div class="summary-line">Net Fark: @FormatMoney(NetDifference)</div>
+        </div>
+    </div>
+
+    <div class="comparison-footer">
+        <div class="comparison-footer-left">
+            <RadzenCheckBox @bind-Value="IncludeEmployerCost" TValue="bool" Change="@(args => Recalculate())" />
+            <span>Şirket maliyetini de dahil et</span>
+        </div>
+
+        <div class="comparison-footer-right">
+            <RadzenButton Text="Detayları Genişlet"
+                          Icon="download"
+                          ButtonStyle="ButtonStyle.Light" />
+            <RadzenButton Text="Kapat"
+                          Icon="close"
+                          Click="@Close" />
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public decimal GrossAmount { get; set; }
+
+    [Parameter]
+    public decimal TaxCost { get; set; }
+
+    [Parameter]
+    public decimal NetReceived { get; set; }
+
+    private bool IncludeEmployerCost { get; set; } = true;
+
+    private const decimal StopajRate = 0.15m;
+    private const decimal DeclarationThreshold = 5_300_000m;
+
+    private decimal HonorariumGrossAmount => GrossAmount;
+    private decimal HonorariumTaxCost => TaxCost;
+    private decimal HonorariumNetReceived => NetReceived;
+    private decimal HonorariumFinalNet => NetReceived;
+
+    private decimal DividendGrossAmount => GrossAmount;
+    private decimal DividendWithholdingTax => Round2(DividendGrossAmount * StopajRate);
+
+    private decimal IncomeTaxReturnAmount =>
+        DividendGrossAmount > DeclarationThreshold
+            ? Round2(DividendGrossAmount * 0.50m)
+            : 0m;
+
+    private decimal DividendNetReceived => Round2(DividendGrossAmount - DividendWithholdingTax);
+
+    private decimal AdditionalTaxPayable
+    {
+        get
+        {
+            if (DividendGrossAmount <= DeclarationThreshold)
+                return 0m;
+
+            return 0m;
+        }
+    }
+
+    private decimal DividendFinalNet => Round2(DividendNetReceived - AdditionalTaxPayable);
+
+    private string AdvantageTitle => DividendFinalNet >= HonorariumFinalNet
+        ? "Kar Dağıtımı"
+        : "Huzur Hakkı";
+
+    private decimal NetDifference => Math.Abs(DividendFinalNet - HonorariumFinalNet);
+
+    protected override void OnParametersSet()
+    {
+        Recalculate();
+    }
+
+    private void Recalculate()
+    {
+        StateHasChanged();
+    }
+
+    private void Close()
+    {
+        DialogService.Close();
+    }
+
+    private static decimal Round2(decimal value)
+        => Math.Round(value, 2, MidpointRounding.AwayFromZero);
+
+    private static string FormatMoney(decimal value)
+        => $"{value:N2} TL";
+}
+
+<style>
+    .comparison-dialog {
+        padding: 8px 10px 6px 10px;
+    }
+
+    .comparison-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px;
+        margin-bottom: 18px;
+    }
+
+    .comparison-title {
+        margin: 0 0 8px 0;
+        font-size: 24px;
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    .comparison-subtitle {
+        font-size: 15px;
+        color: #6b7280;
+    }
+
+    .comparison-toolbar-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .comparison-table-wrap {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 18px;
+    }
+
+    .comparison-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        background: white;
+    }
+
+        .comparison-table thead th {
+            background: #f8fafc;
+            font-size: 16px;
+            font-weight: 700;
+            color: #1f2937;
+            padding: 16px 14px;
+            border-bottom: 1px solid #e5e7eb;
+            border-right: 1px solid #e5e7eb;
+            text-align: center;
+        }
+
+            .comparison-table thead th:first-child {
+                width: 28%;
+                text-align: left;
+            }
+
+            .comparison-table thead th:last-child {
+                border-right: none;
+            }
+
+        .comparison-table tbody td {
+            padding: 14px;
+            border-bottom: 1px solid #e5e7eb;
+            border-right: 1px solid #e5e7eb;
+            font-size: 15px;
+            color: #374151;
+            vertical-align: middle;
+        }
+
+            .comparison-table tbody td:first-child {
+                font-weight: 600;
+                background: #fbfbfc;
+            }
+
+            .comparison-table tbody td:nth-child(2),
+            .comparison-table tbody td:nth-child(3) {
+                text-align: center;
+                font-weight: 500;
+            }
+
+            .comparison-table tbody td:last-child {
+                border-right: none;
+            }
+
+        .comparison-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+    .final-net-row td {
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    .negative-net {
+        color: #c94b4b !important;
+        font-weight: 700 !important;
+    }
+
+    .positive-net {
+        color: #2f7d4a !important;
+        background: #eef8f0;
+        font-weight: 700 !important;
+    }
+
+    .comparison-summary {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        background: #f3faf4;
+        border: 1px solid #d8ead9;
+        border-radius: 8px;
+        padding: 18px 18px;
+        margin-bottom: 18px;
+    }
+
+    .summary-icon {
+        font-size: 34px;
+        line-height: 1;
+        color: #2f7d4a;
+        font-weight: 700;
+    }
+
+    .summary-content {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .summary-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    .summary-line {
+        font-size: 15px;
+        color: #374151;
+    }
+
+    .comparison-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-top: 6px;
+    }
+
+    .comparison-footer-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 15px;
+        color: #374151;
+    }
+
+    .comparison-footer-right {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+</style>

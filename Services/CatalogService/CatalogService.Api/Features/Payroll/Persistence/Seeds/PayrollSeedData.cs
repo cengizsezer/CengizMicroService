@@ -30,6 +30,8 @@ namespace CatalogService.Api.Features.Payroll.Persistence.Seeds
 
                 SgkEmployeeRate = 0.14m,
                 UnemploymentEmployeeRate = 0.01m,
+                RetiredSgkEmployeeRate = 0.075m,
+                RetiredUnemploymentEmployeeRate = 0m,
                 StampTaxRate = 0.00759m,
                 BesEmployeeRate = 0.03m,
 

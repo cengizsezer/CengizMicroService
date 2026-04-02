@@ -58,52 +58,88 @@ namespace CatalogService.Api.Features.Payroll.Services
             decimal cumulativeTaxBase = command.PreviousCumulativeTaxBase;
             decimal minimumWageCumulativeTaxBase = 0m;
 
-            foreach (var month in orderedMonths)
+            if (command.EmployeeType == PayrollEmployeeType.Honorarium)
             {
-                PayrollMonthResultDto monthResult;
-
-                if (command.CalculationType == PayrollCalculationType.GrossToNet)
+                foreach (var month in orderedMonths)
                 {
-                    monthResult = CalculateGrossToNetMonth(
-                        month.Month,
-                        month.Amount,
-                        cumulativeTaxBase,
-                        ref minimumWageCumulativeTaxBase,
-                        command,
-                        context);
-                }
-                else
-                {
-                    monthResult = CalculateNetToGrossMonth(
-                        month.Month,
-                        month.Amount,
-                        cumulativeTaxBase,
-                        ref minimumWageCumulativeTaxBase,
-                        command,
-                        context);
+                    HonorariumPayrollMonthResultDto monthResult;
+
+                    if (command.CalculationType == PayrollCalculationType.GrossToNet)
+                    {
+                        monthResult = CalculateHonorariumGrossToNetMonth(
+                            month.Month,
+                            month.Amount,
+                            cumulativeTaxBase,
+                            ref minimumWageCumulativeTaxBase,
+                            command,
+                            context);
+                    }
+                    else
+                    {
+                        monthResult = CalculateHonorariumNetToGrossMonth(
+                            month.Month,
+                            month.Amount,
+                            cumulativeTaxBase,
+                            ref minimumWageCumulativeTaxBase,
+                            command,
+                            context);
+                    }
+
+                    cumulativeTaxBase = monthResult.CumulativeIncomeTaxBase;
+                    response.HonorariumMonths.Add(monthResult);
                 }
 
-                cumulativeTaxBase = monthResult.CumulativeIncomeTaxBase;
-                response.Months.Add(monthResult);
+                response.HonorariumTotals = BuildHonorariumTotals(response.HonorariumMonths);
             }
+            else
+            {
+                foreach (var month in orderedMonths)
+                {
+                    PayrollMonthResultDto monthResult;
 
-            response.Totals = BuildTotals(response.Months);
+                    if (command.CalculationType == PayrollCalculationType.GrossToNet)
+                    {
+                        monthResult = CalculateSalaryGrossToNetMonth(
+                            month.Month,
+                            month.Amount,
+                            cumulativeTaxBase,
+                            ref minimumWageCumulativeTaxBase,
+                            command,
+                            context);
+                    }
+                    else
+                    {
+                        monthResult = CalculateSalaryNetToGrossMonth(
+                            month.Month,
+                            month.Amount,
+                            cumulativeTaxBase,
+                            ref minimumWageCumulativeTaxBase,
+                            command,
+                            context);
+                    }
+
+                    cumulativeTaxBase = monthResult.CumulativeIncomeTaxBase;
+                    response.Months.Add(monthResult);
+                }
+
+                response.Totals = BuildSalaryTotals(response.Months);
+            }
 
             return response;
         }
 
-        private PayrollMonthResultDto CalculateGrossToNetMonth(
-     int month,
-     decimal inputAmount,
-     decimal previousCumulativeTaxBase,
-     ref decimal minimumWageCumulativeTaxBase,
-     CalculatePayrollCommand command,
-     PayrollCalculationContext context)
+        private PayrollMonthResultDto CalculateSalaryGrossToNetMonth(
+            int month,
+            decimal inputAmount,
+            decimal previousCumulativeTaxBase,
+            ref decimal minimumWageCumulativeTaxBase,
+            CalculatePayrollCommand command,
+            PayrollCalculationContext context)
         {
             var grossSalary = Round2(inputAmount);
 
-            var sgkEmployeeAmount = CalculateSgkEmployee(grossSalary, context);
-            var unemploymentEmployeeAmount = CalculateUnemploymentEmployee(grossSalary, context);
+            var sgkEmployeeAmount = CalculateSgkEmployee(grossSalary, context, command.EmployeeType);
+            var unemploymentEmployeeAmount = CalculateUnemploymentEmployee(grossSalary, context, command.EmployeeType);
 
             var disabilityExemptionAmount = grossSalary > 0
                 ? GetDisabilityExemptionAmount(context)
@@ -122,21 +158,27 @@ namespace CatalogService.Api.Features.Payroll.Services
                 incomeTaxBase,
                 context);
 
-            var incomeTaxExemption = grossSalary > 0
-                ? CalculateMinimumWageIncomeTaxExemption(ref minimumWageCumulativeTaxBase, context)
-                : 0m;
+            var incomeTaxExemption = (grossSalary > 0 && command.IncludeMinimumWageExemption)
+     ? CalculateMinimumWageIncomeTaxExemption(ref minimumWageCumulativeTaxBase, context, command.EmployeeType)
+     : 0m;
 
             var payableIncomeTax = Round2(Math.Max(0, calculatedIncomeTax - incomeTaxExemption));
 
-            var calculatedStampTax = CalculateStampTax(grossSalary, context);
+            var calculatedStampTax = command.IncludeStampTax
+    ? CalculateStampTax(grossSalary, context)
+    : 0m;
 
-            var stampTaxExemption = grossSalary > 0
-                ? CalculateMinimumWageStampTaxExemption(context)
-                : 0m;
+            var stampTaxExemption = (grossSalary > 0 && command.IncludeStampTax)
+       ? CalculateMinimumWageStampTaxExemption(context)
+       : 0m;
 
             var payableStampTax = Round2(Math.Max(0, calculatedStampTax - stampTaxExemption));
 
-            var besAmount = CalculateBes(grossSalary, context, command.HasMandatoryBes);
+            var besAmount = CalculateBes(
+    grossSalary,
+    context,
+    command.HasMandatoryBes,
+    command.EmployeeType);
 
             var totalDeductions = Round2(
                 sgkEmployeeAmount +
@@ -172,22 +214,23 @@ namespace CatalogService.Api.Features.Payroll.Services
                 NetSalary = netSalary
             };
         }
-        private PayrollMonthResultDto CalculateNetToGrossMonth(
-     int month,
-     decimal targetNet,
-     decimal previousCumulativeTaxBase,
-     ref decimal minimumWageCumulativeTaxBase,
-     CalculatePayrollCommand command,
-     PayrollCalculationContext context)
+
+        private PayrollMonthResultDto CalculateSalaryNetToGrossMonth(
+            int month,
+            decimal targetNet,
+            decimal previousCumulativeTaxBase,
+            ref decimal minimumWageCumulativeTaxBase,
+            CalculatePayrollCommand command,
+            PayrollCalculationContext context)
         {
-            var grossEstimate = SolveGrossFromTargetNet(
+            var grossEstimate = SolveSalaryGrossFromTargetNet(
                 targetNet,
                 previousCumulativeTaxBase,
                 minimumWageCumulativeTaxBase,
                 command,
                 context);
 
-            return CalculateGrossToNetMonth(
+            return CalculateSalaryGrossToNetMonth(
                 month,
                 grossEstimate,
                 previousCumulativeTaxBase,
@@ -196,12 +239,12 @@ namespace CatalogService.Api.Features.Payroll.Services
                 context);
         }
 
-        private decimal SolveGrossFromTargetNet(
-     decimal targetNet,
-     decimal previousCumulativeTaxBase,
-     decimal minimumWageCumulativeTaxBase,
-     CalculatePayrollCommand command,
-     PayrollCalculationContext context)
+        private decimal SolveSalaryGrossFromTargetNet(
+            decimal targetNet,
+            decimal previousCumulativeTaxBase,
+            decimal minimumWageCumulativeTaxBase,
+            CalculatePayrollCommand command,
+            PayrollCalculationContext context)
         {
             decimal low = targetNet;
             decimal high = targetNet * 3;
@@ -211,7 +254,7 @@ namespace CatalogService.Api.Features.Payroll.Services
                 var mid = Round2((low + high) / 2m);
                 var tempMinimumWageCumulativeTaxBase = minimumWageCumulativeTaxBase;
 
-                var result = CalculateGrossToNetMonth(
+                var result = CalculateSalaryGrossToNetMonth(
                     month: 0,
                     inputAmount: mid,
                     previousCumulativeTaxBase: previousCumulativeTaxBase,
@@ -230,21 +273,172 @@ namespace CatalogService.Api.Features.Payroll.Services
 
             return Round2((low + high) / 2m);
         }
-        private decimal CalculateSgkEmployee(decimal grossSalary, PayrollCalculationContext context)
+
+        private HonorariumPayrollMonthResultDto CalculateHonorariumGrossToNetMonth(
+            int month,
+            decimal inputAmount,
+            decimal previousCumulativeTaxBase,
+            ref decimal minimumWageCumulativeTaxBase,
+            CalculatePayrollCommand command,
+            PayrollCalculationContext context)
         {
-            return Round2(grossSalary * context.Parameter.SgkEmployeeRate);
+            var grossHonorarium = Round2(inputAmount);
+
+            var incomeTaxBase = Round2(grossHonorarium);
+            var cumulativeIncomeTaxBase = Round2(previousCumulativeTaxBase + incomeTaxBase);
+
+            var calculatedIncomeTax = CalculateProgressiveIncomeTax(
+                previousCumulativeTaxBase,
+                incomeTaxBase,
+                context);
+
+            
+
+            var incomeTaxExemption = (grossHonorarium > 0 && command.IncludeMinimumWageExemption)
+    ? CalculateMinimumWageIncomeTaxExemption(ref minimumWageCumulativeTaxBase, context, command.EmployeeType)
+    : 0m;
+
+            var payableIncomeTax = Round2(Math.Max(0, calculatedIncomeTax - incomeTaxExemption));
+
+            var calculatedStampTax = command.IncludeStampTax
+      ? CalculateStampTax(grossHonorarium, context)
+      : 0m;
+
+            var stampTaxExemption = (grossHonorarium > 0 && command.IncludeStampTax)
+      ? CalculateMinimumWageStampTaxExemption(context)
+      : 0m;
+
+            var payableStampTax = Round2(Math.Max(0, calculatedStampTax - stampTaxExemption));
+
+            var totalDeductions = Round2(
+                payableIncomeTax +
+                payableStampTax);
+
+            var netHonorarium = Round2(grossHonorarium - totalDeductions);
+
+            var taxBurdenRate = grossHonorarium <= 0
+                ? 0m
+                : Round2((totalDeductions / grossHonorarium) * 100m);
+
+            return new HonorariumPayrollMonthResultDto
+            {
+                Month = month,
+                InputAmount = Round2(inputAmount),
+
+                GrossHonorarium = grossHonorarium,
+
+                IncomeTaxBase = incomeTaxBase,
+                CumulativeIncomeTaxBase = cumulativeIncomeTaxBase,
+
+                CalculatedIncomeTax = calculatedIncomeTax,
+                IncomeTaxExemption = incomeTaxExemption,
+                PayableIncomeTax = payableIncomeTax,
+
+                CalculatedStampTax = calculatedStampTax,
+                StampTaxExemption = stampTaxExemption,
+                PayableStampTax = payableStampTax,
+
+                TotalDeductions = totalDeductions,
+                TaxBurdenRate = taxBurdenRate,
+                NetHonorarium = netHonorarium
+            };
         }
 
-        private decimal CalculateUnemploymentEmployee(decimal grossSalary, PayrollCalculationContext context)
+        private decimal CalculateBes(decimal grossSalary, PayrollCalculationContext context, bool hasMandatoryBes, PayrollEmployeeType employeeType)
         {
-            return Round2(grossSalary * context.Parameter.UnemploymentEmployeeRate);
+            if (!hasMandatoryBes) return 0m;
+            if (employeeType != PayrollEmployeeType.Normal) return 0m;
+            return Round2(grossSalary * context.Parameter.BesEmployeeRate);
+        }
+
+        private HonorariumPayrollMonthResultDto CalculateHonorariumNetToGrossMonth(
+            int month,
+            decimal targetNet,
+            decimal previousCumulativeTaxBase,
+            ref decimal minimumWageCumulativeTaxBase,
+            CalculatePayrollCommand command,
+            PayrollCalculationContext context)
+        {
+            var grossEstimate = SolveHonorariumGrossFromTargetNet(
+                targetNet,
+                previousCumulativeTaxBase,
+                minimumWageCumulativeTaxBase,
+                command,
+                context);
+
+            return CalculateHonorariumGrossToNetMonth(
+                month,
+                grossEstimate,
+                previousCumulativeTaxBase,
+                ref minimumWageCumulativeTaxBase,
+                command,
+                context);
+        }
+
+        private decimal SolveHonorariumGrossFromTargetNet(
+            decimal targetNet,
+            decimal previousCumulativeTaxBase,
+            decimal minimumWageCumulativeTaxBase,
+            CalculatePayrollCommand command,
+            PayrollCalculationContext context)
+        {
+            decimal low = targetNet;
+            decimal high = targetNet * 3;
+
+            for (int i = 0; i < 60; i++)
+            {
+                var mid = Round2((low + high) / 2m);
+                var tempMinimumWageCumulativeTaxBase = minimumWageCumulativeTaxBase;
+
+                var result = CalculateHonorariumGrossToNetMonth(
+                    month: 0,
+                    inputAmount: mid,
+                    previousCumulativeTaxBase: previousCumulativeTaxBase,
+                    minimumWageCumulativeTaxBase: ref tempMinimumWageCumulativeTaxBase,
+                    command: command,
+                    context: context);
+
+                if (Math.Abs(result.NetHonorarium - targetNet) < 0.01m)
+                    return mid;
+
+                if (result.NetHonorarium < targetNet)
+                    low = mid;
+                else
+                    high = mid;
+            }
+
+            return Round2((low + high) / 2m);
+        }
+
+        private decimal CalculateSgkEmployee(
+    decimal grossSalary,
+    PayrollCalculationContext context,
+    PayrollEmployeeType employeeType)
+        {
+            var rate = employeeType == PayrollEmployeeType.Retired
+                ? context.Parameter.RetiredSgkEmployeeRate
+                : context.Parameter.SgkEmployeeRate;
+
+            return Round2(grossSalary * rate);
+        }
+
+        private decimal CalculateUnemploymentEmployee(
+     decimal grossSalary,
+     PayrollCalculationContext context,
+     PayrollEmployeeType employeeType)
+        {
+            var rate = employeeType == PayrollEmployeeType.Retired
+                ? context.Parameter.RetiredUnemploymentEmployeeRate
+                : context.Parameter.UnemploymentEmployeeRate;
+
+            return Round2(grossSalary * rate);
         }
 
         private decimal CalculateIncomeTaxBase(
-      decimal grossSalary,
-      decimal sgkEmployeeAmount,
-      decimal unemploymentEmployeeAmount,
-      decimal disabilityExemptionAmount)
+            decimal grossSalary,
+            decimal sgkEmployeeAmount,
+            decimal unemploymentEmployeeAmount,
+            decimal disabilityExemptionAmount)
         {
             var baseAmount = grossSalary - sgkEmployeeAmount - unemploymentEmployeeAmount - disabilityExemptionAmount;
             return Round2(Math.Max(0, baseAmount));
@@ -285,8 +479,6 @@ namespace CatalogService.Api.Features.Payroll.Services
             return Round2(totalTax);
         }
 
-       
-
         private decimal CalculateStampTax(decimal grossSalary, PayrollCalculationContext context)
         {
             return Round2(grossSalary * context.Parameter.StampTaxRate);
@@ -294,18 +486,7 @@ namespace CatalogService.Api.Features.Payroll.Services
 
        
 
-        private decimal CalculateBes(
-            decimal grossSalary,
-            PayrollCalculationContext context,
-            bool hasMandatoryBes)
-        {
-            if (!hasMandatoryBes)
-                return 0m;
-
-            return Round2(grossSalary * context.Parameter.BesEmployeeRate);
-        }
-
-        private PayrollTotalsDto BuildTotals(List<PayrollMonthResultDto> months)
+        private PayrollTotalsDto BuildSalaryTotals(List<PayrollMonthResultDto> months)
         {
             return new PayrollTotalsDto
             {
@@ -325,6 +506,24 @@ namespace CatalogService.Api.Features.Payroll.Services
             };
         }
 
+        private HonorariumPayrollTotalsDto BuildHonorariumTotals(List<HonorariumPayrollMonthResultDto> months)
+        {
+            return new HonorariumPayrollTotalsDto
+            {
+                TotalGrossHonorarium = Round2(months.Sum(x => x.GrossHonorarium)),
+                TotalIncomeTaxBase = Round2(months.Sum(x => x.IncomeTaxBase)),
+                TotalCalculatedIncomeTax = Round2(months.Sum(x => x.CalculatedIncomeTax)),
+                TotalIncomeTaxExemption = Round2(months.Sum(x => x.IncomeTaxExemption)),
+                TotalPayableIncomeTax = Round2(months.Sum(x => x.PayableIncomeTax)),
+                TotalCalculatedStampTax = Round2(months.Sum(x => x.CalculatedStampTax)),
+                TotalStampTaxExemption = Round2(months.Sum(x => x.StampTaxExemption)),
+                TotalPayableStampTax = Round2(months.Sum(x => x.PayableStampTax)),
+                TotalDeductions = Round2(months.Sum(x => x.TotalDeductions)),
+                TotalNetHonorarium = Round2(months.Sum(x => x.NetHonorarium)),
+                AverageTaxBurdenRate = months.Count == 0 ? 0m : Round2(months.Average(x => x.TaxBurdenRate))
+            };
+        }
+
         private decimal Round2(decimal value)
         {
             return Math.Round(value, 2, MidpointRounding.AwayFromZero);
@@ -335,21 +534,25 @@ namespace CatalogService.Api.Features.Payroll.Services
             return Round2(context.DisabilityExemption?.MonthlyExemptionAmount ?? 0m);
         }
 
-        private decimal CalculateMinimumWageIncomeTaxBase(PayrollCalculationContext context)
+        private decimal CalculateMinimumWageIncomeTaxBase(
+     PayrollCalculationContext context,
+     PayrollEmployeeType employeeType)
         {
             var gross = context.Parameter.MinimumWageGrossAmount;
-            var sgk = CalculateSgkEmployee(gross, context);
-            var unemployment = CalculateUnemploymentEmployee(gross, context);
 
-            var baseAmount = gross - sgk - unemployment;
+            var sgkEmployeeAmount = CalculateSgkEmployee(gross, context, employeeType);
+            var unemploymentEmployeeAmount = CalculateUnemploymentEmployee(gross, context, employeeType);
+
+            var baseAmount = gross - sgkEmployeeAmount - unemploymentEmployeeAmount;
             return Round2(Math.Max(0, baseAmount));
         }
 
         private decimal CalculateMinimumWageIncomeTaxExemption(
             ref decimal minimumWageCumulativeTaxBase,
-            PayrollCalculationContext context)
+            PayrollCalculationContext context,
+            PayrollEmployeeType employeeType)
         {
-            var minimumWageTaxBase = CalculateMinimumWageIncomeTaxBase(context);
+            var minimumWageTaxBase = CalculateMinimumWageIncomeTaxBase(context, employeeType);
 
             var exemption = CalculateProgressiveIncomeTax(
                 minimumWageCumulativeTaxBase,
@@ -365,6 +568,5 @@ namespace CatalogService.Api.Features.Payroll.Services
         {
             return Round2(context.Parameter.MinimumWageGrossAmount * context.Parameter.StampTaxRate);
         }
-
     }
 }

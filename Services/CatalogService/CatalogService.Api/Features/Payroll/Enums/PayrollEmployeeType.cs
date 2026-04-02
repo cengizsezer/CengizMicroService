@@ -2,7 +2,8 @@
 {
     public enum PayrollEmployeeType
     {
-        NormalEmployee = 1,
-        Janitor = 2
+        Normal = 1,
+        Retired = 2,
+        Honorarium = 3
     }
 }

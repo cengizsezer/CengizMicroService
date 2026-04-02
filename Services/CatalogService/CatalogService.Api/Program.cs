@@ -124,7 +124,7 @@ builder.Services.AddCors(opt =>
 {
     opt.AddPolicy("wasm", p => p
         .WithOrigins(
-            "http://localhost:2000",
+            "http://localhost:2000", "https://localhost:2000",
             "https://dijitalmasraf.com",
             "https://www.dijitalmasraf.com")
         .AllowAnyHeader()

@@ -685,6 +685,12 @@ namespace CatalogService.Api.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<decimal>("MinimumWageIncomeTaxExemptionMonthly")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("MinimumWageStampTaxExemptionMonthly")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<decimal>("MonthlyBoardMemberExemption")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -695,6 +701,12 @@ namespace CatalogService.Api.Migrations
 
                     b.Property<decimal>("MonthlyFamilyAllowanceExemption")
                         .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("RetiredSgkEmployeeRate")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("RetiredUnemploymentEmployeeRate")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("SgkEmployeeRate")

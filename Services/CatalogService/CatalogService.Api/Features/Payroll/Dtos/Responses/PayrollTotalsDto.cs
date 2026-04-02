@@ -15,5 +15,8 @@
         public decimal TotalBesAmount { get; set; }
         public decimal TotalDeductions { get; set; }
         public decimal TotalNetSalary { get; set; }
+        public decimal? TotalEmployerCost { get; set; }
+
+        public decimal? EmployerCost { get; set; }
     }
 }

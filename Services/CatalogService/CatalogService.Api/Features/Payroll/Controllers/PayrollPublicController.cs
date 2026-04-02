@@ -58,6 +58,11 @@ namespace CatalogService.Api.Features.Payroll.Controllers
                 EmployeeType = request.EmployeeType,
                 HasMandatoryBes = request.HasMandatoryBes,
                 DisabilityType = request.DisabilityType,
+
+                IncludeMinimumWageExemption = request.IncludeMinimumWageExemption,
+                IncludeStampTax = request.IncludeStampTax,
+                IncludeEmployerCost = request.IncludeEmployerCost,
+
                 StartMonth = request.StartMonth,
                 PreviousCumulativeTaxBase = request.PreviousCumulativeTaxBase,
                 Months = request.Months

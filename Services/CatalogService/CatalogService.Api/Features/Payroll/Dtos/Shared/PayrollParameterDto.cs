@@ -6,6 +6,10 @@
 
         public decimal SgkEmployeeRate { get; set; }
         public decimal UnemploymentEmployeeRate { get; set; }
+
+        public decimal RetiredSgkEmployeeRate { get; set; }
+        public decimal RetiredUnemploymentEmployeeRate { get; set; }
+
         public decimal StampTaxRate { get; set; }
         public decimal BesEmployeeRate { get; set; }
 

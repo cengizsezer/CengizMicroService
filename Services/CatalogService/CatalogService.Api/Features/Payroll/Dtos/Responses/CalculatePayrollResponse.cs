@@ -11,6 +11,9 @@ namespace CatalogService.Api.Features.Payroll.Dtos.Responses
         public PayrollDisabilityType DisabilityType { get; set; }
 
         public List<PayrollMonthResultDto> Months { get; set; } = new();
-        public PayrollTotalsDto Totals { get; set; } = new();
+        public PayrollTotalsDto? Totals { get; set; }
+
+        public List<HonorariumPayrollMonthResultDto> HonorariumMonths { get; set; } = new();
+        public HonorariumPayrollTotalsDto? HonorariumTotals { get; set; }
     }
 }
