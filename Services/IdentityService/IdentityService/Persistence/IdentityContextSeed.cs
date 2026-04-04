@@ -64,6 +64,10 @@ namespace IdentityService.Persistence
             var pExpenseView = await GetOrCreatePermAsync("Expense.View", "Masraf görüntüleme");
             var pExpenseEdit = await GetOrCreatePermAsync("Expense.Edit", "Masraf düzenleme");
             var pBeyannameView = await GetOrCreatePermAsync("Beyanname.View", "Beyanname sayfasını görme");
+            
+
+            
+
             var pIlkyardimView = await GetOrCreatePermAsync("Ilkyardim.View", "İlkyardım sayfasını görme");
             var pVehicleView = await GetOrCreatePermAsync("Vehicle.View", "Araç listesi sayfasını görme");
             var pVehicleEdit = await GetOrCreatePermAsync("Vehicle.Edit", "Araç listesi düzenleme");
@@ -71,6 +75,9 @@ namespace IdentityService.Persistence
             var pSettingsView = await GetOrCreatePermAsync("Settings.View", "Ayarlar görüntüleme");
             var pCalendarpageView = await GetOrCreatePermAsync("Calendarpage.View", "Ayarlar görüntüleme");
 
+
+
+            //PKF
            
             var pBeyannameTakipView = await GetOrCreatePermAsync(
     "BeyannameTakip.View",
@@ -79,6 +86,8 @@ namespace IdentityService.Persistence
             var pBeyannameTakipEdit = await GetOrCreatePermAsync(
     "BeyannameTakip.Edit",
     "Beyanname takip sayfasında düzenleme yapma");
+
+            var pTaxPaymentView = await GetOrCreatePermAsync("TaxPayment.View", "Mükellef Vergi Ödemeleri görme");
 
             // === 2) Roles (custom) ===
             var rAdmin = await GetOrCreateRoleAsync("Admin");
@@ -93,6 +102,7 @@ namespace IdentityService.Persistence
             await LinkRolePermAsync(rMaliIsler, pExpenseEdit);
             await LinkRolePermAsync(rMaliIsler, pBeyannameView);
             await LinkRolePermAsync(pkf, pBeyannameTakipView);
+            await LinkRolePermAsync(pkf, pTaxPaymentView);
             await LinkRolePermAsync(pkf, pVehicleView);
             await LinkRolePermAsync(pkf, pVehicleEdit);
             await LinkRolePermAsync(rIlkyardim, pIlkyardimView);

@@ -1,0 +1,192 @@
+.tax-toolbar[b-0779msiqes] {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.tax-toolbar-left[b-0779msiqes] {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    flex: 0 0 auto;
+}
+
+.tax-toolbar-right[b-0779msiqes] {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 1 1 520px;
+    min-width: 320px;
+}
+
+.search-box-wrap[b-0779msiqes] {
+    width: min(620px, 100%);
+    margin-left: auto;
+}
+
+.tax-action-group[b-0779msiqes] {
+    display: inline-flex;
+    align-items: stretch;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+.tax-toolbar-wrap[b-0779msiqes] {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.05);
+}
+
+.grid-wrap[b-0779msiqes] {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 10px;
+}
+
+/* Grup içindeki RadzenButton */
+[b-0779msiqes] .tax-action-group .rz-button {
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    height: 42px !important;
+    min-height: 42px !important;
+}
+
+/* Sol ilk buton */
+[b-0779msiqes] .group-btn-left {
+    border-top-left-radius: 14px !important;
+    border-bottom-left-radius: 14px !important;
+}
+
+/* Sağ son buton */
+[b-0779msiqes] .group-btn-right {
+    border-top-right-radius: 14px !important;
+    border-bottom-right-radius: 14px !important;
+    background: #ffffff !important;
+    color: #374151 !important;
+    border: none !important;
+}
+
+    [b-0779msiqes] .group-btn-right:hover {
+        background: #f8fafc !important;
+    }
+
+/* Upload alanı */
+.group-upload[b-0779msiqes] {
+    display: flex;
+    align-items: stretch;
+}
+
+[b-0779msiqes] .group-upload .rz-fileupload {
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    background: transparent !important;
+}
+
+[b-0779msiqes] .group-upload .rz-fileupload-buttonbar {
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    background: transparent !important;
+}
+
+[b-0779msiqes] .group-upload .rz-fileupload-choose {
+    height: 42px !important;
+    min-width: 170px !important;
+    padding: 0 18px !important;
+    border: none !important;
+    border-left: 1px solid #e5e7eb !important;
+    border-right: 1px solid #e5e7eb !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    color: #374151 !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+    box-shadow: none !important;
+}
+
+    [b-0779msiqes] .group-upload .rz-fileupload-choose:hover {
+        background: #f8fafc !important;
+    }
+
+[b-0779msiqes] .group-upload .rz-fileupload-content {
+    display: none !important;
+}
+
+[b-0779msiqes] .group-upload .rz-fileupload-files {
+    display: none !important;
+}
+
+[b-0779msiqes] .group-upload .rz-button-text {
+    white-space: nowrap !important;
+}
+
+/* Hepsini sil */
+[b-0779msiqes] .toolbar-danger-btn {
+    height: 42px !important;
+    min-height: 42px !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.16) !important;
+}
+
+/* Search */
+[b-0779msiqes] .toolbar-search-input {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 42px !important;
+}
+
+    [b-0779msiqes] .toolbar-search-input .rz-inputtext {
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        min-height: 42px !important;
+        border-radius: 12px !important;
+        border: 1px solid #d1d5db !important;
+        background: #f9fafb !important;
+        box-shadow: none !important;
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+        font-size: 14px !important;
+    }
+
+        [b-0779msiqes] .toolbar-search-input .rz-inputtext:focus {
+            border-color: #c7d2fe !important;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08) !important;
+        }
+
+/* Mobil */
+@media (max-width: 1100px) {
+    .tax-toolbar[b-0779msiqes] {
+        align-items: stretch;
+    }
+
+    .tax-toolbar-left[b-0779msiqes] {
+        width: 100%;
+    }
+
+    .tax-toolbar-right[b-0779msiqes] {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .search-box-wrap[b-0779msiqes] {
+        width: 100%;
+    }
+}

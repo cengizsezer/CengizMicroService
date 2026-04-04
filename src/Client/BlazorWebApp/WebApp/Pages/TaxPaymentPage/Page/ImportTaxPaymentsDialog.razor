@@ -1,0 +1,150 @@
+﻿@using WebApp.Application.Services.Interfaces
+@using WebApp.Pages.TaxPaymentPage.Client
+@using WebApp.Pages.TaxPaymentPage.DTO
+@using WebApp.Shared.Dto
+@using Radzen
+@inject ITaxPaymentClient TaxPaymentService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<div class="tax-import-dialog-content">
+    <div class="tax-import-header">
+        <div class="tax-import-header-text">
+            <div class="tax-import-title">Vergi Ödeme Aktarımı</div>
+            <div class="tax-import-subtitle">
+                Excel’den gelen kayıtları kontrol edip içe aktarabilirsiniz.
+            </div>
+        </div>
+    </div>
+
+    <div class="tax-import-grid-wrapper">
+        <RadzenDataGrid Data="@Items"
+                        TItem="TaxPaymentEntityDto"
+                        AllowFiltering="false"
+                        AllowPaging="true"
+                        AllowSorting="false"
+                        PageSize="15"
+                        PagerHorizontalAlign="HorizontalAlign.Right"
+                        Class="tax-import-grid">
+            <Columns>
+                <RadzenDataGridColumn TItem="TaxPaymentEntityDto" Property="TahakkukNo" Title="Tahakkuk No" Width="170px">
+                    <Template Context="row">
+                        <div class="ellipsis-cell" title="@row.TahakkukNo">@row.TahakkukNo</div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="TaxPaymentEntityDto" Property="TaxNumber" Title="Vergi No" Width="150px" />
+
+                <RadzenDataGridColumn TItem="TaxPaymentEntityDto" Property="Amount" Title="Tutar" Width="110px">
+                    <Template Context="row">
+                        <div class="amount-cell">@row.Amount.ToString("N2")</div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="TaxPaymentEntityDto" Property="TaxpayerName" Title="Mükellef" Width="180px">
+                    <Template Context="row">
+                        <div class="ellipsis-cell" title="@row.TaxpayerName">@row.TaxpayerName</div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="TaxPaymentEntityDto" Property="TaxType" Title="Vergi Türü" Width="180px">
+                    <Template Context="row">
+                        <div class="ellipsis-cell" title="@row.TaxType">@row.TaxType</div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="TaxPaymentEntityDto" Property="CreatedBy" Title="Giren Kişi" Width="150px">
+                    <Template Context="row">
+                        <div class="ellipsis-cell" title="@row.CreatedBy">@row.CreatedBy</div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="TaxPaymentEntityDto" Property="Description" Title="Açıklama" Width="180px">
+                    <Template Context="row">
+                        <div class="ellipsis-cell" title="@row.Description">@row.Description</div>
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="TaxPaymentEntityDto" Title="İşlemler" Width="130px" TextAlign="TextAlign.Center">
+                    <Template Context="row">
+                        <RadzenButton Text="Sil"
+                                      Icon="delete"
+                                      ButtonStyle="ButtonStyle.Danger"
+                                      Variant="Variant.Flat"
+                                      Size="ButtonSize.Small"
+                                      class="tax-import-delete-btn"
+                                      Click="@(() => RemoveRow(row))" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+
+    <div class="tax-import-footer">
+        <div class="tax-import-info">
+            Toplam kayıt: <strong>@Items.Count</strong>
+        </div>
+
+        <div class="tax-import-actions">
+            <RadzenButton Text="İptal"
+                          ButtonStyle="ButtonStyle.Light"
+                          Click="@Cancel"
+                          class="tax-import-cancel-btn" />
+
+            <RadzenButton Text="İçe Aktar"
+                          Icon="upload"
+                          ButtonStyle="ButtonStyle.Primary"
+                          Click="@Submit"
+                          class="tax-import-submit-btn" />
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<TaxPaymentEntityDto> Items { get; set; } = new();
+
+    void RemoveRow(TaxPaymentEntityDto row)
+    {
+        Items.Remove(row);
+        StateHasChanged();
+    }
+
+    async Task Submit()
+    {
+        if (Items.Count == 0)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Boş",
+                Detail = "İçe aktarılacak satır yok."
+            });
+            return;
+        }
+
+        var ok = await TaxPaymentService.ImportAsync(Items);
+
+        if (ok)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Başarılı",
+                Detail = "Vergi ödeme kayıtları eklendi."
+            });
+
+            DialogService.Close(true);
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = "Kayıt sırasında sorun oluştu."
+            });
+        }
+    }
+
+    void Cancel() => DialogService.Close(false);
+}

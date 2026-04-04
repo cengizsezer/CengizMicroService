@@ -10,6 +10,7 @@ using WebApp.Application.Services.Interfaces;
 using WebApp.Infrastructure;
 using WebApp.Manager;
 using WebApp.Pages.Payroll.Services;
+using WebApp.Pages.TaxPaymentPage.Client;
 using WebApp.StartupExtensions.Culture;
 
 namespace WebApp.StartupExtensions.ServiceExtensions
@@ -41,6 +42,7 @@ namespace WebApp.StartupExtensions.ServiceExtensions
         {
 
             services.AddScoped<IPayrollApiService, PayrollApiService>();
+            
 
             return services;
         }
@@ -81,6 +83,11 @@ namespace WebApp.StartupExtensions.ServiceExtensions
         {
             services.AddScoped<IDeclarationApiService>(sp =>
     new DeclarationApiService(sp.GetRequiredService<HttpClient>()));
+
+
+            services.AddScoped<ITaxPaymentClient>(sp =>new TaxPaymentClient(sp.GetRequiredService<HttpClient>()));
+
+           
             // Factory pattern for API clients
             services.AddScoped<IEducationService>(sp =>
                 new EducationService(sp.GetRequiredService<HttpClient>()));

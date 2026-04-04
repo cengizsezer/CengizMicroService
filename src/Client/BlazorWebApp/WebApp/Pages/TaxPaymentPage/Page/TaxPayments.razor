@@ -1,0 +1,425 @@
+﻿@page "/taxpayments"
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using System.Text.Json
+@using Microsoft.JSInterop
+@using System.Linq
+@using WebApp.Manager
+@using WebApp.Pages.TaxPaymentPage.Client
+@using WebApp.Pages.TaxPaymentPage.DTO
+@using WebApp.Utils
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto
+
+@inject ITaxPaymentClient TaxPaymentService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject IJSRuntime JS
+@inject HttpClient Http
+@inject IPermissionService PermissionService
+@inject NavigationManager Navigation
+
+<PageTitle>MÜKELLEF VERGİ ÖDEMELERİ</PageTitle>
+
+<div class="rz-p-3">
+    <div class="tax-toolbar-wrap">
+        <div class="tax-toolbar">
+            <div class="tax-toolbar-left">
+                <div class="tax-action-group">
+                    <RadzenButton Text="Ekle"
+                                  Icon="add_circle"
+                                  ButtonStyle="ButtonStyle.Primary"
+                                  Click="@InsertRow"
+                                  class="toolbar-btn group-btn group-btn-left" />
+
+                    <RadzenUpload Auto="false"
+                                  Multiple="false"
+                                  Accept=".xlsx"
+                                  ChooseText="Excel'den Aktar"
+                                  Change="@OnExcelSelected"
+                                  class="toolbar-upload group-upload" />
+
+                    <RadzenButton Text="Dışa Aktar"
+                                  Icon="download"
+                                  ButtonStyle="ButtonStyle.Light"
+                                  Disabled="@exporting"
+                                  Click="@ExportExcel"
+                                  class="toolbar-btn group-btn group-btn-right" />
+                </div>
+
+                <RadzenButton Text="Hepsini Sil"
+                              Icon="delete_forever"
+                              ButtonStyle="ButtonStyle.Danger"
+                              Disabled="@(view.Count == 0)"
+                              Click="@DeleteAll"
+                              class="toolbar-btn toolbar-danger-btn" />
+            </div>
+
+            <div class="tax-toolbar-right">
+                <div class="search-box-wrap">
+                    <RadzenTextBox @bind-Value="search"
+                                   Placeholder="Ara (Tahakkuk No, Vergi No, Mükellef, Vergi Türü)"
+                                   class="toolbar-search-input"
+                                   Change="@(args => ApplySearch())" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-wrap">
+        <RadzenDataGrid @ref="grid"
+                        Data="@view"
+                        TItem="TaxPaymentEntityDto"
+                        EditMode="DataGridEditMode.Single"
+                        RowCreate="@OnCreateRow"
+                        RowUpdate="@OnUpdateRow"
+                        AllowFiltering="false"
+                        AllowSorting="true"
+                        AllowPaging="true"
+                        AllowColumnResize="true"
+                        ColumnWidth="170px"
+                        IsLoading="@isLoading"
+                        PageSize="20"
+                        RowDoubleClick="@OnRowDoubleClick">
+            <Columns>
+                <RadzenDataGridColumn TItem="TaxPaymentEntityDto" Property="Id" Title="ID" Width="90px" />
+
+                <RadzenDataGridColumn TItem="TaxPaymentEntityDto" Property="TahakkukNo" Title="Tahakkuk No">
+                    <EditTemplate Context="row">
+                        <RadzenTextBox @bind-Value="row.TahakkukNo" Name="TahakkukNo" Style="width:100%" />
+                        <RadzenRequiredValidator Component="TahakkukNo" Text="Tahakkuk No zorunlu" Popup="true" />
+                    </EditTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="TaxPaymentEntityDto" Property="TaxNumber" Title="Vergi No">
+                    <EditTemplate Context="row">
+                        <RadzenTextBox @bind-Value="row.TaxNumber" Name="TaxNumber" Style="width:100%" />
+                        <RadzenRequiredValidator Component="TaxNumber" Text="Vergi No zorunlu" Popup="true" />
+                    </EditTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="TaxPaymentEntityDto" Property="Amount" Title="Tutar">
+                    <EditTemplate Context="row">
+                        <RadzenNumeric @bind-Value="row.Amount" Name="Amount" Style="width:100%" TValue="decimal" />
+                        <RadzenRequiredValidator Component="Amount" Text="Tutar zorunlu" Popup="true" />
+                    </EditTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="TaxPaymentEntityDto" Property="TaxpayerName" Title="Mükellef" Width="220px">
+                    <EditTemplate Context="row">
+                        <RadzenTextBox @bind-Value="row.TaxpayerName" Name="TaxpayerName" Style="width:100%" />
+                    </EditTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="TaxPaymentEntityDto" Property="TaxType" Title="Vergi Türü" Width="220px">
+                    <EditTemplate Context="row">
+                        <RadzenDropDown @bind-Value="row.TaxType"
+                                        Data="@declarationTypes"
+                                        Name="TaxType"
+                                        Style="width:100%"
+                                        AllowClear="true" />
+                        <RadzenRequiredValidator Component="TaxType" Text="Vergi türü zorunlu" Popup="true" />
+                    </EditTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="TaxPaymentEntityDto" Property="CreatedBy" Title="Giren Kişi">
+                    <EditTemplate Context="row">
+                        <RadzenTextBox @bind-Value="row.CreatedBy" Style="width:100%" />
+                    </EditTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="TaxPaymentEntityDto" Property="Description" Title="Açıklama" Width="240px">
+                    <EditTemplate Context="row">
+                        <RadzenTextArea @bind-Value="row.Description" Rows="2" Style="width:100%" />
+                    </EditTemplate>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="TaxPaymentEntityDto"
+                                      Title="Actions"
+                                      Width="210px"
+                                      TextAlign="TextAlign.Center"
+                                      Filterable="false"
+                                      Sortable="false"
+                                      Frozen="true"
+                                      FrozenPosition="FrozenColumnPosition.Right">
+                    <Template Context="row">
+                        <RadzenButton Icon="edit"
+                                      ButtonStyle="ButtonStyle.Warning"
+                                      Size="ButtonSize.Small"
+                                      class="rz-mr-2"
+                                      Click="@(() => EditRow(row))" />
+                        <RadzenButton Icon="delete"
+                                      ButtonStyle="ButtonStyle.Danger"
+                                      Size="ButtonSize.Small"
+                                      Click="@(() => DeleteRow(row))" />
+                    </Template>
+                    <EditTemplate Context="row">
+                        <RadzenButton Icon="check"
+                                      ButtonStyle="ButtonStyle.Success"
+                                      Size="ButtonSize.Small"
+                                      class="rz-mr-2"
+                                      Click="@((args) => SaveRow(row))" />
+                        <RadzenButton Icon="close"
+                                      ButtonStyle="ButtonStyle.Light"
+                                      Size="ButtonSize.Small"
+                                      Click="@((args) => CancelEdit(row))" />
+                    </EditTemplate>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+</div>
+
+@code {
+    RadzenDataGrid<TaxPaymentEntityDto> grid;
+    List<TaxPaymentEntityDto> items = new();
+    List<TaxPaymentEntityDto> view = new();
+    string search;
+    bool exporting = false;
+    bool isLoading = false;
+
+    [Inject] IAppSessionManager SessionManager { get; set; } = default!;
+
+    private List<string> declarationTypes = new()
+    {
+        "0015 KDV-1",
+        "4017 KDV-2",
+        "0003 STOPAJ MUHTASAR",
+        "0095 UCRET MUHTASAR",
+        "SGK",
+        "0040 DAMGA VERGISI",
+        "0033 GECICI VERGI",
+        "0010 KURUMLAR VERGISI"
+    };
+
+    async Task OnExcelSelected(UploadChangeEventArgs args)
+    {
+        var selectedExcel = args.Files?.FirstOrDefault();
+
+        if (selectedExcel is null)
+            return;
+
+        try
+        {
+            var list = await TaxPaymentService.ParseExcelAsync(selectedExcel);
+
+            if (list is null || list.Count == 0)
+            {
+                NotificationService.Notify(NotificationSeverity.Warning, "Boş dosya", "Excel içinde aktarılacak kayıt bulunamadı.");
+                return;
+            }
+
+            var ok = await DialogService.OpenAsync<ImportTaxPaymentsDialog>(
+                "",
+                new Dictionary<string, object> { { "Items", list } },
+                new DialogOptions
+                {
+                    Width = "1180px",
+                    ShowClose = false,
+                    CloseDialogOnOverlayClick = false,
+                    CssClass = "modern-dialog"
+                });
+
+            if (ok is true)
+                await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Parse hatası", ex.Message);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await SessionManager.RestoreAsync();
+
+            var canView = await PermissionService.HasPermissionAsync("TaxPayment.View");
+
+            if (!canView)
+            {
+                Navigation.NavigateTo("/unauthorized");
+                return;
+            }
+
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[TaxPayments INIT ERROR]: {ex.Message}");
+        }
+    }
+
+    async Task ReloadAsync()
+    {
+        isLoading = true;
+        items = await TaxPaymentService.GetAllAsync();
+        ApplySearch();
+        StateHasChanged();
+        isLoading = false;
+    }
+
+    async Task OnRowDoubleClick(DataGridRowMouseEventArgs<TaxPaymentEntityDto> args)
+    {
+        await EditTaxPayment(args.Data);
+    }
+
+    void ApplySearch()
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            view = items.ToList();
+        }
+        else
+        {
+            var s = search.Trim();
+            view = items.Where(x =>
+                    (!string.IsNullOrEmpty(x.TahakkukNo) && x.TahakkukNo.Contains(s, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(x.TaxNumber) && x.TaxNumber.Contains(s, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(x.TaxpayerName) && x.TaxpayerName.Contains(s, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(x.TaxType) && x.TaxType.Contains(s, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(x.CreatedBy) && x.CreatedBy.Contains(s, StringComparison.OrdinalIgnoreCase))
+                ).ToList();
+        }
+
+        grid?.Reload();
+    }
+
+    async Task EditTaxPayment(TaxPaymentEntityDto row)
+    {
+        var result = await DialogService.OpenAsync<CreateOrUpdateTaxPayment>(
+            "Edit Tax Payment",
+            new Dictionary<string, object>
+            {
+                { "Action", UIActionEnum.Update },
+                { "model", row }
+            },
+            new DialogOptions { Width = "760px", CloseDialogOnOverlayClick = true });
+
+        if (result is true) await ReloadAsync();
+    }
+
+    async Task DeleteTaxPayment(TaxPaymentEntityDto row)
+    {
+        var confirm = await DialogService.Confirm(
+            $"Delete tax payment '{row.TahakkukNo}'?",
+            "Confirm",
+            new ConfirmOptions() { OkButtonText = "Delete", CancelButtonText = "Cancel" });
+
+        if (confirm == true)
+        {
+            var ok = await TaxPaymentService.DeleteAsync(row.Id);
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = ok ? NotificationSeverity.Success : NotificationSeverity.Error,
+                Summary = ok ? "Deleted" : "Delete failed",
+                Duration = 2500
+            });
+
+            if (ok) await ReloadAsync();
+        }
+    }
+
+    async Task DeleteAll()
+    {
+        var confirm = await DialogService.Confirm(
+            "Tüm vergi ödeme kayıtları silinecek ve ID sayaçları sıfırlanacak. Emin misiniz?",
+            "Onay",
+            new ConfirmOptions { OkButtonText = "Evet, Sil", CancelButtonText = "Vazgeç", ShowClose = false });
+
+        if (confirm == true)
+        {
+            var ok = await TaxPaymentService.DeleteAllAsync();
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = ok ? NotificationSeverity.Success : NotificationSeverity.Error,
+                Summary = ok ? "Silindi" : "Silme başarısız",
+                Detail = ok ? "Tüm kayıtlar silindi." : "Sunucu silme sırasında hata döndü.",
+                Duration = 2500
+            });
+
+            if (ok) await ReloadAsync();
+        }
+    }
+
+    async Task ExportExcel()
+    {
+        exporting = true;
+        try
+        {
+            var bytes = await TaxPaymentService.ExportExcelAsync();
+            await JS.InvokeVoidAsync("downloadFileFromBytes",
+                $"taxpayments_{DateTime.Now:yyyyMMdd_HHmm}.xlsx", bytes);
+        }
+        finally
+        {
+            exporting = false;
+        }
+    }
+
+    async Task InsertRow()
+    {
+        var newItem = new TaxPaymentEntityDto();
+        await grid.InsertRow(newItem);
+    }
+
+    async Task EditRow(TaxPaymentEntityDto row)
+    {
+        await grid.EditRow(row);
+    }
+
+    async Task SaveRow(TaxPaymentEntityDto row)
+    {
+        await grid.UpdateRow(row);
+    }
+
+    void CancelEdit(TaxPaymentEntityDto row)
+    {
+        grid.CancelEditRow(row);
+    }
+
+    async Task OnCreateRow(TaxPaymentEntityDto row)
+    {
+        row.TahakkukNo = row.TahakkukNo?.Trim();
+        row.TaxNumber = row.TaxNumber?.Trim();
+        row.TaxpayerName = row.TaxpayerName?.Trim();
+        row.TaxType = row.TaxType?.Trim();
+        row.CreatedBy = row.CreatedBy?.Trim();
+        row.Description = row.Description?.Trim();
+
+        var ok = await TaxPaymentService.CreateAsync(row);
+        if (!ok)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Create failed", "Kayıt eklenemedi.");
+            grid.CancelEditRow(row);
+            return;
+        }
+
+        await ReloadAsync();
+    }
+
+    async Task OnUpdateRow(TaxPaymentEntityDto row)
+    {
+        row.TahakkukNo = row.TahakkukNo?.Trim();
+        row.TaxNumber = row.TaxNumber?.Trim();
+        row.TaxpayerName = row.TaxpayerName?.Trim();
+        row.TaxType = row.TaxType?.Trim();
+        row.CreatedBy = row.CreatedBy?.Trim();
+        row.Description = row.Description?.Trim();
+
+        var ok = await TaxPaymentService.UpdateAsync(row);
+        if (!ok)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Update failed", "Kayıt güncellenemedi.");
+            grid.CancelEditRow(row);
+            return;
+        }
+    }
+
+    async Task DeleteRow(TaxPaymentEntityDto row)
+    {
+        await DeleteTaxPayment(row);
+    }
+}

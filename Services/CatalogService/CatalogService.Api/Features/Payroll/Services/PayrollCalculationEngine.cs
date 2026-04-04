@@ -534,25 +534,23 @@ namespace CatalogService.Api.Features.Payroll.Services
             return Round2(context.DisabilityExemption?.MonthlyExemptionAmount ?? 0m);
         }
 
-        private decimal CalculateMinimumWageIncomeTaxBase(
-     PayrollCalculationContext context,
-     PayrollEmployeeType employeeType)
+        private decimal CalculateMinimumWageIncomeTaxBase(PayrollCalculationContext context)
         {
             var gross = context.Parameter.MinimumWageGrossAmount;
 
-            var sgkEmployeeAmount = CalculateSgkEmployee(gross, context, employeeType);
-            var unemploymentEmployeeAmount = CalculateUnemploymentEmployee(gross, context, employeeType);
+            var sgkEmployeeAmount = Round2(gross * context.Parameter.SgkEmployeeRate);
+            var unemploymentEmployeeAmount = Round2(gross * context.Parameter.UnemploymentEmployeeRate);
 
             var baseAmount = gross - sgkEmployeeAmount - unemploymentEmployeeAmount;
             return Round2(Math.Max(0, baseAmount));
         }
 
         private decimal CalculateMinimumWageIncomeTaxExemption(
-            ref decimal minimumWageCumulativeTaxBase,
-            PayrollCalculationContext context,
-            PayrollEmployeeType employeeType)
+     ref decimal minimumWageCumulativeTaxBase,
+     PayrollCalculationContext context,
+     PayrollEmployeeType employeeType)
         {
-            var minimumWageTaxBase = CalculateMinimumWageIncomeTaxBase(context, employeeType);
+            var minimumWageTaxBase = CalculateMinimumWageIncomeTaxBase(context);
 
             var exemption = CalculateProgressiveIncomeTax(
                 minimumWageCumulativeTaxBase,

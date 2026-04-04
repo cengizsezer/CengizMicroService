@@ -1,0 +1,138 @@
+﻿@using Microsoft.AspNetCore.Components.Forms
+@using Radzen
+@using WebApp.Pages.TaxPaymentPage.Client
+@using WebApp.Pages.TaxPaymentPage.DTO
+@using WebApp.Shared.Dto
+@using WebApp.Utils
+@using WebApp.Application.Services.Interfaces
+
+@inject ITaxPaymentClient TaxPaymentService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<EditForm EditContext="_editContext" OnValidSubmit="OnValidSubmit">
+    <DataAnnotationsValidator />
+
+    <div class="rz-p-3" style="min-width:760px;">
+        <div class="rz-grid rz-g-3 rz-mb-4">
+            <div class="rz-col-4">
+                <RadzenTextBox @bind-Value="model.TahakkukNo"
+                               Name="TahakkukNo"
+                               Placeholder="Tahakkuk No"
+                               Style="width:100%" />
+                <ValidationMessage For="@(() => model.TahakkukNo)" />
+            </div>
+            <div class="rz-col-4">
+                <RadzenTextBox @bind-Value="model.TaxNumber"
+                               Name="TaxNumber"
+                               Placeholder="Vergi Numarası"
+                               Style="width:100%" />
+                <ValidationMessage For="@(() => model.TaxNumber)" />
+            </div>
+            <div class="rz-col-4">
+                <RadzenNumeric @bind-Value="model.Amount"
+                               Name="Amount"
+                               Placeholder="Tutar"
+                               Style="width:100%"
+                               TValue="decimal" />
+                <ValidationMessage For="@(() => model.Amount)" />
+            </div>
+        </div>
+
+        <div class="rz-grid rz-g-3 rz-mb-4">
+            <div class="rz-col-6">
+                <RadzenTextBox @bind-Value="model.TaxpayerName"
+                               Name="TaxpayerName"
+                               Placeholder="Mükellef"
+                               Style="width:100%" />
+                <ValidationMessage For="@(() => model.TaxpayerName)" />
+            </div>
+            <div class="rz-col-6">
+                <RadzenDropDown @bind-Value="model.TaxType"
+                                Data="@declarationTypes"
+                                Name="TaxType"
+                                Placeholder="Vergi Türü"
+                                Style="width:100%"
+                                AllowClear="true" />
+                <ValidationMessage For="@(() => model.TaxType)" />
+            </div>
+        </div>
+
+        <div class="rz-grid rz-g-3 rz-mb-4">
+            <div class="rz-col-6">
+                <RadzenTextBox @bind-Value="model.CreatedBy"
+                               Name="CreatedBy"
+                               Placeholder="Giren Kişi"
+                               Style="width:100%" />
+                <ValidationMessage For="@(() => model.CreatedBy)" />
+            </div>
+            <div class="rz-col-6">
+                <RadzenTextArea @bind-Value="model.Description"
+                                Name="Description"
+                                Placeholder="Açıklama"
+                                Rows="3"
+                                Style="width:100%" />
+                <ValidationMessage For="@(() => model.Description)" />
+            </div>
+        </div>
+
+        <div class="rz-mt-4 rz-text-right">
+            <RadzenButton Text="İptal" ButtonStyle="ButtonStyle.Light" Click="@Cancel" class="rz-mr-2" />
+            <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" />
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public UIActionEnum Action { get; set; } = UIActionEnum.Insert;
+    [Parameter] public TaxPaymentEntityDto model { get; set; } = new();
+
+    private EditContext _editContext;
+
+    private List<string> declarationTypes = new()
+    {
+        "0015 KDV-1",
+        "4017 KDV-2",
+        "0003 STOPAJ MUHTASAR",
+        "0095 UCRET MUHTASAR",
+        "SGK",
+        "0040 DAMGA VERGISI",
+        "0033 GECICI VERGI",
+        "0010 KURUMLAR VERGISI"
+    };
+
+    protected override void OnInitialized()
+    {
+        _editContext = new EditContext(model);
+    }
+
+    private async Task OnValidSubmit()
+    {
+        bool ok = Action == UIActionEnum.Insert
+            ? await TaxPaymentService.CreateAsync(model)
+            : await TaxPaymentService.UpdateAsync(model);
+
+        if (ok)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = Action == UIActionEnum.Insert ? "Tax payment created" : "Tax payment updated",
+                Duration = 2500
+            });
+
+            DialogService.Close(true);
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Operation failed",
+                Duration = 3000
+            });
+        }
+    }
+
+    private void Cancel() => DialogService.Close(false);
+}

@@ -103,6 +103,13 @@
                                          Path="/beyanname-takip" />
                 }
 
+                @if (canViewVergiOdeme)
+                {
+                    <RadzenPanelMenuItem Text="Mükellef Vergi Ödemeleri"
+                                         Icon="receipt_long"
+                                         Path="/taxpayments" />
+                }
+
 
 
                 <AuthorizeView Roles="Admin">
@@ -232,6 +239,8 @@
 
     void ToggleSidebar() => isCollapsed = !isCollapsed;
     private bool canViewBeyannameTakip;
+    private bool canViewVergiOdeme;
+
     private bool canViewVehicleList;
     private bool canViewExpenses;
     private bool canViewEducation;
@@ -255,6 +264,7 @@
     private async Task LoadPermissionsAsync()
     {
         canViewBeyannameTakip = await PermissionService.HasPermissionAsync("BeyannameTakip.View");
+        canViewVergiOdeme = await PermissionService.HasPermissionAsync("TaxPayment.View");
         canViewVehicleList = await PermissionService.HasPermissionAsync("Vehicle.View"); // veya VehicleList.View
         canViewExpenses = await PermissionService.HasPermissionAsync("Expense.View");
         canViewEducation = await PermissionService.HasPermissionAsync("Education.View");

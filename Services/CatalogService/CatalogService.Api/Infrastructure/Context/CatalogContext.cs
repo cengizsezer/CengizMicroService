@@ -3,6 +3,7 @@ using CatalogService.Api.Features.Declarations.Entities;
 using CatalogService.Api.Features.Education.Domain;
 using CatalogService.Api.Features.Expenses.Domain;
 using CatalogService.Api.Features.Jobs.Domain;
+using CatalogService.Api.Features.Payment.Entities;
 using CatalogService.Api.Features.Payroll.Entities;
 using CatalogService.Api.Features.Payroll.Persistence.Configurations;
 using CatalogService.Api.Features.Vehicles.Domain;
@@ -41,7 +42,8 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<PayrollParameter> PayrollParameters => Set<PayrollParameter>();
         public DbSet<PayrollTaxBracket> PayrollTaxBrackets => Set<PayrollTaxBracket>();
         public DbSet<PayrollDisabilityExemption> PayrollDisabilityExemptions => Set<PayrollDisabilityExemption>();
-
+        public DbSet<SeedHistory> SeedHistories => Set<SeedHistory>();
+        public DbSet<TaxPaymentEntity> TaxPayments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -58,6 +60,7 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new AccountNodesEntityTypeConfiguration());
             builder.ApplyConfiguration(new DeclarationEntityTypeConfiguration());
             builder.ApplyConfiguration(new CustomerCompanyTypeConfiguration());
+            builder.ApplyConfiguration(new TaxPaymentConfiguration());
 
 
             SetBuilderPKFConfiguration(builder);
@@ -79,6 +82,7 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new PayrollDisabilityExemptionConfiguration());
             builder.ApplyConfiguration(new PayrollParameterConfiguration());
             builder.ApplyConfiguration(new PayrollTaxBracketConfiguration());
+            builder.ApplyConfiguration(new SeedHistoryConfiguration());
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)

@@ -1,0 +1,147 @@
+﻿.tax-import-dialog-content {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    min-width: 0;
+}
+
+.tax-import-header {
+    padding: 22px 24px 14px 24px;
+    border-bottom: 1px solid #eceff3;
+    background: #ffffff;
+}
+
+.tax-import-header-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.tax-import-title {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #1f2937;
+}
+
+.tax-import-subtitle {
+    margin-top: 6px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #6b7280;
+}
+
+.tax-import-grid-wrapper {
+    padding: 18px 24px 10px 24px;
+    background: #ffffff;
+}
+
+    .tax-import-grid-wrapper .rz-datatable,
+    .tax-import-grid-wrapper .rz-data-grid {
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #fff;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+    }
+
+.tax-import-grid .rz-datatable-tablewrapper {
+    overflow-x: auto;
+}
+
+.tax-import-grid .rz-column-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #374151;
+}
+
+.tax-import-grid .rz-datatable-thead th,
+.tax-import-grid .rz-grid-table thead th {
+    background: #f8fafc;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 14px 16px;
+}
+
+.tax-import-grid .rz-datatable-data td,
+.tax-import-grid .rz-grid-table tbody td {
+    padding: 15px 16px;
+    font-size: 14px;
+    color: #1f2937;
+    border-bottom: 1px solid #eef2f7;
+    vertical-align: middle;
+    background: #fff;
+}
+
+.tax-import-grid .rz-datatable-data tr:hover td,
+.tax-import-grid .rz-grid-table tbody tr:hover td {
+    background: #f9fbff;
+}
+
+.tax-import-grid .rz-paginator {
+    border-top: 1px solid #eef2f7;
+    padding: 10px 14px;
+    background: #fff;
+}
+
+.tax-import-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 24px 22px 24px;
+    border-top: 1px solid #eceff3;
+    background: #fcfcfd;
+}
+
+.tax-import-info {
+    font-size: 14px;
+    color: #4b5563;
+    white-space: nowrap;
+}
+
+.tax-import-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.tax-import-cancel-btn,
+.tax-import-submit-btn {
+    min-width: 120px;
+}
+
+.tax-import-delete-btn {
+    border-radius: 10px !important;
+}
+
+.ellipsis-cell {
+    max-width: 160px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.amount-cell {
+    text-align: right;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+    .tax-import-header,
+    .tax-import-grid-wrapper,
+    .tax-import-footer {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .tax-import-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .tax-import-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}

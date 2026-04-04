@@ -7,6 +7,7 @@ using CatalogService.Api.Features.Jobs.Service;
 using CatalogService.Api.Features.Payroll.Persistence.Seeds;
 using CatalogService.Api.Features.Payroll.Services;
 using CatalogService.Api.Features.Payroll.Services.Interfaces;
+using CatalogService.Api.Features.TaxPayments.Service;
 using CatalogService.Api.Features.Vehicles.Mapping;
 using CatalogService.Api.Features.Vehicles.Service;
 using CatalogService.Api.Infrastructure;
@@ -53,6 +54,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 builder.Configuration.AddConfiguration(configuration);
 builder.Services.AddScoped<VehicleService>(); // domain servisin
+builder.Services.AddScoped<TaxPaymentService>(); // domain servisin
 
 if (env == "Docker")
 {
@@ -96,6 +98,7 @@ builder.Services.AddScoped<IDeclarationQueryService, DeclarationQueryService>();
 builder.Services.AddScoped<IDeclarationCommandService, DeclarationCommandService>();
 builder.Services.AddScoped<ICustomerCompanyQueryService, CustomerCompanyQueryService>();
 builder.Services.AddScoped<IPayrollCalculationEngine, PayrollCalculationEngine>();
+
 builder.Services.AddSingleton<IEventBus>(sp =>
 {
     var cfg = builder.Configuration;

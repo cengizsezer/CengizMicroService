@@ -630,6 +630,56 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("JobAssignments", "catalog");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.Payment.Entities.TaxPaymentEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("TahakkukNo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("TaxNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TaxType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("TaxpayerName")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TahakkukNo", "TaxNumber", "TaxType")
+                        .IsUnique();
+
+                    b.ToTable("TaxPayments", "pkf");
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.Payroll.Entities.PayrollDisabilityExemption", b =>
                 {
                     b.Property<int>("Id")
@@ -686,9 +736,11 @@ namespace CatalogService.Api.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("MinimumWageIncomeTaxExemptionMonthly")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("MinimumWageStampTaxExemptionMonthly")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("MonthlyBoardMemberExemption")
@@ -704,10 +756,12 @@ namespace CatalogService.Api.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("RetiredSgkEmployeeRate")
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<decimal>("RetiredUnemploymentEmployeeRate")
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<decimal>("SgkEmployeeRate")
                         .HasPrecision(18, 4)
@@ -768,6 +822,33 @@ namespace CatalogService.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("PayrollTaxBrackets", "pkf");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.Payroll.Entities.SeedHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AppliedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SeedKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SeedKey")
+                        .IsUnique();
+
+                    b.ToTable("SeedHistories", "pkf");
                 });
 
             modelBuilder.Entity("CatalogService.Api.Features.Vehicles.Domain.Vehicle", b =>
