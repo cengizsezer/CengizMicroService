@@ -1112,6 +1112,32 @@
   },
   {
     "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
+    "Method": "GetLawTypes",
+    "RelativePath": "api/public/payroll/law-types",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "year",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.Payroll.Dtos.Shared.PayrollLawTypeDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
     "Method": "GetParametersByYear",
     "RelativePath": "api/public/payroll/parameters/{year}",
     "HttpMethod": "GET",

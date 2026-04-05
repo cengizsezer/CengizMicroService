@@ -44,5 +44,13 @@ namespace WebApp.Pages.Payroll.Services
                 $"{Base}/parameters/{year}",
                 cancellationToken);
         }
+
+
+        public async Task<List<PayrollLawTypeDto>> GetLawTypesAsync(int year, CancellationToken cancellationToken = default)
+        {
+            return await _httpClient.GetFromJsonAsync<List<PayrollLawTypeDto>>(
+                $"api/public/payroll/law-types?year={year}",
+                cancellationToken) ?? new List<PayrollLawTypeDto>();
+        }
     }
 }

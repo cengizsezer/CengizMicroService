@@ -1,6 +1,8 @@
 ﻿using CatalogService.Api.Features.Payroll.Commands.CalculatePayroll;
 using CatalogService.Api.Features.Payroll.Dtos.Requests;
+using CatalogService.Api.Features.Payroll.Dtos.Shared;
 using CatalogService.Api.Features.Payroll.Queries.GetPayrollCalculatorBootstrap;
+using CatalogService.Api.Features.Payroll.Queries.GetPayrollLawTypes;
 using CatalogService.Api.Features.Payroll.Queries.GetPayrollParametersByYear;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -65,10 +67,22 @@ namespace CatalogService.Api.Features.Payroll.Controllers
 
                 StartMonth = request.StartMonth,
                 PreviousCumulativeTaxBase = request.PreviousCumulativeTaxBase,
-                Months = request.Months
+                Months = request.Months,
+                LawCode = request.LawCode,
             };
 
             var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+
+        [HttpGet("law-types")]
+        public async Task<ActionResult<List<PayrollLawTypeDto>>> GetLawTypes([FromQuery] int year = 2026)
+        {
+            var result = await _mediator.Send(new GetPayrollLawTypesQuery
+            {
+                Year = year
+            });
+
             return Ok(result);
         }
     }

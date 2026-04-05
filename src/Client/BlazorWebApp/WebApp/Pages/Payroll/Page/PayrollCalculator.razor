@@ -8,34 +8,15 @@
 @inject IPayrollApiService PayrollApiService
 @inject DialogService DialogService
 
-<PageTitle>İşçi Ücret Hesaplama</PageTitle>
+<PageTitle>Ücret Bordrosu</PageTitle>
 
 <div class="payroll-page">
     <div class="payroll-container">
 
-        <h1 class="page-title">@(IsHonorarium ? "Huzur Hakkı Hesaplama" : "Ücret Bordrosu")</h1>
-
-        <div class="payroll-top-text">
-            Yemek Bedeli (Günlük İstisna) GVK ve DV Açısından:
-            <strong>300 TL</strong>
-            SGK Açısından:
-            <strong>158 TL</strong>,
-            GVK Ulaşım İstisnası (Günlük):
-            <strong>158 TL</strong>,
-            GVK Aylık Huzur Hakkı İstisnası:
-            <strong>33.030,00 TL</strong>
-            <br />
-            SGK Çocuk Zammı (Çocuk Başına Aylık):
-            <strong>660,60 TL</strong>,
-            SGK Aile Zammı (Aylık):
-            <strong>3.303,00 TL</strong>
-            <br />
-            Vergiden Müstesna Gündelik:
-            <strong>900 TL</strong>
-            -
-            KKTC:
-            <strong>2.005 TL</strong>
-        </div>
+      @*   <div class="payroll-header">
+            <img src="/img/pkf-logo.svg" alt="PKF" class="payroll-logo" />
+            <h1 class="page-title">@(IsHonorarium ? "Huzur Hakkı Hesaplama" : "Ücret Bordrosu")</h1>
+        </div> *@
 
         <div class="payroll-filters">
             <div class="filter-item year-box">
@@ -44,6 +25,18 @@
                                 Data="@yearOptions"
                                 @bind-Value="model.Year"
                                 Style="width:110px;"
+                                Change="@OnYearChangedAsync" />
+            </div>
+
+            <div class="filter-item">
+                <label>Kanun</label>
+                <RadzenDropDown TValue="string"
+                                @bind-Value="model.LawCode"
+                                Data="@lawTypes"
+                                TextProperty="Label"
+                                ValueProperty="Code"
+                                AllowClear="false"
+                                Style="width:220px;"
                                 Change="@(_ => TriggerRecalculateAsync())" />
             </div>
 
@@ -69,36 +62,66 @@
                                 Change="@(_ => TriggerRecalculateAsync())" />
             </div>
 
+            <div class="filter-item">
+                <label>Engel Durumu</label>
+                <RadzenDropDown TValue="int"
+                                Data="@disabilityTypes"
+                                TextProperty="Text"
+                                ValueProperty="Value"
+                                @bind-Value="model.DisabilityType"
+                                Style="width:140px;"
+                                Change="@(_ => TriggerRecalculateAsync())" />
+            </div>
+
             @if (!IsHonorarium)
             {
                 <div class="filter-item switch-item">
                     <label>&nbsp;</label>
                     <div class="switch-wrap">
-                        <RadzenCheckBox @bind-Value="model.IsJanitor"
-                                        Change="@((bool value) => OnJanitorChanged(value))" />
-                        <span>Kapıcı</span>
+                        <RadzenSwitch class="pkf-switch" @bind-Value="model.ShowAuviOption"
+                                      Change="@((bool value) => TriggerRecalculateAsync())" />
+                        <span>AÜVİ Uygula</span>
                     </div>
                 </div>
 
                 <div class="filter-item switch-item">
                     <label>&nbsp;</label>
                     <div class="switch-wrap">
-                        <RadzenCheckBox @bind-Value="model.HasMandatoryBes"
-                                        Change="@((bool value) => TriggerRecalculateAsync())" />
-                        <span>Zorunlu BES</span>
+                        <RadzenSwitch class="pkf-switch" @bind-Value="model.ShowManufacturingOption"
+                                      Change="@(_ => TriggerRecalculateAsync())" />
+                        <span>İmalat Sektörü</span>
                     </div>
                 </div>
 
-                <div class="filter-item">
-                    <label>Engel Durumu</label>
-                    <RadzenDropDown TValue="int"
-                                    Data="@disabilityTypes"
-                                    TextProperty="Text"
-                                    ValueProperty="Value"
-                                    @bind-Value="model.DisabilityType"
-                                    Style="width:140px;"
-                                    Change="@(_ => TriggerRecalculateAsync())" />
+                <div class="filter-item switch-item">
+                    <label>&nbsp;</label>
+                    <div class="switch-wrap">
+                        <RadzenSwitch class="pkf-switch" @bind-Value="model.HasMandatoryBes"
+                                      Change="@((bool value) => TriggerRecalculateAsync())" />
+                        <span>Zorunlu BES</span>
+                    </div>
                 </div>
+@* 
+                <div class="filter-item switch-item">
+                    <label>&nbsp;</label>
+                    <div class="switch-wrap">
+                        <RadzenSwitch class="pkf-switch" @bind-Value="model.IncludeStampTax"
+                                      Change="@(_ => TriggerRecalculateAsync())" />
+                        <span>Damga Vergisi</span>
+                    </div>
+                </div> *@
+
+                <div class="filter-item switch-item">
+                    <label>&nbsp;</label>
+                    <div class="switch-wrap">
+                        <RadzenSwitch class="pkf-switch" @bind-Value="model.IncludeEmployerCost"
+                                      Change="@(_ => TriggerRecalculateAsync())"
+                                      />
+                        
+                        <span>İşveren Maliyetleri</span>
+                    </div>
+                </div>
+                
             }
 
             @if (IsHonorarium)
@@ -112,10 +135,7 @@
                 </div>
             }
 
-            <div class="filter-item action-link">
-                <label>&nbsp;</label>
-                <a href="javascript:void(0)">Asgari Ücrete Göre Hesapla</a>
-            </div>
+           
         </div>
 
         <div class="table-wrapper">
@@ -178,7 +198,7 @@
                         }
 
                         <tr class="total-row">
-                            <td colspan="2">Toplam...</td>
+                            <td colspan="2">Toplam</td>
                             <td>@FormatMoney(result?.Totals?.TotalGrossSalary)</td>
                             <td>@FormatMoney(result?.Totals?.TotalSgkEmployeeAmount)</td>
                             <td>@FormatMoney(result?.Totals?.TotalUnemploymentEmployeeAmount)</td>
@@ -253,7 +273,7 @@
                         }
 
                         <tr class="total-row">
-                            <td colspan="2">Toplam...</td>
+                            <td colspan="2">Toplam</td>
                             <td>@FormatMoney(result?.HonorariumTotals?.TotalGrossHonorarium)</td>
                             <td>@FormatMoney(result?.HonorariumTotals?.TotalIncomeTaxBase)</td>
                             <td>@FormatMoney(result?.HonorariumTotals?.TotalIncomeTaxBase)</td>
@@ -268,14 +288,35 @@
                             <td>@FormatMoney(result?.HonorariumTotals?.TotalNetHonorarium)</td>
                         </tr>
                     </tbody>
+
                 </table>
             }
         </div>
 
-        <div class="payroll-info-text">
-            <div>◎ Sadece temel parametrelere göre hesaplama yapmak üzere dizayn edilen bu hizmetin kullanımı ücretsizdir.</div>
-            <div>◎ Burada yapılan hesaplamalar bilgilendirme amaçlı olup profesyonel danışmanlık hizmeti sunma taahhüdü taşımaz. Belirtilen bilgilerin doğruluğu garanti edilmez ve bu bilgilerin kullanımı nedeniyle oluşabilecek herhangi bir zarardan sorumluluk kabul edilmez.</div>
+        <div class="payroll-actions">
+            <RadzenButton Text="Excel İndir"
+                          Icon="download"
+                          Variant="Variant.Outlined"
+                          ButtonStyle="ButtonStyle.Success"
+                          Click="@(()=>{})" />
+            <RadzenButton Text="Belge Oluştur"
+                          Icon="description"
+                          Variant="Variant.Outlined"
+                          ButtonStyle="ButtonStyle.Primary"
+                          Click="@(()=>{})" />
+
+            <RadzenButton Text="Kaydet"
+                          Icon="save"
+                          Variant="Variant.Outlined"
+                          ButtonStyle="ButtonStyle.Base"
+                          Click="@(()=>{})" />
+
+            <RadzenButton Text="Hesapla"
+                          Icon="calculate"
+                          ButtonStyle="ButtonStyle.Danger"
+                          Click="@TriggerRecalculateAsync" />
         </div>
+
 
         @if (isLoading)
         {
@@ -296,7 +337,7 @@
     private bool isLoading;
     private string? errorMessage;
     private CancellationTokenSource? debounceCts;
-
+    private List<PayrollLawTypeDto> lawTypes = new();
     private bool IsHonorarium => model.EmployeeType == 3;
     private List<int> yearOptions = new() { 2025, 2026, 2027 };
 
@@ -321,9 +362,37 @@
         new() { Value = 3, Text = "3. Derece" }
     };
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         monthInputs = BuildDefaultMonths();
+
+        lawTypes = await PayrollApiService.GetLawTypesAsync(model.Year);
+
+        if (!lawTypes.Any(x => x.Code == model.LawCode))
+        {
+            model.LawCode = lawTypes.FirstOrDefault()?.Code ?? "00000";
+        }
+    }
+
+    private async Task OnYearChangedAsync(object? value)
+    {
+        if (value is int year)
+        {
+            model.Year = year;
+        }
+        else
+        {
+            model.Year = Convert.ToInt32(value);
+        }
+
+        lawTypes = await PayrollApiService.GetLawTypesAsync(model.Year);
+
+        if (!lawTypes.Any(x => x.Code == model.LawCode))
+        {
+            model.LawCode = lawTypes.FirstOrDefault()?.Code ?? "00000";
+        }
+
+        await TriggerRecalculateAsync();
     }
 
     private List<PayrollMonthInputModel> BuildDefaultMonths()
@@ -393,6 +462,7 @@
             var request = new CalculatePayrollRequest
             {
                 Year = model.Year,
+                LawCode = model.LawCode,
                 CalculationType = model.CalculationType,
                 EmployeeType = model.EmployeeType,
                 HasMandatoryBes = model.HasMandatoryBes,
@@ -437,9 +507,9 @@
             "",
             new Dictionary<string, object>
             {
-            { "GrossAmount", GetCurrentHonorariumGrossTotal() },
-            { "TaxCost", GetCurrentHonorariumTaxCost() },
-            { "NetReceived", GetCurrentHonorariumNetAmount() }
+                { "GrossAmount", GetCurrentHonorariumGrossTotal() },
+                { "TaxCost", GetCurrentHonorariumTaxCost() },
+                { "NetReceived", GetCurrentHonorariumNetAmount() }
             },
             new DialogOptions
             {
@@ -449,6 +519,7 @@
                 Draggable = true
             });
     }
+
     private decimal GetCurrentHonorariumTaxCost()
     {
         return result?.HonorariumTotals?.TotalDeductions ?? 0m;
@@ -458,7 +529,6 @@
     {
         return result?.HonorariumTotals?.TotalNetHonorarium ?? 0m;
     }
-   
 
     private PayrollMonthResultDto? GetMonthResult(int month)
     {
@@ -494,6 +564,7 @@
     private class PayrollPageModel
     {
         public int Year { get; set; } = 2026;
+        public string LawCode { get; set; } = "00000";
         public int CalculationType { get; set; } = 1;
         public int EmployeeType { get; set; } = 1;
         public bool IsJanitor { get; set; }
@@ -504,5 +575,7 @@
         public bool IncludeMinimumWageExemption { get; set; } = true;
         public bool IncludeStampTax { get; set; } = true;
         public bool IncludeEmployerCost { get; set; } = false;
+        public bool ShowAuviOption { get; set; }
+        public bool ShowManufacturingOption { get; set; }
     }
 }

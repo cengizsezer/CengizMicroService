@@ -11,13 +11,18 @@
         </div>
 
         <div class="comparison-toolbar-actions">
-            <RadzenButton Text="Excel’e Aktar"
+            <RadzenButton Text="Excel İndir"
+                          Icon="download"
+                          Variant="Variant.Outlined"
+                          ButtonStyle="ButtonStyle.Success"
+                          Click="@(()=>{})" />
+            <RadzenButton Text="Belge Oluştur"
                           Icon="description"
-                          ButtonStyle="ButtonStyle.Light" />
-            <RadzenButton Text="Detayları Genişlet"
-                          Icon="expand_more"
-                          ButtonStyle="ButtonStyle.Light" />
+                          Variant="Variant.Outlined"
+                          ButtonStyle="ButtonStyle.Primary"
+                          Click="@(()=>{})" />
         </div>
+       
     </div>
 
     <div class="comparison-table-wrap">
@@ -98,15 +103,15 @@
     </div>
 
     <div class="comparison-footer">
-        <div class="comparison-footer-left">
+        @* <div class="comparison-footer-left">
             <RadzenCheckBox @bind-Value="IncludeEmployerCost" TValue="bool" Change="@(args => Recalculate())" />
             <span>Şirket maliyetini de dahil et</span>
-        </div>
+        </div> *@
 
         <div class="comparison-footer-right">
-            <RadzenButton Text="Detayları Genişlet"
+            @* <RadzenButton Text="Detayları Genişlet"
                           Icon="download"
-                          ButtonStyle="ButtonStyle.Light" />
+                          ButtonStyle="ButtonStyle.Light" /> *@
             <RadzenButton Text="Kapat"
                           Icon="close"
                           Click="@Close" />
@@ -187,40 +192,41 @@
 
 <style>
     .comparison-dialog {
-        padding: 8px 10px 6px 10px;
+        padding: 6px 10px 4px 10px;
     }
 
     .comparison-toolbar {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 20px;
-        margin-bottom: 18px;
+        gap: 16px;
+        margin-bottom: 12px;
     }
 
     .comparison-title {
-        margin: 0 0 8px 0;
-        font-size: 24px;
+        margin: 0 0 6px 0;
+        font-size: 22px;
         font-weight: 700;
         color: #1f2937;
     }
 
     .comparison-subtitle {
-        font-size: 15px;
+        font-size: 14px;
         color: #6b7280;
     }
 
     .comparison-toolbar-actions {
         display: flex;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: wrap;
     }
 
+    /* TABLE WRAP */
     .comparison-table-wrap {
         border: 1px solid #e5e7eb;
         border-radius: 8px;
         overflow: hidden;
-        margin-bottom: 18px;
+        margin-bottom: 8px; /* 🔥 boşluk azaltıldı */
     }
 
     .comparison-table {
@@ -230,12 +236,13 @@
         background: white;
     }
 
+        /* HEADER */
         .comparison-table thead th {
             background: #f8fafc;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 700;
             color: #1f2937;
-            padding: 16px 14px;
+            padding: 12px 12px; /* 🔥 küçültüldü */
             border-bottom: 1px solid #e5e7eb;
             border-right: 1px solid #e5e7eb;
             text-align: center;
@@ -250,11 +257,12 @@
                 border-right: none;
             }
 
+        /* BODY */
         .comparison-table tbody td {
-            padding: 14px;
+            padding: 10px 12px; /* 🔥 küçültüldü */
             border-bottom: 1px solid #e5e7eb;
             border-right: 1px solid #e5e7eb;
-            font-size: 15px;
+            font-size: 14px;
             color: #374151;
             vertical-align: middle;
         }
@@ -278,8 +286,9 @@
             border-bottom: none;
         }
 
+    /* FINAL ROW */
     .final-net-row td {
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 700;
     }
 
@@ -294,19 +303,20 @@
         font-weight: 700 !important;
     }
 
+    /* 🔥 AVANTAJLI YÖNTEM BOX */
     .comparison-summary {
         display: flex;
-        gap: 14px;
-        align-items: flex-start;
+        gap: 10px;
+        align-items: center; /* 🔥 ortalandı */
         background: #f3faf4;
         border: 1px solid #d8ead9;
         border-radius: 8px;
-        padding: 18px 18px;
-        margin-bottom: 18px;
+        padding: 10px 14px; /* 🔥 küçültüldü */
+        margin-bottom: 10px; /* 🔥 boşluk azaltıldı */
     }
 
     .summary-icon {
-        font-size: 34px;
+        font-size: 26px; /* 🔥 küçültüldü */
         line-height: 1;
         color: #2f7d4a;
         font-weight: 700;
@@ -315,39 +325,40 @@
     .summary-content {
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 4px;
     }
 
     .summary-title {
-        font-size: 18px;
+        font-size: 16px;
         font-weight: 700;
         color: #1f2937;
     }
 
     .summary-line {
-        font-size: 15px;
+        font-size: 14px;
         color: #374151;
     }
 
+    /* FOOTER */
     .comparison-footer {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 16px;
-        margin-top: 6px;
+        gap: 12px;
+        margin-top: 2px; /* 🔥 aşağı kaymayı düzeltti */
     }
 
     .comparison-footer-left {
         display: flex;
         align-items: center;
-        gap: 10px;
-        font-size: 15px;
+        gap: 8px;
+        font-size: 14px;
         color: #374151;
     }
 
     .comparison-footer-right {
         display: flex;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: wrap;
     }
 </style>

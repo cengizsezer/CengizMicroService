@@ -706,6 +706,41 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("PayrollDisabilityExemptions", "pkf");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.Payroll.Entities.PayrollLawType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Year", "Code")
+                        .IsUnique();
+
+                    b.ToTable("PayrollLawTypes", "pkf");
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.Payroll.Entities.PayrollParameter", b =>
                 {
                     b.Property<int>("Id")

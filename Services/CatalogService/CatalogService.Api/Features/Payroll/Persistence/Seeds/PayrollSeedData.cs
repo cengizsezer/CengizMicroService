@@ -12,6 +12,7 @@ namespace CatalogService.Api.Features.Payroll.Persistence.Seeds
             await SeedPayrollParametersAsync(context, cancellationToken);
             await SeedPayrollTaxBracketsAsync(context, cancellationToken);
             await SeedPayrollDisabilityExemptionsAsync(context, cancellationToken);
+            await SeedPayrollLawTypesAsync(context, cancellationToken);
         }
 
         //private static async Task SeedPayrollParametersAsync(CatalogContext context, CancellationToken cancellationToken)
@@ -319,6 +320,71 @@ namespace CatalogService.Api.Features.Payroll.Persistence.Seeds
                     Version = seedVersion,
                     AppliedAtUtc = DateTime.UtcNow
                 }, cancellationToken);
+            }
+            else
+            {
+                appliedSeed.Version = seedVersion;
+                appliedSeed.AppliedAtUtc = DateTime.UtcNow;
+            }
+
+            await context.SaveChangesAsync(cancellationToken);
+        }
+
+
+        private static async Task SeedPayrollLawTypesAsync(CatalogContext context, CancellationToken cancellationToken)
+        {
+            const int year = 2026;
+            const string seedKey = "PayrollLawTypes-2026";
+            const int seedVersion = 1;
+
+            var appliedSeed = await context.SeedHistories
+                .FirstOrDefaultAsync(x => x.SeedKey == seedKey, cancellationToken);
+
+            if (appliedSeed != null && appliedSeed.Version >= seedVersion)
+                return;
+
+            var existingLawTypes = await context.PayrollLawTypes
+                .Where(x => x.Year == year)
+                .ToListAsync(cancellationToken);
+
+            if (existingLawTypes.Count > 0)
+                context.PayrollLawTypes.RemoveRange(existingLawTypes);
+
+            var lawTypes = new List<PayrollLawType>
+    {
+        new() { Year = year, Code = "00000", Name = "Standart Çalışan", IsActive = true, DisplayOrder = 1 },
+        new() { Year = year, Code = "02828", Name = "Sayılı Kanun", IsActive = true, DisplayOrder = 2 },
+        new() { Year = year, Code = "04691", Name = "Teknopark Personeli", IsActive = true, DisplayOrder = 3 },
+        new() { Year = year, Code = "05510", Name = "Sayılı Kanun", IsActive = true, DisplayOrder = 4 },
+        new() { Year = year, Code = "05746", Name = "Ar-Ge Personeli", IsActive = true, DisplayOrder = 5 },
+        new() { Year = year, Code = "06111", Name = "Sayılı Kanun", IsActive = true, DisplayOrder = 6 },
+        new() { Year = year, Code = "06486", Name = "Sayılı Kanun", IsActive = true, DisplayOrder = 7 },
+        new() { Year = year, Code = "06645", Name = "Sayılı Kanun", IsActive = true, DisplayOrder = 8 },
+        new() { Year = year, Code = "14857", Name = "Sayılı Kanun", IsActive = true, DisplayOrder = 9 },
+        new() { Year = year, Code = "15510", Name = "Sayılı Kanun", IsActive = true, DisplayOrder = 10 },
+        new() { Year = year, Code = "15746", Name = "Sayılı Kanun", IsActive = true, DisplayOrder = 11 },
+        new() { Year = year, Code = "16322", Name = "Sayılı Kanun", IsActive = true, DisplayOrder = 12 },
+        new() { Year = year, Code = "25225", Name = "Sayılı Kanun", IsActive = true, DisplayOrder = 13 },
+        new() { Year = year, Code = "25510", Name = "Sayılı Kanun", IsActive = true, DisplayOrder = 14 },
+        new() { Year = year, Code = "26322", Name = "Sayılı Kanun", IsActive = true, DisplayOrder = 15 },
+        new() { Year = year, Code = "46486", Name = "Sayılı Kanun", IsActive = true, DisplayOrder = 16 },
+        new() { Year = year, Code = "55225", Name = "Sayılı Kanun", IsActive = true, DisplayOrder = 17 },
+        new() { Year = year, Code = "56486", Name = "Sayılı Kanun", IsActive = true, DisplayOrder = 18 },
+        new() { Year = year, Code = "66486", Name = "Sayılı Kanun", IsActive = true, DisplayOrder = 19 }
+    };
+
+            await context.PayrollLawTypes.AddRangeAsync(lawTypes, cancellationToken);
+
+            if (appliedSeed == null)
+            {
+                appliedSeed = new SeedHistory
+                {
+                    SeedKey = seedKey,
+                    Version = seedVersion,
+                    AppliedAtUtc = DateTime.UtcNow
+                };
+
+                await context.SeedHistories.AddAsync(appliedSeed, cancellationToken);
             }
             else
             {

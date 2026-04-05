@@ -44,6 +44,7 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<PayrollDisabilityExemption> PayrollDisabilityExemptions => Set<PayrollDisabilityExemption>();
         public DbSet<SeedHistory> SeedHistories => Set<SeedHistory>();
         public DbSet<TaxPaymentEntity> TaxPayments { get; set; }
+        public DbSet<PayrollLawType> PayrollLawTypes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -83,6 +84,7 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new PayrollParameterConfiguration());
             builder.ApplyConfiguration(new PayrollTaxBracketConfiguration());
             builder.ApplyConfiguration(new SeedHistoryConfiguration());
+            builder.ApplyConfiguration(new PayrollLawTypeConfiguration());
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)

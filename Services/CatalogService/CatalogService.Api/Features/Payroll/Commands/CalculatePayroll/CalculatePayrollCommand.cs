@@ -21,5 +21,6 @@ namespace CatalogService.Api.Features.Payroll.Commands.CalculatePayroll
         public decimal PreviousCumulativeTaxBase { get; set; }
 
         public List<PayrollMonthInputDto> Months { get; set; } = new();
+        public string LawCode { get; set; } = "00000";
     }
 }
