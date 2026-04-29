@@ -86,9 +86,9 @@
     {
       "UseServiceDiscovery": true,
       "ServiceName": "SovosService",
-      "DownstreamPathTemplate": "/api/sovos/admin/{everything}",
+      "DownstreamPathTemplate": "/api/faturakontrol/{everything}",
       "DownstreamScheme": "http",
-      "UpstreamPathTemplate": "/sovos/admin/{everything}",
+      "UpstreamPathTemplate": "/faturakontrol/{everything}",
       "UpstreamHttpMethod": [ "Get", "Post", "Put", "Delete" ],
       "UpstreamScheme": "http"
     }

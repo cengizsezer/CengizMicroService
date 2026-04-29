@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("OCRService.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ec920afaee325d4df8202acd116a20fee8e6563a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c756f92e0f90bfb0c9153d2645097a0d7143eca7")]
 [assembly: System.Reflection.AssemblyProductAttribute("OCRService.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("OCRService.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
