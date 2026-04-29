@@ -52,5 +52,15 @@ namespace WebApp.Pages.Payroll.Services
                 $"api/public/payroll/law-types?year={year}",
                 cancellationToken) ?? new List<PayrollLawTypeDto>();
         }
+
+        public async Task<byte[]> ExportExcelAsync(CalculatePayrollRequest request, CancellationToken cancellationToken = default)
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                $"{Base}/export-excel",
+                request,
+                cancellationToken);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        }
     }
 }

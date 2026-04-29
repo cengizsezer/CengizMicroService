@@ -95,6 +95,9 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             services.AddScoped<IUserAdminService>(sp =>
                 new UserAdminService(sp.GetRequiredService<HttpClient>()));
 
+            services.AddScoped<ISovosAdminService>(sp =>
+                new SovosAdminService(sp.GetRequiredService<HttpClient>()));
+
             services.AddScoped<IExpenseService>(sp =>
                 new ExpenseService(sp.GetRequiredService<HttpClient>()));
 

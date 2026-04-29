@@ -1,0 +1,274 @@
+@attribute [Authorize(Roles = "Admin")]
+@page "/admin/sovos/companies"
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Pages.Admin.Sovos
+@using WebApp.Shared.Dto.Admin
+@using WebApp.Shared.Dto.Sovos
+@inject ISovosAdminService Sovos
+@inject DialogService Dialog
+@inject NotificationService Notif
+
+<RadzenCard class="rz-p-3">
+    <div class="grid align-items-center rz-mb-2">
+        <div class="col-12 md:col-6">
+            <RadzenTextBox @bind-Value="search"
+                           Placeholder="Firma ara: ad / kod / kullanıcı / mail"
+                           Style="width:100%" />
+            <RadzenButton Text="Ara" Icon="search" Click="@Reload" />
+        </div>
+        <div class="col-12 md:col-6 rz-text-align-right">
+            <RadzenButton Text="Yenile" class="rz-mr-2" Click="@Reload" />
+            <RadzenButton Text="Yeni Firma" Icon="add_business" ButtonStyle="ButtonStyle.Primary"
+                          Click="@Create" />
+        </div>
+    </div>
+
+    <RadzenDataGrid TItem="SovosCompanyListItemDto"
+                    Data="@companies"
+                    AllowPaging="true" PageSize="20"
+                    AllowSorting="true"
+                    AllowFiltering="false"
+                    LogicalFilterOperator="LogicalFilterOperator.And">
+
+        <Columns>
+            <RadzenDataGridColumn TItem="SovosCompanyListItemDto" Property="Name" Title="Firma Adı" />
+            <RadzenDataGridColumn TItem="SovosCompanyListItemDto" Property="CompanyCode" Title="Şirket Kodu" Width="140px" />
+            <RadzenDataGridColumn TItem="SovosCompanyListItemDto" Property="Username" Title="Kullanıcı" Width="160px" />
+            <RadzenDataGridColumn TItem="SovosCompanyListItemDto" Property="NotificationEmails" Title="Bildirim Mailleri" />
+
+            <RadzenDataGridColumn TItem="SovosCompanyListItemDto" Title="Tarama" Width="140px">
+                <Template Context="c">
+                    @FormatSchedule(c.ScheduleMode, c.ScheduleHour)
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="SovosCompanyListItemDto" Title="Aktif" Width="80px" TextAlign="TextAlign.Center">
+                <Template Context="c">
+                    @if (c.IsActive)
+                    {
+                        <RadzenIcon Icon="check_circle" Style="color:var(--rz-success)" />
+                    }
+                    else
+                    {
+                        <RadzenIcon Icon="cancel" Style="color:var(--rz-danger)" />
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="SovosCompanyListItemDto" Title="Son Başarılı" Width="150px">
+                <Template Context="c">
+                    @if (c.LastSuccessfulRunAt is DateTime t)
+                    {
+                        @t.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                    }
+                    else
+                    {
+                        <span class="rz-text-muted">—</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="SovosCompanyListItemDto" Title="Son Hata" Width="220px">
+                <Template Context="c">
+                    @if (!string.IsNullOrWhiteSpace(c.LastErrorMessage))
+                    {
+                        <RadzenBadge BadgeStyle="BadgeStyle.Danger"
+                                     Text="@Truncate(c.LastErrorMessage, 40)" />
+                    }
+                    else
+                    {
+                        <span class="rz-text-muted">—</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="SovosCompanyListItemDto" Title="İşlemler" Width="280px">
+                <Template Context="c">
+                    <span @onclick:stopPropagation @onkeydown:stopPropagation>
+                        <RadzenButton Icon="edit" Size="ButtonSize.Small" class="rz-mr-2"
+                                      Click="@(async _ => await Edit(c))" />
+                        <RadzenButton Icon="lock" Size="ButtonSize.Small" class="rz-mr-2"
+                                      ButtonStyle="ButtonStyle.Info"
+                                      Click="@(async _ => await ChangePassword(c))" />
+                        <RadzenButton Icon="refresh" Size="ButtonSize.Small" class="rz-mr-2"
+                                      Click="@(async _ => await RunNow(c))" />
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                      Click="@(async _ => await Delete(c))" />
+                    </span>
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</RadzenCard>
+
+@code {
+    string search = "";
+    List<SovosCompanyListItemDto> companies = new();
+
+    protected override async Task OnInitializedAsync() => await Load();
+    async Task Reload() => await Load();
+
+    async Task Load()
+    {
+        var page = await Sovos.GetCompaniesAsync(q: search, pageIndex: 0, pageSize: 50);
+        companies = page?.Data?.ToList() ?? new();
+    }
+
+    static string Truncate(string s, int max) =>
+        s.Length <= max ? s : s[..(max - 1)] + "…";
+
+    async Task Create()
+    {
+        var ok = await Dialog.OpenAsync<SovosCompanyCreateDialog>("Yeni Firma",
+            new() { ["Model"] = new NewSovosCompanyDto() },
+            new DialogOptions { Width = "600px" });
+
+        if (ok is bool b && b)
+        {
+            await Load();
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Başarılı",
+                Detail = "Firma oluşturuldu."
+            });
+        }
+    }
+
+    async Task Edit(SovosCompanyListItemDto c)
+    {
+        var full = await Sovos.GetCompanyByIdAsync(c.Id);
+        if (full is null)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Bulunamadı",
+                Detail = "Firma bulunamadı."
+            });
+            return;
+        }
+
+        var ok = await Dialog.OpenAsync<SovosCompanyEditDialog>($"{c.Name} – Düzenle",
+            new()
+            {
+                ["Model"] = new SovosCompanyEditDto
+                {
+                    Id = full.Id,
+                    Name = full.Name,
+                    CompanyCode = full.CompanyCode,
+                    Username = full.Username,
+                    NotificationEmails = full.NotificationEmails,
+                    IsActive = full.IsActive,
+                    ScheduleMode = full.ScheduleMode,
+                    ScheduleHour = full.ScheduleHour
+                }
+            },
+            new DialogOptions { Width = "600px" });
+
+        if (ok is bool b && b)
+        {
+            await Load();
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Güncellendi",
+                Detail = "Firma güncellendi."
+            });
+        }
+    }
+
+    async Task ChangePassword(SovosCompanyListItemDto c)
+    {
+        var ok = await Dialog.OpenAsync<SovosCompanyPasswordDialog>(
+            $"{c.Name} – Şifre Değiştir",
+            new()
+            {
+                ["CompanyId"] = c.Id,
+                ["CompanyName"] = c.Name
+            },
+            new DialogOptions { Width = "480px" });
+
+        if (ok is bool b && b)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Güncellendi",
+                Detail = "Şifre başarıyla değiştirildi."
+            });
+        }
+    }
+
+    async Task Delete(SovosCompanyListItemDto c)
+    {
+        var confirm = await Dialog.Confirm(
+            $"{c.Name} silinsin mi? Bu firmaya ait fatura kayıtları da silinecek.",
+            "Onay",
+            new ConfirmOptions
+            {
+                OkButtonText = "Sil",
+                CancelButtonText = "Vazgeç"
+            });
+
+        if (confirm == true)
+        {
+            var ok = await Sovos.DeleteCompanyAsync(c.Id);
+            if (ok)
+            {
+                await Load();
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Silindi",
+                    Detail = $"{c.Name} silindi."
+                });
+            }
+            else
+            {
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Hata",
+                    Detail = "Silme başarısız."
+                });
+            }
+        }
+    }
+
+    async Task RunNow(SovosCompanyListItemDto c)
+    {
+        var (ok, message) = await Sovos.RunNowAsync(c.Id);
+        if (ok)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Tarama başlatıldı",
+                Detail = $"{c.Name} için tarama kuyruğa alındı.",
+                Duration = 5000
+            });
+        }
+        else
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = message ?? "Tarama başlatılamadı.",
+                Duration = 5000
+            });
+        }
+    }
+
+    static string FormatSchedule(ScheduleMode mode, int? hour) => mode switch
+    {
+        ScheduleMode.Hourly => "Saatte Bir",
+        ScheduleMode.Daily => $"Günlük {hour ?? 9:00}:00",
+        ScheduleMode.Manual => "Manuel",
+        _ => "—"
+    };
+}

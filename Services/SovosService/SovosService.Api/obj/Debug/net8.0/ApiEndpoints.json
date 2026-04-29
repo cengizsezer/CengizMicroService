@@ -1,0 +1,170 @@
+[
+  {
+    "ContainingType": "SovosService.Api.Controllers.SovosAdminController",
+    "Method": "GetCompanies",
+    "RelativePath": "api/sovos/admin/companies",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "p",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "ps",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "q",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SovosService.Api.Application.Models.PageDto\u00601[[SovosService.Api.Application.Models.SovosCompanyListItemDto, SovosService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "SovosService.Api.Controllers.SovosAdminController",
+    "Method": "CreateCompany",
+    "RelativePath": "api/sovos/admin/companies",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "SovosService.Api.Application.Models.NewSovosCompanyDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "SovosService.Api.Controllers.SovosAdminController",
+    "Method": "GetCompany",
+    "RelativePath": "api/sovos/admin/companies/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SovosService.Api.Application.Models.SovosCompanyDetailDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "SovosService.Api.Controllers.SovosAdminController",
+    "Method": "UpdateCompany",
+    "RelativePath": "api/sovos/admin/companies/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "SovosService.Api.Application.Models.SovosCompanyEditDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "SovosService.Api.Controllers.SovosAdminController",
+    "Method": "DeleteCompany",
+    "RelativePath": "api/sovos/admin/companies/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "SovosService.Api.Controllers.SovosAdminController",
+    "Method": "ChangePassword",
+    "RelativePath": "api/sovos/admin/companies/{id}/password",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "SovosService.Api.Application.Models.SovosCompanyPasswordDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "SovosService.Api.Controllers.SovosAdminController",
+    "Method": "RunNowForCompany",
+    "RelativePath": "api/sovos/admin/companies/{id}/run-now",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "SovosService.Api.Controllers.SovosAdminController",
+    "Method": "TestLogin",
+    "RelativePath": "api/sovos/admin/companies/{id}/test-login",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  }
+]

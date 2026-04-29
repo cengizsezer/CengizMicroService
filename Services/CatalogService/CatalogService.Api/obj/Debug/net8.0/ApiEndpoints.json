@@ -1112,6 +1112,22 @@
   },
   {
     "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
+    "Method": "ExportExcel",
+    "RelativePath": "api/public/payroll/export-excel",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Payroll.Dtos.Requests.CalculatePayrollRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
     "Method": "GetLawTypes",
     "RelativePath": "api/public/payroll/law-types",
     "HttpMethod": "GET",

@@ -168,7 +168,7 @@ namespace CatalogService.Api.Features.Payroll.Services
     ? CalculateStampTax(grossSalary, context)
     : 0m;
 
-            var stampTaxExemption = (grossSalary > 0 && command.IncludeStampTax)
+            var stampTaxExemption = (grossSalary > 0 && command.IncludeStampTax && command.IncludeMinimumWageExemption)
        ? CalculateMinimumWageStampTaxExemption(context)
        : 0m;
 
@@ -197,6 +197,8 @@ namespace CatalogService.Api.Features.Payroll.Services
                 GrossSalary = grossSalary,
                 SgkEmployeeAmount = sgkEmployeeAmount,
                 UnemploymentEmployeeAmount = unemploymentEmployeeAmount,
+
+                DisabilityExemptionAmount = disabilityExemptionAmount,
 
                 IncomeTaxBase = incomeTaxBase,
                 CumulativeIncomeTaxBase = cumulativeIncomeTaxBase,
@@ -493,6 +495,7 @@ namespace CatalogService.Api.Features.Payroll.Services
                 TotalGrossSalary = Round2(months.Sum(x => x.GrossSalary)),
                 TotalSgkEmployeeAmount = Round2(months.Sum(x => x.SgkEmployeeAmount)),
                 TotalUnemploymentEmployeeAmount = Round2(months.Sum(x => x.UnemploymentEmployeeAmount)),
+                TotalDisabilityExemptionAmount = Round2(months.Sum(x => x.DisabilityExemptionAmount)),
                 TotalIncomeTaxBase = Round2(months.Sum(x => x.IncomeTaxBase)),
                 TotalCalculatedIncomeTax = Round2(months.Sum(x => x.CalculatedIncomeTax)),
                 TotalIncomeTaxExemption = Round2(months.Sum(x => x.IncomeTaxExemption)),

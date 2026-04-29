@@ -62,7 +62,21 @@ services:
     build:
       context: .
       dockerfile: Services/NotificationService/NotificationService.Console/Dockerfile
-   
+
+  sovosservice:
+    container_name: c_sovosservice
+    image: ${DOCKER_REGISTRY-}sovosservice
+    build:
+      context: .
+      dockerfile: Services/SovosService/SovosService.Api/Dockerfile
+
+  sovos_invoiceworker:
+    container_name: c_sovos_invoiceworker
+    image: ${DOCKER_REGISTRY-}sovosinvoiceworker
+    build:
+      context: .
+      dockerfile: Sovos/Sovos.InvoiceWorker/Dockerfile
+
 
   s_rabbitmq:
      container_name: c_rabbitmq

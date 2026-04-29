@@ -54,6 +54,14 @@ namespace CatalogService.Api.Features.Payroll.Persistence.Configurations
             builder.Property(x => x.MinimumWageStampTaxExemptionMonthly).HasPrecision(18, 2);
             builder.Property(x => x.RetiredSgkEmployeeRate).HasPrecision(18, 4);
             builder.Property(x => x.RetiredUnemploymentEmployeeRate).HasPrecision(18, 4);
+            builder.Property(x => x.SgkEmployerMYORate).HasPrecision(18, 4);
+            builder.Property(x => x.SgkEmployerGSSRate).HasPrecision(18, 4);
+            builder.Property(x => x.SgkEmployerKVSKRate).HasPrecision(18, 4);
+            builder.Property(x => x.UnemploymentEmployerRate).HasPrecision(18, 4);
+            builder.Property(x => x.SgkCeilingMultiplier).HasPrecision(18, 4);
+            builder.Property(x => x.Incentive05510TreasuryRate).HasPrecision(18, 4);
+            builder.Property(x => x.SgkEmployerMYO05510Rate).HasPrecision(18, 4);
+
 
             builder.Property(x => x.IsActive)
                 .HasDefaultValue(true);

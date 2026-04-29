@@ -20,5 +20,6 @@ namespace CatalogService.Api.Features.Payroll.Dtos.Requests
 
         public List<PayrollMonthInputDto> Months { get; set; } = new();
         public string LawCode { get; set; } = "00000";
+        public bool IsManufacturingSector { get; set; } = false;
     }
 }

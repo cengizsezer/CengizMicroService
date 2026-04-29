@@ -1,4 +1,4 @@
-﻿namespace CatalogService.Api.Features.Payroll.Dtos.Responses
+namespace CatalogService.Api.Features.Payroll.Dtos.Responses
 {
     public class PayrollMonthResultDto
     {
@@ -8,6 +8,8 @@
         public decimal GrossSalary { get; set; }
         public decimal SgkEmployeeAmount { get; set; }
         public decimal UnemploymentEmployeeAmount { get; set; }
+
+        public decimal DisabilityExemptionAmount { get; set; }
 
         public decimal IncomeTaxBase { get; set; }
         public decimal CumulativeIncomeTaxBase { get; set; }
@@ -23,7 +25,13 @@
         public decimal BesAmount { get; set; }
         public decimal TotalDeductions { get; set; }
         public decimal NetSalary { get; set; }
+
+        public decimal? SgkEmployerGross { get; set; }
+        public decimal? SgkEmployerIncentive { get; set; }
+        public decimal? SgkEmployerNet { get; set; }
+        public decimal? UnemploymentEmployerAmount { get; set; }
         public decimal? TotalEmployerCost { get; set; }
+        public string? IncentiveSource { get; set; }
 
         public decimal? EmployerCost { get; set; }
     }

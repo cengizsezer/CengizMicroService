@@ -63,6 +63,15 @@
       "RouteClaimsRequirement": {
         "role": "Admin"
       }
+    },
+    {
+      "UseServiceDiscovery": true,
+      "ServiceName": "SovosService",
+      "DownstreamPathTemplate": "/api/sovos/admin/{everything}",
+      "DownstreamScheme": "http",
+      "UpstreamPathTemplate": "/sovos/admin/{everything}",
+      "UpstreamHttpMethod": [ "Get", "Post", "Put", "Delete" ],
+      "UpstreamScheme": "http"
     }
 
   ],

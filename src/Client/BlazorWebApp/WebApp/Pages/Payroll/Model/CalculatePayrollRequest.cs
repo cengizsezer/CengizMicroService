@@ -19,8 +19,7 @@
         public List<PayrollMonthInputRequest> Months { get; set; } = new();
 
         public string LawCode { get; set; } = "00000";
-
-
+        public bool IsManufacturingSector { get; set; } = false;
     }
 
     public class PayrollMonthInputRequest

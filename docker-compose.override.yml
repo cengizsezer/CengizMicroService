@@ -146,6 +146,49 @@ services:
 
   
 
+  sovosservice:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:5010
+      - ConsulConfig__Address=http://s_consul:8500
+      - ConsulConfig__ServiceAddress=http://c_sovosservice:5010
+      - ConsulConfig__ServiceName=SovosService
+      - ConsulConfig__ServiceId=Sovos
+      - Worker__BaseUrl=http://c_sovos_invoiceworker:5011
+    ports:
+      - "5010:5010"
+    networks:
+      - net_backendservices
+    depends_on:
+      - web.apigateway
+      - s_sqlserver
+      - s_consul
+      - s_rabbitmq
+      - sovos_invoiceworker
+    external_links:
+      - c_graylog
+      - s_consul
+      - s_rabbitmq
+      - s_sqlserver
+    volumes:
+      - sovos_dp_keys:/var/sovos-dp-keys
+
+  sovos_invoiceworker:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:5011
+    ports:
+      - "5011:5011"
+    networks:
+      - net_backendservices
+    depends_on:
+      - s_sqlserver
+    external_links:
+      - c_graylog
+      - s_sqlserver
+    volumes:
+      - sovos_dp_keys:/var/sovos-dp-keys
+
   catalogseeder.api:
     command: ["dotnet", "CatalogService.Api.dll", "--seed-force"]
     environment:
@@ -227,3 +270,4 @@ volumes:
   rabbitmq:
   sqlserver_data:
   sqlserver_log:
+  sovos_dp_keys:

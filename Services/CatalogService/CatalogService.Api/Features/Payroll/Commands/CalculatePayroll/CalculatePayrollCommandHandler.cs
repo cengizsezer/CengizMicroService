@@ -1,4 +1,5 @@
-﻿using CatalogService.Api.Features.Payroll.Dtos.Responses;
+using CatalogService.Api.Features.Payroll.Dtos.Responses;
+using CatalogService.Api.Features.Payroll.Services;
 using CatalogService.Api.Features.Payroll.Services.Interfaces;
 using CatalogService.Api.Features.Payroll.Services.Models;
 using CatalogService.Api.Infrastructure.Context;
@@ -48,10 +49,16 @@ namespace CatalogService.Api.Features.Payroll.Commands.CalculatePayroll
             {
                 Parameter = parameter,
                 TaxBrackets = taxBrackets,
-                DisabilityExemption = disabilityExemption
+                DisabilityExemption = disabilityExemption,
+                IsManufacturingSector = request.IsManufacturingSector
             };
 
-            return _payrollCalculationEngine.Calculate(request, calculationContext);
+            var response = _payrollCalculationEngine.Calculate(request, calculationContext);
+
+            var strategy = PayrollIncentiveStrategyFactory.Create(request.LawCode);
+            strategy.EnrichEmployerCosts(response, calculationContext);
+
+            return response;
         }
     }
 }

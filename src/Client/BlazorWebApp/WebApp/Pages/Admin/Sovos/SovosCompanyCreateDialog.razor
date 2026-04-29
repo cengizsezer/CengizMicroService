@@ -1,0 +1,141 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Shared.Dto.Sovos
+@using WebApp.Application.Services.Interfaces
+
+@inject DialogService Dialog
+@inject NotificationService Notif
+@inject ISovosAdminService Sovos
+
+<RadzenTemplateForm TItem="NewSovosCompanyDto" Data="@Model" Submit="@OnSubmit">
+    <RadzenCard class="rz-p-3">
+        <RadzenStack Gap="1rem">
+
+            <!-- Firma Adı -->
+            <RadzenTextBox Name="Name"
+                           @bind-Value="Model.Name"
+                           Style="width:100%"
+                           Placeholder="Firma Adı (örn: PKF Aday Bağımsız Denetim)" />
+            <RadzenRequiredValidator Component="Name" Text="Firma adı zorunlu" />
+
+            <!-- Şirket Kodu -->
+            <RadzenTextBox Name="CompanyCode"
+                           @bind-Value="Model.CompanyCode"
+                           Style="width:100%"
+                           Placeholder="Şirket Kodu (örn: ADAYBAGIMS)" />
+            <RadzenRequiredValidator Component="CompanyCode" Text="Şirket kodu zorunlu" />
+            <RadzenHint Text="Sovos portalına giriş için kullanılan şirket kodu." />
+
+            <!-- Kullanıcı Adı -->
+            <RadzenTextBox Name="Username"
+                           @bind-Value="Model.Username"
+                           Style="width:100%"
+                           Placeholder="Kullanıcı Adı (örn: adminuser)" />
+            <RadzenRequiredValidator Component="Username" Text="Kullanıcı adı zorunlu" />
+
+            <!-- Şifre -->
+            <RadzenPassword Name="Password"
+                            @bind-Value="Model.Password"
+                            Style="width:100%"
+                            Placeholder="Şifre" />
+            <RadzenRequiredValidator Component="Password" Text="Şifre zorunlu" />
+            <RadzenLengthValidator Component="Password" Min="4"
+                                   Text="Şifre en az 4 karakter olmalı" />
+
+            <!-- Bildirim Mailleri -->
+            <RadzenTextBox Name="NotificationEmails"
+                           @bind-Value="Model.NotificationEmails"
+                           Style="width:100%"
+                           Placeholder="Bildirim Mailleri" />
+            <RadzenHint Text="Birden fazla mail için virgülle ayırın: a@x.com, b@x.com" />
+
+            <!-- Aktif -->
+            <div>
+                <RadzenCheckBox @bind-Value="Model.IsActive" TValue="bool" Name="IsActive" />
+                <RadzenLabel Component="IsActive" Text="Aktif" Style="margin-left:0.5rem" />
+            </div>
+
+            <!-- Tarama Modu -->
+            <RadzenStack Gap="0.5rem">
+                <RadzenLabel Text="Tarama Modu" />
+                <RadzenRadioButtonList @bind-Value="Model.ScheduleMode"
+                                       TValue="ScheduleMode"
+                                       Orientation="Orientation.Horizontal"
+                                       Change="@OnScheduleModeChanged">
+                    <Items>
+                        <RadzenRadioButtonListItem Text="Saatte Bir" Value="ScheduleMode.Hourly" />
+                        <RadzenRadioButtonListItem Text="Günlük (Belirli Saatte)" Value="ScheduleMode.Daily" />
+                        <RadzenRadioButtonListItem Text="Manuel" Value="ScheduleMode.Manual" />
+                    </Items>
+                </RadzenRadioButtonList>
+            </RadzenStack>
+
+            @if (Model.ScheduleMode == ScheduleMode.Daily)
+            {
+                <RadzenStack Gap="0.5rem">
+                    <RadzenLabel Text="Tarama Saati" />
+                    <RadzenDropDown @bind-Value="Model.ScheduleHour"
+                                    TValue="int?"
+                                    Data="@HourOptions"
+                                    ValueProperty="Value"
+                                    TextProperty="Text"
+                                    Style="width:160px" />
+                </RadzenStack>
+            }
+
+            <RadzenStack Orientation="Orientation.Horizontal"
+                         JustifyContent="JustifyContent.End"
+                         Gap="0.5rem">
+                <RadzenButton Text="Vazgeç" Click="@(()=>Dialog.Close(false))" />
+                <RadzenButton Text="Kaydet" Icon="save"
+                              ButtonStyle="ButtonStyle.Primary"
+                              ButtonType="ButtonType.Submit" />
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenCard>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public NewSovosCompanyDto Model { get; set; } = new();
+
+    private static readonly HourOption[] HourOptions = Enumerable.Range(0, 24)
+        .Select(h => new HourOption(h, $"{h:00}:00"))
+        .ToArray();
+
+    private record HourOption(int Value, string Text);
+
+    protected override void OnInitialized()
+    {
+        if (Model.ScheduleMode == ScheduleMode.Daily && Model.ScheduleHour is null)
+            Model.ScheduleHour = 9;
+    }
+
+    private void OnScheduleModeChanged(ScheduleMode mode)
+    {
+        if (mode == ScheduleMode.Daily)
+        {
+            Model.ScheduleHour ??= 9;
+        }
+        else
+        {
+            Model.ScheduleHour = null;
+        }
+    }
+
+    private async Task OnSubmit(NewSovosCompanyDto _)
+    {
+        var (ok, err) = await Sovos.CreateCompanyAsync(Model);
+        if (ok)
+        {
+            Dialog.Close(true);
+            return;
+        }
+
+        Notif.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Error,
+            Summary = "Kayıt başarısız",
+            Detail = string.IsNullOrWhiteSpace(err) ? "Firma kaydedilemedi." : err
+        });
+    }
+}
