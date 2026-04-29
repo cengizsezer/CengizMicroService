@@ -10,7 +10,7 @@ public class SovosAdminService : ISovosAdminService
     private readonly HttpClient _http;
     public SovosAdminService(HttpClient http) => _http = http;
 
-    private const string Base = "sovos/admin";
+    private const string Base = "faturakontrol";
 
     public Task<PageDto<SovosCompanyListItemDto>> GetCompaniesAsync(
         int pageIndex = 0, int pageSize = 50, string? q = null)

@@ -8,9 +8,9 @@ using SovosService.Api.Persistence;
 
 namespace SovosService.Api.Controllers;
 
-[Route("api/sovos/admin")]
+[Route("api/faturakontrol")]
 [ApiController]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,PKF")]
 public class SovosAdminController : ControllerBase
 {
     private readonly SovosServiceDbContext _db;

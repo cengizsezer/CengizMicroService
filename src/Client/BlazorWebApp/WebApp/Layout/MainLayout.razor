@@ -103,6 +103,14 @@
                                          Path="/beyanname-takip" />
                 }
 
+                <AuthorizeView Roles="Admin,PKF">
+                    <Authorized>
+                        <RadzenPanelMenuItem Text="Fatura Kontrol"
+                                             Icon="fact_check"
+                                             Path="/faturakontrol" />
+                    </Authorized>
+                </AuthorizeView>
+
                 @if (canViewVergiOdeme)
                 {
                     <RadzenPanelMenuItem Text="Mükellef Vergi Ödemeleri"
