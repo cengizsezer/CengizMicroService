@@ -2,9 +2,11 @@
 
 # This stage is used when running from VS in fast mode (Default for Debug configuration)
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-USER $APP_UID
 WORKDIR /app
 EXPOSE 5010
+# NOTE: USER $APP_UID intentionally NOT set here — it is set in the final stage
+# AFTER /var/sovos-dp-keys is created and chowned, so the non-root user can write
+# DataProtection keys to that volume mount.
 
 
 # This stage is used to build the service project
@@ -28,4 +30,9 @@ RUN dotnet publish "./SovosService.Api.csproj" -c $BUILD_CONFIGURATION -o /app/p
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+# Create DataProtection keys folder and grant ownership to the non-root user
+# BEFORE switching to USER $APP_UID. The folder is the target of a volume mount
+# (shared with Sovos.InvoiceWorker) and must be writable by the runtime user.
+RUN mkdir -p /var/sovos-dp-keys && chown -R $APP_UID:$APP_UID /var/sovos-dp-keys
+USER $APP_UID
 ENTRYPOINT ["dotnet", "SovosService.Api.dll"]
