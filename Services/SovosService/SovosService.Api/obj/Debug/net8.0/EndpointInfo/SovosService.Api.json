@@ -5,7 +5,7 @@
     "version": "v1"
   },
   "paths": {
-    "/api/sovos/admin/companies": {
+    "/api/faturakontrol/companies": {
       "get": {
         "tags": [
           "SovosAdmin"
@@ -90,7 +90,7 @@
         }
       }
     },
-    "/api/sovos/admin/companies/{id}": {
+    "/api/faturakontrol/companies/{id}": {
       "get": {
         "tags": [
           "SovosAdmin"
@@ -191,7 +191,7 @@
         }
       }
     },
-    "/api/sovos/admin/companies/{id}/password": {
+    "/api/faturakontrol/companies/{id}/password": {
       "post": {
         "tags": [
           "SovosAdmin"
@@ -233,7 +233,7 @@
         }
       }
     },
-    "/api/sovos/admin/companies/{id}/test-login": {
+    "/api/faturakontrol/companies/{id}/test-login": {
       "post": {
         "tags": [
           "SovosAdmin"
@@ -256,7 +256,7 @@
         }
       }
     },
-    "/api/sovos/admin/companies/{id}/run-now": {
+    "/api/faturakontrol/companies/{id}/run-now": {
       "post": {
         "tags": [
           "SovosAdmin"

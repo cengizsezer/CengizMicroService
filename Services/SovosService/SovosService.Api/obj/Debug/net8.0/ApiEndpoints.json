@@ -2,7 +2,7 @@
   {
     "ContainingType": "SovosService.Api.Controllers.SovosAdminController",
     "Method": "GetCompanies",
-    "RelativePath": "api/sovos/admin/companies",
+    "RelativePath": "api/faturakontrol/companies",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
@@ -38,7 +38,7 @@
   {
     "ContainingType": "SovosService.Api.Controllers.SovosAdminController",
     "Method": "CreateCompany",
-    "RelativePath": "api/sovos/admin/companies",
+    "RelativePath": "api/faturakontrol/companies",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
@@ -54,7 +54,7 @@
   {
     "ContainingType": "SovosService.Api.Controllers.SovosAdminController",
     "Method": "GetCompany",
-    "RelativePath": "api/sovos/admin/companies/{id}",
+    "RelativePath": "api/faturakontrol/companies/{id}",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
@@ -80,7 +80,7 @@
   {
     "ContainingType": "SovosService.Api.Controllers.SovosAdminController",
     "Method": "UpdateCompany",
-    "RelativePath": "api/sovos/admin/companies/{id}",
+    "RelativePath": "api/faturakontrol/companies/{id}",
     "HttpMethod": "PUT",
     "IsController": true,
     "Order": 0,
@@ -101,7 +101,7 @@
   {
     "ContainingType": "SovosService.Api.Controllers.SovosAdminController",
     "Method": "DeleteCompany",
-    "RelativePath": "api/sovos/admin/companies/{id}",
+    "RelativePath": "api/faturakontrol/companies/{id}",
     "HttpMethod": "DELETE",
     "IsController": true,
     "Order": 0,
@@ -117,7 +117,7 @@
   {
     "ContainingType": "SovosService.Api.Controllers.SovosAdminController",
     "Method": "ChangePassword",
-    "RelativePath": "api/sovos/admin/companies/{id}/password",
+    "RelativePath": "api/faturakontrol/companies/{id}/password",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
@@ -138,7 +138,7 @@
   {
     "ContainingType": "SovosService.Api.Controllers.SovosAdminController",
     "Method": "RunNowForCompany",
-    "RelativePath": "api/sovos/admin/companies/{id}/run-now",
+    "RelativePath": "api/faturakontrol/companies/{id}/run-now",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
@@ -154,7 +154,7 @@
   {
     "ContainingType": "SovosService.Api.Controllers.SovosAdminController",
     "Method": "TestLogin",
-    "RelativePath": "api/sovos/admin/companies/{id}/test-login",
+    "RelativePath": "api/faturakontrol/companies/{id}/test-login",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,

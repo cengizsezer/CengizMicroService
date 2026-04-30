@@ -12,7 +12,8 @@ pipeline {
       steps {
         withCredentials([
           file(credentialsId: 'google-vision-json', variable: 'VISIONFILE'),
-          string(credentialsId: 'openai-api-key',  variable: 'OPENAI_KEY')
+          string(credentialsId: 'openai-api-key',  variable: 'OPENAI_KEY'),
+          string(credentialsId: 'brevo-api-key',   variable: 'BREVO_KEY')
         ]) {
           sh '''
             set -eux
@@ -26,9 +27,12 @@ pipeline {
 ASPNETCORE_ENVIRONMENT=Production
 OPENAI_API_KEY=${OPENAI_KEY}
 GOOGLE_APPLICATION_CREDENTIALS=/app/Services/OCRService/OCRService.Api/Config/vision-sa.json
+BREVO_API_KEY=${BREVO_KEY}
+BREVO_FROM_ADDRESS=cengizsezer7@gmail.com
+BREVO_FROM_DISPLAY_NAME=Sovos Fatura Takip
 EOF
 
-            echo "Created .env for CI with OPENAI_API_KEY and GOOGLE_APPLICATION_CREDENTIALS"
+            echo "Created .env for CI with OPENAI_API_KEY, GOOGLE_APPLICATION_CREDENTIALS, BREVO_API_KEY"
           '''
         }
       }

@@ -25,6 +25,7 @@ builder.Services.AddSerilog();
 builder.Services.Configure<WorkerOptions>(builder.Configuration.GetSection("Worker"));
 builder.Services.Configure<SovosOptions>(builder.Configuration.GetSection("Sovos"));
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
+builder.Services.Configure<BrevoOptions>(builder.Configuration.GetSection("Brevo"));
 
 // EF Core
 builder.Services.AddDbContext<SovosDbContext>(options =>
@@ -44,7 +45,7 @@ builder.Services.AddDataProtection()
 builder.Services.AddScoped<ICredentialProtector, CredentialProtector>();
 builder.Services.AddScoped<ISovosScraper, SovosScraper>();
 builder.Services.AddScoped<IInvoiceDiffService, InvoiceDiffService>();
-builder.Services.AddScoped<IMailSender, MailSender>();
+builder.Services.AddHttpClient<IMailSender, BrevoMailSender>();
 builder.Services.AddScoped<IInvoiceOrchestrator, InvoiceOrchestrator>();
 
 // Worker (BackgroundService — saatlik tarama + günlük özet)
@@ -72,11 +73,11 @@ if (sovosConfig.GetValue<bool>("TestScraperOnStartup"))
     Log.Information("=== TEST SCRAPER MODU ===");
 
     using var scope = app.Services.CreateScope();
-    var smtpDiag = scope.ServiceProvider
-        .GetRequiredService<Microsoft.Extensions.Options.IOptions<SmtpOptions>>().Value;
+    var brevoDiag = scope.ServiceProvider
+        .GetRequiredService<Microsoft.Extensions.Options.IOptions<BrevoOptions>>().Value;
     Log.Information(
-        "SMTP Config: Host={Host}, User={User}, PwdLength={Len}",
-        smtpDiag.Host, smtpDiag.Username, smtpDiag.Password?.Length ?? 0);
+        "Brevo Config: From={From}, ApiKeyLength={Len}",
+        brevoDiag.FromAddress, brevoDiag.ApiKey?.Length ?? 0);
 
     var scraper = scope.ServiceProvider.GetRequiredService<ISovosScraper>();
     var diff = scope.ServiceProvider.GetRequiredService<IInvoiceDiffService>();

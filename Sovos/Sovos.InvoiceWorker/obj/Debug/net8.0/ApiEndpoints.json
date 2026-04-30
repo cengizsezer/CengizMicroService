@@ -1,0 +1,28 @@
+[
+  {
+    "ContainingType": "Sovos.InvoiceWorker.Controllers.WorkerController",
+    "Method": "Health",
+    "RelativePath": "api/worker/health",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Sovos.InvoiceWorker.Controllers.WorkerController",
+    "Method": "RunNow",
+    "RelativePath": "api/worker/run-now/{companyId}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "companyId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  }
+]

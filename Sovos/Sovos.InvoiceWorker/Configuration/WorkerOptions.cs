@@ -34,3 +34,10 @@ public class SmtpOptions
     public string FromAddress { get; set; } = string.Empty;
     public string FromDisplayName { get; set; } = string.Empty;
 }
+
+public class BrevoOptions
+{
+    public string ApiKey { get; set; } = string.Empty;
+    public string FromAddress { get; set; } = string.Empty;
+    public string FromDisplayName { get; set; } = string.Empty;
+}

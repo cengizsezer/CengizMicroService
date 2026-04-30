@@ -177,6 +177,9 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
       - ASPNETCORE_URLS=http://+:5011
+      - Brevo__ApiKey=${BREVO_API_KEY}
+      - Brevo__FromAddress=${BREVO_FROM_ADDRESS:-cengizsezer7@gmail.com}
+      - Brevo__FromDisplayName=${BREVO_FROM_DISPLAY_NAME:-Sovos Fatura Takip}
     ports:
       - "5011:5011"
     networks:
