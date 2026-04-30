@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Sovos.InvoiceWorker.Core")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5dc13a79ba2a75bfab35934bacc76e5afa35ffc1")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+67767e13ab5f564d4d0e46e4c1eb5ed3c16dbda4")]
 [assembly: System.Reflection.AssemblyProductAttribute("Sovos.InvoiceWorker.Core")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Sovos.InvoiceWorker.Core")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

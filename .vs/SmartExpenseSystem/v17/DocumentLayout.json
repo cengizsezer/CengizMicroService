@@ -252,7 +252,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 5,
           "Children": [
             {
               "$type": "Document",
@@ -266,19 +266,6 @@
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
               "WhenOpened": "2026-04-05T12:04:37.241Z",
               "IsPinned": true
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "Jenkinsfile",
-              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Jenkinsfile",
-              "RelativeDocumentMoniker": "Jenkinsfile",
-              "ToolTip": "C:\\GitHub\\CengizMicroService\\Jenkinsfile",
-              "RelativeToolTip": "Jenkinsfile",
-              "ViewState": "AgIAACEAAAAAAAAAAAAYwDEAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2026-04-30T18:32:22.687Z",
-              "EditorCaption": ""
             },
             {
               "$type": "Bookmark",
@@ -295,6 +282,19 @@
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Jenkinsfile",
+              "DocumentMoniker": "C:\\GitHub\\CengizMicroService\\Jenkinsfile",
+              "RelativeDocumentMoniker": "Jenkinsfile",
+              "ToolTip": "C:\\GitHub\\CengizMicroService\\Jenkinsfile",
+              "RelativeToolTip": "Jenkinsfile",
+              "ViewState": "AgIAACEAAAAAAAAAAAAYwDEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2026-04-30T18:32:22.687Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -318,8 +318,7 @@
               "RelativeToolTip": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Configurations\\ocelot.Development.json",
               "ViewState": "AgIAADgAAAAAAAAAAAAkwEIAAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-04-28T21:41:23.148Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-04-28T21:41:23.148Z"
             },
             {
               "$type": "Document",

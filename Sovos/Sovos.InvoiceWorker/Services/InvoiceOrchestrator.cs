@@ -68,12 +68,12 @@ public class InvoiceOrchestrator : IInvoiceOrchestrator
         }
     }
 
-    public async Task RunForCompanyAsync(int companyId, CancellationToken ct)
+    public async Task RunForCompanyAsync(int companyId, bool manualMode, CancellationToken ct)
     {
         var company = await _db.Companies.FirstOrDefaultAsync(c => c.Id == companyId, ct)
             ?? throw new ArgumentException($"Firma bulunamadı: Id={companyId}");
 
-        await ProcessHourlyAsync(company, ct);
+        await ProcessHourlyAsync(company, ct, manualMode);
     }
 
     // Her dakika InvoiceCheckWorker tarafından çağrılır.
@@ -136,13 +136,13 @@ public class InvoiceOrchestrator : IInvoiceOrchestrator
 
     // ── Per-company iş akışları ──────────────────────────────────────────
 
-    private async Task ProcessHourlyAsync(Company company, CancellationToken ct)
+    private async Task ProcessHourlyAsync(Company company, CancellationToken ct, bool manualMode = false)
     {
         try
         {
             var password = _protector.Decrypt(company.EncryptedPassword);
             var scraped = await _scraper.FetchPendingInvoicesAsync(company, password, ct);
-            var toNotify = await _diff.SaveAndGetNewAsync(company.Id, scraped, ct);
+            var toNotify = await _diff.SaveAndGetNewAsync(company.Id, scraped, ct, manualMode);
 
             if (toNotify.Count > 0)
             {
@@ -164,7 +164,8 @@ public class InvoiceOrchestrator : IInvoiceOrchestrator
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Firma {CompanyName}: HourlyCheck hata", company.Name);
+            _logger.LogError(ex, "Firma {CompanyName}: Tarama hata (manualMode={Manual})",
+                company.Name, manualMode);
             company.LastFailedRunAt = DateTime.UtcNow;
             company.LastErrorMessage = Truncate(ex.Message, 2000);
         }

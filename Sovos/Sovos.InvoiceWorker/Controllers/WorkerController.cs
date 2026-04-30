@@ -24,7 +24,8 @@ public class WorkerController : ControllerBase
     public IActionResult Health() => Ok(new { status = "ok", service = "Sovos.InvoiceWorker" });
 
     /// <summary>
-    /// Belirli bir firma için anlık tarama tetikler. Fire-and-forget — HTTP 202 hemen döner.
+    /// Belirli bir firma için manuel anlık tarama tetikler. Manuel modda Sovos'taki TÜM
+    /// onay bekleyen faturalar için mail gönderilir (NotifiedAt bypass). Fire-and-forget.
     /// </summary>
     [HttpPost("run-now/{companyId:int}")]
     public async Task<IActionResult> RunNow(int companyId, CancellationToken ct)
@@ -43,9 +44,9 @@ public class WorkerController : ControllerBase
                 .GetRequiredService<IInvoiceOrchestrator>();
             try
             {
-                _logger.LogInformation("RunNow başladı (CompanyId={Id})", companyId);
-                await orchestrator.RunForCompanyAsync(companyId, CancellationToken.None);
-                _logger.LogInformation("RunNow bitti (CompanyId={Id})", companyId);
+                _logger.LogInformation("RunNow (manuel) başladı (CompanyId={Id})", companyId);
+                await orchestrator.RunForCompanyAsync(companyId, manualMode: true, CancellationToken.None);
+                _logger.LogInformation("RunNow (manuel) bitti (CompanyId={Id})", companyId);
             }
             catch (Exception ex)
             {

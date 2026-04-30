@@ -19,7 +19,8 @@ public class InvoiceDiffService : IInvoiceDiffService
     }
 
     public async Task<List<Invoice>> SaveAndGetNewAsync(
-        int companyId, List<ScrapedInvoice> scraped, CancellationToken ct)
+        int companyId, List<ScrapedInvoice> scraped, CancellationToken ct,
+        bool manualMode = false)
     {
         if (scraped.Count == 0)
         {
@@ -47,8 +48,9 @@ public class InvoiceDiffService : IInvoiceDiffService
 
             if (existingMap.TryGetValue(key, out var existingInvoice))
             {
-                // Mevcut kayıt — sadece NotifiedAt=null ise retry için mail kuyruğuna al.
-                if (existingInvoice.NotifiedAt == null)
+                // Manuel modda her şey mail edilir (NotifiedAt bypass).
+                // Otomatik modda sadece NotifiedAt=null ise retry için mail kuyruğuna al.
+                if (manualMode || existingInvoice.NotifiedAt == null)
                     toNotify.Add(existingInvoice);
                 continue;
             }
@@ -85,9 +87,9 @@ public class InvoiceDiffService : IInvoiceDiffService
         var retryCount = toNotify.Count - newlyInserted.Count;
         var alreadyNotified = scraped.Count - toNotify.Count;
         _logger.LogInformation(
-            "CompanyId {CompanyId}: {Total} scraped → {New} yeni eklendi, " +
-            "{Retry} retry (NotifiedAt=null), {Done} zaten bildirilmiş",
-            companyId, scraped.Count, newlyInserted.Count, retryCount, alreadyNotified);
+            "CompanyId {CompanyId} (manualMode={Manual}): {Total} scraped → {New} yeni eklendi, " +
+            "{Retry} mail kuyruğunda mevcut, {Done} mail dışı",
+            companyId, manualMode, scraped.Count, newlyInserted.Count, retryCount, alreadyNotified);
 
         return toNotify;
     }
