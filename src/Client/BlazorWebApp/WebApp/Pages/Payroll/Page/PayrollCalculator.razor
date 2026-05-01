@@ -7,6 +7,7 @@
 @using WebApp.Pages.Payroll.Services
 @inject IPayrollApiService PayrollApiService
 @inject DialogService DialogService
+@inject NotificationService NotificationService
 @inject IJSRuntime JS
 
 <PageTitle>Ücret Bordrosu</PageTitle>
@@ -346,11 +347,12 @@
                           ButtonStyle="ButtonStyle.Success"
                           Disabled="@isExporting"
                           Click="@ExportExcelAsync" />
-            <RadzenButton Text="Belge Oluştur"
-                          Icon="print"
+            <RadzenButton Text="PDF İndir"
+                          Icon="picture_as_pdf"
                           Variant="Variant.Outlined"
                           ButtonStyle="ButtonStyle.Primary"
-                          Click="@PrintAsync" />
+                          Disabled="@isExporting"
+                          Click="@ExportPdfAsync" />
 
             <RadzenButton Text="Hesapla"
                           Icon="calculate"
@@ -549,29 +551,53 @@
 
     private async Task ExportExcelAsync()
     {
-        if (!monthInputs.Any(x => x.IsEdited)) return;
+        await DownloadAsync("Excel", BuildFileName("xlsx"),
+            ct => PayrollApiService.ExportExcelAsync(BuildRequest(), ct));
+    }
+
+    private async Task ExportPdfAsync()
+    {
+        await DownloadAsync("PDF", BuildFileName("pdf"),
+            ct => PayrollApiService.ExportPdfAsync(BuildRequest(), ct));
+    }
+
+    private string BuildFileName(string ext)
+    {
+        var prefix = IsHonorarium ? "huzur_hakki" : "bordro";
+        return $"{prefix}_{model.Year}.{ext}";
+    }
+
+    private async Task DownloadAsync(string label, string fileName, Func<CancellationToken, Task<byte[]>> fetch)
+    {
+        if (!monthInputs.Any(x => x.IsEdited))
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Info,
+                Summary = "Eksik veri",
+                Detail = "Önce en az bir ay için tutar girin.",
+                Duration = 4000
+            });
+            return;
+        }
 
         isExporting = true;
+        errorMessage = null;
         StateHasChanged();
         try
         {
-            var bytes = await PayrollApiService.ExportExcelAsync(BuildRequest());
-            await JS.InvokeVoidAsync("downloadFileFromBytes", $"bordro_{model.Year}.xlsx", bytes);
+            var bytes = await fetch(CancellationToken.None);
+            await JS.InvokeVoidAsync("downloadFileFromBytes", fileName, bytes);
         }
         catch (Exception ex)
         {
-            errorMessage = ex.Message;
+            errorMessage = $"{label} oluşturulamadı: {ex.Message}";
         }
         finally
         {
             isExporting = false;
             StateHasChanged();
         }
-    }
-
-    private async Task PrintAsync()
-    {
-        await JS.InvokeVoidAsync("window.print");
     }
 
     private async Task OpenComparisonPopup()
@@ -582,11 +608,12 @@
             {
                 { "GrossAmount", GetCurrentHonorariumGrossTotal() },
                 { "TaxCost", GetCurrentHonorariumTaxCost() },
-                { "NetReceived", GetCurrentHonorariumNetAmount() }
+                { "NetReceived", GetCurrentHonorariumNetAmount() },
+                { "Year", model.Year }
             },
             new DialogOptions
             {
-                Width = "1200px",
+                Width = "900px",
                 Height = "720px",
                 Resizable = false,
                 Draggable = true

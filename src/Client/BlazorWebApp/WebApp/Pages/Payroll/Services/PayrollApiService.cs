@@ -62,5 +62,53 @@ namespace WebApp.Pages.Payroll.Services
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsByteArrayAsync(cancellationToken);
         }
+
+        public async Task<byte[]> ExportPdfAsync(CalculatePayrollRequest request, CancellationToken cancellationToken = default)
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                $"{Base}/export-pdf",
+                request,
+                cancellationToken);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        }
+
+        public async Task<DistributionComparisonResultDto?> CompareDistributionAsync(
+            CompareDistributionRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                $"{Base}/compare-distribution",
+                request,
+                cancellationToken);
+
+            response.EnsureSuccessStatusCode();
+
+            return await response.Content.ReadFromJsonAsync<DistributionComparisonResultDto>(cancellationToken: cancellationToken);
+        }
+
+        public async Task<byte[]> ExportComparisonExcelAsync(
+            CompareDistributionRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                $"{Base}/compare-distribution/export-excel",
+                request,
+                cancellationToken);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        }
+
+        public async Task<byte[]> ExportComparisonPdfAsync(
+            CompareDistributionRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var response = await _httpClient.PostAsJsonAsync(
+                $"{Base}/compare-distribution/export-pdf",
+                request,
+                cancellationToken);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        }
     }
 }

@@ -1,12 +1,16 @@
-﻿@using Radzen
+@using Radzen
+@using WebApp.Pages.Payroll.Model
+@using WebApp.Pages.Payroll.Services
 @inject DialogService DialogService
+@inject IPayrollApiService PayrollApiService
+@inject IJSRuntime JS
 
 <div class="comparison-dialog">
     <div class="comparison-toolbar">
         <div>
-            <h2 class="comparison-title">Huzur Hakkı vs Kar Dağıtımı Karşılaştırma</h2>
+            <h2 class="comparison-title">Kar Dağıtımı vs Huzur Hakkı Karşılaştırma</h2>
             <div class="comparison-subtitle">
-                Aynı tutarın farklı ödeme yöntemlerine göre vergi ve net etkisi
+                Aynı yıllık tutarın iki farklı ödeme yönteminde net vergi maliyeti
             </div>
         </div>
 
@@ -15,103 +19,165 @@
                           Icon="download"
                           Variant="Variant.Outlined"
                           ButtonStyle="ButtonStyle.Success"
-                          Click="@(()=>{})" />
-            <RadzenButton Text="Belge Oluştur"
-                          Icon="description"
+                          Disabled="@(isExporting || result is null)"
+                          Click="@ExportExcelAsync" />
+            <RadzenButton Text="PDF İndir"
+                          Icon="picture_as_pdf"
                           Variant="Variant.Outlined"
                           ButtonStyle="ButtonStyle.Primary"
-                          Click="@(()=>{})" />
-        </div>
-       
-    </div>
-
-    <div class="comparison-table-wrap">
-        <table class="comparison-table">
-            <thead>
-                <tr>
-                    <th></th>
-                    <th>Huzur Hakkı</th>
-                    <th>Kar Dağıtımı</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Brüt Tutar</td>
-                    <td>@FormatMoney(HonorariumGrossAmount)</td>
-                    <td>@FormatMoney(DividendGrossAmount)</td>
-                </tr>
-
-                <tr>
-                    <td>Vergi Maliyeti</td>
-                    <td>@FormatMoney(HonorariumTaxCost)</td>
-                    <td>–</td>
-                </tr>
-
-                <tr>
-                    <td>Stopaj</td>
-                    <td>–</td>
-                    <td>@FormatMoney(DividendWithholdingTax)</td>
-                </tr>
-
-                <tr>
-                    <td>Beyan Sınırı</td>
-                    <td>–</td>
-                    <td>@FormatMoney(DeclarationThreshold)</td>
-                </tr>
-
-                <tr>
-                    <td>Gelir Vergisi Beyannamesi</td>
-                    <td>–</td>
-                    <td>@FormatMoney(IncomeTaxReturnAmount)</td>
-                </tr>
-
-                <tr>
-                    <td>Net Ele Geçen</td>
-                    <td>@FormatMoney(HonorariumNetReceived)</td>
-                    <td>@FormatMoney(DividendNetReceived)</td>
-                </tr>
-
-                <tr>
-                    <td>İlave Vergi / Ödenecek Vergi</td>
-                    <td>–</td>
-                    <td>@FormatMoney(AdditionalTaxPayable)</td>
-                </tr>
-
-                <tr>
-                    <td>Şirket Gideri</td>
-                    <td>✔ Evet</td>
-                    <td>✘ Hayır</td>
-                </tr>
-
-                <tr class="final-net-row">
-                    <td>Nihai Net</td>
-                    <td class="negative-net">@FormatMoney(HonorariumFinalNet)</td>
-                    <td class="@(DividendFinalNet > HonorariumFinalNet ? "positive-net" : "")">
-                        @FormatMoney(DividendFinalNet)
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <div class="comparison-summary">
-        <div class="summary-icon">✔</div>
-        <div class="summary-content">
-            <div class="summary-title">Avantajlı Yöntem: @AdvantageTitle</div>
-            <div class="summary-line">Net Fark: @FormatMoney(NetDifference)</div>
+                          Disabled="@(isExporting || result is null)"
+                          Click="@ExportPdfAsync" />
         </div>
     </div>
+
+    <div class="stopaj-row">
+        <span class="stopaj-label">Stopaj Oranı:</span>
+        <RadzenRadioButtonList @bind-Value="selectedStopajRate"
+                               TValue="decimal"
+                               Orientation="Orientation.Horizontal"
+                               Change="@(_ => RecalculateAsync())">
+            <Items>
+                <RadzenRadioButtonListItem Text="%5" Value="0.05m" />
+                <RadzenRadioButtonListItem Text="%10" Value="0.10m" />
+                <RadzenRadioButtonListItem Text="%15" Value="0.15m" />
+            </Items>
+        </RadzenRadioButtonList>
+
+        @if (result is not null)
+        {
+            <span class="beyan-info">Beyan Sınırı: @FormatMoney(result.BeyanSiniri)</span>
+        }
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="status-text">Hesaplanıyor...</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="error-box">@errorMessage</div>
+    }
+    else if (result is not null)
+    {
+        <div class="method-block">
+            <div class="method-header method-header--hh">HUZUR HAKKI YÖNTEMİ</div>
+            <table class="method-table">
+                <tbody>
+                    <tr>
+                        <td class="cell-code">A</td>
+                        <td class="cell-label">Yıllık Brüt Huzur Hakkı</td>
+                        <td class="cell-value">@FormatMoney(result.HuzurHakki.A_YillikBrut)</td>
+                    </tr>
+                    <tr>
+                        <td class="cell-code">B</td>
+                        <td class="cell-label">Vergi Maliyeti</td>
+                        <td class="cell-value">@FormatMoney(result.HuzurHakki.B_VergiMaliyeti)</td>
+                    </tr>
+                    <tr>
+                        <td class="cell-code">C</td>
+                        <td class="cell-label">Ortalama Vergi Oranı</td>
+                        <td class="cell-value">@FormatPercent(result.HuzurHakki.C_OrtalamaVergiOrani)</td>
+                    </tr>
+                    <tr>
+                        <td class="cell-code">D</td>
+                        <td class="cell-label">Net Ele Geçen</td>
+                        <td class="cell-value">@FormatMoney(result.HuzurHakki.D_NetEleGecen)</td>
+                    </tr>
+                    <tr class="cell-divider">
+                        <td class="cell-code">E</td>
+                        <td class="cell-label">Geçici Vergi Oranı</td>
+                        <td class="cell-value">@FormatPercent(result.HuzurHakki.E_GeciciVergiOrani * 100m)</td>
+                    </tr>
+                    <tr>
+                        <td class="cell-code">F = A × E</td>
+                        <td class="cell-label">Geçici Vergi Avantajı</td>
+                        <td class="cell-value">@FormatMoney(result.HuzurHakki.F_GeciciVergiAvantaji)</td>
+                    </tr>
+                    <tr class="cell-final cell-divider">
+                        <td class="cell-code">G = B − F</td>
+                        <td class="cell-label">Net Vergi Maliyeti</td>
+                        <td class="cell-value">@FormatMoney(result.HuzurHakki.G_NetVergiMaliyeti)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="method-block">
+            <div class="method-header method-header--kd">KAR DAĞITIM YÖNTEMİ</div>
+            <table class="method-table">
+                <tbody>
+                    <tr>
+                        <td class="cell-code">A</td>
+                        <td class="cell-label">Brüt Kar Dağıtımı</td>
+                        <td class="cell-value">@FormatMoney(result.KarDagitimi.A_BrutKarDagitimi)</td>
+                    </tr>
+                    <tr>
+                        <td class="cell-code">B (@FormatPercent(result.KarDagitimi.StopajOrani * 100m))</td>
+                        <td class="cell-label">Kar Dağıtım Stopajı</td>
+                        <td class="cell-value">@FormatMoney(result.KarDagitimi.B_Stopaj)</td>
+                    </tr>
+                    <tr>
+                        <td class="cell-code">C = A − B</td>
+                        <td class="cell-label">Net Ele Geçen</td>
+                        <td class="cell-value">@FormatMoney(result.KarDagitimi.C_NetEleGecen)</td>
+                    </tr>
+                    <tr class="cell-divider">
+                        <td class="cell-code">D = A / 2</td>
+                        <td class="cell-label">%50 İstisna</td>
+                        <td class="cell-value">@FormatMoney(result.KarDagitimi.D_YuzdeElliIstisna)</td>
+                    </tr>
+                    <tr>
+                        <td class="cell-code">E</td>
+                        <td class="cell-label">Beyana Tabi Gelir</td>
+                        <td class="cell-value">@FormatMoney(result.KarDagitimi.E_BeyanaTabiGelir)</td>
+                    </tr>
+                    <tr>
+                        <td class="cell-code">F</td>
+                        <td class="cell-label">Gelir Vergisi</td>
+                        <td class="cell-value">@FormatMoney(result.KarDagitimi.F_GelirVergisi)</td>
+                    </tr>
+                    <tr>
+                        <td class="cell-code"></td>
+                        <td class="cell-label">Ortalama Vergi Oranı</td>
+                        <td class="cell-value">@FormatPercent(result.KarDagitimi.OrtalamaVergiOrani)</td>
+                    </tr>
+                    <tr class="cell-divider">
+                        <td class="cell-code">G = F − B</td>
+                        <td class="cell-label">@(result.KarDagitimi.G_IlaveVergi >= 0 ? "İlave Vergi (Ödenecek)" : "İade")</td>
+                        <td class="cell-value @(result.KarDagitimi.G_IlaveVergi >= 0 ? "ilave-vergi-pos" : "ilave-vergi-neg")">
+                            @FormatMoney(result.KarDagitimi.G_IlaveVergi)
+                        </td>
+                    </tr>
+                    <tr class="cell-final">
+                        <td class="cell-code"></td>
+                        <td class="cell-label">Net Vergi Maliyeti</td>
+                        <td class="cell-value">@FormatMoney(result.KarDagitimi.NetVergiMaliyeti)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="comparison-summary">
+            <div class="summary-icon">@(result.AvantajliYontem == AvantajliYontem.Esit ? "≈" : "✔")</div>
+            <div class="summary-content">
+                <div class="summary-rows">
+                    <div class="summary-row">
+                        <span>Huzur Hakkı Yöntemi Maliyeti:</span>
+                        <strong>@FormatMoney(result.HuzurHakki.G_NetVergiMaliyeti)</strong>
+                    </div>
+                    <div class="summary-row">
+                        <span>Kar Dağıtım Yöntemi Maliyeti:</span>
+                        <strong>@FormatMoney(result.KarDagitimi.NetVergiMaliyeti)</strong>
+                    </div>
+                </div>
+                <div class="summary-title">Avantajlı Yöntem: @AdvantageText</div>
+                <div class="summary-line">Net Fark: @FormatMoney(result.NetFark)</div>
+            </div>
+        </div>
+    }
 
     <div class="comparison-footer">
-        @* <div class="comparison-footer-left">
-            <RadzenCheckBox @bind-Value="IncludeEmployerCost" TValue="bool" Change="@(args => Recalculate())" />
-            <span>Şirket maliyetini de dahil et</span>
-        </div> *@
-
         <div class="comparison-footer-right">
-            @* <RadzenButton Text="Detayları Genişlet"
-                          Icon="download"
-                          ButtonStyle="ButtonStyle.Light" /> *@
             <RadzenButton Text="Kapat"
                           Icon="close"
                           Click="@Close" />
@@ -120,203 +186,283 @@
 </div>
 
 @code {
-    [Parameter]
-    public decimal GrossAmount { get; set; }
+    [Parameter] public decimal GrossAmount { get; set; }
+    [Parameter] public decimal TaxCost { get; set; }
+    [Parameter] public decimal NetReceived { get; set; }
+    [Parameter] public int Year { get; set; } = 2026;
 
-    [Parameter]
-    public decimal TaxCost { get; set; }
+    private decimal selectedStopajRate = 0.15m;
+    private DistributionComparisonResultDto? result;
+    private bool isLoading;
+    private bool isExporting;
+    private string? errorMessage;
+    private CancellationTokenSource? debounceCts;
 
-    [Parameter]
-    public decimal NetReceived { get; set; }
-
-    private bool IncludeEmployerCost { get; set; } = true;
-
-    private const decimal StopajRate = 0.15m;
-    private const decimal DeclarationThreshold = 5_300_000m;
-
-    private decimal HonorariumGrossAmount => GrossAmount;
-    private decimal HonorariumTaxCost => TaxCost;
-    private decimal HonorariumNetReceived => NetReceived;
-    private decimal HonorariumFinalNet => NetReceived;
-
-    private decimal DividendGrossAmount => GrossAmount;
-    private decimal DividendWithholdingTax => Round2(DividendGrossAmount * StopajRate);
-
-    private decimal IncomeTaxReturnAmount =>
-        DividendGrossAmount > DeclarationThreshold
-            ? Round2(DividendGrossAmount * 0.50m)
-            : 0m;
-
-    private decimal DividendNetReceived => Round2(DividendGrossAmount - DividendWithholdingTax);
-
-    private decimal AdditionalTaxPayable
+    protected override async Task OnInitializedAsync()
     {
-        get
-        {
-            if (DividendGrossAmount <= DeclarationThreshold)
-                return 0m;
+        await RecalculateAsync();
+    }
 
-            return 0m;
+    private async Task RecalculateAsync()
+    {
+        debounceCts?.Cancel();
+        debounceCts = new CancellationTokenSource();
+        var token = debounceCts.Token;
+
+        try
+        {
+            await Task.Delay(150, token);
+            await DoCalculateAsync(token);
+        }
+        catch (TaskCanceledException) { }
+    }
+
+    private async Task DoCalculateAsync(CancellationToken token)
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            var request = new CompareDistributionRequest
+            {
+                Year = Year,
+                YillikBrut = GrossAmount,
+                YillikVergiMaliyeti = TaxCost,
+                YillikNetEleGecen = NetReceived,
+                StopajOrani = selectedStopajRate
+            };
+
+            result = await PayrollApiService.CompareDistributionAsync(request, token);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
         }
     }
 
-    private decimal DividendFinalNet => Round2(DividendNetReceived - AdditionalTaxPayable);
-
-    private string AdvantageTitle => DividendFinalNet >= HonorariumFinalNet
-        ? "Kar Dağıtımı"
-        : "Huzur Hakkı";
-
-    private decimal NetDifference => Math.Abs(DividendFinalNet - HonorariumFinalNet);
-
-    protected override void OnParametersSet()
+    private string AdvantageText => result?.AvantajliYontem switch
     {
-        Recalculate();
+        AvantajliYontem.HuzurHakki => "Huzur Hakkı",
+        AvantajliYontem.KarDagitimi => "Kar Dağıtımı",
+        AvantajliYontem.Esit => "Eşit",
+        _ => "—"
+    };
+
+    private CompareDistributionRequest BuildRequest() => new()
+    {
+        Year = Year,
+        YillikBrut = GrossAmount,
+        YillikVergiMaliyeti = TaxCost,
+        YillikNetEleGecen = NetReceived,
+        StopajOrani = selectedStopajRate
+    };
+
+    private async Task ExportExcelAsync()
+    {
+        if (result is null) return;
+        await DownloadAsync(
+            $"kar_dagitimi_karsilastirma_{Year}.xlsx",
+            ct => PayrollApiService.ExportComparisonExcelAsync(BuildRequest(), ct),
+            "Excel");
     }
 
-    private void Recalculate()
+    private async Task ExportPdfAsync()
     {
-        StateHasChanged();
+        if (result is null) return;
+        await DownloadAsync(
+            $"kar_dagitimi_karsilastirma_{Year}.pdf",
+            ct => PayrollApiService.ExportComparisonPdfAsync(BuildRequest(), ct),
+            "PDF");
     }
 
-    private void Close()
+    private async Task DownloadAsync(
+        string fileName,
+        Func<CancellationToken, Task<byte[]>> fetchBytes,
+        string label)
     {
-        DialogService.Close();
+        try
+        {
+            isExporting = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            var bytes = await fetchBytes(CancellationToken.None);
+            await JS.InvokeVoidAsync("downloadFileFromBytes", fileName, bytes);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"{label} oluşturulamadı: {ex.Message}";
+        }
+        finally
+        {
+            isExporting = false;
+            StateHasChanged();
+        }
     }
 
-    private static decimal Round2(decimal value)
-        => Math.Round(value, 2, MidpointRounding.AwayFromZero);
+    private void Close() => DialogService.Close();
 
-    private static string FormatMoney(decimal value)
-        => $"{value:N2} TL";
+    private static string FormatMoney(decimal value) => $"{value:N2} TL";
+    private static string FormatPercent(decimal value) => $"%{value:N2}";
 }
 
 <style>
     .comparison-dialog {
-        padding: 6px 10px 4px 10px;
+        padding: 4px 8px 2px 8px;
     }
 
     .comparison-toolbar {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 16px;
-        margin-bottom: 12px;
+        gap: 10px;
+        margin-bottom: 6px;
     }
 
     .comparison-title {
-        margin: 0 0 6px 0;
-        font-size: 22px;
+        margin: 0 0 2px 0;
+        font-size: 16px;
         font-weight: 700;
         color: #1f2937;
     }
 
     .comparison-subtitle {
-        font-size: 14px;
+        font-size: 11px;
         color: #6b7280;
     }
 
     .comparison-toolbar-actions {
         display: flex;
-        gap: 8px;
+        gap: 6px;
         flex-wrap: wrap;
     }
 
-    /* TABLE WRAP */
-    .comparison-table-wrap {
+    .stopaj-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 4px 10px;
+        background: #f8fafc;
         border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        overflow: hidden;
-        margin-bottom: 8px; /* 🔥 boşluk azaltıldı */
+        border-radius: 6px;
+        margin-bottom: 6px;
+        flex-wrap: wrap;
     }
 
-    .comparison-table {
-        width: 100%;
-        border-collapse: collapse;
-        table-layout: fixed;
+    .stopaj-label {
+        font-weight: 600;
+        color: #1f2937;
+        font-size: 12px;
+    }
+
+    .beyan-info {
+        margin-left: auto;
+        color: #6b7280;
+        font-size: 11px;
+    }
+
+    .method-block {
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        overflow: hidden;
+        margin-bottom: 6px;
         background: white;
     }
 
-        /* HEADER */
-        .comparison-table thead th {
-            background: #f8fafc;
-            font-size: 15px;
-            font-weight: 700;
-            color: #1f2937;
-            padding: 12px 12px; /* 🔥 küçültüldü */
-            border-bottom: 1px solid #e5e7eb;
-            border-right: 1px solid #e5e7eb;
-            text-align: center;
-        }
-
-            .comparison-table thead th:first-child {
-                width: 28%;
-                text-align: left;
-            }
-
-            .comparison-table thead th:last-child {
-                border-right: none;
-            }
-
-        /* BODY */
-        .comparison-table tbody td {
-            padding: 10px 12px; /* 🔥 küçültüldü */
-            border-bottom: 1px solid #e5e7eb;
-            border-right: 1px solid #e5e7eb;
-            font-size: 14px;
-            color: #374151;
-            vertical-align: middle;
-        }
-
-            .comparison-table tbody td:first-child {
-                font-weight: 600;
-                background: #fbfbfc;
-            }
-
-            .comparison-table tbody td:nth-child(2),
-            .comparison-table tbody td:nth-child(3) {
-                text-align: center;
-                font-weight: 500;
-            }
-
-            .comparison-table tbody td:last-child {
-                border-right: none;
-            }
-
-        .comparison-table tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-    /* FINAL ROW */
-    .final-net-row td {
-        font-size: 15px;
+    .method-header {
+        padding: 3px 10px;
         font-weight: 700;
+        font-size: 11px;
+        letter-spacing: 0.5px;
     }
 
-    .negative-net {
-        color: #c94b4b !important;
-        font-weight: 700 !important;
+    .method-header--hh {
+        background: #eff6ff;
+        color: #1e40af;
+        border-bottom: 1px solid #dbeafe;
     }
 
-    .positive-net {
-        color: #2f7d4a !important;
-        background: #eef8f0;
-        font-weight: 700 !important;
+    .method-header--kd {
+        background: #fef3c7;
+        color: #92400e;
+        border-bottom: 1px solid #fde68a;
     }
 
-    /* 🔥 AVANTAJLI YÖNTEM BOX */
+    .method-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+
+        .method-table td {
+            padding: 3px 8px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 12px;
+            color: #374151;
+            line-height: 1.3;
+        }
+
+    .cell-code {
+        width: 12%;
+        font-family: 'Consolas', 'Menlo', monospace;
+        color: #6b7280;
+        font-size: 11px;
+    }
+
+    .cell-label {
+        width: 58%;
+        font-weight: 500;
+    }
+
+    .cell-value {
+        width: 30%;
+        text-align: right;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .cell-divider td {
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .cell-final td {
+        background: #f9fafb;
+        font-weight: 700;
+        font-size: 12px;
+    }
+
+    .cell-final .cell-value {
+        color: #1f2937;
+    }
+
+    .ilave-vergi-pos {
+        color: #b91c1c !important;
+    }
+
+    .ilave-vergi-neg {
+        color: #15803d !important;
+    }
+
     .comparison-summary {
         display: flex;
-        gap: 10px;
-        align-items: center; /* 🔥 ortalandı */
+        gap: 8px;
+        align-items: center;
         background: #f3faf4;
         border: 1px solid #d8ead9;
-        border-radius: 8px;
-        padding: 10px 14px; /* 🔥 küçültüldü */
-        margin-bottom: 10px; /* 🔥 boşluk azaltıldı */
+        border-radius: 6px;
+        padding: 6px 10px;
+        margin-bottom: 4px;
     }
 
     .summary-icon {
-        font-size: 26px; /* 🔥 küçültüldü */
+        font-size: 18px;
         line-height: 1;
         color: #2f7d4a;
         font-weight: 700;
@@ -325,40 +471,65 @@
     .summary-content {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 2px;
+        flex: 1;
+    }
+
+    .summary-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        margin-bottom: 2px;
+        font-size: 11px;
+        color: #4b5563;
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        max-width: 360px;
     }
 
     .summary-title {
-        font-size: 16px;
+        font-size: 13px;
         font-weight: 700;
         color: #1f2937;
     }
 
     .summary-line {
-        font-size: 14px;
+        font-size: 11px;
         color: #374151;
     }
 
-    /* FOOTER */
     .comparison-footer {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        margin-top: 2px; /* 🔥 aşağı kaymayı düzeltti */
-    }
-
-    .comparison-footer-left {
-        display: flex;
+        justify-content: flex-end;
         align-items: center;
         gap: 8px;
-        font-size: 14px;
-        color: #374151;
+        margin-top: 2px;
     }
 
     .comparison-footer-right {
         display: flex;
-        gap: 8px;
+        gap: 6px;
         flex-wrap: wrap;
+    }
+
+    .status-text {
+        padding: 6px;
+        text-align: center;
+        color: #6b7280;
+        font-style: italic;
+        font-size: 12px;
+    }
+
+    .error-box {
+        padding: 6px 10px;
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-radius: 4px;
+        color: #b91c1c;
+        margin-bottom: 6px;
+        font-size: 12px;
     }
 </style>

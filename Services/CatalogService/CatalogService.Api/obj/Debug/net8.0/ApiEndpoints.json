@@ -1112,8 +1112,82 @@
   },
   {
     "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
+    "Method": "CompareDistribution",
+    "RelativePath": "api/public/payroll/compare-distribution",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Payroll.Commands.CompareDistribution.CompareDistributionCommand",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Payroll.Dtos.Shared.DistributionComparisonResultDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
+    "Method": "ExportComparisonExcel",
+    "RelativePath": "api/public/payroll/compare-distribution/export-excel",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Payroll.Commands.CompareDistribution.CompareDistributionCommand",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
+    "Method": "ExportComparisonPdf",
+    "RelativePath": "api/public/payroll/compare-distribution/export-pdf",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Payroll.Commands.CompareDistribution.CompareDistributionCommand",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
     "Method": "ExportExcel",
     "RelativePath": "api/public/payroll/export-excel",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Payroll.Dtos.Requests.CalculatePayrollRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
+    "Method": "ExportPdf",
+    "RelativePath": "api/public/payroll/export-pdf",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,

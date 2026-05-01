@@ -31,6 +31,8 @@ using Serilog;
 using System.Reflection;
 using System.Text;
 
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
 
 var configuration = new ConfigurationBuilder()
@@ -98,6 +100,9 @@ builder.Services.AddScoped<IDeclarationQueryService, DeclarationQueryService>();
 builder.Services.AddScoped<IDeclarationCommandService, DeclarationCommandService>();
 builder.Services.AddScoped<ICustomerCompanyQueryService, CustomerCompanyQueryService>();
 builder.Services.AddScoped<IPayrollCalculationEngine, PayrollCalculationEngine>();
+builder.Services.AddScoped<IDistributionComparisonService, DistributionComparisonService>();
+builder.Services.AddScoped<IDistributionExportService, DistributionExportService>();
+builder.Services.AddScoped<IPayrollCalculationExportService, PayrollCalculationExportService>();
 
 builder.Services.AddSingleton<IEventBus>(sp =>
 {
