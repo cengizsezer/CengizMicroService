@@ -1,0 +1,44 @@
+2026-05-01 12:37:01.740 +03:00 [INF] Executed DbCommand (28ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-05-01 12:37:01.859 +03:00 [INF] Executed DbCommand (27ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-05-01 12:37:01.869 +03:00 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-05-01 12:37:01.874 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-05-01 12:37:01.931 +03:00 [INF] Executed DbCommand (31ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+2026-05-01 12:37:02.064 +03:00 [INF] No migrations were applied. The database is already up to date.
+2026-05-01 12:37:02.400 +03:00 [INF] InvoiceCheckWorker başladı. InitialDelay=30sn, DailyHour=9
+2026-05-01 12:37:02.611 +03:00 [WRN] Overriding address(es) 'http://localhost:5011'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2026-05-01 12:37:02.628 +03:00 [INF] Now listening on: http://localhost:5011
+2026-05-01 12:37:03.167 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-05-01 12:37:03.168 +03:00 [INF] Hosting environment: Development
+2026-05-01 12:37:03.169 +03:00 [INF] Content root path: C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker
+2026-05-01 12:37:48.265 +03:00 [INF] Executed DbCommand (15ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-05-01 12:37:48.325 +03:00 [INF] Executed DbCommand (9ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-05-01 12:37:48.329 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-05-01 12:37:48.331 +03:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-05-01 12:37:48.342 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+2026-05-01 12:37:48.929 +03:00 [INF] No migrations were applied. The database is already up to date.
+2026-05-01 12:37:49.538 +03:00 [INF] InvoiceCheckWorker başladı. InitialDelay=30sn, DailyHour=9
+2026-05-01 12:37:49.869 +03:00 [WRN] Overriding address(es) 'http://localhost:5011'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2026-05-01 12:37:49.887 +03:00 [INF] Now listening on: http://localhost:5011
+2026-05-01 12:37:49.966 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-05-01 12:37:49.968 +03:00 [INF] Hosting environment: Development
+2026-05-01 12:37:49.969 +03:00 [INF] Content root path: C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker
+2026-05-01 12:38:19.585 +03:00 [INF] === ScheduledChecks BAŞLADI ===
+2026-05-01 12:38:19.810 +03:00 [INF] Executed DbCommand (17ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[IsActive] = CAST(1 AS bit)
+2026-05-01 12:38:19.870 +03:00 [INF] === ScheduledChecks BİTTİ (283ms) ===

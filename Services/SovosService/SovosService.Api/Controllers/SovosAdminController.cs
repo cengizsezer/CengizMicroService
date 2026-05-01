@@ -10,7 +10,7 @@ namespace SovosService.Api.Controllers;
 
 [Route("api/faturakontrol")]
 [ApiController]
-[Authorize(Roles = "Admin,PKF")]
+[Authorize(Roles = "Admin,pkf")]
 public class SovosAdminController : ControllerBase
 {
     private readonly SovosServiceDbContext _db;

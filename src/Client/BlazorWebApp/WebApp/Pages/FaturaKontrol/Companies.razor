@@ -1,4 +1,3 @@
-@attribute [Authorize(Roles = "Admin,PKF")]
 @page "/faturakontrol"
 @using Microsoft.AspNetCore.Authorization
 @using Radzen
@@ -10,6 +9,8 @@
 @inject ISovosAdminService Sovos
 @inject DialogService Dialog
 @inject NotificationService Notif
+@inject IPermissionService PermissionService
+@inject NavigationManager Navigation
 
 <RadzenCard class="rz-p-3">
     <div class="grid align-items-center rz-mb-2">
@@ -109,7 +110,18 @@
     string search = "";
     List<SovosCompanyListItemDto> companies = new();
 
-    protected override async Task OnInitializedAsync() => await Load();
+    protected override async Task OnInitializedAsync()
+    {
+        var canView = await PermissionService.HasPermissionAsync("FaturaKontrol.View");
+        if (!canView)
+        {
+            Navigation.NavigateTo("/unauthorized");
+            return;
+        }
+
+        await Load();
+    }
+
     async Task Reload() => await Load();
 
     async Task Load()

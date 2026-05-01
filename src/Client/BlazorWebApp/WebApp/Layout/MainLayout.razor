@@ -103,13 +103,12 @@
                                          Path="/beyanname-takip" />
                 }
 
-                <AuthorizeView Roles="Admin,PKF">
-                    <Authorized>
-                        <RadzenPanelMenuItem Text="Fatura Kontrol"
-                                             Icon="fact_check"
-                                             Path="/faturakontrol" />
-                    </Authorized>
-                </AuthorizeView>
+                @if (canViewFaturaKontrol)
+                {
+                    <RadzenPanelMenuItem Text="Fatura Kontrol"
+                                         Icon="fact_check"
+                                         Path="/faturakontrol" />
+                }
 
                 @if (canViewVergiOdeme)
                 {
@@ -254,6 +253,7 @@
     private bool canViewEducation;
     private bool canViewSettings;
     private bool canViewCalendar;
+    private bool canViewFaturaKontrol;
 
 
     protected override async Task OnInitializedAsync()
@@ -278,6 +278,7 @@
         canViewEducation = await PermissionService.HasPermissionAsync("Education.View");
         canViewSettings = await PermissionService.HasPermissionAsync("Settings.View");
         canViewCalendar = await PermissionService.HasPermissionAsync("Calendarpage.View");
+        canViewFaturaKontrol = await PermissionService.HasPermissionAsync("FaturaKontrol.View");
     }
 
     private async void OnAppStateChanged(AppStateEvent ev)

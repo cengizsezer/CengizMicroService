@@ -89,6 +89,11 @@ namespace IdentityService.Persistence
 
             var pTaxPaymentView = await GetOrCreatePermAsync("TaxPayment.View", "Mükellef Vergi Ödemeleri görme");
 
+            // Sovos fatura kontrol
+            var pFaturaKontrolView = await GetOrCreatePermAsync(
+    "FaturaKontrol.View",
+    "Sovos fatura kontrol sayfasını görme");
+
             // === 2) Roles (custom) ===
             var rAdmin = await GetOrCreateRoleAsync("Admin");
             var rPersonel = await GetOrCreateRoleAsync("Personel");
@@ -107,6 +112,7 @@ namespace IdentityService.Persistence
             await LinkRolePermAsync(pkf, pVehicleEdit);
             await LinkRolePermAsync(rIlkyardim, pIlkyardimView);
             await LinkRolePermAsync(pkf, pCalendarpageView);
+            await LinkRolePermAsync(pkf, pFaturaKontrolView);
 
             // Personel temel görüntüleyebilir (istersen ekle/çıkar)
             await LinkRolePermAsync(rPersonel, pExpenseView);

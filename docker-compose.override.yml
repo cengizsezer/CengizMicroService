@@ -5,6 +5,7 @@ services:
   webapp:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - TZ=Europe/Istanbul
     ports:
       - "2000:80"
     networks:
@@ -15,6 +16,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
       - ASPNETCORE_URLS=http://+:5000
+      - TZ=Europe/Istanbul
     ports:
       - "5000:5000"
     networks:
@@ -30,6 +32,7 @@ services:
       - ConsulConfig__ServiceAddress=http://c_identityservice:5005
       - ConsulConfig__ServiceName=IdentityService
       - ConsulConfig__ServiceId=Identity
+      - TZ=Europe/Istanbul
     ports:
       - "5005:5005"
     networks:
@@ -53,6 +56,7 @@ services:
       - ConsulConfig__ServiceAddress=http://c_catalogservice:5004
       - ConsulConfig__ServiceName=CatalogService
       - ConsulConfig__ServiceId=Catalog
+      - TZ=Europe/Istanbul
     ports:
       - "5004:5004"
     networks:
@@ -84,6 +88,7 @@ services:
       - Minio__WithSSL=false              
       - Minio__Bucket=dijitalmasraf
       - MinioPublic__Endpoint=s3.dijitalmasraf.com
+      - TZ=Europe/Istanbul
     ports:
       - "5009:5009"
     networks:
@@ -103,6 +108,7 @@ services:
     tty: true
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
+      - TZ=Europe/Istanbul
     networks:
       - net_backendservices
     depends_on:
@@ -126,6 +132,7 @@ services:
       - ConsulConfig__ServiceId=OCR
       - OpenAI__ApiKey=${OPENAI_API_KEY}
       - GoogleVision__CredentialsPath=${GOOGLE_APPLICATION_CREDENTIALS}
+      - TZ=Europe/Istanbul
     ports:
       - "5002:5002"
     networks:
@@ -155,6 +162,7 @@ services:
       - ConsulConfig__ServiceName=SovosService
       - ConsulConfig__ServiceId=Sovos
       - Worker__BaseUrl=http://c_sovos_invoiceworker:5011
+      - TZ=Europe/Istanbul
     ports:
       - "5010:5010"
     networks:
@@ -180,6 +188,7 @@ services:
       - Brevo__ApiKey=${BREVO_API_KEY}
       - Brevo__FromAddress=${BREVO_FROM_ADDRESS:-cengizsezer7@gmail.com}
       - Brevo__FromDisplayName=${BREVO_FROM_DISPLAY_NAME:-Sovos Fatura Takip}
+      - TZ=Europe/Istanbul
     ports:
       - "5011:5011"
     networks:
@@ -196,6 +205,7 @@ services:
     command: ["dotnet", "CatalogService.Api.dll", "--seed-force"]
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker
+      - TZ=Europe/Istanbul
     networks:
       - net_backendservices
     depends_on:
