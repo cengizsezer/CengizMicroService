@@ -1,0 +1,200 @@
+@using System.Globalization
+@using WebApp.Application.Services
+@using WebApp.Domain.Models.FirmaKontrol
+
+<div class="fk-vergi-panel">
+    <div class="fk-vergi-panel-header">
+        <RadzenIcon Icon="receipt_long" />
+        <span>Vergi Hesaplaması</span>
+        <span class="fk-vergi-panel-rate">
+            Kurumlar Vergisi Oranı: %@((TaxConstants.KurumlarVergisiOrani * 100m).ToString("0.##", new CultureInfo("tr-TR")))
+        </span>
+    </div>
+
+    <table class="fk-vergi-table">
+        <thead>
+            <tr>
+                <th class="fk-vergi-col-label"></th>
+                <th class="fk-vergi-col-num">Önceki Dönem</th>
+                <th class="fk-vergi-col-num">Cari Dönem</th>
+            </tr>
+        </thead>
+        <tbody>
+
+            @* ───── BÖLÜM 1: BAŞLANGIÇ ───── *@
+            <tr class="fk-vergi-row-ticari">
+                <td class="fk-vergi-col-label">TİCARİ KAR (690)</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@FormatNumber(TicariKarCari)</td>
+            </tr>
+
+            @* ───── BÖLÜM 2: İLAVELER ───── *@
+            <tr class="fk-vergi-section-header">
+                <td colspan="3">İLAVELER (+)</td>
+            </tr>
+            <tr class="fk-vergi-row-input">
+                <td class="fk-vergi-col-label fk-vergi-col-indent">K.K.E.G</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@RenderInput(() => Model.Kkeg, v => Model.Kkeg = v)</td>
+            </tr>
+            <tr class="fk-vergi-row-input">
+                <td class="fk-vergi-col-label fk-vergi-col-indent">K.K.E.G İstisna</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@RenderInput(() => Model.KkegIstisna, v => Model.KkegIstisna = v)</td>
+            </tr>
+            <tr class="fk-vergi-row-derived">
+                <td class="fk-vergi-col-label">Toplam İlaveler</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@FormatNumber(VergiHesabiHelper.ToplamIlaveler(Model))</td>
+            </tr>
+
+            @* ───── BÖLÜM 3: İNDİRİMLER ───── *@
+            <tr class="fk-vergi-section-header">
+                <td colspan="3">İNDİRİMLER (-)</td>
+            </tr>
+            <tr class="fk-vergi-row-derived">
+                <td class="fk-vergi-col-label fk-vergi-col-indent">Geçmiş Yıl Zararları</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@FormatNumber(VergiHesabiHelper.GecmisYilToplam(Model))</td>
+            </tr>
+            <tr class="fk-vergi-row-input fk-vergi-row-sub">
+                <td class="fk-vergi-col-label fk-vergi-col-indent2">2024</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@RenderInput(() => Model.GecmisYil_2024, v => Model.GecmisYil_2024 = v)</td>
+            </tr>
+            <tr class="fk-vergi-row-input fk-vergi-row-sub">
+                <td class="fk-vergi-col-label fk-vergi-col-indent2">2023</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@RenderInput(() => Model.GecmisYil_2023, v => Model.GecmisYil_2023 = v)</td>
+            </tr>
+            <tr class="fk-vergi-row-input fk-vergi-row-sub">
+                <td class="fk-vergi-col-label fk-vergi-col-indent2">2022</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@RenderInput(() => Model.GecmisYil_2022, v => Model.GecmisYil_2022 = v)</td>
+            </tr>
+            <tr class="fk-vergi-row-input fk-vergi-row-sub">
+                <td class="fk-vergi-col-label fk-vergi-col-indent2">2021</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@RenderInput(() => Model.GecmisYil_2021, v => Model.GecmisYil_2021 = v)</td>
+            </tr>
+            <tr class="fk-vergi-row-input">
+                <td class="fk-vergi-col-label fk-vergi-col-indent">İştirak / Temettü Kazançları İstisnası</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@RenderInput(() => Model.TemettuGeliri, v => Model.TemettuGeliri = v)</td>
+            </tr>
+            <tr class="fk-vergi-row-input">
+                <td class="fk-vergi-col-label fk-vergi-col-indent">Bağış ve Yardımlar</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@RenderInput(() => Model.BagisYardim, v => Model.BagisYardim = v)</td>
+            </tr>
+            <tr class="fk-vergi-row-derived">
+                <td class="fk-vergi-col-label">Toplam İndirimler</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@FormatNumber(VergiHesabiHelper.ToplamIndirim(Model))</td>
+            </tr>
+
+            @* ───── BÖLÜM 4: MALİ KAR + VERGİ ───── *@
+            <tr class="fk-vergi-row-malikar">
+                <td class="fk-vergi-col-label">MALİ KAR (Vergi Matrahı)</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@FormatNumber(MaliKar)</td>
+            </tr>
+            <tr class="fk-vergi-row-input">
+                <td class="fk-vergi-col-label fk-vergi-col-indent">Hesaplanan Kurumlar Vergisi (%25)</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@FormatNumber(HesaplananKv25)</td>
+            </tr>
+            <tr class="fk-vergi-row-input">
+                <td class="fk-vergi-col-label fk-vergi-col-indent">Kurumlar Vergisi %5 İndirim (-)</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@RenderInput(() => Model.Kv5Indirim, v => Model.Kv5Indirim = v)</td>
+            </tr>
+            <tr class="fk-vergi-row-vergi691">
+                <td class="fk-vergi-col-label"><strong>Hesaplanan Vergi → 691</strong></td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num"><strong>@FormatNumber(HesaplananVergi691)</strong></td>
+            </tr>
+
+            @* ───── BÖLÜM 5: TEVKİFAT ───── *@
+            <tr class="fk-vergi-section-header">
+                <td colspan="3">DÖNEM İÇİ YAPILAN TEVKİFAT VE ÖDEMELER (-)</td>
+            </tr>
+            <tr class="fk-vergi-row-input">
+                <td class="fk-vergi-col-label fk-vergi-col-indent">Geçici Vergi</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@RenderInput(() => Model.GeciciVergi, v => Model.GeciciVergi = v)</td>
+            </tr>
+            <tr class="fk-vergi-row-input">
+                <td class="fk-vergi-col-label fk-vergi-col-indent">Banka Stopajı</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@RenderInput(() => Model.BankaStopaji, v => Model.BankaStopaji = v)</td>
+            </tr>
+            <tr class="fk-vergi-row-input">
+                <td class="fk-vergi-col-label fk-vergi-col-indent">Diğer</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@RenderInput(() => Model.DigerTevkifat, v => Model.DigerTevkifat = v)</td>
+            </tr>
+            <tr class="fk-vergi-row-derived">
+                <td class="fk-vergi-col-label">Toplam Tevkifat ve Ödemeler</td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">@FormatNumber(VergiHesabiHelper.ToplamTevkifat(Model))</td>
+            </tr>
+
+            @* ───── BÖLÜM 6: SONUÇ ───── *@
+            <tr class="@OdenecekRowCss">
+                <td class="fk-vergi-col-label"><strong>Ödenecek Vergi</strong></td>
+                <td class="fk-vergi-col-num">—</td>
+                <td class="fk-vergi-col-num">
+                    @if (IsIade)
+                    {
+                        <strong>İADE: @FormatNumber(OdenecekVergiAbs)</strong>
+                    }
+                    else
+                    {
+                        <strong>@FormatNumber(OdenecekVergiAbs)</strong>
+                    }
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public VergiHesaplama Model { get; set; } = default!;
+    [Parameter] public decimal? TicariKarCari { get; set; }
+    [Parameter] public EventCallback OnInputChanged { get; set; }
+
+    private decimal? MaliKar => VergiHesabiHelper.MaliKar(TicariKarCari, Model);
+    private decimal? HesaplananKv25 => VergiHesabiHelper.HesaplananKv25(MaliKar);
+    private decimal? HesaplananVergi691 => VergiHesabiHelper.HesaplananVergi691(HesaplananKv25, Model);
+    private decimal? OdenecekVergi => VergiHesabiHelper.OdenecekVergi(HesaplananVergi691, Model);
+
+    private bool IsIade => OdenecekVergi.HasValue && OdenecekVergi.Value < 0;
+
+    private decimal? OdenecekVergiAbs =>
+        OdenecekVergi.HasValue ? Math.Abs(OdenecekVergi.Value) : (decimal?)null;
+
+    private string OdenecekRowCss =>
+        IsIade ? "fk-vergi-row-odenecek is-iade" : "fk-vergi-row-odenecek";
+
+    private RenderFragment RenderInput(Func<decimal> getter, Action<decimal> setter) => builder =>
+    {
+        builder.OpenComponent<Radzen.Blazor.RadzenNumeric<decimal>>(0);
+        builder.AddAttribute(1, "Value", getter());
+        builder.AddAttribute(2, "ValueChanged",
+            Microsoft.AspNetCore.Components.EventCallback.Factory.Create<decimal>(this, async v =>
+            {
+                setter(v);
+                StateHasChanged();
+                if (OnInputChanged.HasDelegate)
+                    await OnInputChanged.InvokeAsync();
+            }));
+        builder.AddAttribute(3, "Format", "N2");
+        builder.AddAttribute(4, "Placeholder", "0,00");
+        builder.AddAttribute(5, "Style", "width: 150px; text-align: right;");
+        builder.CloseComponent();
+    };
+
+    private static string FormatNumber(decimal? value) =>
+        value.HasValue ? value.Value.ToString("N2", new CultureInfo("tr-TR")) : "—";
+}

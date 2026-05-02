@@ -1,0 +1,157 @@
+@using System.Globalization
+@using WebApp.Domain.Models.FirmaKontrol
+
+<table class="fk-mizan-table">
+    <thead>
+        <tr>
+            <th class="fk-mizan-col-kod">Kod</th>
+            <th class="fk-mizan-col-ad">Hesap Adı</th>
+            <th class="fk-mizan-col-num">Önceki Dönem</th>
+            <th class="fk-mizan-col-num">Cari Dönem</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Rows.Count == 0)
+        {
+            <tr>
+                <td colspan="4" class="fk-mizan-empty"><em>Bu bölüm için satır bulunmuyor.</em></td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var row in computed)
+            {
+                <tr class="@RowCssClass(row.Source.Tip)">
+                    <td class="fk-mizan-col-kod">@row.Source.Kod</td>
+                    <td class="fk-mizan-col-ad">@row.Source.Ad</td>
+                    <td class="fk-mizan-col-num">@FormatNumber(row.Onceki)</td>
+                    <td class="fk-mizan-col-num">@FormatNumber(row.Cari)</td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+@code {
+    [Parameter, EditorRequired] public List<MizanSatir> Rows { get; set; } = new();
+
+    private record ComputedRow(MizanSatir Source, decimal? Onceki, decimal? Cari);
+
+    private List<ComputedRow> computed = new();
+
+    protected override void OnParametersSet()
+    {
+        computed = Compute(Rows);
+    }
+
+    private static List<ComputedRow> Compute(List<MizanSatir> rows)
+    {
+        // 1) İlk geçiş: Account satırlarının değerleri olduğu gibi
+        // 2) İkinci geçiş: SubGroup -> sonraki SubGroup/MainGroup'a kadarki Account toplamı
+        //    MainGroup -> sonraki MainGroup/Total'a kadarki Account toplamı
+        //    Total -> önceki Total'dan sonraki MainGroup toplamlarının toplamı
+        //    Other -> hesaplanmaz
+
+        var oncekiVals = new decimal?[rows.Count];
+        var cariVals = new decimal?[rows.Count];
+
+        // Account değerleri
+        for (int i = 0; i < rows.Count; i++)
+        {
+            if (rows[i].Tip == SatirTipi.Account)
+            {
+                oncekiVals[i] = rows[i].OncekiDonem;
+                cariVals[i] = rows[i].CariDonem;
+            }
+        }
+
+        // SubGroup ve MainGroup toplamları
+        for (int i = 0; i < rows.Count; i++)
+        {
+            var t = rows[i].Tip;
+            if (t != SatirTipi.SubGroup && t != SatirTipi.MainGroup) continue;
+
+            decimal? sumOnceki = null;
+            decimal? sumCari = null;
+
+            for (int j = i + 1; j < rows.Count; j++)
+            {
+                var jt = rows[j].Tip;
+
+                if (t == SatirTipi.SubGroup)
+                {
+                    if (jt == SatirTipi.SubGroup || jt == SatirTipi.MainGroup || jt == SatirTipi.Total)
+                        break;
+                }
+                else // MainGroup
+                {
+                    if (jt == SatirTipi.MainGroup || jt == SatirTipi.Total)
+                        break;
+                }
+
+                if (jt == SatirTipi.Account)
+                {
+                    if (rows[j].OncekiDonem.HasValue)
+                        sumOnceki = (sumOnceki ?? 0m) + rows[j].OncekiDonem!.Value;
+                    if (rows[j].CariDonem.HasValue)
+                        sumCari = (sumCari ?? 0m) + rows[j].CariDonem!.Value;
+                }
+            }
+
+            oncekiVals[i] = sumOnceki;
+            cariVals[i] = sumCari;
+        }
+
+        // Total satırları: önceki Total'dan sonraki tüm Account'ların toplamı
+        for (int i = 0; i < rows.Count; i++)
+        {
+            if (rows[i].Tip != SatirTipi.Total) continue;
+
+            int start = 0;
+            for (int k = i - 1; k >= 0; k--)
+            {
+                if (rows[k].Tip == SatirTipi.Total)
+                {
+                    start = k + 1;
+                    break;
+                }
+            }
+
+            decimal? sumOnceki = null;
+            decimal? sumCari = null;
+
+            for (int j = start; j < i; j++)
+            {
+                if (rows[j].Tip != SatirTipi.Account) continue;
+
+                if (rows[j].OncekiDonem.HasValue)
+                    sumOnceki = (sumOnceki ?? 0m) + rows[j].OncekiDonem!.Value;
+                if (rows[j].CariDonem.HasValue)
+                    sumCari = (sumCari ?? 0m) + rows[j].CariDonem!.Value;
+            }
+
+            oncekiVals[i] = sumOnceki;
+            cariVals[i] = sumCari;
+        }
+
+        var result = new List<ComputedRow>(rows.Count);
+        for (int i = 0; i < rows.Count; i++)
+        {
+            result.Add(new ComputedRow(rows[i], oncekiVals[i], cariVals[i]));
+        }
+        return result;
+    }
+
+    private static string RowCssClass(SatirTipi tip) => tip switch
+    {
+        SatirTipi.MainGroup => "fk-mizan-row main-group",
+        SatirTipi.SubGroup => "fk-mizan-row sub-group",
+        SatirTipi.Account => "fk-mizan-row account",
+        SatirTipi.Total => "fk-mizan-row total",
+        SatirTipi.Other => "fk-mizan-row other",
+        _ => "fk-mizan-row"
+    };
+
+    private static string FormatNumber(decimal? value) =>
+        value.HasValue ? value.Value.ToString("N2", new CultureInfo("tr-TR")) : "—";
+}

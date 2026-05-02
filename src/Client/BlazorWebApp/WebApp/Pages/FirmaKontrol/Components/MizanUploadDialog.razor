@@ -1,0 +1,129 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Domain.Models.FirmaKontrol
+
+@inject DialogService Dialog
+@inject NotificationService Notif
+@inject IExcelMizanParser Parser
+@inject IFirmaKontrolService FirmaKontrolService
+
+<RadzenCard class="rz-p-3">
+    <RadzenStack Gap="1rem">
+
+        <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" ShowIcon="true" Shade="Shade.Lighter">
+            <strong>Yüklenen dönem:</strong> @DonemLabel
+            <br />
+            <strong>Beklenen Excel formatı:</strong>
+            <ul style="margin: 0.5rem 0 0 1.25rem; padding: 0;">
+                <li>İlk satır <em>başlık</em> (atlanır)</li>
+                <li>A: Hesap Kodu (örn. <code>100</code>, <code>120</code>)</li>
+                <li>B: Bakiye (TL)</li>
+            </ul>
+        </RadzenAlert>
+
+        <div>
+            <label class="fk-mizan-upload-label">Excel dosyası seçin (.xlsx, .xls):</label>
+            <InputFile OnChange="OnFileSelected" accept=".xlsx,.xls" class="fk-mizan-upload-input" />
+        </div>
+
+        @if (busy)
+        {
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+                <span>İşleniyor...</span>
+            </RadzenStack>
+        }
+
+        @if (!string.IsNullOrEmpty(error))
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" ShowIcon="true">@error</RadzenAlert>
+        }
+
+        @if (lastResult is not null)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Success" ShowIcon="true">
+                <strong>@lastResult.Matched satır</strong> hesap planına eşleşti.
+                @if (lastResult.Unmatched > 0)
+                {
+                    <span> @lastResult.Unmatched satır eşleşmedi (atlandı).</span>
+                }
+            </RadzenAlert>
+        }
+
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.End">
+            <RadzenButton Text="Kapat"
+                          ButtonStyle="ButtonStyle.Light"
+                          Click="@(() => Dialog.Close(uploaded))" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenCard>
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+    [Parameter] public Donem Donem { get; set; } = Donem.Cari;
+
+    private string DonemLabel => Donem == Donem.Cari ? "Cari Dönem" : "Önceki Dönem";
+
+    private bool busy;
+    private string? error;
+    private MizanUpdateResult? lastResult;
+    private bool uploaded;
+
+    private async Task OnFileSelected(InputFileChangeEventArgs args)
+    {
+        error = null;
+        lastResult = null;
+
+        var file = args.File;
+        if (file is null) return;
+
+        busy = true;
+        StateHasChanged();
+
+        try
+        {
+            const long maxBytes = 20 * 1024 * 1024;
+            await using var src = file.OpenReadStream(maxAllowedSize: maxBytes);
+            using var ms = new MemoryStream();
+            await src.CopyToAsync(ms);
+            ms.Position = 0;
+
+            var parsed = await Parser.ParseAsync(ms);
+
+            if (parsed.Errors.Count > 0)
+            {
+                error = string.Join(" | ", parsed.Errors);
+                return;
+            }
+
+            if (parsed.Rows.Count == 0)
+            {
+                error = "Excel'de okunabilir satır bulunamadı.";
+                return;
+            }
+
+            var updateResult = await FirmaKontrolService.UpdateMizanFromExcelAsync(FirmaId, parsed.Rows, Donem);
+            lastResult = updateResult;
+            uploaded = true;
+
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = $"{DonemLabel} mizanı yüklendi",
+                Detail = $"{updateResult.Matched} hesap güncellendi, {updateResult.Unmatched} atlandı.",
+                Duration = 5000
+            });
+        }
+        catch (Exception ex)
+        {
+            error = $"Yükleme hatası: {ex.Message}";
+        }
+        finally
+        {
+            busy = false;
+            StateHasChanged();
+        }
+    }
+}

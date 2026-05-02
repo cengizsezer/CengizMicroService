@@ -38,12 +38,25 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             return services;
         }
 
-        public static IServiceCollection AddPkfPageServices(this IServiceCollection services) 
+        public static IServiceCollection AddPkfPageServices(this IServiceCollection services)
         {
 
             services.AddScoped<IPayrollApiService, PayrollApiService>();
-            
 
+
+            return services;
+        }
+
+        public static IServiceCollection AddFirmaKontrolServices(this IServiceCollection services)
+        {
+            services.AddSingleton<IHesapPlaniLoader>(sp =>
+            {
+                var nav = sp.GetRequiredService<NavigationManager>();
+                var http = new HttpClient { BaseAddress = new Uri(nav.BaseUri) };
+                return new HesapPlaniLoader(http);
+            });
+            services.AddSingleton<IExcelMizanParser, ExcelMizanParser>();
+            services.AddSingleton<IFirmaKontrolService, MockFirmaKontrolService>();
             return services;
         }
 

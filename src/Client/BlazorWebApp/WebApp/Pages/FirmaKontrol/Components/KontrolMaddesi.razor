@@ -1,0 +1,96 @@
+@using WebApp.Domain.Models.FirmaKontrol
+
+<div class="fk-kontrol-row @StatusCssClass">
+    <div class="fk-kontrol-row-header" @onclick="ToggleExpand">
+
+        <span class="fk-kontrol-cell" @onclick:stopPropagation="true">
+            <RadzenCheckBox @bind-Value="checkedValue" TValue="bool" Change="OnCheckedChanged" />
+        </span>
+
+        <div class="fk-soru-text @(Item.IsChecked ? "checked" : null)" title="@Item.Question">
+            @Item.Question
+        </div>
+
+        <span class="fk-kontrol-cell" @onclick:stopPropagation="true">
+            <RadzenDropDown TValue="ControlStatus"
+                            @bind-Value="statusValue"
+                            Data="@StatusOptions"
+                            TextProperty="Text"
+                            ValueProperty="Value"
+                            Change="@OnStatusChanged"
+                            Style="width: 140px;" />
+        </span>
+
+        <RadzenIcon Icon="@(expanded ? "expand_less" : "expand_more")"
+                    Style="color: var(--rz-text-secondary-color);" />
+    </div>
+
+    <div class="@(expanded ? "fk-not-area expanded" : "fk-not-area")">
+        <div class="fk-not-area-inner">
+            <RadzenTextArea @bind-Value="noteValue"
+                            Change="@OnNoteChanged"
+                            Placeholder="Not / açıklama girin..."
+                            Rows="3"
+                            Style="width: 100%;" />
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ControlItem Item { get; set; } = default!;
+    [Parameter] public EventCallback<ControlItem> OnChanged { get; set; }
+
+    private bool checkedValue;
+    private ControlStatus statusValue;
+    private string? noteValue;
+    private bool expanded;
+
+    private record StatusOption(string Text, ControlStatus Value);
+
+    private static readonly StatusOption[] StatusOptions = new[]
+    {
+        new StatusOption("Bekliyor", ControlStatus.Pending),
+        new StatusOption("Kontrol Edildi", ControlStatus.Verified),
+        new StatusOption("Sorun Var", ControlStatus.HasIssue)
+    };
+
+    protected override void OnParametersSet()
+    {
+        checkedValue = Item.IsChecked;
+        statusValue = Item.Status;
+        noteValue = Item.Note;
+    }
+
+    private string? StatusCssClass => Item.Status switch
+    {
+        ControlStatus.Verified => "verified",
+        ControlStatus.HasIssue => "has-issue",
+        _ => null
+    };
+
+    private void ToggleExpand() => expanded = !expanded;
+
+    private async Task OnCheckedChanged(bool value)
+    {
+        Item.IsChecked = value;
+        if (OnChanged.HasDelegate)
+            await OnChanged.InvokeAsync(Item);
+    }
+
+    private async Task OnStatusChanged(object value)
+    {
+        if (value is ControlStatus s)
+        {
+            Item.Status = s;
+            if (OnChanged.HasDelegate)
+                await OnChanged.InvokeAsync(Item);
+        }
+    }
+
+    private async Task OnNoteChanged(string value)
+    {
+        Item.Note = value;
+        if (OnChanged.HasDelegate)
+            await OnChanged.InvokeAsync(Item);
+    }
+}

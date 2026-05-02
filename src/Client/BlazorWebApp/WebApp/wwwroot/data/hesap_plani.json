@@ -1,0 +1,1448 @@
+{
+  "aktif": [
+    {
+      "tip": "MainGroup",
+      "kod": "",
+      "ad": "I -DÖNEN VARLIKLAR"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "A-Hazır Değerler"
+    },
+    {
+      "tip": "Account",
+      "kod": "100",
+      "ad": "Kasa"
+    },
+    {
+      "tip": "Account",
+      "kod": "101",
+      "ad": "Alınan Çekler"
+    },
+    {
+      "tip": "Account",
+      "kod": "102",
+      "ad": "Bankalar"
+    },
+    {
+      "tip": "Account",
+      "kod": "103",
+      "ad": "Verilen Çekler ve Ödeme Emirleri(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "108",
+      "ad": "Diğer Hazır Değerler"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "B-Menkul Kıymetler"
+    },
+    {
+      "tip": "Account",
+      "kod": "110",
+      "ad": "Hisse Senetleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "111",
+      "ad": "Özel Kesim Tahvil,Senet ve Bonoları"
+    },
+    {
+      "tip": "Account",
+      "kod": "112",
+      "ad": "Kamu Kesimi Tahvil, Senet ve Bonoları"
+    },
+    {
+      "tip": "Account",
+      "kod": "118",
+      "ad": "Diğer Menkul Kıymetler"
+    },
+    {
+      "tip": "Account",
+      "kod": "119",
+      "ad": "Menkul Kıymetler Değer Düşüklüğü Karşılığı(-)"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "C-Ticari Alacaklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "120",
+      "ad": "Alıcılar"
+    },
+    {
+      "tip": "Account",
+      "kod": "121",
+      "ad": "Alacak Senetleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "122",
+      "ad": "Alacak Senetleri Reeskontu(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "124",
+      "ad": "Kazanılmamış Finansal Kiralama Faiz Gelirleri(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "126",
+      "ad": "Verilen Depozito ve Teminatlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "127",
+      "ad": "Diğer Ticari Alacaklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "128",
+      "ad": "Şüpheli Ticari Alacaklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "129",
+      "ad": "Şüpheli Ticari Alacaklar Karşılığı (-)"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "D-Diğer Alacaklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "131",
+      "ad": "Ortaklardan Alacaklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "132",
+      "ad": "İştiraklerden Alacaklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "133",
+      "ad": "Bağlı Ortaklıklardan Alacaklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "135",
+      "ad": "Personelden Alacaklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "136",
+      "ad": "Diğer Çeşitli Alacaklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "137",
+      "ad": "Diğer Alacak Senetleri Reeskontu (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "138",
+      "ad": "Şüpheli Diğer Alacaklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "139",
+      "ad": "Şüpheli Diğer Alacaklar Karşılığı (-)"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "E-Stoklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "150",
+      "ad": "İlk Madde ve Malzeme"
+    },
+    {
+      "tip": "Account",
+      "kod": "151",
+      "ad": "Yarı Mamüller-Üretim"
+    },
+    {
+      "tip": "Account",
+      "kod": "152",
+      "ad": "Mamüller"
+    },
+    {
+      "tip": "Account",
+      "kod": "153",
+      "ad": "Ticari Mallar"
+    },
+    {
+      "tip": "Account",
+      "kod": "157",
+      "ad": "Diğer Stoklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "158",
+      "ad": "Stok Değer Düşüklüğü Karşılığı (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "159",
+      "ad": "Verilen Sipariş Avansları"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "F-Yıllara Yaygın İnşaat ve Onarım Maliyetleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "170",
+      "ad": "Yıllara Yaygın İnşaat ve Onarım Maliyetleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "178",
+      "ad": "Yıllara Yaygın İnşaat Enflasyon Düzeltme Hesabı"
+    },
+    {
+      "tip": "Account",
+      "kod": "179",
+      "ad": "Taşeronlara Verilen Avanslar"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "G-Gelecek Aylara Ait Giderler ve Gelir Tahakkukları"
+    },
+    {
+      "tip": "Account",
+      "kod": "180",
+      "ad": "Gelecek Aylara Ait Giderler"
+    },
+    {
+      "tip": "Account",
+      "kod": "181",
+      "ad": "Gelir Tahakkukları"
+    },
+    {
+      "tip": "MainGroup",
+      "kod": "",
+      "ad": "H-Diğer Dönen Varlıklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "190",
+      "ad": "Devreden KDV"
+    },
+    {
+      "tip": "Account",
+      "kod": "191",
+      "ad": "İndirilecek KDV"
+    },
+    {
+      "tip": "Account",
+      "kod": "192",
+      "ad": "Diğer KDV"
+    },
+    {
+      "tip": "Account",
+      "kod": "193",
+      "ad": "Peşin Ödenen Vergiler ve Fonlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "195",
+      "ad": "İş Avansları"
+    },
+    {
+      "tip": "Account",
+      "kod": "196",
+      "ad": "Personel Avansları"
+    },
+    {
+      "tip": "Account",
+      "kod": "197",
+      "ad": "Sayım ve Tesellüm Noksanları"
+    },
+    {
+      "tip": "Account",
+      "kod": "198",
+      "ad": "Diğer Çeşitli Dönen Varlıklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "199",
+      "ad": "Diğer Çeşitli Dönen Varlıklar Karşılığı (-)"
+    },
+    {
+      "tip": "MainGroup",
+      "kod": "",
+      "ad": "II -DURAN VARLIKLAR"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "A-Ticari Alacaklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "220",
+      "ad": "Alıcılar"
+    },
+    {
+      "tip": "Account",
+      "kod": "221",
+      "ad": "Alacak Senetleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "222",
+      "ad": "Alacak Senetleri Reeskontu(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "224",
+      "ad": "Kazanılmamış Finansal Kiralama Faiz Gelirleri(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "226",
+      "ad": "Verilen Depozito ve Teminatlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "229",
+      "ad": "Şüpheli Alacaklar Karşılığı(-)"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "B-Diğer Alacaklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "231",
+      "ad": "Ortaklardan Alacaklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "232",
+      "ad": "İştiraklerden Alacaklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "233",
+      "ad": "Bağlı Ortaklıklardan Alacaklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "235",
+      "ad": "Personelden Alacaklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "236",
+      "ad": "Diğer Çeşitli Alacaklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "237",
+      "ad": "Diğer Alacak Senetleri Reeskontu(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "239",
+      "ad": "Şüpheli Diğer Alacaklar Karşılığı(-)"
+    },
+    {
+      "tip": "MainGroup",
+      "kod": "",
+      "ad": "C-Mali Duran Varlıklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "240",
+      "ad": "Bağlı Menkul Kıymetler"
+    },
+    {
+      "tip": "Account",
+      "kod": "241",
+      "ad": "Bağlı Menkul Kıymetler Değer Düşüklüğü Karşılığı(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "242",
+      "ad": "İştirakler"
+    },
+    {
+      "tip": "Account",
+      "kod": "243",
+      "ad": "İştiraklere Sermaye Taahhütleri(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "244",
+      "ad": "İştirakler Sermaye Payları Değer Düşüklüğü Karşılığı(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "245",
+      "ad": "Bağlı Ortaklıklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "246",
+      "ad": "Bağlı Ortaklıklara Sermaye Taahhütleri(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "247",
+      "ad": "Bağlı Ortaklıklar Sermaye Payları Değer Düşüklüğü Karşılığı(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "248",
+      "ad": "Diğer Mali Duran Varlıklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "249",
+      "ad": "Diğer Mali Duran Varlıklar Karşılığı(-)"
+    },
+    {
+      "tip": "MainGroup",
+      "kod": "",
+      "ad": "D-Maddi Duran Varlıklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "250",
+      "ad": "Arazi ve Arsalar"
+    },
+    {
+      "tip": "Account",
+      "kod": "251",
+      "ad": "Yeraltı ve Yerüstü Düzenleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "252",
+      "ad": "Binalar"
+    },
+    {
+      "tip": "Account",
+      "kod": "253",
+      "ad": "Tesis,Makine ve Cihazlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "254",
+      "ad": "Taşıtlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "255",
+      "ad": "Demirbaşlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "256",
+      "ad": "Diğer Maddi Duran Varlıklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "257",
+      "ad": "Birikmiş Amortismanlar(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "258",
+      "ad": "Yapılmakta Olan Yatırımlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "259",
+      "ad": "Verilen Avanslar"
+    },
+    {
+      "tip": "MainGroup",
+      "kod": "",
+      "ad": "E-Maddi Olmayan Duran Varlıklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "260",
+      "ad": "Haklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "261",
+      "ad": "Şerefiye"
+    },
+    {
+      "tip": "Account",
+      "kod": "262",
+      "ad": "Kuruluş ve Örgütlenme Giderleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "263",
+      "ad": "Araştırma ve Geliştirme Giderleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "264",
+      "ad": "Özel Maliyetler"
+    },
+    {
+      "tip": "Account",
+      "kod": "267",
+      "ad": "Diğer Maddi Olmayan Duran Varlıklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "268",
+      "ad": "Birikmiş Amortismanlar(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "269",
+      "ad": "Verilen Avanslar"
+    },
+    {
+      "tip": "MainGroup",
+      "kod": "",
+      "ad": "F-Özel Tükenmeye Tabi Varlıklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "271",
+      "ad": "Arama Giderleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "272",
+      "ad": "Hazırlık ve Geliştirme Giderleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "277",
+      "ad": "Diğer Özel Tükenmeye Tabi Varlıklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "278",
+      "ad": "Birikmiş Tükenme Payları(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "279",
+      "ad": "Verilen Avanslar"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "G-Gelecek Yıllara Ait Giderler ve Gelir Tahakkukları"
+    },
+    {
+      "tip": "Account",
+      "kod": "280",
+      "ad": "Gelecek Yıllara Ait Giderler"
+    },
+    {
+      "tip": "Account",
+      "kod": "281",
+      "ad": "Gelir Tahakkukları"
+    },
+    {
+      "tip": "MainGroup",
+      "kod": "",
+      "ad": "H-Diğer Duran Varlıklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "291",
+      "ad": "Gelecek Yıllarda İndirilecek KDV"
+    },
+    {
+      "tip": "Account",
+      "kod": "292",
+      "ad": "Diğer KDV"
+    },
+    {
+      "tip": "Account",
+      "kod": "293",
+      "ad": "Gelecek Yıllar İhtiyacı Stoklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "294",
+      "ad": "Elden Çıkarılacak Stoklar ve Maddi Duran Varlıklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "295",
+      "ad": "Peşin Ödenen Vergiler ve Fonlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "297",
+      "ad": "Diğer Çeşitli Duran Varlıklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "298",
+      "ad": "Stok Değer Düşüklüğü Karşılığı(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "299",
+      "ad": "Birikmiş Amortismanlar(-)"
+    },
+    {
+      "tip": "Total",
+      "kod": "",
+      "ad": "AKTİF (VARLIKLAR) TOPLAMI"
+    }
+  ],
+  "pasif": [
+    {
+      "tip": "MainGroup",
+      "kod": "",
+      "ad": "III-KISA VADELİ YABANCI KAYNAKLAR"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "A-Mali Borçlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "300",
+      "ad": "Banka Kredileri"
+    },
+    {
+      "tip": "Account",
+      "kod": "301",
+      "ad": "Finansal Kiralama İşlemlerinden Borçlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "302",
+      "ad": "Ertelenmiş Finansal Kiralama Borçlanma Maliyetleri(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "303",
+      "ad": "Uzun Vadeli Kredilerin Anapara Taksitleri ve Faizleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "304",
+      "ad": "Tahvil,Anapara,Borç Taksit ve Faizleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "305",
+      "ad": "Çıkarılmış Bonolar ve Senetler"
+    },
+    {
+      "tip": "Account",
+      "kod": "306",
+      "ad": "Çıkarılmış Diğer Menkul Kıymetler"
+    },
+    {
+      "tip": "Account",
+      "kod": "308",
+      "ad": "Menkul Kıymetler İhraç Farkı(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "309",
+      "ad": "Diğer Mali Borçlar"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "B-Ticari Borçlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "320",
+      "ad": "Satıcılar"
+    },
+    {
+      "tip": "Account",
+      "kod": "321",
+      "ad": "Borç Senetleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "322",
+      "ad": "Borç Senetleri Reeskontu(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "326",
+      "ad": "Alınan Depozito ve Teminatlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "329",
+      "ad": "Diğer Ticari Borçlar"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "C-Diğer Borçlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "331",
+      "ad": "Ortaklara Borçlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "332",
+      "ad": "İştiraklere Borçlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "333",
+      "ad": "Bağlı Ortaklıklara Borçlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "335",
+      "ad": "Personele Borçlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "336",
+      "ad": "Diğer Çeşitli Borçlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "337",
+      "ad": "Diğer Borç Senetleri Reeskontu(-)"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "D-Alınan Avanslar"
+    },
+    {
+      "tip": "Account",
+      "kod": "340",
+      "ad": "Alınan Sipariş Avansları"
+    },
+    {
+      "tip": "Account",
+      "kod": "349",
+      "ad": "Alınan Diğer Avanslar"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "E-Yıllara Yaygın İnşaat ve Onarım Hakedişleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "350",
+      "ad": "Yıllara Yaygın İnşaat ve Onarım Hakediş Bedelleri Düzeltme Hesabı"
+    },
+    {
+      "tip": "Account",
+      "kod": "358",
+      "ad": "Yıllara Yaygın İnşaat Enflasyon Düzeltme Hesabı"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "F-Ödenecek Vergi ve Diğer Yükümlülükler"
+    },
+    {
+      "tip": "Account",
+      "kod": "360",
+      "ad": "Ödenecek Vergi ve  Fonlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "361",
+      "ad": "Ödenecek Sosyal Güvenlik Kesintileri"
+    },
+    {
+      "tip": "Account",
+      "kod": "368",
+      "ad": "Vadesi Geçmiş Ertelenmiş veya Taksitlendirilmiş Vergi ve Diğer Yükümlülükler"
+    },
+    {
+      "tip": "Account",
+      "kod": "369",
+      "ad": "Ödenecek Diğer Yükümlülükler"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "G-Borç ve Gider Karşılıkları"
+    },
+    {
+      "tip": "Account",
+      "kod": "370",
+      "ad": "Dönem Kârı Vergi ve Diğer Yasal Yükümlükler Karşılıkları"
+    },
+    {
+      "tip": "Account",
+      "kod": "371",
+      "ad": "Dönem Kârının Peşin Ödenen Vergi ve Diğer Yükümlülükler(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "372",
+      "ad": "Kıdem Tazminatı Karşılığı"
+    },
+    {
+      "tip": "Account",
+      "kod": "373",
+      "ad": "Maliyet Giderleri Karşılığı"
+    },
+    {
+      "tip": "Account",
+      "kod": "379",
+      "ad": "Diğer Borç ve Gider Karşılıkları"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "H-Gelecek Aylara Ait Gelirler ve Gider Tahakkukları"
+    },
+    {
+      "tip": "Account",
+      "kod": "380",
+      "ad": "Gelecek Aylara Ait Gelirler"
+    },
+    {
+      "tip": "Account",
+      "kod": "381",
+      "ad": "Gider Tahakkukları"
+    },
+    {
+      "tip": "MainGroup",
+      "kod": "",
+      "ad": "I-Diğer Kısa Vadeli Yabancı Kaynaklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "391",
+      "ad": "Hesaplanan KDV"
+    },
+    {
+      "tip": "Account",
+      "kod": "392",
+      "ad": "Diğer KDV"
+    },
+    {
+      "tip": "Account",
+      "kod": "393",
+      "ad": "Merkez ve Şubeler Cari Hesabı"
+    },
+    {
+      "tip": "Account",
+      "kod": "397",
+      "ad": "Sayım ve Tesellüm Fazlaları"
+    },
+    {
+      "tip": "Account",
+      "kod": "399",
+      "ad": "Diğer Çeşitli Yabancı Kaynaklar"
+    },
+    {
+      "tip": "MainGroup",
+      "kod": "",
+      "ad": "IV -UZUN VADELİ YABANCI KAYNAKLAR"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "A-Mali Borçlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "400",
+      "ad": "Banka Kredileri"
+    },
+    {
+      "tip": "Account",
+      "kod": "401",
+      "ad": "Finansal Kiralama İşlemlerinden Borçlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "402",
+      "ad": "Ertelenmiş Finansal Kiralama Borçlanma Maliyetleri(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "405",
+      "ad": "Çıkarılmış Tahviller"
+    },
+    {
+      "tip": "Account",
+      "kod": "407",
+      "ad": "Çıkarılmış Diğer Menkul Kıymetler"
+    },
+    {
+      "tip": "Account",
+      "kod": "408",
+      "ad": "Menkul Kıymetler İhraç Farkı(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "409",
+      "ad": "Diğer Mali Borçlar."
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "B-Ticari Borçlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "420",
+      "ad": "Satıcılar"
+    },
+    {
+      "tip": "Account",
+      "kod": "421",
+      "ad": "Borç Senetleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "422",
+      "ad": "Borç Senetleri Reeskontu(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "426",
+      "ad": "Alınan Depozito ve Teminatlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "429",
+      "ad": "Diğer Ticari Borçlar"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "C-Diğer Borçlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "431",
+      "ad": "Ortaklara Borçlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "432",
+      "ad": "İştiraklere Borçlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "433",
+      "ad": "Bağlı Ortaklıklara Borçlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "436",
+      "ad": "Diğer Çeşitli Borçlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "437",
+      "ad": "Diğer Borç Senetleri Reeskontu(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "438",
+      "ad": "Kamuya Olan Ertelenmiş ve Taksitlendirilmiş Borçlar"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "D-Alınan Avanslar"
+    },
+    {
+      "tip": "Account",
+      "kod": "440",
+      "ad": "Alınan Sipariş Avansları"
+    },
+    {
+      "tip": "Account",
+      "kod": "449",
+      "ad": "Alınan Diğer Avanslar"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "E-Borç ve Gider Karşılıkları"
+    },
+    {
+      "tip": "Account",
+      "kod": "472",
+      "ad": "Kıdem Tazminatı Karşılıkları"
+    },
+    {
+      "tip": "Account",
+      "kod": "479",
+      "ad": "Diğer Borç ve Gider Karşılıkları"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "F-Gelecek Yıllara Ait Gelirler ve Gider Tahakkukları"
+    },
+    {
+      "tip": "Account",
+      "kod": "480",
+      "ad": "Gelecek Yıllara Ait Gelirler"
+    },
+    {
+      "tip": "Account",
+      "kod": "481",
+      "ad": "Gider Tahakkukları"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "G-Diğer Uzun Vadeli Yab. Kaynakl."
+    },
+    {
+      "tip": "Account",
+      "kod": "492",
+      "ad": "Gelecek Yıllara Ertelenen veya Terkin Edilecek KDV"
+    },
+    {
+      "tip": "Account",
+      "kod": "493",
+      "ad": "Tesise Katılma Payları"
+    },
+    {
+      "tip": "Account",
+      "kod": "499",
+      "ad": "Diğer Çeş. Uzun Vadeli Yab. Kayn."
+    },
+    {
+      "tip": "MainGroup",
+      "kod": "",
+      "ad": "V-ÖZ KAYNAKLAR"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "A-Ödenmiş Sermaye"
+    },
+    {
+      "tip": "Account",
+      "kod": "500",
+      "ad": "Sermaye"
+    },
+    {
+      "tip": "Account",
+      "kod": "501",
+      "ad": "Ödenmemiş Sermaye(-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "502",
+      "ad": "Sermaye Düzeltmesi Olumlu Fark."
+    },
+    {
+      "tip": "Account",
+      "kod": "503",
+      "ad": "Sermaye Düzeltmesi Olumsuz Farkları(-)"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "B-Sermaye Yedekleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "520",
+      "ad": "Hisse Senedi İhraç Primleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "521",
+      "ad": "Hisse Senedi İptal Karları"
+    },
+    {
+      "tip": "Account",
+      "kod": "522",
+      "ad": "M.D.V. Yeniden Değerl. Artışl."
+    },
+    {
+      "tip": "Account",
+      "kod": "523",
+      "ad": "İştirakler Yeniden Değerleme Artışları"
+    },
+    {
+      "tip": "Account",
+      "kod": "524",
+      "ad": "Diğer Sermaye Yedekleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "525",
+      "ad": "kayda alinan emtia özel karşilik hesabı"
+    },
+    {
+      "tip": "Account",
+      "kod": "526",
+      "ad": "DEMİRBAŞ MAKİNE VE TEÇHİZAT ÖZEL KARŞILIK HESABI"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "C-Kar Yedekleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "540",
+      "ad": "Yasal Yedekler"
+    },
+    {
+      "tip": "Account",
+      "kod": "541",
+      "ad": "Statü Yedekleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "542",
+      "ad": "Olağanüstü Yedekler"
+    },
+    {
+      "tip": "Account",
+      "kod": "548",
+      "ad": "Diğer Kar Yedekleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "549",
+      "ad": "Özel Fonlar"
+    },
+    {
+      "tip": "Other",
+      "kod": "",
+      "ad": "Geçmiş Yıllar Karları"
+    },
+    {
+      "tip": "Account",
+      "kod": "570",
+      "ad": "Geçmiş Yıllar Karları"
+    },
+    {
+      "tip": "Other",
+      "kod": "",
+      "ad": "Geçmiş Yıllar Zararları"
+    },
+    {
+      "tip": "Account",
+      "kod": "580",
+      "ad": "Geçmiş Yıllar Zararları"
+    },
+    {
+      "tip": "Other",
+      "kod": "",
+      "ad": "Dönem Net Karı (Zararı)"
+    },
+    {
+      "tip": "Account",
+      "kod": "590",
+      "ad": "Dönem Net Karı"
+    },
+    {
+      "tip": "Account",
+      "kod": "591",
+      "ad": "Dönem Net Zararı (-)"
+    },
+    {
+      "tip": "Total",
+      "kod": "",
+      "ad": "PASİF(KAYNAKLAR) TOPLAMI"
+    }
+  ],
+  "gelirTablosu": [
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "A-BRÜT SATIŞLAR"
+    },
+    {
+      "tip": "Account",
+      "kod": "600",
+      "ad": "1.Yurtiçi Satışlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "601",
+      "ad": "2.Yurtdışı Satışlar"
+    },
+    {
+      "tip": "Account",
+      "kod": "602",
+      "ad": "3.Diğer Gelirler"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "B-SATIŞ İNDİRİMLERİ (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "610",
+      "ad": "1.Satıştan İadeler (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "611",
+      "ad": "2.Satış İskontoları (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "612",
+      "ad": "3.Diğer İndirimler (-)"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "C-NET SATIŞLAR"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "D-SATIŞLARIN MALİYETİ (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "620",
+      "ad": "1.Satılan Mamullar Maliyeti (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "621",
+      "ad": "2.Satılan Ticari Mallar Maliyeti (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "622",
+      "ad": "3.Satılan Hizmet Maliyeti (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "623",
+      "ad": "4.Diğer Satışların Maliyeti (-)"
+    },
+    {
+      "tip": "Total",
+      "kod": "",
+      "ad": "BRÜT SATIŞ KARI VEYA ZARARI"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "E-FAALİYET GİDERLERİ (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "630",
+      "ad": "1.Araştırma ve Geliştirme Giderleri (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "631",
+      "ad": "2.Pazarlama, Satış ve Dağıtım Giderleri (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "632",
+      "ad": "3.Genel Yönetim Giderleri (-)"
+    },
+    {
+      "tip": "Total",
+      "kod": "",
+      "ad": "FAALİYET KARI VEYA ZARARI"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "F-DİĞER FAALİYETLERDEN OLAĞAN GELİR VE KARLAR"
+    },
+    {
+      "tip": "Account",
+      "kod": "640",
+      "ad": "1.İştiraklerden Temettü Gelirleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "641",
+      "ad": "2.Bağlı Ortaklıklardan Temettü Gelirleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "642",
+      "ad": "3.Faiz Gelirleri"
+    },
+    {
+      "tip": "Other",
+      "kod": "",
+      "ad": "4.Komisyon Gelirleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "644",
+      "ad": "5.Konusu Kalmayan Karşılıklar"
+    },
+    {
+      "tip": "Account",
+      "kod": "645",
+      "ad": "6.Menkul Kıymet Satış Karları"
+    },
+    {
+      "tip": "Account",
+      "kod": "646",
+      "ad": "7.Kambiyo Karları"
+    },
+    {
+      "tip": "Account",
+      "kod": "652",
+      "ad": "8.Reeskont Faiz Gelirleri"
+    },
+    {
+      "tip": "Account",
+      "kod": "648",
+      "ad": "9.Enflasyon Düzeltmesi Karları"
+    },
+    {
+      "tip": "Account",
+      "kod": "649",
+      "ad": "10.Diğer Olağan Gelir ve Karlar"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "G-DİĞER FAALİYETLERDEN OLAĞAN GİDER VE ZARARLAR (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "653",
+      "ad": "1.Komisyon Giderleri (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "654",
+      "ad": "2.Karşılık Giderleri (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "655",
+      "ad": "3.Menkul Kıymet Satış Zararları (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "656",
+      "ad": "4.Kambiyo Zararları (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "657",
+      "ad": "5.Reeskont Faiz Giderleri (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "658",
+      "ad": "6.Enflasyon Düzeltmesi Zararları (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "659",
+      "ad": "7.Diğer Olağan Gider ve Zararlar (-)"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "H-FİNANSMAN GİDERLERİ (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "660",
+      "ad": "1.Kısa Vadeli Borçlanma Giderleri (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "661",
+      "ad": "2.Uzun Vadeli Borçlanma Giderleri (-)"
+    },
+    {
+      "tip": "Total",
+      "kod": "",
+      "ad": "OLAĞAN KAR VEYA ZARAR"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "İ-OLAĞANDIŞI GELİR VE KARLAR"
+    },
+    {
+      "tip": "Account",
+      "kod": "671",
+      "ad": "1.Önceki Dönem Gelir ve Karları"
+    },
+    {
+      "tip": "Account",
+      "kod": "679",
+      "ad": "2.Diğer Olağandışı Gelir ve Karlar"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "",
+      "ad": "J-OLAĞANDIŞI GİDER VE ZARARLAR (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "680",
+      "ad": "1.Çalışmayan Kısım Gider ve Zararları (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "681",
+      "ad": "2.Önceki Dönem Gider ve Zararları (-)"
+    },
+    {
+      "tip": "Account",
+      "kod": "689",
+      "ad": "3.Diğer Olağandışı Gider ve Zararlar (-)"
+    },
+    {
+      "tip": "Total",
+      "kod": "690",
+      "ad": "TİCARİ KAR (Dönem Karı/Zararı)"
+    },
+    {
+      "tip": "SubGroup",
+      "kod": "691",
+      "ad": "HESAPLANAN VERGİ KARŞILIĞI (-)"
+    },
+    {
+      "tip": "Total",
+      "kod": "692",
+      "ad": "DÖNEM NET KARI VEYA ZARARI"
+    }
+  ]
+}

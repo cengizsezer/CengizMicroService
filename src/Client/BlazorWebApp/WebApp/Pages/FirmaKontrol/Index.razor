@@ -1,0 +1,90 @@
+@page "/firmakontrol"
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Domain.Models.FirmaKontrol
+@using WebApp.Pages.FirmaKontrol.Components
+@inject IFirmaKontrolService FirmaKontrolService
+@inject NavigationManager Navigation
+
+<RadzenStack Orientation="Orientation.Vertical" Gap="1.5rem" AlignItems="AlignItems.Stretch">
+
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+        <RadzenIcon Icon="fact_check" Style="font-size:2rem; color: var(--rz-primary);" />
+        <RadzenText TextStyle="TextStyle.H4" class="rz-m-0">Firma Kontrol</RadzenText>
+    </RadzenStack>
+
+    <RadzenText TextStyle="TextStyle.Body1" class="rz-color-secondary">
+        Kurumlar vergisi hazırlık çalışması yapacağınız firmayı seçin.
+    </RadzenText>
+
+    @if (firmlar is null)
+    {
+        <RadzenCard class="rz-p-4">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+                <span>Yükleniyor...</span>
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else if (firmlar.Count == 0)
+    {
+        <RadzenCard class="rz-p-4">
+            <em>Tanımlı firma bulunamadı.</em>
+        </RadzenCard>
+    }
+    else
+    {
+        <div class="fk-carousel-wrapper">
+            <RadzenCarousel Auto="false"
+                            PagerOverlay="false"
+                            ShowNavigation="true"
+                            ShowPager="true"
+                            ButtonShade="Shade.Default"
+                            Style="height: 560px;">
+                <Items>
+                    @foreach (var f in firmlar)
+                    {
+                        var stats = GetStats(f.Id);
+                        <RadzenCarouselItem>
+                            <div class="fk-carousel-slide">
+                                <FirmaCard Firma="f"
+                                           TotalCount="stats.Total"
+                                           CheckedCount="stats.Checked"
+                                           IssueCount="stats.Issue"
+                                           OnGiris="GoToDetay" />
+                            </div>
+                        </RadzenCarouselItem>
+                    }
+                </Items>
+            </RadzenCarousel>
+        </div>
+    }
+</RadzenStack>
+
+@code {
+    private List<Firma>? firmlar;
+    private readonly Dictionary<int, (int Total, int Checked, int Issue)> _statsCache = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var list = await FirmaKontrolService.GetFirmsAsync();
+        firmlar = list.ToList();
+
+        foreach (var f in firmlar)
+        {
+            var items = await FirmaKontrolService.GetControlItemsAsync(f.Id);
+            _statsCache[f.Id] = (
+                items.Count,
+                items.Count(x => x.IsChecked),
+                items.Count(x => x.Status == ControlStatus.HasIssue)
+            );
+        }
+    }
+
+    private (int Total, int Checked, int Issue) GetStats(int firmaId)
+        => _statsCache.TryGetValue(firmaId, out var s) ? s : (0, 0, 0);
+
+    private void GoToDetay(Firma firma)
+    {
+        Navigation.NavigateTo($"/firmakontrol/{firma.Id}");
+    }
+}

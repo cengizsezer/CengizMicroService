@@ -1,0 +1,63 @@
+@using WebApp.Domain.Models.FirmaKontrol
+
+<div class="fk-firma-card">
+    <div class="fk-firma-card-inner">
+        <div class="fk-firma-avatar">@Firma.LogoText</div>
+
+        <div class="fk-firma-name">@Firma.Ad</div>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.4rem" class="rz-mt-3 rz-mb-3" AlignItems="AlignItems.Center">
+            <div class="fk-firma-row">
+                <RadzenIcon Icon="badge" />
+                <span><strong>VKN:</strong> @Firma.VergiNo</span>
+            </div>
+            <div class="fk-firma-row">
+                <RadzenIcon Icon="business" />
+                <span><strong>Sektör:</strong> @Firma.Sektor</span>
+            </div>
+            <div class="fk-firma-row">
+                <RadzenIcon Icon="event" />
+                <span>@Firma.Donem</span>
+            </div>
+        </RadzenStack>
+
+        <div class="fk-firma-summary">
+            <div class="fk-firma-summary-row">
+                <span class="fk-firma-summary-label">Toplam Kontrol</span>
+                <span class="fk-firma-summary-value">@TotalCount</span>
+            </div>
+            <div class="fk-firma-summary-row">
+                <span class="fk-firma-summary-label">Tamamlanan</span>
+                <span class="fk-firma-summary-value fk-firma-summary-value-ok">@CheckedCount</span>
+            </div>
+            @if (IssueCount > 0)
+            {
+                <div class="fk-firma-summary-row">
+                    <span class="fk-firma-summary-label">Sorun</span>
+                    <span class="fk-firma-summary-value fk-firma-summary-value-issue">@IssueCount</span>
+                </div>
+            }
+        </div>
+
+        <RadzenButton Text="GİRİŞ"
+                      Icon="login"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Size="ButtonSize.Large"
+                      Click="@OnGirisClick"
+                      Style="width: 70%; margin-top: 1.25rem;" />
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Firma Firma { get; set; } = default!;
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public int CheckedCount { get; set; }
+    [Parameter] public int IssueCount { get; set; }
+    [Parameter] public EventCallback<Firma> OnGiris { get; set; }
+
+    private async Task OnGirisClick()
+    {
+        if (OnGiris.HasDelegate)
+            await OnGiris.InvokeAsync(Firma);
+    }
+}

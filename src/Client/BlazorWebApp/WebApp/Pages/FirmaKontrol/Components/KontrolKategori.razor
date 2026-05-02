@@ -1,0 +1,45 @@
+@using WebApp.Domain.Models.FirmaKontrol
+
+<RadzenFieldset class="@FieldsetCssClass"
+                AllowCollapse="true"
+                Collapsed="@Collapsed">
+    <HeaderTemplate>
+        <div class="fk-kategori-header">
+            <span class="fk-kategori-title">@Title</span>
+            <span class="fk-kategori-counter @(CheckedCount == TotalCount && TotalCount > 0 ? "is-complete" : null)">
+                (@CheckedCount/@TotalCount kontrol edildi)
+            </span>
+            @if (IssueCount > 0)
+            {
+                <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="@($"{IssueCount} sorun")" />
+            }
+        </div>
+    </HeaderTemplate>
+    <ChildContent>
+        @foreach (var item in Items)
+        {
+            <KontrolMaddesi Item="item" OnChanged="OnItemChanged" />
+        }
+    </ChildContent>
+</RadzenFieldset>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public List<ControlItem> Items { get; set; } = new();
+    [Parameter] public bool Collapsed { get; set; } = false;
+    [Parameter] public EventCallback<ControlItem> OnChanged { get; set; }
+
+    private int TotalCount => Items.Count;
+    private int CheckedCount => Items.Count(i => i.IsChecked);
+    private int IssueCount => Items.Count(i => i.Status == ControlStatus.HasIssue);
+
+    private string FieldsetCssClass =>
+        IssueCount > 0 ? "fk-kategori-panel has-issue" : "fk-kategori-panel";
+
+    private async Task OnItemChanged(ControlItem item)
+    {
+        if (OnChanged.HasDelegate)
+            await OnChanged.InvokeAsync(item);
+        StateHasChanged();
+    }
+}

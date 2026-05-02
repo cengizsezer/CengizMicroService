@@ -471,6 +471,246 @@ code {
     }
 }
 
+/* ===========================
+   Firma Kontrol — başlangıç
+   =========================== */
+
+.fk-carousel-wrapper {
+    max-width: 720px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.fk-carousel-slide {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 0.5rem 1.5rem;
+}
+
+.fk-firma-card {
+    background: #fff;
+    border: 1px solid var(--rz-border);
+    border-radius: 16px;
+    padding: 2rem 1.75rem;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    width: 100%;
+    max-width: 520px;
+    transition: box-shadow 0.25s ease;
+}
+
+.fk-firma-card:hover {
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+}
+
+.fk-firma-card-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.fk-firma-avatar {
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--rz-primary) 0%, var(--rz-primary-dark, #1565c0) 100%);
+    color: #fff;
+    font-size: 2rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    letter-spacing: 1px;
+}
+
+.fk-firma-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--rz-text-color);
+    margin-bottom: 0.25rem;
+}
+
+.fk-firma-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--rz-text-secondary-color);
+    font-size: 0.95rem;
+}
+
+.fk-firma-row .rzi {
+    color: var(--rz-primary);
+}
+
+.fk-firma-summary {
+    width: 100%;
+    background: var(--rz-base-50, #f7fafc);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.fk-firma-summary-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+}
+
+.fk-firma-summary-label {
+    color: var(--rz-text-secondary-color);
+}
+
+.fk-firma-summary-value {
+    font-weight: 600;
+}
+
+.fk-firma-summary-value-ok {
+    color: #16A34A;
+}
+
+.fk-firma-summary-value-issue {
+    color: #DC2626;
+}
+
+/* --- Detay sayfası --- */
+
+.fk-detay-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.fk-detay-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.fk-detay-subtitle {
+    color: var(--rz-text-secondary-color);
+    font-size: 0.95rem;
+}
+
+/* --- Kategori paneli --- */
+
+.fk-kategori-panel {
+    margin-bottom: 1rem;
+    border: 1px solid var(--rz-border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.25s ease;
+}
+
+.fk-kategori-panel.has-issue {
+    border-color: #DC2626;
+}
+
+.fk-kategori-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.fk-kategori-title {
+    font-weight: 700;
+    font-size: 1.05rem;
+}
+
+.fk-kategori-counter {
+    color: var(--rz-text-secondary-color);
+    font-size: 0.9rem;
+}
+
+.fk-kategori-counter.is-complete {
+    color: #16A34A;
+    font-weight: 600;
+}
+
+/* --- Tek kontrol maddesi (tek satır + accordion) --- */
+
+.fk-kontrol-row {
+    border: 1px solid var(--rz-border);
+    border-left: 3px solid transparent;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    background: #fff;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.fk-kontrol-row.verified {
+    background-color: #F0FDF4;
+    border-left-color: #16A34A;
+}
+
+.fk-kontrol-row.has-issue {
+    background-color: #FEF2F2;
+    border-left-color: #DC2626;
+}
+
+.fk-kontrol-row-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.85rem;
+    min-height: 50px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.fk-kontrol-row-header:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.fk-kontrol-cell {
+    display: inline-flex;
+    align-items: center;
+    cursor: default;
+}
+
+.fk-soru-text {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 0.3s ease;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.fk-soru-text.checked {
+    text-decoration: line-through;
+    color: var(--rz-text-tertiary-color, #9ca3af);
+}
+
+.fk-not-area {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.fk-not-area.expanded {
+    max-height: 200px;
+}
+
+.fk-not-area-inner {
+    padding: 0 0.85rem 0.85rem 0.85rem;
+}
+
+/* ===========================
+   Firma Kontrol — son
+   =========================== */
+
+
 /* Ok buton iç yazısını gizli tut (sadece ikon) */
 .chooser-carousel .rz-carousel-prev .rz-button-text,
 .chooser-carousel .rz-carousel-next .rz-button-text {
@@ -555,4 +795,305 @@ code {
         transform: translateY(0) scale(1);
         opacity: 1;
     }
+}
+
+/* --- Mizan Tablosu --- */
+
+.fk-mizan-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    background: #fff;
+}
+
+.fk-mizan-table thead th {
+    background: var(--rz-base-100, #f1f5f9);
+    color: var(--rz-text-color);
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    font-weight: 700;
+    border-bottom: 2px solid var(--rz-border);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.fk-mizan-table .fk-mizan-col-num {
+    text-align: right;
+    white-space: nowrap;
+    width: 160px;
+    font-variant-numeric: tabular-nums;
+}
+
+.fk-mizan-table .fk-mizan-col-kod {
+    width: 90px;
+    white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--rz-text-secondary-color);
+}
+
+.fk-mizan-table .fk-mizan-col-ad {
+    padding: 0.5rem 0.75rem;
+}
+
+.fk-mizan-table tbody td {
+    padding: 0.45rem 0.75rem;
+    border-bottom: 1px solid var(--rz-base-200, #e2e8f0);
+}
+
+.fk-mizan-row.account td {
+    /* default */
+}
+
+.fk-mizan-row.sub-group {
+    background-color: #f8fafc;
+}
+
+.fk-mizan-row.sub-group td {
+    font-weight: 600;
+    border-top: 1px solid var(--rz-base-200, #e2e8f0);
+}
+
+.fk-mizan-row.main-group {
+    background-color: #e2e8f0;
+}
+
+.fk-mizan-row.main-group td {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    border-top: 2px solid var(--rz-border);
+}
+
+.fk-mizan-row.total {
+    background-color: #1e3a8a;
+    color: #fff;
+}
+
+.fk-mizan-row.total td {
+    font-weight: 700;
+    border-top: 3px double #fff;
+}
+
+.fk-mizan-row.total .fk-mizan-col-kod {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.fk-mizan-row.other td {
+    color: var(--rz-text-secondary-color);
+    font-style: italic;
+}
+
+.fk-mizan-empty {
+    text-align: center;
+    padding: 1.5rem;
+    color: var(--rz-text-secondary-color);
+}
+
+.fk-mizan-upload-label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-weight: 600;
+    color: var(--rz-text-color);
+}
+
+.fk-mizan-upload-input {
+    display: block;
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px dashed var(--rz-border);
+    border-radius: 6px;
+    background: var(--rz-base-50, #f7fafc);
+}
+
+/* --- Gelir Tablosu Grid: ek kolonlar --- */
+
+.fk-gt-table .fk-gt-col-kaynak {
+    width: 110px;
+    text-align: center;
+    white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--rz-text-secondary-color);
+    font-size: 0.85rem;
+}
+
+.fk-gt-table .fk-gt-col-yansitma {
+    width: 100px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.fk-gt-yansitma-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid #bfdbfe;
+}
+
+.fk-gt-table .fk-mizan-row.total .fk-gt-col-kaynak,
+.fk-gt-table .fk-mizan-row.total .fk-gt-col-yansitma {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.fk-gt-table .fk-mizan-row.main-group .fk-gt-col-kaynak,
+.fk-gt-table .fk-mizan-row.sub-group .fk-gt-col-kaynak {
+    color: var(--rz-text-secondary-color);
+}
+
+/* --- Vergi Hesabı Paneli (sade — beyaz/açık gri/koyu gri) --- */
+
+.fk-vergi-panel {
+    margin-top: 1.5rem;
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.fk-vergi-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    background: #FFFFFF;
+    color: #374151;
+    font-weight: 600;
+    font-size: 16px;
+    border-bottom: 2px solid #374151;
+    flex-wrap: wrap;
+}
+
+.fk-vergi-panel-rate {
+    margin-left: auto;
+    font-size: 13px;
+    font-weight: 400;
+    color: #6B7280;
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+}
+
+.fk-vergi-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #FFFFFF;
+}
+
+.fk-vergi-table thead th {
+    padding: 0.6rem 1rem;
+    background: #F9FAFB;
+    color: #374151;
+    border-bottom: 1px solid #E5E7EB;
+    font-weight: 600;
+    text-align: right;
+    font-size: 13px;
+}
+
+.fk-vergi-table thead th.fk-vergi-col-label {
+    text-align: left;
+}
+
+.fk-vergi-table tbody td {
+    padding: 8px 16px;
+    border-bottom: 1px solid #E5E7EB;
+    color: #374151;
+    background: #FFFFFF;
+}
+
+.fk-vergi-col-label {
+    font-weight: 400;
+}
+
+.fk-vergi-col-indent {
+    padding-left: 2rem !important;
+    color: #6B7280;
+}
+
+.fk-vergi-col-indent2 {
+    padding-left: 3.5rem !important;
+    color: #6B7280;
+    font-size: 0.9rem;
+}
+
+.fk-vergi-col-num {
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    width: 200px;
+}
+
+/* Section başlık satırı — sade açık gri */
+.fk-vergi-section-header td {
+    background: #F9FAFB;
+    color: #374151;
+    padding: 8px 16px;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    border-top: 1px solid #E5E7EB;
+    border-bottom: 1px solid #E5E7EB;
+}
+
+/* Alt-toplam satırları (Toplam İlaveler/İndirimler/Tevkifat) */
+.fk-vergi-row-derived td {
+    background: #FFFFFF;
+    color: #374151;
+    font-weight: 600;
+    border-top: 1px solid #E5E7EB;
+}
+
+/* Input satırları */
+.fk-vergi-row-input td {
+    background: #FFFFFF;
+}
+
+.fk-vergi-row-input.fk-vergi-row-sub td {
+    background: #FFFFFF;
+}
+
+/* Vurgulu satırlar — Ticari Kar / Mali Kar / Hesaplanan Vergi 691 / Ödenecek
+   Hepsi aynı sade vurgu: beyaz bg, koyu üst+alt border, kalın yazı */
+.fk-vergi-row-ticari td,
+.fk-vergi-row-malikar td,
+.fk-vergi-row-vergi691 td,
+.fk-vergi-row-odenecek td {
+    background: #FFFFFF;
+    color: #374151;
+    font-weight: 700;
+    font-size: 14px;
+    border-top: 2px solid #374151;
+    border-bottom: 2px solid #374151;
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+}
+
+/* İade durumu — sadece sayı rengi koyu kırmızı, arka plan yok */
+.fk-vergi-row-odenecek.is-iade .fk-vergi-col-num,
+.fk-vergi-iade-text {
+    color: #991B1B;
+}
+
+/* Input field'ları sade gri tonlar */
+.fk-vergi-table .rz-numeric .rz-textbox,
+.fk-vergi-table .rz-numeric input {
+    border: 1px solid #D1D5DB;
+    background: #FFFFFF;
+}
+
+.fk-vergi-table .rz-numeric .rz-textbox:hover,
+.fk-vergi-table .rz-numeric input:hover {
+    border-color: #9CA3AF;
+}
+
+.fk-vergi-table .rz-numeric .rz-textbox:focus,
+.fk-vergi-table .rz-numeric input:focus {
+    border-color: #6B7280;
+    box-shadow: none;
 }

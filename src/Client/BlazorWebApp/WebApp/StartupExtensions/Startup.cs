@@ -28,7 +28,8 @@ namespace WebApp.StartupExtensions
                 .AddFileApiClient(_builder)
                 .AddLocalization()
                 .AddCultureServices()
-            .AddPkfPageServices();
+            .AddPkfPageServices()
+            .AddFirmaKontrolServices();
 
             // Register culture service
             _builder.Services.AddScoped<ICultureService, CultureService>();

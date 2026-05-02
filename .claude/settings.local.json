@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dotnet build *)"
+      "Bash(dotnet build *)",
+      "Bash(taskkill //F //IM dotnet.exe)",
+      "Bash(node *)",
+      "Bash(dotnet run *)",
+      "Bash(curl -s http://localhost:2000/data/hesap_plani.json)"
     ]
   }
 }

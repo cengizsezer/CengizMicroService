@@ -1,0 +1,105 @@
+@using System.Globalization
+@using WebApp.Application.Services
+@using WebApp.Domain.Models.FirmaKontrol
+
+<table class="fk-mizan-table fk-gt-table">
+    <thead>
+        <tr>
+            <th class="fk-mizan-col-kod">Hesap Kodu</th>
+            <th class="fk-mizan-col-ad">Hesap Adı</th>
+            <th class="fk-mizan-col-num">Önceki Dönem</th>
+            <th class="fk-mizan-col-num">Cari Dönem</th>
+            <th class="fk-gt-col-kaynak">Kaynak Hesap</th>
+            <th class="fk-gt-col-yansitma">Yansıtma</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Rows.Count == 0)
+        {
+            <tr>
+                <td colspan="6" class="fk-mizan-empty"><em>Bu bölüm için satır bulunmuyor.</em></td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var row in renderedRows)
+            {
+                <tr class="@RowCssClass(row.Source.Tip)">
+                    <td class="fk-mizan-col-kod">@row.Source.Kod</td>
+                    <td class="fk-mizan-col-ad">@row.Source.Ad</td>
+                    <td class="fk-mizan-col-num">@FormatNumber(row.OncekiCari)</td>
+                    <td class="fk-mizan-col-num">@FormatNumber(row.Cari)</td>
+                    <td class="fk-gt-col-kaynak">@(row.KaynakKod ?? string.Empty)</td>
+                    <td class="fk-gt-col-yansitma">
+                        @if (!string.IsNullOrEmpty(row.YansitmaKod))
+                        {
+                            <span class="fk-gt-yansitma-badge"
+                                  title="@($"{row.YansitmaKod} kodlu yansıtma hesabı 6'lı seriye aktarıldı")">@row.YansitmaKod</span>
+                        }
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+@code {
+    [Parameter, EditorRequired] public List<MizanSatir> Rows { get; set; } = new();
+
+    [Parameter] public IReadOnlyDictionary<string, decimal?> CariRawValues { get; set; } =
+        new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+
+    [Parameter] public IReadOnlyDictionary<string, decimal?> OncekiRawValues { get; set; } =
+        new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Vergi panelinden gelen 691 değeri. Cari sütununa -1 ile yansıtılır.
+    /// </summary>
+    [Parameter] public decimal? HesaplananVergi691Cari { get; set; }
+
+    /// <summary>
+    /// true ise 690 (Ticari Kar) satırından sonrası gizlenir.
+    /// </summary>
+    [Parameter] public bool HideTaxRows { get; set; } = true;
+
+    private List<GelirTablosuCalculator.ComputedRow> renderedRows = new();
+
+    protected override void OnParametersSet()
+    {
+        var computed = GelirTablosuCalculator.Compute(Rows, CariRawValues, OncekiRawValues, HesaplananVergi691Cari);
+
+        if (HideTaxRows)
+        {
+            int donemKariIdx = -1;
+            for (int i = 0; i < computed.Count; i++)
+            {
+                if (computed[i].Source.Kod == "690")
+                {
+                    donemKariIdx = i;
+                    break;
+                }
+            }
+
+            renderedRows = donemKariIdx >= 0
+                ? computed.Take(donemKariIdx + 1).ToList()
+                : computed;
+        }
+        else
+        {
+            renderedRows = computed;
+        }
+    }
+
+    private static string RowCssClass(SatirTipi tip) => tip switch
+    {
+        SatirTipi.MainGroup => "fk-mizan-row main-group",
+        SatirTipi.SubGroup => "fk-mizan-row sub-group",
+        SatirTipi.Account => "fk-mizan-row account",
+        SatirTipi.Total => "fk-mizan-row total",
+        SatirTipi.Other => "fk-mizan-row other",
+        _ => "fk-mizan-row"
+    };
+
+    private static string FormatNumber(decimal? value) =>
+        value.HasValue ? value.Value.ToString("N2", new CultureInfo("tr-TR")) : "—";
+}

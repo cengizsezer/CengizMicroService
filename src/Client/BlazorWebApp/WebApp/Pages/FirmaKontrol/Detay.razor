@@ -1,0 +1,223 @@
+@page "/firmakontrol/{FirmaId:int}"
+@using Radzen
+@using WebApp.Application.Services
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Domain.Models.FirmaKontrol
+@using WebApp.Pages.FirmaKontrol.Components
+@inject IFirmaKontrolService FirmaKontrolService
+@inject NavigationManager Navigation
+@inject DialogService Dialog
+@inject NotificationService Notif
+
+@if (firma is null)
+{
+    <RadzenCard class="rz-p-4">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+            <span>Yükleniyor...</span>
+        </RadzenStack>
+    </RadzenCard>
+}
+else
+{
+    <div class="fk-detay-header">
+        <RadzenButton Icon="arrow_back"
+                      Text="Firma Seçim'e Dön"
+                      ButtonStyle="ButtonStyle.Light"
+                      Size="ButtonSize.Small"
+                      Click="@GoBack" />
+
+        <div style="flex:1; min-width: 0;">
+            <h2 class="fk-detay-title">@firma.Ad</h2>
+            <div class="fk-detay-subtitle">
+                VKN: @firma.VergiNo &nbsp;·&nbsp; @firma.Sektor &nbsp;·&nbsp; @firma.Donem
+            </div>
+        </div>
+
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
+            <RadzenBadge BadgeStyle="BadgeStyle.Primary"
+                         Text="@($"{TotalChecked}/{TotalItems} kontrol")" />
+            @if (TotalIssues > 0)
+            {
+                <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="@($"{TotalIssues} sorun")" />
+            }
+
+            <RadzenButton Icon="upload_file"
+                          Text="Önceki Dönem Mizan"
+                          ButtonStyle="ButtonStyle.Light"
+                          Size="ButtonSize.Small"
+                          Click="@(() => OpenMizanUploadDialog(Donem.Onceki))" />
+
+            <RadzenButton Icon="upload_file"
+                          Text="Cari Dönem Mizan"
+                          ButtonStyle="ButtonStyle.Primary"
+                          Size="ButtonSize.Small"
+                          Click="@(() => OpenMizanUploadDialog(Donem.Cari))" />
+        </RadzenStack>
+    </div>
+
+    <RadzenTabs RenderMode="TabRenderMode.Client" SelectedIndex="0">
+        <Tabs>
+            <RadzenTabsItem Text="Firma Kontrol" Icon="fact_check">
+                @if (items is null || items.Count == 0)
+                {
+                    <em>Bu firma için tanımlı kontrol maddesi bulunamadı.</em>
+                }
+                else
+                {
+                    @foreach (var category in MockFirmaKontrolService.CategoryOrder)
+                    {
+                        var categoryItems = ItemsByCategory(category);
+                        if (categoryItems.Count == 0) continue;
+
+                        <KontrolKategori Title="@category"
+                                         Items="categoryItems"
+                                         OnChanged="OnItemChanged" />
+                    }
+                }
+            </RadzenTabsItem>
+
+            <RadzenTabsItem Text="Aktif" Icon="account_balance">
+                @if (mizan is null)
+                {
+                    <em>Hesap planı yükleniyor...</em>
+                }
+                else
+                {
+                    <MizanGrid Rows="mizan.Aktif" />
+                }
+            </RadzenTabsItem>
+
+            <RadzenTabsItem Text="Pasif" Icon="balance">
+                @if (mizan is null)
+                {
+                    <em>Hesap planı yükleniyor...</em>
+                }
+                else
+                {
+                    <MizanGrid Rows="mizan.Pasif" />
+                }
+            </RadzenTabsItem>
+
+            <RadzenTabsItem Text="Gelir Tablosu" Icon="trending_up">
+                @if (mizan is null)
+                {
+                    <em>Hesap planı yükleniyor...</em>
+                }
+                else
+                {
+                    <GelirTablosuGrid Rows="mizan.GelirTablosu"
+                                      CariRawValues="rawCariValues"
+                                      OncekiRawValues="rawOncekiValues"
+                                      HesaplananVergi691Cari="@hesaplananVergi691"
+                                      HideTaxRows="false" />
+
+                    @if (vergiBilgisi is not null)
+                    {
+                        <VergiHesabiPanel Model="vergiBilgisi"
+                                          TicariKarCari="@cariDonemKari"
+                                          OnInputChanged="@OnVergiPanelChanged" />
+                    }
+                }
+            </RadzenTabsItem>
+        </Tabs>
+    </RadzenTabs>
+}
+
+@code {
+    [Parameter] public int FirmaId { get; set; }
+
+    private Firma? firma;
+    private List<ControlItem>? items;
+    private HesapPlani? mizan;
+
+    private IReadOnlyDictionary<string, decimal?> rawCariValues =
+        new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyDictionary<string, decimal?> rawOncekiValues =
+        new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+
+    private decimal? cariDonemKari;
+    private decimal? oncekiDonemKari;
+    private VergiHesaplama? vergiBilgisi;
+    private decimal? hesaplananVergi691;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        firma = await FirmaKontrolService.GetFirmAsync(FirmaId);
+        if (firma is null)
+        {
+            Navigation.NavigateTo("/firmakontrol");
+            return;
+        }
+
+        var fetched = await FirmaKontrolService.GetControlItemsAsync(FirmaId);
+        items = fetched.ToList();
+
+        mizan = await FirmaKontrolService.GetMizanAsync(FirmaId);
+        await ReloadMizanRawAsync();
+        vergiBilgisi = await FirmaKontrolService.GetVergiBilgisiAsync(FirmaId);
+        RecomputeHesaplananVergi691();
+    }
+
+    private void RecomputeHesaplananVergi691()
+    {
+        if (vergiBilgisi is null)
+        {
+            hesaplananVergi691 = null;
+            return;
+        }
+        var maliKar = VergiHesabiHelper.MaliKar(cariDonemKari, vergiBilgisi);
+        var kv25 = VergiHesabiHelper.HesaplananKv25(maliKar);
+        hesaplananVergi691 = VergiHesabiHelper.HesaplananVergi691(kv25, vergiBilgisi);
+    }
+
+    private void OnVergiPanelChanged()
+    {
+        RecomputeHesaplananVergi691();
+        StateHasChanged();
+    }
+
+    private async Task ReloadMizanRawAsync()
+    {
+        rawCariValues = await FirmaKontrolService.GetRawMizanValuesAsync(FirmaId, Donem.Cari);
+        rawOncekiValues = await FirmaKontrolService.GetRawMizanValuesAsync(FirmaId, Donem.Onceki);
+
+        if (mizan is not null)
+        {
+            var computed = GelirTablosuCalculator.Compute(mizan.GelirTablosu, rawCariValues, rawOncekiValues);
+            (oncekiDonemKari, cariDonemKari) = GelirTablosuCalculator.GetDonemKari(computed);
+        }
+    }
+
+    private List<ControlItem> ItemsByCategory(string category) =>
+        items?.Where(i => i.Category == category).ToList() ?? new();
+
+    private int TotalItems => items?.Count ?? 0;
+    private int TotalChecked => items?.Count(i => i.IsChecked) ?? 0;
+    private int TotalIssues => items?.Count(i => i.Status == ControlStatus.HasIssue) ?? 0;
+
+    private async Task OnItemChanged(ControlItem item)
+    {
+        await FirmaKontrolService.UpdateControlItemAsync(FirmaId, item);
+        StateHasChanged();
+    }
+
+    private async Task OpenMizanUploadDialog(Donem donem)
+    {
+        var donemLabel = donem == Donem.Cari ? "Cari Dönem" : "Önceki Dönem";
+        var result = await Dialog.OpenAsync<MizanUploadDialog>(
+            $"{firma!.Ad} – {donemLabel} Mizan Yükle",
+            new() { ["FirmaId"] = FirmaId, ["Donem"] = donem },
+            new DialogOptions { Width = "640px", CloseDialogOnOverlayClick = false });
+
+        if (result is bool b && b)
+        {
+            mizan = await FirmaKontrolService.GetMizanAsync(FirmaId);
+            await ReloadMizanRawAsync();
+            RecomputeHesaplananVergi691();
+            StateHasChanged();
+        }
+    }
+
+    private void GoBack() => Navigation.NavigateTo("/firmakontrol");
+}
