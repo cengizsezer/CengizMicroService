@@ -9,8 +9,6 @@ public class InvoiceCheckWorker : BackgroundService
     private readonly IConfiguration _config;
     private readonly ILogger<InvoiceCheckWorker> _logger;
 
-    private DateTime _lastDailyRun = DateTime.MinValue;
-
     public InvoiceCheckWorker(
         IServiceScopeFactory scopeFactory,
         IConfiguration config,
@@ -24,11 +22,9 @@ public class InvoiceCheckWorker : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
         var initialDelay = _config.GetValue<int>("Worker:InitialDelaySeconds", 30);
-        var dailySummaryHour = _config.GetValue<int>("Worker:DailySummaryHour", 9);
 
         _logger.LogInformation(
-            "InvoiceCheckWorker başladı. InitialDelay={Delay}sn, DailyHour={Hour}",
-            initialDelay, dailySummaryHour);
+            "InvoiceCheckWorker başladı. InitialDelay={Delay}sn", initialDelay);
 
         try
         {
@@ -38,19 +34,8 @@ public class InvoiceCheckWorker : BackgroundService
 
         while (!ct.IsCancellationRequested)
         {
-            var now = DateTime.Now; // TR yerel saati — schedule + DailySummary buna göre
-
-            // Schedule modlarına göre per-firma tarama (Hourly / Daily / Manual)
             await RunSafelyAsync("ScheduledChecks",
                 o => o.RunScheduledChecksAsync(ct), ct);
-
-            // Günlük özet (schedule modlarından bağımsız — sabah belirli saatte 1 kez)
-            if (now.Hour == dailySummaryHour && _lastDailyRun.Date != now.Date)
-            {
-                await RunSafelyAsync("DailySummary",
-                    o => o.RunDailySummaryAsync(ct), ct);
-                _lastDailyRun = now;
-            }
 
             try
             {

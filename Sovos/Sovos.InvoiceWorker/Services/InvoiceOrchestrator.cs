@@ -34,40 +34,6 @@ public class InvoiceOrchestrator : IInvoiceOrchestrator
         _logger = logger;
     }
 
-    public async Task RunHourlyCheckAsync(CancellationToken ct)
-    {
-        var companies = await _db.Companies
-            .Where(c => c.IsActive)
-            .ToListAsync(ct);
-
-        _logger.LogInformation("HourlyCheck: {Count} aktif firma sırayla işlenecek", companies.Count);
-
-        for (int i = 0; i < companies.Count; i++)
-        {
-            if (i > 0)
-                await Task.Delay(InterCompanyDelayMs, ct);
-
-            await ProcessHourlyAsync(companies[i], ct);
-        }
-    }
-
-    public async Task RunDailySummaryAsync(CancellationToken ct)
-    {
-        var companies = await _db.Companies
-            .Where(c => c.IsActive)
-            .ToListAsync(ct);
-
-        _logger.LogInformation("DailySummary: {Count} aktif firma sırayla işlenecek", companies.Count);
-
-        for (int i = 0; i < companies.Count; i++)
-        {
-            if (i > 0)
-                await Task.Delay(InterCompanyDelayMs, ct);
-
-            await ProcessDailyAsync(companies[i], ct);
-        }
-    }
-
     public async Task RunForCompanyAsync(int companyId, bool manualMode, CancellationToken ct)
     {
         var company = await _db.Companies.FirstOrDefaultAsync(c => c.Id == companyId, ct)
@@ -102,7 +68,11 @@ public class InvoiceOrchestrator : IInvoiceOrchestrator
             if (i > 0)
                 await Task.Delay(InterCompanyDelayMs, ct);
 
-            await ProcessHourlyAsync(due[i], ct);
+            var company = due[i];
+            if (company.ScheduleMode == ScheduleMode.Daily)
+                await ProcessDailyAsync(company, ct);
+            else
+                await ProcessHourlyAsync(company, ct);
         }
     }
 
