@@ -526,6 +526,68 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("ReceiptItems", "catalog");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.Firmalar.Domain.Firma", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Aktif")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("KisaAd")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Telefon")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("TicaretSicilNo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Unvan")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("VergiDairesi")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("VergiKimlikNo")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Aktif");
+
+                    b.HasIndex("VergiKimlikNo")
+                        .IsUnique();
+
+                    b.ToTable("Firmalar", (string)null);
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.Jobs.Domain.Job", b =>
                 {
                     b.Property<long>("Id")
@@ -628,6 +690,73 @@ namespace CatalogService.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("JobAssignments", "catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.Mukellefler.Domain.Mukellef", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Durum")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Hizmet")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("IptalFeshTarihi")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SozlesmeNo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("SozlesmeTarihi")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Telefon")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("Unvan")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("VergiKimlikNo")
+                        .IsRequired()
+                        .HasMaxLength(11)
+                        .HasColumnType("nvarchar(11)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Durum");
+
+                    b.HasIndex("SozlesmeNo")
+                        .IsUnique();
+
+                    b.HasIndex("Unvan");
+
+                    b.HasIndex("VergiKimlikNo")
+                        .IsUnique();
+
+                    b.ToTable("Mukellefler", (string)null);
                 });
 
             modelBuilder.Entity("CatalogService.Api.Features.Payment.Entities.TaxPaymentEntity", b =>

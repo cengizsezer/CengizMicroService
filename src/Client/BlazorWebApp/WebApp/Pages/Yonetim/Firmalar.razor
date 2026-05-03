@@ -1,0 +1,244 @@
+@attribute [Authorize(Roles = "pkf")]
+@page "/yonetim/firmalar"
+@using System.Net
+@using System.Timers
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Yonetim
+
+@implements IDisposable
+
+@inject IFirmaApiClient Api
+@inject DialogService Dialog
+@inject NotificationService Notif
+
+<RadzenCard class="rz-p-3">
+
+    <div class="rz-display-flex rz-align-items-center rz-mb-3" style="justify-content:space-between;">
+        <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">
+            Firmalarım <span class="rz-text-muted" style="font-size:0.85rem;">(@_allFirmas.Count)</span>
+        </RadzenText>
+        <RadzenButton Text="Yeni Firma"
+                      Icon="add"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Click="@CreateAsync" />
+    </div>
+
+    <div class="rz-display-flex rz-align-items-center rz-mb-3" style="gap:1rem; flex-wrap:wrap;">
+        <RadzenTextBox Placeholder="Arama: VKN, unvan, kısa ad, email"
+                       Value="@_searchInput"
+                       Change="@OnSearchChanged"
+                       Style="min-width:320px; flex:1;" />
+        <div>
+            <RadzenCheckBox @bind-Value="_includeInactive" Name="includeInactive" Change="@(async (bool _) => await LoadAsync())" />
+            <RadzenLabel Text="Pasif olanları da göster" Component="includeInactive" class="rz-ml-2" />
+        </div>
+    </div>
+
+    <RadzenDataGrid TItem="FirmaDto"
+                    Data="@FilteredFirmas"
+                    IsLoading="@_loading"
+                    AllowPaging="true"
+                    PageSize="10"
+                    AllowSorting="true"
+                    EmptyText="Henüz firma yok, ilk firmayı ekleyin.">
+        <Columns>
+            <RadzenDataGridColumn TItem="FirmaDto" Property="VergiKimlikNo" Title="VKN" Width="120px" />
+            <RadzenDataGridColumn TItem="FirmaDto" Property="Unvan" Title="Unvan" />
+            <RadzenDataGridColumn TItem="FirmaDto" Property="KisaAd" Title="Kısa Ad" Width="160px" />
+            <RadzenDataGridColumn TItem="FirmaDto" Property="Email" Title="Email" Width="200px" />
+            <RadzenDataGridColumn TItem="FirmaDto" Property="Telefon" Title="Telefon" Width="140px" />
+
+            <RadzenDataGridColumn TItem="FirmaDto" Title="Durum" Width="80px" TextAlign="TextAlign.Center" Sortable="false">
+                <Template Context="f">
+                    @if (f.Aktif)
+                    {
+                        <RadzenIcon Icon="check_circle" Style="color: var(--rz-success);" />
+                    }
+                    else
+                    {
+                        <RadzenIcon Icon="cancel" Style="color: var(--rz-danger);" />
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="FirmaDto" Title="İşlemler" Width="100px" TextAlign="TextAlign.Center" Sortable="false" Filterable="false">
+                <Template Context="f">
+                    <span @onclick:stopPropagation @onkeydown:stopPropagation>
+                        <RadzenButton Icon="edit"
+                                      Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Light"
+                                      class="rz-mr-1"
+                                      Click="@(() => EditAsync(f))" />
+                        <RadzenButton Icon="delete"
+                                      Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Danger"
+                                      Disabled="@(!f.Aktif)"
+                                      Click="@(() => DeleteAsync(f))" />
+                    </span>
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+
+</RadzenCard>
+
+@code {
+    private List<FirmaDto> _allFirmas = new();
+    private string _searchInput = "";
+    private string _search = "";
+    private bool _includeInactive = false;
+    private bool _loading;
+    private Timer? _debounceTimer;
+
+    private IEnumerable<FirmaDto> FilteredFirmas =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _allFirmas
+            : _allFirmas.Where(f =>
+                f.VergiKimlikNo.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                f.Unvan.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                f.KisaAd.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                (f.Email?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _allFirmas = await Api.GetAllAsync(_includeInactive);
+        }
+        catch (ApiClientException ex)
+        {
+            ShowApiError(ex);
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OnSearchChanged(string val)
+    {
+        _searchInput = val ?? "";
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+        _debounceTimer = new Timer(500) { AutoReset = false };
+        _debounceTimer.Elapsed += async (_, _) =>
+        {
+            await InvokeAsync(() =>
+            {
+                _search = _searchInput;
+                StateHasChanged();
+            });
+        };
+        _debounceTimer.Start();
+    }
+
+    private async Task CreateAsync()
+    {
+        var result = await Dialog.OpenAsync<FirmaDialog>("Yeni Firma",
+            new Dictionary<string, object>(),
+            new DialogOptions { Width = "640px" });
+
+        if (result is bool ok && ok)
+        {
+            await LoadAsync();
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Başarılı",
+                Detail = "Firma oluşturuldu.",
+                Duration = 3000
+            });
+        }
+    }
+
+    private async Task EditAsync(FirmaDto f)
+    {
+        var result = await Dialog.OpenAsync<FirmaDialog>($"Firmayı Düzenle: {f.KisaAd}",
+            new Dictionary<string, object> { ["Existing"] = f },
+            new DialogOptions { Width = "640px" });
+
+        if (result is bool ok && ok)
+        {
+            await LoadAsync();
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Güncellendi",
+                Detail = "Firma güncellendi.",
+                Duration = 3000
+            });
+        }
+    }
+
+    private async Task DeleteAsync(FirmaDto f)
+    {
+        var confirm = await Dialog.Confirm(
+            $"\"{f.KisaAd}\" pasif yapılacak. Devam edilsin mi?",
+            "Soft Delete Onayı",
+            new ConfirmOptions { OkButtonText = "Pasife Al", CancelButtonText = "Vazgeç" });
+
+        if (confirm != true) return;
+
+        try
+        {
+            await Api.DeleteAsync(f.Id);
+            await LoadAsync();
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Silindi",
+                Detail = $"{f.KisaAd} pasif yapıldı.",
+                Duration = 3000
+            });
+        }
+        catch (ApiClientException ex)
+        {
+            ShowApiError(ex);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+    }
+
+    private void ShowApiError(ApiClientException ex)
+    {
+        var (sev, summary, detail) = ex.StatusCode switch
+        {
+            HttpStatusCode.NotFound => (NotificationSeverity.Warning, "Bulunamadı", "Kayıt bulunamadı, sayfa yenileniyor."),
+            HttpStatusCode.Conflict => (NotificationSeverity.Warning, ex.Field is null ? "Çakışma" : $"{ex.Field} çakışması", ex.Message),
+            HttpStatusCode.BadRequest => (NotificationSeverity.Warning, "Geçersiz veri", "Lütfen tüm alanları doğru doldurun."),
+            _ => (NotificationSeverity.Error, "Sunucu hatası", "Sunucu hatası, tekrar deneyin.")
+        };
+        Notif.Notify(new NotificationMessage { Severity = sev, Summary = summary, Detail = detail, Duration = 5000 });
+    }
+
+    public void Dispose()
+    {
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+    }
+}

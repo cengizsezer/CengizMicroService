@@ -2,7 +2,9 @@
 using CatalogService.Api.Features.Declarations.Entities;
 using CatalogService.Api.Features.Education.Domain;
 using CatalogService.Api.Features.Expenses.Domain;
+using CatalogService.Api.Features.Firmalar.Domain;
 using CatalogService.Api.Features.Jobs.Domain;
+using CatalogService.Api.Features.Mukellefler.Domain;
 using CatalogService.Api.Features.Payment.Entities;
 using CatalogService.Api.Features.Payroll.Entities;
 using CatalogService.Api.Features.Payroll.Persistence.Configurations;
@@ -46,6 +48,9 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<TaxPaymentEntity> TaxPayments { get; set; }
         public DbSet<PayrollLawType> PayrollLawTypes { get; set; }
 
+        public DbSet<Firma> Firmalar => Set<Firma>();
+        public DbSet<Mukellef> Mukellefler => Set<Mukellef>();
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -62,6 +67,8 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new DeclarationEntityTypeConfiguration());
             builder.ApplyConfiguration(new CustomerCompanyTypeConfiguration());
             builder.ApplyConfiguration(new TaxPaymentConfiguration());
+            builder.ApplyConfiguration(new FirmaEntityTypeConfiguration());
+            builder.ApplyConfiguration(new MukellefEntityTypeConfiguration());
 
 
             SetBuilderPKFConfiguration(builder);

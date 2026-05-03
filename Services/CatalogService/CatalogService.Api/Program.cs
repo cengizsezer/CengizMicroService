@@ -3,7 +3,9 @@ using CatalogService.Api.Features.AccountPlan;
 using CatalogService.Api.Features.Declarations.Services;
 using CatalogService.Api.Features.Education.Mapping;
 using CatalogService.Api.Features.Expenses.Mapping;
+using CatalogService.Api.Features.Firmalar.Services;
 using CatalogService.Api.Features.Jobs.Service;
+using CatalogService.Api.Features.Mukellefler.Services;
 using CatalogService.Api.Features.Payroll.Persistence.Seeds;
 using CatalogService.Api.Features.Payroll.Services;
 using CatalogService.Api.Features.Payroll.Services.Interfaces;
@@ -99,6 +101,9 @@ builder.Services.AddScoped<IAccountPlanService, AccountPlanService>();
 builder.Services.AddScoped<IDeclarationQueryService, DeclarationQueryService>();
 builder.Services.AddScoped<IDeclarationCommandService, DeclarationCommandService>();
 builder.Services.AddScoped<ICustomerCompanyQueryService, CustomerCompanyQueryService>();
+builder.Services.AddScoped<IFirmaService, FirmaService>();
+builder.Services.AddScoped<IMukellefService, MukellefService>();
+builder.Services.AddScoped<IMukellefImportService, MukellefImportService>();
 builder.Services.AddScoped<IPayrollCalculationEngine, PayrollCalculationEngine>();
 builder.Services.AddScoped<IDistributionComparisonService, DistributionComparisonService>();
 builder.Services.AddScoped<IDistributionExportService, DistributionExportService>();
@@ -437,6 +442,11 @@ IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf')
 
             logger.LogInformation("💼 Payroll seed uygulanıyor...");
             await PayrollSeedData.SeedAsync(ctxOnce);
+
+            logger.LogInformation("🏢 Firma/Mukellef seed uygulanıyor...");
+            var globalSeeder = new CatalogContextSeed();
+            await globalSeeder.SeedFirmalarAsync(ctxOnce, envHost, logger);
+            await globalSeeder.SeedMukelleflerAsync(ctxOnce, envHost, logger);
         }
 
         var seeder = new CatalogContextSeed();

@@ -1,0 +1,218 @@
+@using System.Net
+@using Microsoft.AspNetCore.Components.Forms
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Yonetim
+
+@inject DialogService Dialog
+@inject NotificationService Notif
+@inject IMukellefApiClient Api
+
+<RadzenCard class="rz-p-3" Style="min-width:560px;">
+    <RadzenStack Gap="0.75rem">
+
+        @if (_result is null)
+        {
+            <RadzenText TextStyle="TextStyle.Subtitle1">
+                Excel dosyasını seçin (.xlsx veya .xls, maks. 10 MB).
+            </RadzenText>
+
+            <RadzenFormField Text="Dosya" Variant="Variant.Outlined">
+                <ChildContent>
+                    <InputFile OnChange="OnFileSelected"
+                               accept=".xlsx,.xls"
+                               disabled="@_busy"
+                               class="rz-textbox" />
+                </ChildContent>
+            </RadzenFormField>
+
+            @if (_file is not null)
+            {
+                <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" ShowIcon="true" AllowClose="false">
+                    <strong>@_file.Name</strong>
+                    — @FormatSize(_file.Size)
+                </RadzenAlert>
+            }
+
+            <RadzenFormField Text="Çakışma Modu" Variant="Variant.Outlined">
+                <RadzenDropDown TValue="MukellefImportMode"
+                                @bind-Value="_mode"
+                                Data="@_modeOptions"
+                                TextProperty="Text"
+                                ValueProperty="Value"
+                                Disabled="@_busy"
+                                Style="width:100%" />
+            </RadzenFormField>
+
+            <RadzenText TextStyle="TextStyle.Caption" class="rz-color-base-700">
+                @ModeDescription(_mode)
+            </RadzenText>
+
+            @if (_busy)
+            {
+                <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+                <RadzenText TextStyle="TextStyle.Caption">Dosya yükleniyor ve işleniyor...</RadzenText>
+            }
+
+            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton Text="Vazgeç" Click="@(() => Dialog.Close(false))" Disabled="@_busy" />
+                <RadzenButton Text="@(_busy ? "Yükleniyor..." : "Yükle")"
+                              Icon="@(_busy ? "" : "upload")"
+                              IsBusy="@_busy"
+                              BusyText="Yükleniyor..."
+                              ButtonStyle="ButtonStyle.Primary"
+                              Disabled="@(_busy || _file is null)"
+                              Click="@UploadAsync" />
+            </RadzenStack>
+        }
+        else
+        {
+            <RadzenText TextStyle="TextStyle.H6">İçe Aktarma Sonucu</RadzenText>
+
+            <RadzenRow Gap="0.5rem">
+                <RadzenColumn Size="12" SizeMD="12">
+                    <RadzenAlert AlertStyle="@(_result.Errors.Count == 0 ? AlertStyle.Success : AlertStyle.Warning)"
+                                 Variant="Variant.Flat"
+                                 ShowIcon="true"
+                                 AllowClose="false">
+                        ✅ <strong>@_result.TotalRows</strong> satır işlendi
+                        &nbsp;•&nbsp; ➕ <strong>@_result.Inserted</strong> eklendi
+                        &nbsp;•&nbsp; 🔄 <strong>@_result.Updated</strong> güncellendi
+                        &nbsp;•&nbsp; ⏭️ <strong>@_result.Skipped</strong> atlandı
+                        &nbsp;•&nbsp; ❌ <strong>@_result.Errors.Count</strong> hata
+                    </RadzenAlert>
+                </RadzenColumn>
+            </RadzenRow>
+
+            @if (_result.Errors.Count > 0)
+            {
+                <RadzenFieldset Text="@($"Hata Detayı ({_result.Errors.Count})")" AllowCollapse="true" Collapsed="true">
+                    <RadzenDataGrid TItem="MukellefImportError"
+                                    Data="@_result.Errors"
+                                    AllowPaging="true"
+                                    PageSize="10"
+                                    AllowSorting="true">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="MukellefImportError" Property="Row" Title="Satır" Width="80px" />
+                            <RadzenDataGridColumn TItem="MukellefImportError" Property="Field" Title="Alan" Width="180px" />
+                            <RadzenDataGridColumn TItem="MukellefImportError" Property="Message" Title="Mesaj" />
+                        </Columns>
+                    </RadzenDataGrid>
+                </RadzenFieldset>
+            }
+
+            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton Text="Kapat" Icon="close" ButtonStyle="ButtonStyle.Primary"
+                              Click="@(() => Dialog.Close(true))" />
+            </RadzenStack>
+        }
+
+    </RadzenStack>
+</RadzenCard>
+
+@code {
+    private const long MaxFileBytes = 10L * 1024 * 1024;
+
+    private IBrowserFile? _file;
+    private MukellefImportMode _mode = MukellefImportMode.UpdateExisting;
+    private bool _busy;
+    private MukellefImportResultDto? _result;
+
+    private record ModeOption(string Text, MukellefImportMode Value);
+
+    private readonly List<ModeOption> _modeOptions = new()
+    {
+        new("Güncelle (UpdateExisting)", MukellefImportMode.UpdateExisting),
+        new("Atla (SkipExisting)",       MukellefImportMode.SkipExisting)
+    };
+
+    private static string ModeDescription(MukellefImportMode mode) => mode switch
+    {
+        MukellefImportMode.UpdateExisting => "Mevcut Sözleşme No'ya sahip kayıtlar GÜNCELLENİR. Yeni olanlar EKLENİR.",
+        MukellefImportMode.SkipExisting   => "Mevcut Sözleşme No'ya sahip kayıtlar ATLANIR. Sadece yeni kayıtlar EKLENİR.",
+        _ => string.Empty
+    };
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var f = e.File;
+        if (f.Size > MaxFileBytes)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Dosya çok büyük",
+                Detail = $"Maksimum 10 MB. Seçilen: {FormatSize(f.Size)}",
+                Duration = 5000
+            });
+            _file = null;
+            return;
+        }
+
+        var ext = System.IO.Path.GetExtension(f.Name).ToLowerInvariant();
+        if (ext != ".xlsx" && ext != ".xls")
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Desteklenmeyen format",
+                Detail = "Sadece .xlsx veya .xls dosyaları kabul edilir.",
+                Duration = 5000
+            });
+            _file = null;
+            return;
+        }
+
+        _file = f;
+    }
+
+    private async Task UploadAsync()
+    {
+        if (_file is null) return;
+
+        _busy = true;
+        try
+        {
+            await using var stream = _file.OpenReadStream(MaxFileBytes);
+            _result = await Api.ImportAsync(stream, _file.Name, _mode);
+        }
+        catch (ApiClientException ex)
+        {
+            HandleApiError(ex);
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = ex.Message,
+                Duration = 6000
+            });
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void HandleApiError(ApiClientException ex)
+    {
+        var (sev, summary, detail) = ex.StatusCode switch
+        {
+            HttpStatusCode.BadRequest => (NotificationSeverity.Warning, "Geçersiz dosya", ex.Message),
+            HttpStatusCode.UnsupportedMediaType => (NotificationSeverity.Warning, "Format hatası", ex.Message),
+            HttpStatusCode.RequestEntityTooLarge => (NotificationSeverity.Warning, "Dosya çok büyük", ex.Message),
+            _ => (NotificationSeverity.Error, "Sunucu hatası", ex.Message)
+        };
+        Notif.Notify(new NotificationMessage { Severity = sev, Summary = summary, Detail = detail, Duration = 6000 });
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / 1024.0 / 1024.0:F2} MB";
+    }
+}

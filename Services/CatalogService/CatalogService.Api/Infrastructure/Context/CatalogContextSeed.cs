@@ -1,5 +1,7 @@
 ﻿using CatalogService.Api.Features.Declarations.Entities;
 using CatalogService.Api.Features.Expenses.Domain;
+using CatalogService.Api.Features.Firmalar.Domain;
+using CatalogService.Api.Features.Mukellefler.Domain;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -10,6 +12,8 @@ using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace CatalogService.Api.Infrastructure.Context
@@ -210,6 +214,96 @@ namespace CatalogService.Api.Infrastructure.Context
             }
 
             Console.WriteLine($"🏁 [Seeder] Tenant {tenantNo} tamamlandı.");
+        }
+
+        // ========================================================
+        // FIRMA / MUKELLEF (Tenant-bağımsız, tek seferlik seed)
+        // ========================================================
+
+        private static readonly JsonSerializerOptions _firmaMukellefJsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true,
+            ReadCommentHandling = JsonCommentHandling.Skip,
+            AllowTrailingCommas = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        public async Task SeedFirmalarAsync(
+            CatalogContext context,
+            IWebHostEnvironment env,
+            ILogger logger)
+        {
+            if (await context.Firmalar.AnyAsync())
+            {
+                Console.WriteLine("[Seed:Firma] ℹ️ Firmalar tablosu dolu, atlandı.");
+                return;
+            }
+
+            var path = Path.Combine(env.ContentRootPath, "Infrastructure", "Setup", "SeedFiles", "seed_firmalar.json");
+            if (!File.Exists(path))
+            {
+                logger.LogWarning("[Seed:Firma] seed_firmalar.json bulunamadı: {Path}", path);
+                return;
+            }
+
+            await using var stream = File.OpenRead(path);
+            var firmalar = await JsonSerializer.DeserializeAsync<List<Firma>>(stream, _firmaMukellefJsonOptions);
+
+            if (firmalar is null || firmalar.Count == 0)
+            {
+                logger.LogWarning("[Seed:Firma] seed_firmalar.json boş veya parse edilemedi.");
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+            foreach (var f in firmalar)
+            {
+                f.Id = 0;
+                f.CreatedAt = now;
+            }
+
+            await context.Firmalar.AddRangeAsync(firmalar);
+            await context.SaveChangesAsync();
+            logger.LogInformation("[Seed:Firma] ✅ {Count} firma yüklendi.", firmalar.Count);
+        }
+
+        public async Task SeedMukelleflerAsync(
+            CatalogContext context,
+            IWebHostEnvironment env,
+            ILogger logger)
+        {
+            if (await context.Mukellefler.AnyAsync())
+            {
+                Console.WriteLine("[Seed:Mukellef] ℹ️ Mukellefler tablosu dolu, atlandı.");
+                return;
+            }
+
+            var path = Path.Combine(env.ContentRootPath, "Infrastructure", "Setup", "SeedFiles", "seed_mukellefler.json");
+            if (!File.Exists(path))
+            {
+                logger.LogWarning("[Seed:Mukellef] seed_mukellefler.json bulunamadı: {Path}", path);
+                return;
+            }
+
+            await using var stream = File.OpenRead(path);
+            var mukellefler = await JsonSerializer.DeserializeAsync<List<Mukellef>>(stream, _firmaMukellefJsonOptions);
+
+            if (mukellefler is null || mukellefler.Count == 0)
+            {
+                logger.LogWarning("[Seed:Mukellef] seed_mukellefler.json boş veya parse edilemedi.");
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+            foreach (var m in mukellefler)
+            {
+                m.Id = 0;
+                m.CreatedAt = now;
+            }
+
+            await context.Mukellefler.AddRangeAsync(mukellefler);
+            await context.SaveChangesAsync();
+            logger.LogInformation("[Seed:Mukellef] ✅ {Count} mükellef yüklendi.", mukellefler.Count);
         }
 
         // ---------------- CSV PARSERS (Aynen bırakıldı) ----------------

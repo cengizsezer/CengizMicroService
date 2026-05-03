@@ -9,6 +9,7 @@ using WebApp.Application.Handler;
 using WebApp.Application.RuleEngine;
 using WebApp.Application.Services;
 using WebApp.Application.Services.Interfaces;
+using WebApp.Application.Services.Yonetim;
 using WebApp.Infrastructure;
 using WebApp.Manager;
 using WebApp.Pages.Payroll.Services;
@@ -152,6 +153,12 @@ namespace WebApp.StartupExtensions.ServiceExtensions
 
             services.AddScoped<ICustomerCompanyApiService>(sp =>
                 new CustomerCompanyApiService(sp.GetRequiredService<HttpClient>()));
+
+            services.AddScoped<IFirmaApiClient>(sp =>
+                new FirmaApiClient(sp.GetRequiredService<HttpClient>()));
+
+            services.AddScoped<IMukellefApiClient>(sp =>
+                new MukellefApiClient(sp.GetRequiredService<HttpClient>()));
 
             services.AddScoped<IPermissionService, PermissionService>();
 

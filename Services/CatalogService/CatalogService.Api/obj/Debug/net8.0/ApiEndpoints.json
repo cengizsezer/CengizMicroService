@@ -548,6 +548,200 @@
     ]
   },
   {
+    "ContainingType": "CatalogService.Api.Features.Firmalar.Controllers.FirmalarController",
+    "Method": "GetAll",
+    "RelativePath": "api/catalog/Firmalar",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "includeInactive",
+        "Type": "System.Boolean",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.Firmalar.Dtos.FirmaDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Firmalar.Controllers.FirmalarController",
+    "Method": "Create",
+    "RelativePath": "api/catalog/Firmalar",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Firmalar.Dtos.FirmaCreateDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Firmalar.Dtos.FirmaDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 201
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 400
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 409
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Firmalar.Controllers.FirmalarController",
+    "Method": "GetById",
+    "RelativePath": "api/catalog/Firmalar/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Firmalar.Dtos.FirmaDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Firmalar.Controllers.FirmalarController",
+    "Method": "Update",
+    "RelativePath": "api/catalog/Firmalar/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Firmalar.Dtos.FirmaUpdateDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Firmalar.Dtos.FirmaDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 400
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 409
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Firmalar.Controllers.FirmalarController",
+    "Method": "Delete",
+    "RelativePath": "api/catalog/Firmalar/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Void",
+        "MediaTypes": [],
+        "StatusCode": 204
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      }
+    ]
+  },
+  {
     "ContainingType": "CatalogService.Api.Features.Jobs.Controller.JobsController",
     "Method": "Create",
     "RelativePath": "api/catalog/jobs",
@@ -676,6 +870,273 @@
       }
     ],
     "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Mukellefler.Controllers.MukelleflerController",
+    "Method": "GetPaginated",
+    "RelativePath": "api/catalog/Mukellefler",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "pageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "search",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "durum",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Mukellefler.Dtos.PagedResult\u00601[[CatalogService.Api.Features.Mukellefler.Dtos.MukellefDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Mukellefler.Controllers.MukelleflerController",
+    "Method": "Create",
+    "RelativePath": "api/catalog/Mukellefler",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Mukellefler.Dtos.MukellefCreateDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Mukellefler.Dtos.MukellefDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 201
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 400
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 409
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Mukellefler.Controllers.MukelleflerController",
+    "Method": "GetById",
+    "RelativePath": "api/catalog/Mukellefler/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Mukellefler.Dtos.MukellefDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Mukellefler.Controllers.MukelleflerController",
+    "Method": "Update",
+    "RelativePath": "api/catalog/Mukellefler/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Mukellefler.Dtos.MukellefUpdateDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Mukellefler.Dtos.MukellefDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 400
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 409
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Mukellefler.Controllers.MukelleflerController",
+    "Method": "Delete",
+    "RelativePath": "api/catalog/Mukellefler/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Void",
+        "MediaTypes": [],
+        "StatusCode": 204
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Mukellefler.Controllers.MukelleflerController",
+    "Method": "Import",
+    "RelativePath": "api/catalog/Mukellefler/import",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "file",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      },
+      {
+        "Name": "mode",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Mukellefler.Dtos.MukellefImportResultDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 400
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 413
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 415
+      }
+    ]
   },
   {
     "ContainingType": "CatalogService.Api.Features.Expenses.Controller.CatalogController",

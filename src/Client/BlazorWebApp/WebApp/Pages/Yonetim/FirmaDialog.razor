@@ -1,0 +1,192 @@
+@using System.Net
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Yonetim
+
+@inject DialogService Dialog
+@inject NotificationService Notif
+@inject IFirmaApiClient Api
+
+<RadzenTemplateForm TItem="FirmaCreateDto" Data="@Model" Submit="@OnSubmit">
+    <RadzenCard class="rz-p-3">
+        <RadzenStack Gap="0.75rem">
+
+            <RadzenFormField Text="Vergi Kimlik No (10 hane)" Variant="Variant.Outlined">
+                <RadzenTextBox Name="VergiKimlikNo"
+                               @bind-Value="Model.VergiKimlikNo"
+                               Style="width:100%"
+                               MaxLength="10"
+                               Disabled="@IsEdit" />
+            </RadzenFormField>
+            <RadzenRequiredValidator Component="VergiKimlikNo" Text="VKN zorunlu" />
+            <RadzenLengthValidator Component="VergiKimlikNo" Min="10" Max="10" Text="VKN 10 hane olmalı" />
+
+            <RadzenFormField Text="Unvan" Variant="Variant.Outlined">
+                <RadzenTextBox Name="Unvan" @bind-Value="Model.Unvan" Style="width:100%" MaxLength="250" />
+            </RadzenFormField>
+            <RadzenRequiredValidator Component="Unvan" Text="Unvan zorunlu" />
+
+            <RadzenFormField Text="Kısa Ad" Variant="Variant.Outlined">
+                <RadzenTextBox Name="KisaAd" @bind-Value="Model.KisaAd" Style="width:100%" MaxLength="100" />
+            </RadzenFormField>
+            <RadzenRequiredValidator Component="KisaAd" Text="Kısa ad zorunlu" />
+
+            <RadzenFormField Text="Email" Variant="Variant.Outlined">
+                <RadzenTextBox Name="Email" @bind-Value="Model.Email" Style="width:100%" MaxLength="150" />
+            </RadzenFormField>
+            <RadzenEmailValidator Component="Email" Text="Geçerli bir email girin" />
+
+            <RadzenFormField Text="Telefon" Variant="Variant.Outlined">
+                <RadzenTextBox Name="Telefon" @bind-Value="Model.Telefon" Style="width:100%" MaxLength="30" />
+            </RadzenFormField>
+
+            <RadzenFormField Text="Ticaret Sicil No" Variant="Variant.Outlined">
+                <RadzenTextBox Name="TicaretSicilNo" @bind-Value="Model.TicaretSicilNo" Style="width:100%" MaxLength="50" />
+            </RadzenFormField>
+
+            <RadzenFormField Text="Vergi Dairesi" Variant="Variant.Outlined">
+                <RadzenTextBox Name="VergiDairesi" @bind-Value="Model.VergiDairesi" Style="width:100%" MaxLength="100" />
+            </RadzenFormField>
+
+            <div>
+                <RadzenCheckBox @bind-Value="Model.Aktif" Name="Aktif" />
+                <RadzenLabel Text="Aktif" Component="Aktif" class="rz-ml-2" />
+            </div>
+
+            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton Text="Vazgeç" Click="@(() => Dialog.Close(false))" Disabled="@_busy" />
+                <RadzenButton Text="@(_busy ? "Kaydediliyor..." : "Kaydet")"
+                              Icon="@(_busy ? "" : "save")"
+                              IsBusy="@_busy"
+                              BusyText="Kaydediliyor..."
+                              ButtonStyle="ButtonStyle.Primary"
+                              ButtonType="ButtonType.Submit"
+                              Disabled="@_busy" />
+            </RadzenStack>
+
+        </RadzenStack>
+    </RadzenCard>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public FirmaDto? Existing { get; set; }
+
+    private FirmaCreateDto Model { get; set; } = new();
+    private bool _busy;
+
+    private bool IsEdit => Existing is not null;
+
+    protected override void OnInitialized()
+    {
+        if (Existing is not null)
+        {
+            Model = new FirmaCreateDto
+            {
+                VergiKimlikNo = Existing.VergiKimlikNo,
+                Unvan = Existing.Unvan,
+                KisaAd = Existing.KisaAd,
+                Email = Existing.Email,
+                Telefon = Existing.Telefon,
+                TicaretSicilNo = Existing.TicaretSicilNo,
+                VergiDairesi = Existing.VergiDairesi,
+                Aktif = Existing.Aktif
+            };
+        }
+    }
+
+    private async Task OnSubmit(FirmaCreateDto _)
+    {
+        _busy = true;
+        try
+        {
+            if (IsEdit)
+            {
+                var updateDto = new FirmaUpdateDto
+                {
+                    VergiKimlikNo = Model.VergiKimlikNo.Trim(),
+                    Unvan = Model.Unvan.Trim(),
+                    KisaAd = Model.KisaAd.Trim(),
+                    Email = Model.Email.Trim(),
+                    Telefon = Model.Telefon.Trim(),
+                    TicaretSicilNo = Model.TicaretSicilNo.Trim(),
+                    VergiDairesi = Model.VergiDairesi.Trim(),
+                    Aktif = Model.Aktif
+                };
+                await Api.UpdateAsync(Existing!.Id, updateDto);
+            }
+            else
+            {
+                Model.VergiKimlikNo = Model.VergiKimlikNo.Trim();
+                Model.Unvan = Model.Unvan.Trim();
+                Model.KisaAd = Model.KisaAd.Trim();
+                Model.Email = Model.Email.Trim();
+                await Api.CreateAsync(Model);
+            }
+
+            Dialog.Close(true);
+        }
+        catch (ApiClientException ex)
+        {
+            HandleApiError(ex);
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void HandleApiError(ApiClientException ex)
+    {
+        switch (ex.StatusCode)
+        {
+            case HttpStatusCode.Conflict:
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Warning,
+                    Summary = ex.Field is null ? "Çakışma" : $"{ex.Field} çakışması",
+                    Detail = ex.Message,
+                    Duration = 6000
+                });
+                break;
+            case HttpStatusCode.BadRequest:
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Warning,
+                    Summary = "Geçersiz veri",
+                    Detail = "Lütfen tüm alanları doğru doldurun.",
+                    Duration = 5000
+                });
+                break;
+            case HttpStatusCode.NotFound:
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Warning,
+                    Summary = "Bulunamadı",
+                    Detail = "Kayıt bulunamadı, sayfa yenileniyor.",
+                    Duration = 4000
+                });
+                Dialog.Close(true);
+                break;
+            default:
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Sunucu hatası",
+                    Detail = ex.Message,
+                    Duration = 5000
+                });
+                break;
+        }
+    }
+}

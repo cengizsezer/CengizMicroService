@@ -49,6 +49,9 @@
 		<None Update="appsettings*.json">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</None>
+		<None Update="Infrastructure\Setup\SeedFiles\*.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
 	</ItemGroup>
 
 

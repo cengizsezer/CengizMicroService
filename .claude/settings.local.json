@@ -6,7 +6,10 @@
       "Bash(node *)",
       "Bash(dotnet run *)",
       "Bash(curl -s http://localhost:2000/data/hesap_plani.json)",
-      "Bash(sqlcmd *)"
+      "Bash(sqlcmd *)",
+      "Bash(dotnet ef *)",
+      "Bash(findstr -i \"appsettings\")",
+      "Bash(xargs grep *)"
     ]
   }
 }

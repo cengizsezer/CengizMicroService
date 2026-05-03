@@ -1,0 +1,258 @@
+@using System.Net
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Yonetim
+
+@inject DialogService Dialog
+@inject NotificationService Notif
+@inject IMukellefApiClient Api
+
+<RadzenTemplateForm TItem="MukellefCreateDto" Data="@Model" Submit="@OnSubmit">
+    <RadzenCard class="rz-p-3">
+        <RadzenStack Gap="0.75rem">
+
+            <RadzenRow Gap="0.75rem">
+                <RadzenColumn Size="6">
+                    <RadzenFormField Text="Sözleşme No" Variant="Variant.Outlined">
+                        <RadzenTextBox Name="SozlesmeNo"
+                                       @bind-Value="Model.SozlesmeNo"
+                                       Style="width:100%"
+                                       MaxLength="50"
+                                       Disabled="@IsEdit" />
+                    </RadzenFormField>
+                    <RadzenRequiredValidator Component="SozlesmeNo" Text="Sözleşme No zorunlu" />
+                </RadzenColumn>
+                <RadzenColumn Size="6">
+                    <RadzenFormField Text="Sözleşme Tarihi" Variant="Variant.Outlined">
+                        <RadzenDatePicker Name="SozlesmeTarihi"
+                                          @bind-Value="Model.SozlesmeTarihi"
+                                          DateFormat="dd.MM.yyyy"
+                                          Style="width:100%" />
+                    </RadzenFormField>
+                </RadzenColumn>
+            </RadzenRow>
+
+            <RadzenFormField Text="Unvan" Variant="Variant.Outlined">
+                <RadzenTextBox Name="Unvan" @bind-Value="Model.Unvan" Style="width:100%" MaxLength="250" />
+            </RadzenFormField>
+            <RadzenRequiredValidator Component="Unvan" Text="Unvan zorunlu" />
+
+            <RadzenRow Gap="0.75rem">
+                <RadzenColumn Size="6">
+                    <RadzenFormField Text="Vergi Kimlik No (10-11 hane)" Variant="Variant.Outlined">
+                        <RadzenTextBox Name="VergiKimlikNo"
+                                       @bind-Value="Model.VergiKimlikNo"
+                                       Style="width:100%"
+                                       MaxLength="11"
+                                       Disabled="@IsEdit" />
+                    </RadzenFormField>
+                    <RadzenRequiredValidator Component="VergiKimlikNo" Text="VKN zorunlu" />
+                    <RadzenLengthValidator Component="VergiKimlikNo" Min="10" Max="11" Text="VKN 10-11 hane olmalı" />
+                </RadzenColumn>
+                <RadzenColumn Size="6">
+                    <RadzenFormField Text="Hizmet" Variant="Variant.Outlined">
+                        <RadzenTextBox Name="Hizmet" @bind-Value="Model.Hizmet" Style="width:100%" MaxLength="200" />
+                    </RadzenFormField>
+                </RadzenColumn>
+            </RadzenRow>
+
+            <RadzenRow Gap="0.75rem">
+                <RadzenColumn Size="6">
+                    <RadzenFormField Text="Telefon" Variant="Variant.Outlined">
+                        <RadzenTextBox Name="Telefon" @bind-Value="Model.Telefon" Style="width:100%" MaxLength="30" />
+                    </RadzenFormField>
+                </RadzenColumn>
+                <RadzenColumn Size="6">
+                    <RadzenFormField Text="Email" Variant="Variant.Outlined">
+                        <RadzenTextBox Name="Email" @bind-Value="Model.Email" Style="width:100%" MaxLength="150" />
+                    </RadzenFormField>
+                    <RadzenEmailValidator Component="Email" Text="Geçerli bir email girin" />
+                </RadzenColumn>
+            </RadzenRow>
+
+            @if (IsEdit)
+            {
+                <RadzenRow Gap="0.75rem">
+                    <RadzenColumn Size="6">
+                        <RadzenFormField Text="Durum" Variant="Variant.Outlined">
+                            <RadzenDropDown TValue="MukellefDurumu"
+                                            Name="Durum"
+                                            @bind-Value="Model.Durum"
+                                            Data="@_durumOptions"
+                                            TextProperty="Text"
+                                            ValueProperty="Value"
+                                            Change="@OnDurumChanged"
+                                            Style="width:100%" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                    <RadzenColumn Size="6">
+                        <RadzenFormField Text="İptal/Fesih Tarihi" Variant="Variant.Outlined">
+                            <RadzenDatePicker @bind-Value="Model.IptalFeshTarihi"
+                                              DateFormat="dd.MM.yyyy"
+                                              Disabled="@(Model.Durum == MukellefDurumu.DevamEdiyor)"
+                                              Style="width:100%" />
+                        </RadzenFormField>
+                    </RadzenColumn>
+                </RadzenRow>
+            }
+
+            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton Text="Vazgeç" Click="@(() => Dialog.Close(false))" Disabled="@_busy" />
+                <RadzenButton Text="@(_busy ? "Kaydediliyor..." : "Kaydet")"
+                              Icon="@(_busy ? "" : "save")"
+                              IsBusy="@_busy"
+                              BusyText="Kaydediliyor..."
+                              ButtonStyle="ButtonStyle.Primary"
+                              ButtonType="ButtonType.Submit"
+                              Disabled="@_busy" />
+            </RadzenStack>
+
+        </RadzenStack>
+    </RadzenCard>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public MukellefDto? Existing { get; set; }
+
+    private MukellefCreateDto Model { get; set; } = new();
+    private bool _busy;
+
+    private bool IsEdit => Existing is not null;
+
+    private record DurumOption(string Text, MukellefDurumu Value);
+
+    private readonly List<DurumOption> _durumOptions = new()
+    {
+        new("Devam Ediyor", MukellefDurumu.DevamEdiyor),
+        new("Fesh Oldu",   MukellefDurumu.FeshOldu),
+        new("İptal Edildi", MukellefDurumu.IptalEdildi)
+    };
+
+    protected override void OnInitialized()
+    {
+        if (Existing is not null)
+        {
+            Model = new MukellefCreateDto
+            {
+                SozlesmeNo = Existing.SozlesmeNo,
+                SozlesmeTarihi = Existing.SozlesmeTarihi,
+                Unvan = Existing.Unvan,
+                VergiKimlikNo = Existing.VergiKimlikNo,
+                Durum = Existing.Durum,
+                IptalFeshTarihi = Existing.IptalFeshTarihi,
+                Hizmet = Existing.Hizmet,
+                Telefon = Existing.Telefon,
+                Email = Existing.Email
+            };
+        }
+    }
+
+    private void OnDurumChanged(object? _)
+    {
+        if (Model.Durum == MukellefDurumu.DevamEdiyor)
+        {
+            Model.IptalFeshTarihi = null;
+        }
+    }
+
+    private async Task OnSubmit(MukellefCreateDto _)
+    {
+        _busy = true;
+        try
+        {
+            if (IsEdit)
+            {
+                var updateDto = new MukellefUpdateDto
+                {
+                    SozlesmeNo = Model.SozlesmeNo.Trim(),
+                    SozlesmeTarihi = Model.SozlesmeTarihi,
+                    Unvan = Model.Unvan.Trim(),
+                    VergiKimlikNo = Model.VergiKimlikNo.Trim(),
+                    Durum = Model.Durum,
+                    IptalFeshTarihi = Model.IptalFeshTarihi,
+                    Hizmet = Model.Hizmet.Trim(),
+                    Telefon = Model.Telefon.Trim(),
+                    Email = string.IsNullOrWhiteSpace(Model.Email) ? null : Model.Email.Trim()
+                };
+                await Api.UpdateAsync(Existing!.Id, updateDto);
+            }
+            else
+            {
+                Model.SozlesmeNo = Model.SozlesmeNo.Trim();
+                Model.Unvan = Model.Unvan.Trim();
+                Model.VergiKimlikNo = Model.VergiKimlikNo.Trim();
+                Model.Hizmet = Model.Hizmet.Trim();
+                Model.Telefon = Model.Telefon.Trim();
+                Model.Email = string.IsNullOrWhiteSpace(Model.Email) ? null : Model.Email.Trim();
+                Model.Durum = MukellefDurumu.DevamEdiyor;
+                Model.IptalFeshTarihi = null;
+                await Api.CreateAsync(Model);
+            }
+
+            Dialog.Close(true);
+        }
+        catch (ApiClientException ex)
+        {
+            HandleApiError(ex);
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void HandleApiError(ApiClientException ex)
+    {
+        switch (ex.StatusCode)
+        {
+            case HttpStatusCode.Conflict:
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Warning,
+                    Summary = ex.Field is null ? "Çakışma" : $"{ex.Field} çakışması",
+                    Detail = ex.Message,
+                    Duration = 6000
+                });
+                break;
+            case HttpStatusCode.BadRequest:
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Warning,
+                    Summary = "Geçersiz veri",
+                    Detail = "Lütfen tüm alanları doğru doldurun.",
+                    Duration = 5000
+                });
+                break;
+            case HttpStatusCode.NotFound:
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Warning,
+                    Summary = "Bulunamadı",
+                    Detail = "Kayıt bulunamadı, sayfa yenileniyor.",
+                    Duration = 4000
+                });
+                Dialog.Close(true);
+                break;
+            default:
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Sunucu hatası",
+                    Detail = ex.Message,
+                    Duration = 5000
+                });
+                break;
+        }
+    }
+}
