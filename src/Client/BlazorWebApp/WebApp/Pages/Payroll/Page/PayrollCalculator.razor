@@ -39,6 +39,7 @@
                                 ValueProperty="Code"
                                 AllowClear="false"
                                 Style="width:220px;"
+                                PopupStyle="max-height: 400px;"
                                 Change="@(_ => TriggerRecalculateAsync())" />
             </div>
 
@@ -470,7 +471,7 @@
         item.Amount = amount;
         item.IsEdited = true;
 
-        foreach (var next in monthInputs.Where(x => x.Month > item.Month && !x.IsEdited).OrderBy(x => x.Month))
+        foreach (var next in monthInputs.Where(x => x.Month > item.Month).OrderBy(x => x.Month))
         {
             next.Amount = amount;
         }
@@ -515,7 +516,7 @@
         StartMonth = 1,
         PreviousCumulativeTaxBase = model.PreviousCumulativeTaxBase,
         Months = monthInputs
-            .Where(x => x.IsEdited)
+            .OrderBy(x => x.Month)
             .Select(x => new PayrollMonthInputRequest { Month = x.Month, Amount = x.Amount })
             .ToList()
     };
@@ -528,13 +529,13 @@
             errorMessage = null;
             StateHasChanged();
 
-            var request = BuildRequest();
-
-            if (!request.Months.Any())
+            if (!monthInputs.Any(x => x.IsEdited))
             {
                 result = null;
                 return;
             }
+
+            var request = BuildRequest();
 
             result = await PayrollApiService.CalculateAsync(request, cancellationToken);
         }

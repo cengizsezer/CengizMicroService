@@ -116,7 +116,7 @@ body[b-i9md2k4r3s] {
 [b-i9md2k4r3s] .pkf-switch.rz-switch.rz-state-active .rz-switch-handle {
     background: #2ea3db !important;
     border-color: #2ea3db !important;
-}}
+}
 
 /* TABLE WRAPPER */
 .table-wrapper[b-i9md2k4r3s] {
@@ -135,10 +135,10 @@ body[b-i9md2k4r3s] {
     border-collapse: collapse;
     background: #f3f3f3;
     table-layout: auto;
-    font-size: 12px;
+    font-size: 13px;
     margin-bottom: 0;
 }
-    
+
 
     /* HEADER */
     .payroll-table th[b-i9md2k4r3s] {
@@ -146,20 +146,24 @@ body[b-i9md2k4r3s] {
         color: #1f3b57;
         font-weight: 700;
         font-size: 12px;
-        padding: 7px 4px;
+        padding: 6px 8px;
         text-align: center;
         border: 1px solid #c9ddea;
+        white-space: nowrap;
+        line-height: 1.2;
     }
 
-   
+
     /* CELL */
     .payroll-table td[b-i9md2k4r3s] {
-        padding: 5px 4px;
-        font-size: 12px;
+        padding: 6px 8px;
+        font-size: 13px;
         text-align: center;
         border: 1px solid #e0e0e0;
         background: #f3f3f3;
         white-space: nowrap;
+        line-height: 1.25;
+        height: 32px;
     }
 
         /* AY SÜTUNU */
@@ -167,18 +171,18 @@ body[b-i9md2k4r3s] {
         .payroll-table th:first-child[b-i9md2k4r3s] {
             text-align: left;
             background: #eef5fa;
-            width: 88px;
-            min-width: 88px;
+            width: 84px;
+            min-width: 84px;
             font-weight: 700;
-            font-size: 12px;
+            font-size: 13px;
         }
 
         /* TUTAR SÜTUNU */
         .payroll-table th:nth-child(2)[b-i9md2k4r3s],
         .payroll-table td:nth-child(2)[b-i9md2k4r3s] {
-            width: 122px;
-            min-width: 122px;
-            max-width: 122px;
+            width: 110px;
+            min-width: 110px;
+            max-width: 110px;
         }
 
     .payroll-table tbody tr:nth-child(even) td:not(:first-child)[b-i9md2k4r3s] {
@@ -189,17 +193,18 @@ body[b-i9md2k4r3s] {
 .input-cell[b-i9md2k4r3s] {
     text-align: center;
     vertical-align: middle;
-    padding: 4px 6px !important;
+    padding: 3px 6px !important;
 }
 
 .input-wrap[b-i9md2k4r3s] {
-    width: 100px;
+    width: 96px;
     margin: 0 auto;
 }
 
     .input-wrap .rz-numeric[b-i9md2k4r3s] {
         width: 100% !important;
         display: block;
+        height: 30px;
     }
 
     .input-wrap .rz-inputtext[b-i9md2k4r3s],
@@ -208,6 +213,9 @@ body[b-i9md2k4r3s] {
         width: 100% !important;
         box-sizing: border-box;
         text-align: right;
+        padding: 4px 6px !important;
+        height: 30px !important;
+        font-size: 13px;
     }
 
 /* TOTAL - toplam satırı*/
