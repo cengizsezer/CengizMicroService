@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Radzen;
+using System.Reflection;
 using WebApp.Application.Handler;
+using WebApp.Application.RuleEngine;
 using WebApp.Application.Services;
 using WebApp.Application.Services.Interfaces;
 using WebApp.Infrastructure;
@@ -56,7 +58,26 @@ namespace WebApp.StartupExtensions.ServiceExtensions
                 return new HesapPlaniLoader(http);
             });
             services.AddSingleton<IExcelMizanParser, ExcelMizanParser>();
+
+            services.AddMizanRuleEngine();
+
             services.AddSingleton<IFirmaKontrolService, MockFirmaKontrolService>();
+            return services;
+        }
+
+        public static IServiceCollection AddMizanRuleEngine(this IServiceCollection services)
+        {
+            var ruleInterface = typeof(IMizanRule);
+            var ruleTypes = Assembly.GetExecutingAssembly()
+                .GetTypes()
+                .Where(t => t is { IsClass: true, IsAbstract: false } && ruleInterface.IsAssignableFrom(t));
+
+            foreach (var ruleType in ruleTypes)
+            {
+                services.AddSingleton(ruleInterface, ruleType);
+            }
+
+            services.AddSingleton<MizanRuleEngine>();
             return services;
         }
 

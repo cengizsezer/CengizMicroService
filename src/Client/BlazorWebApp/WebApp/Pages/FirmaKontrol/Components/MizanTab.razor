@@ -1,0 +1,279 @@
+@using System.Globalization
+@using WebApp.Application.RuleEngine
+@using WebApp.Domain.Models.FirmaKontrol
+@inject IJSRuntime JS
+
+@if (!HasMizan)
+{
+    <div class="fk-mizan-tab-empty">
+        <div class="fk-mizan-tab-empty-icon">📥</div>
+        <div class="fk-mizan-tab-empty-baslik">Mizan henüz yüklenmedi</div>
+        <div class="fk-mizan-tab-empty-aciklama">
+            Üst başlıktaki <strong>"Cari Dönem Mizan"</strong> butonu ile mizan dosyasını yükledikten sonra
+            buradaki kontroller otomatik olarak çalıştırılır.
+        </div>
+    </div>
+}
+else
+{
+    <div class="fk-mizan-tab-layout">
+        <div class="fk-mizan-tab-sol">
+            <table class="fk-mizan-table fk-mizan-tab-table">
+                <thead>
+                    <tr>
+                        <th class="fk-mizan-col-kod">Hesap Kodu</th>
+                        <th class="fk-mizan-col-ad">Hesap Adı</th>
+                        <th class="fk-mizan-col-num">Önceki Dönem</th>
+                        <th class="fk-mizan-col-num">Cari Dönem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in accountRows)
+                    {
+                        var seviye = HighestSeviyeForKod(row.Kod);
+                        var rowSeviyeClass = seviye switch
+                        {
+                            UyariSeviyesi.Kritik => "fk-mizan-row-kritik",
+                            UyariSeviyesi.Uyari => "fk-mizan-row-uyari",
+                            UyariSeviyesi.Bilgi => "fk-mizan-row-bilgi",
+                            _ => null
+                        };
+                        var isHighlighted = string.Equals(highlightedKod, row.Kod, StringComparison.OrdinalIgnoreCase);
+                        var hasUyari = seviye is not null;
+                        <tr id="@RowId(row.Kod)"
+                            class="fk-mizan-row account @rowSeviyeClass @(isHighlighted ? "fk-mizan-highlight" : null) @(hasUyari ? "fk-mizan-row-clickable" : null)"
+                            @onclick="@(() => OnRowClicked(row.Kod, hasUyari))">
+                            <td class="fk-mizan-col-kod">@row.Kod</td>
+                            <td class="fk-mizan-col-ad">@row.Ad</td>
+                            <td class="fk-mizan-col-num">@FormatNumber(row.OncekiDonem)</td>
+                            <td class="fk-mizan-col-num">@FormatNumber(row.CariDonem)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="fk-mizan-tab-sag">
+            <div class="fk-uyari-panel-baslik">Otomatik Uyarılar</div>
+
+            <div class="fk-uyari-stat-row">
+                <button type="button"
+                        class="fk-uyari-stat kritik @(activeFilter == UyariSeviyesi.Kritik ? "is-active" : null)"
+                        @onclick="@(() => SetFilter(UyariSeviyesi.Kritik))">
+                    <div class="fk-uyari-stat-num">@KritikCount</div>
+                    <div class="fk-uyari-stat-label">KRİTİK</div>
+                </button>
+                <button type="button"
+                        class="fk-uyari-stat uyari @(activeFilter == UyariSeviyesi.Uyari ? "is-active" : null)"
+                        @onclick="@(() => SetFilter(UyariSeviyesi.Uyari))">
+                    <div class="fk-uyari-stat-num">@UyariCount</div>
+                    <div class="fk-uyari-stat-label">UYARI</div>
+                </button>
+                <button type="button"
+                        class="fk-uyari-stat bilgi @(activeFilter == UyariSeviyesi.Bilgi ? "is-active" : null)"
+                        @onclick="@(() => SetFilter(UyariSeviyesi.Bilgi))">
+                    <div class="fk-uyari-stat-num">@BilgiCount</div>
+                    <div class="fk-uyari-stat-label">BİLGİ</div>
+                </button>
+            </div>
+
+            <div class="fk-uyari-toplam">Toplam: <strong>@Uyarilar.Count</strong> uyarı</div>
+
+            <div class="fk-uyari-panel-filtre">
+                <span class="fk-uyari-filtre-label">Filtre:</span>
+                <RadzenButton Text="Tümü"
+                              ButtonStyle="@FilterStyle(null)"
+                              Variant="@FilterVariant(null)"
+                              Size="ButtonSize.Small"
+                              Click="@(() => SetFilter(null))" />
+                <RadzenButton Text="Kritik"
+                              ButtonStyle="@FilterStyle(UyariSeviyesi.Kritik)"
+                              Variant="@FilterVariant(UyariSeviyesi.Kritik)"
+                              Size="ButtonSize.Small"
+                              Click="@(() => SetFilter(UyariSeviyesi.Kritik))" />
+                <RadzenButton Text="Uyarı"
+                              ButtonStyle="@FilterStyle(UyariSeviyesi.Uyari)"
+                              Variant="@FilterVariant(UyariSeviyesi.Uyari)"
+                              Size="ButtonSize.Small"
+                              Click="@(() => SetFilter(UyariSeviyesi.Uyari))" />
+                <RadzenButton Text="Bilgi"
+                              ButtonStyle="@FilterStyle(UyariSeviyesi.Bilgi)"
+                              Variant="@FilterVariant(UyariSeviyesi.Bilgi)"
+                              Size="ButtonSize.Small"
+                              Click="@(() => SetFilter(UyariSeviyesi.Bilgi))" />
+            </div>
+
+            <div class="fk-uyari-panel-list">
+                @if (FilteredUyarilar.Count == 0)
+                {
+                    <div class="fk-uyari-panel-empty">
+                        <em>Bu filtrede gösterilecek uyarı yok.</em>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var uyari in FilteredUyarilar)
+                    {
+                        var isCardHighlighted = string.Equals(highlightedKod, uyari.HesapKodu, StringComparison.OrdinalIgnoreCase);
+                        <UyariKart Uyari="uyari"
+                                   IsHighlighted="isCardHighlighted"
+                                   OnSelect="OnKartSecildi" />
+                    }
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public HesapPlani Mizan { get; set; } = new();
+    [Parameter, EditorRequired] public IReadOnlyList<UyariSonucu> Uyarilar { get; set; } = Array.Empty<UyariSonucu>();
+
+    /// <summary>
+    /// Parser'dan gelen ham mizan değerleri (cari dönem). HesapPlani'da Account
+    /// olmayan kodlar (örn. 690/691/692 gibi Total/SubGroup) bu map üzerinden
+    /// "ekstra" satır olarak listelenir.
+    /// </summary>
+    [Parameter] public IReadOnlyDictionary<string, decimal?> RawCari { get; set; } =
+        new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+
+    [Parameter] public IReadOnlyDictionary<string, decimal?> RawOnceki { get; set; } =
+        new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Mizandan gelen kod -> hesap adı eşleşmesi. HesapPlani'da ad bulunmazsa
+    /// (örn. yeni eklenmiş 3-haneli bir kod) bu map'ten okunur.
+    /// </summary>
+    [Parameter] public IReadOnlyDictionary<string, string> RawAdByKod { get; set; } =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    private UyariSeviyesi? activeFilter;
+    private string? highlightedKod;
+    private List<MizanSatir> accountRows = new();
+    private Dictionary<string, UyariSeviyesi> seviyeByKod = new(StringComparer.OrdinalIgnoreCase);
+
+    protected override void OnParametersSet()
+    {
+        // 1) HesapPlani'ndeki tüm satırları kod-bazlı lookup (ad bulma için)
+        var allByKod = Mizan.Aktif.Concat(Mizan.Pasif).Concat(Mizan.GelirTablosu)
+            .Where(s => !string.IsNullOrWhiteSpace(s.Kod))
+            .GroupBy(s => s.Kod, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        // 2) Tüm görünmesi gereken kodlar: Account satırları + raw'da değeri olan
+        //    her 3-haneli kod (Total/SubGroup tipleri için de mizan değerleri görünür)
+        var kodSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var s in allByKod.Values.Where(x => x.Tip == SatirTipi.Account))
+            kodSet.Add(s.Kod);
+        foreach (var k in RawCari.Keys) kodSet.Add(k);
+        foreach (var k in RawOnceki.Keys) kodSet.Add(k);
+
+        accountRows = kodSet
+            .OrderBy(k => k, StringComparer.Ordinal)
+            .Select(kod =>
+            {
+                allByKod.TryGetValue(kod, out var ref0);
+
+                // Account ise satırın kendi CariDonem/OncekiDonem'i kullanılır;
+                // değilse (Total/SubGroup) raw map'ten okunur.
+                decimal? cari = ref0?.Tip == SatirTipi.Account
+                    ? ref0.CariDonem
+                    : (RawCari.TryGetValue(kod, out var rc) ? rc : null);
+                decimal? onceki = ref0?.Tip == SatirTipi.Account
+                    ? ref0.OncekiDonem
+                    : (RawOnceki.TryGetValue(kod, out var ro) ? ro : null);
+
+                // Ad fallback zinciri: HesapPlani'ndeki ad → mizandan okunan ad → "—"
+                var ad = !string.IsNullOrWhiteSpace(ref0?.Ad)
+                    ? ref0!.Ad
+                    : (RawAdByKod.TryGetValue(kod, out var ra) && !string.IsNullOrWhiteSpace(ra)
+                        ? ra
+                        : "—");
+
+                return new MizanSatir
+                {
+                    Kod = kod,
+                    Ad = ad,
+                    Tip = SatirTipi.Account,
+                    CariDonem = cari,
+                    OncekiDonem = onceki
+                };
+            })
+            .ToList();
+
+        seviyeByKod = Uyarilar
+            .GroupBy(u => u.HesapKodu, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Max(u => u.Seviye),
+                StringComparer.OrdinalIgnoreCase);
+    }
+
+    private bool HasMizan => accountRows.Any(r => r.CariDonem.HasValue || r.OncekiDonem.HasValue);
+
+    private int KritikCount => Uyarilar.Count(u => u.Seviye == UyariSeviyesi.Kritik);
+    private int UyariCount => Uyarilar.Count(u => u.Seviye == UyariSeviyesi.Uyari);
+    private int BilgiCount => Uyarilar.Count(u => u.Seviye == UyariSeviyesi.Bilgi);
+
+    private List<UyariSonucu> FilteredUyarilar =>
+        (activeFilter is null
+            ? Uyarilar
+            : Uyarilar.Where(u => u.Seviye == activeFilter)).ToList();
+
+    private UyariSeviyesi? HighestSeviyeForKod(string kod) =>
+        seviyeByKod.TryGetValue(kod, out var s) ? s : (UyariSeviyesi?)null;
+
+    private void SetFilter(UyariSeviyesi? seviye)
+    {
+        activeFilter = activeFilter == seviye ? null : seviye;
+    }
+
+    private ButtonStyle FilterStyle(UyariSeviyesi? seviye) =>
+        activeFilter == seviye ? ButtonStyle.Primary : ButtonStyle.Base;
+
+    private Variant FilterVariant(UyariSeviyesi? seviye) =>
+        activeFilter == seviye ? Variant.Filled : Variant.Outlined;
+
+    private async Task OnKartSecildi(UyariSonucu uyari)
+    {
+        highlightedKod = uyari.HesapKodu;
+        StateHasChanged();
+        await ScrollAsync(RowId(uyari.HesapKodu));
+    }
+
+    private async Task OnRowClicked(string kod, bool hasUyari)
+    {
+        if (!hasUyari) return;
+
+        highlightedKod = kod;
+        var uyari = Uyarilar.FirstOrDefault(u => string.Equals(u.HesapKodu, kod, StringComparison.OrdinalIgnoreCase));
+
+        // Filtre aktifken karta gidemiyorsa filtreyi temizle
+        if (uyari is not null && activeFilter is not null && uyari.Seviye != activeFilter)
+        {
+            activeFilter = null;
+        }
+
+        StateHasChanged();
+
+        if (uyari is not null)
+            await ScrollAsync($"fk-uyari-kart-{uyari.KuralKodu}");
+    }
+
+    private async Task ScrollAsync(string elementId)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("fkMizanTab.scrollToRow", elementId);
+        }
+        catch
+        {
+            // JS interop yoksa sessiz geç
+        }
+    }
+
+    private static string RowId(string kod) => $"fk-mizan-row-{kod}";
+
+    private static string FormatNumber(decimal? value) =>
+        value.HasValue ? value.Value.ToString("N2", new CultureInfo("tr-TR")) : "—";
+}

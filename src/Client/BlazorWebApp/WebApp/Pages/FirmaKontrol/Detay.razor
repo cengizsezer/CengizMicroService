@@ -1,5 +1,6 @@
 @page "/firmakontrol/{FirmaId:int}"
 @using Radzen
+@using WebApp.Application.RuleEngine
 @using WebApp.Application.Services
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Domain.Models.FirmaKontrol
@@ -77,6 +78,21 @@ else
                 }
             </RadzenTabsItem>
 
+            <RadzenTabsItem Text="Mizan" Icon="rule">
+                @if (mizan is null)
+                {
+                    <em>Mizan yükleniyor...</em>
+                }
+                else
+                {
+                    <MizanTab Mizan="mizan"
+                              Uyarilar="uyarilar"
+                              RawCari="rawCariValues"
+                              RawOnceki="rawOncekiValues"
+                              RawAdByKod="rawAdValues" />
+                }
+            </RadzenTabsItem>
+
             <RadzenTabsItem Text="Aktif" Icon="account_balance">
                 @if (mizan is null)
                 {
@@ -116,6 +132,8 @@ else
                     {
                         <VergiHesabiPanel Model="vergiBilgisi"
                                           TicariKarCari="@cariDonemKari"
+                                          TicariKarFromMizan="@TicariKar690FromMizan"
+                                          MizanVergi691Cari="@MizanVergi691Cari"
                                           OnInputChanged="@OnVergiPanelChanged" />
                     }
                 }
@@ -135,11 +153,15 @@ else
         new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyDictionary<string, decimal?> rawOncekiValues =
         new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyDictionary<string, string> rawAdValues =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     private decimal? cariDonemKari;
     private decimal? oncekiDonemKari;
     private VergiHesaplama? vergiBilgisi;
     private decimal? hesaplananVergi691;
+
+    private IReadOnlyList<UyariSonucu> uyarilar = Array.Empty<UyariSonucu>();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -157,6 +179,7 @@ else
         await ReloadMizanRawAsync();
         vergiBilgisi = await FirmaKontrolService.GetVergiBilgisiAsync(FirmaId);
         RecomputeHesaplananVergi691();
+        uyarilar = await FirmaKontrolService.GetUyarilarAsync(FirmaId);
     }
 
     private void RecomputeHesaplananVergi691()
@@ -181,6 +204,7 @@ else
     {
         rawCariValues = await FirmaKontrolService.GetRawMizanValuesAsync(FirmaId, Donem.Cari);
         rawOncekiValues = await FirmaKontrolService.GetRawMizanValuesAsync(FirmaId, Donem.Onceki);
+        rawAdValues = await FirmaKontrolService.GetRawMizanAdlarAsync(FirmaId);
 
         if (mizan is not null)
         {
@@ -195,6 +219,13 @@ else
     private int TotalItems => items?.Count ?? 0;
     private int TotalChecked => items?.Count(i => i.IsChecked) ?? 0;
     private int TotalIssues => items?.Count(i => i.Status == ControlStatus.HasIssue) ?? 0;
+
+    // Mizan'dan 690 / 691 cari raw değerleri — vergi paneline pass edilir.
+    private bool TicariKar690FromMizan =>
+        rawCariValues.TryGetValue("690", out var v) && v.HasValue;
+
+    private decimal? MizanVergi691Cari =>
+        rawCariValues.TryGetValue("691", out var v) ? v : null;
 
     private async Task OnItemChanged(ControlItem item)
     {
@@ -215,6 +246,7 @@ else
             mizan = await FirmaKontrolService.GetMizanAsync(FirmaId);
             await ReloadMizanRawAsync();
             RecomputeHesaplananVergi691();
+            uyarilar = await FirmaKontrolService.GetUyarilarAsync(FirmaId);
             StateHasChanged();
         }
     }

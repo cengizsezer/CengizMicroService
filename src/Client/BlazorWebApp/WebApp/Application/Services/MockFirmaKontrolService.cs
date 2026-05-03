@@ -1,3 +1,4 @@
+using WebApp.Application.RuleEngine;
 using WebApp.Application.Services.Interfaces;
 using WebApp.Domain.Models.FirmaKontrol;
 
@@ -25,18 +26,21 @@ namespace WebApp.Application.Services
         };
 
         private readonly IHesapPlaniLoader _hesapPlaniLoader;
+        private readonly MizanRuleEngine _ruleEngine;
         private readonly List<Firma> _firms;
         private readonly Dictionary<int, List<ControlItem>> _itemsByFirm = new();
         private readonly Dictionary<int, Dictionary<string, decimal?>> _rawCariByFirm = new();
         private readonly Dictionary<int, Dictionary<string, decimal?>> _rawOncekiByFirm = new();
+        private readonly Dictionary<int, Dictionary<string, string>> _rawAdByFirm = new();
 
         private readonly SemaphoreSlim _initLock = new(1, 1);
         private HesapPlani? _hesapPlaniTemplate;
         private bool _mizanInitialized;
 
-        public MockFirmaKontrolService(IHesapPlaniLoader hesapPlaniLoader)
+        public MockFirmaKontrolService(IHesapPlaniLoader hesapPlaniLoader, MizanRuleEngine ruleEngine)
         {
             _hesapPlaniLoader = hesapPlaniLoader;
+            _ruleEngine = ruleEngine;
 
             _firms = new List<Firma>
             {
@@ -85,11 +89,17 @@ namespace WebApp.Application.Services
             return firma?.Mizan ?? new HesapPlani();
         }
 
-        public async Task<MizanUpdateResult> UpdateMizanFromExcelAsync(int firmaId, IEnumerable<MizanExcelRow> rows, Donem donem)
+        public async Task<MizanUpdateResult> UpdateMizanFromExcelAsync(int firmaId, MizanParseResult parseResult, Donem donem)
         {
             await EnsureMizanInitializedAsync();
 
             var result = new MizanUpdateResult();
+
+            // Parser'ın elidiği satırları (hiyerarşik / geçersiz format / bakiye yok)
+            // detay listesine al — sebep bazlı gruplandırma için UI bunları kullanır.
+            result.AtlananSatirlar.AddRange(parseResult.AtlananSatirlar);
+
+            var rows = parseResult.Rows;
             var firma = _firms.FirstOrDefault(f => f.Id == firmaId);
             if (firma is null) return result;
 
@@ -116,8 +126,34 @@ namespace WebApp.Application.Services
             Index(firma.Mizan.Pasif);
             Index(firma.Mizan.GelirTablosu);
 
+            // Plan'da bulunma kontrolü için TÜM tipleri (Account/Total/SubGroup)
+            // kapsayan kod seti. 690 (Total), 691 (SubGroup), 692 (Total) gibi
+            // satırlar Account olmasa da plan'da kabul edilir; mizandan gelirse
+            // raw map'e yazılır (gelir tablosu/vergi paneli buradan okur), satır
+            // güncellemesi ise Account olmadığı için yapılmaz — bu da matched sayılır.
+            var planKodSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            void IndexAllKodlar(IEnumerable<MizanSatir> section)
+            {
+                foreach (var s in section)
+                {
+                    if (!string.IsNullOrWhiteSpace(s.Kod))
+                        planKodSet.Add(s.Kod);
+                }
+            }
+            IndexAllKodlar(firma.Mizan.Aktif);
+            IndexAllKodlar(firma.Mizan.Pasif);
+            IndexAllKodlar(firma.Mizan.GelirTablosu);
+
             // Raw değer haritasını sıfırla — bu yükleme firmanın seçili dönem raw'ını değiştirir
             var raw = new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+
+            // Mizandan gelen ad'lar (kod -> ad). Yeni yüklemede mevcut ad map'i ile birleşiyoruz
+            // ki Cari yüklemesi Onceki'nin ad'larını silmesin.
+            if (!_rawAdByFirm.TryGetValue(firmaId, out var adMap))
+            {
+                adMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                _rawAdByFirm[firmaId] = adMap;
+            }
 
             foreach (var row in rows)
             {
@@ -130,13 +166,28 @@ namespace WebApp.Application.Services
 
                 raw[row.Kod] = value;
 
+                // Mizandan gelen ad varsa, kod bazlı ad map'ine yaz (sonradan gelen "—" değerler ezmesin)
+                if (!string.IsNullOrWhiteSpace(row.Ad))
+                    adMap[row.Kod] = row.Ad!.Trim();
+
                 if (lookup.TryGetValue(row.Kod, out var targets))
                 {
                     foreach (var t in targets)
                     {
                         if (donem == Donem.Cari) t.CariDonem = value;
                         else t.OncekiDonem = value;
+
+                        // Fallback: HesapPlani'nde ad boşsa mizandaki ad ile doldur
+                        if (string.IsNullOrWhiteSpace(t.Ad) && !string.IsNullOrWhiteSpace(row.Ad))
+                            t.Ad = row.Ad!.Trim();
                     }
+                    result.Matched++;
+                }
+                else if (planKodSet.Contains(row.Kod))
+                {
+                    // Plan'da var ama Account değil (Total/SubGroup — örn 690/691/692).
+                    // Account satır güncellemesi yok; raw map (yukarıda) zaten dolduruldu,
+                    // gelir tablosu calculator ve vergi paneli buradan okuyor.
                     result.Matched++;
                 }
                 else
@@ -144,6 +195,15 @@ namespace WebApp.Application.Services
                     result.Unmatched++;
                     if (result.UnmatchedKodlar.Count < 50)
                         result.UnmatchedKodlar.Add(row.Kod);
+
+                    result.AtlananSatirlar.Add(new AtlananSatir
+                    {
+                        Kod = row.Kod,
+                        Ad = row.Ad,
+                        Bakiye = value,
+                        Sebep = AtlamaSebebi.PlandaBulunamadi,
+                        SebepMetni = "Hesap Planında Bulunamadı"
+                    });
                 }
             }
 
@@ -166,10 +226,42 @@ namespace WebApp.Application.Services
             return new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
         }
 
+        public async Task<IReadOnlyDictionary<string, string>> GetRawMizanAdlarAsync(int firmaId)
+        {
+            await EnsureMizanInitializedAsync();
+
+            if (_rawAdByFirm.TryGetValue(firmaId, out var map))
+                return map;
+
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+
         public Task<VergiHesaplama> GetVergiBilgisiAsync(int firmaId)
         {
             var firma = _firms.FirstOrDefault(f => f.Id == firmaId);
             return Task.FromResult(firma?.VergiBilgisiCariDonem ?? new VergiHesaplama());
+        }
+
+        public async Task<IReadOnlyList<UyariSonucu>> GetUyarilarAsync(int firmaId)
+        {
+            await EnsureMizanInitializedAsync();
+
+            var firma = _firms.FirstOrDefault(f => f.Id == firmaId);
+            if (firma is null) return Array.Empty<UyariSonucu>();
+
+            _rawCariByFirm.TryGetValue(firmaId, out var rawCari);
+            _rawOncekiByFirm.TryGetValue(firmaId, out var rawOnceki);
+
+            var context = new MizanRuleContext
+            {
+                Firma = firma,
+                Mizan = firma.Mizan,
+                RawCariValues = rawCari ?? new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase),
+                RawOncekiValues = rawOnceki ?? new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase),
+                Esikler = MizanEsikler.Default()
+            };
+
+            return _ruleEngine.Calistir(context);
         }
 
         public async Task ResetMizanAsync(int firmaId)
@@ -181,6 +273,7 @@ namespace WebApp.Application.Services
             firma.Mizan = _hesapPlaniTemplate.Clone();
             _rawCariByFirm.Remove(firmaId);
             _rawOncekiByFirm.Remove(firmaId);
+            _rawAdByFirm.Remove(firmaId);
         }
 
         private async Task EnsureMizanInitializedAsync()

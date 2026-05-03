@@ -1,3 +1,4 @@
+@using System.Globalization
 @using Microsoft.AspNetCore.Components.Forms
 @using Radzen
 @using Radzen.Blazor
@@ -18,8 +19,9 @@
             <strong>Beklenen Excel formatı:</strong>
             <ul style="margin: 0.5rem 0 0 1.25rem; padding: 0;">
                 <li>İlk satır <em>başlık</em> (atlanır)</li>
-                <li>A: Hesap Kodu (örn. <code>100</code>, <code>120</code>)</li>
-                <li>B: Bakiye (TL)</li>
+                <li>A: Hesap Kodu (örn. <code>100</code>, <code>120</code>) — sadece <strong>3 haneli ana kodlar</strong> alınır, alt kırılımlar (<code>120 1 1</code> gibi) atlanır</li>
+                <li>F: TL Borç Bakiye, G: TL Alacak Bakiye (PROGROUP formatı) <em>veya</em> H: Bakiye</li>
+                <li>Alternatif basit format: B: Bakiye (TL)</li>
             </ul>
         </RadzenAlert>
 
@@ -44,12 +46,57 @@
         @if (lastResult is not null)
         {
             <RadzenAlert AlertStyle="AlertStyle.Success" ShowIcon="true">
-                <strong>@lastResult.Matched satır</strong> hesap planına eşleşti.
-                @if (lastResult.Unmatched > 0)
-                {
-                    <span> @lastResult.Unmatched satır eşleşmedi (atlandı).</span>
-                }
+                <div class="fk-mizan-result-row">
+                    <span>
+                        <strong>@lastResult.Matched satır</strong> hesap planına eşleşti.
+                        @if (lastResult.Unmatched > 0)
+                        {
+                            <span> <strong>@lastResult.Unmatched satır</strong> eşleşmedi.</span>
+                        }
+                    </span>
+
+                    @if (lastResult.AtlananSatirlar.Count > 0)
+                    {
+                        <RadzenButton Text="@(showDetay ? "Detayları Gizle" : "Detayları Göster")"
+                                      ButtonStyle="ButtonStyle.Light"
+                                      Variant="Variant.Text"
+                                      Size="ButtonSize.Small"
+                                      Click="@(() => showDetay = !showDetay)" />
+                    }
+                </div>
             </RadzenAlert>
+
+            @if (showDetay && lastResult.AtlananSatirlar.Count > 0)
+            {
+                <RadzenCard class="fk-mizan-detay-card">
+                    @foreach (var grup in GroupedAtlananlar)
+                    {
+                        <RadzenFieldset Text="@($"{grup.Baslik} ({grup.Satirlar.Count})")"
+                                        AllowCollapse="true"
+                                        Collapsed="@grup.DefaultCollapsed">
+                            <table class="fk-mizan-detay-table">
+                                <thead>
+                                    <tr>
+                                        <th class="fk-mizan-detay-col-kod">Kod</th>
+                                        <th>Hesap Adı</th>
+                                        <th class="fk-mizan-detay-col-num">Bakiye</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var s in grup.Satirlar)
+                                    {
+                                        <tr>
+                                            <td class="fk-mizan-detay-col-kod">@s.Kod</td>
+                                            <td>@(string.IsNullOrWhiteSpace(s.Ad) ? "—" : s.Ad)</td>
+                                            <td class="fk-mizan-detay-col-num">@FormatNumber(s.Bakiye)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </RadzenFieldset>
+                    }
+                </RadzenCard>
+            }
         }
 
         <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.End">
@@ -70,6 +117,52 @@
     private string? error;
     private MizanUpdateResult? lastResult;
     private bool uploaded;
+    private bool showDetay;
+
+    private record AtlananGrup(string Baslik, AtlamaSebebi Sebep, bool DefaultCollapsed, List<AtlananSatir> Satirlar);
+
+    // Sebep bazlı, sıralı gruplandırma. Önce kullanıcının dikkatini çekmesi
+    // gereken (PlandaBulunamadi, GecersizFormat, BakiyeOkunamadi) açık;
+    // hiyerarşik atlananlar default collapsed (beklenen davranış, gürültü).
+    private IReadOnlyList<AtlananGrup> GroupedAtlananlar
+    {
+        get
+        {
+            if (lastResult is null) return Array.Empty<AtlananGrup>();
+
+            var ordered = new[]
+            {
+                AtlamaSebebi.PlandaBulunamadi,
+                AtlamaSebebi.GecersizFormat,
+                AtlamaSebebi.BakiyeOkunamadi,
+                AtlamaSebebi.MizanToplamSatiri,
+                AtlamaSebebi.HiyerarsikAltKod
+            };
+
+            return ordered
+                .Select(sebep =>
+                {
+                    var satirlar = lastResult.AtlananSatirlar
+                        .Where(s => s.Sebep == sebep)
+                        .OrderBy(s => s.Kod, StringComparer.Ordinal)
+                        .ToList();
+
+                    if (satirlar.Count == 0) return null;
+
+                    var baslik = satirlar.First().SebepMetni;
+                    // Bilgilendirme amaçlı (beklenen) sebepler default kapalı
+                    var collapsed = sebep == AtlamaSebebi.HiyerarsikAltKod
+                                 || sebep == AtlamaSebebi.MizanToplamSatiri;
+                    return new AtlananGrup(baslik, sebep, collapsed, satirlar);
+                })
+                .Where(g => g is not null)
+                .Cast<AtlananGrup>()
+                .ToList();
+        }
+    }
+
+    private static string FormatNumber(decimal? value) =>
+        value.HasValue ? value.Value.ToString("N2", new CultureInfo("tr-TR")) : "—";
 
     private async Task OnFileSelected(InputFileChangeEventArgs args)
     {
@@ -104,9 +197,10 @@
                 return;
             }
 
-            var updateResult = await FirmaKontrolService.UpdateMizanFromExcelAsync(FirmaId, parsed.Rows, Donem);
+            var updateResult = await FirmaKontrolService.UpdateMizanFromExcelAsync(FirmaId, parsed, Donem);
             lastResult = updateResult;
             uploaded = true;
+            showDetay = false;
 
             Notif.Notify(new NotificationMessage
             {

@@ -4,7 +4,10 @@ namespace WebApp.Application.Services
 {
     public static class GelirTablosuCalculator
     {
-        // 5 yansıtma eşleşmesi: hedef 6'lı kod -> kaynak yansıtma kodu
+        // Bilgi amaçlı: 6'lı gider kodu -> mukabil 7'li yansıtma kodu eşleşmesi.
+        // Artık toplama yapılmıyor; muhasebeci 740/750/760/770/780'i ayrı görüp
+        // kapanış kararını kendi verecek (mizan tab'ında ve gelir tablosunda
+        // satır olarak listeleniyor).
         public static readonly IReadOnlyDictionary<string, string> YansitmaMap =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -18,8 +21,8 @@ namespace WebApp.Application.Services
         public class ComputedRow
         {
             public MizanSatir Source { get; set; } = default!;
-            public decimal? OncekiCari { get; set; }   // Önceki Dönem hesaplanmış
-            public decimal? Cari { get; set; }          // Cari Dönem hesaplanmış
+            public decimal? OncekiCari { get; set; }
+            public decimal? Cari { get; set; }
             public string? KaynakKod { get; set; }
             public string? YansitmaKod { get; set; }
         }
@@ -36,7 +39,9 @@ namespace WebApp.Application.Services
             var kaynakKod = new string?[n];
             var yansitmaKod = new string?[n];
 
-            // 1) Account satırları: own + (varsa) yansıtma raw değer
+            // 1) Account satırları: SADECE kendi mizan bakiyesi.
+            //    Yansıtma toplamı ARTIK YAPILMIYOR — 740/750/760/770/780 ayrı satır
+            //    olarak gösterilir, ana grup toplamına dahil edilmez.
             //    Kaynak kod tüm tipler için (kod doluysa) gösterilir — 690/691/692 gibi
             //    başlık/total satırlarında da Hesap Kodu sütununun beslenmesi için.
             for (int i = 0; i < n; i++)
@@ -45,24 +50,17 @@ namespace WebApp.Application.Services
 
                 kaynakKod[i] = string.IsNullOrWhiteSpace(r.Kod) ? null : r.Kod;
 
-                if (r.Tip != SatirTipi.Account) continue;
-
-                decimal? ownCari = r.CariDonem;
-                decimal? ownOnceki = r.OncekiDonem;
-                decimal? yansitmaCari = null;
-                decimal? yansitmaOnceki = null;
-
-                if (!string.IsNullOrEmpty(r.Kod) && YansitmaMap.TryGetValue(r.Kod, out var yKod))
+                // Bilgi amaçlı yansıtma kodu (UI'da ipucu olarak gösteriliyor)
+                if (r.Tip == SatirTipi.Account && !string.IsNullOrEmpty(r.Kod) &&
+                    YansitmaMap.TryGetValue(r.Kod, out var yKod))
                 {
                     yansitmaKod[i] = yKod;
-                    if (rawCari.TryGetValue(yKod, out var vc) && vc.HasValue) yansitmaCari = vc;
-                    if (rawOnceki.TryGetValue(yKod, out var vo) && vo.HasValue) yansitmaOnceki = vo;
                 }
 
-                if (ownCari.HasValue || yansitmaCari.HasValue)
-                    cari[i] = (ownCari ?? 0m) + (yansitmaCari ?? 0m);
-                if (ownOnceki.HasValue || yansitmaOnceki.HasValue)
-                    onceki[i] = (ownOnceki ?? 0m) + (yansitmaOnceki ?? 0m);
+                if (r.Tip != SatirTipi.Account) continue;
+
+                cari[i] = r.CariDonem;
+                onceki[i] = r.OncekiDonem;
             }
 
             // 2) SubGroup ve MainGroup toplamları
@@ -121,10 +119,11 @@ namespace WebApp.Application.Services
                 onceki[i] = sumOnceki;
             }
 
-            // 4) Vergi paneli ile bağlantı:
-            //    690 = Ticari Kar (Total — mevcut hesaplama, bilanço öncesi kar)
-            //    691 = Hesaplanan Vergi Karşılığı (-) → vergi panelinden gelir, NEGATİF olarak yazılır
-            //    692 = Dönem Net Karı = 690 + 691
+            // 4) 690 / 691 / 692 — Mizan öncelikli, formül fallback.
+            //    Muhasebeci kapanış sonrası bu satırları mizana yazdıysa
+            //    "doğru kabul" edilir ve formülün önüne geçer. Mizanda boşsa
+            //    690 = Total scan sonucu (mevcut), 691 = vergi panelinden -1 ile,
+            //    692 = 690 + 691 olarak hesaplanır.
             int idx690 = -1, idx691 = -1, idx692 = -1;
             for (int i = 0; i < n; i++)
             {
@@ -133,16 +132,61 @@ namespace WebApp.Application.Services
                 else if (rows[i].Kod == "692") idx692 = i;
             }
 
-            if (idx691 >= 0)
-                cari[idx691] = hesaplananVergi691Cari.HasValue ? -1m * hesaplananVergi691Cari.Value : 0m;
-
-            if (idx692 >= 0 && idx690 >= 0)
+            // 690 — mizanda varsa override; yoksa Total scan sonucu kalır
+            if (idx690 >= 0)
             {
-                var v690 = cari[idx690];
-                var v691 = idx691 >= 0 ? cari[idx691] : 0m;
-                if (v690.HasValue || v691.HasValue)
-                    cari[idx692] = (v690 ?? 0m) + (v691 ?? 0m);
+                var m690c = RawValue(rawCari, "690");
+                if (m690c.HasValue) cari[idx690] = m690c;
+
+                var m690o = RawValue(rawOnceki, "690");
+                if (m690o.HasValue) onceki[idx690] = m690o;
             }
+
+            // 691 — mizanda varsa override; yoksa vergi panelinden -1 ile
+            if (idx691 >= 0)
+            {
+                var m691c = RawValue(rawCari, "691");
+                if (m691c.HasValue)
+                    cari[idx691] = m691c;
+                else
+                    cari[idx691] = hesaplananVergi691Cari.HasValue ? -1m * hesaplananVergi691Cari.Value : 0m;
+
+                var m691o = RawValue(rawOnceki, "691");
+                if (m691o.HasValue) onceki[idx691] = m691o;
+            }
+
+            // 692 — mizanda varsa override; yoksa 690 + 691
+            if (idx692 >= 0)
+            {
+                var m692c = RawValue(rawCari, "692");
+                if (m692c.HasValue)
+                {
+                    cari[idx692] = m692c;
+                }
+                else if (idx690 >= 0)
+                {
+                    var v690 = cari[idx690];
+                    var v691 = idx691 >= 0 ? cari[idx691] : 0m;
+                    if (v690.HasValue || v691.HasValue)
+                        cari[idx692] = (v690 ?? 0m) + (v691 ?? 0m);
+                }
+
+                var m692o = RawValue(rawOnceki, "692");
+                if (m692o.HasValue)
+                {
+                    onceki[idx692] = m692o;
+                }
+                else if (idx690 >= 0)
+                {
+                    var o690 = onceki[idx690];
+                    var o691 = idx691 >= 0 ? onceki[idx691] : 0m;
+                    if (o690.HasValue || o691.HasValue)
+                        onceki[idx692] = (o690 ?? 0m) + (o691 ?? 0m);
+                }
+            }
+
+            static decimal? RawValue(IReadOnlyDictionary<string, decimal?> raw, string kod) =>
+                raw.TryGetValue(kod, out var v) ? v : null;
 
             var result = new List<ComputedRow>(n);
             for (int i = 0; i < n; i++)

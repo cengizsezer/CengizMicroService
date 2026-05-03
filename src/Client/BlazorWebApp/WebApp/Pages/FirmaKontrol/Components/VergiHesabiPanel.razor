@@ -23,7 +23,13 @@
 
             @* ───── BÖLÜM 1: BAŞLANGIÇ ───── *@
             <tr class="fk-vergi-row-ticari">
-                <td class="fk-vergi-col-label">TİCARİ KAR (690)</td>
+                <td class="fk-vergi-col-label">
+                    TİCARİ KAR (690)
+                    @if (TicariKarFromMizan)
+                    {
+                        <span class="fk-vergi-source-badge" title="Mizan'dan okundu">mizan</span>
+                    }
+                </td>
                 <td class="fk-vergi-col-num">—</td>
                 <td class="fk-vergi-col-num">@FormatNumber(TicariKarCari)</td>
             </tr>
@@ -110,7 +116,13 @@
                 <td class="fk-vergi-col-num">@RenderInput(() => Model.Kv5Indirim, v => Model.Kv5Indirim = v)</td>
             </tr>
             <tr class="fk-vergi-row-vergi691">
-                <td class="fk-vergi-col-label"><strong>Hesaplanan Vergi → 691</strong></td>
+                <td class="fk-vergi-col-label">
+                    <strong>Hesaplanan Vergi → 691</strong>
+                    @if (Vergi691FromMizan)
+                    {
+                        <span class="fk-vergi-source-badge" title="Mizan'dan okundu">mizan</span>
+                    }
+                </td>
                 <td class="fk-vergi-col-num">—</td>
                 <td class="fk-vergi-col-num"><strong>@FormatNumber(HesaplananVergi691)</strong></td>
             </tr>
@@ -162,11 +174,33 @@
 @code {
     [Parameter, EditorRequired] public VergiHesaplama Model { get; set; } = default!;
     [Parameter] public decimal? TicariKarCari { get; set; }
+
+    /// <summary>
+    /// Mizandan okunmuş 691 değeri (varsa). Doluysa formülün önüne geçer
+    /// ve "Hesaplanan Vergi → 691" satırı bu değeri gösterir.
+    /// Mizan değeri pozitif kabul edilir (vergi karşılığı tutarı).
+    /// </summary>
+    [Parameter] public decimal? MizanVergi691Cari { get; set; }
+
+    /// <summary>
+    /// TicariKar değerinin mizandan mı yoksa formülden mi geldiğini gösterir
+    /// (sadece UI badge'i için bilgilendirme).
+    /// </summary>
+    [Parameter] public bool TicariKarFromMizan { get; set; }
+
     [Parameter] public EventCallback OnInputChanged { get; set; }
 
     private decimal? MaliKar => VergiHesabiHelper.MaliKar(TicariKarCari, Model);
     private decimal? HesaplananKv25 => VergiHesabiHelper.HesaplananKv25(MaliKar);
-    private decimal? HesaplananVergi691 => VergiHesabiHelper.HesaplananVergi691(HesaplananKv25, Model);
+    private decimal? HesaplananVergi691Formul => VergiHesabiHelper.HesaplananVergi691(HesaplananKv25, Model);
+
+    private bool Vergi691FromMizan => MizanVergi691Cari.HasValue;
+
+    // Mizan-öncelikli: mizanda 691 varsa onu (mutlak değer — pozitif vergi tutarı)
+    // kullan; yoksa formülden hesapla.
+    private decimal? HesaplananVergi691 =>
+        MizanVergi691Cari.HasValue ? Math.Abs(MizanVergi691Cari.Value) : HesaplananVergi691Formul;
+
     private decimal? OdenecekVergi => VergiHesabiHelper.OdenecekVergi(HesaplananVergi691, Model);
 
     private bool IsIade => OdenecekVergi.HasValue && OdenecekVergi.Value < 0;

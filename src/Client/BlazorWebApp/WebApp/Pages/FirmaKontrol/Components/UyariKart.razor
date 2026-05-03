@@ -1,0 +1,59 @@
+@using WebApp.Application.RuleEngine
+
+<div id="@CardId" class="fk-uyari-kart @SeviyeClass @(IsHighlighted ? "is-highlighted" : null)" @onclick="HandleClick">
+    <div class="fk-uyari-kart-header">
+        <span class="fk-uyari-kart-badge @SeviyeClass">
+            <span class="fk-uyari-kart-badge-emoji">@SeviyeEmoji</span>
+            <span>@SeviyeLabel</span>
+        </span>
+        <span class="fk-uyari-kart-kod">@Uyari.HesapKodu</span>
+    </div>
+
+    <div class="fk-uyari-kart-baslik">@Uyari.Baslik</div>
+    <div class="fk-uyari-kart-aciklama">@Uyari.Aciklama</div>
+
+    <div class="fk-uyari-kart-divider"></div>
+
+    <div class="fk-uyari-kart-cozum">
+        <div class="fk-uyari-kart-cozum-baslik">
+            <span class="fk-uyari-kart-cozum-emoji">💡</span>
+            <span>ÇÖZÜM ÖNERİSİ</span>
+        </div>
+        <div class="fk-uyari-kart-cozum-metin">@Uyari.CozumOnerisi</div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public UyariSonucu Uyari { get; set; } = default!;
+    [Parameter] public bool IsHighlighted { get; set; }
+    [Parameter] public EventCallback<UyariSonucu> OnSelect { get; set; }
+
+    public string CardId => $"fk-uyari-kart-{Uyari.KuralKodu}";
+
+    private string SeviyeClass => Uyari.Seviye switch
+    {
+        UyariSeviyesi.Kritik => "kritik",
+        UyariSeviyesi.Uyari => "uyari",
+        _ => "bilgi"
+    };
+
+    private string SeviyeLabel => Uyari.Seviye switch
+    {
+        UyariSeviyesi.Kritik => "KRİTİK",
+        UyariSeviyesi.Uyari => "UYARI",
+        _ => "BİLGİ"
+    };
+
+    private string SeviyeEmoji => Uyari.Seviye switch
+    {
+        UyariSeviyesi.Kritik => "🔴",
+        UyariSeviyesi.Uyari => "⚠️",
+        _ => "ℹ️"
+    };
+
+    private async Task HandleClick()
+    {
+        if (OnSelect.HasDelegate)
+            await OnSelect.InvokeAsync(Uyari);
+    }
+}
