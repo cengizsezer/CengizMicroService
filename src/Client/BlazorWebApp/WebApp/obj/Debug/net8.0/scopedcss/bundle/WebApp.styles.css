@@ -464,7 +464,8 @@ body[b-i9md2k4r3s] {
     width: 100%;
     flex: 0 0 auto;
     min-height: auto;
-    overflow: visible;
+    overflow-x: auto;
+    overflow-y: hidden;
     border: 1px solid #d8d8d8;
     background: #f3f3f3;
     margin-bottom: 6px;
@@ -473,6 +474,7 @@ body[b-i9md2k4r3s] {
 /* TABLO */
 .payroll-table[b-i9md2k4r3s] {
     width: 100%;
+    min-width: max-content;
     border-collapse: collapse;
     background: #f3f3f3;
     table-layout: auto;

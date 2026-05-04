@@ -80,7 +80,10 @@ namespace CatalogService.Api.Features.Payroll.Services
             var d = Round2(a / 2m);
             var e = d;
 
-            var f = CalculateProgressiveTax(e, taxBrackets);
+            // Kar dağıtımı = ücret dışı gelir → 2026 ücret-dışı dilimleri
+            // (1M kırılma noktası). Ücret tablosundan farklı; DB'deki taxBrackets
+            // ücret tablosu olduğu için burada kullanılmıyor.
+            var f = CalculateNonSalaryProgressiveTax2026(e);
             var ortVergiOrani = e == 0 ? 0m : Round2(f / e * 100m);
             var g = Round2(f - b);
             var netVergiMaliyeti = f;
@@ -125,5 +128,24 @@ namespace CatalogService.Api.Features.Payroll.Services
 
         private static decimal Round2(decimal value)
             => Math.Round(value, 2, MidpointRounding.AwayFromZero);
+
+        private static decimal CalculateNonSalaryProgressiveTax2026(decimal matrah)
+        {
+            if (matrah <= 0m) return 0m;
+
+            decimal tax;
+            if (matrah <= 190_000m)
+                tax = matrah * 0.15m;
+            else if (matrah <= 400_000m)
+                tax = 28_500m + (matrah - 190_000m) * 0.20m;
+            else if (matrah <= 1_000_000m)
+                tax = 70_500m + (matrah - 400_000m) * 0.27m;
+            else if (matrah <= 5_300_000m)
+                tax = 232_500m + (matrah - 1_000_000m) * 0.35m;
+            else
+                tax = 1_737_500m + (matrah - 5_300_000m) * 0.40m;
+
+            return Round2(tax);
+        }
     }
 }
