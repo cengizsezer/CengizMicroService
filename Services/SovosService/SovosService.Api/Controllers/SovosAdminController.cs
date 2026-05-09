@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sovos.InvoiceWorker.Core.Entities;
+using Sovos.InvoiceWorker.Core.Enums;
 using Sovos.InvoiceWorker.Core.Interfaces;
 using SovosService.Api.Application.Models;
 using SovosService.Api.Persistence;
@@ -115,6 +116,9 @@ public class SovosAdminController : ControllerBase
     {
         _logger.LogInformation("CreateCompany: Name={Name}", dto.Name);
 
+        if (!TryNormalizeSchedule(dto.ScheduleMode, dto.ScheduleHour, out var normalizedHour, out var scheduleErr))
+            return BadRequest(scheduleErr);
+
         var entity = new Company
         {
             Name = dto.Name,
@@ -124,7 +128,7 @@ public class SovosAdminController : ControllerBase
             NotificationEmails = dto.NotificationEmails,
             IsActive = dto.IsActive,
             ScheduleMode = dto.ScheduleMode,
-            ScheduleHour = dto.ScheduleHour
+            ScheduleHour = normalizedHour
         };
 
         _db.Companies.Add(entity);
@@ -139,7 +143,12 @@ public class SovosAdminController : ControllerBase
     [HttpPut("companies/{id:int}")]
     public async Task<IActionResult> UpdateCompany(int id, [FromBody] SovosCompanyEditDto dto)
     {
-        _logger.LogInformation("UpdateCompany: id={Id}", id);
+        _logger.LogInformation(
+            "UpdateCompany: id={Id} mode={Mode} hour={Hour}",
+            id, dto.ScheduleMode, dto.ScheduleHour);
+
+        if (!TryNormalizeSchedule(dto.ScheduleMode, dto.ScheduleHour, out var normalizedHour, out var scheduleErr))
+            return BadRequest(scheduleErr);
 
         var c = await _db.Companies.FirstOrDefaultAsync(x => x.Id == id);
         if (c is null) return NotFound();
@@ -150,12 +159,36 @@ public class SovosAdminController : ControllerBase
         c.NotificationEmails = dto.NotificationEmails;
         c.IsActive = dto.IsActive;
         c.ScheduleMode = dto.ScheduleMode;
-        c.ScheduleHour = dto.ScheduleHour;
+        c.ScheduleHour = normalizedHour;
 
         await _db.SaveChangesAsync();
 
-        _logger.LogInformation("Firma güncellendi: {Name} (Id={Id})", c.Name, c.Id);
+        _logger.LogInformation(
+            "Firma güncellendi: {Name} (Id={Id}) mode={Mode} hour={Hour}",
+            c.Name, c.Id, c.ScheduleMode, c.ScheduleHour);
         return NoContent();
+    }
+
+    // Daily ⇒ ScheduleHour 0-23 zorunlu. Hourly/Manual ⇒ ScheduleHour null'a normalize.
+    private static bool TryNormalizeSchedule(
+        ScheduleMode mode, int? hourIn, out int? hourOut, out string error)
+    {
+        if (mode == ScheduleMode.Daily)
+        {
+            if (hourIn is null || hourIn < 0 || hourIn > 23)
+            {
+                hourOut = null;
+                error = "Günlük modda tarama saati 0-23 aralığında zorunludur.";
+                return false;
+            }
+            hourOut = hourIn;
+        }
+        else
+        {
+            hourOut = null;
+        }
+        error = "";
+        return true;
     }
 
     // POST api/sovos/admin/companies/{id}/password

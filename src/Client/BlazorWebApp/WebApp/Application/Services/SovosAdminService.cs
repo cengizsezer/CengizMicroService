@@ -28,8 +28,17 @@ public class SovosAdminService : ISovosAdminService
             : (false, await resp.Content.ReadAsStringAsync());
     }
 
-    public async Task<bool> UpdateCompanyAsync(int id, SovosCompanyEditDto dto)
-        => (await _http.PutAsJsonAsync($"{Base}/companies/{id}", dto)).IsSuccessStatusCode;
+    public async Task<(bool ok, string? err)> UpdateCompanyAsync(int id, SovosCompanyEditDto dto)
+    {
+        var resp = await _http.PutAsJsonAsync($"{Base}/companies/{id}", dto);
+        if (resp.IsSuccessStatusCode) return (true, null);
+
+        var body = await resp.Content.ReadAsStringAsync();
+        var detail = string.IsNullOrWhiteSpace(body)
+            ? $"HTTP {(int)resp.StatusCode} {resp.ReasonPhrase}"
+            : $"HTTP {(int)resp.StatusCode}: {body}";
+        return (false, detail);
+    }
 
     public async Task<bool> ChangePasswordAsync(int id, SovosCompanyPasswordDto dto)
         => (await _http.PostAsJsonAsync($"{Base}/companies/{id}/password", dto)).IsSuccessStatusCode;

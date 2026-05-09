@@ -76,24 +76,36 @@ public class InvoiceOrchestrator : IInvoiceOrchestrator
         }
     }
 
-    private static bool IsDue(Company c, DateTime nowLocal)
+    private bool IsDue(Company c, DateTime nowLocal)
     {
         var lastUtc = MaxNullable(c.LastSuccessfulRunAt, c.LastFailedRunAt);
-        var lastLocal = lastUtc.HasValue
+        DateTime? lastLocal = lastUtc.HasValue
             ? DateTime.SpecifyKind(lastUtc.Value, DateTimeKind.Utc).ToLocalTime()
-            : DateTime.MinValue;
+            : null;
 
-        return c.ScheduleMode switch
+        var schedHour = c.ScheduleHour ?? 9;
+
+        bool result = c.ScheduleMode switch
         {
             ScheduleMode.Hourly =>
-                (nowLocal - lastLocal) >= TimeSpan.FromHours(1),
+                lastLocal is null
+                || (nowLocal - lastLocal.Value) >= TimeSpan.FromHours(1),
             ScheduleMode.Daily =>
-                nowLocal.Hour == (c.ScheduleHour ?? 9)
-                && lastLocal.Date < nowLocal.Date,
+                nowLocal.Hour >= schedHour
+                && (lastLocal is null || lastLocal.Value.Date < nowLocal.Date),
             ScheduleMode.Manual =>
                 false,
             _ => false
         };
+
+        _logger.LogInformation(
+            "🧮 IsDue {Mode} | Id={Id} nowHour={NH} schedHour={SH} lastDate={LD} nowDate={ND} → {R}",
+            c.ScheduleMode, c.Id, nowLocal.Hour, schedHour,
+            lastLocal?.Date.ToString("yyyy-MM-dd") ?? "NULL",
+            nowLocal.Date.ToString("yyyy-MM-dd"),
+            result);
+
+        return result;
     }
 
     private static DateTime? MaxNullable(DateTime? a, DateTime? b) => (a, b) switch

@@ -115,19 +115,19 @@
 
     private async Task OnSubmit(SovosCompanyEditDto _)
     {
-        var updated = await Sovos.UpdateCompanyAsync(Model.Id, Model);
-        if (updated)
+        var (ok, err) = await Sovos.UpdateCompanyAsync(Model.Id, Model);
+        if (ok)
         {
             Dialog.Close(true);
+            return;
         }
-        else
+
+        Notif.Notify(new NotificationMessage
         {
-            Notif.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Error,
-                Summary = "Hata",
-                Detail = "Firma güncellenemedi."
-            });
-        }
+            Severity = NotificationSeverity.Error,
+            Summary = "Kayıt başarısız",
+            Detail = string.IsNullOrWhiteSpace(err) ? "Firma güncellenemedi." : err,
+            Duration = 8000
+        });
     }
 }

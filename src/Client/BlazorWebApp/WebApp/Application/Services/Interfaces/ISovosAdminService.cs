@@ -12,7 +12,7 @@ public interface ISovosAdminService
 
     Task<(bool ok, string? err)> CreateCompanyAsync(NewSovosCompanyDto dto);
 
-    Task<bool> UpdateCompanyAsync(int id, SovosCompanyEditDto dto);
+    Task<(bool ok, string? err)> UpdateCompanyAsync(int id, SovosCompanyEditDto dto);
 
     Task<bool> ChangePasswordAsync(int id, SovosCompanyPasswordDto dto);
 
