@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -231,6 +232,85 @@ public class SovosAdminController : ControllerBase
         _logger.LogInformation("TestLogin (stub): id={Id}", id);
         return StatusCode(StatusCodes.Status501NotImplemented,
             "test-login ADIM B'de implement edilecek.");
+    }
+
+    // POST api/faturakontrol/companies/run-batch
+    // Worker'a toplu manuel tarama isteği gönderir. Senkron — Worker tüm firmaları
+    // sequential işler ve sonuç (success/failed) döner.
+    [HttpPost("companies/run-batch")]
+    public async Task<ActionResult<SovosBatchRunResultDto>> RunBatch(
+        [FromBody] SovosBatchRunRequestDto req, CancellationToken ct)
+    {
+        if (req is null || req.CompanyIds is null || req.CompanyIds.Count == 0)
+            return BadRequest(new { message = "En az bir firma seçilmelidir." });
+
+        if (req.FromDate > req.ToDate)
+            return BadRequest(new { message = "Başlangıç tarihi bitiş tarihinden büyük olamaz." });
+
+        if (req.ToDate.Date > DateTime.Today)
+            return BadRequest(new { message = "Bitiş tarihi bugünden ileri olamaz." });
+
+        if ((req.ToDate.Date - req.FromDate.Date).TotalDays > 90)
+            return BadRequest(new { message = "Tarih aralığı 90 günden fazla olamaz." });
+
+        // Sadece var olan firmaları yolla — kullanıcı stale UI ile gönderirse fail listesi şişmesin.
+        var existingIds = await _db.Companies
+            .Where(c => req.CompanyIds.Contains(c.Id))
+            .Select(c => c.Id)
+            .ToListAsync(ct);
+
+        var missingIds = req.CompanyIds.Except(existingIds).ToList();
+
+        var http = _httpClientFactory.CreateClient("Worker");
+
+        // Worker uzun süre çalışabilir (5 firma × ~30sn = 150sn+ olası).
+        http.Timeout = TimeSpan.FromMinutes(20);
+
+        try
+        {
+            var workerReq = new
+            {
+                companyIds = existingIds,
+                fromDate = req.FromDate,
+                toDate = req.ToDate
+            };
+
+            var resp = await http.PostAsJsonAsync("api/worker/run-batch", workerReq, ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning(
+                    "Worker run-batch başarısız: status={Status}, body={Body}",
+                    (int)resp.StatusCode, body);
+                return StatusCode((int)resp.StatusCode, body);
+            }
+
+            var workerResult = await resp.Content.ReadFromJsonAsync<SovosBatchRunResultDto>(
+                cancellationToken: ct) ?? new SovosBatchRunResultDto();
+
+            // UI'da görünmesi için "bulunamadı" olanları da fail listesine ekle
+            foreach (var id in missingIds)
+            {
+                workerResult.Failed.Add(new SovosBatchRunItemDto
+                {
+                    CompanyId = id,
+                    CompanyName = $"#{id}",
+                    Error = "Firma bulunamadı"
+                });
+            }
+
+            _logger.LogInformation(
+                "RunBatch tamamlandı: {Ok} başarılı, {Fail} başarısız",
+                workerResult.Success.Count, workerResult.Failed.Count);
+
+            return Ok(workerResult);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Worker'a ulaşılamadı (run-batch)");
+            return StatusCode(StatusCodes.Status502BadGateway,
+                new { message = "Worker servisine ulaşılamadı." });
+        }
     }
 
     // POST api/sovos/admin/companies/{id}/run-now

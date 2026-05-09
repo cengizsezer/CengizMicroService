@@ -27,6 +27,46 @@
         </div>
     </div>
 
+    <RadzenCard class="rz-p-3 rz-mb-3" Style="background-color:var(--rz-base-200);">
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem"
+                     AlignItems="AlignItems.End" Wrap="FlexWrap.Wrap">
+            <div>
+                <label class="rz-text-caption" style="display:block; margin-bottom:4px;">
+                    Başlangıç Tarihi
+                </label>
+                <RadzenDatePicker @bind-Value="FromDate"
+                                  DateFormat="dd.MM.yyyy"
+                                  ShowTime="false"
+                                  Style="width:160px" />
+            </div>
+            <div>
+                <label class="rz-text-caption" style="display:block; margin-bottom:4px;">
+                    Bitiş Tarihi
+                </label>
+                <RadzenDatePicker @bind-Value="ToDate"
+                                  DateFormat="dd.MM.yyyy"
+                                  ShowTime="false"
+                                  Style="width:160px" />
+            </div>
+            <RadzenButton Text="@($"SEÇİLENLERİ TARA ({SelectedCompanyIds.Count})")"
+                          Icon="play_circle"
+                          ButtonStyle="ButtonStyle.Primary"
+                          Disabled="@isBatchRunning"
+                          Click="@RunBatchScan" />
+            <RadzenButton Text="TÜMÜNÜ TARA"
+                          Icon="done_all"
+                          ButtonStyle="ButtonStyle.Secondary"
+                          Disabled="@isBatchRunning"
+                          Click="@RunAllScan" />
+            @if (isBatchRunning)
+            {
+                <div class="rz-text-caption" style="color:var(--rz-primary);">
+                    <RadzenIcon Icon="hourglass_empty" /> Tarama devam ediyor...
+                </div>
+            }
+        </RadzenStack>
+    </RadzenCard>
+
     <RadzenDataGrid TItem="SovosCompanyListItemDto"
                     Data="@companies"
                     AllowPaging="true" PageSize="20"
@@ -35,6 +75,21 @@
                     LogicalFilterOperator="LogicalFilterOperator.And">
 
         <Columns>
+            <RadzenDataGridColumn TItem="SovosCompanyListItemDto" Title="" Width="50px"
+                                  Sortable="false" TextAlign="TextAlign.Center">
+                <HeaderTemplate>
+                    <RadzenCheckBox TValue="bool"
+                                    Value="@AllSelected"
+                                    Change="@((bool v) => ToggleAll(v))" />
+                </HeaderTemplate>
+                <Template Context="c">
+                    <span @onclick:stopPropagation @onkeydown:stopPropagation>
+                        <RadzenCheckBox TValue="bool"
+                                        Value="@SelectedCompanyIds.Contains(c.Id)"
+                                        Change="@((bool v) => ToggleSelection(c.Id, v))" />
+                    </span>
+                </Template>
+            </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="SovosCompanyListItemDto" Property="Name" Title="Firma Adı" />
             <RadzenDataGridColumn TItem="SovosCompanyListItemDto" Property="CompanyCode" Title="Şirket Kodu" Width="140px" />
             <RadzenDataGridColumn TItem="SovosCompanyListItemDto" Property="Username" Title="Kullanıcı" Width="160px" />
@@ -109,6 +164,28 @@
 @code {
     string search = "";
     List<SovosCompanyListItemDto> companies = new();
+
+    HashSet<int> SelectedCompanyIds = new();
+    DateTime? FromDate = DateTime.Today.AddMonths(-1);
+    DateTime? ToDate = DateTime.Today;
+    bool isBatchRunning;
+
+    bool AllSelected =>
+        companies.Count > 0 && companies.All(c => SelectedCompanyIds.Contains(c.Id));
+
+    void ToggleAll(bool selected)
+    {
+        if (selected)
+            foreach (var c in companies) SelectedCompanyIds.Add(c.Id);
+        else
+            foreach (var c in companies) SelectedCompanyIds.Remove(c.Id);
+    }
+
+    void ToggleSelection(int companyId, bool selected)
+    {
+        if (selected) SelectedCompanyIds.Add(companyId);
+        else SelectedCompanyIds.Remove(companyId);
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -284,4 +361,128 @@
         ScheduleMode.Manual => "Manuel",
         _ => "—"
     };
+
+    async Task RunAllScan()
+    {
+        SelectedCompanyIds = companies.Select(c => c.Id).ToHashSet();
+        await RunBatchScan();
+    }
+
+    async Task RunBatchScan()
+    {
+        if (SelectedCompanyIds.Count == 0)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Firma seçilmedi",
+                Detail = "Tarama için en az bir firma seçin."
+            });
+            return;
+        }
+
+        if (FromDate is null || ToDate is null)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Tarih eksik",
+                Detail = "Başlangıç ve bitiş tarihi seçin."
+            });
+            return;
+        }
+
+        if (FromDate > ToDate)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Geçersiz aralık",
+                Detail = "Başlangıç tarihi bitiş tarihinden sonra olamaz."
+            });
+            return;
+        }
+
+        if (ToDate.Value.Date > DateTime.Today)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Geçersiz tarih",
+                Detail = "Bitiş tarihi bugünden ileri olamaz."
+            });
+            return;
+        }
+
+        if ((ToDate.Value.Date - FromDate.Value.Date).TotalDays > 90)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Aralık çok geniş",
+                Detail = "Tarih aralığı 90 günden fazla olamaz."
+            });
+            return;
+        }
+
+        var confirm = await Dialog.Confirm(
+            $"{SelectedCompanyIds.Count} firma için tarama başlatılacak. " +
+            $"Aralık: {FromDate:dd.MM.yyyy} – {ToDate:dd.MM.yyyy}. " +
+            $"Bu işlem birkaç dakika sürebilir. Devam edilsin mi?",
+            "Toplu Tarama Onayı",
+            new ConfirmOptions { OkButtonText = "Başlat", CancelButtonText = "Vazgeç" });
+
+        if (confirm != true) return;
+
+        isBatchRunning = true;
+        StateHasChanged();
+
+        try
+        {
+            var ids = SelectedCompanyIds.ToList();
+            var request = new SovosBatchRunRequestDto
+            {
+                CompanyIds = ids,
+                FromDate = FromDate.Value,
+                ToDate = ToDate.Value
+            };
+
+            var (result, error) = await Sovos.RunBatchAsync(request);
+
+            if (result is null)
+            {
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Tarama başarısız",
+                    Detail = error ?? "Toplu tarama gerçekleştirilemedi.",
+                    Duration = 8000
+                });
+                return;
+            }
+
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = result.Failed.Count == 0
+                    ? NotificationSeverity.Success
+                    : NotificationSeverity.Warning,
+                Summary = "Tarama tamamlandı",
+                Detail = $"{ids.Count} firma — {result.Success.Count} başarılı, {result.Failed.Count} başarısız",
+                Duration = 5000
+            });
+
+            await Dialog.OpenAsync<SovosBatchRunResultDialog>(
+                "Toplu Tarama Sonucu",
+                new() { ["Result"] = result },
+                new DialogOptions { Width = "640px" });
+
+            SelectedCompanyIds.Clear();
+            await Load();
+        }
+        finally
+        {
+            isBatchRunning = false;
+            StateHasChanged();
+        }
+    }
 }

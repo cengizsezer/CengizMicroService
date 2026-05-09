@@ -1,0 +1,61 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Shared.Dto.Sovos
+@inject DialogService Dialog
+
+<div class="rz-p-2">
+    <div class="rz-mb-3">
+        <RadzenBadge BadgeStyle="BadgeStyle.Success" class="rz-mr-2"
+                     Text="@($"Başarılı: {Result?.Success.Count ?? 0}")" />
+        <RadzenBadge BadgeStyle="BadgeStyle.Danger"
+                     Text="@($"Başarısız: {Result?.Failed.Count ?? 0}")" />
+    </div>
+
+    @if (Result is not null && (Result.Success.Count > 0 || Result.Failed.Count > 0))
+    {
+        <div style="max-height:380px; overflow-y:auto;">
+            <table class="rz-data-grid" style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr>
+                        <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e0e0e0; width:40px;">Durum</th>
+                        <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e0e0e0;">Firma</th>
+                        <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e0e0e0;">Detay</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Result.Success)
+                    {
+                        <tr>
+                            <td style="padding:6px 8px; border-bottom:1px solid #f0f0f0;">
+                                <RadzenIcon Icon="check_circle" Style="color:var(--rz-success)" />
+                            </td>
+                            <td style="padding:6px 8px; border-bottom:1px solid #f0f0f0;">@item.CompanyName</td>
+                            <td style="padding:6px 8px; border-bottom:1px solid #f0f0f0;" class="rz-text-muted">Tarama tamamlandı</td>
+                        </tr>
+                    }
+                    @foreach (var item in Result.Failed)
+                    {
+                        <tr>
+                            <td style="padding:6px 8px; border-bottom:1px solid #f0f0f0;">
+                                <RadzenIcon Icon="cancel" Style="color:var(--rz-danger)" />
+                            </td>
+                            <td style="padding:6px 8px; border-bottom:1px solid #f0f0f0;">@item.CompanyName</td>
+                            <td style="padding:6px 8px; border-bottom:1px solid #f0f0f0; color:var(--rz-danger);">
+                                @(string.IsNullOrWhiteSpace(item.Error) ? "Bilinmeyen hata" : item.Error)
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <div class="rz-text-align-right rz-mt-3">
+        <RadzenButton Text="Kapat" ButtonStyle="ButtonStyle.Primary"
+                      Click="@(() => Dialog.Close(true))" />
+    </div>
+</div>
+
+@code {
+    [Parameter] public SovosBatchRunResultDto? Result { get; set; }
+}

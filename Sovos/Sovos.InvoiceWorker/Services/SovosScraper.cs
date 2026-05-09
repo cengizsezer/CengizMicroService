@@ -23,9 +23,15 @@ public class SovosScraper : ISovosScraper
     }
 
     public async Task<List<ScrapedInvoice>> FetchPendingInvoicesAsync(
-        Company company, string decryptedPassword, CancellationToken ct)
+        Company company,
+        string decryptedPassword,
+        DateTime fromDate,
+        DateTime toDate,
+        CancellationToken ct)
     {
-        _logger.LogInformation("Firma {CompanyName}: Tarama başlıyor", company.Name);
+        _logger.LogInformation(
+            "Firma {CompanyName}: Tarama başlıyor (aralık {From:dd.MM.yyyy} - {To:dd.MM.yyyy})",
+            company.Name, fromDate, toDate);
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
         using var playwright = await Playwright.CreateAsync();
@@ -40,7 +46,7 @@ public class SovosScraper : ISovosScraper
 
         await LoginWithRetryAsync(page, company, decryptedPassword, ct);
         await NavigateToPendingInvoicesAsync(page, company);
-        var invoices = await ScrapeInvoicesAsync(page, company);
+        var invoices = await ScrapeInvoicesAsync(page, company, fromDate, toDate);
         await LogoutAsync(page, company);
 
         sw.Stop();
@@ -150,14 +156,11 @@ public class SovosScraper : ISovosScraper
 
     // ── Scraping ──────────────────────────────────────────────────────────
 
-    private async Task<List<ScrapedInvoice>> ScrapeInvoicesAsync(IPage page, Company company)
+    private async Task<List<ScrapedInvoice>> ScrapeInvoicesAsync(
+        IPage page, Company company, DateTime fromDate, DateTime toDate)
     {
-        // Tarih filtresi: bu ayın 1'i — son günü
-        var today = DateTime.Today;
-        var firstDay = new DateTime(today.Year, today.Month, 1);
-        var lastDay = firstDay.AddMonths(1).AddDays(-1);
-        var startStr = firstDay.ToString("dd.MM.yyyy", TrCulture);
-        var endStr = lastDay.ToString("dd.MM.yyyy", TrCulture);
+        var startStr = fromDate.ToString("dd.MM.yyyy", TrCulture);
+        var endStr = toDate.ToString("dd.MM.yyyy", TrCulture);
 
         _logger.LogInformation("Firma {CompanyName}: Tarih filtresi {Start} - {End}",
             company.Name, startStr, endStr);

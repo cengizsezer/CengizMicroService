@@ -19,4 +19,8 @@ public interface ISovosAdminService
     Task<bool> DeleteCompanyAsync(int id);
 
     Task<(bool ok, string? message)> RunNowAsync(int companyId);
+
+    Task<(SovosBatchRunResultDto? result, string? error)> RunBatchAsync(
+        SovosBatchRunRequestDto request,
+        CancellationToken ct = default);
 }

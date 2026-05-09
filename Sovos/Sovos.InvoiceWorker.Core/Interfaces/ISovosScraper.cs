@@ -6,5 +6,9 @@ namespace Sovos.InvoiceWorker.Core.Interfaces;
 public interface ISovosScraper
 {
     Task<List<ScrapedInvoice>> FetchPendingInvoicesAsync(
-        Company company, string decryptedPassword, CancellationToken ct);
+        Company company,
+        string decryptedPassword,
+        DateTime fromDate,
+        DateTime toDate,
+        CancellationToken ct);
 }

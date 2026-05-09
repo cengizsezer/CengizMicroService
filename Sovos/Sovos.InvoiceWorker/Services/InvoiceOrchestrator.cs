@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Sovos.InvoiceWorker.Core.DTOs;
 using Sovos.InvoiceWorker.Core.Entities;
 using Sovos.InvoiceWorker.Core.Enums;
 using Sovos.InvoiceWorker.Core.Interfaces;
@@ -34,12 +35,102 @@ public class InvoiceOrchestrator : IInvoiceOrchestrator
         _logger = logger;
     }
 
-    public async Task RunForCompanyAsync(int companyId, bool manualMode, CancellationToken ct)
+    public async Task RunForCompanyAsync(
+        int companyId,
+        bool manualMode,
+        DateTime fromDate,
+        DateTime toDate,
+        CancellationToken ct)
     {
         var company = await _db.Companies.FirstOrDefaultAsync(c => c.Id == companyId, ct)
             ?? throw new ArgumentException($"Firma bulunamadı: Id={companyId}");
 
-        await ProcessHourlyAsync(company, ct, manualMode);
+        await ProcessHourlyAsync(company, fromDate, toDate, ct, manualMode);
+    }
+
+    private static (DateTime From, DateTime To) DefaultRange()
+    {
+        var today = DateTime.Today;
+        return (today.AddMonths(-1), today);
+    }
+
+    public async Task<BatchRunResult> RunBatchAsync(
+        IReadOnlyList<int> companyIds,
+        DateTime fromDate,
+        DateTime toDate,
+        CancellationToken ct)
+    {
+        var result = new BatchRunResult();
+
+        var companies = await _db.Companies
+            .Where(c => companyIds.Contains(c.Id))
+            .ToListAsync(ct);
+
+        var byId = companies.ToDictionary(c => c.Id);
+
+        _logger.LogInformation(
+            "RunBatch: {Requested} firma istendi, {Found} bulundu, aralık {From:dd.MM.yyyy} - {To:dd.MM.yyyy}",
+            companyIds.Count, companies.Count, fromDate, toDate);
+
+        for (int i = 0; i < companyIds.Count; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (i > 0)
+                await Task.Delay(InterCompanyDelayMs, ct);
+
+            var id = companyIds[i];
+            if (!byId.TryGetValue(id, out var company))
+            {
+                result.Failed.Add(new BatchRunItem
+                {
+                    CompanyId = id,
+                    CompanyName = $"#{id}",
+                    Error = "Firma bulunamadı"
+                });
+                continue;
+            }
+
+            try
+            {
+                await ProcessHourlyAsync(company, fromDate, toDate, ct, manualMode: true);
+
+                if (company.LastErrorMessage is { Length: > 0 } err)
+                {
+                    result.Failed.Add(new BatchRunItem
+                    {
+                        CompanyId = company.Id,
+                        CompanyName = company.Name,
+                        Error = err
+                    });
+                }
+                else
+                {
+                    result.Success.Add(new BatchRunItem
+                    {
+                        CompanyId = company.Id,
+                        CompanyName = company.Name
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "RunBatch: Firma {Name} (Id={Id}) işlenirken hata", company.Name, company.Id);
+                result.Failed.Add(new BatchRunItem
+                {
+                    CompanyId = company.Id,
+                    CompanyName = company.Name,
+                    Error = ex.Message
+                });
+            }
+        }
+
+        _logger.LogInformation(
+            "RunBatch tamamlandı: {Ok} başarılı, {Fail} başarısız",
+            result.Success.Count, result.Failed.Count);
+
+        return result;
     }
 
     // Her dakika InvoiceCheckWorker tarafından çağrılır.
@@ -63,6 +154,8 @@ public class InvoiceOrchestrator : IInvoiceOrchestrator
             "ScheduledChecks: {Total} aktif firma, {Due} tanesi şu an taranacak",
             companies.Count, due.Count);
 
+        var (defaultFrom, defaultTo) = DefaultRange();
+
         for (int i = 0; i < due.Count; i++)
         {
             if (i > 0)
@@ -70,9 +163,9 @@ public class InvoiceOrchestrator : IInvoiceOrchestrator
 
             var company = due[i];
             if (company.ScheduleMode == ScheduleMode.Daily)
-                await ProcessDailyAsync(company, ct);
+                await ProcessDailyAsync(company, defaultFrom, defaultTo, ct);
             else
-                await ProcessHourlyAsync(company, ct);
+                await ProcessHourlyAsync(company, defaultFrom, defaultTo, ct);
         }
     }
 
@@ -118,12 +211,17 @@ public class InvoiceOrchestrator : IInvoiceOrchestrator
 
     // ── Per-company iş akışları ──────────────────────────────────────────
 
-    private async Task ProcessHourlyAsync(Company company, CancellationToken ct, bool manualMode = false)
+    private async Task ProcessHourlyAsync(
+        Company company,
+        DateTime fromDate,
+        DateTime toDate,
+        CancellationToken ct,
+        bool manualMode = false)
     {
         try
         {
             var password = _protector.Decrypt(company.EncryptedPassword);
-            var scraped = await _scraper.FetchPendingInvoicesAsync(company, password, ct);
+            var scraped = await _scraper.FetchPendingInvoicesAsync(company, password, fromDate, toDate, ct);
             var toNotify = await _diff.SaveAndGetNewAsync(company.Id, scraped, ct, manualMode);
 
             if (toNotify.Count > 0)
@@ -155,12 +253,16 @@ public class InvoiceOrchestrator : IInvoiceOrchestrator
         await _db.SaveChangesAsync(ct);
     }
 
-    private async Task ProcessDailyAsync(Company company, CancellationToken ct)
+    private async Task ProcessDailyAsync(
+        Company company,
+        DateTime fromDate,
+        DateTime toDate,
+        CancellationToken ct)
     {
         try
         {
             var password = _protector.Decrypt(company.EncryptedPassword);
-            var scraped = await _scraper.FetchPendingInvoicesAsync(company, password, ct);
+            var scraped = await _scraper.FetchPendingInvoicesAsync(company, password, fromDate, toDate, ct);
 
             // Saatlikten kaçanları yakala — yeni/retry mail akışını çalıştır
             var toNotify = await _diff.SaveAndGetNewAsync(company.Id, scraped, ct);

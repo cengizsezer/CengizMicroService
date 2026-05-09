@@ -117,8 +117,9 @@ if (sovosConfig.GetValue<bool>("TestScraperOnStartup"))
 
     try
     {
+        var testToday = DateTime.Today;
         var scraped = await scraper.FetchPendingInvoicesAsync(
-            company, password, CancellationToken.None);
+            company, password, testToday.AddMonths(-1), testToday, CancellationToken.None);
         Log.Information("Scrape başarılı — {Count} onay bekleyen fatura", scraped.Count);
 
         var toNotify = await diff.SaveAndGetNewAsync(
