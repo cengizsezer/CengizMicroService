@@ -97,6 +97,18 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             .AddHttpMessageHandler<TenantHeaderHandler>()
             .AddHttpMessageHandler<RefreshTokenCorridor>();
 
+            // Sovos toplu tarama gibi uzun-süreli admin operasyonları için.
+            // HttpClient.Timeout ilk request'ten sonra değiştirilemediği için,
+            // 100sn default'u aşacak çağrılar bu named client üzerinden gitmeli.
+            services.AddHttpClient("SovosAdminLong", c =>
+            {
+                c.BaseAddress = new Uri(baseAddress);
+                c.Timeout = TimeSpan.FromMinutes(25);
+            })
+            .AddHttpMessageHandler<AuthTokenHandler>()
+            .AddHttpMessageHandler<TenantHeaderHandler>()
+            .AddHttpMessageHandler<RefreshTokenCorridor>();
+
             // Primary HTTP client
             services.AddScoped(sp =>
                 sp.GetRequiredService<IHttpClientFactory>().CreateClient("ApiGatewayCorridor"));
@@ -131,7 +143,8 @@ namespace WebApp.StartupExtensions.ServiceExtensions
                 new UserAdminService(sp.GetRequiredService<HttpClient>()));
 
             services.AddScoped<ISovosAdminService>(sp =>
-                new SovosAdminService(sp.GetRequiredService<HttpClient>()));
+                new SovosAdminService(
+                    sp.GetRequiredService<IHttpClientFactory>().CreateClient("SovosAdminLong")));
 
             services.AddScoped<IExpenseService>(sp =>
                 new ExpenseService(sp.GetRequiredService<HttpClient>()));

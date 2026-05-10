@@ -264,7 +264,9 @@ public class SovosAdminController : ControllerBase
         var http = _httpClientFactory.CreateClient("Worker");
 
         // Worker uzun süre çalışabilir (5 firma × ~30sn = 150sn+ olası).
-        http.Timeout = TimeSpan.FromMinutes(20);
+        // WebApp tarafı 25dk bekliyor, burada da aynı ceiling olmalı ki katmanlar
+        // birbirini erken kesmesin.
+        http.Timeout = TimeSpan.FromMinutes(25);
 
         try
         {
