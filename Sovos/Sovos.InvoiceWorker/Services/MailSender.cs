@@ -88,6 +88,83 @@ public class MailSender : IMailSender
                 joined, allPending.Count);
     }
 
+    public async Task SendNoNewInvoicesAsync(
+        Company company, DateTime fromDate, DateTime toDate, CancellationToken ct = default)
+    {
+        var recipients = SplitEmails(company.NotificationEmails);
+        if (recipients.Count == 0)
+        {
+            _logger.LogWarning("Alıcı yok, 'fatura yok' maili atlandı: Company={Name} (Id={Id})",
+                company.Name, company.Id);
+            return;
+        }
+
+        var subject = $"[Sovos] {company.Name} - Onayda bekleyen fatura yok";
+        var html = MailBodyBuilder.BuildNoNewInvoices(company, fromDate, toDate);
+
+        await SendSmtpAsync(recipients, subject, html, ct);
+
+        _logger.LogInformation("'Fatura yok' maili gönderildi: {Emails}", string.Join(", ", recipients));
+    }
+
+    public async Task SendLoginErrorAsync(
+        Company company, string errorMessage, CancellationToken ct = default)
+    {
+        var recipients = SplitEmails(company.NotificationEmails);
+        if (recipients.Count == 0)
+        {
+            _logger.LogWarning("Alıcı yok, login-hata maili atlandı: Company={Name} (Id={Id})",
+                company.Name, company.Id);
+            return;
+        }
+
+        var subject = $"[Sovos] ❌ {company.Name} - Giriş başarısız";
+        var html = MailBodyBuilder.BuildLoginError(company, errorMessage);
+
+        await SendSmtpAsync(recipients, subject, html, ct);
+
+        _logger.LogInformation("Login-hata maili gönderildi: {Emails}, Hata={Err}",
+            string.Join(", ", recipients), errorMessage);
+    }
+
+    public async Task SendGeneralErrorAsync(
+        Company company, string errorMessage, CancellationToken ct = default)
+    {
+        var recipients = SplitEmails(company.NotificationEmails);
+        if (recipients.Count == 0)
+        {
+            _logger.LogWarning("Alıcı yok, genel-hata maili atlandı: Company={Name} (Id={Id})",
+                company.Name, company.Id);
+            return;
+        }
+
+        var subject = $"[Sovos] ❌ {company.Name} - Tarama başarısız";
+        var html = MailBodyBuilder.BuildGeneralError(company, errorMessage);
+
+        await SendSmtpAsync(recipients, subject, html, ct);
+
+        _logger.LogInformation("Genel-hata maili gönderildi: {Emails}, Hata={Err}",
+            string.Join(", ", recipients), errorMessage);
+    }
+
+    private async Task SendSmtpAsync(
+        List<string> recipients, string subject, string htmlContent, CancellationToken ct)
+    {
+        var message = new MimeMessage();
+        message.From.Add(new MailboxAddress(_smtp.FromDisplayName, _smtp.FromAddress));
+        foreach (var email in recipients)
+            message.To.Add(MailboxAddress.Parse(email));
+        message.Subject = subject;
+        message.Body = new TextPart("html") { Text = htmlContent };
+
+        using var client = new SmtpClient();
+        await client.ConnectAsync(_smtp.Host, _smtp.Port,
+            _smtp.UseStartTls ? SecureSocketOptions.StartTls : SecureSocketOptions.Auto, ct);
+        await client.AuthenticateAsync(_smtp.Username, _smtp.Password, ct);
+        await client.SendAsync(message, ct);
+        await client.DisconnectAsync(true, ct);
+    }
+
     private static List<string> SplitEmails(string raw) =>
         string.IsNullOrWhiteSpace(raw)
             ? new List<string>()

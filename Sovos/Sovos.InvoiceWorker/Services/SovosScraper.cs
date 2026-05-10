@@ -90,7 +90,9 @@ public class SovosScraper : ISovosScraper
             }
         }
 
-        throw new Exception($"Firma {company.Name}: {maxAttempts} deneme sonrası login başarısız.", lastEx);
+        throw new SovosLoginException(
+            $"{maxAttempts} deneme sonrası giriş başarısız - şifre veya kullanıcı adı yanlış olabilir.",
+            lastEx!);
     }
 
     private async Task AttemptLoginAsync(IPage page, Company company, string decryptedPassword)
@@ -120,9 +122,11 @@ public class SovosScraper : ISovosScraper
                 "text=Çıkış",
                 new PageWaitForSelectorOptions { State = WaitForSelectorState.Visible, Timeout = 15000 });
         }
-        catch (TimeoutException)
+        catch (TimeoutException ex)
         {
-            throw new Exception("Login doğrulaması başarısız: 'Çıkış' linki 15 saniyede görünmedi.");
+            throw new SovosLoginException(
+                "Login zaman aşımı (15 sn): 'Çıkış' linki görünmedi - giriş muhtemelen reddedildi.",
+                ex);
         }
     }
 

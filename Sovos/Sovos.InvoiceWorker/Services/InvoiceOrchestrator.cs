@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Sovos.InvoiceWorker.Core.DTOs;
 using Sovos.InvoiceWorker.Core.Entities;
 using Sovos.InvoiceWorker.Core.Enums;
+using Sovos.InvoiceWorker.Core.Exceptions;
 using Sovos.InvoiceWorker.Core.Interfaces;
 using Sovos.InvoiceWorker.Data;
 
@@ -226,6 +227,7 @@ public class InvoiceOrchestrator : IInvoiceOrchestrator
 
             if (toNotify.Count > 0)
             {
+                // SENARYO 1: Yeni fatura var
                 try
                 {
                     await _mail.SendNewInvoicesAsync(company, toNotify, ct);
@@ -238,63 +240,76 @@ public class InvoiceOrchestrator : IInvoiceOrchestrator
                         company.Name);
                 }
             }
+            else
+            {
+                // SENARYO 2: Yeni fatura YOK (boş sonuç da başarılı tarama)
+                try
+                {
+                    await _mail.SendNoNewInvoicesAsync(company, fromDate, toDate, ct);
+                }
+                catch (Exception mailEx)
+                {
+                    _logger.LogError(mailEx,
+                        "Firma {CompanyName}: 'Fatura yok' maili gönderilemedi",
+                        company.Name);
+                }
+            }
 
             company.LastSuccessfulRunAt = DateTime.UtcNow;
             company.LastErrorMessage = null;
         }
+        catch (SovosLoginException ex)
+        {
+            // SENARYO 3: Login hatası (Captcha da buraya düşer — inheritance)
+            _logger.LogWarning(ex,
+                "Firma {CompanyName}: Login hatası (manualMode={Manual})",
+                company.Name, manualMode);
+            company.LastFailedRunAt = DateTime.UtcNow;
+            company.LastErrorMessage = Truncate(ex.Message, 2000);
+
+            try
+            {
+                await _mail.SendLoginErrorAsync(company, ex.Message, ct);
+            }
+            catch (Exception mailEx)
+            {
+                _logger.LogError(mailEx,
+                    "Firma {CompanyName}: Login-hata maili gönderilemedi",
+                    company.Name);
+            }
+        }
         catch (Exception ex)
         {
+            // SENARYO 4: Genel hata
             _logger.LogError(ex, "Firma {CompanyName}: Tarama hata (manualMode={Manual})",
                 company.Name, manualMode);
             company.LastFailedRunAt = DateTime.UtcNow;
             company.LastErrorMessage = Truncate(ex.Message, 2000);
+
+            try
+            {
+                await _mail.SendGeneralErrorAsync(company, ex.Message, ct);
+            }
+            catch (Exception mailEx)
+            {
+                _logger.LogError(mailEx,
+                    "Firma {CompanyName}: Genel-hata maili gönderilemedi",
+                    company.Name);
+            }
         }
 
         await _db.SaveChangesAsync(ct);
     }
 
-    private async Task ProcessDailyAsync(
+    private Task ProcessDailyAsync(
         Company company,
         DateTime fromDate,
         DateTime toDate,
         CancellationToken ct)
     {
-        try
-        {
-            var password = _protector.Decrypt(company.EncryptedPassword);
-            var scraped = await _scraper.FetchPendingInvoicesAsync(company, password, fromDate, toDate, ct);
-
-            // Saatlikten kaçanları yakala — yeni/retry mail akışını çalıştır
-            var toNotify = await _diff.SaveAndGetNewAsync(company.Id, scraped, ct);
-            if (toNotify.Count > 0)
-            {
-                try
-                {
-                    await _mail.SendNewInvoicesAsync(company, toNotify, ct);
-                    await _diff.MarkAsNotifiedAsync(toNotify.Select(i => i.Id), ct);
-                }
-                catch (Exception mailEx)
-                {
-                    _logger.LogError(mailEx,
-                        "Firma {CompanyName}: Daily özet öncesi yeni-fatura maili başarısız",
-                        company.Name);
-                }
-            }
-
-            // Sonra: tüm scraped → günlük özet (boş olsa bile spec gereği gönder)
-            await _mail.SendDailySummaryAsync(company, scraped, ct);
-
-            company.LastSuccessfulRunAt = DateTime.UtcNow;
-            company.LastErrorMessage = null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Firma {CompanyName}: DailySummary hata", company.Name);
-            company.LastFailedRunAt = DateTime.UtcNow;
-            company.LastErrorMessage = Truncate(ex.Message, 2000);
-        }
-
-        await _db.SaveChangesAsync(ct);
+        // Daily ve Hourly artık aynı 4 senaryolu mantığı kullanıyor (10.05.2026).
+        // SendDailySummaryAsync çağrısı kaldırıldı; boş sonuç maili SendNoNewInvoicesAsync ile gidiyor.
+        return ProcessHourlyAsync(company, fromDate, toDate, ct, manualMode: false);
     }
 
     private static string Truncate(string s, int max) =>

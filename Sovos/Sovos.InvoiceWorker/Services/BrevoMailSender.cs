@@ -76,6 +76,65 @@ public class BrevoMailSender : IMailSender
                 joined, allPending.Count);
     }
 
+    public async Task SendNoNewInvoicesAsync(
+        Company company, DateTime fromDate, DateTime toDate, CancellationToken ct = default)
+    {
+        var recipients = SplitEmails(company.NotificationEmails);
+        if (recipients.Count == 0)
+        {
+            _logger.LogWarning("Alıcı yok, 'fatura yok' maili atlandı: Company={Name} (Id={Id})",
+                company.Name, company.Id);
+            return;
+        }
+
+        var subject = $"[Sovos] {company.Name} - Onayda bekleyen fatura yok";
+        var html = MailBodyBuilder.BuildNoNewInvoices(company, fromDate, toDate);
+
+        await SendAsync(recipients, subject, html, ct);
+
+        _logger.LogInformation("'Fatura yok' maili gönderildi: {Emails}", string.Join(", ", recipients));
+    }
+
+    public async Task SendLoginErrorAsync(
+        Company company, string errorMessage, CancellationToken ct = default)
+    {
+        var recipients = SplitEmails(company.NotificationEmails);
+        if (recipients.Count == 0)
+        {
+            _logger.LogWarning("Alıcı yok, login-hata maili atlandı: Company={Name} (Id={Id})",
+                company.Name, company.Id);
+            return;
+        }
+
+        var subject = $"[Sovos] ❌ {company.Name} - Giriş başarısız";
+        var html = MailBodyBuilder.BuildLoginError(company, errorMessage);
+
+        await SendAsync(recipients, subject, html, ct);
+
+        _logger.LogInformation("Login-hata maili gönderildi: {Emails}, Hata={Err}",
+            string.Join(", ", recipients), errorMessage);
+    }
+
+    public async Task SendGeneralErrorAsync(
+        Company company, string errorMessage, CancellationToken ct = default)
+    {
+        var recipients = SplitEmails(company.NotificationEmails);
+        if (recipients.Count == 0)
+        {
+            _logger.LogWarning("Alıcı yok, genel-hata maili atlandı: Company={Name} (Id={Id})",
+                company.Name, company.Id);
+            return;
+        }
+
+        var subject = $"[Sovos] ❌ {company.Name} - Tarama başarısız";
+        var html = MailBodyBuilder.BuildGeneralError(company, errorMessage);
+
+        await SendAsync(recipients, subject, html, ct);
+
+        _logger.LogInformation("Genel-hata maili gönderildi: {Emails}, Hata={Err}",
+            string.Join(", ", recipients), errorMessage);
+    }
+
     private async Task SendAsync(List<string> recipients, string subject, string htmlContent, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(_brevo.ApiKey))
