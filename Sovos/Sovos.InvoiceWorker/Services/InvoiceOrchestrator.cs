@@ -255,7 +255,12 @@ public class InvoiceOrchestrator : IInvoiceOrchestrator
                 }
             }
 
-            company.LastSuccessfulRunAt = DateTime.UtcNow;
+            if (!manualMode)
+            {
+                // Sadece otomatik run'lar IsDue için referans bırakır.
+                // Manuel "Şimdi Çalıştır" cron'un programını bozmasın.
+                company.LastSuccessfulRunAt = DateTime.UtcNow;
+            }
             company.LastErrorMessage = null;
         }
         catch (SovosLoginException ex)
