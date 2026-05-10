@@ -67,6 +67,18 @@
     {
       "UseServiceDiscovery": true,
       "ServiceName": "SovosService",
+      "DownstreamPathTemplate": "/api/faturakontrol/companies/run-batch",
+      "DownstreamScheme": "http",
+      "UpstreamPathTemplate": "/faturakontrol/companies/run-batch",
+      "UpstreamHttpMethod": [ "Post" ],
+      "UpstreamScheme": "http",
+      "QoSOptions": {
+        "TimeoutValue": 1500000
+      }
+    },
+    {
+      "UseServiceDiscovery": true,
+      "ServiceName": "SovosService",
       "DownstreamPathTemplate": "/api/faturakontrol/{everything}",
       "DownstreamScheme": "http",
       "UpstreamPathTemplate": "/faturakontrol/{everything}",
