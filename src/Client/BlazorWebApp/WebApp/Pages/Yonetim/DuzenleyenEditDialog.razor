@@ -1,0 +1,143 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.KdvBeyanname
+@using WebApp.Domain.Models.KdvBeyanname
+
+@inject IKdvBeyannameApiService KdvApi
+@inject DialogService Dialog
+@inject NotificationService Notif
+
+<RadzenTemplateForm TItem="KdvDuzenleyenUpsert" Data="@Model" Submit="@OnSubmit">
+    <RadzenStack Gap="0.75rem">
+
+        <RadzenFormField Text="Kısaltma (dropdown'da görünür)" Variant="Variant.Outlined">
+            <RadzenTextBox Name="Kisaltma" @bind-Value="Model.Kisaltma" Style="width:100%" MaxLength="50"
+                           Placeholder="Örn: PKF SMMM" />
+        </RadzenFormField>
+        <RadzenRequiredValidator Component="Kisaltma" Text="Kısaltma zorunlu" />
+
+        <RadzenFormField Text="VKN" Variant="Variant.Outlined">
+            <RadzenTextBox Name="Vkn" @bind-Value="Model.Vkn" Style="width:100%" MaxLength="20" />
+        </RadzenFormField>
+        <RadzenRequiredValidator Component="Vkn" Text="VKN zorunlu" />
+
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.75rem">
+            <RadzenFormField Text="Soyadı (Unvanı)" Variant="Variant.Outlined" Style="flex:1;">
+                <RadzenTextBox Name="Soyadi" @bind-Value="Model.Soyadi" Style="width:100%" MaxLength="200"
+                               Placeholder="Örn: PKF PROGROUP KURUMSAL YÖNETIM" />
+            </RadzenFormField>
+            <RadzenFormField Text="Adı (Unvanın Devamı)" Variant="Variant.Outlined" Style="flex:1;">
+                <RadzenTextBox Name="Adi" @bind-Value="Model.Adi" Style="width:100%" MaxLength="200"
+                               Placeholder="Örn: DANISMANLIGI A.S." />
+            </RadzenFormField>
+        </RadzenStack>
+
+        <RadzenFormField Text="Ticaret Sicil No" Variant="Variant.Outlined">
+            <RadzenTextBox Name="TicaretSicilNo" @bind-Value="Model.TicaretSicilNo" Style="width:100%" MaxLength="50" />
+        </RadzenFormField>
+
+        <RadzenFormField Text="E-posta" Variant="Variant.Outlined">
+            <RadzenTextBox Name="Eposta" @bind-Value="Model.Eposta" Style="width:100%" MaxLength="200" />
+        </RadzenFormField>
+        <RadzenEmailValidator Component="Eposta" Text="Geçerli bir e-posta girin" Popup="true" />
+
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.75rem">
+            <RadzenFormField Text="Alan Kodu" Variant="Variant.Outlined" Style="width: 140px;">
+                <RadzenTextBox Name="AlanKodu" @bind-Value="Model.AlanKodu" Style="width:100%" MaxLength="5"
+                               Placeholder="212" />
+            </RadzenFormField>
+            <RadzenFormField Text="Telefon No" Variant="Variant.Outlined" Style="flex:1;">
+                <RadzenTextBox Name="TelNo" @bind-Value="Model.TelNo" Style="width:100%" MaxLength="20" />
+            </RadzenFormField>
+        </RadzenStack>
+
+        <div>
+            <RadzenCheckBox @bind-Value="Model.Aktif" Name="Aktif" />
+            <RadzenLabel Text="Aktif" Component="Aktif" class="rz-ml-2" />
+        </div>
+
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+            <RadzenButton Text="Vazgeç" Click="@(() => Dialog.Close(false))" Disabled="@busy" />
+            <RadzenButton Text="@(busy ? "Kaydediliyor..." : "Kaydet")"
+                          Icon="@(busy ? "" : "save")"
+                          IsBusy="@busy"
+                          BusyText="Kaydediliyor..."
+                          ButtonStyle="ButtonStyle.Primary"
+                          ButtonType="ButtonType.Submit"
+                          Disabled="@busy" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public KdvDuzenleyen? Existing { get; set; }
+
+    private KdvDuzenleyenUpsert Model { get; set; } = new();
+    private bool busy;
+
+    private bool IsEdit => Existing is not null;
+
+    protected override void OnInitialized()
+    {
+        if (Existing is not null)
+        {
+            Model = new KdvDuzenleyenUpsert
+            {
+                Kisaltma       = Existing.Kisaltma,
+                Vkn            = Existing.Vkn,
+                Soyadi         = Existing.Soyadi,
+                Adi            = Existing.Adi,
+                TicaretSicilNo = Existing.TicaretSicilNo,
+                Eposta         = Existing.Eposta,
+                AlanKodu       = Existing.AlanKodu,
+                TelNo          = Existing.TelNo,
+                Aktif          = Existing.Aktif
+            };
+        }
+    }
+
+    private async Task OnSubmit(KdvDuzenleyenUpsert _)
+    {
+        busy = true;
+        try
+        {
+            // Trim before send.
+            Model.Kisaltma       = Model.Kisaltma.Trim();
+            Model.Vkn            = Model.Vkn.Trim();
+            Model.Soyadi         = Model.Soyadi?.Trim();
+            Model.Adi            = Model.Adi?.Trim();
+            Model.TicaretSicilNo = Model.TicaretSicilNo?.Trim();
+            Model.Eposta         = Model.Eposta?.Trim();
+            Model.AlanKodu       = Model.AlanKodu?.Trim();
+            Model.TelNo          = Model.TelNo?.Trim();
+
+            if (IsEdit)
+                await KdvApi.UpdateDuzenleyenAsync(Existing!.Id, Model);
+            else
+                await KdvApi.CreateDuzenleyenAsync(Model);
+
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary  = IsEdit ? "Güncellendi" : "Eklendi",
+                Detail   = $"{Model.Kisaltma} kaydedildi.",
+                Duration = 3000
+            });
+            Dialog.Close(true);
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary  = "Hata",
+                Detail   = ex.Message,
+                Duration = 5000
+            });
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}

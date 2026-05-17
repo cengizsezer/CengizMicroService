@@ -11,6 +11,32 @@
   },
   {
     "ContainingType": "Sovos.InvoiceWorker.Controllers.WorkerController",
+    "Method": "RunBatch",
+    "RelativePath": "api/worker/run-batch",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "req",
+        "Type": "Sovos.InvoiceWorker.Controllers.WorkerBatchRunRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "Sovos.InvoiceWorker.Core.DTOs.BatchRunResult",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "Sovos.InvoiceWorker.Controllers.WorkerController",
     "Method": "RunNow",
     "RelativePath": "api/worker/run-now/{companyId}",
     "HttpMethod": "POST",

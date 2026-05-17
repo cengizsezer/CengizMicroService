@@ -52,6 +52,7 @@
 		<None Update="Infrastructure\Setup\SeedFiles\*.json">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
+		<EmbeddedResource Include="Features\KdvBeyanname\Resources\Templates\kdv1_44_template.xml" />
 	</ItemGroup>
 
 

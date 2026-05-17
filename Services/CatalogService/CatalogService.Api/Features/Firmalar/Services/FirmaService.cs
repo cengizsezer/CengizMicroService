@@ -21,29 +21,50 @@ namespace CatalogService.Api.Features.Firmalar.Services
             if (!includeInactive)
                 query = query.Where(x => x.Aktif);
 
-            return await query
-                .OrderBy(x => x.KisaAd)
-                .Select(x => new FirmaDto
+            // DuzenleyenKisaltma için Duzenleyenler ile left-join.
+            return await (
+                from f in query
+                join d in _context.Duzenleyenler.AsNoTracking()
+                    on f.DuzenleyenId equals d.Id into dj
+                from d in dj.DefaultIfEmpty()
+                orderby f.KisaAd
+                select new FirmaDto
                 {
-                    Id = x.Id,
-                    VergiKimlikNo = x.VergiKimlikNo,
-                    Unvan = x.Unvan,
-                    KisaAd = x.KisaAd,
-                    Email = x.Email,
-                    Telefon = x.Telefon,
-                    TicaretSicilNo = x.TicaretSicilNo,
-                    VergiDairesi = x.VergiDairesi,
-                    Aktif = x.Aktif,
-                    CreatedAt = x.CreatedAt,
-                    UpdatedAt = x.UpdatedAt
-                })
-                .ToListAsync();
+                    Id                 = f.Id,
+                    VergiKimlikNo      = f.VergiKimlikNo,
+                    Unvan              = f.Unvan,
+                    KisaAd             = f.KisaAd,
+                    Email              = f.Email,
+                    Telefon            = f.Telefon,
+                    TicaretSicilNo     = f.TicaretSicilNo,
+                    VergiDairesi       = f.VergiDairesi,
+                    VergiDairesiKodu   = f.VergiDairesiKodu,
+                    YetkiliAdi         = f.YetkiliAdi,
+                    YetkiliSoyadi      = f.YetkiliSoyadi,
+                    TelefonAlanKodu    = f.TelefonAlanKodu,
+                    DuzenleyenId       = f.DuzenleyenId,
+                    DuzenleyenKisaltma = d != null ? d.Kisaltma : null,
+                    Aktif              = f.Aktif,
+                    CreatedAt          = f.CreatedAt,
+                    UpdatedAt          = f.UpdatedAt
+                }
+            ).ToListAsync();
         }
 
         public async Task<FirmaDto?> GetByIdAsync(int id)
         {
             var firma = await _context.Firmalar.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-            return firma is null ? null : ToDto(firma);
+            if (firma is null) return null;
+
+            string? kisaltma = null;
+            if (firma.DuzenleyenId is int dId)
+            {
+                kisaltma = await _context.Duzenleyenler.AsNoTracking()
+                    .Where(d => d.Id == dId)
+                    .Select(d => d.Kisaltma)
+                    .FirstOrDefaultAsync();
+            }
+            return ToDto(firma, kisaltma);
         }
 
         public async Task<FirmaDto> CreateAsync(FirmaCreateDto dto)
@@ -54,6 +75,12 @@ namespace CatalogService.Api.Features.Firmalar.Services
             if (exists)
                 throw new DuplicateRecordException(nameof(Firma.VergiKimlikNo), $"Bu VergiKimlikNo zaten kayıtlı: {vkn}");
 
+            if (dto.DuzenleyenId is int dId &&
+                !await _context.Duzenleyenler.AnyAsync(d => d.Id == dId))
+            {
+                throw new ArgumentException($"Düzenleyen bulunamadı: Id={dId}");
+            }
+
             var firma = new Firma
             {
                 VergiKimlikNo = vkn,
@@ -63,6 +90,11 @@ namespace CatalogService.Api.Features.Firmalar.Services
                 Telefon = dto.Telefon.Trim(),
                 TicaretSicilNo = dto.TicaretSicilNo.Trim(),
                 VergiDairesi = dto.VergiDairesi.Trim(),
+                VergiDairesiKodu = dto.VergiDairesiKodu?.Trim(),
+                YetkiliAdi = dto.YetkiliAdi?.Trim(),
+                YetkiliSoyadi = dto.YetkiliSoyadi?.Trim(),
+                TelefonAlanKodu = dto.TelefonAlanKodu?.Trim(),
+                DuzenleyenId = dto.DuzenleyenId,
                 Aktif = dto.Aktif,
                 CreatedAt = DateTime.UtcNow
             };
@@ -70,7 +102,8 @@ namespace CatalogService.Api.Features.Firmalar.Services
             _context.Firmalar.Add(firma);
             await _context.SaveChangesAsync();
 
-            return ToDto(firma);
+            var kisaltma = await ResolveKisaltma(firma.DuzenleyenId);
+            return ToDto(firma, kisaltma);
         }
 
         public async Task<FirmaDto?> UpdateAsync(int id, FirmaUpdateDto dto)
@@ -87,6 +120,12 @@ namespace CatalogService.Api.Features.Firmalar.Services
                     throw new DuplicateRecordException(nameof(Firma.VergiKimlikNo), $"Bu VergiKimlikNo zaten kayıtlı: {vkn}");
             }
 
+            if (dto.DuzenleyenId is int dId &&
+                !await _context.Duzenleyenler.AnyAsync(d => d.Id == dId))
+            {
+                throw new ArgumentException($"Düzenleyen bulunamadı: Id={dId}");
+            }
+
             firma.VergiKimlikNo = vkn;
             firma.Unvan = dto.Unvan.Trim();
             firma.KisaAd = dto.KisaAd.Trim();
@@ -94,11 +133,18 @@ namespace CatalogService.Api.Features.Firmalar.Services
             firma.Telefon = dto.Telefon.Trim();
             firma.TicaretSicilNo = dto.TicaretSicilNo.Trim();
             firma.VergiDairesi = dto.VergiDairesi.Trim();
+            firma.VergiDairesiKodu = dto.VergiDairesiKodu?.Trim();
+            firma.YetkiliAdi = dto.YetkiliAdi?.Trim();
+            firma.YetkiliSoyadi = dto.YetkiliSoyadi?.Trim();
+            firma.TelefonAlanKodu = dto.TelefonAlanKodu?.Trim();
+            firma.DuzenleyenId = dto.DuzenleyenId;
             firma.Aktif = dto.Aktif;
             firma.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-            return ToDto(firma);
+
+            var kisaltma = await ResolveKisaltma(firma.DuzenleyenId);
+            return ToDto(firma, kisaltma);
         }
 
         public async Task<bool> SoftDeleteAsync(int id)
@@ -114,7 +160,16 @@ namespace CatalogService.Api.Features.Firmalar.Services
             return true;
         }
 
-        private static FirmaDto ToDto(Firma f) => new()
+        private async Task<string?> ResolveKisaltma(int? duzenleyenId)
+        {
+            if (duzenleyenId is null) return null;
+            return await _context.Duzenleyenler.AsNoTracking()
+                .Where(d => d.Id == duzenleyenId.Value)
+                .Select(d => d.Kisaltma)
+                .FirstOrDefaultAsync();
+        }
+
+        private static FirmaDto ToDto(Firma f, string? duzenleyenKisaltma) => new()
         {
             Id = f.Id,
             VergiKimlikNo = f.VergiKimlikNo,
@@ -124,6 +179,12 @@ namespace CatalogService.Api.Features.Firmalar.Services
             Telefon = f.Telefon,
             TicaretSicilNo = f.TicaretSicilNo,
             VergiDairesi = f.VergiDairesi,
+            VergiDairesiKodu = f.VergiDairesiKodu,
+            YetkiliAdi = f.YetkiliAdi,
+            YetkiliSoyadi = f.YetkiliSoyadi,
+            TelefonAlanKodu = f.TelefonAlanKodu,
+            DuzenleyenId = f.DuzenleyenId,
+            DuzenleyenKisaltma = duzenleyenKisaltma,
             Aktif = f.Aktif,
             CreatedAt = f.CreatedAt,
             UpdatedAt = f.UpdatedAt

@@ -1,0 +1,266 @@
+@page "/kdv-beyanname/{FirmaId:int}"
+@using Microsoft.AspNetCore.WebUtilities
+@using Radzen
+@using WebApp.Application.Services.KdvBeyanname
+@using WebApp.Domain.Models.KdvBeyanname
+@using WebApp.Pages.KdvBeyanname.Components
+@inject IKdvBeyannameApiService KdvApi
+@inject NavigationManager Navigation
+@inject DialogService Dialog
+@inject NotificationService Notif
+@implements IDisposable
+
+@if (firma is null)
+{
+    <RadzenCard class="rz-p-4">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+            <span>Yükleniyor...</span>
+        </RadzenStack>
+    </RadzenCard>
+}
+else
+{
+    <div class="fk-detay-header">
+        <RadzenButton Icon="arrow_back"
+                      Text="Firma Seçim'e Dön"
+                      ButtonStyle="ButtonStyle.Light"
+                      Size="ButtonSize.Small"
+                      Click="@GoBack" />
+
+        <div style="flex:1; min-width: 0;">
+            <h2 class="fk-detay-title">@firma.Unvan</h2>
+            <div class="fk-detay-subtitle">
+                VKN: @firma.VergiKimlikNo &nbsp;·&nbsp; Dönem: @Donem
+            </div>
+        </div>
+
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
+            <RadzenFormField Text="Dönem (YYYY-MM)" Variant="Variant.Outlined">
+                <RadzenTextBox Value="@Donem" ValueChanged="@OnDonemChanged" Style="width: 130px;" />
+            </RadzenFormField>
+
+            @if (firma.BdpAlanlariEksik)
+            {
+                <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="BDP alanları eksik" />
+            }
+        </RadzenStack>
+    </div>
+
+    <RadzenTabs RenderMode="TabRenderMode.Client"
+                @bind-SelectedIndex="selectedTabIndex"
+                Change="@OnTabChanged">
+        <Tabs>
+            <RadzenTabsItem Text="Gelen Faturalar" Icon="inbox">
+                <GelenFaturalarTab FirmaId="@FirmaId"
+                                   OnFaturaSayisiChanged="@OnGelenFaturaSayisiChanged" />
+            </RadzenTabsItem>
+
+            <RadzenTabsItem Text="Yevmiye" Icon="rule">
+                @if (gelenFaturaSayisi == 0)
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Warning"
+                                 Shade="Shade.Light"
+                                 AllowClose="false"
+                                 Icon="warning"
+                                 Title="Önce Gelen Faturalar sekmesinden faturaları tarayın"
+                                 class="rz-mb-3">
+                        Karşılaştırma için sistemde fatura bulunamadı. "Gelen Faturalar"
+                        sekmesinden tarama tetikledikten sonra bu sekmeyi kullanın.
+                    </RadzenAlert>
+                }
+                <YevmiyeKarsilastirmaTab FirmaId="@FirmaId"
+                                        Donem="@Donem"
+                                        OnYevmiyeSayisiChanged="@OnYevmiyeSayisiChanged" />
+            </RadzenTabsItem>
+
+            <RadzenTabsItem Text="KDV Mizan" Icon="account_balance">
+                @if (yevmiyeSatirSayisi == 0)
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Warning"
+                                 Shade="Shade.Light"
+                                 AllowClose="false"
+                                 Icon="warning"
+                                 Title="Yevmiye karşılaştırması yapılmadan mizan yüklemeyin"
+                                 class="rz-mb-3">
+                        Önce "Yevmiye" sekmesinden yevmiye dosyasını yükleyip karşılaştırma
+                        yapın; ardından KDV mizanı bu sekmeden yükleyebilirsiniz.
+                    </RadzenAlert>
+                }
+                <KdvMizanTab FirmaId="@FirmaId"
+                             Donem="@Donem"
+                             OnMizanSayisiChanged="@OnMizanSayisiChanged" />
+            </RadzenTabsItem>
+
+            <RadzenTabsItem Text="Sonuç" Icon="summarize">
+                @if (mizanSatirSayisi == 0)
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Warning"
+                                 Shade="Shade.Light"
+                                 AllowClose="false"
+                                 Icon="warning"
+                                 Title="Önce mizan yüklenmelidir"
+                                 class="rz-mb-3">
+                        KDV beyannamesinin hesaplanabilmesi için "KDV Mizan" sekmesinden
+                        dönem mizanını yüklemiş olmanız gerekir.
+                    </RadzenAlert>
+                }
+                else
+                {
+                    <SonucTab FirmaId="@FirmaId" Donem="@Donem" />
+                }
+            </RadzenTabsItem>
+        </Tabs>
+    </RadzenTabs>
+}
+
+@code {
+    [Parameter] public int FirmaId { get; set; }
+
+    private KdvFirmaCardDto? firma;
+
+    private string Donem { get; set; } = DateTime.Today.ToString("yyyy-MM");
+
+    private int selectedTabIndex;
+
+    // Akıllı uyarılar için sayaçlar — iskelet aşamasında 0; içerikler dolduğunda
+    // gerçek değerlere set edilecek (Adım 7-10).
+    private int gelenFaturaSayisi = 0;
+    private int yevmiyeSatirSayisi = 0;
+    private int mizanSatirSayisi = 0;
+
+    private static readonly string[] TabSlugs =
+    {
+        "gelen-faturalar", "yevmiye", "mizan", "sonuc"
+    };
+
+    // Önceki FirmaId — firma değişiminde state reset için.
+    private int previousFirmaId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var firmaChanged = previousFirmaId != 0 && previousFirmaId != FirmaId;
+        if (firmaChanged)
+        {
+            ResetState();
+        }
+        previousFirmaId = FirmaId;
+
+        // URL'den tab + dönem oku.
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var qs = QueryHelpers.ParseQuery(uri.Query);
+
+        if (qs.TryGetValue("tab", out var tabVal))
+        {
+            var idx = Array.IndexOf(TabSlugs, tabVal.ToString());
+            if (idx >= 0) selectedTabIndex = idx;
+        }
+        if (qs.TryGetValue("donem", out var donemVal) && IsValidDonem(donemVal.ToString()))
+        {
+            Donem = donemVal.ToString();
+        }
+
+        await LoadFirmaAsync();
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private async Task LoadFirmaAsync()
+    {
+        try
+        {
+            var list = await KdvApi.GetFirmalarAsync();
+            firma = list.FirstOrDefault(f => f.Id == FirmaId);
+            if (firma is null)
+            {
+                Navigation.NavigateTo("/kdv-beyanname");
+                return;
+            }
+        }
+        catch
+        {
+            firma = null;
+        }
+
+        // İskelet aşaması: gerçek sayaçları sonradan dolduracağız.
+        // Bunlar Adım 7-10'da ilgili tabın OnSelect'inde set edilecek.
+    }
+
+    private void OnTabChanged(int index)
+    {
+        selectedTabIndex = index;
+        SyncUrlState();
+    }
+
+    private void OnDonemChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || !IsValidDonem(value)) return;
+        Donem = value;
+        // Dönem değişti — sayaçlar sıfırlanır, içerik tabları kendi datasını
+        // tekrar yükleyecek (Adım 7-10).
+        gelenFaturaSayisi = 0;
+        yevmiyeSatirSayisi = 0;
+        mizanSatirSayisi = 0;
+        SyncUrlState();
+        StateHasChanged();
+    }
+
+    private void SyncUrlState()
+    {
+        var slug = (selectedTabIndex >= 0 && selectedTabIndex < TabSlugs.Length)
+            ? TabSlugs[selectedTabIndex]
+            : TabSlugs[0];
+
+        var newUri = Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            ["tab"]   = slug,
+            ["donem"] = Donem
+        });
+        Navigation.NavigateTo(newUri, replace: true);
+    }
+
+    private void ResetState()
+    {
+        firma = null;
+        selectedTabIndex = 0;
+        gelenFaturaSayisi = 0;
+        yevmiyeSatirSayisi = 0;
+        mizanSatirSayisi = 0;
+    }
+
+    private void GoBack() => Navigation.NavigateTo("/kdv-beyanname");
+
+    private void OnGelenFaturaSayisiChanged(int count)
+    {
+        gelenFaturaSayisi = count;
+        StateHasChanged();
+    }
+
+    private void OnYevmiyeSayisiChanged(int count)
+    {
+        yevmiyeSatirSayisi = count;
+        StateHasChanged();
+    }
+
+    private void OnMizanSayisiChanged(int count)
+    {
+        mizanSatirSayisi = count;
+        StateHasChanged();
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        // Param değişimleri OnParametersSetAsync'i tetikler; burada noop yeterli.
+    }
+
+    private static bool IsValidDonem(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s) || s.Length != 7 || s[4] != '-') return false;
+        return int.TryParse(s.AsSpan(0, 4), out _)
+               && int.TryParse(s.AsSpan(5, 2), out var ay) && ay >= 1 && ay <= 12;
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

@@ -256,6 +256,54 @@
         }
       }
     },
+    "/api/faturakontrol/companies/run-batch": {
+      "post": {
+        "tags": [
+          "SovosAdmin"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SovosBatchRunRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SovosBatchRunRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SovosBatchRunRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SovosBatchRunResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SovosBatchRunResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SovosBatchRunResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/faturakontrol/companies/{id}/run-now": {
       "post": {
         "tags": [
@@ -333,6 +381,66 @@
         ],
         "type": "integer",
         "format": "int32"
+      },
+      "SovosBatchRunItemDto": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "companyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SovosBatchRunRequestDto": {
+        "type": "object",
+        "properties": {
+          "companyIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "fromDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "toDate": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SovosBatchRunResultDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SovosBatchRunItemDto"
+            },
+            "nullable": true
+          },
+          "failed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SovosBatchRunItemDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
       },
       "SovosCompanyDetailDto": {
         "type": "object",

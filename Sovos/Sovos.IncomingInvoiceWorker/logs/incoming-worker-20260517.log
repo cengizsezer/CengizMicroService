@@ -1,0 +1,527 @@
+2026-05-17 13:26:39.358 +03:00 [WRN] Overriding address(es) 'http://localhost:5021'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2026-05-17 13:26:39.436 +03:00 [INF] Now listening on: http://localhost:5021
+2026-05-17 13:26:39.514 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-05-17 13:26:39.517 +03:00 [INF] Hosting environment: Development
+2026-05-17 13:26:39.520 +03:00 [INF] Content root path: C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker
+2026-05-17 13:27:11.637 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/4/tara - application/json; charset=utf-8 null
+2026-05-17 13:27:11.703 +03:00 [INF] Executing endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker)'
+2026-05-17 13:27:11.740 +03:00 [INF] Route matched with {action = "Tara", controller = "IncomingInvoice"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Tara(Int32, Sovos.IncomingInvoiceWorker.Controllers.TaramaRequest, System.Threading.CancellationToken) on controller Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController (Sovos.IncomingInvoiceWorker).
+2026-05-17 13:27:12.441 +03:00 [WRN] Entity 'Job' has a global query filter defined and is the required end of a relationship with the entity 'JobAssignment'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-05-17 13:27:13.090 +03:00 [INF] Executed DbCommand (49ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT CASE
+    WHEN EXISTS (
+        SELECT 1
+        FROM [Firmalar] AS [f]
+        WHERE [f].[Id] = @__firmaId_0) THEN CAST(1 AS bit)
+    ELSE CAST(0 AS bit)
+END
+2026-05-17 13:27:13.115 +03:00 [INF] Executing AcceptedResult, writing value of type '<>f__AnonymousType3`3[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-17 13:27:13.117 +03:00 [INF] Tara başladı (FirmaId=4, 2026-05-01 - 2026-05-17)
+2026-05-17 13:27:13.124 +03:00 [INF] Executed action Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker) in 1378.8507ms
+2026-05-17 13:27:13.127 +03:00 [INF] Executed endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker)'
+2026-05-17 13:27:13.131 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/4/tara - 202 null application/json; charset=utf-8 1495.3569ms
+2026-05-17 13:27:13.192 +03:00 [INF] Executed DbCommand (4ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [f].[Id], [f].[Aktif], [f].[CreatedAt], [f].[Email], [f].[KisaAd], [f].[Telefon], [f].[TelefonAlanKodu], [f].[TicaretSicilNo], [f].[Unvan], [f].[UpdatedAt], [f].[VergiDairesi], [f].[VergiDairesiKodu], [f].[VergiKimlikNo], [f].[YetkiliAdi], [f].[YetkiliSoyadi]
+FROM [Firmalar] AS [f]
+WHERE [f].[Id] = @__firmaId_0
+2026-05-17 13:27:13.287 +03:00 [INF] Executed DbCommand (4ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[FirmaId] = @__firmaId_0
+2026-05-17 13:27:13.350 +03:00 [ERR] Tara hatası (FirmaId=4)
+System.InvalidOperationException: Firma 'PKF ADAY BAĞIMSIZ DENETİM ANONİM ŞİRKETİ' için Dijital Planet hesabı tanımlı değil. Fatura Kontrol sayfasından firma için DP kullanıcı/şifre tanımlayın.
+   at Sovos.IncomingInvoiceWorker.Services.IncomingInvoiceOrchestrator.RunForFirmaAsync(Int32 firmaId, DateTime fromDate, DateTime toDate, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker\Services\IncomingInvoiceOrchestrator.cs:line 42
+   at Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.<>c__DisplayClass4_0.<<Tara>b__0>d.MoveNext() in C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker\Controllers\IncomingInvoiceController.cs:line 65
+2026-05-17 14:19:38.359 +03:00 [WRN] Overriding address(es) 'http://localhost:5021'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2026-05-17 14:19:38.432 +03:00 [INF] Now listening on: http://localhost:5021
+2026-05-17 14:19:38.530 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-05-17 14:19:38.544 +03:00 [INF] Hosting environment: Development
+2026-05-17 14:19:38.548 +03:00 [INF] Content root path: C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker
+2026-05-17 14:20:43.238 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/4/tara - application/json; charset=utf-8 null
+2026-05-17 14:20:43.300 +03:00 [INF] Executing endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker)'
+2026-05-17 14:20:43.330 +03:00 [INF] Route matched with {action = "Tara", controller = "IncomingInvoice"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Tara(Int32, Sovos.IncomingInvoiceWorker.Controllers.TaramaRequest, System.Threading.CancellationToken) on controller Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController (Sovos.IncomingInvoiceWorker).
+2026-05-17 14:20:44.079 +03:00 [WRN] Entity 'Job' has a global query filter defined and is the required end of a relationship with the entity 'JobAssignment'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-05-17 14:20:44.925 +03:00 [INF] Executed DbCommand (54ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT CASE
+    WHEN EXISTS (
+        SELECT 1
+        FROM [Firmalar] AS [f]
+        WHERE [f].[Id] = @__firmaId_0) THEN CAST(1 AS bit)
+    ELSE CAST(0 AS bit)
+END
+2026-05-17 14:20:44.953 +03:00 [INF] Executing AcceptedResult, writing value of type '<>f__AnonymousType3`3[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-17 14:20:44.957 +03:00 [INF] Tara başladı (FirmaId=4, 2026-05-01 - 2026-05-17)
+2026-05-17 14:20:44.963 +03:00 [INF] Executed action Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker) in 1628.4632ms
+2026-05-17 14:20:44.965 +03:00 [INF] Executed endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker)'
+2026-05-17 14:20:44.970 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/4/tara - 202 null application/json; charset=utf-8 1733.9349ms
+2026-05-17 14:20:45.041 +03:00 [INF] Executed DbCommand (3ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [f].[Id], [f].[Aktif], [f].[CreatedAt], [f].[Email], [f].[KisaAd], [f].[Telefon], [f].[TelefonAlanKodu], [f].[TicaretSicilNo], [f].[Unvan], [f].[UpdatedAt], [f].[VergiDairesi], [f].[VergiDairesiKodu], [f].[VergiKimlikNo], [f].[YetkiliAdi], [f].[YetkiliSoyadi]
+FROM [Firmalar] AS [f]
+WHERE [f].[Id] = @__firmaId_0
+2026-05-17 14:20:45.171 +03:00 [INF] Executed DbCommand (7ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[FirmaId] = @__firmaId_0
+2026-05-17 14:20:45.332 +03:00 [INF] Executed DbCommand (9ms) [Parameters=[@p0='?' (DbType = DateTime2), @p1='?' (DbType = DateTime2), @p2='?' (DbType = DateTime2), @p3='?' (DbType = DateTime2), @p4='?' (DbType = Int32), @p5='?' (DbType = Int32), @p6='?' (DbType = Int32), @p7='?' (Size = 2000)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+INSERT INTO [KdvBeyannameTaramalar] ([BaslangicAt], [BaslangicTarihi], [BitisAt], [BitisTarihi], [BulunanFaturaSayisi], [Durum], [FirmaId], [HataMesaji])
+OUTPUT INSERTED.[Id]
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7);
+2026-05-17 14:20:45.362 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Gelen Fatura taraması başlıyor (aralık 01.05.2026 - 17.05.2026)
+2026-05-17 14:20:59.035 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Login başarılı (deneme 1)
+2026-05-17 14:20:59.038 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Gelen Fatura sayfasına gidiliyor
+2026-05-17 14:21:00.893 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Gelen Fatura sayfası yüklendi
+2026-05-17 14:21:00.908 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Tarih filtresi 01.05.2026 - 17.05.2026
+2026-05-17 14:21:04.083 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Sorgula tıklandı
+2026-05-17 14:21:04.993 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: XLSX indir butonu tıklanıyor (#exportToXLSXButton)
+2026-05-17 14:21:06.498 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: XLSX indirildi → C:\Users\cengi\AppData\Local\Temp\dp-gelen-1-20260517112106486.xlsx
+2026-05-17 14:21:08.121 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: 41 gelen fatura parse edildi
+2026-05-17 14:21:08.787 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Logout yapıldı
+2026-05-17 14:21:08.789 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Tarama tamamlandı. 41 gelen fatura. Süre: 23425ms
+2026-05-17 14:21:09.218 +03:00 [INF] Executed DbCommand (8ms) [Parameters=[@__firmaId_0='?' (DbType = Int32), @__faturaNolar_1='?' (Size = 4000)], CommandType='"Text"', CommandTimeout='30']
+SELECT [g].[Id], [g].[FaturaNo], [g].[FaturaTarihi], [g].[FirmaId], [g].[GondericiUnvan], [g].[GondericiVkn], [g].[Kaynak], [g].[KdvOrani], [g].[KdvTutari], [g].[MatrahTutari], [g].[ParaBirimi], [g].[SonGuncelleme], [g].[ToplamTutar]
+FROM [GelenFaturalar] AS [g]
+WHERE [g].[FirmaId] = @__firmaId_0 AND [g].[FaturaNo] IN (
+    SELECT [f].[value]
+    FROM OPENJSON(@__faturaNolar_1) WITH ([value] nvarchar(50) '$') AS [f]
+)
+2026-05-17 14:21:09.307 +03:00 [INF] Executed DbCommand (35ms) [Parameters=[@p0='?' (Size = 50), @p1='?' (DbType = DateTime2), @p2='?' (DbType = Int32), @p3='?' (Size = 300), @p4='?' (Size = 20), @p5='?' (Size = 20), @p6='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p7='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p8='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p9='?' (Size = 10), @p10='?' (DbType = DateTime2), @p11='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p12='?' (Size = 50), @p13='?' (DbType = DateTime2), @p14='?' (DbType = Int32), @p15='?' (Size = 300), @p16='?' (Size = 20), @p17='?' (Size = 20), @p18='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p19='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p20='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p21='?' (Size = 10), @p22='?' (DbType = DateTime2), @p23='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p24='?' (Size = 50), @p25='?' (DbType = DateTime2), @p26='?' (DbType = Int32), @p27='?' (Size = 300), @p28='?' (Size = 20), @p29='?' (Size = 20), @p30='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p31='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p32='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p33='?' (Size = 10), @p34='?' (DbType = DateTime2), @p35='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p36='?' (Size = 50), @p37='?' (DbType = DateTime2), @p38='?' (DbType = Int32), @p39='?' (Size = 300), @p40='?' (Size = 20), @p41='?' (Size = 20), @p42='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p43='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p44='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p45='?' (Size = 10), @p46='?' (DbType = DateTime2), @p47='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p48='?' (Size = 50), @p49='?' (DbType = DateTime2), @p50='?' (DbType = Int32), @p51='?' (Size = 300), @p52='?' (Size = 20), @p53='?' (Size = 20), @p54='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p55='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p56='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p57='?' (Size = 10), @p58='?' (DbType = DateTime2), @p59='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p60='?' (Size = 50), @p61='?' (DbType = DateTime2), @p62='?' (DbType = Int32), @p63='?' (Size = 300), @p64='?' (Size = 20), @p65='?' (Size = 20), @p66='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p67='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p68='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p69='?' (Size = 10), @p70='?' (DbType = DateTime2), @p71='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p72='?' (Size = 50), @p73='?' (DbType = DateTime2), @p74='?' (DbType = Int32), @p75='?' (Size = 300), @p76='?' (Size = 20), @p77='?' (Size = 20), @p78='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p79='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p80='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p81='?' (Size = 10), @p82='?' (DbType = DateTime2), @p83='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p84='?' (Size = 50), @p85='?' (DbType = DateTime2), @p86='?' (DbType = Int32), @p87='?' (Size = 300), @p88='?' (Size = 20), @p89='?' (Size = 20), @p90='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p91='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p92='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p93='?' (Size = 10), @p94='?' (DbType = DateTime2), @p95='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p96='?' (Size = 50), @p97='?' (DbType = DateTime2), @p98='?' (DbType = Int32), @p99='?' (Size = 300), @p100='?' (Size = 20), @p101='?' (Size = 20), @p102='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p103='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p104='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p105='?' (Size = 10), @p106='?' (DbType = DateTime2), @p107='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p108='?' (Size = 50), @p109='?' (DbType = DateTime2), @p110='?' (DbType = Int32), @p111='?' (Size = 300), @p112='?' (Size = 20), @p113='?' (Size = 20), @p114='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p115='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p116='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p117='?' (Size = 10), @p118='?' (DbType = DateTime2), @p119='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p120='?' (Size = 50), @p121='?' (DbType = DateTime2), @p122='?' (DbType = Int32), @p123='?' (Size = 300), @p124='?' (Size = 20), @p125='?' (Size = 20), @p126='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p127='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p128='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p129='?' (Size = 10), @p130='?' (DbType = DateTime2), @p131='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p132='?' (Size = 50), @p133='?' (DbType = DateTime2), @p134='?' (DbType = Int32), @p135='?' (Size = 300), @p136='?' (Size = 20), @p137='?' (Size = 20), @p138='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p139='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p140='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p141='?' (Size = 10), @p142='?' (DbType = DateTime2), @p143='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p144='?' (Size = 50), @p145='?' (DbType = DateTime2), @p146='?' (DbType = Int32), @p147='?' (Size = 300), @p148='?' (Size = 20), @p149='?' (Size = 20), @p150='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p151='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p152='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p153='?' (Size = 10), @p154='?' (DbType = DateTime2), @p155='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p156='?' (Size = 50), @p157='?' (DbType = DateTime2), @p158='?' (DbType = Int32), @p159='?' (Size = 300), @p160='?' (Size = 20), @p161='?' (Size = 20), @p162='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p163='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p164='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p165='?' (Size = 10), @p166='?' (DbType = DateTime2), @p167='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p168='?' (Size = 50), @p169='?' (DbType = DateTime2), @p170='?' (DbType = Int32), @p171='?' (Size = 300), @p172='?' (Size = 20), @p173='?' (Size = 20), @p174='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p175='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p176='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p177='?' (Size = 10), @p178='?' (DbType = DateTime2), @p179='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p180='?' (Size = 50), @p181='?' (DbType = DateTime2), @p182='?' (DbType = Int32), @p183='?' (Size = 300), @p184='?' (Size = 20), @p185='?' (Size = 20), @p186='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p187='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p188='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p189='?' (Size = 10), @p190='?' (DbType = DateTime2), @p191='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p192='?' (Size = 50), @p193='?' (DbType = DateTime2), @p194='?' (DbType = Int32), @p195='?' (Size = 300), @p196='?' (Size = 20), @p197='?' (Size = 20), @p198='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p199='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p200='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p201='?' (Size = 10), @p202='?' (DbType = DateTime2), @p203='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p204='?' (Size = 50), @p205='?' (DbType = DateTime2), @p206='?' (DbType = Int32), @p207='?' (Size = 300), @p208='?' (Size = 20), @p209='?' (Size = 20), @p210='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p211='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p212='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p213='?' (Size = 10), @p214='?' (DbType = DateTime2), @p215='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p216='?' (Size = 50), @p217='?' (DbType = DateTime2), @p218='?' (DbType = Int32), @p219='?' (Size = 300), @p220='?' (Size = 20), @p221='?' (Size = 20), @p222='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p223='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p224='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p225='?' (Size = 10), @p226='?' (DbType = DateTime2), @p227='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p228='?' (Size = 50), @p229='?' (DbType = DateTime2), @p230='?' (DbType = Int32), @p231='?' (Size = 300), @p232='?' (Size = 20), @p233='?' (Size = 20), @p234='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p235='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p236='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p237='?' (Size = 10), @p238='?' (DbType = DateTime2), @p239='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p240='?' (Size = 50), @p241='?' (DbType = DateTime2), @p242='?' (DbType = Int32), @p243='?' (Size = 300), @p244='?' (Size = 20), @p245='?' (Size = 20), @p246='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p247='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p248='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p249='?' (Size = 10), @p250='?' (DbType = DateTime2), @p251='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p252='?' (Size = 50), @p253='?' (DbType = DateTime2), @p254='?' (DbType = Int32), @p255='?' (Size = 300), @p256='?' (Size = 20), @p257='?' (Size = 20), @p258='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p259='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p260='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p261='?' (Size = 10), @p262='?' (DbType = DateTime2), @p263='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p264='?' (Size = 50), @p265='?' (DbType = DateTime2), @p266='?' (DbType = Int32), @p267='?' (Size = 300), @p268='?' (Size = 20), @p269='?' (Size = 20), @p270='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p271='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p272='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p273='?' (Size = 10), @p274='?' (DbType = DateTime2), @p275='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p276='?' (Size = 50), @p277='?' (DbType = DateTime2), @p278='?' (DbType = Int32), @p279='?' (Size = 300), @p280='?' (Size = 20), @p281='?' (Size = 20), @p282='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p283='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p284='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p285='?' (Size = 10), @p286='?' (DbType = DateTime2), @p287='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p288='?' (Size = 50), @p289='?' (DbType = DateTime2), @p290='?' (DbType = Int32), @p291='?' (Size = 300), @p292='?' (Size = 20), @p293='?' (Size = 20), @p294='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p295='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p296='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p297='?' (Size = 10), @p298='?' (DbType = DateTime2), @p299='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p300='?' (Size = 50), @p301='?' (DbType = DateTime2), @p302='?' (DbType = Int32), @p303='?' (Size = 300), @p304='?' (Size = 20), @p305='?' (Size = 20), @p306='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p307='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p308='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p309='?' (Size = 10), @p310='?' (DbType = DateTime2), @p311='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p312='?' (Size = 50), @p313='?' (DbType = DateTime2), @p314='?' (DbType = Int32), @p315='?' (Size = 300), @p316='?' (Size = 20), @p317='?' (Size = 20), @p318='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p319='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p320='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p321='?' (Size = 10), @p322='?' (DbType = DateTime2), @p323='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p324='?' (Size = 50), @p325='?' (DbType = DateTime2), @p326='?' (DbType = Int32), @p327='?' (Size = 300), @p328='?' (Size = 20), @p329='?' (Size = 20), @p330='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p331='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p332='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p333='?' (Size = 10), @p334='?' (DbType = DateTime2), @p335='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p336='?' (Size = 50), @p337='?' (DbType = DateTime2), @p338='?' (DbType = Int32), @p339='?' (Size = 300), @p340='?' (Size = 20), @p341='?' (Size = 20), @p342='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p343='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p344='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p345='?' (Size = 10), @p346='?' (DbType = DateTime2), @p347='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p348='?' (Size = 50), @p349='?' (DbType = DateTime2), @p350='?' (DbType = Int32), @p351='?' (Size = 300), @p352='?' (Size = 20), @p353='?' (Size = 20), @p354='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p355='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p356='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p357='?' (Size = 10), @p358='?' (DbType = DateTime2), @p359='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p360='?' (Size = 50), @p361='?' (DbType = DateTime2), @p362='?' (DbType = Int32), @p363='?' (Size = 300), @p364='?' (Size = 20), @p365='?' (Size = 20), @p366='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p367='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p368='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p369='?' (Size = 10), @p370='?' (DbType = DateTime2), @p371='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p372='?' (Size = 50), @p373='?' (DbType = DateTime2), @p374='?' (DbType = Int32), @p375='?' (Size = 300), @p376='?' (Size = 20), @p377='?' (Size = 20), @p378='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p379='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p380='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p381='?' (Size = 10), @p382='?' (DbType = DateTime2), @p383='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p384='?' (Size = 50), @p385='?' (DbType = DateTime2), @p386='?' (DbType = Int32), @p387='?' (Size = 300), @p388='?' (Size = 20), @p389='?' (Size = 20), @p390='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p391='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p392='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p393='?' (Size = 10), @p394='?' (DbType = DateTime2), @p395='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p396='?' (Size = 50), @p397='?' (DbType = DateTime2), @p398='?' (DbType = Int32), @p399='?' (Size = 300), @p400='?' (Size = 20), @p401='?' (Size = 20), @p402='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p403='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p404='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p405='?' (Size = 10), @p406='?' (DbType = DateTime2), @p407='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p408='?' (Size = 50), @p409='?' (DbType = DateTime2), @p410='?' (DbType = Int32), @p411='?' (Size = 300), @p412='?' (Size = 20), @p413='?' (Size = 20), @p414='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p415='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p416='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p417='?' (Size = 10), @p418='?' (DbType = DateTime2), @p419='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p420='?' (Size = 50), @p421='?' (DbType = DateTime2), @p422='?' (DbType = Int32), @p423='?' (Size = 300), @p424='?' (Size = 20), @p425='?' (Size = 20), @p426='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p427='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p428='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p429='?' (Size = 10), @p430='?' (DbType = DateTime2), @p431='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p432='?' (Size = 50), @p433='?' (DbType = DateTime2), @p434='?' (DbType = Int32), @p435='?' (Size = 300), @p436='?' (Size = 20), @p437='?' (Size = 20), @p438='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p439='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p440='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p441='?' (Size = 10), @p442='?' (DbType = DateTime2), @p443='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p444='?' (Size = 50), @p445='?' (DbType = DateTime2), @p446='?' (DbType = Int32), @p447='?' (Size = 300), @p448='?' (Size = 20), @p449='?' (Size = 20), @p450='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p451='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p452='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p453='?' (Size = 10), @p454='?' (DbType = DateTime2), @p455='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p456='?' (Size = 50), @p457='?' (DbType = DateTime2), @p458='?' (DbType = Int32), @p459='?' (Size = 300), @p460='?' (Size = 20), @p461='?' (Size = 20), @p462='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p463='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p464='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p465='?' (Size = 10), @p466='?' (DbType = DateTime2), @p467='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p468='?' (Size = 50), @p469='?' (DbType = DateTime2), @p470='?' (DbType = Int32), @p471='?' (Size = 300), @p472='?' (Size = 20), @p473='?' (Size = 20), @p474='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p475='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p476='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p477='?' (Size = 10), @p478='?' (DbType = DateTime2), @p479='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p480='?' (Size = 50), @p481='?' (DbType = DateTime2), @p482='?' (DbType = Int32), @p483='?' (Size = 300), @p484='?' (Size = 20), @p485='?' (Size = 20), @p486='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p487='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p488='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p489='?' (Size = 10), @p490='?' (DbType = DateTime2), @p491='?' (Precision = 18) (Scale = 2) (DbType = Decimal)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+MERGE [GelenFaturalar] USING (
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, 0),
+(@p12, @p13, @p14, @p15, @p16, @p17, @p18, @p19, @p20, @p21, @p22, @p23, 1),
+(@p24, @p25, @p26, @p27, @p28, @p29, @p30, @p31, @p32, @p33, @p34, @p35, 2),
+(@p36, @p37, @p38, @p39, @p40, @p41, @p42, @p43, @p44, @p45, @p46, @p47, 3),
+(@p48, @p49, @p50, @p51, @p52, @p53, @p54, @p55, @p56, @p57, @p58, @p59, 4),
+(@p60, @p61, @p62, @p63, @p64, @p65, @p66, @p67, @p68, @p69, @p70, @p71, 5),
+(@p72, @p73, @p74, @p75, @p76, @p77, @p78, @p79, @p80, @p81, @p82, @p83, 6),
+(@p84, @p85, @p86, @p87, @p88, @p89, @p90, @p91, @p92, @p93, @p94, @p95, 7),
+(@p96, @p97, @p98, @p99, @p100, @p101, @p102, @p103, @p104, @p105, @p106, @p107, 8),
+(@p108, @p109, @p110, @p111, @p112, @p113, @p114, @p115, @p116, @p117, @p118, @p119, 9),
+(@p120, @p121, @p122, @p123, @p124, @p125, @p126, @p127, @p128, @p129, @p130, @p131, 10),
+(@p132, @p133, @p134, @p135, @p136, @p137, @p138, @p139, @p140, @p141, @p142, @p143, 11),
+(@p144, @p145, @p146, @p147, @p148, @p149, @p150, @p151, @p152, @p153, @p154, @p155, 12),
+(@p156, @p157, @p158, @p159, @p160, @p161, @p162, @p163, @p164, @p165, @p166, @p167, 13),
+(@p168, @p169, @p170, @p171, @p172, @p173, @p174, @p175, @p176, @p177, @p178, @p179, 14),
+(@p180, @p181, @p182, @p183, @p184, @p185, @p186, @p187, @p188, @p189, @p190, @p191, 15),
+(@p192, @p193, @p194, @p195, @p196, @p197, @p198, @p199, @p200, @p201, @p202, @p203, 16),
+(@p204, @p205, @p206, @p207, @p208, @p209, @p210, @p211, @p212, @p213, @p214, @p215, 17),
+(@p216, @p217, @p218, @p219, @p220, @p221, @p222, @p223, @p224, @p225, @p226, @p227, 18),
+(@p228, @p229, @p230, @p231, @p232, @p233, @p234, @p235, @p236, @p237, @p238, @p239, 19),
+(@p240, @p241, @p242, @p243, @p244, @p245, @p246, @p247, @p248, @p249, @p250, @p251, 20),
+(@p252, @p253, @p254, @p255, @p256, @p257, @p258, @p259, @p260, @p261, @p262, @p263, 21),
+(@p264, @p265, @p266, @p267, @p268, @p269, @p270, @p271, @p272, @p273, @p274, @p275, 22),
+(@p276, @p277, @p278, @p279, @p280, @p281, @p282, @p283, @p284, @p285, @p286, @p287, 23),
+(@p288, @p289, @p290, @p291, @p292, @p293, @p294, @p295, @p296, @p297, @p298, @p299, 24),
+(@p300, @p301, @p302, @p303, @p304, @p305, @p306, @p307, @p308, @p309, @p310, @p311, 25),
+(@p312, @p313, @p314, @p315, @p316, @p317, @p318, @p319, @p320, @p321, @p322, @p323, 26),
+(@p324, @p325, @p326, @p327, @p328, @p329, @p330, @p331, @p332, @p333, @p334, @p335, 27),
+(@p336, @p337, @p338, @p339, @p340, @p341, @p342, @p343, @p344, @p345, @p346, @p347, 28),
+(@p348, @p349, @p350, @p351, @p352, @p353, @p354, @p355, @p356, @p357, @p358, @p359, 29),
+(@p360, @p361, @p362, @p363, @p364, @p365, @p366, @p367, @p368, @p369, @p370, @p371, 30),
+(@p372, @p373, @p374, @p375, @p376, @p377, @p378, @p379, @p380, @p381, @p382, @p383, 31),
+(@p384, @p385, @p386, @p387, @p388, @p389, @p390, @p391, @p392, @p393, @p394, @p395, 32),
+(@p396, @p397, @p398, @p399, @p400, @p401, @p402, @p403, @p404, @p405, @p406, @p407, 33),
+(@p408, @p409, @p410, @p411, @p412, @p413, @p414, @p415, @p416, @p417, @p418, @p419, 34),
+(@p420, @p421, @p422, @p423, @p424, @p425, @p426, @p427, @p428, @p429, @p430, @p431, 35),
+(@p432, @p433, @p434, @p435, @p436, @p437, @p438, @p439, @p440, @p441, @p442, @p443, 36),
+(@p444, @p445, @p446, @p447, @p448, @p449, @p450, @p451, @p452, @p453, @p454, @p455, 37),
+(@p456, @p457, @p458, @p459, @p460, @p461, @p462, @p463, @p464, @p465, @p466, @p467, 38),
+(@p468, @p469, @p470, @p471, @p472, @p473, @p474, @p475, @p476, @p477, @p478, @p479, 39),
+(@p480, @p481, @p482, @p483, @p484, @p485, @p486, @p487, @p488, @p489, @p490, @p491, 40)) AS i ([FaturaNo], [FaturaTarihi], [FirmaId], [GondericiUnvan], [GondericiVkn], [Kaynak], [KdvOrani], [KdvTutari], [MatrahTutari], [ParaBirimi], [SonGuncelleme], [ToplamTutar], _Position) ON 1=0
+WHEN NOT MATCHED THEN
+INSERT ([FaturaNo], [FaturaTarihi], [FirmaId], [GondericiUnvan], [GondericiVkn], [Kaynak], [KdvOrani], [KdvTutari], [MatrahTutari], [ParaBirimi], [SonGuncelleme], [ToplamTutar])
+VALUES (i.[FaturaNo], i.[FaturaTarihi], i.[FirmaId], i.[GondericiUnvan], i.[GondericiVkn], i.[Kaynak], i.[KdvOrani], i.[KdvTutari], i.[MatrahTutari], i.[ParaBirimi], i.[SonGuncelleme], i.[ToplamTutar])
+OUTPUT INSERTED.[Id], i._Position;
+2026-05-17 14:21:09.315 +03:00 [INF] FirmaId 4: GelenFaturalar upsert — 41 yeni, 0 güncellendi (toplam 41).
+2026-05-17 14:21:09.328 +03:00 [INF] Executed DbCommand (7ms) [Parameters=[@p3='?' (DbType = Int64), @p0='?' (DbType = DateTime2), @p1='?' (DbType = Int32), @p2='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+UPDATE [KdvBeyannameTaramalar] SET [BitisAt] = @p0, [BulunanFaturaSayisi] = @p1, [Durum] = @p2
+OUTPUT 1
+WHERE [Id] = @p3;
+2026-05-17 14:21:09.332 +03:00 [INF] FirmaId 4: Tarama tamamlandı (TaramaId=1, 41 fatura).
+2026-05-17 14:21:09.334 +03:00 [INF] Tara bitti (FirmaId=4)
+2026-05-17 14:48:37.360 +03:00 [WRN] Overriding address(es) 'http://localhost:5021'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2026-05-17 14:48:37.422 +03:00 [INF] Now listening on: http://localhost:5021
+2026-05-17 14:48:37.490 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-05-17 14:48:37.493 +03:00 [INF] Hosting environment: Development
+2026-05-17 14:48:37.495 +03:00 [INF] Content root path: C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker
+2026-05-17 14:49:43.631 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/4/tara - application/json; charset=utf-8 null
+2026-05-17 14:49:43.677 +03:00 [INF] Executing endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker)'
+2026-05-17 14:49:43.699 +03:00 [INF] Route matched with {action = "Tara", controller = "IncomingInvoice"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Tara(Int32, Sovos.IncomingInvoiceWorker.Controllers.TaramaRequest, System.Threading.CancellationToken) on controller Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController (Sovos.IncomingInvoiceWorker).
+2026-05-17 14:49:44.384 +03:00 [WRN] Entity 'Job' has a global query filter defined and is the required end of a relationship with the entity 'JobAssignment'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-05-17 14:49:45.143 +03:00 [INF] Executed DbCommand (42ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT CASE
+    WHEN EXISTS (
+        SELECT 1
+        FROM [Firmalar] AS [f]
+        WHERE [f].[Id] = @__firmaId_0) THEN CAST(1 AS bit)
+    ELSE CAST(0 AS bit)
+END
+2026-05-17 14:49:45.176 +03:00 [INF] Executing AcceptedResult, writing value of type '<>f__AnonymousType3`3[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-17 14:49:45.178 +03:00 [INF] Tara başladı (FirmaId=4, 2026-05-01 - 2026-05-17)
+2026-05-17 14:49:45.185 +03:00 [INF] Executed action Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker) in 1482.0755ms
+2026-05-17 14:49:45.188 +03:00 [INF] Executed endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker)'
+2026-05-17 14:49:45.193 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/4/tara - 202 null application/json; charset=utf-8 1563.336ms
+2026-05-17 14:49:45.268 +03:00 [INF] Executed DbCommand (6ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [f].[Id], [f].[Aktif], [f].[CreatedAt], [f].[Email], [f].[KisaAd], [f].[Telefon], [f].[TelefonAlanKodu], [f].[TicaretSicilNo], [f].[Unvan], [f].[UpdatedAt], [f].[VergiDairesi], [f].[VergiDairesiKodu], [f].[VergiKimlikNo], [f].[YetkiliAdi], [f].[YetkiliSoyadi]
+FROM [Firmalar] AS [f]
+WHERE [f].[Id] = @__firmaId_0
+2026-05-17 14:49:45.384 +03:00 [INF] Executed DbCommand (3ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[FirmaId] = @__firmaId_0
+2026-05-17 14:49:45.521 +03:00 [INF] Executed DbCommand (4ms) [Parameters=[@p0='?' (DbType = DateTime2), @p1='?' (DbType = DateTime2), @p2='?' (DbType = DateTime2), @p3='?' (DbType = DateTime2), @p4='?' (DbType = Int32), @p5='?' (DbType = Int32), @p6='?' (DbType = Int32), @p7='?' (Size = 2000)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+INSERT INTO [KdvBeyannameTaramalar] ([BaslangicAt], [BaslangicTarihi], [BitisAt], [BitisTarihi], [BulunanFaturaSayisi], [Durum], [FirmaId], [HataMesaji])
+OUTPUT INSERTED.[Id]
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7);
+2026-05-17 14:49:45.548 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Gelen Fatura taraması başlıyor (aralık 01.05.2026 - 17.05.2026)
+2026-05-17 14:49:56.412 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Login başarılı (deneme 1)
+2026-05-17 14:49:56.416 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Gelen Fatura sayfasına gidiliyor
+2026-05-17 14:49:58.494 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Gelen Fatura sayfası yüklendi
+2026-05-17 14:49:58.511 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Tarih filtresi 01.05.2026 - 17.05.2026
+2026-05-17 14:50:01.727 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Sorgula tıklandı
+2026-05-17 14:50:02.664 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: XLSX indir butonu tıklanıyor (#exportToXLSXButton)
+2026-05-17 14:50:04.188 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: XLSX indirildi → C:\Users\cengi\AppData\Local\Temp\dp-gelen-1-20260517115004170.xlsx
+2026-05-17 14:50:05.045 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: 41 gelen fatura parse edildi
+2026-05-17 14:50:05.742 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Logout yapıldı
+2026-05-17 14:50:05.743 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Tarama tamamlandı. 41 gelen fatura. Süre: 20192ms
+2026-05-17 14:50:06.172 +03:00 [INF] Executed DbCommand (21ms) [Parameters=[@__firmaId_0='?' (DbType = Int32), @__faturaNolar_1='?' (Size = 4000)], CommandType='"Text"', CommandTimeout='30']
+SELECT [g].[Id], [g].[FaturaNo], [g].[FaturaTarihi], [g].[FirmaId], [g].[GondericiUnvan], [g].[GondericiVkn], [g].[Kaynak], [g].[KdvOrani], [g].[KdvTutari], [g].[MatrahTutari], [g].[ParaBirimi], [g].[SonGuncelleme], [g].[Statu], [g].[ToplamTutar]
+FROM [GelenFaturalar] AS [g]
+WHERE [g].[FirmaId] = @__firmaId_0 AND [g].[FaturaNo] IN (
+    SELECT [f].[value]
+    FROM OPENJSON(@__faturaNolar_1) WITH ([value] nvarchar(50) '$') AS [f]
+)
+2026-05-17 14:50:06.278 +03:00 [INF] Executed DbCommand (40ms) [Parameters=[@p2='?' (DbType = Int64), @p0='?' (DbType = DateTime2), @p1='?' (Size = 50), @p5='?' (DbType = Int64), @p3='?' (DbType = DateTime2), @p4='?' (Size = 50), @p8='?' (DbType = Int64), @p6='?' (DbType = DateTime2), @p7='?' (Size = 50), @p11='?' (DbType = Int64), @p9='?' (DbType = DateTime2), @p10='?' (Size = 50), @p14='?' (DbType = Int64), @p12='?' (DbType = DateTime2), @p13='?' (Size = 50), @p17='?' (DbType = Int64), @p15='?' (DbType = DateTime2), @p16='?' (Size = 50), @p20='?' (DbType = Int64), @p18='?' (DbType = DateTime2), @p19='?' (Size = 50), @p23='?' (DbType = Int64), @p21='?' (DbType = DateTime2), @p22='?' (Size = 50), @p26='?' (DbType = Int64), @p24='?' (DbType = DateTime2), @p25='?' (Size = 50), @p29='?' (DbType = Int64), @p27='?' (DbType = DateTime2), @p28='?' (Size = 50), @p32='?' (DbType = Int64), @p30='?' (DbType = DateTime2), @p31='?' (Size = 50), @p35='?' (DbType = Int64), @p33='?' (DbType = DateTime2), @p34='?' (Size = 50), @p38='?' (DbType = Int64), @p36='?' (DbType = DateTime2), @p37='?' (Size = 50), @p41='?' (DbType = Int64), @p39='?' (DbType = DateTime2), @p40='?' (Size = 50), @p44='?' (DbType = Int64), @p42='?' (DbType = DateTime2), @p43='?' (Size = 50), @p47='?' (DbType = Int64), @p45='?' (DbType = DateTime2), @p46='?' (Size = 50), @p50='?' (DbType = Int64), @p48='?' (DbType = DateTime2), @p49='?' (Size = 50), @p53='?' (DbType = Int64), @p51='?' (DbType = DateTime2), @p52='?' (Size = 50), @p56='?' (DbType = Int64), @p54='?' (DbType = DateTime2), @p55='?' (Size = 50), @p59='?' (DbType = Int64), @p57='?' (DbType = DateTime2), @p58='?' (Size = 50), @p62='?' (DbType = Int64), @p60='?' (DbType = DateTime2), @p61='?' (Size = 50), @p65='?' (DbType = Int64), @p63='?' (DbType = DateTime2), @p64='?' (Size = 50), @p68='?' (DbType = Int64), @p66='?' (DbType = DateTime2), @p67='?' (Size = 50), @p71='?' (DbType = Int64), @p69='?' (DbType = DateTime2), @p70='?' (Size = 50), @p74='?' (DbType = Int64), @p72='?' (DbType = DateTime2), @p73='?' (Size = 50), @p77='?' (DbType = Int64), @p75='?' (DbType = DateTime2), @p76='?' (Size = 50), @p80='?' (DbType = Int64), @p78='?' (DbType = DateTime2), @p79='?' (Size = 50), @p83='?' (DbType = Int64), @p81='?' (DbType = DateTime2), @p82='?' (Size = 50), @p86='?' (DbType = Int64), @p84='?' (DbType = DateTime2), @p85='?' (Size = 50), @p89='?' (DbType = Int64), @p87='?' (DbType = DateTime2), @p88='?' (Size = 50), @p92='?' (DbType = Int64), @p90='?' (DbType = DateTime2), @p91='?' (Size = 50), @p95='?' (DbType = Int64), @p93='?' (DbType = DateTime2), @p94='?' (Size = 50), @p98='?' (DbType = Int64), @p96='?' (DbType = DateTime2), @p97='?' (Size = 50), @p101='?' (DbType = Int64), @p99='?' (DbType = DateTime2), @p100='?' (Size = 50), @p104='?' (DbType = Int64), @p102='?' (DbType = DateTime2), @p103='?' (Size = 50), @p107='?' (DbType = Int64), @p105='?' (DbType = DateTime2), @p106='?' (Size = 50), @p110='?' (DbType = Int64), @p108='?' (DbType = DateTime2), @p109='?' (Size = 50), @p113='?' (DbType = Int64), @p111='?' (DbType = DateTime2), @p112='?' (Size = 50), @p116='?' (DbType = Int64), @p114='?' (DbType = DateTime2), @p115='?' (Size = 50), @p119='?' (DbType = Int64), @p117='?' (DbType = DateTime2), @p118='?' (Size = 50), @p122='?' (DbType = Int64), @p120='?' (DbType = DateTime2), @p121='?' (Size = 50)], CommandType='"Text"', CommandTimeout='30']
+SET NOCOUNT ON;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p0, [Statu] = @p1
+OUTPUT 1
+WHERE [Id] = @p2;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p3, [Statu] = @p4
+OUTPUT 1
+WHERE [Id] = @p5;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p6, [Statu] = @p7
+OUTPUT 1
+WHERE [Id] = @p8;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p9, [Statu] = @p10
+OUTPUT 1
+WHERE [Id] = @p11;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p12, [Statu] = @p13
+OUTPUT 1
+WHERE [Id] = @p14;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p15, [Statu] = @p16
+OUTPUT 1
+WHERE [Id] = @p17;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p18, [Statu] = @p19
+OUTPUT 1
+WHERE [Id] = @p20;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p21, [Statu] = @p22
+OUTPUT 1
+WHERE [Id] = @p23;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p24, [Statu] = @p25
+OUTPUT 1
+WHERE [Id] = @p26;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p27, [Statu] = @p28
+OUTPUT 1
+WHERE [Id] = @p29;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p30, [Statu] = @p31
+OUTPUT 1
+WHERE [Id] = @p32;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p33, [Statu] = @p34
+OUTPUT 1
+WHERE [Id] = @p35;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p36, [Statu] = @p37
+OUTPUT 1
+WHERE [Id] = @p38;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p39, [Statu] = @p40
+OUTPUT 1
+WHERE [Id] = @p41;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p42, [Statu] = @p43
+OUTPUT 1
+WHERE [Id] = @p44;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p45, [Statu] = @p46
+OUTPUT 1
+WHERE [Id] = @p47;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p48, [Statu] = @p49
+OUTPUT 1
+WHERE [Id] = @p50;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p51, [Statu] = @p52
+OUTPUT 1
+WHERE [Id] = @p53;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p54, [Statu] = @p55
+OUTPUT 1
+WHERE [Id] = @p56;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p57, [Statu] = @p58
+OUTPUT 1
+WHERE [Id] = @p59;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p60, [Statu] = @p61
+OUTPUT 1
+WHERE [Id] = @p62;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p63, [Statu] = @p64
+OUTPUT 1
+WHERE [Id] = @p65;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p66, [Statu] = @p67
+OUTPUT 1
+WHERE [Id] = @p68;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p69, [Statu] = @p70
+OUTPUT 1
+WHERE [Id] = @p71;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p72, [Statu] = @p73
+OUTPUT 1
+WHERE [Id] = @p74;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p75, [Statu] = @p76
+OUTPUT 1
+WHERE [Id] = @p77;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p78, [Statu] = @p79
+OUTPUT 1
+WHERE [Id] = @p80;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p81, [Statu] = @p82
+OUTPUT 1
+WHERE [Id] = @p83;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p84, [Statu] = @p85
+OUTPUT 1
+WHERE [Id] = @p86;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p87, [Statu] = @p88
+OUTPUT 1
+WHERE [Id] = @p89;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p90, [Statu] = @p91
+OUTPUT 1
+WHERE [Id] = @p92;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p93, [Statu] = @p94
+OUTPUT 1
+WHERE [Id] = @p95;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p96, [Statu] = @p97
+OUTPUT 1
+WHERE [Id] = @p98;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p99, [Statu] = @p100
+OUTPUT 1
+WHERE [Id] = @p101;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p102, [Statu] = @p103
+OUTPUT 1
+WHERE [Id] = @p104;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p105, [Statu] = @p106
+OUTPUT 1
+WHERE [Id] = @p107;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p108, [Statu] = @p109
+OUTPUT 1
+WHERE [Id] = @p110;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p111, [Statu] = @p112
+OUTPUT 1
+WHERE [Id] = @p113;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p114, [Statu] = @p115
+OUTPUT 1
+WHERE [Id] = @p116;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p117, [Statu] = @p118
+OUTPUT 1
+WHERE [Id] = @p119;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p120, [Statu] = @p121
+OUTPUT 1
+WHERE [Id] = @p122;
+2026-05-17 14:50:06.291 +03:00 [INF] FirmaId 4: GelenFaturalar upsert — 0 yeni, 41 güncellendi (toplam 41).
+2026-05-17 14:50:06.297 +03:00 [INF] Executed DbCommand (3ms) [Parameters=[@p3='?' (DbType = Int64), @p0='?' (DbType = DateTime2), @p1='?' (DbType = Int32), @p2='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+UPDATE [KdvBeyannameTaramalar] SET [BitisAt] = @p0, [BulunanFaturaSayisi] = @p1, [Durum] = @p2
+OUTPUT 1
+WHERE [Id] = @p3;
+2026-05-17 14:50:06.299 +03:00 [INF] FirmaId 4: Tarama tamamlandı (TaramaId=2, 41 fatura).
+2026-05-17 14:50:06.301 +03:00 [INF] Tara bitti (FirmaId=4)
+2026-05-17 14:58:32.866 +03:00 [WRN] Overriding address(es) 'http://localhost:5021'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2026-05-17 14:58:32.935 +03:00 [INF] Now listening on: http://localhost:5021
+2026-05-17 14:58:33.033 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-05-17 14:58:33.036 +03:00 [INF] Hosting environment: Development
+2026-05-17 14:58:33.038 +03:00 [INF] Content root path: C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker
+2026-05-17 15:10:25.754 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/4/tara - application/json; charset=utf-8 null
+2026-05-17 15:10:25.798 +03:00 [INF] Executing endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker)'
+2026-05-17 15:10:25.818 +03:00 [INF] Route matched with {action = "Tara", controller = "IncomingInvoice"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Tara(Int32, Sovos.IncomingInvoiceWorker.Controllers.TaramaRequest, System.Threading.CancellationToken) on controller Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController (Sovos.IncomingInvoiceWorker).
+2026-05-17 15:10:26.366 +03:00 [WRN] Entity 'Job' has a global query filter defined and is the required end of a relationship with the entity 'JobAssignment'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-05-17 15:10:26.933 +03:00 [INF] Executed DbCommand (36ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT CASE
+    WHEN EXISTS (
+        SELECT 1
+        FROM [Firmalar] AS [f]
+        WHERE [f].[Id] = @__firmaId_0) THEN CAST(1 AS bit)
+    ELSE CAST(0 AS bit)
+END
+2026-05-17 15:10:26.963 +03:00 [INF] Executing AcceptedResult, writing value of type '<>f__AnonymousType3`3[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-17 15:10:26.966 +03:00 [INF] Tara başladı (FirmaId=4, 2026-05-01 - 2026-05-17)
+2026-05-17 15:10:26.974 +03:00 [INF] Executed action Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker) in 1151.5481ms
+2026-05-17 15:10:26.976 +03:00 [INF] Executed endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker)'
+2026-05-17 15:10:26.986 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/4/tara - 202 null application/json; charset=utf-8 1232.9727ms
+2026-05-17 15:10:27.055 +03:00 [INF] Executed DbCommand (5ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [f].[Id], [f].[Aktif], [f].[CreatedAt], [f].[Email], [f].[KisaAd], [f].[Telefon], [f].[TelefonAlanKodu], [f].[TicaretSicilNo], [f].[Unvan], [f].[UpdatedAt], [f].[VergiDairesi], [f].[VergiDairesiKodu], [f].[VergiKimlikNo], [f].[YetkiliAdi], [f].[YetkiliSoyadi]
+FROM [Firmalar] AS [f]
+WHERE [f].[Id] = @__firmaId_0
+2026-05-17 15:10:27.160 +03:00 [INF] Executed DbCommand (5ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[FirmaId] = @__firmaId_0
+2026-05-17 15:10:27.297 +03:00 [INF] Executed DbCommand (6ms) [Parameters=[@p0='?' (DbType = DateTime2), @p1='?' (DbType = DateTime2), @p2='?' (DbType = DateTime2), @p3='?' (DbType = DateTime2), @p4='?' (DbType = Int32), @p5='?' (DbType = Int32), @p6='?' (DbType = Int32), @p7='?' (Size = 2000)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+INSERT INTO [KdvBeyannameTaramalar] ([BaslangicAt], [BaslangicTarihi], [BitisAt], [BitisTarihi], [BulunanFaturaSayisi], [Durum], [FirmaId], [HataMesaji])
+OUTPUT INSERTED.[Id]
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7);
+2026-05-17 15:10:27.323 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Gelen Fatura taraması başlıyor (aralık 01.05.2026 - 17.05.2026)
+2026-05-17 15:10:36.990 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Login başarılı (deneme 1)
+2026-05-17 15:10:36.992 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Gelen Fatura sayfasına gidiliyor
+2026-05-17 15:10:38.763 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Gelen Fatura sayfası yüklendi
+2026-05-17 15:10:38.779 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Tarih filtresi 01.05.2026 - 17.05.2026
+2026-05-17 15:10:41.949 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Sorgula tıklandı
+2026-05-17 15:10:42.971 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: XLSX indir butonu tıklanıyor (#exportToXLSXButton)
+2026-05-17 15:10:44.436 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: XLSX indirildi → C:\Users\cengi\AppData\Local\Temp\dp-gelen-1-20260517121044421.xlsx
+2026-05-17 15:10:45.259 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: 41 gelen fatura parse edildi
+2026-05-17 15:10:45.903 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Logout yapıldı
+2026-05-17 15:10:45.904 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Tarama tamamlandı. 41 gelen fatura. Süre: 18579ms
+2026-05-17 15:10:46.241 +03:00 [INF] Executed DbCommand (5ms) [Parameters=[@__firmaId_0='?' (DbType = Int32), @__faturaNolar_1='?' (Size = 4000)], CommandType='"Text"', CommandTimeout='30']
+SELECT [g].[Id], [g].[FaturaNo], [g].[FaturaTarihi], [g].[FirmaId], [g].[GondericiUnvan], [g].[GondericiVkn], [g].[Kaynak], [g].[KdvOrani], [g].[KdvTutari], [g].[MatrahTutari], [g].[ParaBirimi], [g].[SonGuncelleme], [g].[Statu], [g].[ToplamTutar]
+FROM [GelenFaturalar] AS [g]
+WHERE [g].[FirmaId] = @__firmaId_0 AND [g].[FaturaNo] IN (
+    SELECT [f].[value]
+    FROM OPENJSON(@__faturaNolar_1) WITH ([value] nvarchar(50) '$') AS [f]
+)
+2026-05-17 15:10:46.329 +03:00 [INF] Executed DbCommand (30ms) [Parameters=[@p1='?' (DbType = Int64), @p0='?' (DbType = DateTime2), @p3='?' (DbType = Int64), @p2='?' (DbType = DateTime2), @p5='?' (DbType = Int64), @p4='?' (DbType = DateTime2), @p7='?' (DbType = Int64), @p6='?' (DbType = DateTime2), @p9='?' (DbType = Int64), @p8='?' (DbType = DateTime2), @p11='?' (DbType = Int64), @p10='?' (DbType = DateTime2), @p13='?' (DbType = Int64), @p12='?' (DbType = DateTime2), @p15='?' (DbType = Int64), @p14='?' (DbType = DateTime2), @p17='?' (DbType = Int64), @p16='?' (DbType = DateTime2), @p19='?' (DbType = Int64), @p18='?' (DbType = DateTime2), @p21='?' (DbType = Int64), @p20='?' (DbType = DateTime2), @p23='?' (DbType = Int64), @p22='?' (DbType = DateTime2), @p25='?' (DbType = Int64), @p24='?' (DbType = DateTime2), @p27='?' (DbType = Int64), @p26='?' (DbType = DateTime2), @p29='?' (DbType = Int64), @p28='?' (DbType = DateTime2), @p31='?' (DbType = Int64), @p30='?' (DbType = DateTime2), @p33='?' (DbType = Int64), @p32='?' (DbType = DateTime2), @p35='?' (DbType = Int64), @p34='?' (DbType = DateTime2), @p37='?' (DbType = Int64), @p36='?' (DbType = DateTime2), @p39='?' (DbType = Int64), @p38='?' (DbType = DateTime2), @p41='?' (DbType = Int64), @p40='?' (DbType = DateTime2), @p43='?' (DbType = Int64), @p42='?' (DbType = DateTime2), @p45='?' (DbType = Int64), @p44='?' (DbType = DateTime2), @p47='?' (DbType = Int64), @p46='?' (DbType = DateTime2), @p49='?' (DbType = Int64), @p48='?' (DbType = DateTime2), @p51='?' (DbType = Int64), @p50='?' (DbType = DateTime2), @p53='?' (DbType = Int64), @p52='?' (DbType = DateTime2), @p55='?' (DbType = Int64), @p54='?' (DbType = DateTime2), @p57='?' (DbType = Int64), @p56='?' (DbType = DateTime2), @p59='?' (DbType = Int64), @p58='?' (DbType = DateTime2), @p61='?' (DbType = Int64), @p60='?' (DbType = DateTime2), @p63='?' (DbType = Int64), @p62='?' (DbType = DateTime2), @p65='?' (DbType = Int64), @p64='?' (DbType = DateTime2), @p67='?' (DbType = Int64), @p66='?' (DbType = DateTime2), @p69='?' (DbType = Int64), @p68='?' (DbType = DateTime2), @p71='?' (DbType = Int64), @p70='?' (DbType = DateTime2), @p73='?' (DbType = Int64), @p72='?' (DbType = DateTime2), @p75='?' (DbType = Int64), @p74='?' (DbType = DateTime2), @p77='?' (DbType = Int64), @p76='?' (DbType = DateTime2), @p79='?' (DbType = Int64), @p78='?' (DbType = DateTime2), @p81='?' (DbType = Int64), @p80='?' (DbType = DateTime2)], CommandType='"Text"', CommandTimeout='30']
+SET NOCOUNT ON;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p0
+OUTPUT 1
+WHERE [Id] = @p1;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p2
+OUTPUT 1
+WHERE [Id] = @p3;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p4
+OUTPUT 1
+WHERE [Id] = @p5;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p6
+OUTPUT 1
+WHERE [Id] = @p7;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p8
+OUTPUT 1
+WHERE [Id] = @p9;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p10
+OUTPUT 1
+WHERE [Id] = @p11;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p12
+OUTPUT 1
+WHERE [Id] = @p13;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p14
+OUTPUT 1
+WHERE [Id] = @p15;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p16
+OUTPUT 1
+WHERE [Id] = @p17;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p18
+OUTPUT 1
+WHERE [Id] = @p19;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p20
+OUTPUT 1
+WHERE [Id] = @p21;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p22
+OUTPUT 1
+WHERE [Id] = @p23;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p24
+OUTPUT 1
+WHERE [Id] = @p25;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p26
+OUTPUT 1
+WHERE [Id] = @p27;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p28
+OUTPUT 1
+WHERE [Id] = @p29;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p30
+OUTPUT 1
+WHERE [Id] = @p31;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p32
+OUTPUT 1
+WHERE [Id] = @p33;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p34
+OUTPUT 1
+WHERE [Id] = @p35;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p36
+OUTPUT 1
+WHERE [Id] = @p37;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p38
+OUTPUT 1
+WHERE [Id] = @p39;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p40
+OUTPUT 1
+WHERE [Id] = @p41;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p42
+OUTPUT 1
+WHERE [Id] = @p43;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p44
+OUTPUT 1
+WHERE [Id] = @p45;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p46
+OUTPUT 1
+WHERE [Id] = @p47;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p48
+OUTPUT 1
+WHERE [Id] = @p49;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p50
+OUTPUT 1
+WHERE [Id] = @p51;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p52
+OUTPUT 1
+WHERE [Id] = @p53;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p54
+OUTPUT 1
+WHERE [Id] = @p55;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p56
+OUTPUT 1
+WHERE [Id] = @p57;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p58
+OUTPUT 1
+WHERE [Id] = @p59;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p60
+OUTPUT 1
+WHERE [Id] = @p61;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p62
+OUTPUT 1
+WHERE [Id] = @p63;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p64
+OUTPUT 1
+WHERE [Id] = @p65;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p66
+OUTPUT 1
+WHERE [Id] = @p67;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p68
+OUTPUT 1
+WHERE [Id] = @p69;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p70
+OUTPUT 1
+WHERE [Id] = @p71;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p72
+OUTPUT 1
+WHERE [Id] = @p73;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p74
+OUTPUT 1
+WHERE [Id] = @p75;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p76
+OUTPUT 1
+WHERE [Id] = @p77;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p78
+OUTPUT 1
+WHERE [Id] = @p79;
+UPDATE [GelenFaturalar] SET [SonGuncelleme] = @p80
+OUTPUT 1
+WHERE [Id] = @p81;
+2026-05-17 15:10:46.342 +03:00 [INF] FirmaId 4: GelenFaturalar upsert — 0 yeni, 41 güncellendi (toplam 41).
+2026-05-17 15:10:46.347 +03:00 [INF] Executed DbCommand (3ms) [Parameters=[@p3='?' (DbType = Int64), @p0='?' (DbType = DateTime2), @p1='?' (DbType = Int32), @p2='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+UPDATE [KdvBeyannameTaramalar] SET [BitisAt] = @p0, [BulunanFaturaSayisi] = @p1, [Durum] = @p2
+OUTPUT 1
+WHERE [Id] = @p3;
+2026-05-17 15:10:46.350 +03:00 [INF] FirmaId 4: Tarama tamamlandı (TaramaId=3, 41 fatura).
+2026-05-17 15:10:46.352 +03:00 [INF] Tara bitti (FirmaId=4)
+2026-05-17 23:55:13.629 +03:00 [WRN] Overriding address(es) 'http://localhost:5021'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2026-05-17 23:55:13.724 +03:00 [INF] Now listening on: http://localhost:5021
+2026-05-17 23:55:13.834 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-05-17 23:55:13.840 +03:00 [INF] Hosting environment: Development
+2026-05-17 23:55:13.843 +03:00 [INF] Content root path: C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker

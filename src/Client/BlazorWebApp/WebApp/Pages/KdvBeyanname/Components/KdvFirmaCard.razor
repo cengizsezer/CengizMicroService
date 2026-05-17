@@ -1,0 +1,78 @@
+@using WebApp.Domain.Models.KdvBeyanname
+
+<div class="fk-firma-card">
+    <div class="fk-firma-card-inner">
+        <div class="fk-firma-avatar">@Avatar</div>
+
+        <div class="fk-firma-name">@Firma.Unvan</div>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.4rem" class="rz-mt-3 rz-mb-3" AlignItems="AlignItems.Center">
+            <div class="fk-firma-row">
+                <RadzenIcon Icon="badge" />
+                <span><strong>VKN:</strong> @Firma.VergiKimlikNo</span>
+            </div>
+            <div class="fk-firma-row">
+                <RadzenIcon Icon="business" />
+                <span><strong>Kısa Ad:</strong> @Firma.KisaAd</span>
+            </div>
+            @if (Firma.SonTaramaAt.HasValue)
+            {
+                <div class="fk-firma-row">
+                    <RadzenIcon Icon="schedule" />
+                    <span>Son tarama: @Firma.SonTaramaAt.Value.ToString("dd.MM.yyyy HH:mm")</span>
+                </div>
+            }
+        </RadzenStack>
+
+        <div class="fk-firma-summary">
+            @if (Firma.BdpAlanlariEksik)
+            {
+                <RadzenBadge BadgeStyle="BadgeStyle.Warning"
+                             Text="BDP alanları eksik"
+                             IsPill="true" />
+            }
+            else
+            {
+                <RadzenBadge BadgeStyle="BadgeStyle.Success"
+                             Text="BDP hazır"
+                             IsPill="true" />
+            }
+            @if (Firma.SonTaramaDurumu.HasValue)
+            {
+                <RadzenBadge BadgeStyle="@DurumStyle(Firma.SonTaramaDurumu.Value)"
+                             Text="@($"Tarama: {Firma.SonTaramaDurumu}")"
+                             IsPill="true" />
+            }
+        </div>
+
+        <RadzenButton Text="GİRİŞ"
+                      Icon="login"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Size="ButtonSize.Large"
+                      Click="@OnGirisClick"
+                      Style="width: 70%; margin-top: 1.25rem;" />
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public KdvFirmaCardDto Firma { get; set; } = default!;
+    [Parameter] public EventCallback<KdvFirmaCardDto> OnGiris { get; set; }
+
+    private string Avatar => string.IsNullOrWhiteSpace(Firma.KisaAd)
+        ? (Firma.Unvan.Length > 0 ? Firma.Unvan[..1].ToUpperInvariant() : "?")
+        : Firma.KisaAd[..Math.Min(2, Firma.KisaAd.Length)].ToUpperInvariant();
+
+    private async Task OnGirisClick()
+    {
+        if (OnGiris.HasDelegate)
+            await OnGiris.InvokeAsync(Firma);
+    }
+
+    private static BadgeStyle DurumStyle(KdvBeyannameTaramaDurumu d) => d switch
+    {
+        KdvBeyannameTaramaDurumu.Tamamlandi => BadgeStyle.Success,
+        KdvBeyannameTaramaDurumu.Calisiyor  => BadgeStyle.Info,
+        KdvBeyannameTaramaDurumu.Hatali     => BadgeStyle.Danger,
+        _                                   => BadgeStyle.Light
+    };
+}

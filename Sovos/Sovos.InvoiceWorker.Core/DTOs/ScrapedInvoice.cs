@@ -14,4 +14,5 @@ public class ScrapedInvoice
     public DateTime? SonOdemeTarihi { get; set; }
     public DateTime? DuzenlenmeTarihi { get; set; }
     public DateTime? OlusturulmaTarihi { get; set; }
+    public string? Statu { get; set; }
 }

@@ -1,0 +1,410 @@
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Forms
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.KdvBeyanname
+@using WebApp.Domain.Models.KdvBeyanname
+@inject IKdvBeyannameApiService KdvApi
+@inject NotificationService Notif
+
+<RadzenCard class="rz-mb-3 rz-p-4">
+    <RadzenStack Orientation="Orientation.Vertical" Gap="0.75rem">
+
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem" Wrap="FlexWrap.Wrap">
+
+            <RadzenIcon Icon="rule" Style="font-size:1.5rem;" />
+            <div>
+                <RadzenText TextStyle="TextStyle.H6" class="rz-m-0">Yevmiye Karşılaştırma</RadzenText>
+                <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary">
+                    Dönem: <strong>@Donem</strong>
+                </RadzenText>
+            </div>
+
+            <div style="flex:1;"></div>
+
+            <label class="rz-button rz-button-md rz-variant-flat rz-shade-default" style="cursor: pointer;">
+                <RadzenIcon Icon="upload_file" class="rz-mr-1" />
+                @(uploading ? "Yükleniyor..." : "Excel Yükle")
+                <InputFile OnChange="OnFileSelected"
+                           accept=".xlsx,.xls"
+                           disabled="@uploading"
+                           style="display:none;" />
+            </label>
+
+            <RadzenButton Icon="refresh"
+                          Text="Yenile"
+                          ButtonStyle="ButtonStyle.Light"
+                          Size="ButtonSize.Small"
+                          Disabled="@(loading || uploading)"
+                          Click="@LoadAsync" />
+        </RadzenStack>
+
+        @if (uploading)
+        {
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+                <span>Yevmiye dosyası parse ediliyor...</span>
+            </RadzenStack>
+        }
+
+        @if (sonHataMesaji is not null)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger"
+                         Shade="Shade.Light"
+                         AllowClose="true"
+                         Close="@(() => sonHataMesaji = null)"
+                         Icon="error">
+                @sonHataMesaji
+            </RadzenAlert>
+        }
+
+        @if (sonUploadOzeti is not null)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Success"
+                         Shade="Shade.Light"
+                         AllowClose="true"
+                         Close="@(() => sonUploadOzeti = null)"
+                         Icon="check_circle">
+                <strong>@sonUploadOzeti.KaydedilenSatir</strong> yevmiye satırı kaydedildi
+                (okunan: @sonUploadOzeti.OkunanSatir, atlanan: @sonUploadOzeti.AtlananSatir).
+            </RadzenAlert>
+        }
+    </RadzenStack>
+</RadzenCard>
+
+@if (loading)
+{
+    <RadzenCard class="rz-p-4">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+            <span>Karşılaştırma yükleniyor...</span>
+        </RadzenStack>
+    </RadzenCard>
+}
+else if (sonuc is null || sonuc.YevmiyeFaturaNoSayisi == 0)
+{
+    <RadzenCard class="rz-p-4" Style="border: 1px dashed var(--rz-border-light); background: var(--rz-base-50);">
+        <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="0.5rem">
+            <RadzenIcon Icon="upload_file" Style="font-size:3rem; color: var(--rz-text-secondary);" />
+            <RadzenText TextStyle="TextStyle.H6" class="rz-m-0">Yevmiye Excel'i yükleyin</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary">
+                Karşılaştırma için <strong>@Donem</strong> dönemine ait yevmiye dosyasını yükleyin.
+                <br />Aynı dönem için tekrar yüklerseniz mevcut kayıtlar silinip yenisiyle değişir.
+            </RadzenText>
+        </RadzenStack>
+    </RadzenCard>
+}
+else
+{
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.75rem" class="rz-mb-3" Wrap="FlexWrap.Wrap">
+        <RadzenCard class="rz-p-3" Style="min-width: 180px;">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenIcon Icon="inventory_2" Style="color: var(--rz-info);" />
+                <div>
+                    <div class="rz-color-secondary" style="font-size: 0.85rem;">Sistemdeki Fatura</div>
+                    <div style="font-size: 1.4rem; font-weight: 600;">@sonuc.GelenFaturaSayisi</div>
+                </div>
+            </RadzenStack>
+        </RadzenCard>
+        <RadzenCard class="rz-p-3" Style="min-width: 180px;">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenIcon Icon="receipt_long" Style="color: var(--rz-info);" />
+                <div>
+                    <div class="rz-color-secondary" style="font-size: 0.85rem;">Yevmiyedeki Fatura</div>
+                    <div style="font-size: 1.4rem; font-weight: 600;">@sonuc.YevmiyeFaturaNoSayisi</div>
+                </div>
+            </RadzenStack>
+        </RadzenCard>
+        <RadzenCard class="rz-p-3" Style="min-width: 180px; background: var(--rz-danger-lighter);">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenIcon Icon="report_problem" Style="color: var(--rz-danger);" />
+                <div>
+                    <div class="rz-color-secondary" style="font-size: 0.85rem;">İşlenmemiş</div>
+                    <div style="font-size: 1.4rem; font-weight: 600; color: var(--rz-danger);">@sonuc.Islenmemis.Count</div>
+                </div>
+            </RadzenStack>
+        </RadzenCard>
+        <RadzenCard class="rz-p-3" Style="min-width: 180px;">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenIcon Icon="check_circle" Style="color: var(--rz-success);" />
+                <div>
+                    <div class="rz-color-secondary" style="font-size: 0.85rem;">Eşleşen</div>
+                    <div style="font-size: 1.4rem; font-weight: 600; color: var(--rz-success);">@sonuc.Eslesen.Count</div>
+                </div>
+            </RadzenStack>
+        </RadzenCard>
+        <RadzenCard class="rz-p-3" Style="min-width: 180px;">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenIcon Icon="help_outline" Style="color: var(--rz-warning);" />
+                <div>
+                    <div class="rz-color-secondary" style="font-size: 0.85rem;">Fazla (sadece yevmiyede)</div>
+                    <div style="font-size: 1.4rem; font-weight: 600; color: var(--rz-warning);">@sonuc.Fazla.Count</div>
+                </div>
+            </RadzenStack>
+        </RadzenCard>
+        @if (sonuc.ReddedilenSayisi > 0)
+        {
+            <RadzenCard class="rz-p-3" Style="min-width: 180px; background: var(--rz-info-lighter);" title="DP'de 'FATURA RED' statüsündeki faturalar karşılaştırmadan elenir.">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                    <RadzenIcon Icon="filter_alt_off" Style="color: var(--rz-info);" />
+                    <div>
+                        <div class="rz-color-secondary" style="font-size: 0.85rem;">Filtrelenmiş (Reddedildi)</div>
+                        <div style="font-size: 1.4rem; font-weight: 600; color: var(--rz-info);">@sonuc.ReddedilenSayisi adet</div>
+                    </div>
+                </RadzenStack>
+            </RadzenCard>
+        }
+    </RadzenStack>
+
+    @* ── ISLENMEMIS: kritik liste, en üstte, kırmızı tema ─── *@
+    <RadzenFieldset class="rz-mb-3" Style="border-color: var(--rz-danger);">
+        <HeaderTemplate>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenIcon Icon="report_problem" Style="color: var(--rz-danger);" />
+                <strong>İşlenmemiş Faturalar</strong>
+                <RadzenBadge Text="@sonuc.Islenmemis.Count.ToString()"
+                             BadgeStyle="BadgeStyle.Danger" />
+                <span class="rz-color-secondary" style="font-size: 0.85rem;">
+                    — Sistemde var, yevmiyede yok. Bu faturalar muhasebeye işlenmemiş demektir.
+                </span>
+            </RadzenStack>
+        </HeaderTemplate>
+        <ChildContent>
+            @if (sonuc.Islenmemis.Count == 0)
+            {
+                <em>Tüm sistem faturaları yevmiyede karşılığını bulmuş — tebrikler.</em>
+            }
+            else
+            {
+                <RadzenDataGrid Data="@sonuc.Islenmemis"
+                                TItem="KdvKarsilastirmaSatiri"
+                                AllowPaging="true"
+                                PageSize="15"
+                                AllowSorting="true"
+                                AllowFiltering="true"
+                                FilterMode="FilterMode.Simple"
+                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                Density="Density.Compact">
+                    <Columns>
+                        <RadzenDataGridColumn Property="FaturaNo" Title="Fatura No" Width="180px" />
+                        <RadzenDataGridColumn Property="FaturaTarihi" Title="Tarih" Width="110px" FormatString="{0:dd.MM.yyyy}" />
+                        <RadzenDataGridColumn Property="GondericiVkn" Title="Gönderici VKN" Width="130px" />
+                        <RadzenDataGridColumn Property="GondericiUnvan" Title="Gönderici Ünvan" />
+                        <RadzenDataGridColumn Property="KdvTutari" Title="KDV" Width="120px" TextAlign="TextAlign.Right">
+                            <Template Context="row">@FormatPara(row.KdvTutari)</Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn Property="ToplamTutar" Title="Toplam" Width="130px" TextAlign="TextAlign.Right">
+                            <Template Context="row">@FormatPara(row.ToplamTutar)</Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+            }
+        </ChildContent>
+    </RadzenFieldset>
+
+    @* ── ESLESEN ─────────────────────────────────────────── *@
+    <RadzenFieldset class="rz-mb-3" AllowCollapse="true" Collapsed="@eslesenCollapsed">
+        <HeaderTemplate>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenIcon Icon="check_circle" Style="color: var(--rz-success);" />
+                <strong>Eşleşen Faturalar</strong>
+                <RadzenBadge Text="@sonuc.Eslesen.Count.ToString()"
+                             BadgeStyle="BadgeStyle.Success" />
+                <span class="rz-color-secondary" style="font-size: 0.85rem;">
+                    — Sistemde de var, yevmiyede de var.
+                </span>
+            </RadzenStack>
+        </HeaderTemplate>
+        <ChildContent>
+            @if (sonuc.Eslesen.Count == 0)
+            {
+                <em>Eşleşen fatura yok.</em>
+            }
+            else
+            {
+                <RadzenDataGrid Data="@sonuc.Eslesen"
+                                TItem="KdvKarsilastirmaSatiri"
+                                AllowPaging="true"
+                                PageSize="15"
+                                AllowSorting="true"
+                                AllowFiltering="true"
+                                FilterMode="FilterMode.Simple"
+                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                Density="Density.Compact">
+                    <Columns>
+                        <RadzenDataGridColumn Property="FaturaNo" Title="Fatura No" Width="180px" />
+                        <RadzenDataGridColumn Property="FaturaTarihi" Title="Tarih" Width="110px" FormatString="{0:dd.MM.yyyy}" />
+                        <RadzenDataGridColumn Property="GondericiUnvan" Title="Gönderici Ünvan" />
+                        <RadzenDataGridColumn Property="ToplamTutar" Title="Toplam" Width="130px" TextAlign="TextAlign.Right">
+                            <Template Context="row">@FormatPara(row.ToplamTutar)</Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn Property="YevmiyeHesapKodu" Title="Yev. Hesap" Width="130px" />
+                        <RadzenDataGridColumn Property="YevmiyeAciklamasi" Title="Yev. Açıklama" />
+                    </Columns>
+                </RadzenDataGrid>
+            }
+        </ChildContent>
+    </RadzenFieldset>
+
+    @* ── FAZLA ───────────────────────────────────────────── *@
+    <RadzenFieldset class="rz-mb-3" AllowCollapse="true" Collapsed="@fazlaCollapsed">
+        <HeaderTemplate>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenIcon Icon="help_outline" Style="color: var(--rz-warning);" />
+                <strong>Fazla — Yevmiyede Var, Sistemde Yok</strong>
+                <RadzenBadge Text="@sonuc.Fazla.Count.ToString()"
+                             BadgeStyle="BadgeStyle.Warning" />
+                <span class="rz-color-secondary" style="font-size: 0.85rem;">
+                    — Manuel girilmiş veya geç gelmiş e-fatura olabilir.
+                </span>
+            </RadzenStack>
+        </HeaderTemplate>
+        <ChildContent>
+            @if (sonuc.Fazla.Count == 0)
+            {
+                <em>Yevmiyede fazladan fatura yok.</em>
+            }
+            else
+            {
+                <RadzenDataGrid Data="@sonuc.Fazla"
+                                TItem="KdvKarsilastirmaSatiri"
+                                AllowPaging="true"
+                                PageSize="15"
+                                AllowSorting="true"
+                                AllowFiltering="true"
+                                FilterMode="FilterMode.Simple"
+                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                Density="Density.Compact">
+                    <Columns>
+                        <RadzenDataGridColumn Property="FaturaNo" Title="Fatura No" Width="200px" />
+                        <RadzenDataGridColumn Property="YevmiyeHesapKodu" Title="Yev. Hesap" Width="130px" />
+                        <RadzenDataGridColumn Property="YevmiyeAciklamasi" Title="Yev. Açıklama" />
+                    </Columns>
+                </RadzenDataGrid>
+            }
+        </ChildContent>
+    </RadzenFieldset>
+}
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+    [Parameter, EditorRequired] public string Donem { get; set; } = string.Empty;
+    [Parameter] public EventCallback<int> OnYevmiyeSayisiChanged { get; set; }
+
+    private static readonly CultureInfo TrCulture = new("tr-TR");
+
+    private KdvKarsilastirmaSonucu? sonuc;
+    private YevmiyeUploadResult? sonUploadOzeti;
+
+    private bool loading = true;
+    private bool uploading;
+    private string? sonHataMesaji;
+
+    private bool eslesenCollapsed = true;   // Eşleşen geniş listesi — default kapalı
+    private bool fazlaCollapsed = false;
+
+    private int previousFirmaId;
+    private string previousDonem = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (previousFirmaId == FirmaId && previousDonem == Donem) return;
+        previousFirmaId = FirmaId;
+        previousDonem = Donem;
+
+        sonHataMesaji = null;
+        sonUploadOzeti = null;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Donem)) return;
+
+        loading = true;
+        StateHasChanged();
+        try
+        {
+            // Dönem için yüklü yevmiye var mı? Sayım üzerinden anlaşılır.
+            var yevmiye = await KdvApi.GetYevmiyeAsync(FirmaId, Donem);
+            var sayim = yevmiye.Count;
+
+            if (OnYevmiyeSayisiChanged.HasDelegate)
+                await OnYevmiyeSayisiChanged.InvokeAsync(sayim);
+
+            if (sayim == 0)
+            {
+                // Yüklü yevmiye yok → boş state, karşılaştırma çağrısı yapma.
+                sonuc = null;
+                return;
+            }
+
+            // Yüklü yevmiye var → karşılaştırmayı otomatik çek.
+            sonuc = await KdvApi.GetKarsilastirmaAsync(FirmaId, Donem);
+        }
+        catch (Exception ex)
+        {
+            sonuc = null;
+            sonHataMesaji = $"Karşılaştırma yüklenirken hata: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+
+        if (string.IsNullOrWhiteSpace(Donem))
+        {
+            sonHataMesaji = "Dönem boş. Üst panelden geçerli bir dönem (YYYY-MM) girin.";
+            return;
+        }
+
+        sonHataMesaji = null;
+        sonUploadOzeti = null;
+        uploading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Max 50 MB — backend de aynı sınırı uyguluyor.
+            await using var stream = file.OpenReadStream(maxAllowedSize: 50_000_000);
+            sonUploadOzeti = await KdvApi.UploadYevmiyeAsync(FirmaId, Donem, stream, file.Name);
+
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary  = "Yevmiye yüklendi",
+                Detail   = $"{sonUploadOzeti.KaydedilenSatir} satır kaydedildi.",
+                Duration = 4000
+            });
+
+            // Otomatik karşılaştırma — kullanıcının ayrıca buton basmasına gerek yok.
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            sonHataMesaji = $"Yevmiye yüklenirken hata: {ex.Message}";
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary  = "Hata",
+                Detail   = sonHataMesaji,
+                Duration = 6000
+            });
+        }
+        finally
+        {
+            uploading = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string FormatPara(decimal? tutar) =>
+        tutar.HasValue ? tutar.Value.ToString("N2", TrCulture) + " TL" : "—";
+}

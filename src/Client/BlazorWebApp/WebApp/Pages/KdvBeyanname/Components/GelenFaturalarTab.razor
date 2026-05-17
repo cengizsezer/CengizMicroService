@@ -1,0 +1,337 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.KdvBeyanname
+@using WebApp.Domain.Models.KdvBeyanname
+@inject IKdvBeyannameApiService KdvApi
+@inject NotificationService Notif
+@implements IDisposable
+
+<RadzenCard class="rz-mb-3 rz-p-4">
+    <RadzenStack Orientation="Orientation.Vertical" Gap="0.75rem">
+
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem" Wrap="FlexWrap.Wrap">
+
+            <RadzenFormField Text="Başlangıç" Variant="Variant.Outlined">
+                <RadzenDatePicker @bind-Value="baslangic"
+                                  DateFormat="dd.MM.yyyy"
+                                  ShowTime="false"
+                                  Disabled="@isScanning" />
+            </RadzenFormField>
+
+            <RadzenFormField Text="Bitiş" Variant="Variant.Outlined">
+                <RadzenDatePicker @bind-Value="bitis"
+                                  DateFormat="dd.MM.yyyy"
+                                  ShowTime="false"
+                                  Disabled="@isScanning" />
+            </RadzenFormField>
+
+            <RadzenButton Icon="@(isScanning ? string.Empty : "cloud_download")"
+                          Text="@(isScanning ? "Taranıyor..." : "Tara")"
+                          ButtonStyle="ButtonStyle.Primary"
+                          Disabled="@isScanning"
+                          Click="@TaraAsync" />
+
+            @if (isScanning)
+            {
+                <RadzenProgressBarCircular ShowValue="false"
+                                           Mode="ProgressBarMode.Indeterminate"
+                                           Size="ProgressBarCircularSize.Small" />
+                <span class="rz-color-secondary">
+                    Dijital Planet'e bağlanılıyor — bu işlem 30 saniye ile 2 dakika arasında sürebilir.
+                </span>
+            }
+            else
+            {
+                <span class="rz-color-secondary rz-ml-2">
+                    Toplam @faturalar.Count fatura listelendi.
+                </span>
+            }
+
+            <div style="flex:1;"></div>
+
+            <RadzenButton Icon="refresh"
+                          Text="Listeyi Yenile"
+                          ButtonStyle="ButtonStyle.Light"
+                          Size="ButtonSize.Small"
+                          Disabled="@isScanning"
+                          Click="@(() => ReloadAsync())" />
+        </RadzenStack>
+
+        @if (sonHataMesaji is not null)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger"
+                         Shade="Shade.Light"
+                         AllowClose="true"
+                         Close="@(() => sonHataMesaji = null)"
+                         Icon="error">
+                @sonHataMesaji
+            </RadzenAlert>
+        }
+    </RadzenStack>
+</RadzenCard>
+
+@if (loading)
+{
+    <RadzenCard class="rz-p-4">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+            <span>Faturalar yükleniyor...</span>
+        </RadzenStack>
+    </RadzenCard>
+}
+else if (faturalar.Count == 0)
+{
+    <RadzenCard class="rz-p-4">
+        <em>Bu aralık için kayıtlı gelen fatura yok. Yukarıdan "Tara" butonuyla Dijital Planet'ten çekebilirsiniz.</em>
+    </RadzenCard>
+}
+else
+{
+    <RadzenDataGrid Data="@faturalar"
+                    TItem="KdvGelenFatura"
+                    AllowPaging="true"
+                    PageSize="20"
+                    PagerHorizontalAlign="HorizontalAlign.Right"
+                    AllowSorting="true"
+                    AllowFiltering="true"
+                    FilterMode="FilterMode.Simple"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                    Density="Density.Compact"
+                    Style="min-height: 400px;">
+        <Columns>
+            <RadzenDataGridColumn Property="FaturaNo" Title="Fatura No" Width="180px" />
+            <RadzenDataGridColumn Property="FaturaTarihi"
+                                  Title="Tarih"
+                                  Width="120px"
+                                  FormatString="{0:dd.MM.yyyy}" />
+            <RadzenDataGridColumn Property="GondericiVkn" Title="Gönderici VKN" Width="130px" />
+            <RadzenDataGridColumn Property="GondericiUnvan" Title="Gönderici Ünvan" />
+            <RadzenDataGridColumn Property="MatrahTutari" Title="Matrah" Width="130px" TextAlign="TextAlign.Right">
+                <Template Context="row">@FormatPara(row.MatrahTutari, row.ParaBirimi)</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="KdvOrani" Title="KDV %" Width="80px" TextAlign="TextAlign.Right">
+                <Template Context="row">
+                    @(row.KdvOrani.HasValue ? row.KdvOrani.Value.ToString("0.##") : "—")
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="KdvTutari" Title="KDV Tutarı" Width="130px" TextAlign="TextAlign.Right">
+                <Template Context="row">@FormatPara(row.KdvTutari, row.ParaBirimi)</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="ToplamTutar" Title="Toplam" Width="130px" TextAlign="TextAlign.Right">
+                <Template Context="row">@FormatPara(row.ToplamTutar, row.ParaBirimi)</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="Statu" Title="Statü" Width="160px">
+                <Template Context="row">
+                    @if (!string.IsNullOrEmpty(row.Statu))
+                    {
+                        <RadzenBadge Text="@row.Statu" BadgeStyle="@StatuBadgeStyle(row.Statu)" />
+                    }
+                    else
+                    {
+                        <span class="rz-color-secondary">—</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+    [Parameter] public EventCallback<int> OnFaturaSayisiChanged { get; set; }
+
+    private static readonly System.Globalization.CultureInfo TrCulture = new("tr-TR");
+
+    private List<KdvGelenFatura> faturalar = new();
+
+    private DateTime? baslangic;
+    private DateTime? bitis;
+
+    private bool loading = true;
+    private bool isScanning;
+    private string? sonHataMesaji;
+
+    private CancellationTokenSource? pollCts;
+    private int previousFirmaId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (previousFirmaId == FirmaId) return;
+        previousFirmaId = FirmaId;
+
+        var bugun = DateTime.Today;
+        baslangic = new DateTime(bugun.Year, bugun.Month, 1);
+        bitis = bugun;
+        sonHataMesaji = null;
+        StopPolling();
+
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        loading = true;
+        StateHasChanged();
+        try
+        {
+            faturalar = await KdvApi.GetGelenFaturalarAsync(FirmaId, baslangic, bitis);
+            if (OnFaturaSayisiChanged.HasDelegate)
+                await OnFaturaSayisiChanged.InvokeAsync(faturalar.Count);
+        }
+        catch (Exception ex)
+        {
+            faturalar = new();
+            sonHataMesaji = $"Faturalar yüklenirken hata: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task TaraAsync()
+    {
+        if (isScanning) return;
+        if (!baslangic.HasValue || !bitis.HasValue)
+        {
+            sonHataMesaji = "Başlangıç ve bitiş tarihi gerekli.";
+            return;
+        }
+        if (baslangic.Value > bitis.Value)
+        {
+            sonHataMesaji = "Başlangıç tarihi bitiş tarihinden büyük olamaz.";
+            return;
+        }
+
+        sonHataMesaji = null;
+        isScanning = true;
+        StateHasChanged();
+
+        try
+        {
+            var ok = await KdvApi.TaraTetikleAsync(FirmaId, new TaraTetikleRequest
+            {
+                BaslangicTarihi = baslangic.Value,
+                BitisTarihi     = bitis.Value
+            });
+            if (!ok)
+            {
+                ShowError("Tarama başlatılamadı. Worker servisine ulaşılamadı veya firma için DP hesabı tanımlı değil.");
+                isScanning = false;
+                StateHasChanged();
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Tarama başlatılırken hata: {ex.Message}");
+            isScanning = false;
+            StateHasChanged();
+            return;
+        }
+
+        await PollTaramaUntilFinishedAsync();
+    }
+
+    // Worker'ı async tetikledikten sonra /taramalar?take=1 ile son taramanın
+    // durumunu her 2.5sn sorgular. Tamamlandı/Hatalı görünce listeyi yeniler.
+    private async Task PollTaramaUntilFinishedAsync()
+    {
+        StopPolling();
+        pollCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+        var ct = pollCts.Token;
+
+        // Polling başlamadan önce DB'ye tarama satırının yazılması için kısa bekleme.
+        try { await Task.Delay(1500, ct); } catch { return; }
+
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                List<KdvTarama> son;
+                try
+                {
+                    son = await KdvApi.GetTaramalarAsync(FirmaId, take: 1, ct);
+                }
+                catch
+                {
+                    await Task.Delay(2500, ct);
+                    continue;
+                }
+
+                var last = son.FirstOrDefault();
+                if (last is null)
+                {
+                    await Task.Delay(2500, ct);
+                    continue;
+                }
+
+                if (last.Durum == KdvBeyannameTaramaDurumu.Tamamlandi)
+                {
+                    Notif.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Success,
+                        Summary  = "Tarama tamamlandı",
+                        Detail   = $"{last.BulunanFaturaSayisi ?? 0} fatura bulundu.",
+                        Duration = 4000
+                    });
+                    break;
+                }
+                if (last.Durum == KdvBeyannameTaramaDurumu.Hatali)
+                {
+                    ShowError($"Tarama hatalı: {last.HataMesaji ?? "Bilinmeyen hata."}");
+                    break;
+                }
+
+                await Task.Delay(2500, ct);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Sayfa kapandı veya 5 dk timeout — sessiz çık.
+        }
+        finally
+        {
+            isScanning = false;
+            await ReloadAsync();
+        }
+    }
+
+    private void ShowError(string msg)
+    {
+        sonHataMesaji = msg;
+        Notif.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Error,
+            Summary  = "Hata",
+            Detail   = msg,
+            Duration = 6000
+        });
+    }
+
+    private static string FormatPara(decimal tutar, string paraBirimi)
+    {
+        var birim = string.IsNullOrWhiteSpace(paraBirimi) ? "TL" : paraBirimi.Trim();
+        return $"{tutar.ToString("N2", TrCulture)} {birim}";
+    }
+
+    private static BadgeStyle StatuBadgeStyle(string? statu)
+    {
+        if (string.IsNullOrEmpty(statu)) return BadgeStyle.Light;
+        var upper = statu.ToUpperInvariant();
+        if (upper.Contains("RED")) return BadgeStyle.Danger;
+        if (upper.Contains("KABUL")) return BadgeStyle.Success;
+        if (upper.Contains("SİSTEME") || upper.Contains("SISTEM")) return BadgeStyle.Info;
+        return BadgeStyle.Light;
+    }
+
+    private void StopPolling()
+    {
+        try { pollCts?.Cancel(); } catch { /* swallow */ }
+        pollCts?.Dispose();
+        pollCts = null;
+    }
+
+    public void Dispose() => StopPolling();
+}

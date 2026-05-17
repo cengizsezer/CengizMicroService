@@ -40,6 +40,9 @@ namespace Sovos.InvoiceWorker.Data.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<int?>("FirmaId")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -75,6 +78,8 @@ namespace Sovos.InvoiceWorker.Data.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("FirmaId");
 
                     b.ToTable("SovosCompanies", (string)null);
                 });

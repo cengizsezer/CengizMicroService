@@ -29,6 +29,21 @@ namespace WebApp.Shared.Dto.Yonetim
         [StringLength(100)]
         public string VergiDairesi { get; set; } = string.Empty;
 
+        // KDV Beyannamesi (BDP) için ek alanlar — hepsi opsiyonel.
+        [StringLength(10)]
+        public string? VergiDairesiKodu { get; set; }
+
+        [StringLength(100)]
+        public string? YetkiliAdi { get; set; }
+
+        [StringLength(100)]
+        public string? YetkiliSoyadi { get; set; }
+
+        [StringLength(10)]
+        public string? TelefonAlanKodu { get; set; }
+
+        public int? DuzenleyenId { get; set; }
+
         public bool Aktif { get; set; }
     }
 }

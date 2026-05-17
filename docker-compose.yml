@@ -77,6 +77,13 @@ services:
       context: .
       dockerfile: Sovos/Sovos.InvoiceWorker/Dockerfile
 
+  sovos_incominginvoiceworker:
+    container_name: c_sovos_incominginvoiceworker
+    image: ${DOCKER_REGISTRY-}sovosincominginvoiceworker
+    build:
+      context: .
+      dockerfile: Sovos/Sovos.IncomingInvoiceWorker/Dockerfile
+
 
   s_rabbitmq:
      container_name: c_rabbitmq

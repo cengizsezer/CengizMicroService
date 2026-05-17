@@ -1,0 +1,358 @@
+@using System.Globalization
+@using Microsoft.JSInterop
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.KdvBeyanname
+@using WebApp.Domain.Models.KdvBeyanname
+@inject IKdvBeyannameApiService KdvApi
+@inject NotificationService Notif
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<RadzenCard class="rz-mb-3 rz-p-4">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem" Wrap="FlexWrap.Wrap">
+        <RadzenIcon Icon="summarize" Style="font-size:1.5rem;" />
+        <div>
+            <RadzenText TextStyle="TextStyle.H6" class="rz-m-0">KDV Beyannamesi Sonucu</RadzenText>
+            <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary">
+                Dönem: <strong>@Donem</strong>
+            </RadzenText>
+        </div>
+
+        <div style="flex:1;"></div>
+
+        <RadzenButton Icon="refresh"
+                      Text="Yenile"
+                      ButtonStyle="ButtonStyle.Light"
+                      Size="ButtonSize.Small"
+                      Disabled="@(loading || downloading)"
+                      Click="@LoadAsync" />
+
+        <RadzenButton Icon="download"
+                      Text="@(downloading ? "İndiriliyor..." : "BDP XML İndir")"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Disabled="@(!CanDownloadXml)"
+                      Click="@DownloadXmlAsync" />
+    </RadzenStack>
+</RadzenCard>
+
+@if (loading)
+{
+    <RadzenCard class="rz-p-4">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+            <span>Hesaplanıyor...</span>
+        </RadzenStack>
+    </RadzenCard>
+}
+else if (sonHataMesaji is not null && sonuc is null)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Light" Icon="error">
+        @sonHataMesaji
+    </RadzenAlert>
+}
+else if (sonuc is not null)
+{
+    @* ── Eksiklik kartı (varsa, en üstte) ─────────────────── *@
+    @if (sonuc.Eksiklikler.VarMi)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning"
+                     Shade="Shade.Light"
+                     AllowClose="false"
+                     Icon="warning"
+                     class="rz-mb-3">
+            <RadzenStack Gap="0.5rem">
+                <strong>BDP XML üretilemiyor — bazı bilgiler eksik.</strong>
+
+                @if (sonuc.Eksiklikler.FirmaAlanlari.Count > 0)
+                {
+                    <div>
+                        <div class="rz-color-secondary" style="margin-bottom: 0.25rem;">Firma alanları:</div>
+                        <ul style="margin: 0.25rem 0 0.25rem 1.25rem;">
+                            @foreach (var alan in sonuc.Eksiklikler.FirmaAlanlari)
+                            {
+                                <li>@alan</li>
+                            }
+                        </ul>
+                        <RadzenButton Text="Firmalarım'a Git"
+                                      Icon="open_in_new"
+                                      Variant="Variant.Text"
+                                      Size="ButtonSize.Small"
+                                      Click="@(() => Navigation.NavigateTo("/yonetim/firmalar"))" />
+                    </div>
+                }
+
+                @if (sonuc.Eksiklikler.DuzenleyenAlanlari.Count > 0)
+                {
+                    <div>
+                        <div class="rz-color-secondary" style="margin-bottom: 0.25rem;">Düzenleyen:</div>
+                        <ul style="margin: 0.25rem 0 0.25rem 1.25rem;">
+                            @foreach (var alan in sonuc.Eksiklikler.DuzenleyenAlanlari)
+                            {
+                                <li>@alan</li>
+                            }
+                        </ul>
+                        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                            <RadzenButton Text="Firmalarım"
+                                          Icon="open_in_new"
+                                          Variant="Variant.Text"
+                                          Size="ButtonSize.Small"
+                                          Click="@(() => Navigation.NavigateTo("/yonetim/firmalar"))" />
+                            <RadzenButton Text="Düzenleyen Bilgileri"
+                                          Icon="open_in_new"
+                                          Variant="Variant.Text"
+                                          Size="ButtonSize.Small"
+                                          Click="@(() => Navigation.NavigateTo("/yonetim/duzenleyen"))" />
+                        </RadzenStack>
+                    </div>
+                }
+
+                @if (sonuc.Eksiklikler.MizanHatalari.Count > 0)
+                {
+                    <div class="rz-color-danger">
+                        <strong>Mizan hataları:</strong>
+                        <ul style="margin: 0.25rem 0 0 1.25rem;">
+                            @foreach (var h in sonuc.Eksiklikler.MizanHatalari)
+                            {
+                                <li>@h</li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                @if (sonuc.Eksiklikler.MizanUyarilari.Count > 0)
+                {
+                    <details>
+                        <summary><strong>@sonuc.Eksiklikler.MizanUyarilari.Count</strong> mizan uyarısı (kritik değil)</summary>
+                        <ul style="margin: 0.25rem 0 0 1.25rem;">
+                            @foreach (var u in sonuc.Eksiklikler.MizanUyarilari)
+                            {
+                                <li>@u</li>
+                            }
+                        </ul>
+                    </details>
+                }
+            </RadzenStack>
+        </RadzenAlert>
+    }
+
+    @* ── Ana sonuç: Ödenecek mi? Devreden mi? ─────────────── *@
+    <RadzenCard class="rz-mb-3 rz-p-4"
+                Style="@($"background: var(--rz-{(sonuc.OdenmesiGerekenKDV > 0 ? "danger-lighter" : "success-lighter")}); border-left: 6px solid var(--rz-{(sonuc.OdenmesiGerekenKDV > 0 ? "danger" : "success")});")">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+            <RadzenIcon Icon="@(sonuc.OdenmesiGerekenKDV > 0 ? "payments" : "savings")"
+                        Style="@($"font-size: 3rem; color: var(--rz-{(sonuc.OdenmesiGerekenKDV > 0 ? "danger" : "success")});")" />
+            <div>
+                <div class="rz-color-secondary" style="font-size: 0.95rem;">
+                    @(sonuc.OdenmesiGerekenKDV > 0 ? "Ödenmesi Gereken KDV" : "Sonraki Döneme Devreden KDV")
+                </div>
+                <div style="font-size: 2.2rem; font-weight: 700; color: var(--rz-@(sonuc.OdenmesiGerekenKDV > 0 ? "danger" : "success"));">
+                    @(sonuc.OdenmesiGerekenKDV > 0
+                        ? FormatPara(sonuc.OdenmesiGerekenKDV)
+                        : FormatPara(sonuc.SonrakiDonemeDevredenKDV))
+                </div>
+                <div class="rz-color-secondary" style="font-size: 0.85rem;">
+                    Hesap: @FormatPara(sonuc.Hesaplanan391) (391)
+                    − @FormatPara(sonuc.ToplamIndirilecek) (191+190)
+                    = @FormatPara(sonuc.Fark)
+                </div>
+            </div>
+        </RadzenStack>
+    </RadzenCard>
+
+    @* ── 4 KDV ana hesap özet kartları ────────────────────── *@
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.75rem" class="rz-mb-3" Wrap="FlexWrap.Wrap">
+        <RadzenCard class="rz-p-3" Style="min-width: 200px; border-left: 4px solid var(--rz-danger);">
+            <div class="rz-color-secondary" style="font-size: 0.8rem;">391 — Hesaplanan KDV</div>
+            <div style="font-size: 1.3rem; font-weight: 600; color: var(--rz-danger);">@FormatPara(sonuc.Hesaplanan391)</div>
+        </RadzenCard>
+        <RadzenCard class="rz-p-3" Style="min-width: 200px; border-left: 4px solid var(--rz-success);">
+            <div class="rz-color-secondary" style="font-size: 0.8rem;">191 — İndirilecek KDV</div>
+            <div style="font-size: 1.3rem; font-weight: 600; color: var(--rz-success);">@FormatPara(sonuc.Indirilecek191)</div>
+        </RadzenCard>
+        <RadzenCard class="rz-p-3" Style="min-width: 200px; border-left: 4px solid var(--rz-info);">
+            <div class="rz-color-secondary" style="font-size: 0.8rem;">190 — Devreden KDV</div>
+            <div style="font-size: 1.3rem; font-weight: 600; color: var(--rz-info);">@FormatPara(sonuc.Devreden190)</div>
+        </RadzenCard>
+        <RadzenCard class="rz-p-3" Style="min-width: 200px; border-left: 4px solid var(--rz-primary);">
+            <div class="rz-color-secondary" style="font-size: 0.8rem;">600 — Toplam Matrah</div>
+            <div style="font-size: 1.3rem; font-weight: 600; color: var(--rz-primary);">@FormatPara(sonuc.Satislar600)</div>
+        </RadzenCard>
+    </RadzenStack>
+
+    @* ── Tevkifat Uygulanmayanlar (600 oran kırılımı + 391 vergi) ─── *@
+    <RadzenFieldset class="rz-mb-3">
+        <HeaderTemplate>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenIcon Icon="trending_up" />
+                <strong>Tevkifat Uygulanmayan İşlemler</strong>
+                <span class="rz-color-secondary" style="font-size: 0.85rem;">— 600 oran kırılımı, 391'den vergi</span>
+            </RadzenStack>
+        </HeaderTemplate>
+        <ChildContent>
+            @if (sonuc.TevkifatUygulanmayanlar.Count == 0)
+            {
+                <em>Bu dönemde tevkifat uygulanmayan satış kaydı bulunmadı.</em>
+            }
+            else
+            {
+                <RadzenDataGrid Data="@sonuc.TevkifatUygulanmayanlar"
+                                TItem="KdvOranKirilim"
+                                AllowSorting="true"
+                                Density="Density.Compact">
+                    <Columns>
+                        <RadzenDataGridColumn Property="HesapKodu" Title="Hesap Kodu" Width="140px" />
+                        <RadzenDataGridColumn Property="HesapAdi" Title="Hesap Adı" />
+                        <RadzenDataGridColumn Property="Oran" Title="Oran %" Width="100px" TextAlign="TextAlign.Right" />
+                        <RadzenDataGridColumn Property="Bedel" Title="Matrah" Width="160px" TextAlign="TextAlign.Right">
+                            <Template Context="row">@FormatPara(row.Bedel)</Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn Property="KdvTutari" Title="Vergi" Width="160px" TextAlign="TextAlign.Right">
+                            <Template Context="row">@FormatPara(row.KdvTutari)</Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+            }
+        </ChildContent>
+    </RadzenFieldset>
+
+    @* ── İndirilecek KDV ODler (191 oran kırılımı) ───────── *@
+    <RadzenFieldset class="rz-mb-3">
+        <HeaderTemplate>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenIcon Icon="trending_down" />
+                <strong>İndirilecek KDV (Oran Bazında)</strong>
+                <span class="rz-color-secondary" style="font-size: 0.85rem;">— 191 oran kırılımı</span>
+            </RadzenStack>
+        </HeaderTemplate>
+        <ChildContent>
+            @if (sonuc.IndirilecekKdvODler.Count == 0)
+            {
+                <em>İndirilecek KDV oran kırılımı bulunamadı.</em>
+            }
+            else
+            {
+                <RadzenDataGrid Data="@sonuc.IndirilecekKdvODler"
+                                TItem="KdvOranKirilim"
+                                AllowSorting="true"
+                                Density="Density.Compact">
+                    <Columns>
+                        <RadzenDataGridColumn Property="HesapKodu" Title="Hesap Kodu" Width="140px" />
+                        <RadzenDataGridColumn Property="HesapAdi" Title="Hesap Adı" />
+                        <RadzenDataGridColumn Property="Oran" Title="Oran %" Width="100px" TextAlign="TextAlign.Right" />
+                        <RadzenDataGridColumn Property="Bedel" Title="Bedel" Width="160px" TextAlign="TextAlign.Right">
+                            <Template Context="row">@FormatPara(row.Bedel)</Template>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn Property="KdvTutari" Title="KDV Tutarı" Width="160px" TextAlign="TextAlign.Right">
+                            <Template Context="row">@FormatPara(row.KdvTutari)</Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+            }
+        </ChildContent>
+    </RadzenFieldset>
+}
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+    [Parameter, EditorRequired] public string Donem { get; set; } = string.Empty;
+
+    private static readonly CultureInfo TrCulture = new("tr-TR");
+
+    private KdvSonuc? sonuc;
+    private bool loading = true;
+    private bool downloading;
+    private string? sonHataMesaji;
+
+    private int previousFirmaId;
+    private string previousDonem = string.Empty;
+
+    // XML indirilebilir mi: sonuç yüklü, eksiklik yok.
+    private bool CanDownloadXml =>
+        !loading && !downloading && sonuc is not null && !sonuc.Eksiklikler.VarMi;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (previousFirmaId == FirmaId && previousDonem == Donem) return;
+        previousFirmaId = FirmaId;
+        previousDonem = Donem;
+
+        sonHataMesaji = null;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Donem)) return;
+
+        loading = true;
+        StateHasChanged();
+        try
+        {
+            sonuc = await KdvApi.GetSonucAsync(FirmaId, Donem);
+        }
+        catch (Exception ex)
+        {
+            // Backend mizan yoksa 400 döner — sonHataMesaji'ne set et.
+            sonuc = null;
+            sonHataMesaji = $"Sonuç hesaplanırken hata: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadXmlAsync()
+    {
+        if (!CanDownloadXml) return;
+
+        downloading = true;
+        StateHasChanged();
+        try
+        {
+            var result = await KdvApi.IndirXmlAsync(FirmaId, Donem);
+            if (result is null)
+            {
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary  = "XML indirilemedi",
+                    Detail   = "Backend XML üretmedi. Eksiklik kontrolünü tekrar gözden geçirin.",
+                    Duration = 5000
+                });
+                return;
+            }
+
+            var (bytes, fileName) = result.Value;
+            await JS.InvokeVoidAsync("downloadFileFromBytes", fileName, bytes);
+
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary  = "BDP XML indirildi",
+                Detail   = fileName,
+                Duration = 4000
+            });
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary  = "Hata",
+                Detail   = $"XML indirme hatası: {ex.Message}",
+                Duration = 6000
+            });
+        }
+        finally
+        {
+            downloading = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string FormatPara(decimal tutar) =>
+        tutar.ToString("N2", TrCulture) + " TL";
+}

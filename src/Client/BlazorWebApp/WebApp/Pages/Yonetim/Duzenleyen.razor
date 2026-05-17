@@ -1,0 +1,196 @@
+@page "/yonetim/duzenleyen"
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.KdvBeyanname
+@using WebApp.Domain.Models.KdvBeyanname
+@inject IKdvBeyannameApiService KdvApi
+@inject NotificationService Notif
+@inject DialogService Dialog
+
+<RadzenStack Orientation="Orientation.Vertical" Gap="1rem">
+
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+        <RadzenIcon Icon="badge" Style="font-size:2rem; color: var(--rz-primary);" />
+        <div>
+            <RadzenText TextStyle="TextStyle.H4" class="rz-m-0">Düzenleyen Bilgileri</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary">
+                KDV beyannamesi XML'inde &lt;duzenleyen&gt; bloğunda yer alacak SMMM/YMM bilgileri.
+                Her firma için kullanılacak düzenleyen Firmalarım sayfasından seçilir.
+            </RadzenText>
+        </div>
+        <div style="flex:1;"></div>
+        <RadzenButton Icon="add"
+                      Text="Yeni Düzenleyen Ekle"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Click="@OpenCreateAsync" />
+    </RadzenStack>
+
+    @if (loading)
+    {
+        <RadzenCard class="rz-p-4">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+                <span>Yükleniyor...</span>
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else if (items.Count == 0)
+    {
+        <RadzenCard class="rz-p-4" Style="border: 1px dashed var(--rz-border-light); background: var(--rz-base-50);">
+            <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenIcon Icon="badge" Style="font-size:3rem; color: var(--rz-text-secondary);" />
+                <RadzenText TextStyle="TextStyle.H6" class="rz-m-0">Henüz düzenleyen tanımlı değil</RadzenText>
+                <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary">
+                    "Yeni Düzenleyen Ekle" butonu ile ilk SMMM/YMM kaydını oluşturun.
+                </RadzenText>
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else
+    {
+        <RadzenDataGrid Data="@items"
+                        TItem="KdvDuzenleyen"
+                        AllowPaging="true"
+                        PageSize="20"
+                        AllowSorting="true"
+                        AllowFiltering="true"
+                        FilterMode="FilterMode.Simple"
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        Density="Density.Compact">
+            <Columns>
+                <RadzenDataGridColumn Property="Kisaltma" Title="Kısaltma" Width="160px" />
+                <RadzenDataGridColumn Property="Vkn" Title="VKN" Width="130px" />
+                <RadzenDataGridColumn Property="Soyadi" Title="Soyadı (Unvanı)" />
+                <RadzenDataGridColumn Property="Adi" Title="Adı (Unvanın Devamı)" />
+                <RadzenDataGridColumn Property="Eposta" Title="E-posta" Width="220px" />
+                <RadzenDataGridColumn Property="Aktif" Title="Durum" Width="100px">
+                    <Template Context="row">
+                        @if (row.Aktif)
+                        {
+                            <RadzenBadge Text="Aktif" BadgeStyle="BadgeStyle.Success" />
+                        }
+                        else
+                        {
+                            <RadzenBadge Text="Pasif" BadgeStyle="BadgeStyle.Light" />
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn Title="" Width="140px" Filterable="false" Sortable="false" TextAlign="TextAlign.Right">
+                    <Template Context="row">
+                        <RadzenButton Icon="edit"
+                                      Size="ButtonSize.Small"
+                                      Variant="Variant.Text"
+                                      Click="@(() => OpenEditAsync(row))" />
+                        @if (row.Aktif)
+                        {
+                            <RadzenButton Icon="delete"
+                                          Size="ButtonSize.Small"
+                                          ButtonStyle="ButtonStyle.Danger"
+                                          Variant="Variant.Text"
+                                          Click="@(() => DeleteAsync(row))" />
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+            <RadzenCheckBox TValue="bool" Value="@includeInactive" Change="@OnIncludeInactiveChanged" />
+            <RadzenLabel Text="Pasif kayıtları da göster" />
+        </RadzenStack>
+    }
+</RadzenStack>
+
+@code {
+    private List<KdvDuzenleyen> items = new();
+    private bool loading = true;
+    private bool includeInactive;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task OnIncludeInactiveChanged(bool value)
+    {
+        includeInactive = value;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        try
+        {
+            items = await KdvApi.ListDuzenleyenlerAsync(includeInactive);
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Yüklenemedi: {ex.Message}");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task OpenCreateAsync()
+    {
+        var result = await Dialog.OpenAsync<DuzenleyenEditDialog>(
+            "Yeni Düzenleyen",
+            new Dictionary<string, object>(),
+            new DialogOptions { Width = "640px", CloseDialogOnOverlayClick = false });
+
+        if (result is true)
+            await LoadAsync();
+    }
+
+    private async Task OpenEditAsync(KdvDuzenleyen row)
+    {
+        var result = await Dialog.OpenAsync<DuzenleyenEditDialog>(
+            $"Düzenle — {row.Kisaltma}",
+            new Dictionary<string, object> { ["Existing"] = row },
+            new DialogOptions { Width = "640px", CloseDialogOnOverlayClick = false });
+
+        if (result is true)
+            await LoadAsync();
+    }
+
+    private async Task DeleteAsync(KdvDuzenleyen row)
+    {
+        var confirm = await Dialog.Confirm(
+            $"'{row.Kisaltma}' pasife alınacak. Devam edilsin mi?",
+            "Düzenleyeni Sil",
+            new ConfirmOptions { OkButtonText = "Evet, sil", CancelButtonText = "Vazgeç" });
+
+        if (confirm != true) return;
+
+        try
+        {
+            var ok = await KdvApi.DeleteDuzenleyenAsync(row.Id);
+            if (!ok)
+            {
+                ShowError("Kayıt bulunamadı.");
+                return;
+            }
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary  = "Silindi",
+                Detail   = $"{row.Kisaltma} pasife alındı.",
+                Duration = 3000
+            });
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Silme hatası: {ex.Message}");
+        }
+    }
+
+    private void ShowError(string msg) =>
+        Notif.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Error,
+            Summary  = "Hata",
+            Detail   = msg,
+            Duration = 5000
+        });
+}

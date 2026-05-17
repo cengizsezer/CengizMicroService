@@ -24,6 +24,8 @@ public class SovosDbContext : DbContext
             e.Property(x => x.LastErrorMessage).HasMaxLength(2000);
             e.Property(x => x.ScheduleMode).IsRequired();
             e.Property(x => x.ScheduleHour);
+            e.Property(x => x.FirmaId);
+            e.HasIndex(x => x.FirmaId);
         });
 
         modelBuilder.Entity<Invoice>(e =>

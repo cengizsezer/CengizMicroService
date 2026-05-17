@@ -4,6 +4,7 @@ using CatalogService.Api.Features.Education.Domain;
 using CatalogService.Api.Features.Expenses.Domain;
 using CatalogService.Api.Features.Firmalar.Domain;
 using CatalogService.Api.Features.Jobs.Domain;
+using CatalogService.Api.Features.KdvBeyanname.Domain;
 using CatalogService.Api.Features.Mukellefler.Domain;
 using CatalogService.Api.Features.Payment.Entities;
 using CatalogService.Api.Features.Payroll.Entities;
@@ -51,6 +52,14 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<Firma> Firmalar => Set<Firma>();
         public DbSet<Mukellef> Mukellefler => Set<Mukellef>();
 
+        // KDV Beyannamesi modülü
+        public DbSet<KdvBeyannameTarama> KdvBeyannameTaramalar => Set<KdvBeyannameTarama>();
+        public DbSet<GelenFatura> GelenFaturalar => Set<GelenFatura>();
+        public DbSet<KdvBeyannameYevmiye> KdvBeyannameYevmiye => Set<KdvBeyannameYevmiye>();
+        public DbSet<KdvBeyannameMizan> KdvBeyannameMizan => Set<KdvBeyannameMizan>();
+        public DbSet<AppSetting> AppSettings => Set<AppSetting>();
+        public DbSet<Duzenleyen> Duzenleyenler => Set<Duzenleyen>();
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -69,6 +78,14 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new TaxPaymentConfiguration());
             builder.ApplyConfiguration(new FirmaEntityTypeConfiguration());
             builder.ApplyConfiguration(new MukellefEntityTypeConfiguration());
+
+            // KDV Beyannamesi modülü
+            builder.ApplyConfiguration(new KdvBeyannameTaramaConfiguration());
+            builder.ApplyConfiguration(new GelenFaturaConfiguration());
+            builder.ApplyConfiguration(new KdvBeyannameYevmiyeConfiguration());
+            builder.ApplyConfiguration(new KdvBeyannameMizanConfiguration());
+            builder.ApplyConfiguration(new AppSettingConfiguration());
+            builder.ApplyConfiguration(new DuzenleyenConfiguration());
 
 
             SetBuilderPKFConfiguration(builder);

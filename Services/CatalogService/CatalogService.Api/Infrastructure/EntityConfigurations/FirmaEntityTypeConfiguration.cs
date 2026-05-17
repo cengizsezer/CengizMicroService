@@ -1,4 +1,5 @@
 using CatalogService.Api.Features.Firmalar.Domain;
+using CatalogService.Api.Features.KdvBeyanname.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -36,8 +37,26 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(x => x.VergiDairesi)
                 .HasMaxLength(100);
 
+            builder.Property(x => x.VergiDairesiKodu)
+                .HasMaxLength(10);
+
+            builder.Property(x => x.YetkiliAdi)
+                .HasMaxLength(100);
+
+            builder.Property(x => x.YetkiliSoyadi)
+                .HasMaxLength(100);
+
+            builder.Property(x => x.TelefonAlanKodu)
+                .HasMaxLength(10);
+
             builder.HasIndex(x => x.VergiKimlikNo).IsUnique();
             builder.HasIndex(x => x.Aktif);
+
+            builder.HasOne<Duzenleyen>()
+                .WithMany()
+                .HasForeignKey(x => x.DuzenleyenId)
+                .OnDelete(DeleteBehavior.SetNull);
+            builder.HasIndex(x => x.DuzenleyenId);
         }
     }
 }

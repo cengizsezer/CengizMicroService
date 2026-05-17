@@ -114,6 +114,10 @@
                                      Icon="checklist"
                                      Path="/firmakontrol" />
 
+                <RadzenPanelMenuItem Text="KDV Beyannamesi"
+                                     Icon="request_quote"
+                                     Path="/kdv-beyanname" />
+
                 @if (canViewVergiOdeme)
                 {
                     <RadzenPanelMenuItem Text="Mükellef Vergi Ödemeleri"
@@ -124,6 +128,7 @@
                 <RadzenPanelMenuItem Text="Yönetim" Icon="admin_panel_settings">
                     <RadzenPanelMenuItem Text="Firmalarım"  Icon="business" Path="/yonetim/firmalar" />
                     <RadzenPanelMenuItem Text="Mükellefler" Icon="groups"   Path="/yonetim/mukellefler" />
+                    <RadzenPanelMenuItem Text="Düzenleyen Bilgileri" Icon="badge" Path="/yonetim/duzenleyen" />
                 </RadzenPanelMenuItem>
 
                 <AuthorizeView Roles="Admin">

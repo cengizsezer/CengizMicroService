@@ -56,6 +56,7 @@ services:
       - ConsulConfig__ServiceAddress=http://c_catalogservice:5004
       - ConsulConfig__ServiceName=CatalogService
       - ConsulConfig__ServiceId=Catalog
+      - IncomingInvoiceWorker__BaseUrl=http://c_sovos_incominginvoiceworker:5021
       - TZ=Europe/Istanbul
     ports:
       - "5004:5004"
@@ -200,6 +201,23 @@ services:
       - s_sqlserver
     volumes:
       - sovos_dp_keys:/var/sovos-dp-keys
+    restart: unless-stopped
+
+  sovos_incominginvoiceworker:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:5021
+      - TZ=Europe/Istanbul
+    networks:
+      - net_backendservices
+    depends_on:
+      - s_sqlserver
+    external_links:
+      - c_graylog
+      - s_sqlserver
+    volumes:
+      - sovos_dp_keys:/var/sovos-dp-keys
+    restart: unless-stopped
 
   catalogseeder.api:
     command: ["dotnet", "CatalogService.Api.dll", "--seed-force"]

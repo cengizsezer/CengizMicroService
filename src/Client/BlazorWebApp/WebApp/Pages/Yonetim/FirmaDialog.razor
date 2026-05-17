@@ -1,12 +1,15 @@
 @using System.Net
 @using Radzen
 @using Radzen.Blazor
+@using WebApp.Application.Services.KdvBeyanname
 @using WebApp.Application.Services.Yonetim
+@using WebApp.Domain.Models.KdvBeyanname
 @using WebApp.Shared.Dto.Yonetim
 
 @inject DialogService Dialog
 @inject NotificationService Notif
 @inject IFirmaApiClient Api
+@inject IKdvBeyannameApiService KdvApi
 
 <RadzenTemplateForm TItem="FirmaCreateDto" Data="@Model" Submit="@OnSubmit">
     <RadzenCard class="rz-p-3">
@@ -49,6 +52,75 @@
                 <RadzenTextBox Name="VergiDairesi" @bind-Value="Model.VergiDairesi" Style="width:100%" MaxLength="100" />
             </RadzenFormField>
 
+            @* ── KDV Beyannamesi (BDP) için ek alanlar — opsiyonel ─── *@
+            <RadzenFieldset AllowCollapse="true" Collapsed="@_bdpCollapsed">
+                <HeaderTemplate>
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <RadzenIcon Icon="request_quote" />
+                        <strong>BDP Beyanname Bilgileri</strong>
+                        <span class="rz-color-secondary" style="font-size: 0.85rem;">
+                            — KDV beyannamesi XML üretimi için (opsiyonel)
+                        </span>
+                    </RadzenStack>
+                </HeaderTemplate>
+                <ChildContent>
+                    <RadzenStack Gap="0.75rem">
+
+                        <RadzenFormField Text="Vergi Dairesi Kodu" Variant="Variant.Outlined">
+                            <RadzenTextBox Name="VergiDairesiKodu"
+                                           @bind-Value="Model.VergiDairesiKodu"
+                                           Style="width:100%"
+                                           MaxLength="10"
+                                           Placeholder="Örn: 034247 (Maslak)" />
+                        </RadzenFormField>
+
+                        <RadzenFormField Text="Soyadı (Unvanı)" Variant="Variant.Outlined">
+                            <RadzenTextBox Name="YetkiliSoyadi"
+                                           @bind-Value="Model.YetkiliSoyadi"
+                                           Style="width:100%"
+                                           MaxLength="100"
+                                           Placeholder="Örn: PKF PROGROUP KURUMSAL YÖNETIM" />
+                        </RadzenFormField>
+
+                        <RadzenFormField Text="Adı (Unvanın Devamı)" Variant="Variant.Outlined">
+                            <RadzenTextBox Name="YetkiliAdi"
+                                           @bind-Value="Model.YetkiliAdi"
+                                           Style="width:100%"
+                                           MaxLength="100"
+                                           Placeholder="Örn: DANISMANLIGI A.S." />
+                        </RadzenFormField>
+
+                        <RadzenFormField Text="Telefon Alan Kodu (örn. 212)" Variant="Variant.Outlined">
+                            <RadzenTextBox Name="TelefonAlanKodu"
+                                           @bind-Value="Model.TelefonAlanKodu"
+                                           Style="width:100%"
+                                           MaxLength="10" />
+                        </RadzenFormField>
+
+                        @* ── Düzenleyen dropdown ─── *@
+                        <div>
+                            <RadzenFormField Text="Düzenleyen" Variant="Variant.Outlined">
+                                <RadzenDropDown TValue="int?"
+                                                Name="DuzenleyenId"
+                                                Data="@duzenleyenler"
+                                                TextProperty="@nameof(KdvDuzenleyen.Kisaltma)"
+                                                ValueProperty="@nameof(KdvDuzenleyen.Id)"
+                                                @bind-Value="Model.DuzenleyenId"
+                                                AllowClear="true"
+                                                Placeholder="Düzenleyen seçin..."
+                                                Style="width:100%"
+                                                Disabled="@duzenleyenlerLoading" />
+                            </RadzenFormField>
+                            <div class="rz-color-secondary" style="font-size: 0.8rem; margin-top: 0.25rem;">
+                                Bu firmanın beyannamesini hangi SMMM/YMM düzenliyor?
+                                Yönetim → Düzenleyen Bilgileri'nde tanımlanır.
+                            </div>
+                        </div>
+
+                    </RadzenStack>
+                </ChildContent>
+            </RadzenFieldset>
+
             <div>
                 <RadzenCheckBox @bind-Value="Model.Aktif" Name="Aktif" />
                 <RadzenLabel Text="Aktif" Component="Aktif" class="rz-ml-2" />
@@ -73,11 +145,16 @@
     [Parameter] public FirmaDto? Existing { get; set; }
 
     private FirmaCreateDto Model { get; set; } = new();
+    private List<KdvDuzenleyen> duzenleyenler = new();
+    private bool duzenleyenlerLoading = true;
     private bool _busy;
+
+    // BDP fieldset düzenlemede açık (varolan değer var olabilir), oluşturmada kapalı.
+    private bool _bdpCollapsed => Existing is null;
 
     private bool IsEdit => Existing is not null;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         if (Existing is not null)
         {
@@ -90,8 +167,32 @@
                 Telefon = Existing.Telefon,
                 TicaretSicilNo = Existing.TicaretSicilNo,
                 VergiDairesi = Existing.VergiDairesi,
+                VergiDairesiKodu = Existing.VergiDairesiKodu,
+                YetkiliAdi = Existing.YetkiliAdi,
+                YetkiliSoyadi = Existing.YetkiliSoyadi,
+                TelefonAlanKodu = Existing.TelefonAlanKodu,
+                DuzenleyenId = Existing.DuzenleyenId,
                 Aktif = Existing.Aktif
             };
+        }
+
+        try
+        {
+            duzenleyenler = await KdvApi.ListDuzenleyenlerAsync(includeInactive: false);
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary  = "Düzenleyen listesi yüklenemedi",
+                Detail   = ex.Message,
+                Duration = 4000
+            });
+        }
+        finally
+        {
+            duzenleyenlerLoading = false;
         }
     }
 
@@ -111,6 +212,11 @@
                     Telefon = Model.Telefon.Trim(),
                     TicaretSicilNo = Model.TicaretSicilNo.Trim(),
                     VergiDairesi = Model.VergiDairesi.Trim(),
+                    VergiDairesiKodu = Model.VergiDairesiKodu?.Trim(),
+                    YetkiliAdi = Model.YetkiliAdi?.Trim(),
+                    YetkiliSoyadi = Model.YetkiliSoyadi?.Trim(),
+                    TelefonAlanKodu = Model.TelefonAlanKodu?.Trim(),
+                    DuzenleyenId = Model.DuzenleyenId,
                     Aktif = Model.Aktif
                 };
                 await Api.UpdateAsync(Existing!.Id, updateDto);

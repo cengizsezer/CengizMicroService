@@ -31,6 +31,10 @@
         "Action": "Start"
       },
       {
+        "Path": "Sovos\\Sovos.IncomingInvoiceWorker\\Sovos.IncomingInvoiceWorker.csproj",
+        "Action": "Start"
+      },
+      {
         "Path": "src\\AppGateways\\WebAppGateway\\Web.ApiGateway\\Web.ApiGateway.csproj",
         "Action": "Start"
       },

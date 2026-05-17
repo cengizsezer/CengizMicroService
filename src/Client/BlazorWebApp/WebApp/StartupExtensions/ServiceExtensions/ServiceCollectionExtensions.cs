@@ -9,6 +9,7 @@ using WebApp.Application.Handler;
 using WebApp.Application.RuleEngine;
 using WebApp.Application.Services;
 using WebApp.Application.Services.Interfaces;
+using WebApp.Application.Services.KdvBeyanname;
 using WebApp.Application.Services.Yonetim;
 using WebApp.Infrastructure;
 using WebApp.Manager;
@@ -169,6 +170,9 @@ namespace WebApp.StartupExtensions.ServiceExtensions
 
             services.AddScoped<IFirmaApiClient>(sp =>
                 new FirmaApiClient(sp.GetRequiredService<HttpClient>()));
+
+            services.AddScoped<IKdvBeyannameApiService>(sp =>
+                new KdvBeyannameApiService(sp.GetRequiredService<HttpClient>()));
 
             services.AddScoped<IMukellefApiClient>(sp =>
                 new MukellefApiClient(sp.GetRequiredService<HttpClient>()));

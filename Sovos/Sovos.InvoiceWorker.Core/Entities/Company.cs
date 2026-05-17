@@ -11,6 +11,12 @@ public class Company
     public string EncryptedPassword { get; set; } = string.Empty;
 
     /// <summary>
+    /// CatalogService.Firmalar.Id — logical reference (cross-context, fiziksel FK yok).
+    /// KDV Beyannamesi modülü Sovos hesabını Firma'ya bu alanla bağlar.
+    /// </summary>
+    public int? FirmaId { get; set; }
+
+    /// <summary>
     /// Bildirim mail adresleri — virgülle ayrılmış liste (örn: "a@x.com, b@x.com").
     /// MailSender her seferinde split ederek tüm alıcılara gönderir.
     /// </summary>

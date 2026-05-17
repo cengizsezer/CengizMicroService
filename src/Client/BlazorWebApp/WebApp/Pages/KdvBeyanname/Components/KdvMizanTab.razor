@@ -1,0 +1,288 @@
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Forms
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.KdvBeyanname
+@using WebApp.Domain.Models.KdvBeyanname
+@inject IKdvBeyannameApiService KdvApi
+@inject NotificationService Notif
+
+<RadzenCard class="rz-mb-3 rz-p-4">
+    <RadzenStack Orientation="Orientation.Vertical" Gap="0.75rem">
+
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem" Wrap="FlexWrap.Wrap">
+
+            <RadzenIcon Icon="account_balance" Style="font-size:1.5rem;" />
+            <div>
+                <RadzenText TextStyle="TextStyle.H6" class="rz-m-0">KDV Mizan</RadzenText>
+                <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary">
+                    Dönem: <strong>@Donem</strong>
+                </RadzenText>
+            </div>
+
+            <div style="flex:1;"></div>
+
+            <label class="rz-button rz-button-md rz-variant-flat rz-shade-default" style="cursor: pointer;">
+                <RadzenIcon Icon="upload_file" class="rz-mr-1" />
+                @(uploading ? "Yükleniyor..." : "Mizan Yükle")
+                <InputFile OnChange="OnFileSelected"
+                           accept=".xlsx,.xls"
+                           disabled="@uploading"
+                           style="display:none;" />
+            </label>
+
+            <RadzenButton Icon="refresh"
+                          Text="Yenile"
+                          ButtonStyle="ButtonStyle.Light"
+                          Size="ButtonSize.Small"
+                          Disabled="@(loading || uploading)"
+                          Click="@LoadAsync" />
+        </RadzenStack>
+
+        @if (uploading)
+        {
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+                <span>Mizan dosyası parse ediliyor...</span>
+            </RadzenStack>
+        }
+
+        @if (sonHataMesaji is not null)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger"
+                         Shade="Shade.Light"
+                         AllowClose="true"
+                         Close="@(() => sonHataMesaji = null)"
+                         Icon="error">
+                @sonHataMesaji
+            </RadzenAlert>
+        }
+
+        @if (sonUploadOzeti is not null)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Success"
+                         Shade="Shade.Light"
+                         AllowClose="true"
+                         Close="@(() => sonUploadOzeti = null)"
+                         Icon="check_circle">
+                <strong>@sonUploadOzeti.KaydedilenSatir</strong> mizan satırı kaydedildi
+                (okunan: @sonUploadOzeti.OkunanSatir, atlanan: @sonUploadOzeti.AtlananSatir).
+                @if (sonUploadOzeti.Uyarilar.Count > 0)
+                {
+                    <details class="rz-mt-2">
+                        <summary><strong>@sonUploadOzeti.Uyarilar.Count</strong> uyarı</summary>
+                        <ul class="rz-mt-1" style="margin: 0; padding-left: 1.25rem;">
+                            @foreach (var u in sonUploadOzeti.Uyarilar)
+                            {
+                                <li>@u</li>
+                            }
+                        </ul>
+                    </details>
+                }
+            </RadzenAlert>
+        }
+    </RadzenStack>
+</RadzenCard>
+
+@if (loading)
+{
+    <RadzenCard class="rz-p-4">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+            <span>Mizan yükleniyor...</span>
+        </RadzenStack>
+    </RadzenCard>
+}
+else if (mizan is null || mizan.Count == 0)
+{
+    <RadzenCard class="rz-p-4" Style="border: 1px dashed var(--rz-border-light); background: var(--rz-base-50);">
+        <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="0.5rem">
+            <RadzenIcon Icon="upload_file" Style="font-size:3rem; color: var(--rz-text-secondary);" />
+            <RadzenText TextStyle="TextStyle.H6" class="rz-m-0">KDV Mizan Excel'i yükleyin</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary">
+                <strong>@Donem</strong> dönemine ait dönem mizanını yükleyin. Aynı dönem için
+                tekrar yüklerseniz mevcut kayıtlar silinip yenisiyle değişir.
+            </RadzenText>
+        </RadzenStack>
+    </RadzenCard>
+}
+else
+{
+    @* ── 4 KDV ana hesabı özet kartları ────────────────────── *@
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.75rem" class="rz-mb-3" Wrap="FlexWrap.Wrap">
+        @foreach (var (kod, baslik, useAlacak, renk) in AnaHesapTanimlari)
+        {
+            var satir = AnaHesap(kod);
+            var deger = satir is null
+                ? (decimal?)null
+                : (useAlacak ? satir.AlacakKalan : satir.BorcKalan);
+
+            <RadzenCard class="rz-p-3" Style="@($"min-width: 200px; border-left: 4px solid var(--rz-{renk});")">
+                <div class="rz-color-secondary" style="font-size: 0.8rem;">@kod — @baslik</div>
+                <div style="font-size: 1.4rem; font-weight: 600; color: var(--rz-@renk);">
+                    @(deger.HasValue ? FormatPara(deger.Value) : "—")
+                </div>
+                <div class="rz-color-secondary" style="font-size: 0.75rem;">
+                    @(useAlacak ? "Alacak Kalan" : "Borç Kalan")
+                </div>
+            </RadzenCard>
+        }
+    </RadzenStack>
+
+    <RadzenDataGrid Data="@mizan"
+                    TItem="KdvMizanSatir"
+                    AllowPaging="true"
+                    PageSize="50"
+                    PagerHorizontalAlign="HorizontalAlign.Right"
+                    AllowSorting="true"
+                    AllowFiltering="true"
+                    FilterMode="FilterMode.Simple"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                    Density="Density.Compact"
+                    RowStyle="@RowStyle"
+                    Style="min-height: 400px;">
+        <Columns>
+            <RadzenDataGridColumn Property="HesapKodu" Title="Hesap Kodu" Width="140px" />
+            <RadzenDataGridColumn Property="HesapAdi" Title="Hesap Adı" />
+            <RadzenDataGridColumn Property="BorcToplam" Title="Borç Toplam" Width="140px" TextAlign="TextAlign.Right">
+                <Template Context="row">@FormatPara(row.BorcToplam)</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="AlacakToplam" Title="Alacak Toplam" Width="140px" TextAlign="TextAlign.Right">
+                <Template Context="row">@FormatPara(row.AlacakToplam)</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="BorcKalan" Title="Borç Kalan" Width="140px" TextAlign="TextAlign.Right">
+                <Template Context="row">@FormatPara(row.BorcKalan)</Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="AlacakKalan" Title="Alacak Kalan" Width="140px" TextAlign="TextAlign.Right">
+                <Template Context="row">@FormatPara(row.AlacakKalan)</Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+    [Parameter, EditorRequired] public string Donem { get; set; } = string.Empty;
+    [Parameter] public EventCallback<int> OnMizanSayisiChanged { get; set; }
+
+    private static readonly CultureInfo TrCulture = new("tr-TR");
+
+    private List<KdvMizanSatir>? mizan;
+    private MizanUploadResult? sonUploadOzeti;
+
+    private bool loading = true;
+    private bool uploading;
+    private string? sonHataMesaji;
+
+    private int previousFirmaId;
+    private string previousDonem = string.Empty;
+
+    // KDV beyannamesi için ana hesap görünümü: kod, başlık, Alacak Kalan mı?, renk teması
+    private static readonly (string Kod, string Baslik, bool UseAlacak, string Renk)[] AnaHesapTanimlari =
+    {
+        ("190", "Devreden KDV",     false, "info"),
+        ("191", "İndirilecek KDV",  false, "success"),
+        ("391", "Hesaplanan KDV",   true,  "danger"),
+        ("600", "Yurtiçi Satışlar", true,  "primary")
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (previousFirmaId == FirmaId && previousDonem == Donem) return;
+        previousFirmaId = FirmaId;
+        previousDonem = Donem;
+
+        sonHataMesaji = null;
+        sonUploadOzeti = null;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Donem)) return;
+
+        loading = true;
+        StateHasChanged();
+        try
+        {
+            mizan = await KdvApi.GetMizanAsync(FirmaId, Donem);
+            if (OnMizanSayisiChanged.HasDelegate)
+                await OnMizanSayisiChanged.InvokeAsync(mizan.Count);
+        }
+        catch (Exception ex)
+        {
+            mizan = new();
+            sonHataMesaji = $"Mizan yüklenirken hata: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+
+        if (string.IsNullOrWhiteSpace(Donem))
+        {
+            sonHataMesaji = "Dönem boş. Üst panelden geçerli bir dönem (YYYY-MM) girin.";
+            return;
+        }
+
+        sonHataMesaji = null;
+        sonUploadOzeti = null;
+        uploading = true;
+        StateHasChanged();
+
+        try
+        {
+            await using var stream = file.OpenReadStream(maxAllowedSize: 50_000_000);
+            sonUploadOzeti = await KdvApi.UploadMizanAsync(FirmaId, Donem, stream, file.Name);
+
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary  = "Mizan yüklendi",
+                Detail   = $"{sonUploadOzeti.KaydedilenSatir} satır kaydedildi.",
+                Duration = 4000
+            });
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            sonHataMesaji = $"Mizan yüklenirken hata: {ex.Message}";
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary  = "Hata",
+                Detail   = sonHataMesaji,
+                Duration = 6000
+            });
+        }
+        finally
+        {
+            uploading = false;
+            StateHasChanged();
+        }
+    }
+
+    // KDV ana hesabı (1-segment, tam eşleşme) — özet kartlar için.
+    private KdvMizanSatir? AnaHesap(string kod) =>
+        mizan?.FirstOrDefault(m => string.Equals(m.HesapKodu, kod, StringComparison.Ordinal));
+
+    // Ana hesaplara hafif arka plan rengi vur — diğer satırlar normal.
+    private string RowStyle(KdvMizanSatir row, int _)
+    {
+        var kod = row.HesapKodu;
+        if (kod is "190" or "191" or "391" or "600")
+            return "background: var(--rz-primary-lighter);";
+        return string.Empty;
+    }
+
+    private static string FormatPara(decimal tutar) =>
+        tutar.ToString("N2", TrCulture) + " TL";
+}

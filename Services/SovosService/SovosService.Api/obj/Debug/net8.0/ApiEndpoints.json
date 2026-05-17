@@ -166,5 +166,31 @@
       }
     ],
     "ReturnTypes": []
+  },
+  {
+    "ContainingType": "SovosService.Api.Controllers.SovosAdminController",
+    "Method": "RunBatch",
+    "RelativePath": "api/faturakontrol/companies/run-batch",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "req",
+        "Type": "SovosService.Api.Application.Models.SovosBatchRunRequestDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SovosService.Api.Application.Models.SovosBatchRunResultDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
   }
 ]
