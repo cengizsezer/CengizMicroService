@@ -1,0 +1,98 @@
+2026-05-20 23:54:33.288 +03:00 [INF] Executed DbCommand (28ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-05-20 23:54:33.376 +03:00 [INF] Executed DbCommand (15ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-05-20 23:54:33.383 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-05-20 23:54:33.387 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-05-20 23:54:33.408 +03:00 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+2026-05-20 23:54:33.490 +03:00 [INF] No migrations were applied. The database is already up to date.
+2026-05-20 23:54:33.758 +03:00 [INF] InvoiceCheckWorker başladı. InitialDelay=30sn
+2026-05-20 23:54:33.944 +03:00 [WRN] Overriding address(es) 'http://localhost:5011'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2026-05-20 23:54:33.961 +03:00 [INF] Now listening on: http://localhost:5011
+2026-05-20 23:54:34.048 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-05-20 23:54:34.053 +03:00 [INF] Hosting environment: Development
+2026-05-20 23:54:34.055 +03:00 [INF] Content root path: C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker
+2026-05-20 23:55:03.799 +03:00 [INF] === ScheduledChecks BAŞLADI ===
+2026-05-20 23:55:04.033 +03:00 [INF] Executed DbCommand (20ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[IsActive] = CAST(1 AS bit)
+2026-05-20 23:55:04.093 +03:00 [INF] 🧮 IsDue "Daily" | Id=1 nowHour=23 schedHour=22 lastDate=2026-05-17 nowDate=2026-05-20 → true
+2026-05-20 23:55:04.096 +03:00 [INF] 🧮 IsDue "Daily" | Id=2 nowHour=23 schedHour=9 lastDate=2026-05-17 nowDate=2026-05-20 → true
+2026-05-20 23:55:04.097 +03:00 [INF] ScheduledChecks: 2 aktif firma, 2 tanesi şu an taranacak
+2026-05-20 23:55:04.106 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Tarama başlıyor (aralık 20.04.2026 - 20.05.2026)
+2026-05-20 23:55:13.730 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Login başarılı (deneme 1)
+2026-05-20 23:55:13.732 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Onay Bekleyen sayfasına gidiliyor
+2026-05-20 23:55:15.723 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Onay Bekleyen sayfası yüklendi
+2026-05-20 23:55:15.737 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Tarih filtresi 20.04.2026 - 20.05.2026
+2026-05-20 23:55:18.901 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Sorgula tıklandı
+2026-05-20 23:55:18.903 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Loading panel bekleniyor
+2026-05-20 23:55:18.953 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: 2 satır bulundu, parse ediliyor...
+2026-05-20 23:55:19.224 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: İlk satır — 33 doğrudan veri hücresi
+2026-05-20 23:55:19.234 +03:00 [INF] Fatura: AVR2026000000597 | AVRUPA MOTOR LASTİK SANAYİ VE TİCARET LİMİTED ŞİRKETİ | 40.000,00 TRY
+2026-05-20 23:55:19.495 +03:00 [INF] Fatura: SE72026000000839 | VİS TURİZM ORGANİZASYON VE DANIŞMANLIK TİCARET LİMİTED ŞİRKETİ | 6.950,00 TRY
+2026-05-20 23:55:19.496 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: 2 fatura bulundu
+2026-05-20 23:55:20.123 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Logout yapıldı
+2026-05-20 23:55:20.124 +03:00 [INF] Firma PKF Aday Bağımsız Denetim: Tarama tamamlandı. 2 fatura. Süre: 16015ms
+2026-05-20 23:55:20.470 +03:00 [INF] Executed DbCommand (29ms) [Parameters=[@__companyId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[Artirim], [s].[CompanyId], [s].[DuzenlenmeTarihi], [s].[FaturaNo], [s].[FaturaTutari], [s].[FirmaUnvani], [s].[FirstSeenAt], [s].[GondericiVkn], [s].[IskontoTutari], [s].[NotifiedAt], [s].[OlusturulmaTarihi], [s].[ParaBirimi], [s].[SiparisNo], [s].[SonOdemeTarihi], [s].[ToplamVergi]
+FROM [SovosInvoices] AS [s]
+WHERE [s].[CompanyId] = @__companyId_0
+2026-05-20 23:55:20.612 +03:00 [INF] Executed DbCommand (5ms) [Parameters=[@p0='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p1='?' (DbType = Int32), @p2='?' (DbType = DateTime2), @p3='?' (Size = 50), @p4='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p5='?' (Size = 300), @p6='?' (DbType = DateTime2), @p7='?' (Size = 20), @p8='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p9='?' (DbType = DateTime2), @p10='?' (DbType = DateTime2), @p11='?' (Size = 10), @p12='?' (Size = 100), @p13='?' (DbType = DateTime2), @p14='?' (Precision = 18) (Scale = 2) (DbType = Decimal)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+INSERT INTO [SovosInvoices] ([Artirim], [CompanyId], [DuzenlenmeTarihi], [FaturaNo], [FaturaTutari], [FirmaUnvani], [FirstSeenAt], [GondericiVkn], [IskontoTutari], [NotifiedAt], [OlusturulmaTarihi], [ParaBirimi], [SiparisNo], [SonOdemeTarihi], [ToplamVergi])
+OUTPUT INSERTED.[Id]
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14);
+2026-05-20 23:55:20.631 +03:00 [INF] CompanyId 1 (manualMode=false): 2 scraped → 1 yeni eklendi, 1 mail kuyruğunda mevcut, 0 mail dışı
+2026-05-20 23:55:20.734 +03:00 [ERR] Firma PKF Aday Bağımsız Denetim: Yeni fatura mail başarısız (NotifiedAt=null kaldı)
+System.InvalidOperationException: Brevo:ApiKey yapılandırılmamış.
+   at Sovos.InvoiceWorker.Services.BrevoMailSender.SendAsync(List`1 recipients, String subject, String htmlContent, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker\Services\BrevoMailSender.cs:line 141
+   at Sovos.InvoiceWorker.Services.BrevoMailSender.SendNewInvoicesAsync(Company company, List`1 newInvoices, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker\Services\BrevoMailSender.cs:line 45
+   at Sovos.InvoiceWorker.Services.InvoiceOrchestrator.ProcessHourlyAsync(Company company, DateTime fromDate, DateTime toDate, CancellationToken ct, Boolean manualMode) in C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker\Services\InvoiceOrchestrator.cs:line 233
+2026-05-20 23:55:20.746 +03:00 [INF] Executed DbCommand (6ms) [Parameters=[@p1='?' (DbType = Int32), @p0='?' (DbType = DateTime2)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+UPDATE [SovosCompanies] SET [LastSuccessfulRunAt] = @p0
+OUTPUT 1
+WHERE [Id] = @p1;
+2026-05-20 23:55:25.754 +03:00 [INF] Firma PKF SMMM: Tarama başlıyor (aralık 20.04.2026 - 20.05.2026)
+2026-05-20 23:55:46.889 +03:00 [WRN] Firma PKF SMMM: Login başarısız, deneme 1/3. Hata: Login zaman aşımı (15 sn): 'Çıkış' linki görünmedi - giriş muhtemelen reddedildi.
+2026-05-20 23:56:10.051 +03:00 [WRN] Firma PKF SMMM: Login başarısız, deneme 2/3. Hata: Login zaman aşımı (15 sn): 'Çıkış' linki görünmedi - giriş muhtemelen reddedildi.
+2026-05-20 23:56:33.388 +03:00 [WRN] Firma PKF SMMM: Login başarısız, deneme 3/3. Hata: Login zaman aşımı (15 sn): 'Çıkış' linki görünmedi - giriş muhtemelen reddedildi.
+2026-05-20 23:56:33.692 +03:00 [WRN] Firma PKF SMMM: Login hatası (manualMode=false)
+Sovos.InvoiceWorker.Core.Exceptions.SovosLoginException: 3 deneme sonrası giriş başarısız - şifre veya kullanıcı adı yanlış olabilir.
+ ---> Sovos.InvoiceWorker.Core.Exceptions.SovosLoginException: Login zaman aşımı (15 sn): 'Çıkış' linki görünmedi - giriş muhtemelen reddedildi.
+ ---> System.TimeoutException: Timeout 15000ms exceeded.
+Call log:
+  - waiting for Locator("text=Çıkış") to be visible
+   at Microsoft.Playwright.Transport.Connection.InnerSendMessageToServerAsync[T](ChannelOwner object, String method, Dictionary`2 dictionary, Boolean keepNulls) in /_/src/Playwright/Transport/Connection.cs:line 206
+   at Microsoft.Playwright.Transport.Connection.WrapApiCallAsync[T](Func`1 action, Boolean isInternal) in /_/src/Playwright/Transport/Connection.cs:line 532
+   at Microsoft.Playwright.Core.Frame.WaitForSelectorAsync(String selector, FrameWaitForSelectorOptions options) in /_/src/Playwright/Core/Frame.cs:line 667
+   at Sovos.InvoiceWorker.Services.SovosScraper.AttemptLoginAsync(IPage page, Company company, String decryptedPassword) in C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker\Services\SovosScraper.cs:line 121
+   --- End of inner exception stack trace ---
+   at Sovos.InvoiceWorker.Services.SovosScraper.AttemptLoginAsync(IPage page, Company company, String decryptedPassword) in C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker\Services\SovosScraper.cs:line 127
+   at Sovos.InvoiceWorker.Services.SovosScraper.LoginWithRetryAsync(IPage page, Company company, String decryptedPassword, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker\Services\SovosScraper.cs:line 72
+   --- End of inner exception stack trace ---
+   at Sovos.InvoiceWorker.Services.SovosScraper.LoginWithRetryAsync(IPage page, Company company, String decryptedPassword, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker\Services\SovosScraper.cs:line 93
+   at Sovos.InvoiceWorker.Services.SovosScraper.FetchPendingInvoicesAsync(Company company, String decryptedPassword, DateTime fromDate, DateTime toDate, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker\Services\SovosScraper.cs:line 47
+   at Sovos.InvoiceWorker.Services.SovosScraper.FetchPendingInvoicesAsync(Company company, String decryptedPassword, DateTime fromDate, DateTime toDate, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker\Services\SovosScraper.cs:line 57
+   at Sovos.InvoiceWorker.Services.SovosScraper.FetchPendingInvoicesAsync(Company company, String decryptedPassword, DateTime fromDate, DateTime toDate, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker\Services\SovosScraper.cs:line 57
+   at Sovos.InvoiceWorker.Services.InvoiceOrchestrator.ProcessHourlyAsync(Company company, DateTime fromDate, DateTime toDate, CancellationToken ct, Boolean manualMode) in C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker\Services\InvoiceOrchestrator.cs:line 225
+2026-05-20 23:56:33.730 +03:00 [ERR] Firma PKF SMMM: Login-hata maili gönderilemedi
+System.InvalidOperationException: Brevo:ApiKey yapılandırılmamış.
+   at Sovos.InvoiceWorker.Services.BrevoMailSender.SendAsync(List`1 recipients, String subject, String htmlContent, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker\Services\BrevoMailSender.cs:line 141
+   at Sovos.InvoiceWorker.Services.BrevoMailSender.SendLoginErrorAsync(Company company, String errorMessage, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker\Services\BrevoMailSender.cs:line 112
+   at Sovos.InvoiceWorker.Services.InvoiceOrchestrator.ProcessHourlyAsync(Company company, DateTime fromDate, DateTime toDate, CancellationToken ct, Boolean manualMode) in C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker\Services\InvoiceOrchestrator.cs:line 277
+2026-05-20 23:56:33.736 +03:00 [INF] Executed DbCommand (3ms) [Parameters=[@p1='?' (DbType = Int32), @p0='?' (DbType = DateTime2)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+UPDATE [SovosCompanies] SET [LastFailedRunAt] = @p0
+OUTPUT 1
+WHERE [Id] = @p1;
+2026-05-20 23:56:33.738 +03:00 [INF] === ScheduledChecks BİTTİ (89929ms) ===

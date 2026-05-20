@@ -64,7 +64,18 @@
                          AllowClose="true"
                          Close="@(() => sonHataMesaji = null)"
                          Icon="error">
-                @sonHataMesaji
+                <RadzenStack Orientation="Orientation.Horizontal"
+                             AlignItems="AlignItems.Center"
+                             Gap="0.75rem"
+                             Wrap="FlexWrap.Wrap">
+                    <span>@sonHataMesaji</span>
+                    <RadzenButton Text="Tekrar Dene"
+                                  Icon="refresh"
+                                  ButtonStyle="ButtonStyle.Danger"
+                                  Size="ButtonSize.Small"
+                                  Disabled="@isScanning"
+                                  Click="@TaraAsync" />
+                </RadzenStack>
             </RadzenAlert>
         }
     </RadzenStack>
@@ -269,11 +280,14 @@ else
 
                 if (last.Durum == KdvBeyannameTaramaDurumu.Tamamlandi)
                 {
+                    var sayi = last.BulunanFaturaSayisi ?? 0;
                     Notif.Notify(new NotificationMessage
                     {
-                        Severity = NotificationSeverity.Success,
-                        Summary  = "Tarama tamamlandı",
-                        Detail   = $"{last.BulunanFaturaSayisi ?? 0} fatura bulundu.",
+                        Severity = sayi > 0 ? NotificationSeverity.Success : NotificationSeverity.Info,
+                        Summary  = sayi > 0 ? "Tarama tamamlandı" : "Tarama tamamlandı — fatura yok",
+                        Detail   = sayi > 0
+                            ? $"{sayi} fatura bulundu."
+                            : "Bu dönem için Dijital Planet'te fatura bulunamadı.",
                         Duration = 4000
                     });
                     break;

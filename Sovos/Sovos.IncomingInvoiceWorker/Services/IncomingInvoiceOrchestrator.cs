@@ -9,6 +9,9 @@ namespace Sovos.IncomingInvoiceWorker.Services;
 
 public class IncomingInvoiceOrchestrator : IIncomingInvoiceOrchestrator
 {
+    // HataMesaji DB kolonu sınırı — uzun exception/stack trace metni buradan cap'lenir.
+    private const int HataMesajiMaxLength = 500;
+
     private readonly CatalogContext _catalog;
     private readonly IncomingWorkerSovosDbContext _sovos;
     private readonly IIncomingInvoiceScraper _scraper;
@@ -35,16 +38,9 @@ public class IncomingInvoiceOrchestrator : IIncomingInvoiceOrchestrator
     public async Task<long> RunForFirmaAsync(
         int firmaId, DateTime fromDate, DateTime toDate, CancellationToken ct)
     {
-        var firma = await _catalog.Firmalar.FirstOrDefaultAsync(f => f.Id == firmaId, ct)
-            ?? throw new ArgumentException($"Firma bulunamadı: Id={firmaId}");
-
-        // FirmaId üzerinden DP credentials çek — SovosCompanies.FirmaId ile bağlı.
-        var company = await _sovos.Companies
-            .FirstOrDefaultAsync(c => c.FirmaId == firmaId, ct)
-            ?? throw new InvalidOperationException(
-                $"Firma '{firma.Unvan}' için Dijital Planet hesabı tanımlı değil. " +
-                "Fatura Kontrol sayfasından firma için DP kullanıcı/şifre tanımlayın.");
-
+        // Tarama kaydını EN BAŞTA oluştur. Firma/DP kontrolü patlasa bile kayıt
+        // 'Hatali' işaretlenebilsin — aksi halde tarama kaydı hiç oluşmaz, UI
+        // polling son taramayı göremez ve sonsuza dek "Taranıyor..." gösterir.
         var tarama = new KdvBeyannameTarama
         {
             FirmaId          = firmaId,
@@ -58,6 +54,16 @@ public class IncomingInvoiceOrchestrator : IIncomingInvoiceOrchestrator
 
         try
         {
+            var firma = await _catalog.Firmalar.FirstOrDefaultAsync(f => f.Id == firmaId, ct)
+                ?? throw new ArgumentException($"Firma bulunamadı: Id={firmaId}");
+
+            // FirmaId üzerinden DP credentials çek — SovosCompanies.FirmaId ile bağlı.
+            var company = await _sovos.Companies
+                .FirstOrDefaultAsync(c => c.FirmaId == firmaId, ct)
+                ?? throw new InvalidOperationException(
+                    $"Firma '{firma.Unvan}' için Dijital Planet hesabı tanımlı değil. " +
+                    "Fatura Kontrol sayfasından firma için DP kullanıcı/şifre tanımlayın.");
+
             string decryptedPassword;
             try
             {
@@ -73,6 +79,16 @@ public class IncomingInvoiceOrchestrator : IIncomingInvoiceOrchestrator
             var scraped = await _scraper.FetchIncomingInvoicesAsync(
                 company, decryptedPassword, fromDate, toDate, ct);
 
+            // Yeni tarama sonucu geldi — bu firma + tarih aralığındaki eski faturaları
+            // temizle ki grid'de eski/yeni karışmasın. Boş sonuçta da temizlenir
+            // (eski faturalar görünmesin). Scrape patlarsa buraya hiç gelinmez,
+            // dolayısıyla başarısız taramada eski veri korunur.
+            await _catalog.GelenFaturalar
+                .Where(g => g.FirmaId == firmaId
+                            && g.FaturaTarihi >= fromDate
+                            && g.FaturaTarihi <= toDate)
+                .ExecuteDeleteAsync(ct);
+
             await _upsert.UpsertAsync(firmaId, scraped, ct);
 
             tarama.Durum               = KdvBeyannameTaramaDurumu.Tamamlandi;
@@ -86,15 +102,18 @@ public class IncomingInvoiceOrchestrator : IIncomingInvoiceOrchestrator
         }
         catch (Exception ex)
         {
+            // Endpoint zaten 202 döndü; re-throw ETME — sadece tarama kaydını
+            // 'Hatali' işaretle ki UI polling dursun ve kullanıcıya hata gösterilsin.
             tarama.Durum       = KdvBeyannameTaramaDurumu.Hatali;
             tarama.BitisAt     = DateTime.UtcNow;
-            tarama.HataMesaji  = ex.Message.Length > 2000 ? ex.Message[..2000] : ex.Message;
+            tarama.HataMesaji  = ex.Message.Length > HataMesajiMaxLength
+                ? ex.Message[..HataMesajiMaxLength]
+                : ex.Message;
             await _catalog.SaveChangesAsync(CancellationToken.None);
 
             _logger.LogError(ex,
                 "FirmaId {FirmaId}: Tarama hatası (TaramaId={TaramaId})",
                 firmaId, tarama.Id);
-            throw;
         }
 
         return tarama.Id;

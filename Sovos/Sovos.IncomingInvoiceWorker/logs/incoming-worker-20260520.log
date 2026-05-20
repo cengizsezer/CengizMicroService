@@ -1,0 +1,86 @@
+2026-05-20 23:54:32.634 +03:00 [WRN] Overriding address(es) 'http://localhost:5021'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2026-05-20 23:54:32.692 +03:00 [INF] Now listening on: http://localhost:5021
+2026-05-20 23:54:32.793 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-05-20 23:54:32.808 +03:00 [INF] Hosting environment: Development
+2026-05-20 23:54:32.819 +03:00 [INF] Content root path: C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker
+2026-05-20 23:56:56.571 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/2/tara - application/json; charset=utf-8 null
+2026-05-20 23:56:56.618 +03:00 [INF] Executing endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker)'
+2026-05-20 23:56:56.638 +03:00 [INF] Route matched with {action = "Tara", controller = "IncomingInvoice"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Tara(Int32, Sovos.IncomingInvoiceWorker.Controllers.TaramaRequest, System.Threading.CancellationToken) on controller Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController (Sovos.IncomingInvoiceWorker).
+2026-05-20 23:56:57.232 +03:00 [WRN] Entity 'Job' has a global query filter defined and is the required end of a relationship with the entity 'JobAssignment'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-05-20 23:56:57.926 +03:00 [INF] Executed DbCommand (34ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT CASE
+    WHEN EXISTS (
+        SELECT 1
+        FROM [Firmalar] AS [f]
+        WHERE [f].[Id] = @__firmaId_0) THEN CAST(1 AS bit)
+    ELSE CAST(0 AS bit)
+END
+2026-05-20 23:56:57.952 +03:00 [INF] Executing AcceptedResult, writing value of type '<>f__AnonymousType3`3[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-20 23:56:57.955 +03:00 [INF] Tara başladı (FirmaId=2, 2026-05-01 - 2026-05-20)
+2026-05-20 23:56:57.961 +03:00 [INF] Executed action Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker) in 1319.9525ms
+2026-05-20 23:56:57.964 +03:00 [INF] Executed endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker)'
+2026-05-20 23:56:57.967 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/2/tara - 202 null application/json; charset=utf-8 1396.8963ms
+2026-05-20 23:56:58.117 +03:00 [INF] Executed DbCommand (8ms) [Parameters=[@p0='?' (DbType = DateTime2), @p1='?' (DbType = DateTime2), @p2='?' (DbType = DateTime2), @p3='?' (DbType = DateTime2), @p4='?' (DbType = Int32), @p5='?' (DbType = Int32), @p6='?' (DbType = Int32), @p7='?' (Size = 2000)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+INSERT INTO [KdvBeyannameTaramalar] ([BaslangicAt], [BaslangicTarihi], [BitisAt], [BitisTarihi], [BulunanFaturaSayisi], [Durum], [FirmaId], [HataMesaji])
+OUTPUT INSERTED.[Id]
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7);
+2026-05-20 23:56:58.161 +03:00 [INF] Executed DbCommand (3ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [f].[Id], [f].[Aktif], [f].[CreatedAt], [f].[DuzenleyenId], [f].[Email], [f].[KisaAd], [f].[Telefon], [f].[TelefonAlanKodu], [f].[TicaretSicilNo], [f].[Unvan], [f].[UpdatedAt], [f].[VergiDairesi], [f].[VergiDairesiKodu], [f].[VergiKimlikNo], [f].[YetkiliAdi], [f].[YetkiliSoyadi]
+FROM [Firmalar] AS [f]
+WHERE [f].[Id] = @__firmaId_0
+2026-05-20 23:56:58.237 +03:00 [INF] Executed DbCommand (3ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[FirmaId] = @__firmaId_0
+2026-05-20 23:56:58.289 +03:00 [INF] Executed DbCommand (5ms) [Parameters=[@p3='?' (DbType = Int64), @p0='?' (DbType = DateTime2), @p1='?' (DbType = Int32), @p2='?' (Size = 2000)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+UPDATE [KdvBeyannameTaramalar] SET [BitisAt] = @p0, [Durum] = @p1, [HataMesaji] = @p2
+OUTPUT 1
+WHERE [Id] = @p3;
+2026-05-20 23:56:58.292 +03:00 [ERR] FirmaId 2: Tarama hatası (TaramaId=4)
+System.InvalidOperationException: Firma 'PKF RİSK YÖNETİMİ ANONİM ŞİRKETİ' için Dijital Planet hesabı tanımlı değil. Fatura Kontrol sayfasından firma için DP kullanıcı/şifre tanımlayın.
+   at Sovos.IncomingInvoiceWorker.Services.IncomingInvoiceOrchestrator.RunForFirmaAsync(Int32 firmaId, DateTime fromDate, DateTime toDate, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker\Services\IncomingInvoiceOrchestrator.cs:line 61
+2026-05-20 23:56:58.304 +03:00 [INF] Tara bitti (FirmaId=2)
+2026-05-20 23:57:16.842 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/6/tara - application/json; charset=utf-8 null
+2026-05-20 23:57:16.845 +03:00 [INF] Executing endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker)'
+2026-05-20 23:57:16.846 +03:00 [INF] Route matched with {action = "Tara", controller = "IncomingInvoice"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Tara(Int32, Sovos.IncomingInvoiceWorker.Controllers.TaramaRequest, System.Threading.CancellationToken) on controller Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController (Sovos.IncomingInvoiceWorker).
+2026-05-20 23:57:16.853 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT CASE
+    WHEN EXISTS (
+        SELECT 1
+        FROM [Firmalar] AS [f]
+        WHERE [f].[Id] = @__firmaId_0) THEN CAST(1 AS bit)
+    ELSE CAST(0 AS bit)
+END
+2026-05-20 23:57:16.855 +03:00 [INF] Executing AcceptedResult, writing value of type '<>f__AnonymousType3`3[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-05-20 23:57:16.856 +03:00 [INF] Tara başladı (FirmaId=6, 2026-05-01 - 2026-05-20)
+2026-05-20 23:57:16.856 +03:00 [INF] Executed action Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker) in 9.0954ms
+2026-05-20 23:57:16.858 +03:00 [INF] Executed endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker)'
+2026-05-20 23:57:16.859 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/6/tara - 202 null application/json; charset=utf-8 16.296ms
+2026-05-20 23:57:16.860 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[@p0='?' (DbType = DateTime2), @p1='?' (DbType = DateTime2), @p2='?' (DbType = DateTime2), @p3='?' (DbType = DateTime2), @p4='?' (DbType = Int32), @p5='?' (DbType = Int32), @p6='?' (DbType = Int32), @p7='?' (Size = 2000)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+INSERT INTO [KdvBeyannameTaramalar] ([BaslangicAt], [BaslangicTarihi], [BitisAt], [BitisTarihi], [BulunanFaturaSayisi], [Durum], [FirmaId], [HataMesaji])
+OUTPUT INSERTED.[Id]
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7);
+2026-05-20 23:57:16.865 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [f].[Id], [f].[Aktif], [f].[CreatedAt], [f].[DuzenleyenId], [f].[Email], [f].[KisaAd], [f].[Telefon], [f].[TelefonAlanKodu], [f].[TicaretSicilNo], [f].[Unvan], [f].[UpdatedAt], [f].[VergiDairesi], [f].[VergiDairesiKodu], [f].[VergiKimlikNo], [f].[YetkiliAdi], [f].[YetkiliSoyadi]
+FROM [Firmalar] AS [f]
+WHERE [f].[Id] = @__firmaId_0
+2026-05-20 23:57:16.870 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[FirmaId] = @__firmaId_0
+2026-05-20 23:57:16.891 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[@p3='?' (DbType = Int64), @p0='?' (DbType = DateTime2), @p1='?' (DbType = Int32), @p2='?' (Size = 2000)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+UPDATE [KdvBeyannameTaramalar] SET [BitisAt] = @p0, [Durum] = @p1, [HataMesaji] = @p2
+OUTPUT 1
+WHERE [Id] = @p3;
+2026-05-20 23:57:16.893 +03:00 [ERR] FirmaId 6: Tarama hatası (TaramaId=5)
+System.InvalidOperationException: Firma 'TRUD KURUMSAL VE FİNANSAL DANIŞMANLIK ANONİM ŞİRKETİ' için Dijital Planet hesabı tanımlı değil. Fatura Kontrol sayfasından firma için DP kullanıcı/şifre tanımlayın.
+   at Sovos.IncomingInvoiceWorker.Services.IncomingInvoiceOrchestrator.RunForFirmaAsync(Int32 firmaId, DateTime fromDate, DateTime toDate, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker\Services\IncomingInvoiceOrchestrator.cs:line 61
+2026-05-20 23:57:16.894 +03:00 [INF] Tara bitti (FirmaId=6)
