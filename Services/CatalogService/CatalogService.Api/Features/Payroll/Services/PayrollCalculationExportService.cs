@@ -64,6 +64,7 @@ namespace CatalogService.Api.Features.Payroll.Services
             bool hasDisability = result.DisabilityType != PayrollDisabilityType.None;
             bool hasEmployer = request.IncludeEmployerCost;
             bool hasIncentive = request.LawCode != "00000";
+            bool hasBes = request.HasMandatoryBes;
 
             string? incentiveSource = result.Months
                 .FirstOrDefault(x => x.IncentiveSource != null)?.IncentiveSource;
@@ -96,6 +97,7 @@ namespace CatalogService.Api.Features.Payroll.Services
             Header("Hesaplanan DV");
             Header("İstisna DV");
             Header("Ödenecek DV");
+            if (hasBes) Header("BES Kesintisi");
             Header("Kesintiler");
             Header("Net Ücret");
             if (hasEmployer)
@@ -135,6 +137,7 @@ namespace CatalogService.Api.Features.Payroll.Services
                 Num(m.CalculatedStampTax);
                 Num(m.StampTaxExemption);
                 Num(m.PayableStampTax);
+                if (hasBes) Num(m.BesAmount);
                 Num(m.TotalDeductions);
                 Num(m.NetSalary);
                 if (hasEmployer)
@@ -178,6 +181,7 @@ namespace CatalogService.Api.Features.Payroll.Services
                 Total(result.Totals.TotalCalculatedStampTax);
                 Total(result.Totals.TotalStampTaxExemption);
                 Total(result.Totals.TotalPayableStampTax);
+                if (hasBes) Total(result.Totals.TotalBesAmount);
                 Total(result.Totals.TotalDeductions);
                 Total(result.Totals.TotalNetSalary);
                 if (hasEmployer)
@@ -355,14 +359,17 @@ namespace CatalogService.Api.Features.Payroll.Services
             bool hasDisability = result.DisabilityType != PayrollDisabilityType.None;
             bool hasEmployer = request.IncludeEmployerCost;
             bool hasIncentive = request.LawCode != "00000";
+            bool hasBes = request.HasMandatoryBes;
 
             var headers = new List<string> { "Ay", "Tutar", "Brüt", "SGK İ", "İSP İ" };
             if (hasDisability) headers.Add("Engel");
             headers.AddRange(new[]
             {
                 "GV Matrah", "Küm. Matrah", "Hes. GV", "İst. GV", "Öd. GV",
-                "Hes. DV", "İst. DV", "Öd. DV", "Kesintiler", "Net"
+                "Hes. DV", "İst. DV", "Öd. DV"
             });
+            if (hasBes) headers.Add("BES");
+            headers.AddRange(new[] { "Kesintiler", "Net" });
             if (hasEmployer)
             {
                 headers.Add("İşvr Brüt");
@@ -402,6 +409,7 @@ namespace CatalogService.Api.Features.Payroll.Services
                     Cell(t, FormatMoney(m.CalculatedStampTax));
                     Cell(t, FormatMoney(m.StampTaxExemption));
                     Cell(t, FormatMoney(m.PayableStampTax));
+                    if (hasBes) Cell(t, FormatMoney(m.BesAmount));
                     Cell(t, FormatMoney(m.TotalDeductions));
                     Cell(t, FormatMoney(m.NetSalary));
                     if (hasEmployer)
@@ -432,6 +440,7 @@ namespace CatalogService.Api.Features.Payroll.Services
                     Cell(t, FormatMoney(tot.TotalCalculatedStampTax), bold: true, bg: "#f9fafb");
                     Cell(t, FormatMoney(tot.TotalStampTaxExemption), bold: true, bg: "#f9fafb");
                     Cell(t, FormatMoney(tot.TotalPayableStampTax), bold: true, bg: "#f9fafb");
+                    if (hasBes) Cell(t, FormatMoney(tot.TotalBesAmount), bold: true, bg: "#f9fafb");
                     Cell(t, FormatMoney(tot.TotalDeductions), bold: true, bg: "#f9fafb");
                     Cell(t, FormatMoney(tot.TotalNetSalary), bold: true, bg: "#f9fafb");
                     if (hasEmployer)

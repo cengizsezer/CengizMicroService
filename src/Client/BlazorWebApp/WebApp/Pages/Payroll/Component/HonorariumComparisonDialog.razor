@@ -31,22 +31,19 @@
     </div>
 
     <div class="stopaj-row">
-        <span class="stopaj-label">Stopaj Oranı:</span>
-        <RadzenRadioButtonList @bind-Value="selectedStopajRate"
-                               TValue="decimal"
-                               Orientation="Orientation.Horizontal"
-                               Change="@(_ => RecalculateAsync())">
-            <Items>
-                <RadzenRadioButtonListItem Text="%5" Value="0.05m" />
-                <RadzenRadioButtonListItem Text="%10" Value="0.10m" />
-                <RadzenRadioButtonListItem Text="%15" Value="0.15m" />
-            </Items>
-        </RadzenRadioButtonList>
-
-        @if (result is not null)
-        {
-            <span class="beyan-info">Beyan Sınırı: @FormatMoney(result.BeyanSiniri)</span>
-        }
+        <span class="stopaj-label">Beyan Yılı:</span>
+        <RadzenDropDown TValue="int"
+                        Data="@yearOptions"
+                        @bind-Value="selectedYear"
+                        Change="@(_ => RecalculateAsync())"
+                        Style="width:210px;">
+            <Template Context="year">
+                @FormatBeyanOption(year)
+            </Template>
+            <ValueTemplate Context="year">
+                @FormatBeyanOption(year)
+            </ValueTemplate>
+        </RadzenDropDown>
     </div>
 
     @if (isLoading)
@@ -113,7 +110,23 @@
                     </tr>
                     <tr>
                         <td class="cell-code">B (@FormatPercent(result.KarDagitimi.StopajOrani * 100m))</td>
-                        <td class="cell-label">Kar Dağıtım Stopajı</td>
+                        <td class="cell-label">
+                            <div class="stopaj-inline">
+                                <span class="stopaj-inline-label">Kar Dağıtım Stopajı</span>
+                                <div class="stopaj-inline-radio">
+                                    <RadzenRadioButtonList @bind-Value="selectedStopajRate"
+                                                           TValue="decimal"
+                                                           Orientation="Orientation.Horizontal"
+                                                           Change="@(_ => RecalculateAsync())">
+                                        <Items>
+                                            <RadzenRadioButtonListItem Text="%5" Value="0.05m" />
+                                            <RadzenRadioButtonListItem Text="%10" Value="0.10m" />
+                                            <RadzenRadioButtonListItem Text="%15" Value="0.15m" />
+                                        </Items>
+                                    </RadzenRadioButtonList>
+                                </div>
+                            </div>
+                        </td>
                         <td class="cell-value">@FormatMoney(result.KarDagitimi.B_Stopaj)</td>
                     </tr>
                     <tr>
@@ -158,7 +171,6 @@
         </div>
 
         <div class="comparison-summary">
-            <div class="summary-icon">@(result.AvantajliYontem == AvantajliYontem.Esit ? "≈" : "✔")</div>
             <div class="summary-content">
                 <div class="summary-rows">
                     <div class="summary-row">
@@ -170,8 +182,6 @@
                         <strong>@FormatMoney(result.KarDagitimi.NetVergiMaliyeti)</strong>
                     </div>
                 </div>
-                <div class="summary-title">Avantajlı Yöntem: @AdvantageText</div>
-                <div class="summary-line">Net Fark: @FormatMoney(result.NetFark)</div>
             </div>
         </div>
     }
@@ -192,6 +202,20 @@
     [Parameter] public int Year { get; set; } = 2026;
 
     private decimal selectedStopajRate = 0.15m;
+    private int selectedYear;
+    private readonly List<int> yearOptions = new() { 2023, 2024, 2025, 2026 };
+
+    // UI display only. Tek doğruluk kaynağı backend
+    // DistributionComparisonService.BeyanSiniriByYear.
+    // Değişiklik gerekirse iki yeri birden güncelle.
+    private static readonly IReadOnlyDictionary<int, decimal> BeyanSiniriPerYearUi =
+        new Dictionary<int, decimal>
+        {
+            [2023] = 1_900_000m,
+            [2024] = 3_000_000m,
+            [2025] = 4_300_000m,
+            [2026] = 5_300_000m,
+        };
     private DistributionComparisonResultDto? result;
     private bool isLoading;
     private bool isExporting;
@@ -200,6 +224,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Dialog parent sayfanın yılıyla açılır; bu yıl dropdown seçenekleri
+        // dışındaysa (örn. 2027) 2026'ya düşülür.
+        selectedYear = yearOptions.Contains(Year) ? Year : 2026;
         await RecalculateAsync();
     }
 
@@ -227,7 +254,7 @@
 
             var request = new CompareDistributionRequest
             {
-                Year = Year,
+                Year = selectedYear,
                 YillikBrut = GrossAmount,
                 YillikVergiMaliyeti = TaxCost,
                 YillikNetEleGecen = NetReceived,
@@ -247,17 +274,9 @@
         }
     }
 
-    private string AdvantageText => result?.AvantajliYontem switch
-    {
-        AvantajliYontem.HuzurHakki => "Huzur Hakkı",
-        AvantajliYontem.KarDagitimi => "Kar Dağıtımı",
-        AvantajliYontem.Esit => "Eşit",
-        _ => "—"
-    };
-
     private CompareDistributionRequest BuildRequest() => new()
     {
-        Year = Year,
+        Year = selectedYear,
         YillikBrut = GrossAmount,
         YillikVergiMaliyeti = TaxCost,
         YillikNetEleGecen = NetReceived,
@@ -268,7 +287,7 @@
     {
         if (result is null) return;
         await DownloadAsync(
-            $"kar_dagitimi_karsilastirma_{Year}.xlsx",
+            $"kar_dagitimi_karsilastirma_{selectedYear}.xlsx",
             ct => PayrollApiService.ExportComparisonExcelAsync(BuildRequest(), ct),
             "Excel");
     }
@@ -277,7 +296,7 @@
     {
         if (result is null) return;
         await DownloadAsync(
-            $"kar_dagitimi_karsilastirma_{Year}.pdf",
+            $"kar_dagitimi_karsilastirma_{selectedYear}.pdf",
             ct => PayrollApiService.ExportComparisonPdfAsync(BuildRequest(), ct),
             "PDF");
     }
@@ -311,6 +330,12 @@
 
     private static string FormatMoney(decimal value) => $"{value:N2} TL";
     private static string FormatPercent(decimal value) => $"%{value:N2}";
+
+    // "{yıl} - {beyan sınırı} TL" — dropdown hem seçili gösterimde hem listede.
+    private static string FormatBeyanOption(int year)
+        => BeyanSiniriPerYearUi.TryGetValue(year, out var limit)
+            ? $"{year} - {limit:N0} TL"
+            : year.ToString();
 }
 
 <style>
@@ -362,11 +387,36 @@
         font-size: 12px;
     }
 
-    .beyan-info {
-        margin-left: auto;
-        color: #6b7280;
-        font-size: 11px;
+    /* Stopaj radyo grubu artık KAR DAĞITIM tablosunda "B" satırının içinde */
+    .stopaj-inline {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
     }
+
+    .stopaj-inline-label {
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .stopaj-inline-radio {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+    }
+
+        /* Radyoyu kompakt tut, "B" satırının dikey hizasını bozma */
+        .stopaj-inline-radio .rz-radio-button-list {
+            margin: 0;
+            font-size: 11px;
+            line-height: 1;
+        }
+
+        .stopaj-inline-radio .rz-radio-button-list .rz-radiobutton-box {
+            width: 14px;
+            height: 14px;
+        }
 
     .method-block {
         border: 1px solid #e5e7eb;
@@ -461,13 +511,6 @@
         margin-bottom: 4px;
     }
 
-    .summary-icon {
-        font-size: 18px;
-        line-height: 1;
-        color: #2f7d4a;
-        font-weight: 700;
-    }
-
     .summary-content {
         display: flex;
         flex-direction: column;
@@ -488,17 +531,6 @@
         display: flex;
         justify-content: space-between;
         max-width: 360px;
-    }
-
-    .summary-title {
-        font-size: 13px;
-        font-weight: 700;
-        color: #1f2937;
-    }
-
-    .summary-line {
-        font-size: 11px;
-        color: #374151;
     }
 
     .comparison-footer {

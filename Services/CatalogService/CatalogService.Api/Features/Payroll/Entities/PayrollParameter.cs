@@ -36,9 +36,10 @@
         public decimal UnemploymentEmployerRate { get; set; }  // İşsizlik işveren: 0.02
         public decimal SgkCeilingMultiplier { get; set; }      // Prime esas kazanç tavan katsayısı: 7.5
 
-        // 05510 - 5510/81-ı Beş Puan İşveren SGK Teşviki
-        public decimal Incentive05510TreasuryRate { get; set; }     // Hazine desteği oranı: 0.05
-        public decimal SgkEmployerMYO05510Rate { get; set; }        // 5 puan indirim sonrası MYO oranı: 0.06
+        // 05510 - 5510/81-ı SGK işveren prim indirimi (yıl bazlı)
+        public decimal Incentive05510TreasuryRate { get; set; }        // İmalat dışı indirim oranı (2026: 0.02)
+        public decimal Incentive05510ManufacturingRate { get; set; }   // İmalat sektörü indirim oranı (2026: 0.05)
+        public decimal SgkEmployerMYO05510Rate { get; set; }           // (stratejide kullanılmıyor) 5 puan sonrası MYO
 
         public bool IsActive { get; set; } = true;
     }

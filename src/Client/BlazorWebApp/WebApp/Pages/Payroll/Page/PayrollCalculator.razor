@@ -165,6 +165,10 @@
                             <th>Damga Vergisi</th>
                             <th>İstisna D.V.</th>
                             <th>Ödenecek Damga V.</th>
+                            @if (model.HasMandatoryBes)
+                            {
+                                <th>BES Kesintisi</th>
+                            }
                             <th>Kesintiler Toplamı</th>
                             <th>Net Ücret</th>
                             @if (model.IncludeEmployerCost)
@@ -215,6 +219,10 @@
                                 <td>@FormatMoney(monthResult?.CalculatedStampTax)</td>
                                 <td>@FormatMoney(monthResult?.StampTaxExemption)</td>
                                 <td>@FormatMoney(monthResult?.PayableStampTax)</td>
+                                @if (model.HasMandatoryBes)
+                                {
+                                    <td>@FormatMoney(monthResult?.BesAmount)</td>
+                                }
                                 <td>@FormatMoney(monthResult?.TotalDeductions)</td>
                                 <td>@FormatMoney(monthResult?.NetSalary)</td>
                                 @if (model.IncludeEmployerCost)
@@ -248,6 +256,10 @@
                             <td>@FormatMoney(result?.Totals?.TotalCalculatedStampTax)</td>
                             <td>@FormatMoney(result?.Totals?.TotalStampTaxExemption)</td>
                             <td>@FormatMoney(result?.Totals?.TotalPayableStampTax)</td>
+                            @if (model.HasMandatoryBes)
+                            {
+                                <td>@FormatMoney(result?.Totals?.TotalBesAmount)</td>
+                            }
                             <td>@FormatMoney(result?.Totals?.TotalDeductions)</td>
                             <td>@FormatMoney(result?.Totals?.TotalNetSalary)</td>
                             @if (model.IncludeEmployerCost)

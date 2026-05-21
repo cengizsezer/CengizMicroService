@@ -59,7 +59,7 @@ namespace CatalogService.Api.Features.Payroll.Persistence.Seeds
         {
             const int year = 2026;
             const string seedKey = "PayrollParameters-2026";
-            const int seedVersion = 3;
+            const int seedVersion = 4;
 
             var appliedSeed = await context.SeedHistories
                 .FirstOrDefaultAsync(x => x.SeedKey == seedKey, cancellationToken);
@@ -97,15 +97,16 @@ namespace CatalogService.Api.Features.Payroll.Persistence.Seeds
             parameter.MonthlyBoardMemberExemption = 0m;
             parameter.IsActive = true;
 
-            // İşveren SGK oranları (strateji hesaplamaları için)
-            parameter.SgkEmployerMYORate = 0.11m;
+            // İşveren SGK oranları — 2026 (7566 sayılı Kanun): MYÖ %11→%12, KVSK %2→%2,25
+            parameter.SgkEmployerMYORate = 0.12m;
             parameter.SgkEmployerGSSRate = 0.075m;
-            parameter.SgkEmployerKVSKRate = 0.02m;
+            parameter.SgkEmployerKVSKRate = 0.0225m;
             parameter.UnemploymentEmployerRate = 0.02m;
             parameter.SgkCeilingMultiplier = 7.5m;
 
-            // 05510 teşvik parametreleri
-            parameter.Incentive05510TreasuryRate = 0.05m;
+            // 05510 SGK işveren prim indirimi — 2026: imalat dışı %2, imalat %5
+            parameter.Incentive05510TreasuryRate = 0.02m;
+            parameter.Incentive05510ManufacturingRate = 0.05m;
             parameter.SgkEmployerMYO05510Rate = 0.06m;
 
             if (appliedSeed == null)

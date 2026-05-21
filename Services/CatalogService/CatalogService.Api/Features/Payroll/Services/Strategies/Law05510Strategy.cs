@@ -4,16 +4,17 @@ using CatalogService.Api.Features.Payroll.Services.Models;
 
 namespace CatalogService.Api.Features.Payroll.Services.Strategies
 {
-    // 5510 sayılı Kanun 81/ı — İşveren MYO payından 5 puan Hazine desteği uygulanır.
-    // İmalat sektöründe ek 2 puan daha indirim uygulanır (toplam 7 puan).
+    // 5510 sayılı Kanun 81/ı — SGK işveren prim indirimi.
+    // 2026 (7566 sayılı Kanun): imalat dışı 2 puan, imalat sektörü 5 puan.
+    // Oranlar yıl bazlı PayrollParameter'dan okunur.
     public class Law05510Strategy : IPayrollIncentiveStrategy
     {
-        private const decimal ManufacturingExtraRate = 0.02m;
-
         public void EnrichEmployerCosts(CalculatePayrollResponse response, PayrollCalculationContext context)
         {
             var p = context.Parameter;
-            var incentiveRate = p.Incentive05510TreasuryRate + (context.IsManufacturingSector ? ManufacturingExtraRate : 0m);
+            var incentiveRate = context.IsManufacturingSector
+                ? p.Incentive05510ManufacturingRate
+                : p.Incentive05510TreasuryRate;
 
             foreach (var month in response.Months)
             {

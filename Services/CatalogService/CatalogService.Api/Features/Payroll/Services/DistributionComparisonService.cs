@@ -1,24 +1,45 @@
 using CatalogService.Api.Features.Payroll.Dtos.Shared;
-using CatalogService.Api.Features.Payroll.Entities;
 using CatalogService.Api.Features.Payroll.Services.Interfaces;
 
 namespace CatalogService.Api.Features.Payroll.Services
 {
     public class DistributionComparisonService : IDistributionComparisonService
     {
-        private const decimal BeyanSiniri = 5_300_000m;
+        // Huzur Hakkı tarafı geçici vergi oranı. (Sabit — Değişiklik 2 kapsamı dışı.)
         private const decimal GeciciVergiOrani = 0.25m;
+
+        // ──────────────────────────────────────────────────────────────────────
+        // BEYAN SINIRI — yıl bazlı  (Madde 6 kararı → Seçenek C: kod-içi statik tablo)
+        //
+        // KAPSAM: yalnızca beyan sınırı eşiği yıla göre değişir. Vergi dilimleri,
+        // oranlar ve kümülatif sabitler DEĞİŞMEZ — hesap motoru
+        // CalculateNonSalaryProgressiveTax2026 olduğu gibi korunur.
+        //
+        // Tanımsız bir yıl seçilirse ResolveBeyanSiniri SESSİZCE yanlış sonuç
+        // üretmez; açık bir hata fırlatır.
+        // ──────────────────────────────────────────────────────────────────────
+
+        private static readonly IReadOnlyDictionary<int, decimal> BeyanSiniriByYear =
+            new Dictionary<int, decimal>
+            {
+                // GVK mükerrer 86 yıllık beyan sınırları (muhasebe/kullanıcı teyitli)
+                [2023] = 1_900_000m,
+                [2024] = 3_000_000m,
+                [2025] = 4_300_000m,
+                [2026] = 5_300_000m,
+            };
 
         public DistributionComparisonResultDto Compare(
             int year,
             decimal yillikBrut,
             decimal yillikVergiMaliyeti,
             decimal yillikNet,
-            decimal stopajOrani,
-            IReadOnlyList<PayrollTaxBracket> taxBrackets)
+            decimal stopajOrani)
         {
+            var beyanSiniri = ResolveBeyanSiniri(year);
+
             var huzurHakki = BuildHuzurHakki(yillikBrut, yillikVergiMaliyeti, yillikNet);
-            var karDagitimi = BuildKarDagitimi(yillikBrut, stopajOrani, taxBrackets);
+            var karDagitimi = BuildKarDagitimi(yillikBrut, stopajOrani, beyanSiniri);
 
             var hhMaliyeti = huzurHakki.G_NetVergiMaliyeti;
             var kdMaliyeti = karDagitimi.NetVergiMaliyeti;
@@ -35,7 +56,7 @@ namespace CatalogService.Api.Features.Payroll.Services
             {
                 Year = year,
                 StopajOrani = stopajOrani,
-                BeyanSiniri = BeyanSiniri,
+                BeyanSiniri = beyanSiniri,
                 HuzurHakki = huzurHakki,
                 KarDagitimi = karDagitimi,
                 AvantajliYontem = avantajli,
@@ -71,7 +92,7 @@ namespace CatalogService.Api.Features.Payroll.Services
         private KarDagitimiBreakdownDto BuildKarDagitimi(
             decimal yillikBrut,
             decimal stopajOrani,
-            IReadOnlyList<PayrollTaxBracket> taxBrackets)
+            decimal beyanSiniri)
         {
             var a = Round2(yillikBrut);
             var b = Round2(a * stopajOrani);
@@ -80,13 +101,30 @@ namespace CatalogService.Api.Features.Payroll.Services
             var d = Round2(a / 2m);
             var e = d;
 
-            // Kar dağıtımı = ücret dışı gelir → 2026 ücret-dışı dilimleri
-            // (1M kırılma noktası). Ücret tablosundan farklı; DB'deki taxBrackets
-            // ücret tablosu olduğu için burada kullanılmıyor.
-            var f = CalculateNonSalaryProgressiveTax2026(e);
-            var ortVergiOrani = e == 0 ? 0m : Round2(f / e * 100m);
-            var g = Round2(f - b);
-            var netVergiMaliyeti = f;
+            decimal f;
+            decimal ortVergiOrani;
+            decimal g;
+            decimal netVergiMaliyeti;
+
+            // GVK mükerrer 86: brüt kar dağıtımı beyan sınırını AŞARSA yıllık beyanname
+            // verilir. Sınıra eşit olan beyan vermez → karşılaştırma ">" (">=" değil).
+            if (a > beyanSiniri)
+            {
+                // Beyan var → ücret-dışı tarifeyle (1M kırılma noktası) artan oranlı vergi.
+                // Hesap motoru yıl bazlı DEĞİL; tarife sabit korunuyor.
+                f = CalculateNonSalaryProgressiveTax2026(e);
+                ortVergiOrani = e == 0 ? 0m : Round2(f / e * 100m);
+                g = Round2(f - b);
+                netVergiMaliyeti = f;
+            }
+            else
+            {
+                // Beyan yok → stopaj (B) nihai vergidir.
+                f = 0m;
+                ortVergiOrani = 0m;
+                g = 0m;
+                netVergiMaliyeti = b;
+            }
 
             return new KarDagitimiBreakdownDto
             {
@@ -103,32 +141,22 @@ namespace CatalogService.Api.Features.Payroll.Services
             };
         }
 
-        private decimal CalculateProgressiveTax(
-            decimal beyanaTabiGelir,
-            IReadOnlyList<PayrollTaxBracket> taxBrackets)
+        private static decimal ResolveBeyanSiniri(int year)
         {
-            decimal totalTax = 0m;
-            decimal remaining = beyanaTabiGelir;
+            if (!BeyanSiniriByYear.TryGetValue(year, out var value))
+                throw new InvalidOperationException(
+                    $"'{year}' yılı için beyan sınırı tanımlı değil. " +
+                    $"DistributionComparisonService.BeyanSiniriByYear sözlüğüne ekleyin.");
 
-            foreach (var bracket in taxBrackets.OrderBy(b => b.Order))
-            {
-                if (remaining <= 0) break;
-
-                var bracketSize = bracket.MaxAmount.HasValue
-                    ? bracket.MaxAmount.Value - bracket.MinAmount
-                    : decimal.MaxValue;
-
-                var taxableInBracket = Math.Min(remaining, bracketSize);
-                totalTax += taxableInBracket * bracket.TaxRate;
-                remaining -= taxableInBracket;
-            }
-
-            return Round2(totalTax);
+            return value;
         }
 
         private static decimal Round2(decimal value)
             => Math.Round(value, 2, MidpointRounding.AwayFromZero);
 
+        // ── HESAP MOTORU — DEĞİŞMEDİ ────────────────────────────────────────────
+        // Kar dağıtımı (ücret dışı gelir) artan oranlı gelir vergisi.
+        // Dilimler / oranlar / kümülatif sabitler mevzuata gömülü, yıldan bağımsız.
         private static decimal CalculateNonSalaryProgressiveTax2026(decimal matrah)
         {
             if (matrah <= 0m) return 0m;

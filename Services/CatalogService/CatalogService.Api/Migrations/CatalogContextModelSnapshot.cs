@@ -1211,6 +1211,10 @@ namespace CatalogService.Api.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)");
 
+                    b.Property<decimal>("Incentive05510ManufacturingRate")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
                     b.Property<decimal>("Incentive05510TreasuryRate")
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)");

@@ -60,6 +60,7 @@ namespace CatalogService.Api.Features.Payroll.Persistence.Configurations
             builder.Property(x => x.UnemploymentEmployerRate).HasPrecision(18, 4);
             builder.Property(x => x.SgkCeilingMultiplier).HasPrecision(18, 4);
             builder.Property(x => x.Incentive05510TreasuryRate).HasPrecision(18, 4);
+            builder.Property(x => x.Incentive05510ManufacturingRate).HasPrecision(18, 4);
             builder.Property(x => x.SgkEmployerMYO05510Rate).HasPrecision(18, 4);
 
 

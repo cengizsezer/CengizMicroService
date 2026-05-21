@@ -1,5 +1,4 @@
 using CatalogService.Api.Features.Payroll.Dtos.Shared;
-using CatalogService.Api.Features.Payroll.Entities;
 
 namespace CatalogService.Api.Features.Payroll.Services.Interfaces
 {
@@ -10,7 +9,6 @@ namespace CatalogService.Api.Features.Payroll.Services.Interfaces
             decimal yillikBrut,
             decimal yillikVergiMaliyeti,
             decimal yillikNet,
-            decimal stopajOrani,
-            IReadOnlyList<PayrollTaxBracket> taxBrackets);
+            decimal stopajOrani);
     }
 }
