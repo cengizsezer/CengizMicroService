@@ -9,7 +9,20 @@
       "Bash(sqlcmd *)",
       "Bash(dotnet ef *)",
       "Bash(findstr -i \"appsettings\")",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(where magick *)",
+      "Bash(where inkscape *)",
+      "Bash(where rsvg-convert *)",
+      "Bash(where npx *)",
+      "Bash(where node *)",
+      "Bash(npx -y sharp-cli@latest --input src/Client/BlazorWebApp/WebApp/wwwroot/img/pkf-logo.svg --output src/Client/BlazorWebApp/WebApp/wwwroot/img/pkf-logo.png resize 800)",
+      "PowerShell(Resolve-Path *)",
+      "Bash(mkdir -p /tmp/payroll-smoke)",
+      "Read(//tmp/**)",
+      "Bash(dotnet new *)",
+      "Read(//c/Users/cengi/AppData/Local/Temp/payroll-export-smoke/**)",
+      "Bash(unzip -p bordro.xlsx xl/sharedStrings.xml)",
+      "Bash(unzip -l /c/Users/cengi/AppData/Local/Temp/payroll-export-smoke/bordro.xlsx)"
     ]
   }
 }

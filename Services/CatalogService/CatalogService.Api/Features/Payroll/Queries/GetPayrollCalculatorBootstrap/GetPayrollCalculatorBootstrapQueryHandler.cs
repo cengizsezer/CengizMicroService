@@ -1,29 +1,21 @@
-﻿using CatalogService.Api.Features.Payroll.Dtos.Requests;
+using CatalogService.Api.Features.Payroll.Configuration;
+using CatalogService.Api.Features.Payroll.Dtos.Requests;
 using CatalogService.Api.Features.Payroll.Dtos.Responses;
 using CatalogService.Api.Features.Payroll.Dtos.Shared;
-using CatalogService.Api.Infrastructure.Context;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 
 namespace CatalogService.Api.Features.Payroll.Queries.GetPayrollCalculatorBootstrap
 {
     public class GetPayrollCalculatorBootstrapQueryHandler : IRequestHandler<GetPayrollCalculatorBootstrapQuery, PayrollCalculatorBootstrapDto?>
     {
-        private readonly CatalogContext _context;
-
-        public GetPayrollCalculatorBootstrapQueryHandler(CatalogContext context)
+        public Task<PayrollCalculatorBootstrapDto?> Handle(GetPayrollCalculatorBootstrapQuery request, CancellationToken cancellationToken)
         {
-            _context = context;
-        }
+            if (!PayrollYearConfigStore.All.TryGetValue(request.Year, out var yearConfig))
+                return Task.FromResult<PayrollCalculatorBootstrapDto?>(null);
 
-        public async Task<PayrollCalculatorBootstrapDto?> Handle(GetPayrollCalculatorBootstrapQuery request, CancellationToken cancellationToken)
-        {
-            var parameter = await _context.PayrollParameters
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Year == request.Year && x.IsActive, cancellationToken);
-
-            if (parameter is null)
-                return null;
+            var parameter = yearConfig.Parameter;
+            if (!parameter.IsActive)
+                return Task.FromResult<PayrollCalculatorBootstrapDto?>(null);
 
             var dto = new PayrollCalculatorBootstrapDto
             {
@@ -53,7 +45,7 @@ namespace CatalogService.Api.Features.Payroll.Queries.GetPayrollCalculatorBootst
                     .ToList()
             };
 
-            return dto;
+            return Task.FromResult<PayrollCalculatorBootstrapDto?>(dto);
         }
     }
 }

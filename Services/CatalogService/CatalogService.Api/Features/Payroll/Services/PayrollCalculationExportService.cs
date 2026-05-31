@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Reflection;
+using CatalogService.Api.Features.Payroll.Configuration;
 using CatalogService.Api.Features.Payroll.Dtos.Requests;
 using CatalogService.Api.Features.Payroll.Dtos.Responses;
 using CatalogService.Api.Features.Payroll.Enums;
@@ -21,6 +23,19 @@ namespace CatalogService.Api.Features.Payroll.Services
             "", "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
             "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
         };
+
+        private static readonly Lazy<byte[]?> PkfLogoBytes = new(LoadPkfLogoBytes);
+
+        private static byte[]? LoadPkfLogoBytes()
+        {
+            var asm = typeof(PayrollCalculationExportService).Assembly;
+            using var stream = asm.GetManifestResourceStream(PayrollExportFooterTexts.LogoEmbeddedResourceName);
+            if (stream is null) return null;
+
+            using var ms = new MemoryStream();
+            stream.CopyTo(ms);
+            return ms.ToArray();
+        }
 
         // ─────────────────────────────────────────────────────────
         // EXCEL
@@ -47,10 +62,15 @@ namespace CatalogService.Api.Features.Payroll.Services
 
             const int headerRow = 4;
 
+            // totalRow her iki dalda da headerRow + 13'tür (12 ay + 1 total).
+            int totalRow = headerRow + 13;
+            int lastCol;
             if (isHonorarium)
-                BuildHonorariumExcel(ws, result, headerRow);
+                lastCol = BuildHonorariumExcel(ws, result, headerRow);
             else
-                BuildSalaryExcel(ws, result, request, headerRow);
+                lastCol = BuildSalaryExcel(ws, result, request, headerRow);
+
+            AppendExcelFooter(ws, footerStartRow: totalRow + 2, lastCol: lastCol);
 
             ws.Columns().AdjustToContents();
 
@@ -59,7 +79,57 @@ namespace CatalogService.Api.Features.Payroll.Services
             return stream.ToArray();
         }
 
-        private void BuildSalaryExcel(IXLWorksheet ws, CalculatePayrollResponse result, CalculatePayrollRequest request, int headerRow)
+        // ─────────────────────────────────────────────────────────
+        // EXCEL FOOTER (yasal açıklama + PKF logosu)
+        // ─────────────────────────────────────────────────────────
+        private static void AppendExcelFooter(IXLWorksheet ws, int footerStartRow, int lastCol)
+        {
+            if (lastCol < 1) lastCol = 1;
+
+            // Satır 1: kısa açıklama
+            var freeNoteRange = ws.Range(footerStartRow, 1, footerStartRow, lastCol);
+            freeNoteRange.Merge();
+            freeNoteRange.Value = PayrollExportFooterTexts.FreeServiceNote;
+            freeNoteRange.Style.Font.Bold = true;
+            freeNoteRange.Style.Font.FontSize = 10;
+            freeNoteRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+            freeNoteRange.Style.Alignment.WrapText = true;
+
+            // Satır 2: uzun disclaimer
+            int disclaimerRow = footerStartRow + 1;
+            var disclaimerRange = ws.Range(disclaimerRow, 1, disclaimerRow, lastCol);
+            disclaimerRange.Merge();
+            disclaimerRange.Value = PayrollExportFooterTexts.Disclaimer;
+            disclaimerRange.Style.Font.FontSize = 9;
+            disclaimerRange.Style.Font.FontColor = XLColor.FromHtml("#555555");
+            disclaimerRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+            disclaimerRange.Style.Alignment.WrapText = true;
+            disclaimerRange.Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
+            ws.Row(disclaimerRow).Height = 48;
+
+            // Satır 3: logo (sağa hizalı)
+            int logoRow = footerStartRow + 2;
+            ws.Row(logoRow).Height = 60;
+
+            var logoBytes = PkfLogoBytes.Value;
+            if (logoBytes is { Length: > 0 })
+            {
+                try
+                {
+                    using var imgStream = new MemoryStream(logoBytes);
+                    var picture = ws.AddPicture(imgStream)
+                        .MoveTo(ws.Cell(logoRow, Math.Max(lastCol - 2, 1)))
+                        .WithSize(160, 60);
+                    // Yukarıdaki WithSize aspect ratio'yu korumayabilir; logo aspect ~2.4:1 olduğundan 160×60 makul.
+                }
+                catch
+                {
+                    // logo eklenemezse sessiz geç — disclaimer metni yine basılır.
+                }
+            }
+        }
+
+        private int BuildSalaryExcel(IXLWorksheet ws, CalculatePayrollResponse result, CalculatePayrollRequest request, int headerRow)
         {
             bool hasDisability = result.DisabilityType != PayrollDisabilityType.None;
             bool hasEmployer = request.IncludeEmployerCost;
@@ -196,9 +266,11 @@ namespace CatalogService.Api.Features.Payroll.Services
 
             ws.Range(headerRow, 1, totalRow, lastCol).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
             ws.Range(headerRow, 1, totalRow, lastCol).Style.Border.InsideBorder = XLBorderStyleValues.Hair;
+
+            return lastCol;
         }
 
-        private void BuildHonorariumExcel(IXLWorksheet ws, CalculatePayrollResponse result, int headerRow)
+        private int BuildHonorariumExcel(IXLWorksheet ws, CalculatePayrollResponse result, int headerRow)
         {
             int col = 1;
             void Header(string text)
@@ -300,6 +372,8 @@ namespace CatalogService.Api.Features.Payroll.Services
 
             ws.Range(headerRow, 1, totalRow, lastCol).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
             ws.Range(headerRow, 1, totalRow, lastCol).Style.Border.InsideBorder = XLBorderStyleValues.Hair;
+
+            return lastCol;
         }
 
         // ─────────────────────────────────────────────────────────
@@ -335,12 +409,19 @@ namespace CatalogService.Api.Features.Payroll.Services
                         col.Item().PaddingTop(4).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
                     });
 
-                    page.Content().PaddingVertical(8).Element(content =>
+                    page.Content().PaddingVertical(8).Column(col =>
                     {
-                        if (isHonorarium)
-                            BuildHonorariumPdf(content, result);
-                        else
-                            BuildSalaryPdf(content, result, request);
+                        col.Item().Element(content =>
+                        {
+                            if (isHonorarium)
+                                BuildHonorariumPdf(content, result);
+                            else
+                                BuildSalaryPdf(content, result, request);
+                        });
+
+                        // Yasal açıklama + PKF logosu — tabloyla aynı içerikte yer alır, sayfa taşarsa
+                        // QuestPDF Column akışıyla bir sonraki sayfaya düzgün taşınır.
+                        col.Item().PaddingTop(12).Element(BuildPdfDisclaimerBlock);
                     });
 
                     page.Footer().AlignCenter().Text(t =>
@@ -516,6 +597,32 @@ namespace CatalogService.Api.Features.Payroll.Services
                     Cell(t, FormatMoney(tot.TotalNetHonorarium), bold: true, bg: "#f9fafb");
                 }
             });
+        }
+
+        // ─────────────────────────────────────────────────────────
+        // PDF FOOTER (yasal açıklama + PKF logosu)
+        // ─────────────────────────────────────────────────────────
+        private static void BuildPdfDisclaimerBlock(IContainer container)
+        {
+            container
+                .BorderTop(0.5f).BorderColor(Colors.Grey.Lighten2)
+                .PaddingTop(8)
+                .Column(col =>
+                {
+                    col.Item().Text(PayrollExportFooterTexts.FreeServiceNote)
+                        .FontSize(8).Bold().FontColor(Colors.Grey.Darken3);
+
+                    col.Item().PaddingTop(4).Text(PayrollExportFooterTexts.Disclaimer)
+                        .FontSize(7).FontColor(Colors.Grey.Darken1);
+
+                    var logoBytes = PkfLogoBytes.Value;
+                    if (logoBytes is { Length: > 0 })
+                    {
+                        col.Item().PaddingTop(8).AlignRight()
+                            .Width(120)
+                            .Image(logoBytes).FitWidth();
+                    }
+                });
         }
 
         private static void Cell(TableDescriptor t, string text, bool bold = false, string? bg = null, string align = "right")

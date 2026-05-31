@@ -488,25 +488,26 @@ body[b-i9md2k4r3s] {
         background: #eef5fa; /* açık mavi */
         color: #1f3b57;
         font-weight: 700;
-        font-size: 12px;
-        padding: 6px 8px;
+        font-size: 11px;
+        padding: 5px 4px;
         text-align: center;
+        vertical-align: middle;
         border: 1px solid #c9ddea;
-        white-space: nowrap;
-        line-height: 1.2;
+        white-space: normal;
+        line-height: 1.15;
     }
 
 
     /* CELL */
     .payroll-table td[b-i9md2k4r3s] {
-        padding: 6px 8px;
-        font-size: 13px;
+        padding: 4px 3px;
+        font-size: 11px;
         text-align: center;
         border: 1px solid #e0e0e0;
         background: #f3f3f3;
         white-space: nowrap;
-        line-height: 1.25;
-        height: 32px;
+        line-height: 1.2;
+        height: 30px;
     }
 
         /* AY SÜTUNU */
@@ -516,16 +517,17 @@ body[b-i9md2k4r3s] {
             background: #eef5fa;
             width: 84px;
             min-width: 84px;
+            max-width: 84px;
             font-weight: 700;
-            font-size: 13px;
+            font-size: 12px;
         }
 
-        /* TUTAR SÜTUNU */
+        /* TUTAR SÜTUNU - sadece header ve veri satırları; total-row colspan="2" ile sarmaladığı için hariç tut */
         .payroll-table th:nth-child(2)[b-i9md2k4r3s],
-        .payroll-table td:nth-child(2)[b-i9md2k4r3s] {
-            width: 110px;
-            min-width: 110px;
-            max-width: 110px;
+        .payroll-table tbody tr:not(.total-row) td:nth-child(2)[b-i9md2k4r3s] {
+            width: 100px;
+            min-width: 100px;
+            max-width: 100px;
         }
 
     .payroll-table tbody tr:nth-child(even) td:not(:first-child)[b-i9md2k4r3s] {
@@ -536,18 +538,18 @@ body[b-i9md2k4r3s] {
 .input-cell[b-i9md2k4r3s] {
     text-align: center;
     vertical-align: middle;
-    padding: 3px 6px !important;
+    padding: 2px 4px !important;
 }
 
 .input-wrap[b-i9md2k4r3s] {
-    width: 96px;
+    width: 88px;
     margin: 0 auto;
 }
 
     .input-wrap .rz-numeric[b-i9md2k4r3s] {
         width: 100% !important;
         display: block;
-        height: 30px;
+        height: 28px;
     }
 
     .input-wrap .rz-inputtext[b-i9md2k4r3s],
@@ -556,9 +558,9 @@ body[b-i9md2k4r3s] {
         width: 100% !important;
         box-sizing: border-box;
         text-align: right;
-        padding: 4px 6px !important;
-        height: 30px !important;
-        font-size: 13px;
+        padding: 3px 5px !important;
+        height: 28px !important;
+        font-size: 12px;
     }
 
 /* TOTAL - toplam satırı*/
@@ -593,9 +595,9 @@ body[b-i9md2k4r3s] {
 
 .payroll-actions[b-i9md2k4r3s] {
     display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 8px;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
     margin-top: 4px;
     margin-bottom: 0;
     padding: 0;
@@ -605,6 +607,36 @@ body[b-i9md2k4r3s] {
     .payroll-actions .rz-button[b-i9md2k4r3s] {
         margin: 0;
     }
+
+/* SOL TARAF — Yasal açıklama / sorumluluk reddi (küçük, soluk, normal kalınlık) */
+.payroll-disclaimer[b-i9md2k4r3s] {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 11px;
+    font-weight: 400;
+    color: #6b7280; /* muted gri */
+    line-height: 1.4;
+    margin: 0;
+}
+
+    .payroll-disclaimer p[b-i9md2k4r3s] {
+        margin: 0 0 3px 0;
+        font-weight: 400;
+    }
+
+        .payroll-disclaimer p:last-child[b-i9md2k4r3s] {
+            margin-bottom: 0;
+        }
+
+/* SAĞ TARAF — Buton grubu: her zaman yatay, daralmaz, sarmaz */
+.payroll-buttons[b-i9md2k4r3s] {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
 /* /Pages/TaxPaymentPage/Page/ImportTaxPaymentsDialog.razor.rz.scp.css */
 .tax-import-dialog-content[b-9z6y6pa5xn] {
     display: flex;

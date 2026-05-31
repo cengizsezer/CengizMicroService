@@ -1,6 +1,7 @@
 ﻿@layout PublicPayrollLayout
 @page "/payroll-calculator"
 @using Radzen
+@using WebApp.Pages.Payroll
 @using WebApp.Pages.Payroll.Component
 @using WebApp.Pages.Payroll.Layout
 @using WebApp.Pages.Payroll.Model
@@ -150,37 +151,37 @@
                         <tr>
                             <th>Aylar</th>
                             <th>Tutar</th>
-                            <th>Brüt Ücret</th>
-                            <th>SGK İşçi</th>
-                            <th>İSP İşçi</th>
+                            <th>Brüt<br />Ücret</th>
+                            <th>SGK<br />İşçi</th>
+                            <th>İSP<br />İşçi</th>
                             @if (model.DisabilityType > 0)
                             {
-                                <th>Engel İndirimi</th>
+                                <th>Engel<br />İndirimi</th>
                             }
-                            <th>Gelir V. Matrahı</th>
-                            <th>Kümülatif Matrah</th>
-                            <th>Gelir Vergisi</th>
-                            <th>İstisna Gelir V.</th>
-                            <th>Ödenecek Gelir Ver.</th>
-                            <th>Damga Vergisi</th>
-                            <th>İstisna D.V.</th>
-                            <th>Ödenecek Damga V.</th>
+                            <th>Gelir V.<br />Matrahı</th>
+                            <th>Kümülatif<br />Matrah</th>
+                            <th>Gelir<br />Vergisi</th>
+                            <th>İstisna<br />Gelir V.</th>
+                            <th>Ödenecek<br />Gelir Ver.</th>
+                            <th>Damga<br />Vergisi</th>
+                            <th>İstisna<br />D.V.</th>
+                            <th>Ödenecek<br />Damga V.</th>
                             @if (model.HasMandatoryBes)
                             {
-                                <th>BES Kesintisi</th>
+                                <th>BES<br />Kesintisi</th>
                             }
-                            <th>Kesintiler Toplamı</th>
-                            <th>Net Ücret</th>
+                            <th>Kesintiler<br />Toplamı</th>
+                            <th>Net<br />Ücret</th>
                             @if (model.IncludeEmployerCost)
                             {
-                                <th>SGK İşveren Brüt</th>
+                                <th>SGK İşveren<br />Brüt</th>
                                 @if (HasIncentive)
                                 {
                                     <th>@IncentiveLabel</th>
                                 }
-                                <th>SGK İşveren Net</th>
-                                <th>İSP İşveren</th>
-                                <th>Toplam İşveren Maliyet</th>
+                                <th>SGK İşveren<br />Net</th>
+                                <th>İSP<br />İşveren</th>
+                                <th>Toplam İşveren<br />Maliyet</th>
                             }
                         </tr>
                     </thead>
@@ -284,18 +285,18 @@
                         <tr>
                             <th>Aylar</th>
                             <th>Tutar</th>
-                            <th>Brüt Huzur Hakkı</th>
-                            <th>Gelir V. Matrahı</th>
-                            <th>Kümülatif Matrah</th>
-                            <th>Gelir Vergisi</th>
-                            <th>İstisna Gelir V.</th>
-                            <th>Ödenecek Gelir Ver.</th>
-                            <th>Damga Vergisi</th>
-                            <th>İstisna D.V.</th>
-                            <th>Ödenecek Damga V.</th>
-                            <th>Kesintiler Toplamı</th>
-                            <th>Vergi Yükü</th>
-                            <th>Net Huzur Hakkı</th>
+                            <th>Brüt<br />Huzur Hakkı</th>
+                            <th>Gelir V.<br />Matrahı</th>
+                            <th>Kümülatif<br />Matrah</th>
+                            <th>Gelir<br />Vergisi</th>
+                            <th>İstisna<br />Gelir V.</th>
+                            <th>Ödenecek<br />Gelir Ver.</th>
+                            <th>Damga<br />Vergisi</th>
+                            <th>İstisna<br />D.V.</th>
+                            <th>Ödenecek<br />Damga V.</th>
+                            <th>Kesintiler<br />Toplamı</th>
+                            <th>Vergi<br />Yükü</th>
+                            <th>Net<br />Huzur Hakkı</th>
                         </tr>
                     </thead>
 
@@ -355,23 +356,30 @@
         </div>
 
         <div class="payroll-actions">
-            <RadzenButton Text="Excel İndir"
-                          Icon="download"
-                          Variant="Variant.Outlined"
-                          ButtonStyle="ButtonStyle.Success"
-                          Disabled="@isExporting"
-                          Click="@ExportExcelAsync" />
-            <RadzenButton Text="PDF İndir"
-                          Icon="picture_as_pdf"
-                          Variant="Variant.Outlined"
-                          ButtonStyle="ButtonStyle.Primary"
-                          Disabled="@isExporting"
-                          Click="@ExportPdfAsync" />
+            <div class="payroll-disclaimer">
+                <p>@PayrollDisclaimerTexts.FreeServiceNote</p>
+                <p>@PayrollDisclaimerTexts.Disclaimer</p>
+            </div>
 
-            <RadzenButton Text="Hesapla"
-                          Icon="calculate"
-                          ButtonStyle="ButtonStyle.Danger"
-                          Click="@TriggerRecalculateAsync" />
+            <div class="payroll-buttons">
+                <RadzenButton Text="Excel İndir"
+                              Icon="download"
+                              Variant="Variant.Outlined"
+                              ButtonStyle="ButtonStyle.Success"
+                              Disabled="@isExporting"
+                              Click="@ExportExcelAsync" />
+                <RadzenButton Text="PDF İndir"
+                              Icon="picture_as_pdf"
+                              Variant="Variant.Outlined"
+                              ButtonStyle="ButtonStyle.Primary"
+                              Disabled="@isExporting"
+                              Click="@ExportPdfAsync" />
+
+                <RadzenButton Text="Hesapla"
+                              Icon="calculate"
+                              ButtonStyle="ButtonStyle.Danger"
+                              Click="@TriggerRecalculateAsync" />
+            </div>
         </div>
 
 
@@ -402,7 +410,7 @@
         result?.Months?.FirstOrDefault(x => x.IncentiveSource != null)?.IncentiveSource is string src
             ? $"SGK Teşvik ({src})"
             : "SGK Teşvik";
-    private List<int> yearOptions = new() { 2025, 2026, 2027 };
+    private List<int> yearOptions = new() { 2024, 2025, 2026 };
 
     private List<LookupItem> calculationTypes = new()
     {
