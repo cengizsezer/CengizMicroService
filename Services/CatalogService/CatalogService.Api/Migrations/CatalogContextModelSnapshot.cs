@@ -1029,6 +1029,10 @@ namespace CatalogService.Api.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<decimal?>("AcikBakiye")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1039,12 +1043,22 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
+                    b.Property<string>("FinansAciklama")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("FinansSinifi")
+                        .HasColumnType("int");
+
                     b.Property<string>("Hizmet")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<DateTime?>("IptalFeshTarihi")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SonOdemeTarihi")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("SozlesmeNo")
@@ -1076,6 +1090,8 @@ namespace CatalogService.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Durum");
+
+                    b.HasIndex("FinansSinifi");
 
                     b.HasIndex("SozlesmeNo")
                         .IsUnique();

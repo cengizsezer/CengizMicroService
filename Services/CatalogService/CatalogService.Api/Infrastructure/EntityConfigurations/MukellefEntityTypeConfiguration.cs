@@ -36,10 +36,18 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(x => x.Email)
                 .HasMaxLength(150);
 
+            // Finans risk alanları (hepsi nullable)
+            builder.Property(x => x.AcikBakiye)
+                .HasPrecision(18, 2);
+
+            builder.Property(x => x.FinansAciklama)
+                .HasMaxLength(1000);
+
             builder.HasIndex(x => x.SozlesmeNo).IsUnique();
             builder.HasIndex(x => x.VergiKimlikNo).IsUnique();
             builder.HasIndex(x => x.Durum);
             builder.HasIndex(x => x.Unvan);
+            builder.HasIndex(x => x.FinansSinifi);
         }
     }
 }

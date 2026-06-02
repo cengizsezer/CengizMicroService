@@ -22,7 +22,11 @@
       "Bash(dotnet new *)",
       "Read(//c/Users/cengi/AppData/Local/Temp/payroll-export-smoke/**)",
       "Bash(unzip -p bordro.xlsx xl/sharedStrings.xml)",
-      "Bash(unzip -l /c/Users/cengi/AppData/Local/Temp/payroll-export-smoke/bordro.xlsx)"
+      "Bash(unzip -l /c/Users/cengi/AppData/Local/Temp/payroll-export-smoke/bordro.xlsx)",
+      "Bash(Get-ChildItem -Path \"C:\\\\GitHub\\\\CengizMicroService\" -Directory)",
+      "Bash(Select-Object Name)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\GitHub\\\\CengizMicroService\\\\Services\\\\CatalogService\\\\CatalogService.Api\\\\Features\\\\Mukellefler\\\\\" -Recurse | ForEach-Object { $_.FullName })",
+      "Bash(dotnet --version)"
     ]
   }
 }

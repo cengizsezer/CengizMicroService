@@ -177,6 +177,9 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             services.AddScoped<IMukellefApiClient>(sp =>
                 new MukellefApiClient(sp.GetRequiredService<HttpClient>()));
 
+            services.AddScoped<IFinansApiClient>(sp =>
+                new FinansApiClient(sp.GetRequiredService<HttpClient>()));
+
             services.AddScoped<IPermissionService, PermissionService>();
 
 

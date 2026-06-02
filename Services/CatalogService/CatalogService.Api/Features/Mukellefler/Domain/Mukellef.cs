@@ -17,6 +17,12 @@ namespace CatalogService.Api.Features.Mukellefler.Domain
         public string Telefon { get; set; } = string.Empty;
         public string? Email { get; set; }
 
+        // Finans risk sınıflandırması — elle atanır, mevcut kayıtlarda boş olabilir.
+        public FinansSinifi? FinansSinifi { get; set; }
+        public decimal? AcikBakiye { get; set; }
+        public DateTime? SonOdemeTarihi { get; set; }
+        public string? FinansAciklama { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
     }

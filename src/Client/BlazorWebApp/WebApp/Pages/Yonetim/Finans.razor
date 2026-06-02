@@ -1,0 +1,232 @@
+@attribute [Authorize(Roles = "pkf")]
+@page "/finans/firma-gruplama"
+@using System.Net
+@using System.Timers
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Yonetim
+
+@implements IDisposable
+
+@inject IFinansApiClient Api
+@inject DialogService Dialog
+@inject NotificationService Notif
+
+<RadzenCard class="rz-p-3">
+
+    <div class="rz-display-flex rz-align-items-center rz-mb-3" style="justify-content:space-between;">
+        <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">
+            Firma Gruplama <span class="rz-text-muted" style="font-size:0.85rem;">(@_totalCount)</span>
+        </RadzenText>
+    </div>
+
+    <div class="rz-display-flex rz-align-items-center rz-mb-3" style="gap:1rem; flex-wrap:wrap;">
+        <RadzenTextBox Placeholder="Arama: Sözleşme No, VKN, unvan"
+                       Value="@_searchInput"
+                       Change="@OnSearchChanged"
+                       Style="min-width:320px; flex:1;" />
+        <RadzenDropDown TValue="FinansSinifi?"
+                        @bind-Value="_sinifFilter"
+                        Data="@_sinifOptions"
+                        TextProperty="Text"
+                        ValueProperty="Value"
+                        AllowClear="true"
+                        Placeholder="Sınıf: Tümü"
+                        Change="@OnSinifChanged"
+                        Style="min-width:200px;" />
+    </div>
+
+    <RadzenDataGrid @ref="_grid"
+                    TItem="MukellefFinansDto"
+                    Data="@_items"
+                    Count="@_totalCount"
+                    LoadData="@LoadData"
+                    IsLoading="@_loading"
+                    AllowPaging="true"
+                    AllowSorting="true"
+                    PageSize="50"
+                    PageSizeOptions="@(new int[] { 25, 50, 100 })"
+                    EmptyText="@(_hasFilters ? "Filtreye uygun kayıt bulunamadı." : "Henüz mükellef yok.")">
+        <Columns>
+            <RadzenDataGridColumn TItem="MukellefFinansDto" Property="Unvan" Title="Unvan" />
+            <RadzenDataGridColumn TItem="MukellefFinansDto" Property="VergiKimlikNo" Title="VKN" Width="130px" />
+            <RadzenDataGridColumn TItem="MukellefFinansDto" Property="SozlesmeNo" Title="Sözleşme No" Width="150px" />
+
+            <RadzenDataGridColumn TItem="MukellefFinansDto" Property="FinansSinifi" Title="Sınıf" Width="100px" TextAlign="TextAlign.Center" Sortable="true">
+                <Template Context="m">
+                    @if (m.FinansSinifi.HasValue)
+                    {
+                        <RadzenBadge BadgeStyle="@SinifBadgeStyle(m.FinansSinifi.Value)" Text="@m.FinansSinifi.Value.ToString()" />
+                    }
+                    else
+                    {
+                        <span class="rz-text-muted">—</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="MukellefFinansDto" Property="AcikBakiye" Title="Açık Bakiye" Width="150px" TextAlign="TextAlign.Right" FormatString="{0:N2} ₺" />
+            <RadzenDataGridColumn TItem="MukellefFinansDto" Property="SonOdemeTarihi" Title="Son Ödeme" Width="130px" FormatString="{0:dd.MM.yyyy}" />
+
+            <RadzenDataGridColumn TItem="MukellefFinansDto" Property="FinansAciklama" Title="Açıklama" Sortable="false">
+                <Template Context="m">
+                    <span title="@m.FinansAciklama">@m.FinansAciklama</span>
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="MukellefFinansDto" Title="İşlemler" Width="100px" TextAlign="TextAlign.Center" Sortable="false" Filterable="false">
+                <Template Context="m">
+                    <span @onclick:stopPropagation @onkeydown:stopPropagation>
+                        <RadzenButton Icon="edit"
+                                      Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Light"
+                                      Click="@(() => EditAsync(m))" />
+                    </span>
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+
+</RadzenCard>
+
+@code {
+    private RadzenDataGrid<MukellefFinansDto>? _grid;
+    private List<MukellefFinansDto> _items = new();
+    private int _totalCount;
+    private bool _loading;
+
+    private string _searchInput = "";
+    private string _search = "";
+    private FinansSinifi? _sinifFilter;
+
+    private Timer? _debounceTimer;
+
+    private bool _hasFilters => !string.IsNullOrWhiteSpace(_search) || _sinifFilter.HasValue;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Radzen 7.x'te RadzenDataGrid ilk render'da LoadData'yı otomatik tetiklemiyor
+        // (Mukellefler.razor pattern'i ile aynı: elle ilk yüklemeyi tetikliyoruz)
+        await LoadData(new LoadDataArgs { Skip = 0, Top = 50 });
+    }
+
+    private record SinifOption(string Text, FinansSinifi Value);
+
+    private readonly List<SinifOption> _sinifOptions = new()
+    {
+        new("A", FinansSinifi.A),
+        new("B", FinansSinifi.B),
+        new("C", FinansSinifi.C)
+    };
+
+    private async Task LoadData(LoadDataArgs args)
+    {
+        _loading = true;
+        try
+        {
+            var top = args.Top ?? 50;
+            var skip = args.Skip ?? 0;
+            var page = (skip / top) + 1;
+
+            var result = await Api.GetPaginatedAsync(
+                page: page,
+                pageSize: top,
+                search: string.IsNullOrWhiteSpace(_search) ? null : _search,
+                finansSinifi: _sinifFilter);
+
+            _items = result.Items;
+            _totalCount = result.TotalCount;
+        }
+        catch (ApiClientException ex)
+        {
+            ShowApiError(ex);
+            _items = new();
+            _totalCount = 0;
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+            _items = new();
+            _totalCount = 0;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OnSearchChanged(string val)
+    {
+        _searchInput = val ?? "";
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+        _debounceTimer = new Timer(500) { AutoReset = false };
+        _debounceTimer.Elapsed += async (_, _) =>
+        {
+            await InvokeAsync(async () =>
+            {
+                if (_search == _searchInput) return;
+                _search = _searchInput;
+                if (_grid is not null) await _grid.Reload();
+            });
+        };
+        _debounceTimer.Start();
+    }
+
+    private async Task OnSinifChanged(object? _)
+    {
+        if (_grid is not null) await _grid.Reload();
+    }
+
+    private async Task EditAsync(MukellefFinansDto m)
+    {
+        var result = await Dialog.OpenAsync<FinansDialog>($"Finans Bilgileri: {m.Unvan}",
+            new Dictionary<string, object> { ["Existing"] = m },
+            new DialogOptions { Width = "640px" });
+
+        if (result is bool ok && ok)
+        {
+            if (_grid is not null) await _grid.Reload();
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Güncellendi",
+                Detail = "Finans bilgileri güncellendi.",
+                Duration = 3000
+            });
+        }
+    }
+
+    private static BadgeStyle SinifBadgeStyle(FinansSinifi s) => s switch
+    {
+        FinansSinifi.A => BadgeStyle.Success,
+        FinansSinifi.B => BadgeStyle.Warning,
+        FinansSinifi.C => BadgeStyle.Danger,
+        _ => BadgeStyle.Light
+    };
+
+    private void ShowApiError(ApiClientException ex)
+    {
+        var (sev, summary, detail) = ex.StatusCode switch
+        {
+            HttpStatusCode.NotFound => (NotificationSeverity.Warning, "Bulunamadı", "Kayıt bulunamadı, sayfa yenileniyor."),
+            HttpStatusCode.BadRequest => (NotificationSeverity.Warning, "Geçersiz veri", "Lütfen tüm alanları doğru doldurun."),
+            _ => (NotificationSeverity.Error, "Sunucu hatası", "Sunucu hatası, tekrar deneyin.")
+        };
+        Notif.Notify(new NotificationMessage { Severity = sev, Summary = summary, Detail = detail, Duration = 5000 });
+    }
+
+    public void Dispose()
+    {
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+    }
+}

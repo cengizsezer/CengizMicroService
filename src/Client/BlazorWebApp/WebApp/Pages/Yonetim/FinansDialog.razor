@@ -1,0 +1,176 @@
+@using System.Net
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Yonetim
+
+@inject DialogService Dialog
+@inject NotificationService Notif
+@inject IFinansApiClient Api
+
+<RadzenTemplateForm TItem="FinansUpdateDto" Data="@Model" Submit="@OnSubmit">
+    <RadzenCard class="rz-p-3">
+        <RadzenStack Gap="0.75rem">
+
+            <RadzenRow Gap="0.75rem">
+                <RadzenColumn Size="8">
+                    <RadzenFormField Text="Unvan" Variant="Variant.Outlined">
+                        <RadzenTextBox Value="@Existing?.Unvan" Style="width:100%" ReadOnly="true" />
+                    </RadzenFormField>
+                </RadzenColumn>
+                <RadzenColumn Size="4">
+                    <RadzenFormField Text="VKN" Variant="Variant.Outlined">
+                        <RadzenTextBox Value="@Existing?.VergiKimlikNo" Style="width:100%" ReadOnly="true" />
+                    </RadzenFormField>
+                </RadzenColumn>
+            </RadzenRow>
+
+            <RadzenRow Gap="0.75rem">
+                <RadzenColumn Size="6">
+                    <RadzenFormField Text="Finans Sınıfı" Variant="Variant.Outlined">
+                        <RadzenDropDown TValue="FinansSinifi?"
+                                        @bind-Value="Model.FinansSinifi"
+                                        Data="@_sinifOptions"
+                                        TextProperty="Text"
+                                        ValueProperty="Value"
+                                        AllowClear="true"
+                                        Placeholder="Atanmamış"
+                                        Style="width:100%" />
+                    </RadzenFormField>
+                </RadzenColumn>
+                <RadzenColumn Size="6">
+                    <RadzenFormField Text="Açık Bakiye (₺)" Variant="Variant.Outlined">
+                        <RadzenNumeric TValue="decimal?"
+                                       @bind-Value="Model.AcikBakiye"
+                                       Format="N2"
+                                       Style="width:100%" />
+                    </RadzenFormField>
+                </RadzenColumn>
+            </RadzenRow>
+
+            <RadzenFormField Text="Son Ödeme Tarihi" Variant="Variant.Outlined">
+                <RadzenDatePicker @bind-Value="Model.SonOdemeTarihi"
+                                  DateFormat="dd.MM.yyyy"
+                                  AllowClear="true"
+                                  Style="width:100%" />
+            </RadzenFormField>
+
+            <RadzenFormField Text="Açıklama" Variant="Variant.Outlined">
+                <RadzenTextArea Name="FinansAciklama"
+                                @bind-Value="Model.FinansAciklama"
+                                Rows="3"
+                                MaxLength="1000"
+                                Style="width:100%" />
+            </RadzenFormField>
+            <RadzenLengthValidator Component="FinansAciklama" Max="1000" Text="Açıklama en fazla 1000 karakter olabilir" />
+
+            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton Text="Vazgeç" Click="@(() => Dialog.Close(false))" Disabled="@_busy" />
+                <RadzenButton Text="@(_busy ? "Kaydediliyor..." : "Kaydet")"
+                              Icon="@(_busy ? "" : "save")"
+                              IsBusy="@_busy"
+                              BusyText="Kaydediliyor..."
+                              ButtonStyle="ButtonStyle.Primary"
+                              ButtonType="ButtonType.Submit"
+                              Disabled="@_busy" />
+            </RadzenStack>
+
+        </RadzenStack>
+    </RadzenCard>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public MukellefFinansDto? Existing { get; set; }
+
+    private FinansUpdateDto Model { get; set; } = new();
+    private bool _busy;
+
+    private record SinifOption(string Text, FinansSinifi Value);
+
+    private readonly List<SinifOption> _sinifOptions = new()
+    {
+        new("A", FinansSinifi.A),
+        new("B", FinansSinifi.B),
+        new("C", FinansSinifi.C)
+    };
+
+    protected override void OnInitialized()
+    {
+        if (Existing is not null)
+        {
+            Model = new FinansUpdateDto
+            {
+                FinansSinifi = Existing.FinansSinifi,
+                AcikBakiye = Existing.AcikBakiye,
+                SonOdemeTarihi = Existing.SonOdemeTarihi,
+                FinansAciklama = Existing.FinansAciklama
+            };
+        }
+    }
+
+    private async Task OnSubmit(FinansUpdateDto _)
+    {
+        if (Existing is null) return;
+
+        _busy = true;
+        try
+        {
+            Model.FinansAciklama = string.IsNullOrWhiteSpace(Model.FinansAciklama) ? null : Model.FinansAciklama.Trim();
+            await Api.UpdateFinansAsync(Existing.Id, Model);
+            Dialog.Close(true);
+        }
+        catch (ApiClientException ex)
+        {
+            HandleApiError(ex);
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void HandleApiError(ApiClientException ex)
+    {
+        switch (ex.StatusCode)
+        {
+            case HttpStatusCode.BadRequest:
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Warning,
+                    Summary = "Geçersiz veri",
+                    Detail = "Lütfen alanları doğru doldurun.",
+                    Duration = 5000
+                });
+                break;
+            case HttpStatusCode.NotFound:
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Warning,
+                    Summary = "Bulunamadı",
+                    Detail = "Kayıt bulunamadı, sayfa yenileniyor.",
+                    Duration = 4000
+                });
+                Dialog.Close(true);
+                break;
+            default:
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Sunucu hatası",
+                    Detail = ex.Message,
+                    Duration = 5000
+                });
+                break;
+        }
+    }
+}
