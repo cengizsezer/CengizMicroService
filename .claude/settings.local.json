@@ -26,7 +26,13 @@
       "Bash(Get-ChildItem -Path \"C:\\\\GitHub\\\\CengizMicroService\" -Directory)",
       "Bash(Select-Object Name)",
       "PowerShell(Get-ChildItem -Path \"C:\\\\GitHub\\\\CengizMicroService\\\\Services\\\\CatalogService\\\\CatalogService.Api\\\\Features\\\\Mukellefler\\\\\" -Recurse | ForEach-Object { $_.FullName })",
-      "Bash(dotnet --version)"
+      "Bash(dotnet --version)",
+      "Bash(Get-ChildItem -Path \"C:\\\\GitHub\\\\CengizMicroService\\\\src\\\\Client\\\\BlazorWebApp\\\\WebApp\" -Directory)",
+      "Bash(Get-ChildItem -Path \"C:\\\\GitHub\\\\CengizMicroService\\\\Services\\\\CatalogService\\\\CatalogService.Api\\\\Features\\\\Finans\" -Recurse -Force)",
+      "Bash(Select-Object FullName, Name)",
+      "Bash(Format-Table -AutoSize)",
+      "Bash(Find-Content -Path \"C:\\\\GitHub\\\\CengizMicroService\\\\src\\\\Client\\\\BlazorWebApp\\\\WebApp\" -Name \"Program.cs\" -o \"StartupExtensions\")",
+      "PowerShell(Head *)"
     ]
   }
 }

@@ -1,0 +1,538 @@
+@attribute [Authorize(Roles = "pkf")]
+@page "/finans/banka-takibi"
+@using System.Globalization
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Yonetim
+
+@inject IBankaTakipApiClient Api
+@inject IFirmaApiClient FirmaApi
+@inject NotificationService Notif
+@inject DialogService Dialog
+
+<RadzenCard class="rz-p-3">
+
+    <div class="rz-display-flex rz-align-items-center rz-mb-3" style="justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+        <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">Banka Takibi</RadzenText>
+
+        <div class="rz-display-flex rz-align-items-center" style="gap:0.5rem; flex-wrap:wrap;">
+            <RadzenDropDown TValue="int?"
+                            Data="@firmalar"
+                            TextProperty="@nameof(FirmaDto.KisaAd)"
+                            ValueProperty="@nameof(FirmaDto.Id)"
+                            @bind-Value="_firmaId"
+                            AllowClear="true"
+                            AllowFiltering="true"
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            Placeholder="Tüm firmalar"
+                            Change="@(async (object _) => await LoadAsync())"
+                            Style="min-width:220px;"
+                            Disabled="@firmalarLoading" />
+
+            <RadzenButton Icon="chevron_left" ButtonStyle="ButtonStyle.Light" Click="@PrevMonth" />
+            <RadzenText TextStyle="TextStyle.Subtitle1" class="rz-m-0" Style="min-width:150px; text-align:center;">
+                @AyAdi(_month) @_year
+            </RadzenText>
+            <RadzenButton Icon="chevron_right" ButtonStyle="ButtonStyle.Light" Click="@NextMonth" />
+            <RadzenButton Text="Bugün" Icon="today" ButtonStyle="ButtonStyle.Light" Click="@GoToday" />
+        </div>
+    </div>
+
+    @* Açıklama / lejant *@
+    <div class="rz-display-flex rz-align-items-center rz-mb-3" style="gap:1.25rem; flex-wrap:wrap; font-size:0.8rem;">
+        <span><span class="bt-legend" style="background:#DCFCE7; border-color:#16A34A;"></span> İşlendi</span>
+        <span><span class="bt-legend" style="background:#FEE2E2; border-color:#DC2626;"></span> Atlandı</span>
+        <span><span class="bt-legend" style="background:#FEF9C3; border-color:#CA8A04;"></span> Bekliyor</span>
+        <span><span class="bt-legend" style="background:#F1F5F9; border-color:#CBD5E1;"></span> Hafta sonu / kapalı</span>
+        <span class="rz-text-muted">Bir günün üstüne tıklayarak işlendi/işlenmedi olarak işaretleyebilirsiniz.</span>
+    </div>
+
+    @if (_loading)
+    {
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else if (_hesaplar.Count == 0)
+    {
+        <RadzenText TextStyle="TextStyle.Body1" class="rz-text-muted">
+            Bu ay için aktif hesap bulunamadı. Önce "Banka Tanımları"ndan hesap ekleyin.
+        </RadzenText>
+    }
+    else
+    {
+        var toplamKolon = _gunSayisi + 3;
+        var firmaGruplari = _hesaplar
+            .GroupBy(h => h.FirmaId)
+            .Select(g => new { FirmaAd = g.First().FirmaAd, Hesaplar = g.ToList() })
+            .ToList();
+
+        <div style="overflow-x:auto;">
+            <table class="bt-grid">
+                <thead>
+                    <tr>
+                        <th class="bt-sticky bt-head">Hesap</th>
+                        <th class="bt-head" style="text-align:center;">Sıklık</th>
+                        @for (int d = 1; d <= _gunSayisi; d++)
+                        {
+                            var date = new DateTime(_year, _month, d);
+                            var weekend = date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday;
+                            <th class="bt-dayhead @(weekend ? "bt-weekend-head" : "") @(date.Date == _today ? "bt-today-head" : "")">
+                                <div>@d</div>
+                                <div class="bt-dayname">@GunKisa(date.DayOfWeek)</div>
+                            </th>
+                        }
+                        <th class="bt-head" style="text-align:center;" title="İşlenen / Atlanan">Özet</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int gi = 0; gi < firmaGruplari.Count; gi++)
+                    {
+                        var firma = firmaGruplari[gi];
+                        var firmaId = firma.Hesaplar[0].FirmaId;
+                        var kapali = _kapaliFirmalar.Contains(firmaId);
+                        var toplam = firma.Hesaplar.Count;
+                        var bugun = BugunIslenen(firma.Hesaplar);
+
+                        if (gi > 0)
+                        {
+                            <tr class="bt-spacer"><td colspan="@toplamKolon"></td></tr>
+                        }
+
+                        <tr class="bt-firma-band" @onclick="@(() => ToggleFirma(firmaId))">
+                            <td colspan="@toplamKolon">
+                                <div class="bt-firma-band-inner">
+                                    <span class="bt-firma-ad">
+                                        <RadzenIcon Icon="@(kapali ? "chevron_right" : "expand_more")" />
+                                        <strong>@firma.FirmaAd</strong>
+                                    </span>
+                                    <span class="bt-firma-ozet">@toplam hesap · bugün @bugun/@toplam</span>
+                                </div>
+                            </td>
+                        </tr>
+
+                        if (!kapali)
+                        {
+                            var bankalar = firma.Hesaplar.Where(h => h.Tip == HesapTip.Banka).ToList();
+                            var kartlar = firma.Hesaplar.Where(h => h.Tip == HesapTip.KrediKarti).ToList();
+
+                            var altGruplar = new[]
+                            {
+                                new { Baslik = "Banka hesapları", Renk = "#3b82f6", Liste = bankalar },
+                                new { Baslik = "Kredi kartları", Renk = "#EC4899", Liste = kartlar }
+                            };
+
+                            foreach (var ag in altGruplar)
+                            {
+                                if (ag.Liste.Count == 0) continue;
+
+                                <tr class="bt-tip-band">
+                                    <td colspan="@toplamKolon">
+                                        <span class="bt-tip-dot" style="background:@ag.Renk;"></span> @ag.Baslik
+                                    </td>
+                                </tr>
+
+                                foreach (var h in ag.Liste)
+                                {
+                                    <tr>
+                                        <td class="bt-sticky bt-rowlabel" title="@h.Ad">
+                                            <RadzenBadge BadgeStyle="BadgeStyle.Info"
+                                                         Style="@(h.Tip == HesapTip.Banka ? "" : "background-color:#EC4899;")"
+                                                         Text="@(h.Tip == HesapTip.Banka ? "B" : "KK")" class="rz-mr-1" />
+                                            @h.Ad
+                                            <span class="bt-not-ikon" title="Notlar (ay)"
+                                                  @onclick="@(() => NotlariAcAsync(h, null))" @onclick:stopPropagation>
+                                                <RadzenIcon Icon="sticky_note_2" Style="font-size:0.95rem;" />
+                                                @if (h.NotSayisi > 0)
+                                                {
+                                                    <span class="bt-not-sayac">@h.NotSayisi</span>
+                                                }
+                                            </span>
+                                        </td>
+                                        <td style="text-align:center; white-space:nowrap;">@SiklikText(h.Siklik)</td>
+                                        @for (int d = 1; d <= _gunSayisi; d++)
+                                        {
+                                            var date = new DateTime(_year, _month, d);
+                                            var durum = HesapGunDurum(h, date);
+                                            var key = CellKey(h.HesapId, date);
+                                            var gelecek = date.Date > _today;
+                                            <td class="bt-cell @DurumClass(durum) @(date.Date == _today ? "bt-today" : "") @(gelecek ? "bt-future" : "")"
+                                                title="@DurumText(durum) — @date.ToString("dd.MM.yyyy") (sağ tık: not)"
+                                                @onclick="@(gelecek ? null : (Func<Task>)(() => ToggleAsync(h, date)))"
+                                                @oncontextmenu="@(() => NotlariAcAsync(h, date))"
+                                                @oncontextmenu:preventDefault="true">
+                                                @if (NotluGunMu(h.HesapId, date))
+                                                {
+                                                    <span class="bt-not-dot"></span>
+                                                }
+                                                @if (_busyCells.Contains(key))
+                                                {
+                                                    <span class="bt-spin">…</span>
+                                                }
+                                                else if (durum == Durum.Islendi)
+                                                {
+                                                    <span>✓</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>@d</span>
+                                                }
+                                            </td>
+                                        }
+                                        <td style="text-align:center; white-space:nowrap;">
+                                            <span style="color:#16A34A; font-weight:600;">@IslenenSayi(h)</span>
+                                            <span class="rz-text-muted"> / </span>
+                                            <span style="color:#DC2626; font-weight:600;">@AtlananSayi(h)</span>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+</RadzenCard>
+
+<style>
+    .bt-legend { display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid; vertical-align:middle; margin-right:0.25rem; }
+    .bt-grid { border-collapse:separate; border-spacing:0; font-size:0.8rem; }
+    .bt-grid th, .bt-grid td { border-bottom:1px solid var(--rz-base-200, #e2e8f0); border-right:1px solid var(--rz-base-200, #e2e8f0); }
+    .bt-head { background:var(--rz-base-100, #f1f5f9); padding:0.4rem 0.6rem; font-weight:600; white-space:nowrap; position:sticky; top:0; z-index:2; }
+    .bt-dayhead { background:var(--rz-base-100, #f1f5f9); padding:0.25rem 0; min-width:30px; text-align:center; position:sticky; top:0; z-index:2; }
+    .bt-dayname { font-size:0.65rem; color:var(--rz-text-secondary-color, #64748b); }
+    .bt-weekend-head { background:#e9eef5; }
+    .bt-today-head { box-shadow: inset 0 -3px 0 var(--rz-primary, #3b82f6); }
+    .bt-rowlabel { padding:0.35rem 0.6rem; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; background:#fff; }
+    .bt-sticky { position:sticky; left:0; z-index:1; }
+    /* Firma grup başlık bandı */
+    .bt-firma-band { cursor:pointer; }
+    .bt-firma-band td { background:var(--rz-base-200, #e2e8f0); padding:0.5rem 0.75rem; border-top:2px solid var(--rz-base-300, #cbd5e1); }
+    .bt-firma-band:hover td { background:var(--rz-base-300, #cbd5e1); }
+    .bt-firma-band-inner { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+    .bt-firma-ad { display:flex; align-items:center; gap:0.4rem; }
+    .bt-firma-ozet { font-size:0.8rem; color:var(--rz-text-secondary-color, #64748b); white-space:nowrap; }
+    /* Tip alt başlığı */
+    .bt-tip-band td { background:#f8fafc; padding:0.3rem 0.75rem; font-size:0.78rem; font-weight:600; color:var(--rz-text-secondary-color, #64748b); }
+    .bt-tip-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:0.4rem; vertical-align:middle; }
+    /* Firmalar arası ayraç */
+    .bt-spacer td { background:transparent; border:none; height:14px; }
+    .bt-cell { position:relative; width:30px; min-width:30px; height:30px; text-align:center; cursor:pointer; user-select:none; transition: background 0.2s ease; }
+    .bt-not-dot { position:absolute; top:2px; right:2px; width:6px; height:6px; border-radius:50%; background:#1D4ED8; pointer-events:none; }
+    .bt-not-ikon { display:inline-flex; align-items:center; gap:0.1rem; margin-left:0.35rem; cursor:pointer; color:var(--rz-primary, #3b82f6); vertical-align:middle; }
+    .bt-not-ikon:hover { color:var(--rz-primary-dark, #2563eb); }
+    .bt-not-sayac { font-size:0.65rem; font-weight:700; background:var(--rz-primary, #3b82f6); color:#fff; border-radius:8px; padding:0 0.3rem; line-height:1.2; }
+    .bt-cell:hover { outline:2px solid var(--rz-primary, #3b82f6); outline-offset:-2px; }
+    .bt-future { cursor:default; }
+    .bt-future:hover { outline:none; }
+    .bt-d-islendi { background:#DCFCE7; color:#16A34A; font-weight:700; }
+    .bt-d-atlandi { background:#FEE2E2; color:#DC2626; font-weight:600; }
+    .bt-d-bekliyor { background:#FEF9C3; color:#CA8A04; }
+    .bt-d-haftasonu { background:#F1F5F9; color:#94a3b8; }
+    .bt-d-kapali { background:#F8FAFC; color:#94a3b8; }
+    .bt-d-gelecek { background:#fff; color:#cbd5e1; }
+    .bt-today { box-shadow: inset 0 0 0 2px var(--rz-primary, #3b82f6); }
+    .bt-spin { color:#64748b; }
+</style>
+
+@code {
+    private enum Durum { Islendi, Atlandi, Bekliyor, HaftaSonu, HaftaKapali, Gelecek }
+
+    private int _year;
+    private int _month;
+    private DateTime _today;
+    private int? _firmaId;
+
+    private List<HesapTakipDto> _hesaplar = new();
+    private List<FirmaDto> firmalar = new();
+    private bool firmalarLoading = true;
+    private bool _loading;
+
+    // hesapId -> işlenen günler (date) seti — hızlı arama için.
+    private Dictionary<int, HashSet<DateTime>> _islenen = new();
+    // hesapId -> bu ay gün-notu olan tarihler (hücre köşe noktası için).
+    private Dictionary<int, HashSet<DateTime>> _notluGunler = new();
+    private readonly HashSet<string> _busyCells = new();
+
+    // Katlanmış firmalar (varsayılan: boş = hepsi açık). Kalıcı saklanmaz —
+    // sayfa yenilenince component yeniden oluşur ve yine hepsi açık başlar.
+    private readonly HashSet<int> _kapaliFirmalar = new();
+
+    private int _gunSayisi => DateTime.DaysInMonth(_year, _month);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _today = DateTime.Today;
+        _year = _today.Year;
+        _month = _today.Month;
+
+        try
+        {
+            firmalar = await FirmaApi.GetAllAsync(includeInactive: false);
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Firma listesi yüklenemedi",
+                Detail = ex.Message,
+                Duration = 4000
+            });
+        }
+        finally
+        {
+            firmalarLoading = false;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _hesaplar = await Api.GetAyAsync(_year, _month, _firmaId);
+            _islenen = _hesaplar.ToDictionary(
+                h => h.HesapId,
+                h => h.IslenenGunler.Select(d => d.Date).ToHashSet());
+            _notluGunler = _hesaplar.ToDictionary(
+                h => h.HesapId,
+                h => h.NotluGunler.Select(d => d.Date).ToHashSet());
+        }
+        catch (ApiClientException ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Sunucu hatası",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task PrevMonth()
+    {
+        var d = new DateTime(_year, _month, 1).AddMonths(-1);
+        _year = d.Year; _month = d.Month;
+        await LoadAsync();
+    }
+
+    private async Task NextMonth()
+    {
+        var d = new DateTime(_year, _month, 1).AddMonths(1);
+        _year = d.Year; _month = d.Month;
+        await LoadAsync();
+    }
+
+    private async Task GoToday()
+    {
+        _year = _today.Year; _month = _today.Month;
+        await LoadAsync();
+    }
+
+    private async Task ToggleAsync(HesapTakipDto h, DateTime date)
+    {
+        // Gelecek günler işaretlenemez (yalnızca geçmiş ve bugün).
+        if (date.Date > _today) return;
+
+        var key = CellKey(h.HesapId, date);
+        if (_busyCells.Contains(key)) return;
+
+        var set = _islenen.TryGetValue(h.HesapId, out var s) ? s : (_islenen[h.HesapId] = new());
+        var yeniDeger = !set.Contains(date.Date);
+
+        _busyCells.Add(key);
+        try
+        {
+            var sonuc = await Api.IsaretleAsync(new IsaretleRequestDto
+            {
+                HesapId = h.HesapId,
+                Tarih = date.Date,
+                IslendiMi = yeniDeger
+            });
+
+            if (sonuc.IslendiMi)
+                set.Add(date.Date);
+            else
+                set.Remove(date.Date);
+        }
+        catch (ApiClientException ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "İşaretleme başarısız",
+                Detail = ex.Message,
+                Duration = 4000
+            });
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = ex.Message,
+                Duration = 4000
+            });
+        }
+        finally
+        {
+            _busyCells.Remove(key);
+        }
+    }
+
+    private Durum HesapGunDurum(HesapTakipDto h, DateTime date)
+    {
+        var d = date.Date;
+        if (_islenen.TryGetValue(h.HesapId, out var set) && set.Contains(d))
+            return Durum.Islendi;
+
+        if (d > _today)
+            return Durum.Gelecek;
+
+        var weekend = date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday;
+        if (weekend)
+            return Durum.HaftaSonu;
+
+        // İş günü, işlenmemiş, bugün veya geçmiş.
+        if (d == _today)
+            return Durum.Bekliyor;
+
+        // Geçmiş iş günü.
+        if (h.Siklik == Siklik.Gunluk)
+            return Durum.Atlandi;
+
+        // Haftalık: hafta içinde herhangi bir gün işlendiyse o hafta kapalı sayılır.
+        if (HaftaKapaliMi(h, date))
+            return Durum.HaftaKapali;
+
+        // İçinde bulunulan hafta ise henüz "atlandı" sayma; geçmiş hafta ise atlandı.
+        return HaftaBasi(date) < HaftaBasi(_today) ? Durum.Atlandi : Durum.Bekliyor;
+    }
+
+    private bool HaftaKapaliMi(HesapTakipDto h, DateTime date)
+    {
+        if (!_islenen.TryGetValue(h.HesapId, out var set)) return false;
+        var hb = HaftaBasi(date);
+        return set.Any(x => HaftaBasi(x) == hb);
+    }
+
+    private static DateTime HaftaBasi(DateTime d)
+    {
+        var diff = ((int)d.DayOfWeek + 6) % 7; // Pazartesi = 0
+        return d.Date.AddDays(-diff);
+    }
+
+    private void ToggleFirma(int firmaId)
+    {
+        if (!_kapaliFirmalar.Remove(firmaId))
+            _kapaliFirmalar.Add(firmaId);
+    }
+
+    private bool NotluGunMu(int hesapId, DateTime date) =>
+        _notluGunler.TryGetValue(hesapId, out var set) && set.Contains(date.Date);
+
+    // Notlar dialog'unu açar. baglamTarih dolu ise GÜN, null ise AY bağlamı.
+    // Kapanınca seçili ay yeniden yüklenir (ikon/sayaç ve noktalar güncellensin).
+    private async Task NotlariAcAsync(HesapTakipDto h, DateTime? baglamTarih)
+    {
+        await Dialog.OpenAsync<NotlarDialog>("Notlar",
+            new Dictionary<string, object>
+            {
+                ["HesapId"] = h.HesapId,
+                ["HesapAdi"] = h.Ad,
+                ["FirmaAdi"] = h.FirmaAd,
+                ["BaglamTarih"] = baglamTarih,
+                ["BaglamYil"] = _year,
+                ["BaglamAy"] = _month
+            },
+            new DialogOptions { Width = "600px" });
+
+        await LoadAsync();
+    }
+
+    // Bu firmanın bugün işlenmiş hesap sayısı (banda "bugün x/toplam" için).
+    private int BugunIslenen(IEnumerable<HesapTakipDto> grup) =>
+        grup.Count(h => _islenen.TryGetValue(h.HesapId, out var set) && set.Contains(_today));
+
+    private int IslenenSayi(HesapTakipDto h) =>
+        _islenen.TryGetValue(h.HesapId, out var set) ? set.Count : 0;
+
+    private int AtlananSayi(HesapTakipDto h)
+    {
+        int sayi = 0;
+        for (int d = 1; d <= _gunSayisi; d++)
+        {
+            if (HesapGunDurum(h, new DateTime(_year, _month, d)) == Durum.Atlandi)
+                sayi++;
+        }
+        return sayi;
+    }
+
+    private static string CellKey(int hesapId, DateTime date) => $"{hesapId}:{date:yyyyMMdd}";
+
+    private static string DurumClass(Durum d) => d switch
+    {
+        Durum.Islendi => "bt-d-islendi",
+        Durum.Atlandi => "bt-d-atlandi",
+        Durum.Bekliyor => "bt-d-bekliyor",
+        Durum.HaftaSonu => "bt-d-haftasonu",
+        Durum.HaftaKapali => "bt-d-kapali",
+        _ => "bt-d-gelecek"
+    };
+
+    private static string DurumText(Durum d) => d switch
+    {
+        Durum.Islendi => "İşlendi",
+        Durum.Atlandi => "Atlandı",
+        Durum.Bekliyor => "Bekliyor",
+        Durum.HaftaSonu => "Hafta sonu",
+        Durum.HaftaKapali => "Hafta kapalı",
+        _ => "Gelecek"
+    };
+
+    private static string SiklikText(Siklik s) => s switch
+    {
+        Siklik.Gunluk => "Günlük",
+        Siklik.Haftalik => "Haftalık",
+        _ => s.ToString()
+    };
+
+    private static string GunKisa(DayOfWeek d) => d switch
+    {
+        DayOfWeek.Monday => "Pzt",
+        DayOfWeek.Tuesday => "Sal",
+        DayOfWeek.Wednesday => "Çar",
+        DayOfWeek.Thursday => "Per",
+        DayOfWeek.Friday => "Cum",
+        DayOfWeek.Saturday => "Cmt",
+        _ => "Paz"
+    };
+
+    private static string AyAdi(int ay)
+    {
+        var aylar = new[] { "", "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+                            "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık" };
+        return (ay >= 1 && ay <= 12) ? aylar[ay] : ay.ToString();
+    }
+}

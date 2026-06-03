@@ -1,0 +1,228 @@
+@using System.Net
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Yonetim
+
+@inject DialogService Dialog
+@inject NotificationService Notif
+@inject IHesapApiClient Api
+@inject IFirmaApiClient FirmaApi
+
+<RadzenTemplateForm TItem="HesapCreateDto" Data="@Model" Submit="@OnSubmit">
+    <RadzenCard class="rz-p-3">
+        <RadzenStack Gap="0.75rem">
+
+            <RadzenFormField Text="Firma" Variant="Variant.Outlined">
+                <RadzenDropDown TValue="int"
+                                Name="FirmaId"
+                                Data="@firmalar"
+                                TextProperty="@nameof(FirmaDto.KisaAd)"
+                                ValueProperty="@nameof(FirmaDto.Id)"
+                                @bind-Value="Model.FirmaId"
+                                AllowFiltering="true"
+                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                Placeholder="Firma seçin..."
+                                Style="width:100%"
+                                Disabled="@firmalarLoading" />
+            </RadzenFormField>
+            <RadzenRequiredValidator Component="FirmaId" DefaultValue="0" Text="Firma zorunlu" />
+
+            <RadzenFormField Text="Tip" Variant="Variant.Outlined">
+                <RadzenDropDown TValue="HesapTip"
+                                Name="Tip"
+                                Data="@tipler"
+                                TextProperty="Text"
+                                ValueProperty="Value"
+                                @bind-Value="Model.Tip"
+                                Style="width:100%" />
+            </RadzenFormField>
+
+            <RadzenFormField Text="Ad" Variant="Variant.Outlined">
+                <RadzenTextBox Name="Ad" @bind-Value="Model.Ad" Style="width:100%" MaxLength="100" Placeholder="Örn: Ziraat Bankası TL Vadesiz" />
+            </RadzenFormField>
+            <RadzenRequiredValidator Component="Ad" Text="Ad zorunlu" />
+
+            <RadzenFormField Text="Sıklık" Variant="Variant.Outlined">
+                <RadzenDropDown TValue="Siklik"
+                                Name="Siklik"
+                                Data="@sikliklar"
+                                TextProperty="Text"
+                                ValueProperty="Value"
+                                @bind-Value="Model.Siklik"
+                                Style="width:100%" />
+            </RadzenFormField>
+            <div class="rz-color-secondary" style="font-size: 0.8rem;">
+                Bu hesabın ne sıklıkla işlenmesi (kontrol edilmesi) beklendiğini belirler — Banka Takibi'nde atlanan günleri buna göre işaretler.
+            </div>
+
+            <div>
+                <RadzenCheckBox @bind-Value="Model.AktifMi" Name="AktifMi" />
+                <RadzenLabel Text="Aktif" Component="AktifMi" class="rz-ml-2" />
+            </div>
+
+            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton Text="Vazgeç" Click="@(() => Dialog.Close(false))" Disabled="@_busy" />
+                <RadzenButton Text="@(_busy ? "Kaydediliyor..." : "Kaydet")"
+                              Icon="@(_busy ? "" : "save")"
+                              IsBusy="@_busy"
+                              BusyText="Kaydediliyor..."
+                              ButtonStyle="ButtonStyle.Primary"
+                              ButtonType="ButtonType.Submit"
+                              Disabled="@_busy" />
+            </RadzenStack>
+
+        </RadzenStack>
+    </RadzenCard>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public HesapDto? Existing { get; set; }
+
+    private HesapCreateDto Model { get; set; } = new();
+    private List<FirmaDto> firmalar = new();
+    private bool firmalarLoading = true;
+    private bool _busy;
+
+    private bool IsEdit => Existing is not null;
+
+    private record EnumOption<T>(T Value, string Text);
+
+    private readonly List<EnumOption<HesapTip>> tipler = new()
+    {
+        new(HesapTip.Banka, "Banka"),
+        new(HesapTip.KrediKarti, "Kredi Kartı")
+    };
+
+    private readonly List<EnumOption<Siklik>> sikliklar = new()
+    {
+        new(Siklik.Gunluk, "Günlük"),
+        new(Siklik.Haftalik, "Haftalık")
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Existing is not null)
+        {
+            Model = new HesapCreateDto
+            {
+                FirmaId = Existing.FirmaId,
+                Tip     = Existing.Tip,
+                Ad      = Existing.Ad,
+                Siklik  = Existing.Siklik,
+                AktifMi = Existing.AktifMi
+            };
+        }
+
+        try
+        {
+            firmalar = await FirmaApi.GetAllAsync(includeInactive: false);
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary  = "Firma listesi yüklenemedi",
+                Detail   = ex.Message,
+                Duration = 4000
+            });
+        }
+        finally
+        {
+            firmalarLoading = false;
+        }
+    }
+
+    private async Task OnSubmit(HesapCreateDto _)
+    {
+        if (Model.FirmaId <= 0)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Geçersiz veri",
+                Detail = "Lütfen bir firma seçin.",
+                Duration = 4000
+            });
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            if (IsEdit)
+            {
+                var updateDto = new HesapUpdateDto
+                {
+                    FirmaId = Model.FirmaId,
+                    Tip     = Model.Tip,
+                    Ad      = Model.Ad.Trim(),
+                    Siklik  = Model.Siklik,
+                    AktifMi = Model.AktifMi
+                };
+                await Api.UpdateAsync(Existing!.Id, updateDto);
+            }
+            else
+            {
+                Model.Ad = Model.Ad.Trim();
+                await Api.CreateAsync(Model);
+            }
+
+            Dialog.Close(true);
+        }
+        catch (ApiClientException ex)
+        {
+            HandleApiError(ex);
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void HandleApiError(ApiClientException ex)
+    {
+        switch (ex.StatusCode)
+        {
+            case HttpStatusCode.BadRequest:
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Warning,
+                    Summary = "Geçersiz veri",
+                    Detail = string.IsNullOrWhiteSpace(ex.Message) ? "Lütfen tüm alanları doğru doldurun." : ex.Message,
+                    Duration = 5000
+                });
+                break;
+            case HttpStatusCode.NotFound:
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Warning,
+                    Summary = "Bulunamadı",
+                    Detail = "Kayıt bulunamadı, sayfa yenileniyor.",
+                    Duration = 4000
+                });
+                Dialog.Close(true);
+                break;
+            default:
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Sunucu hatası",
+                    Detail = ex.Message,
+                    Duration = 5000
+                });
+                break;
+        }
+    }
+}

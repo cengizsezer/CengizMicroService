@@ -1,5 +1,6 @@
 ﻿using CatalogService.Api.Extensions;
 using CatalogService.Api.Features.AccountPlan;
+using CatalogService.Api.Features.Banka.Services;
 using CatalogService.Api.Features.Declarations.Services;
 using CatalogService.Api.Features.Education.Mapping;
 using CatalogService.Api.Features.Expenses.Mapping;
@@ -119,6 +120,9 @@ builder.Services.AddHttpClient("incoming-invoice-worker");
 builder.Services.AddScoped<IMukellefService, MukellefService>();
 builder.Services.AddScoped<IMukellefImportService, MukellefImportService>();
 builder.Services.AddScoped<IFinansService, FinansService>();
+builder.Services.AddScoped<IHesapService, HesapService>();
+builder.Services.AddScoped<IBankaTakipService, BankaTakipService>();
+builder.Services.AddScoped<IHesapNotService, HesapNotService>();
 builder.Services.AddScoped<IPayrollCalculationEngine, PayrollCalculationEngine>();
 builder.Services.AddScoped<IDistributionComparisonService, DistributionComparisonService>();
 builder.Services.AddScoped<IDistributionExportService, DistributionExportService>();

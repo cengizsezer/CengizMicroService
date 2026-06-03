@@ -1,4 +1,5 @@
 ﻿using CatalogService.Api.Features.AccountPlan;
+using CatalogService.Api.Features.Banka.Domain;
 using CatalogService.Api.Features.Declarations.Entities;
 using CatalogService.Api.Features.Education.Domain;
 using CatalogService.Api.Features.Expenses.Domain;
@@ -52,6 +53,11 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<Firma> Firmalar => Set<Firma>();
         public DbSet<Mukellef> Mukellefler => Set<Mukellef>();
 
+        // Banka modülü (Banka Tanımları + Banka Takibi)
+        public DbSet<Hesap> Hesaplar => Set<Hesap>();
+        public DbSet<IslemKaydi> IslemKayitlari => Set<IslemKaydi>();
+        public DbSet<Not> HesapNotlari => Set<Not>();
+
         // KDV Beyannamesi modülü
         public DbSet<KdvBeyannameTarama> KdvBeyannameTaramalar => Set<KdvBeyannameTarama>();
         public DbSet<GelenFatura> GelenFaturalar => Set<GelenFatura>();
@@ -78,6 +84,11 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new TaxPaymentConfiguration());
             builder.ApplyConfiguration(new FirmaEntityTypeConfiguration());
             builder.ApplyConfiguration(new MukellefEntityTypeConfiguration());
+
+            // Banka modülü
+            builder.ApplyConfiguration(new HesapEntityTypeConfiguration());
+            builder.ApplyConfiguration(new IslemKaydiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new NotEntityTypeConfiguration());
 
             // KDV Beyannamesi modülü
             builder.ApplyConfiguration(new KdvBeyannameTaramaConfiguration());

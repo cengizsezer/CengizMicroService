@@ -1,0 +1,265 @@
+@attribute [Authorize(Roles = "pkf")]
+@page "/finans/banka-tanimlari"
+@using System.Net
+@using System.Timers
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Yonetim
+
+@implements IDisposable
+
+@inject IHesapApiClient Api
+@inject DialogService Dialog
+@inject NotificationService Notif
+
+<RadzenCard class="rz-p-3">
+
+    <div class="rz-display-flex rz-align-items-center rz-mb-3" style="justify-content:space-between;">
+        <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">
+            Banka Tanımları <span class="rz-text-muted" style="font-size:0.85rem;">(@_allHesaplar.Count)</span>
+        </RadzenText>
+        <RadzenButton Text="Yeni Hesap"
+                      Icon="add"
+                      ButtonStyle="ButtonStyle.Primary"
+                      Click="@CreateAsync" />
+    </div>
+
+    <div class="rz-display-flex rz-align-items-center rz-mb-3" style="gap:1rem; flex-wrap:wrap;">
+        <RadzenTextBox Placeholder="Arama: hesap adı, firma"
+                       Value="@_searchInput"
+                       Change="@OnSearchChanged"
+                       Style="min-width:320px; flex:1;" />
+        <div>
+            <RadzenCheckBox @bind-Value="_includeInactive" Name="includeInactive" Change="@(async (bool _) => await LoadAsync())" />
+            <RadzenLabel Text="Pasif olanları da göster" Component="includeInactive" class="rz-ml-2" />
+        </div>
+    </div>
+
+    <RadzenDataGrid TItem="HesapDto"
+                    Data="@FilteredHesaplar"
+                    IsLoading="@_loading"
+                    AllowPaging="true"
+                    PageSize="10"
+                    AllowSorting="true"
+                    EmptyText="Henüz hesap yok, ilk hesabı ekleyin.">
+        <Columns>
+            <RadzenDataGridColumn TItem="HesapDto" Property="FirmaAd" Title="Firma" Width="220px" />
+            <RadzenDataGridColumn TItem="HesapDto" Property="Ad" Title="Hesap Adı" />
+
+            <RadzenDataGridColumn TItem="HesapDto" Property="Tip" Title="Tip" Width="140px">
+                <Template Context="h">
+                    <RadzenBadge BadgeStyle="@(h.Tip == HesapTip.Banka ? BadgeStyle.Info : BadgeStyle.Secondary)"
+                                 Text="@TipText(h.Tip)" />
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="HesapDto" Property="Siklik" Title="Sıklık" Width="120px">
+                <Template Context="h">
+                    @SiklikText(h.Siklik)
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="HesapDto" Title="Durum" Width="80px" TextAlign="TextAlign.Center" Sortable="false">
+                <Template Context="h">
+                    @if (h.AktifMi)
+                    {
+                        <RadzenIcon Icon="check_circle" Style="color: var(--rz-success);" />
+                    }
+                    else
+                    {
+                        <RadzenIcon Icon="cancel" Style="color: var(--rz-danger);" />
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="HesapDto" Title="İşlemler" Width="100px" TextAlign="TextAlign.Center" Sortable="false" Filterable="false">
+                <Template Context="h">
+                    <span @onclick:stopPropagation @onkeydown:stopPropagation>
+                        <RadzenButton Icon="edit"
+                                      Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Light"
+                                      class="rz-mr-1"
+                                      Click="@(() => EditAsync(h))" />
+                        <RadzenButton Icon="delete"
+                                      Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Danger"
+                                      Disabled="@(!h.AktifMi)"
+                                      Click="@(() => DeleteAsync(h))" />
+                    </span>
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+
+</RadzenCard>
+
+@code {
+    private List<HesapDto> _allHesaplar = new();
+    private string _searchInput = "";
+    private string _search = "";
+    private bool _includeInactive = false;
+    private bool _loading;
+    private Timer? _debounceTimer;
+
+    private IEnumerable<HesapDto> FilteredHesaplar =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _allHesaplar
+            : _allHesaplar.Where(h =>
+                h.Ad.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                h.FirmaAd.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    private static string TipText(HesapTip tip) => tip switch
+    {
+        HesapTip.Banka => "Banka",
+        HesapTip.KrediKarti => "Kredi Kartı",
+        _ => tip.ToString()
+    };
+
+    private static string SiklikText(Siklik s) => s switch
+    {
+        Siklik.Gunluk => "Günlük",
+        Siklik.Haftalik => "Haftalık",
+        _ => s.ToString()
+    };
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _allHesaplar = await Api.GetAllAsync(includeInactive: _includeInactive);
+        }
+        catch (ApiClientException ex)
+        {
+            ShowApiError(ex);
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OnSearchChanged(string val)
+    {
+        _searchInput = val ?? "";
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+        _debounceTimer = new Timer(500) { AutoReset = false };
+        _debounceTimer.Elapsed += async (_, _) =>
+        {
+            await InvokeAsync(() =>
+            {
+                _search = _searchInput;
+                StateHasChanged();
+            });
+        };
+        _debounceTimer.Start();
+    }
+
+    private async Task CreateAsync()
+    {
+        var result = await Dialog.OpenAsync<HesapDialog>("Yeni Hesap",
+            new Dictionary<string, object>(),
+            new DialogOptions { Width = "560px" });
+
+        if (result is bool ok && ok)
+        {
+            await LoadAsync();
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Başarılı",
+                Detail = "Hesap oluşturuldu.",
+                Duration = 3000
+            });
+        }
+    }
+
+    private async Task EditAsync(HesapDto h)
+    {
+        var result = await Dialog.OpenAsync<HesapDialog>($"Hesabı Düzenle: {h.Ad}",
+            new Dictionary<string, object> { ["Existing"] = h },
+            new DialogOptions { Width = "560px" });
+
+        if (result is bool ok && ok)
+        {
+            await LoadAsync();
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Güncellendi",
+                Detail = "Hesap güncellendi.",
+                Duration = 3000
+            });
+        }
+    }
+
+    private async Task DeleteAsync(HesapDto h)
+    {
+        var confirm = await Dialog.Confirm(
+            $"\"{h.Ad}\" pasif yapılacak. Devam edilsin mi?",
+            "Soft Delete Onayı",
+            new ConfirmOptions { OkButtonText = "Pasife Al", CancelButtonText = "Vazgeç" });
+
+        if (confirm != true) return;
+
+        try
+        {
+            await Api.DeleteAsync(h.Id);
+            await LoadAsync();
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Silindi",
+                Detail = $"{h.Ad} pasif yapıldı.",
+                Duration = 3000
+            });
+        }
+        catch (ApiClientException ex)
+        {
+            ShowApiError(ex);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+    }
+
+    private void ShowApiError(ApiClientException ex)
+    {
+        var (sev, summary, detail) = ex.StatusCode switch
+        {
+            HttpStatusCode.NotFound => (NotificationSeverity.Warning, "Bulunamadı", "Kayıt bulunamadı, sayfa yenileniyor."),
+            HttpStatusCode.BadRequest => (NotificationSeverity.Warning, "Geçersiz veri", "Lütfen tüm alanları doğru doldurun."),
+            _ => (NotificationSeverity.Error, "Sunucu hatası", "Sunucu hatası, tekrar deneyin.")
+        };
+        Notif.Notify(new NotificationMessage { Severity = sev, Summary = summary, Detail = detail, Duration = 5000 });
+    }
+
+    public void Dispose()
+    {
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+    }
+}

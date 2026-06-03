@@ -67,6 +67,123 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("AccountNodes", "catalog");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.Banka.Domain.Hesap", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("AktifMi")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FirmaId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Siklik")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Tip")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AktifMi");
+
+                    b.HasIndex("FirmaId");
+
+                    b.ToTable("Hesaplar", (string)null);
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.Banka.Domain.IslemKaydi", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("HesapId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("IslemZamani")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IslendiMi")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("IsleyenKullanici")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("Tarih")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HesapId", "Tarih")
+                        .IsUnique();
+
+                    b.ToTable("IslemKayitlari", (string)null);
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.Banka.Domain.Not", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("Ay")
+                        .HasColumnType("int");
+
+                    b.Property<int>("HesapId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Kapsam")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Metin")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("OlusturanKullanici")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("OlusturmaZamani")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("Sabit")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("Tarih")
+                        .HasColumnType("date");
+
+                    b.Property<int?>("Yil")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HesapId");
+
+                    b.ToTable("HesapNotlari", (string)null);
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.Declarations.Entities.CustomerCompany", b =>
                 {
                     b.Property<int>("Id")
@@ -1481,6 +1598,33 @@ namespace CatalogService.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Parent");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.Banka.Domain.Hesap", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.Firmalar.Domain.Firma", null)
+                        .WithMany()
+                        .HasForeignKey("FirmaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.Banka.Domain.IslemKaydi", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.Banka.Domain.Hesap", null)
+                        .WithMany()
+                        .HasForeignKey("HesapId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.Banka.Domain.Not", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.Banka.Domain.Hesap", null)
+                        .WithMany()
+                        .HasForeignKey("HesapId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("CatalogService.Api.Features.Expenses.Domain.ProductDetail", b =>

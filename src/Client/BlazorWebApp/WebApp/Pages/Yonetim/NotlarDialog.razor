@@ -1,0 +1,267 @@
+@using System.Net
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Yonetim
+
+@inject INotApiClient Api
+@inject DialogService Dialog
+@inject NotificationService Notif
+
+<div style="min-width:480px; max-width:560px;">
+
+    @* ── Başlık / bağlam ── *@
+    <div class="rz-mb-3">
+        <div class="rz-text-secondary-color" style="font-size:0.85rem;">@HesapAdi · @FirmaAdi</div>
+        <div class="rz-mt-1">
+            <RadzenBadge BadgeStyle="BadgeStyle.Light"
+                         Style="@BaglamCipStyle()"
+                         Text="@BaglamCipMetin()" />
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else
+    {
+        @* ── Sabit (pinli) notlar ── *@
+        @if (_sabitler.Count > 0)
+        {
+            <div class="rz-mb-3">
+                @foreach (var n in _sabitler)
+                {
+                    <div class="not-sabit">
+                        <div class="not-satir-ust">
+                            <span class="not-etiket" style="background:#FEF9C3; color:#CA8A04;">
+                                <RadzenIcon Icon="push_pin" Style="font-size:0.9rem; vertical-align:middle;" />
+                                Sabit · @KapsamEtiket(n)
+                            </span>
+                            <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light"
+                                          class="not-sil" Click="@(() => SilAsync(n))" />
+                        </div>
+                        <div class="not-metin">@n.Metin</div>
+                        <div class="not-meta">@MetaText(n)</div>
+                    </div>
+                }
+            </div>
+        }
+
+        @* ── Diğer notlar ── *@
+        @if (_digerleri.Count > 0)
+        {
+            <div class="rz-mb-3">
+                @foreach (var n in _digerleri)
+                {
+                    <div class="not-kart">
+                        <div class="not-satir-ust">
+                            <span class="not-etiket" style="@KapsamEtiketStyle(n.Kapsam)">@KapsamEtiket(n)</span>
+                            <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light"
+                                          class="not-sil" Click="@(() => SilAsync(n))" />
+                        </div>
+                        <div class="not-metin">@n.Metin</div>
+                        <div class="not-meta">@MetaText(n)</div>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (_sabitler.Count == 0 && _digerleri.Count == 0)
+        {
+            <div class="rz-text-secondary-color rz-mb-3" style="font-size:0.9rem;">Henüz not yok.</div>
+        }
+
+        @* ── Ekleme ── *@
+        <RadzenCard class="rz-p-3" Style="background:var(--rz-base-100, #f8fafc);">
+            <RadzenStack Gap="0.6rem">
+                <RadzenTextArea @bind-Value="_yeniMetin" Rows="3" MaxLength="2000"
+                                Placeholder="Not / açıklama girin..." Style="width:100%" />
+
+                <RadzenFormField Text="Kapsam" Variant="Variant.Outlined">
+                    <RadzenDropDown TValue="NotKapsam"
+                                    Data="@_kapsamSecenekleri"
+                                    TextProperty="Text"
+                                    ValueProperty="Value"
+                                    @bind-Value="_kapsam"
+                                    Style="width:100%" />
+                </RadzenFormField>
+
+                <div>
+                    <RadzenCheckBox @bind-Value="_sabit" Name="sabit" />
+                    <RadzenLabel Text="Sabitle (pinli / devir notu)" Component="sabit" class="rz-ml-2" />
+                </div>
+
+                <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton Text="Kapat" ButtonStyle="ButtonStyle.Light" Click="@(() => Dialog.Close(_degisti))" Disabled="@_busy" />
+                    <RadzenButton Text="@(_busy ? "Ekleniyor..." : "Ekle")"
+                                  Icon="@(_busy ? "" : "add")"
+                                  IsBusy="@_busy"
+                                  ButtonStyle="ButtonStyle.Primary"
+                                  Click="@EkleAsync"
+                                  Disabled="@_busy" />
+                </RadzenStack>
+            </RadzenStack>
+        </RadzenCard>
+    }
+</div>
+
+<style>
+    .not-sabit { background:#FEFCE8; border:1px solid #FDE68A; border-left:4px solid #CA8A04; border-radius:6px; padding:0.5rem 0.6rem; margin-bottom:0.5rem; }
+    .not-kart { border:1px solid var(--rz-base-200, #e2e8f0); border-radius:6px; padding:0.5rem 0.6rem; margin-bottom:0.5rem; }
+    .not-satir-ust { display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.25rem; }
+    .not-etiket { display:inline-block; font-size:0.72rem; font-weight:600; padding:0.1rem 0.45rem; border-radius:10px; white-space:nowrap; }
+    .not-metin { white-space:pre-wrap; font-size:0.9rem; }
+    .not-meta { font-size:0.72rem; color:var(--rz-text-secondary-color, #94a3b8); margin-top:0.25rem; }
+    .not-sil { flex:0 0 auto; }
+</style>
+
+@code {
+    [Parameter] public int HesapId { get; set; }
+    [Parameter] public string HesapAdi { get; set; } = "";
+    [Parameter] public string FirmaAdi { get; set; } = "";
+    [Parameter] public DateTime? BaglamTarih { get; set; }
+    [Parameter] public int BaglamYil { get; set; }
+    [Parameter] public int BaglamAy { get; set; }
+
+    private record KapsamSecenek(NotKapsam Value, string Text);
+
+    private List<NotDto> _sabitler = new();
+    private List<NotDto> _digerleri = new();
+    private List<KapsamSecenek> _kapsamSecenekleri = new();
+
+    private string _yeniMetin = "";
+    private NotKapsam _kapsam = NotKapsam.Ay;
+    private bool _sabit;
+    private bool _loading = true;
+    private bool _busy;
+    private bool _degisti;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _kapsamSecenekleri = new();
+        if (BaglamTarih.HasValue)
+            _kapsamSecenekleri.Add(new(NotKapsam.Gun, $"Bu güne ({BaglamTarih.Value:dd.MM.yyyy})"));
+        _kapsamSecenekleri.Add(new(NotKapsam.Ay, $"Bu aya ({AyAdi(BaglamAy)} {BaglamYil})"));
+        _kapsamSecenekleri.Add(new(NotKapsam.Genel, "Genel / sürekli"));
+
+        _kapsam = BaglamTarih.HasValue ? NotKapsam.Gun : NotKapsam.Ay;
+
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _loading = true;
+        try
+        {
+            var notlar = await Api.GetByHesapAsync(HesapId, BaglamYil, BaglamAy);
+            _sabitler = notlar.Where(n => n.Sabit).ToList();
+            _digerleri = notlar.Where(n => !n.Sabit).ToList();
+        }
+        catch (Exception ex)
+        {
+            Bildir(NotificationSeverity.Error, "Notlar yüklenemedi", ex.Message);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task EkleAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_yeniMetin))
+        {
+            Bildir(NotificationSeverity.Warning, "Boş not", "Lütfen bir not metni girin.");
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var dto = new NotCreateDto
+            {
+                HesapId = HesapId,
+                Kapsam = _kapsam,
+                Metin = _yeniMetin.Trim(),
+                Sabit = _sabit,
+                Tarih = _kapsam == NotKapsam.Gun ? BaglamTarih : null,
+                Yil = _kapsam == NotKapsam.Ay ? BaglamYil : null,
+                Ay = _kapsam == NotKapsam.Ay ? BaglamAy : null
+            };
+
+            await Api.CreateAsync(dto);
+            _degisti = true;
+            _yeniMetin = "";
+            _sabit = false;
+            await YukleAsync();
+        }
+        catch (Exception ex)
+        {
+            Bildir(NotificationSeverity.Error, "Not eklenemedi", ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SilAsync(NotDto n)
+    {
+        var onay = await Dialog.Confirm("Bu not silinsin mi?", "Not Sil",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        try
+        {
+            await Api.DeleteAsync(n.Id);
+            _degisti = true;
+            await YukleAsync();
+        }
+        catch (Exception ex)
+        {
+            Bildir(NotificationSeverity.Error, "Not silinemedi", ex.Message);
+        }
+    }
+
+    private void Bildir(NotificationSeverity sev, string ozet, string detay) =>
+        Notif.Notify(new NotificationMessage { Severity = sev, Summary = ozet, Detail = detay, Duration = 4000 });
+
+    private string BaglamCipMetin() =>
+        BaglamTarih.HasValue
+            ? $"Gün: {BaglamTarih.Value:dd.MM.yyyy}"
+            : $"{AyAdi(BaglamAy)} {BaglamYil}";
+
+    private string BaglamCipStyle() =>
+        BaglamTarih.HasValue
+            ? "background:#DBEAFE; color:#1D4ED8;"
+            : "background:#E2E8F0; color:#475569;";
+
+    private string KapsamEtiket(NotDto n) => n.Kapsam switch
+    {
+        NotKapsam.Gun => n.Tarih?.ToString("dd.MM.yyyy") ?? "Gün",
+        NotKapsam.Ay => $"{AyAdi(n.Ay ?? 0)} {n.Yil}",
+        _ => "Genel"
+    };
+
+    private static string KapsamEtiketStyle(NotKapsam k) => k switch
+    {
+        NotKapsam.Gun => "background:#DBEAFE; color:#1D4ED8;",
+        NotKapsam.Ay => "background:#E2E8F0; color:#475569;",
+        _ => "background:#F1F5F9; color:#64748b;"
+    };
+
+    private static string MetaText(NotDto n)
+    {
+        var kim = string.IsNullOrWhiteSpace(n.OlusturanKullanici) ? "—" : n.OlusturanKullanici;
+        return $"{kim} · {n.OlusturmaZamani:dd.MM.yyyy HH:mm}";
+    }
+
+    private static string AyAdi(int ay)
+    {
+        var aylar = new[] { "", "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+                            "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık" };
+        return (ay >= 1 && ay <= 12) ? aylar[ay] : ay.ToString();
+    }
+}

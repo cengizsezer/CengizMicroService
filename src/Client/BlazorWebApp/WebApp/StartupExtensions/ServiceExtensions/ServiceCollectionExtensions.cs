@@ -180,6 +180,15 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             services.AddScoped<IFinansApiClient>(sp =>
                 new FinansApiClient(sp.GetRequiredService<HttpClient>()));
 
+            services.AddScoped<IHesapApiClient>(sp =>
+                new HesapApiClient(sp.GetRequiredService<HttpClient>()));
+
+            services.AddScoped<IBankaTakipApiClient>(sp =>
+                new BankaTakipApiClient(sp.GetRequiredService<HttpClient>()));
+
+            services.AddScoped<INotApiClient>(sp =>
+                new NotApiClient(sp.GetRequiredService<HttpClient>()));
+
             services.AddScoped<IPermissionService, PermissionService>();
 
 
