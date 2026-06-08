@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using CatalogService.Api.Features.KdvBeyanname.Dtos;
 using CatalogService.Api.Features.KdvBeyanname.Services;
 using CatalogService.Api.Features.KdvBeyanname.Services.BdpXml;
+using CatalogService.Api.Features.KdvBeyanname.Services.Parsing;
 using CatalogService.Api.Infrastructure.Context;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -184,12 +185,45 @@ namespace CatalogService.Api.Features.KdvBeyanname.Controllers
             {
                 return BadRequest(new { mesaj = ex.Message });
             }
+            catch (KdvYevmiyeBaslikException ex)
+            {
+                // Başlık eşleşmedi → kullanıcıya "bulunan vs beklenen" göster.
+                _logger.LogWarning(ex,
+                    "Yevmiye başlık eşleşmedi (FirmaId={Id}, Donem={D})", firmaId, donem);
+                return BadRequest(new YevmiyeBaslikHataDto
+                {
+                    Mesaj = ex.Message,
+                    BulunanBasliklar = ex.BulunanBasliklar.ToList(),
+                    BeklenenKolonlar = BuildBeklenenKolonlar(ex.BulunanBasliklar)
+                });
+            }
             catch (InvalidOperationException ex)
             {
                 _logger.LogWarning(ex, "Yevmiye parse hatası (FirmaId={Id}, Donem={D})", firmaId, donem);
                 return BadRequest(new { mesaj = ex.Message });
             }
         }
+
+        // ── Yevmiye beklenen sütun başlıkları (tek kaynaktan: KdvYevmiyeColumns) ──
+
+        [HttpGet("yevmiye/beklenen-basliklar")]
+        [ProducesResponseType(typeof(List<BeklenenKolonDto>), StatusCodes.Status200OK)]
+        public ActionResult<List<BeklenenKolonDto>> GetYevmiyeBeklenenBasliklar()
+            => Ok(BuildBeklenenKolonlar(Array.Empty<string>()));
+
+        // Tek kaynaktan BeklenenKolonDto listesi üretir. bulunanBasliklar verilirse
+        // her kolonun "Bulundu" bayrağını parser ile aynı kuralla (case-insensitive,
+        // trim'li) işaretler.
+        private static List<BeklenenKolonDto> BuildBeklenenKolonlar(
+            IReadOnlyCollection<string> bulunanBasliklar)
+            => KdvYevmiyeColumns.All.Select(c => new BeklenenKolonDto
+            {
+                Ad            = c.Ad,
+                Alternatifler = c.Alternatifler.ToList(),
+                Zorunlu       = c.Zorunlu,
+                Bulundu       = bulunanBasliklar.Count > 0
+                                && KdvYevmiyeColumns.Eslesti(c, bulunanBasliklar)
+            }).ToList();
 
         [HttpGet("{firmaId:int}/yevmiye")]
         [ProducesResponseType(typeof(List<YevmiyeSatirDto>), StatusCodes.Status200OK)]

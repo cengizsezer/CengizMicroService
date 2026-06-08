@@ -32,7 +32,8 @@
       "Bash(Select-Object FullName, Name)",
       "Bash(Format-Table -AutoSize)",
       "Bash(Find-Content -Path \"C:\\\\GitHub\\\\CengizMicroService\\\\src\\\\Client\\\\BlazorWebApp\\\\WebApp\" -Name \"Program.cs\" -o \"StartupExtensions\")",
-      "PowerShell(Head *)"
+      "PowerShell(Head *)",
+      "Bash(dotnet test *)"
     ]
   }
 }

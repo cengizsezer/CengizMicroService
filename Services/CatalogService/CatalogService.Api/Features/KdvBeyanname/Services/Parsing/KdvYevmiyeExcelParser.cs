@@ -66,21 +66,41 @@ namespace CatalogService.Api.Features.KdvBeyanname.Services.Parsing
             var headerRow = ws.RowsUsed().First();
             var headerMap = HeaderMap.Build(headerRow);
 
+            // Beklenen başlıklar TEK KAYNAK'tan (KdvYevmiyeColumns) gelir.
+            // Eksik zorunlu kolonları tek seferde topla; varsa kullanıcıya
+            // "bulunan vs beklenen" gösterebilmek için yapısal exception fırlat.
+            var eksikZorunlular = KdvYevmiyeColumns.Zorunlular
+                .Where(c => HeaderMap.FindColumn(headerMap, c) is null)
+                .ToList();
+            if (eksikZorunlular.Count > 0)
+            {
+                var bulunan = headerMap
+                    .OrderBy(kv => kv.Value)
+                    .Select(kv => kv.Key)
+                    .ToList();
+                throw new KdvYevmiyeBaslikException(
+                    "Yevmiye Excel'inde beklenen zorunlu sütun başlıkları bulunamadı: " +
+                    string.Join(", ", eksikZorunlular.Select(c => c.Ad)) + ". " +
+                    "Excel başlık satırını kontrol edin.",
+                    bulunan,
+                    eksikZorunlular);
+            }
+
             // Zorunlu kolonlar
-            int colHesapKodu = HeaderMap.RequireColumn(headerMap, "Hesap Kodu");
-            int colHesapAdi  = HeaderMap.RequireColumn(headerMap, "Hesap Adı", "Hesap Adi");
-            int colSNo       = HeaderMap.RequireColumn(headerMap, "S. No", "S.No", "SNo");
-            int colBelgeNo   = HeaderMap.RequireColumn(headerMap, "Belge No", "BelgeNo");
-            int colBorc      = HeaderMap.RequireColumn(headerMap, "Borç Tutar", "Borc Tutar", "Borç");
-            int colAlacak    = HeaderMap.RequireColumn(headerMap, "Alacak Tutar", "Alacak");
+            int colHesapKodu = HeaderMap.RequireColumn(headerMap, KdvYevmiyeColumns.HesapKodu);
+            int colHesapAdi  = HeaderMap.RequireColumn(headerMap, KdvYevmiyeColumns.HesapAdi);
+            int colSNo       = HeaderMap.RequireColumn(headerMap, KdvYevmiyeColumns.SNo);
+            int colBelgeNo   = HeaderMap.RequireColumn(headerMap, KdvYevmiyeColumns.BelgeNo);
+            int colBorc      = HeaderMap.RequireColumn(headerMap, KdvYevmiyeColumns.Borc);
+            int colAlacak    = HeaderMap.RequireColumn(headerMap, KdvYevmiyeColumns.Alacak);
 
             // Opsiyonel kolonlar — yoksa null kalır
-            int? colFisTarihi   = HeaderMap.OptionalColumn(headerMap, "Fiş Tarihi", "Fis Tarihi");
-            int? colFisNo       = HeaderMap.OptionalColumn(headerMap, "Fiş No", "Fis No");
-            int? colFisAciklama = HeaderMap.OptionalColumn(headerMap, "Fiş Açıklaması", "Fis Aciklamasi");
-            int? colBelgeTipi   = HeaderMap.OptionalColumn(headerMap, "Belge Tipi");
-            int? colBelgeTarihi = HeaderMap.OptionalColumn(headerMap, "Belge Tarihi");
-            int? colAciklama    = HeaderMap.OptionalColumn(headerMap, "Açıklama", "Aciklama");
+            int? colFisTarihi   = HeaderMap.OptionalColumn(headerMap, KdvYevmiyeColumns.FisTarihi);
+            int? colFisNo       = HeaderMap.OptionalColumn(headerMap, KdvYevmiyeColumns.FisNo);
+            int? colFisAciklama = HeaderMap.OptionalColumn(headerMap, KdvYevmiyeColumns.FisAciklama);
+            int? colBelgeTipi   = HeaderMap.OptionalColumn(headerMap, KdvYevmiyeColumns.BelgeTipi);
+            int? colBelgeTarihi = HeaderMap.OptionalColumn(headerMap, KdvYevmiyeColumns.BelgeTarihi);
+            int? colAciklama    = HeaderMap.OptionalColumn(headerMap, KdvYevmiyeColumns.Aciklama);
 
             int headerRowNum = headerRow.RowNumber();
 

@@ -74,6 +74,12 @@ namespace WebApp.Application.Services.KdvBeyanname
                    ?? new();
         }
 
+        public async Task<List<BeklenenKolon>> GetYevmiyeBeklenenBasliklarAsync(
+            CancellationToken ct = default)
+            => await _http.GetFromJsonAsync<List<BeklenenKolon>>(
+                   $"{Base}/yevmiye/beklenen-basliklar", ct)
+               ?? new();
+
         public async Task<YevmiyeUploadResult> UploadYevmiyeAsync(
             int firmaId, string donem, Stream content, string fileName, CancellationToken ct = default)
         {
@@ -85,9 +91,37 @@ namespace WebApp.Application.Services.KdvBeyanname
 
             var resp = await _http.PostAsync(
                 $"{Base}/{firmaId}/yevmiye/upload?donem={donem}", form, ct);
+
+            // Başlık eşleşmemesi → yapısal 400 gövdesi (BeklenenKolonlar dolu).
+            // Bunu özel exception'a çevir ki UI "bulunan vs beklenen" gösterebilsin.
+            if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest)
+            {
+                var hata = await TryReadBaslikHatasiAsync(resp, ct);
+                if (hata is not null)
+                    throw new YevmiyeBaslikHatasiException(hata);
+            }
+
             resp.EnsureSuccessStatusCode();
             return await resp.Content.ReadFromJsonAsync<YevmiyeUploadResult>(cancellationToken: ct)
                    ?? new();
+        }
+
+        // 400 gövdesini YevmiyeBaslikHatasi olarak okumayı dener. Gövde bu şekle
+        // uymuyorsa (örn. düz {mesaj} hatası) null döner → normal akış sürer.
+        private static async Task<YevmiyeBaslikHatasi?> TryReadBaslikHatasiAsync(
+            HttpResponseMessage resp, CancellationToken ct)
+        {
+            try
+            {
+                var hata = await resp.Content
+                    .ReadFromJsonAsync<YevmiyeBaslikHatasi>(cancellationToken: ct);
+                // BeklenenKolonlar dolu ise gerçekten başlık hatasıdır.
+                return hata is { BeklenenKolonlar.Count: > 0 } ? hata : null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public async Task<KdvKarsilastirmaSonucu> GetKarsilastirmaAsync(

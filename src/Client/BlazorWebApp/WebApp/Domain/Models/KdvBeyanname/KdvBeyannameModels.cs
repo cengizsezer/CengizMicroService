@@ -189,4 +189,40 @@ namespace WebApp.Domain.Models.KdvBeyanname
         public List<string> Uyarilar { get; set; } = new();
         public List<string> Hatalar { get; set; } = new();
     }
+
+    // ── Yevmiye beklenen sütun başlıkları (backend tek kaynağının kopyası) ──
+
+    /// <summary>Yevmiye Excel'inde beklenen tek bir sütun başlığı.</summary>
+    public class BeklenenKolon
+    {
+        public string Ad { get; set; } = string.Empty;
+        public List<string> Alternatifler { get; set; } = new();
+        public bool Zorunlu { get; set; }
+
+        /// <summary>Yükleme sonrası geri bildirimde: dosyada bulundu mu?</summary>
+        public bool Bulundu { get; set; }
+    }
+
+    /// <summary>Zorunlu başlık eksikse backend'den dönen yapısal 400 gövdesi.</summary>
+    public class YevmiyeBaslikHatasi
+    {
+        public string Mesaj { get; set; } = string.Empty;
+        public List<string> BulunanBasliklar { get; set; } = new();
+        public List<BeklenenKolon> BeklenenKolonlar { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Yevmiye yüklemede başlık eşleşmediğinde fırlatılır; UI bu detayı yakalayıp
+    /// "bulunan vs beklenen" karşılaştırmasını gösterir.
+    /// </summary>
+    public class YevmiyeBaslikHatasiException : Exception
+    {
+        public YevmiyeBaslikHatasi Detay { get; }
+
+        public YevmiyeBaslikHatasiException(YevmiyeBaslikHatasi detay)
+            : base(detay.Mesaj)
+        {
+            Detay = detay;
+        }
+    }
 }

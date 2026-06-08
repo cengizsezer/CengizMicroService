@@ -69,6 +69,131 @@
                 (okunan: @sonUploadOzeti.OkunanSatir, atlanan: @sonUploadOzeti.AtlananSatir).
             </RadzenAlert>
         }
+
+        @* ── Yükleme sonrası başlık eşleşmedi: BULUNAN vs BEKLENEN ───────── *@
+        @if (baslikHatasi is not null)
+        {
+            <RadzenCard class="rz-p-3" Style="border:1px solid var(--rz-danger); background: var(--rz-danger-lighter);">
+                <RadzenStack Orientation="Orientation.Vertical" Gap="0.75rem">
+                    <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-m-0" Style="color: var(--rz-danger);">
+                        <RadzenIcon Icon="error" class="rz-mr-1" />Sütun başlıkları eşleşmedi
+                    </RadzenText>
+
+                    <div>
+                        <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary rz-mb-1">
+                            Excel'de bulunan başlıklar:
+                        </RadzenText>
+                        @if (baslikHatasi.BulunanBasliklar.Count == 0)
+                        {
+                            <em>(başlık satırı boş görünüyor)</em>
+                        }
+                        else
+                        {
+                            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.35rem" Wrap="FlexWrap.Wrap">
+                                @foreach (var b in baslikHatasi.BulunanBasliklar)
+                                {
+                                    <RadzenBadge Text="@b" BadgeStyle="BadgeStyle.Light" />
+                                }
+                            </RadzenStack>
+                        }
+                    </div>
+
+                    <div>
+                        <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary rz-mb-1">
+                            Beklenen kolonlar (<span style="color: var(--rz-danger);">kırmızı</span> = eksik/eşleşmedi):
+                        </RadzenText>
+                        <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
+                            @foreach (var k in baslikHatasi.BeklenenKolonlar)
+                            {
+                                var eksik = k.Zorunlu && !k.Bulundu;
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.4rem">
+                                    <RadzenIcon Icon="@(k.Bulundu ? "check_circle" : (k.Zorunlu ? "cancel" : "remove"))"
+                                                Style="@($"font-size:1rem; color: {(k.Bulundu ? "var(--rz-success)" : (k.Zorunlu ? "var(--rz-danger)" : "var(--rz-text-secondary)"))};")" />
+                                    <span style="@(eksik ? "color: var(--rz-danger); font-weight:600;" : "")">
+                                        @k.Ad
+                                    </span>
+                                    <RadzenBadge Text="@(k.Zorunlu ? "Zorunlu" : "Opsiyonel")"
+                                                 BadgeStyle="@(k.Zorunlu ? BadgeStyle.Danger : BadgeStyle.Light)" />
+                                    @if (k.Alternatifler.Count > 1)
+                                    {
+                                        <span class="rz-color-secondary" style="font-size:0.8rem;">
+                                            kabul edilen: @string.Join(" / ", k.Alternatifler)
+                                        </span>
+                                    }
+                                </RadzenStack>
+                            }
+                        </RadzenStack>
+                    </div>
+                </RadzenStack>
+            </RadzenCard>
+        }
+
+        @* ── Beklenen sütun başlıkları paneli (her zaman, tek kaynaktan) ──── *@
+        @if (beklenenBasliklar.Count > 0)
+        {
+            <RadzenFieldset AllowCollapse="true" Collapsed="@beklenenPanelCollapsed"
+                            Style="border-color: var(--rz-border-light);">
+                <HeaderTemplate>
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <RadzenIcon Icon="view_column" />
+                        <strong>Beklenen Sütun Başlıkları</strong>
+                        <span class="rz-color-secondary" style="font-size:0.85rem;">
+                            — Excel'in başlık satırında bu kolonlar aranır.
+                        </span>
+                    </RadzenStack>
+                </HeaderTemplate>
+                <ChildContent>
+                    <RadzenStack Orientation="Orientation.Vertical" Gap="0.75rem">
+                        <div>
+                            <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary rz-mb-1">
+                                Zorunlu (yoksa dosya yüklenmez):
+                            </RadzenText>
+                            <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
+                                @foreach (var k in beklenenBasliklar.Where(k => k.Zorunlu))
+                                {
+                                    <div>
+                                        <RadzenBadge Text="@k.Ad" BadgeStyle="BadgeStyle.Danger" />
+                                        @if (k.Alternatifler.Count > 1)
+                                        {
+                                            <span class="rz-color-secondary" style="font-size:0.8rem;">
+                                                &nbsp;kabul edilen yazımlar: @string.Join(" / ", k.Alternatifler)
+                                            </span>
+                                        }
+                                    </div>
+                                }
+                            </RadzenStack>
+                        </div>
+
+                        <div>
+                            <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary rz-mb-1">
+                                Opsiyonel (yoksa ilgili alan boş kalır):
+                            </RadzenText>
+                            <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
+                                @foreach (var k in beklenenBasliklar.Where(k => !k.Zorunlu))
+                                {
+                                    <div>
+                                        <RadzenBadge Text="@k.Ad" BadgeStyle="BadgeStyle.Light" />
+                                        @if (k.Alternatifler.Count > 1)
+                                        {
+                                            <span class="rz-color-secondary" style="font-size:0.8rem;">
+                                                &nbsp;kabul edilen yazımlar: @string.Join(" / ", k.Alternatifler)
+                                            </span>
+                                        }
+                                    </div>
+                                }
+                            </RadzenStack>
+                        </div>
+
+                        <RadzenAlert AlertStyle="AlertStyle.Info" Shade="Shade.Light"
+                                     AllowClose="false" Icon="info" class="rz-m-0">
+                            Başlıklar büyük/küçük harf duyarsız; baştaki/sondaki boşluk önemsiz.
+                            Ancak içerideki fazla boşluk, sondaki nokta veya
+                            <strong>"Borç Tutarı"</strong> gibi ek harf eşleşmeyi bozabilir.
+                        </RadzenAlert>
+                    </RadzenStack>
+                </ChildContent>
+            </RadzenFieldset>
+        }
     </RadzenStack>
 </RadzenCard>
 
@@ -300,11 +425,31 @@ else
     private bool uploading;
     private string? sonHataMesaji;
 
+    // Beklenen sütun başlıkları — backend tek kaynağından (KdvYevmiyeColumns).
+    private List<BeklenenKolon> beklenenBasliklar = new();
+    private bool beklenenPanelCollapsed = true;
+
+    // Yükleme sonrası başlık eşleşmedi → bulunan vs beklenen karşılaştırması.
+    private YevmiyeBaslikHatasi? baslikHatasi;
+
     private bool eslesenCollapsed = true;   // Eşleşen geniş listesi — default kapalı
     private bool fazlaCollapsed = false;
 
     private int previousFirmaId;
     private string previousDonem = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            beklenenBasliklar = await KdvApi.GetYevmiyeBeklenenBasliklarAsync();
+        }
+        catch
+        {
+            // Panel bilgi amaçlı; yüklenemezse sessizce boş kalsın.
+            beklenenBasliklar = new();
+        }
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -367,6 +512,7 @@ else
 
         sonHataMesaji = null;
         sonUploadOzeti = null;
+        baslikHatasi = null;
         uploading = true;
         StateHasChanged();
 
@@ -386,6 +532,19 @@ else
 
             // Otomatik karşılaştırma — kullanıcının ayrıca buton basmasına gerek yok.
             await LoadAsync();
+        }
+        catch (YevmiyeBaslikHatasiException ex)
+        {
+            // Zorunlu başlık eksik → bulunan vs beklenen karşılaştırmasını göster.
+            baslikHatasi = ex.Detay;
+            sonHataMesaji = ex.Detay.Mesaj;
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary  = "Başlık eşleşmedi",
+                Detail   = "Excel'deki sütun başlıkları beklenenle uyuşmuyor. Detay panelde.",
+                Duration = 6000
+            });
         }
         catch (Exception ex)
         {

@@ -17,6 +17,9 @@ namespace WebApp.Application.Services.KdvBeyanname
         Task<MizanUploadResult> UploadMizanAsync(int firmaId, string donem, Stream content, string fileName, CancellationToken ct = default);
         Task<YevmiyeUploadResult> UploadYevmiyeAsync(int firmaId, string donem, Stream content, string fileName, CancellationToken ct = default);
 
+        // Yevmiye Excel'inde beklenen sütun başlıkları (backend tek kaynağı).
+        Task<List<BeklenenKolon>> GetYevmiyeBeklenenBasliklarAsync(CancellationToken ct = default);
+
         Task<KdvKarsilastirmaSonucu> GetKarsilastirmaAsync(int firmaId, string donem, CancellationToken ct = default);
         Task<KdvSonuc> GetSonucAsync(int firmaId, string donem, CancellationToken ct = default);
 
