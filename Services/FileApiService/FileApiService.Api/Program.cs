@@ -128,6 +128,7 @@ builder.Services.AddScoped<IGetFilesInfoQueryHandler, GetFilesInfoQueryHandler>(
 builder.Services.AddScoped<IDownloadFileQueryHandler, DownloadFileQueryHandler>();
 builder.Services.AddScoped<IFileByOptionsValidator, FileByOptionsValidator>();
 builder.Services.AddScoped<IAddCompanyDocCommandHandler, AddCompanyDocCommandHandler>();
+builder.Services.AddScoped<IAddGenericFileCommandHandler, AddGenericFileCommandHandler>();
 builder.Services.AddScoped<IGetCompanyDocsInfoQueryHandler, GetCompanyDocsInfoQueryHandler>();
 
 // Validators (Validot + custom)

@@ -123,6 +123,7 @@ builder.Services.AddScoped<IFinansService, FinansService>();
 builder.Services.AddScoped<IHesapService, HesapService>();
 builder.Services.AddScoped<IBankaTakipService, BankaTakipService>();
 builder.Services.AddScoped<IHesapNotService, HesapNotService>();
+builder.Services.AddScoped<CatalogService.Api.Features.TicaretSicil.Services.ITicaretSicilService, CatalogService.Api.Features.TicaretSicil.Services.TicaretSicilService>();
 builder.Services.AddScoped<IPayrollCalculationEngine, PayrollCalculationEngine>();
 builder.Services.AddScoped<IDistributionComparisonService, DistributionComparisonService>();
 builder.Services.AddScoped<IDistributionExportService, DistributionExportService>();
@@ -466,6 +467,9 @@ IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf')
             var globalSeeder = new CatalogContextSeed();
             await globalSeeder.SeedFirmalarAsync(ctxOnce, envHost, logger);
             await globalSeeder.SeedMukelleflerAsync(ctxOnce, envHost, logger);
+
+            logger.LogInformation("📜 Ticaret Sicil İşlemleri seed uygulanıyor...");
+            await CatalogService.Api.Features.TicaretSicil.TicaretSicilSeed.SeedAsync(ctxOnce);
         }
 
         var seeder = new CatalogContextSeed();

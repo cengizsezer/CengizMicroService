@@ -1509,6 +1509,132 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("SeedHistories", "pkf");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.TicaretSicil.Domain.TicaretSicilAdim", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Baslik")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("IslemId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Not")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("Sira")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IslemId", "Sira");
+
+                    b.ToTable("TicaretSicilAdimlar", "catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.TicaretSicil.Domain.TicaretSicilEk", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("AdimId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasDefaultValue("application/pdf");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DosyaAdi")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<int>("FileId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Sira")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Tur")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdimId");
+
+                    b.ToTable("TicaretSicilEkler", "catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.TicaretSicil.Domain.TicaretSicilIslem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Aciklama")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Kategori")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Sira")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("TicaretSicilIslemler", "catalog");
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.Vehicles.Domain.Vehicle", b =>
                 {
                     b.Property<int>("Id")
@@ -1712,6 +1838,24 @@ namespace CatalogService.Api.Migrations
                     b.Navigation("Firma");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.TicaretSicil.Domain.TicaretSicilAdim", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.TicaretSicil.Domain.TicaretSicilIslem", null)
+                        .WithMany("Adimlar")
+                        .HasForeignKey("IslemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.TicaretSicil.Domain.TicaretSicilEk", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.TicaretSicil.Domain.TicaretSicilAdim", null)
+                        .WithMany("Ekler")
+                        .HasForeignKey("AdimId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.AccountPlan.AccountNode", b =>
                 {
                     b.Navigation("Children");
@@ -1730,6 +1874,16 @@ namespace CatalogService.Api.Migrations
             modelBuilder.Entity("CatalogService.Api.Features.Jobs.Domain.Job", b =>
                 {
                     b.Navigation("Assignments");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.TicaretSicil.Domain.TicaretSicilAdim", b =>
+                {
+                    b.Navigation("Ekler");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.TicaretSicil.Domain.TicaretSicilIslem", b =>
+                {
+                    b.Navigation("Adimlar");
                 });
 #pragma warning restore 612, 618
         }

@@ -103,6 +103,33 @@ namespace WebApp.Application.Services
         public Task<FileDto?> GetDownloadAsync(int id, CancellationToken ct = default)
             => GetAndUnwrapAsync<FileDto>($"download?id={id}", ct);
 
+        public async Task<GenericUploadResultDto?> UploadGenericAsync(IBrowserFile file, string folder, CancellationToken ct = default)
+        {
+            using var content = new MultipartFormDataContent();
+
+            var stream = file.OpenReadStream(20 * 1024 * 1024, ct); // 20MB
+
+            var contentType = file.ContentType;
+            if (string.IsNullOrWhiteSpace(contentType) || contentType == "application/octet-stream")
+            {
+                var ext = Path.GetExtension(file.Name);
+                if (!string.IsNullOrEmpty(ext) && MimeByExt.TryGetValue(ext, out var mime))
+                    contentType = mime;
+            }
+
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType ?? "application/octet-stream");
+            content.Add(fileContent, "file", file.Name);
+            content.Add(new StringContent(folder ?? "genel"), "folder");
+
+            using var resp = await _http.PostAsync("uploads", content, ct);
+            if (!resp.IsSuccessStatusCode) return null;
+
+            var json = await resp.Content.ReadAsStringAsync(ct);
+            var env = JsonConvert.DeserializeObject<HttpDataResponse<GenericUploadResultDto>>(json);
+            return env?.Data;
+        }
+
         // -------- Helpers --------
         private async Task<T?> GetAndUnwrapAsync<T>(string url, CancellationToken ct)
         {

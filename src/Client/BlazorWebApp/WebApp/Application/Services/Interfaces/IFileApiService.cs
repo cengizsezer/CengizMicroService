@@ -12,6 +12,9 @@ namespace WebApp.Application.Services.Interfaces
         Task<List<FileInfoDto>?> ListAsyncForDeclType(string companyId, int year, int month, string declType, CancellationToken ct = default);
         Task<FileDto?> GetDownloadAsync(int id, CancellationToken ct = default);
 
+        /// <summary>Modüle bağlı olmayan genel dosya yükler ve FileApiService kaydının Id'sini döner.</summary>
+        Task<GenericUploadResultDto?> UploadGenericAsync(IBrowserFile file, string folder, CancellationToken ct = default);
+
         Task<bool> UploadCompanyDocAsync(
     IBrowserFile file, string companyId, int year,
     string docCategory, string? description = null, int? sequenceNo = null,

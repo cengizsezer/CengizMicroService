@@ -1,0 +1,145 @@
+2026-06-20 00:08:17.227 +03:00 [INF] Executed DbCommand (19ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-06-20 00:08:17.308 +03:00 [INF] Executed DbCommand (14ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-06-20 00:08:17.314 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-06-20 00:08:17.318 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-06-20 00:08:17.340 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+2026-06-20 00:08:17.412 +03:00 [INF] No migrations were applied. The database is already up to date.
+2026-06-20 00:08:17.636 +03:00 [INF] InvoiceCheckWorker başladı. InitialDelay=30sn
+2026-06-20 00:08:17.789 +03:00 [WRN] Overriding address(es) 'http://localhost:5011'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2026-06-20 00:08:17.808 +03:00 [INF] Now listening on: http://localhost:5011
+2026-06-20 00:08:17.895 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-06-20 00:08:17.898 +03:00 [INF] Hosting environment: Development
+2026-06-20 00:08:17.916 +03:00 [INF] Content root path: C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker
+2026-06-20 00:08:53.633 +03:00 [INF] Executed DbCommand (29ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-06-20 00:08:53.777 +03:00 [INF] Executed DbCommand (22ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-06-20 00:08:53.795 +03:00 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-06-20 00:08:53.807 +03:00 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-06-20 00:08:53.856 +03:00 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+2026-06-20 00:08:53.971 +03:00 [INF] No migrations were applied. The database is already up to date.
+2026-06-20 00:08:54.351 +03:00 [INF] InvoiceCheckWorker başladı. InitialDelay=30sn
+2026-06-20 00:08:54.548 +03:00 [WRN] Overriding address(es) 'http://localhost:5011'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2026-06-20 00:08:54.568 +03:00 [INF] Now listening on: http://localhost:5011
+2026-06-20 00:08:54.668 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-06-20 00:08:54.675 +03:00 [INF] Hosting environment: Development
+2026-06-20 00:08:54.678 +03:00 [INF] Content root path: C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker
+2026-06-20 00:09:24.395 +03:00 [INF] === ScheduledChecks BAŞLADI ===
+2026-06-20 00:09:24.675 +03:00 [INF] Executed DbCommand (22ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[IsActive] = CAST(1 AS bit)
+2026-06-20 00:09:24.739 +03:00 [INF] 🧮 IsDue "Daily" | Id=1 nowHour=0 schedHour=22 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:09:24.742 +03:00 [INF] 🧮 IsDue "Daily" | Id=2 nowHour=0 schedHour=9 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:09:24.743 +03:00 [INF] === ScheduledChecks BİTTİ (346ms) ===
+2026-06-20 00:10:24.764 +03:00 [INF] === ScheduledChecks BAŞLADI ===
+2026-06-20 00:10:24.807 +03:00 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[IsActive] = CAST(1 AS bit)
+2026-06-20 00:10:24.809 +03:00 [INF] 🧮 IsDue "Daily" | Id=1 nowHour=0 schedHour=22 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:10:24.811 +03:00 [INF] 🧮 IsDue "Daily" | Id=2 nowHour=0 schedHour=9 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:10:24.813 +03:00 [INF] === ScheduledChecks BİTTİ (46ms) ===
+2026-06-20 00:11:24.835 +03:00 [INF] === ScheduledChecks BAŞLADI ===
+2026-06-20 00:11:24.853 +03:00 [INF] Executed DbCommand (14ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[IsActive] = CAST(1 AS bit)
+2026-06-20 00:11:24.855 +03:00 [INF] 🧮 IsDue "Daily" | Id=1 nowHour=0 schedHour=22 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:11:24.856 +03:00 [INF] 🧮 IsDue "Daily" | Id=2 nowHour=0 schedHour=9 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:11:24.857 +03:00 [INF] === ScheduledChecks BİTTİ (20ms) ===
+2026-06-20 00:12:24.864 +03:00 [INF] === ScheduledChecks BAŞLADI ===
+2026-06-20 00:12:24.893 +03:00 [INF] Executed DbCommand (17ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[IsActive] = CAST(1 AS bit)
+2026-06-20 00:12:24.897 +03:00 [INF] 🧮 IsDue "Daily" | Id=1 nowHour=0 schedHour=22 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:12:24.900 +03:00 [INF] 🧮 IsDue "Daily" | Id=2 nowHour=0 schedHour=9 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:12:24.903 +03:00 [INF] === ScheduledChecks BİTTİ (37ms) ===
+2026-06-20 00:13:24.914 +03:00 [INF] === ScheduledChecks BAŞLADI ===
+2026-06-20 00:13:24.927 +03:00 [INF] Executed DbCommand (6ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[IsActive] = CAST(1 AS bit)
+2026-06-20 00:13:24.929 +03:00 [INF] 🧮 IsDue "Daily" | Id=1 nowHour=0 schedHour=22 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:13:24.931 +03:00 [INF] 🧮 IsDue "Daily" | Id=2 nowHour=0 schedHour=9 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:13:24.932 +03:00 [INF] === ScheduledChecks BİTTİ (16ms) ===
+2026-06-20 00:14:24.938 +03:00 [INF] === ScheduledChecks BAŞLADI ===
+2026-06-20 00:14:24.949 +03:00 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[IsActive] = CAST(1 AS bit)
+2026-06-20 00:14:24.951 +03:00 [INF] 🧮 IsDue "Daily" | Id=1 nowHour=0 schedHour=22 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:14:24.952 +03:00 [INF] 🧮 IsDue "Daily" | Id=2 nowHour=0 schedHour=9 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:14:24.954 +03:00 [INF] === ScheduledChecks BİTTİ (14ms) ===
+2026-06-20 00:15:24.958 +03:00 [INF] === ScheduledChecks BAŞLADI ===
+2026-06-20 00:15:24.964 +03:00 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[IsActive] = CAST(1 AS bit)
+2026-06-20 00:15:24.966 +03:00 [INF] 🧮 IsDue "Daily" | Id=1 nowHour=0 schedHour=22 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:15:24.968 +03:00 [INF] 🧮 IsDue "Daily" | Id=2 nowHour=0 schedHour=9 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:15:24.970 +03:00 [INF] === ScheduledChecks BİTTİ (10ms) ===
+2026-06-20 00:16:24.978 +03:00 [INF] === ScheduledChecks BAŞLADI ===
+2026-06-20 00:16:24.990 +03:00 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[IsActive] = CAST(1 AS bit)
+2026-06-20 00:16:24.991 +03:00 [INF] 🧮 IsDue "Daily" | Id=1 nowHour=0 schedHour=22 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:16:24.993 +03:00 [INF] 🧮 IsDue "Daily" | Id=2 nowHour=0 schedHour=9 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:16:24.995 +03:00 [INF] === ScheduledChecks BİTTİ (15ms) ===
+2026-06-20 00:41:01.144 +03:00 [INF] Executed DbCommand (15ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-06-20 00:41:01.212 +03:00 [INF] Executed DbCommand (13ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-06-20 00:41:01.217 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-06-20 00:41:01.220 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-06-20 00:41:01.237 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+2026-06-20 00:41:01.280 +03:00 [INF] No migrations were applied. The database is already up to date.
+2026-06-20 00:41:01.541 +03:00 [INF] InvoiceCheckWorker başladı. InitialDelay=30sn
+2026-06-20 00:41:01.702 +03:00 [WRN] Overriding address(es) 'http://localhost:5011'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2026-06-20 00:41:01.716 +03:00 [INF] Now listening on: http://localhost:5011
+2026-06-20 00:41:01.791 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-06-20 00:41:01.792 +03:00 [INF] Hosting environment: Development
+2026-06-20 00:41:01.793 +03:00 [INF] Content root path: C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker
+2026-06-20 00:41:31.591 +03:00 [INF] === ScheduledChecks BAŞLADI ===
+2026-06-20 00:41:31.826 +03:00 [INF] Executed DbCommand (15ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[IsActive] = CAST(1 AS bit)
+2026-06-20 00:41:31.888 +03:00 [INF] 🧮 IsDue "Daily" | Id=1 nowHour=0 schedHour=22 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:41:31.892 +03:00 [INF] 🧮 IsDue "Daily" | Id=2 nowHour=0 schedHour=9 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:41:31.894 +03:00 [INF] === ScheduledChecks BİTTİ (301ms) ===
+2026-06-20 00:42:31.949 +03:00 [INF] === ScheduledChecks BAŞLADI ===
+2026-06-20 00:42:31.996 +03:00 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[IsActive] = CAST(1 AS bit)
+2026-06-20 00:42:31.998 +03:00 [INF] 🧮 IsDue "Daily" | Id=1 nowHour=0 schedHour=22 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:42:31.999 +03:00 [INF] 🧮 IsDue "Daily" | Id=2 nowHour=0 schedHour=9 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:42:32.001 +03:00 [INF] === ScheduledChecks BİTTİ (46ms) ===
+2026-06-20 00:43:32.020 +03:00 [INF] === ScheduledChecks BAŞLADI ===
+2026-06-20 00:43:32.028 +03:00 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[IsActive] = CAST(1 AS bit)
+2026-06-20 00:43:32.029 +03:00 [INF] 🧮 IsDue "Daily" | Id=1 nowHour=0 schedHour=22 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:43:32.030 +03:00 [INF] 🧮 IsDue "Daily" | Id=2 nowHour=0 schedHour=9 lastDate=2026-06-19 nowDate=2026-06-20 → false
+2026-06-20 00:43:32.031 +03:00 [INF] === ScheduledChecks BİTTİ (8ms) ===

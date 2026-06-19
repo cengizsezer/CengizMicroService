@@ -66,6 +66,11 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<AppSetting> AppSettings => Set<AppSetting>();
         public DbSet<Duzenleyen> Duzenleyenler => Set<Duzenleyen>();
 
+        // Ticaret Sicil İşlemleri modülü (ortak referans içerik; tenant'a bağlı değil)
+        public DbSet<Features.TicaretSicil.Domain.TicaretSicilIslem> TicaretSicilIslemler => Set<Features.TicaretSicil.Domain.TicaretSicilIslem>();
+        public DbSet<Features.TicaretSicil.Domain.TicaretSicilAdim> TicaretSicilAdimlar => Set<Features.TicaretSicil.Domain.TicaretSicilAdim>();
+        public DbSet<Features.TicaretSicil.Domain.TicaretSicilEk> TicaretSicilEkler => Set<Features.TicaretSicil.Domain.TicaretSicilEk>();
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -97,6 +102,11 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new KdvBeyannameMizanConfiguration());
             builder.ApplyConfiguration(new AppSettingConfiguration());
             builder.ApplyConfiguration(new DuzenleyenConfiguration());
+
+            // Ticaret Sicil İşlemleri modülü
+            builder.ApplyConfiguration(new TicaretSicilIslemEntityTypeConfiguration());
+            builder.ApplyConfiguration(new TicaretSicilAdimEntityTypeConfiguration());
+            builder.ApplyConfiguration(new TicaretSicilEkEntityTypeConfiguration());
 
 
             SetBuilderPKFConfiguration(builder);

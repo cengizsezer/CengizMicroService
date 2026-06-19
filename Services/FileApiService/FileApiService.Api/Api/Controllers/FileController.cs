@@ -65,6 +65,27 @@ namespace FileApiService.Api.Api.Controllers
             return Ok(res);
         }
 
+        [HttpPost("uploads")]
+        [Consumes("multipart/form-data")]
+        public async Task<ActionResult<HttpDataResponse<GenericUploadResultDto>>> UploadGeneric(
+            [FromForm] IFormFile file,
+            [FromForm] string? folder,
+            [FromServices] IAddGenericFileCommandHandler handler,
+            CancellationToken ct)
+        {
+            if (file is null || file.Length == 0)
+                return BadRequest("Dosya zorunlu.");
+
+            var cmd = new AddGenericFileCommand
+            {
+                File = new FormFileProxy(file),
+                Folder = string.IsNullOrWhiteSpace(folder) ? "genel" : folder
+            };
+
+            var res = await handler.HandleAsync(cmd, ct);
+            return Ok(res);
+        }
+
         [HttpGet("company-docs/list")]
         public Task<HttpDataResponse<IEnumerable<CompanyDocInfoDto>>> ListCompanyDocs(
          [FromQuery] string companyId,

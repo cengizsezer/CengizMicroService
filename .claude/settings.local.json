@@ -33,7 +33,12 @@
       "Bash(Format-Table -AutoSize)",
       "Bash(Find-Content -Path \"C:\\\\GitHub\\\\CengizMicroService\\\\src\\\\Client\\\\BlazorWebApp\\\\WebApp\" -Name \"Program.cs\" -o \"StartupExtensions\")",
       "PowerShell(Head *)",
-      "Bash(dotnet test *)"
+      "Bash(dotnet test *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\GitHub\\\\CengizMicroService\\\\src\\\\Services\" -Directory)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\GitHub\\\\CengizMicroService\\\\Services\\\\FileApiService\\\\FileApiService.Api\" -Recurse -Directory | Select-Object -First 20 | ForEach-Object { $_.FullName })",
+      "Bash(grep -rn \"TicaretSicilCatalog\\\\|Domain.Models.TicaretSicil\\\\|wwwroot/ticaret-sicil\" src/Client/BlazorWebApp/WebApp --include=*.razor --include=*.cs)",
+      "Bash(sed -n '27,43p' src/AppGateways/WebAppGateway/Web.ApiGateway/Configurations/ocelot.json)"
     ]
   }
 }

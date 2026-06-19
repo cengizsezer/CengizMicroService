@@ -1,0 +1,402 @@
+@page "/ticaret-sicil/duzenle"
+@page "/ticaret-sicil/duzenle/{Id:int}"
+@using Microsoft.AspNetCore.Components.Forms
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.TicaretSicil
+@inject ITicaretSicilApi Api
+@inject IFileApiService FileApi
+@inject NavigationManager Nav
+@inject DialogService Dialog
+@inject NotificationService Notif
+
+<RadzenStack Gap="1rem">
+
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+            <RadzenButton Icon="arrow_back" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                          Click="@(() => Nav.NavigateTo("/ticaret-sicil"))" />
+            <RadzenIcon Icon="edit_note" Style="font-size:1.75rem; color: var(--rz-primary);" />
+            <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">@(isNew ? "Yeni İşlem" : "İşlemi Düzenle")</RadzenText>
+        </RadzenStack>
+        @if (!isNew && islem is not null)
+        {
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                <RadzenButton Text="Görüntüle" Icon="visibility" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                              Click="@(() => Nav.NavigateTo($"/ticaret-sicil/{islem!.Slug}"))" />
+                <RadzenButton Text="İşlemi Sil" Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                              Click="DeleteIslem" />
+            </RadzenStack>
+        }
+    </RadzenStack>
+
+    @* ---- İşlem başlık formu ---- *@
+    <RadzenCard class="rz-p-4">
+        <div class="grid">
+            <div class="col-12 md:col-6">
+                <RadzenLabel Text="Ad *" />
+                <RadzenTextBox @bind-Value="header.Ad" Style="width:100%" Placeholder="Örn: Anonim Şirket Kuruluşu" />
+            </div>
+            <div class="col-12 md:col-3">
+                <RadzenLabel Text="Kategori" />
+                <RadzenTextBox @bind-Value="header.Kategori" Style="width:100%" Placeholder="Kuruluş / Değişiklik ..." />
+            </div>
+            <div class="col-6 md:col-3">
+                <RadzenLabel Text="Sıra" />
+                <RadzenNumeric @bind-Value="header.Sira" Style="width:100%" />
+            </div>
+            <div class="col-12 md:col-6">
+                <RadzenLabel Text="Slug (boş bırakılırsa Ad'dan üretilir)" />
+                <RadzenTextBox @bind-Value="header.Slug" Style="width:100%" Placeholder="anonim" />
+            </div>
+            <div class="col-12">
+                <RadzenLabel Text="Açıklama" />
+                <RadzenTextArea @bind-Value="header.Aciklama" Rows="2" Style="width:100%" />
+            </div>
+        </div>
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" class="rz-mt-3">
+            <RadzenButton Text="@(isNew ? "Oluştur" : "Kaydet")" Icon="save" ButtonStyle="ButtonStyle.Primary"
+                          IsBusy="@savingHeader" Disabled="@savingHeader" Click="SaveHeader" />
+        </RadzenStack>
+    </RadzenCard>
+
+    @* ---- Adımlar ---- *@
+    @if (isNew || islem is null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" ShowIcon="true" AllowClose="false">
+            Adım ve belge ekleyebilmek için önce işlemi kaydedin.
+        </RadzenAlert>
+    }
+    else
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+            <RadzenText TextStyle="TextStyle.H6" class="rz-m-0">Adımlar</RadzenText>
+            <RadzenButton Text="Adım Ekle" Icon="add" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
+                          Click="AddAdim" />
+        </RadzenStack>
+
+        @if (islem.Adimlar.Count == 0)
+        {
+            <RadzenCard class="rz-p-3"><em>Henüz adım yok. "Adım Ekle" ile başlayın.</em></RadzenCard>
+        }
+
+        @foreach (var adim in islem.Adimlar)
+        {
+            <RadzenCard class="rz-p-3">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" class="rz-mb-2">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <div class="ts-adim-no">@adim.Sira</div>
+                        <RadzenText TextStyle="TextStyle.Subtitle1" class="rz-m-0">Adım @adim.Sira</RadzenText>
+                    </RadzenStack>
+                    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.25rem">
+                        <RadzenButton Icon="arrow_upward" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                                      title="Yukarı" Click="@(() => MoveAdim(adim, "up"))" />
+                        <RadzenButton Icon="arrow_downward" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                                      title="Aşağı" Click="@(() => MoveAdim(adim, "down"))" />
+                        <RadzenButton Icon="delete" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Danger"
+                                      title="Adımı sil" Click="@(() => DeleteAdim(adim))" />
+                    </RadzenStack>
+                </RadzenStack>
+
+                <div class="grid">
+                    <div class="col-12 md:col-6">
+                        <RadzenLabel Text="Başlık *" />
+                        <RadzenTextBox @bind-Value="adim.Baslik" Style="width:100%" />
+                    </div>
+                    <div class="col-12 md:col-6">
+                        <RadzenLabel Text="Not (opsiyonel)" />
+                        <RadzenTextBox @bind-Value="adim.Not" Style="width:100%" />
+                    </div>
+                    <div class="col-12">
+                        <RadzenLabel Text="Açıklama" />
+                        <RadzenTextArea @bind-Value="adim.Aciklama" Rows="2" Style="width:100%" />
+                    </div>
+                </div>
+                <RadzenButton Text="Adımı Kaydet" Icon="save" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Primary"
+                              class="rz-mt-2" Click="@(() => SaveAdim(adim))" />
+
+                @* ---- Belgeler ---- *@
+                <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-mt-3 rz-mb-1">Belgeler</RadzenText>
+                @if (adim.Ekler.Count == 0)
+                {
+                    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary">Bu adımda belge yok.</RadzenText>
+                }
+                else
+                {
+                    <RadzenStack Gap="0.25rem" class="rz-mb-2">
+                        @foreach (var ek in adim.Ekler)
+                        {
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                <RadzenIcon Icon="@(ek.Tur == EkTur.Resim ? "image" : "picture_as_pdf")" />
+                                <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0" Style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis;">
+                                    @ek.Ad <span class="rz-color-secondary">(@ek.DosyaAdi)</span>
+                                </RadzenText>
+                                <RadzenButton Icon="delete" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Danger"
+                                              title="Belgeyi sil" Click="@(() => DeleteEk(adim, ek))" />
+                            </RadzenStack>
+                        }
+                    </RadzenStack>
+                }
+
+                @* ---- Belge ekleme ---- *@
+                <div class="grid align-items-end ts-belge-ekle">
+                    <div class="col-12 md:col-5">
+                        <RadzenLabel Text="Belge adı" />
+                        <RadzenTextBox @bind-Value="EkFormFor(adim.Id).Ad" Style="width:100%" Placeholder="Örn: Kuruluş Dilekçesi" />
+                    </div>
+                    <div class="col-12 md:col-5">
+                        <RadzenLabel Text="Dosya (PDF / PNG / JPG)" />
+                        <InputFile OnChange="@(e => OnFileSelected(adim.Id, e))" accept=".pdf,.png,.jpg,.jpeg" class="ts-input-file" />
+                    </div>
+                    <div class="col-12 md:col-2">
+                        <RadzenButton Text="Yükle" Icon="upload" ButtonStyle="ButtonStyle.Success" Style="width:100%"
+                                      IsBusy="@EkFormFor(adim.Id).Busy"
+                                      Disabled="@(EkFormFor(adim.Id).Busy || EkFormFor(adim.Id).File is null)"
+                                      Click="@(() => UploadEk(adim))" />
+                    </div>
+                </div>
+            </RadzenCard>
+        }
+    }
+</RadzenStack>
+
+<style>
+    .ts-adim-no {
+        flex: 0 0 auto;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--rz-primary);
+        color: var(--rz-primary-contrast-text, #fff);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: .85rem;
+    }
+
+    .ts-belge-ekle {
+        border-top: 1px dashed var(--rz-border-color, #e0e0e0);
+        padding-top: .5rem;
+    }
+
+    .ts-input-file {
+        display: block;
+        width: 100%;
+    }
+</style>
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private bool isNew => Id is null;
+    private TicaretSicilIslemDetayDto? islem;
+    private TicaretSicilIslemSaveDto header = new();
+    private bool savingHeader;
+
+    private readonly Dictionary<int, EkForm> ekForms = new();
+
+    private class EkForm
+    {
+        public IBrowserFile? File { get; set; }
+        public string Ad { get; set; } = string.Empty;
+        public bool Busy { get; set; }
+    }
+
+    private EkForm EkFormFor(int adimId)
+    {
+        if (!ekForms.TryGetValue(adimId, out var f))
+        {
+            f = new EkForm();
+            ekForms[adimId] = f;
+        }
+        return f;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id is int id)
+        {
+            islem = await Api.GetByIdAsync(id);
+            if (islem is not null)
+            {
+                header = new TicaretSicilIslemSaveDto
+                {
+                    Slug = islem.Slug,
+                    Kategori = islem.Kategori,
+                    Ad = islem.Ad,
+                    Aciklama = islem.Aciklama,
+                    Sira = islem.Sira
+                };
+            }
+        }
+        else
+        {
+            islem = null;
+            header = new TicaretSicilIslemSaveDto();
+        }
+    }
+
+    private async Task SaveHeader()
+    {
+        if (string.IsNullOrWhiteSpace(header.Ad))
+        {
+            Notif.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Ad zorunlu" });
+            return;
+        }
+
+        savingHeader = true;
+        try
+        {
+            if (isNew)
+            {
+                var created = await Api.CreateIslemAsync(header);
+                if (created is null) { Fail(); return; }
+                Notif.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Oluşturuldu" });
+                Nav.NavigateTo($"/ticaret-sicil/duzenle/{created.Id}");
+            }
+            else
+            {
+                var updated = await Api.UpdateIslemAsync(Id!.Value, header);
+                if (updated is null) { Fail(); return; }
+                islem = updated;
+                header.Slug = updated.Slug;
+                Notif.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Kaydedildi" });
+            }
+        }
+        finally { savingHeader = false; }
+    }
+
+    private async Task DeleteIslem()
+    {
+        if (islem is null) return;
+        var onay = await Dialog.Confirm(
+            $"\"{islem.Ad}\" işlemini ve tüm adım/belgelerini silmek istediğinize emin misiniz?",
+            "İşlemi sil",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        var fileIds = await Api.DeleteIslemAsync(islem.Id);
+        if (fileIds is null) { Fail(); return; }
+        foreach (var fid in fileIds) { try { await FileApi.DeleteAsync(fid); } catch { } }
+        Notif.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Silindi" });
+        Nav.NavigateTo("/ticaret-sicil");
+    }
+
+    private async Task AddAdim()
+    {
+        if (islem is null) return;
+        var adim = await Api.AddAdimAsync(islem.Id, new TicaretSicilAdimSaveDto { Baslik = "Yeni adım" });
+        if (adim is null) { Fail(); return; }
+        await Reload();
+    }
+
+    private async Task SaveAdim(TicaretSicilAdimDto adim)
+    {
+        if (string.IsNullOrWhiteSpace(adim.Baslik))
+        {
+            Notif.Notify(new NotificationMessage { Severity = NotificationSeverity.Warning, Summary = "Başlık zorunlu" });
+            return;
+        }
+        var res = await Api.UpdateAdimAsync(adim.Id, new TicaretSicilAdimSaveDto
+        {
+            Baslik = adim.Baslik,
+            Aciklama = adim.Aciklama,
+            Not = adim.Not
+        });
+        if (res is null) { Fail(); return; }
+        Notif.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Adım kaydedildi" });
+    }
+
+    private async Task MoveAdim(TicaretSicilAdimDto adim, string direction)
+    {
+        if (await Api.MoveAdimAsync(adim.Id, direction))
+            await Reload();
+    }
+
+    private async Task DeleteAdim(TicaretSicilAdimDto adim)
+    {
+        var onay = await Dialog.Confirm($"\"{adim.Baslik}\" adımını ve belgelerini silmek istiyor musunuz?", "Adımı sil",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        var fileIds = await Api.DeleteAdimAsync(adim.Id);
+        if (fileIds is null) { Fail(); return; }
+        foreach (var fid in fileIds) { try { await FileApi.DeleteAsync(fid); } catch { } }
+        await Reload();
+    }
+
+    private void OnFileSelected(int adimId, InputFileChangeEventArgs e)
+    {
+        var form = EkFormFor(adimId);
+        form.File = e.File;
+        if (string.IsNullOrWhiteSpace(form.Ad) && e.File is not null)
+            form.Ad = Path.GetFileNameWithoutExtension(e.File.Name);
+    }
+
+    private async Task UploadEk(TicaretSicilAdimDto adim)
+    {
+        var form = EkFormFor(adim.Id);
+        if (form.File is null) return;
+
+        if (string.IsNullOrWhiteSpace(form.Ad))
+            form.Ad = Path.GetFileNameWithoutExtension(form.File.Name);
+
+        form.Busy = true;
+        try
+        {
+            var up = await FileApi.UploadGenericAsync(form.File, "ticaret-sicil");
+            if (up is null) { Fail("Dosya yüklenemedi"); return; }
+
+            var tur = up.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase)
+                ? EkTur.Resim : EkTur.Pdf;
+
+            var ek = await Api.AddEkAsync(adim.Id, new TicaretSicilEkSaveDto
+            {
+                Ad = form.Ad.Trim(),
+                Tur = tur,
+                DosyaAdi = up.FileName,
+                ContentType = up.ContentType,
+                FileId = up.Id
+            });
+
+            if (ek is null)
+            {
+                // DB kaydı başarısız → yüklenen dosyayı geri al.
+                try { await FileApi.DeleteAsync(up.Id); } catch { }
+                Fail("Belge kaydedilemedi");
+                return;
+            }
+
+            ekForms[adim.Id] = new EkForm(); // formu temizle
+            Notif.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Belge eklendi" });
+            await Reload();
+        }
+        finally
+        {
+            if (ekForms.TryGetValue(adim.Id, out var f)) f.Busy = false;
+        }
+    }
+
+    private async Task DeleteEk(TicaretSicilAdimDto adim, TicaretSicilEkDto ek)
+    {
+        var onay = await Dialog.Confirm($"\"{ek.Ad}\" belgesini silmek istiyor musunuz?", "Belgeyi sil",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        var fileId = await Api.DeleteEkAsync(ek.Id);
+        if (fileId is null) { Fail(); return; }
+        try { await FileApi.DeleteAsync(fileId.Value); } catch { }
+        await Reload();
+    }
+
+    private async Task Reload()
+    {
+        if (islem is null) return;
+        islem = await Api.GetByIdAsync(islem.Id);
+    }
+
+    private void Fail(string msg = "İşlem başarısız")
+        => Notif.Notify(new NotificationMessage { Severity = NotificationSeverity.Error, Summary = msg });
+}

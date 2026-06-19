@@ -140,6 +140,9 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             services.AddScoped<IEducationService>(sp =>
                 new EducationService(sp.GetRequiredService<HttpClient>()));
 
+            services.AddScoped<ITicaretSicilApi>(sp =>
+                new TicaretSicilApi(sp.GetRequiredService<HttpClient>()));
+
             services.AddScoped<IUserAdminService>(sp =>
                 new UserAdminService(sp.GetRequiredService<HttpClient>()));
 
