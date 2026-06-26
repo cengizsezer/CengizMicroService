@@ -14,7 +14,8 @@ namespace NotificationService.Console.Email
         {
             var msg = new MimeMessage();
             msg.From.Add(new MailboxAddress(_opt.FromName, _opt.FromEmail));
-            msg.To.Add(MailboxAddress.Parse(to));
+            // 'to' tek adres olabileceği gibi virgülle ayrılmış birden çok alıcı da olabilir.
+            msg.To.AddRange(InternetAddressList.Parse(to));
             msg.Subject = subject;
             msg.Body = new BodyBuilder { HtmlBody = htmlBody }.ToMessageBody();
 

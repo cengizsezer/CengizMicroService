@@ -1509,6 +1509,28 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("SeedHistories", "pkf");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.PersonnelEmails.Domain.PersonnelEmail", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("PersonnelEmails", "catalog");
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.TicaretSicil.Domain.TicaretSicilAdim", b =>
                 {
                     b.Property<int>("Id")

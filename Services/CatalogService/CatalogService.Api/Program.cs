@@ -99,6 +99,7 @@ builder.Services.AddMediatR(cfg =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IHttpCurrentTenant, HttpCurrentTenant>();
 builder.Services.AddScoped<IJobService, JobService>();
+builder.Services.AddScoped<CatalogService.Api.Features.PersonnelEmails.Service.IPersonnelEmailService, CatalogService.Api.Features.PersonnelEmails.Service.PersonnelEmailService>();
 builder.Services.AddScoped<IHttpCurrentUser, HttpCurrentUser>();
 builder.Services.AddTransient<AuthForwardingHandler>();
 builder.Services.AddAuthorization();

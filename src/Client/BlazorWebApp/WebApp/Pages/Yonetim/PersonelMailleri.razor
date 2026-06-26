@@ -1,0 +1,159 @@
+@page "/yonetim/personel-mailleri"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Yonetim
+
+@inject IUsersService Users
+@inject IPersonelMailApiClient Api
+@inject NotificationService Notif
+
+<RadzenCard class="rz-p-3">
+
+    <div class="rz-display-flex rz-align-items-center rz-mb-3" style="justify-content:space-between;">
+        <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">
+            Personel Mailleri <span class="rz-text-muted" style="font-size:0.85rem;">(@_rows.Count)</span>
+        </RadzenText>
+        <RadzenButton Text="Yenile" Icon="refresh" ButtonStyle="ButtonStyle.Light" Click="@Load" />
+    </div>
+
+    <RadzenText TextStyle="TextStyle.Body2" class="rz-text-muted rz-mb-3">
+        Buradaki e-posta, ilgili personele görev atandığında hatırlatma mailine <strong>ek alıcı</strong> olarak eklenir.
+        Boş bırakılırsa o personel için bir şey değişmez.
+    </RadzenText>
+
+    <div class="rz-display-flex rz-align-items-center rz-mb-3" style="gap:1rem; flex-wrap:wrap;">
+        <RadzenTextBox Placeholder="Arama: ad / e-posta"
+                       @bind-Value="_search"
+                       Change="@(_ => StateHasChanged())"
+                       Style="min-width:320px; flex:1;" />
+    </div>
+
+    <RadzenDataGrid TItem="Row"
+                    Data="@Filtered"
+                    AllowPaging="true" PageSize="20"
+                    AllowSorting="true"
+                    IsLoading="@_loading"
+                    EmptyText="Kayıt bulunamadı.">
+        <Columns>
+            <RadzenDataGridColumn TItem="Row" Property="UserName" Title="Ad Soyad" />
+            <RadzenDataGridColumn TItem="Row" Property="IdentityEmail" Title="Hesap E-postası" />
+
+            <RadzenDataGridColumn TItem="Row" Title="Bildirim E-postası" Width="380px" Sortable="false">
+                <Template Context="r">
+                    <span @onclick:stopPropagation @onkeydown:stopPropagation
+                          style="display:flex; gap:0.5rem; align-items:center;">
+                        <RadzenTextBox @bind-Value="r.Email" Placeholder="ornek@firma.com" Style="flex:1;" />
+                        <RadzenButton Icon="save"
+                                      Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Primary"
+                                      IsBusy="@r.Saving"
+                                      Disabled="@r.Saving"
+                                      Click="@(async _ => await Save(r))" />
+                    </span>
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+
+</RadzenCard>
+
+@code {
+    List<Row> _rows = new();
+    string _search = "";
+    bool _loading;
+
+    IEnumerable<Row> Filtered =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _rows
+            : _rows.Where(r =>
+                (r.UserName?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (r.IdentityEmail?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (r.Email?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    async Task Load()
+    {
+        _loading = true;
+        try
+        {
+            // Kullanıcılar IdentityService'ten (assignee dropdown ile aynı kaynak/id)
+            var page = await Users.GetUsersAsync(pageIndex: 0, pageSize: 500, q: "");
+            var users = page?.Data?.ToList() ?? new();
+
+            // Kayıtlı personel mailleri (UserId → Email)
+            var mails = await Api.GetAllAsync();
+            var mailByUser = mails
+                .Where(m => !string.IsNullOrWhiteSpace(m.UserId))
+                .GroupBy(m => m.UserId)
+                .ToDictionary(g => g.Key, g => g.First().Email);
+
+            _rows = users.Select(u =>
+            {
+                var uid = u.Id.ToString(); // assignee dropdown da u.Id.ToString() kullanıyor
+                return new Row
+                {
+                    UserId = uid,
+                    UserName = string.IsNullOrWhiteSpace(u.DisplayName) ? u.Email : u.DisplayName,
+                    IdentityEmail = u.Email ?? "",
+                    Email = mailByUser.TryGetValue(uid, out var e) ? e : null
+                };
+            })
+            .OrderBy(r => r.UserName)
+            .ToList();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    async Task Save(Row r)
+    {
+        r.Saving = true;
+        try
+        {
+            await Api.UpsertAsync(new UpsertPersonelMailRequest
+            {
+                UserId = r.UserId,
+                UserName = r.UserName,
+                Email = string.IsNullOrWhiteSpace(r.Email) ? null : r.Email.Trim()
+            });
+
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Kaydedildi",
+                Detail = $"{r.UserName} için e-posta güncellendi.",
+                Duration = 3000
+            });
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+        finally
+        {
+            r.Saving = false;
+        }
+    }
+
+    public class Row
+    {
+        public string UserId { get; set; } = "";
+        public string UserName { get; set; } = "";
+        public string IdentityEmail { get; set; } = "";
+        public string? Email { get; set; }
+        public bool Saving { get; set; }
+    }
+}

@@ -3,6 +3,7 @@ using CatalogService.Api.Features.Jobs.Domain;
 using CatalogService.Api.Features.Jobs.DTO;
 using CatalogService.Api.Features.Jobs.Enum;
 using CatalogService.Api.Features.Jobs.Helpers;
+using CatalogService.Api.Features.PersonnelEmails.Domain;
 using CatalogService.Api.Infrastructure.Context;
 using DocumentFormat.OpenXml.Drawing;
 using EventBus.Base.Abstraction;
@@ -47,16 +48,17 @@ namespace CatalogService.Api.Features.Jobs.Service
             var dueUtc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(req.Start, DateTimeKind.Unspecified), tz);
             var createdAtUtc = DateTime.UtcNow;
 
-            // tek mail adresi zorunlu
-            if (string.IsNullOrWhiteSpace(req.RecipientEmail) ||
-                !req.RecipientEmail.EndsWith("@gmail.com", StringComparison.OrdinalIgnoreCase))
+            // event için userId olarak (örnek) ilk assignee’yi kullan
+            var userId = (job.Assignments.FirstOrDefault()?.UserId) ?? Guid.Empty.ToString();
+
+            // Alıcılar: modaldaki RecipientEmail + (varsa) Personel Mailleri tablosundan assignee'nin maili (ek alıcı).
+            var to = await ResolveRecipientsAsync(req.RecipientEmail, userId, ct);
+            if (string.IsNullOrWhiteSpace(to))
             {
-                _logger.LogWarning("RecipientEmail invalid (must be @gmail.com). jobId={JobId}", job.Id);
+                _logger.LogWarning("Alıcı e-posta yok (RecipientEmail boş ve personel maili tanımsız). jobId={JobId}", job.Id);
                 return Map(job);
             }
 
-            // event için userId olarak (örnek) ilk assignee’yi kullan
-            var userId = (job.Assignments.FirstOrDefault()?.UserId) ?? Guid.Empty.ToString();
             var taskId = JobAlarmHelpers.DeterministicGuid(job.Id, userId);
 
             _eventBus.Publish(new TaskCreatedIntegrationEvent(
@@ -70,7 +72,7 @@ namespace CatalogService.Api.Features.Jobs.Service
                 req.RemindOneDayBefore,
                 req.RemindOnDay,
                 createdAtUtc,
-                req.RecipientEmail          // << gönderilecek adres
+                to                           // << bir veya birden çok alıcı (virgülle)
             ));
 
 
@@ -174,15 +176,7 @@ namespace CatalogService.Api.Features.Jobs.Service
 
             await _db.SaveChangesAsync(ct);
 
-            // --- EVENT PUBLISH (tek alıcı e-posta ile)
-            // e-posta doğrulaması (gmail zorunlu ise)
-            if (string.IsNullOrWhiteSpace(req.RecipientEmail) ||
-                !req.RecipientEmail.EndsWith("@gmail.com", StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogWarning("Update: RecipientEmail invalid (must be @gmail.com). jobId={JobId}", job.Id);
-                return Map(job);
-            }
-
+            // --- EVENT PUBLISH
             // timezone→UTC
             var tz = JobAlarmHelpers.SafeTz(req.Timezone);
             var dueUtc = TimeZoneInfo.ConvertTimeToUtc(
@@ -192,8 +186,11 @@ namespace CatalogService.Api.Features.Jobs.Service
             var userId = job.Assignments.FirstOrDefault()?.UserId ?? Guid.Empty.ToString();
             var taskId = JobAlarmHelpers.DeterministicGuid(job.Id, userId);
 
-            // alarm kapalıysa veya hiçbir seçenek yoksa publish etmeyebiliriz (isteğe bağlı)
-            if (req.AlarmEnabled && (req.RemindOneDayBefore || req.RemindOnDay))
+            // Alıcılar: RecipientEmail + (varsa) Personel Mailleri tablosundan ek alıcı.
+            var to = await ResolveRecipientsAsync(req.RecipientEmail, userId, ct);
+
+            // alarm kapalıysa, hiç seçenek yoksa veya alıcı yoksa publish etme
+            if (!string.IsNullOrWhiteSpace(to) && req.AlarmEnabled && (req.RemindOneDayBefore || req.RemindOnDay))
             {
                 try
                 {
@@ -208,7 +205,7 @@ namespace CatalogService.Api.Features.Jobs.Service
                         req.RemindOneDayBefore,
                         req.RemindOnDay,
                         DateTime.UtcNow,
-                        req.RecipientEmail
+                        to
                     ));
                 }
                 catch (Exception ex)
@@ -218,6 +215,28 @@ namespace CatalogService.Api.Features.Jobs.Service
             }
 
             return Map(job);
+        }
+
+        // RecipientEmail (modal) + Personel Mailleri tablosundaki assignee maili → virgülle birleşik alıcı listesi.
+        // Personel maili opsiyoneldir: doluysa ek alıcı olarak eklenir, boşsa yalnız RecipientEmail kullanılır.
+        private async Task<string> ResolveRecipientsAsync(string? recipientEmail, string userId, CancellationToken ct)
+        {
+            var recipients = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(recipientEmail))
+                recipients.Add(recipientEmail.Trim());
+
+            var personnelEmail = await _db.Set<PersonnelEmail>()
+                .Where(x => x.UserId == userId)
+                .Select(x => x.Email)
+                .FirstOrDefaultAsync(ct);
+
+            if (!string.IsNullOrWhiteSpace(personnelEmail))
+                recipients.Add(personnelEmail.Trim());
+
+            return string.Join(", ", recipients
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase));
         }
 
         public async Task<List<JobDto>> GetRangeAsync(DateTime from, DateTime to, string tenantNo, string? assigneeId, CancellationToken ct)

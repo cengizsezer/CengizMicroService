@@ -8,6 +8,7 @@ using CatalogService.Api.Features.Jobs.Domain;
 using CatalogService.Api.Features.KdvBeyanname.Domain;
 using CatalogService.Api.Features.Mukellefler.Domain;
 using CatalogService.Api.Features.Payment.Entities;
+using CatalogService.Api.Features.PersonnelEmails.Domain;
 using CatalogService.Api.Features.Payroll.Entities;
 using CatalogService.Api.Features.Payroll.Persistence.Configurations;
 using CatalogService.Api.Features.Vehicles.Domain;
@@ -39,6 +40,9 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<EducationItem> EducationItems { get; set; } = default!;
         public DbSet<Job> Jobs { get; set; } = default!;
         public DbSet<JobAssignment> JobAssignments { get; set; } = default!;
+
+        // Personel mail eşlemesi (global; tenant'a bağlı değil)
+        public DbSet<PersonnelEmail> PersonnelEmails => Set<PersonnelEmail>();
         public DbSet<Declaration> Declarations { get; set; }
         public DbSet<CustomerCompany> CustomerCompanies => Set<CustomerCompany>();
         public DbSet<AccountNode> AccountNodes => Set<AccountNode>();
@@ -83,6 +87,7 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new EducationItemEntityTypeConfiguration());
             builder.ApplyConfiguration(new JobEntityTypeConfiguration());
             builder.ApplyConfiguration(new JobAssignmentEntityTypeConfiguration());
+            builder.ApplyConfiguration(new PersonnelEmailEntityTypeConfiguration());
             builder.ApplyConfiguration(new AccountNodesEntityTypeConfiguration());
             builder.ApplyConfiguration(new DeclarationEntityTypeConfiguration());
             builder.ApplyConfiguration(new CustomerCompanyTypeConfiguration());

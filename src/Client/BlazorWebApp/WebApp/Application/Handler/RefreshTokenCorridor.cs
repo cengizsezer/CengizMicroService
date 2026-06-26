@@ -13,6 +13,9 @@ namespace WebApp.Application.Handler
         private readonly ISessionStorageService _session;
         private readonly IHttpClientFactory _factory;
 
+        // Eşzamanlı 401'lerde tek bir select-tenant çağrısı yapılsın diye single-flight kilidi.
+        private static readonly SemaphoreSlim _refreshLock = new(1, 1);
+
         public RefreshTokenCorridor(ISessionStorageService session, IHttpClientFactory factory)
         { _session = session; _factory = factory; }
 
@@ -22,21 +25,52 @@ namespace WebApp.Application.Handler
             if (response.StatusCode != HttpStatusCode.Unauthorized) return response;
 
             var refresh = await _session.GetItemAsync<string>("refresh_token");
-            if (string.IsNullOrWhiteSpace(refresh)) return response;
+            var username = await _session.GetItemAsync<string>("username");
+            var tenantNo = await _session.GetItemAsync<string>("tenantNo");
+            if (string.IsNullOrWhiteSpace(refresh) ||
+                string.IsNullOrWhiteSpace(username) ||
+                string.IsNullOrWhiteSpace(tenantNo))
+                return response;
 
-            // refresh isteği (Authorization gerekmez)
-            var bare = _factory.CreateClient("GatewayBare"); // handler’sız
-            var res = await bare.PostAsJsonAsync("auth/refresh-token", new { RefreshToken = refresh }, ct);
-            if (!res.IsSuccessStatusCode) return response;
+            // 401 anındaki token; kilidi beklerken başka bir thread yenilemiş olabilir.
+            var tokenBefore = await _session.GetItemAsync<string>("token");
 
-            var payload = await res.Content.ReadFromJsonAsync<LoginResponseModel>(cancellationToken: ct);
-            if (payload is null || string.IsNullOrWhiteSpace(payload.Token)) return response;
+            string newToken;
+            await _refreshLock.WaitAsync(ct);
+            try
+            {
+                var tokenAfter = await _session.GetItemAsync<string>("token");
+                if (!string.IsNullOrWhiteSpace(tokenAfter) && tokenAfter != tokenBefore)
+                {
+                    // Başka bir istek bu sırada yeniledi; select-tenant çağırma, taze token'ı kullan.
+                    newToken = tokenAfter;
+                }
+                else
+                {
+                    // taze access token isteği (Authorization gerekmez)
+                    // select-tenant dolu access token üretir, refresh token'ı rotate etmez ve [AllowAnonymous]'dur.
+                    var bare = _factory.CreateClient("GatewayBare"); // handler’sız
+                    var res = await bare.PostAsJsonAsync(
+                        "auth/select-tenant",
+                        new { UserName = username, TenantNo = tenantNo, RefreshToken = refresh },
+                        ct);
+                    if (!res.IsSuccessStatusCode) return response;
 
-            await _session.SetItemAsync("token", payload.Token);
+                    var payload = await res.Content.ReadFromJsonAsync<LoginResponseModel>(cancellationToken: ct);
+                    if (payload is null || string.IsNullOrWhiteSpace(payload.Token)) return response;
+
+                    await _session.SetItemAsync("token", payload.Token);
+                    newToken = payload.Token;
+                }
+            }
+            finally
+            {
+                _refreshLock.Release();
+            }
 
             // orijinal isteği 1 kez yeni token ile tekrar et
             var retry = await CloneAsync(request);
-            retry.Headers.Authorization = new AuthenticationHeaderValue("Bearer", payload.Token);
+            retry.Headers.Authorization = new AuthenticationHeaderValue("Bearer", newToken);
             return await base.SendAsync(retry, ct);
         }
 

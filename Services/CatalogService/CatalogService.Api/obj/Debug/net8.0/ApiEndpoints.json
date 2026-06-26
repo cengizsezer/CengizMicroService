@@ -2246,6 +2246,52 @@
     ]
   },
   {
+    "ContainingType": "CatalogService.Api.Features.PersonnelEmails.Controller.PersonnelEmailsController",
+    "Method": "GetAll",
+    "RelativePath": "api/catalog/personnel-emails",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.PersonnelEmails.DTO.PersonnelEmailDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.PersonnelEmails.Controller.PersonnelEmailsController",
+    "Method": "Upsert",
+    "RelativePath": "api/catalog/personnel-emails",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "req",
+        "Type": "CatalogService.Api.Features.PersonnelEmails.Contracts.UpsertPersonnelEmailRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.PersonnelEmails.DTO.PersonnelEmailDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
     "ContainingType": "CatalogService.Api.Features.Expenses.Controller.CatalogController",
     "Method": "GetPersonnel",
     "RelativePath": "api/Catalog/personnels",
