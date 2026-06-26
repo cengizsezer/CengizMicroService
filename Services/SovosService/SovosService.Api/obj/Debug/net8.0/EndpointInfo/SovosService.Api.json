@@ -326,6 +326,103 @@
           }
         }
       }
+    },
+    "/api/faturakontrol/firmalar/{firmaId}/sovos": {
+      "get": {
+        "tags": [
+          "SovosFirmaBridge"
+        ],
+        "parameters": [
+          {
+            "name": "firmaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SovosFirmaCredentialDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SovosFirmaCredentialDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SovosFirmaCredentialDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "SovosFirmaBridge"
+        ],
+        "parameters": [
+          {
+            "name": "firmaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SovosFirmaCredentialUpsertDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SovosFirmaCredentialUpsertDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SovosFirmaCredentialUpsertDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SovosFirmaCredentialDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SovosFirmaCredentialDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SovosFirmaCredentialDto"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -632,6 +729,67 @@
           "newPassword": {
             "minLength": 4,
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SovosFirmaCredentialDto": {
+        "type": "object",
+        "properties": {
+          "firmaId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasAccount": {
+            "type": "boolean"
+          },
+          "companyId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "companyCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "username": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasPassword": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SovosFirmaCredentialUpsertDto": {
+        "required": [
+          "companyCode",
+          "username"
+        ],
+        "type": "object",
+        "properties": {
+          "companyCode": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "username": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "nullable": true
+          },
+          "firmaName": {
+            "type": "string",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

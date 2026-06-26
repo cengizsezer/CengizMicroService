@@ -64,9 +64,15 @@
                 </Template>
             </RadzenDataGridColumn>
 
-            <RadzenDataGridColumn TItem="FirmaDto" Title="İşlemler" Width="100px" TextAlign="TextAlign.Center" Sortable="false" Filterable="false">
+            <RadzenDataGridColumn TItem="FirmaDto" Title="İşlemler" Width="150px" TextAlign="TextAlign.Center" Sortable="false" Filterable="false">
                 <Template Context="f">
                     <span @onclick:stopPropagation @onkeydown:stopPropagation>
+                        <RadzenButton Icon="key"
+                                      Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Secondary"
+                                      class="rz-mr-1"
+                                      title="Entegratör (Sovos) Bilgileri"
+                                      Click="@(() => EditSovosAsync(f))" />
                         <RadzenButton Icon="edit"
                                       Size="ButtonSize.Small"
                                       ButtonStyle="ButtonStyle.Light"
@@ -181,6 +187,27 @@
                 Severity = NotificationSeverity.Success,
                 Summary = "Güncellendi",
                 Detail = "Firma güncellendi.",
+                Duration = 3000
+            });
+        }
+    }
+
+    private async Task EditSovosAsync(FirmaDto f)
+    {
+        // Köprü: entegratör (Sovos) kimlik bilgileri firma bazında SovosCompanies'te
+        // yönetilir; tüketiciler (Onay Bekleyen / Gelen / KDV) aynı kayıttan okur.
+        var result = await Dialog.OpenAsync<FirmaSovosDialog>(
+            $"Entegratör Bilgileri: {f.KisaAd}",
+            new Dictionary<string, object> { ["Firma"] = f },
+            new DialogOptions { Width = "560px" });
+
+        if (result is bool ok && ok)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Kaydedildi",
+                Detail = "Entegratör bilgileri güncellendi.",
                 Duration = 3000
             });
         }

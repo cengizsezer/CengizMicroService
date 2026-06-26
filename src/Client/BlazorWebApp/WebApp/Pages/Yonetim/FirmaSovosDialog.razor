@@ -1,0 +1,261 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.Sovos
+@using WebApp.Shared.Dto.Yonetim
+
+@inject DialogService Dialog
+@inject NotificationService Notif
+@inject ISovosAdminService Sovos
+
+<RadzenTemplateForm TItem="SovosFirmaCredentialUpsertDto" Data="@Model" Submit="@OnSubmit">
+    <RadzenCard class="rz-p-3">
+        <RadzenStack Gap="0.75rem">
+
+            @if (_loading)
+            {
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+                    <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0">Yükleniyor…</RadzenText>
+                </RadzenStack>
+            }
+            else
+            {
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                    <RadzenIcon Icon="key" />
+                    <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0 rz-color-secondary">
+                        @(_cred?.HasAccount == true
+                            ? "Bu firma için entegratör hesabı tanımlı. Bilgileri güncelleyebilirsiniz."
+                            : "Bu firma için henüz entegratör hesabı yok. Tanımlayın.")
+                    </RadzenText>
+                </RadzenStack>
+
+                <RadzenFormField Text="Şirket Kısa Kodu" Variant="Variant.Outlined">
+                    <RadzenTextBox Name="CompanyCode" @bind-Value="Model.CompanyCode" Style="width:100%" MaxLength="50" />
+                </RadzenFormField>
+                <RadzenRequiredValidator Component="CompanyCode" Text="Şirket kısa kodu zorunlu" />
+
+                <RadzenFormField Text="Kullanıcı Adı" Variant="Variant.Outlined">
+                    <RadzenTextBox Name="Username" @bind-Value="Model.Username" Style="width:100%" MaxLength="100" />
+                </RadzenFormField>
+                <RadzenRequiredValidator Component="Username" Text="Kullanıcı adı zorunlu" />
+
+                @* ── Yeni hesap: şifre zorunlu. Var olan hesap: şifre ayrı panelde değişir. ── *@
+                @if (_cred?.HasAccount != true)
+                {
+                    <RadzenFormField Text="Şifre" Variant="Variant.Outlined">
+                        <RadzenPassword Name="NewPassword" @bind-Value="_newPassword" Style="width:100%" />
+                    </RadzenFormField>
+                    <RadzenRequiredValidator Component="NewPassword" Text="Şifre zorunlu" />
+                    <RadzenLengthValidator Component="NewPassword" Min="4" Text="Şifre en az 4 karakter olmalı" />
+                    <RadzenHint Text="Şifre güvenli şekilde (DataProtection) şifrelenir; ekranda bir daha gösterilmez." />
+                }
+
+                <div>
+                    <RadzenCheckBox @bind-Value="Model.IsActive" Name="IsActive" />
+                    <RadzenLabel Text="Aktif" Component="IsActive" class="rz-ml-2" />
+                </div>
+
+                <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Click="@(() => Dialog.Close(false))" Disabled="@_busy" />
+                    <RadzenButton Text="@(_busy ? "Kaydediliyor..." : "Kaydet")"
+                                  Icon="@(_busy ? "" : "save")"
+                                  IsBusy="@_busy"
+                                  BusyText="Kaydediliyor..."
+                                  ButtonStyle="ButtonStyle.Primary"
+                                  ButtonType="ButtonType.Submit"
+                                  Disabled="@_busy" />
+                </RadzenStack>
+
+                @* ── Var olan hesap için ayrı şifre değiştirme akışı (companies/{id}/password) ── *@
+                @if (_cred?.HasAccount == true && _cred.CompanyId is int companyId)
+                {
+                    <RadzenFieldset AllowCollapse="true" Collapsed="true" class="rz-mt-2">
+                        <HeaderTemplate>
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                <RadzenIcon Icon="lock_reset" />
+                                <strong>Şifre Değiştir</strong>
+                            </RadzenStack>
+                        </HeaderTemplate>
+                        <ChildContent>
+                            <RadzenStack Gap="0.75rem">
+                                <RadzenPassword @bind-Value="_pwNew" Style="width:100%" Placeholder="Yeni Şifre" RevealText="true" />
+                                <RadzenPassword @bind-Value="_pwConfirm" Style="width:100%" Placeholder="Yeni Şifre (Tekrar)" RevealText="true" />
+                                <RadzenHint Text="Şifre en az 4 karakter olmalı." />
+                                <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End">
+                                    <RadzenButton Text="@(_pwBusy ? "Güncelleniyor..." : "Şifreyi Güncelle")"
+                                                  Icon="lock_reset"
+                                                  IsBusy="@_pwBusy"
+                                                  ButtonStyle="ButtonStyle.Secondary"
+                                                  Disabled="@_pwBusy"
+                                                  Click="@(() => ChangePasswordAsync(companyId))" />
+                                </RadzenStack>
+                            </RadzenStack>
+                        </ChildContent>
+                    </RadzenFieldset>
+                }
+            }
+
+        </RadzenStack>
+    </RadzenCard>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public FirmaDto Firma { get; set; } = default!;
+
+    private SovosFirmaCredentialUpsertDto Model { get; set; } = new();
+    private SovosFirmaCredentialDto? _cred;
+
+    private string _newPassword = "";   // yeni hesap oluşturma şifresi
+    private string _pwNew = "";         // var olan hesap için şifre değiştir
+    private string _pwConfirm = "";
+
+    private bool _loading = true;
+    private bool _busy;
+    private bool _pwBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _cred = await Sovos.GetFirmaCredentialAsync(Firma.Id);
+            if (_cred?.HasAccount == true)
+            {
+                Model.CompanyCode = _cred.CompanyCode;
+                Model.Username = _cred.Username;
+                Model.IsActive = _cred.IsActive;
+            }
+            else
+            {
+                Model.IsActive = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Yüklenemedi",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnSubmit(SovosFirmaCredentialUpsertDto _)
+    {
+        _busy = true;
+        try
+        {
+            // Company.Name için firma adı taşınır (Name DB'de zorunlu).
+            Model.CompanyCode = Model.CompanyCode.Trim();
+            Model.Username = Model.Username.Trim();
+            Model.FirmaName = string.IsNullOrWhiteSpace(Firma.Unvan) ? Firma.KisaAd : Firma.Unvan;
+
+            // Yeni hesapsa form-içi şifreyi gönder; var olan hesapta şifreye dokunma.
+            Model.Password = _cred?.HasAccount == true ? null : _newPassword;
+
+            var (ok, err) = await Sovos.UpsertFirmaCredentialAsync(Firma.Id, Model);
+            if (ok)
+            {
+                Dialog.Close(true);
+            }
+            else
+            {
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Kaydedilemedi",
+                    Detail = err ?? "Bilinmeyen hata.",
+                    Duration = 6000
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ChangePasswordAsync(int companyId)
+    {
+        if (_pwNew.Length < 4)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Geçersiz şifre",
+                Detail = "Şifre en az 4 karakter olmalı.",
+                Duration = 4000
+            });
+            return;
+        }
+        if (_pwNew != _pwConfirm)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Şifreler eşleşmiyor",
+                Detail = "Yeni şifre ve tekrarı aynı olmalı.",
+                Duration = 4000
+            });
+            return;
+        }
+
+        _pwBusy = true;
+        try
+        {
+            // Var olan companies/{id}/password endpoint'i yeniden kullanılıyor.
+            var ok = await Sovos.ChangePasswordAsync(companyId, new SovosCompanyPasswordDto { NewPassword = _pwNew });
+            if (ok)
+            {
+                _pwNew = "";
+                _pwConfirm = "";
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Şifre güncellendi",
+                    Duration = 3000
+                });
+            }
+            else
+            {
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Hata",
+                    Detail = "Şifre güncellenemedi.",
+                    Duration = 5000
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+        finally
+        {
+            _pwBusy = false;
+        }
+    }
+}

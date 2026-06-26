@@ -192,5 +192,62 @@
         "StatusCode": 200
       }
     ]
+  },
+  {
+    "ContainingType": "SovosService.Api.Controllers.SovosFirmaBridgeController",
+    "Method": "GetCredential",
+    "RelativePath": "api/faturakontrol/firmalar/{firmaId}/sovos",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SovosService.Api.Application.Models.SovosFirmaCredentialDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "SovosService.Api.Controllers.SovosFirmaBridgeController",
+    "Method": "Upsert",
+    "RelativePath": "api/faturakontrol/firmalar/{firmaId}/sovos",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "SovosService.Api.Application.Models.SovosFirmaCredentialUpsertDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "SovosService.Api.Application.Models.SovosFirmaCredentialDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
   }
 ]

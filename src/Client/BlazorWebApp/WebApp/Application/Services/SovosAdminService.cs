@@ -99,4 +99,24 @@ public class SovosAdminService : ISovosAdminService
             return (null, $"Bağlantı hatası: {ex.Message}");
         }
     }
+
+    // ── Firmalarım köprüsü (firma bazlı) ──────────────────────────────────
+    // GET hesap yoksa da 200 + HasAccount=false döner.
+    public Task<SovosFirmaCredentialDto?> GetFirmaCredentialAsync(int firmaId)
+        => _http.GetFromJsonAsync<SovosFirmaCredentialDto>($"{Base}/firmalar/{firmaId}/sovos");
+
+    // Upsert: kayıt yoksa oluşturur (Password zorunlu), varsa günceller
+    // (Password boşsa şifreye dokunulmaz).
+    public async Task<(bool ok, string? err)> UpsertFirmaCredentialAsync(
+        int firmaId, SovosFirmaCredentialUpsertDto dto)
+    {
+        var resp = await _http.PutAsJsonAsync($"{Base}/firmalar/{firmaId}/sovos", dto);
+        if (resp.IsSuccessStatusCode) return (true, null);
+
+        var body = await resp.Content.ReadAsStringAsync();
+        var detail = string.IsNullOrWhiteSpace(body)
+            ? $"HTTP {(int)resp.StatusCode} {resp.ReasonPhrase}"
+            : $"HTTP {(int)resp.StatusCode}: {body}";
+        return (false, detail);
+    }
 }

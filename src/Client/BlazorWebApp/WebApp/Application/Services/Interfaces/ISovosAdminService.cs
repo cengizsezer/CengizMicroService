@@ -23,4 +23,11 @@ public interface ISovosAdminService
     Task<(SovosBatchRunResultDto? result, string? error)> RunBatchAsync(
         SovosBatchRunRequestDto request,
         CancellationToken ct = default);
+
+    // ── Firmalarım köprüsü (firma bazlı) ──────────────────────────────────
+    // Şifre asla geri dönmez; sadece HasPassword bool.
+    Task<SovosFirmaCredentialDto?> GetFirmaCredentialAsync(int firmaId);
+
+    Task<(bool ok, string? err)> UpsertFirmaCredentialAsync(
+        int firmaId, SovosFirmaCredentialUpsertDto dto);
 }
