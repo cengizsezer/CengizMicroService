@@ -103,14 +103,19 @@
                                          Path="/beyanname-takip" />
                 }
 
-                @if (canViewFaturaKontrol)
-                {
-                    <RadzenPanelMenuItem Text="Fatura Kontrol"
-                                         Icon="fact_check"
-                                         Path="/faturakontrol" />
-                }
+                <RadzenPanelMenuItem Text="Fatura" Icon="receipt">
+                    @if (canViewFaturaKontrol)
+                    {
+                        <RadzenPanelMenuItem Text="Onay Bekleyen"
+                                             Icon="fact_check"
+                                             Path="/faturakontrol" />
+                    }
+                    <RadzenPanelMenuItem Text="Gelen Faturalar"
+                                         Icon="move_to_inbox"
+                                         Path="/fatura/gelen-faturalar" />
+                </RadzenPanelMenuItem>
 
-                <RadzenPanelMenuItem Text="Firma Kontrol"
+                <RadzenPanelMenuItem Text="Raporlar"
                                      Icon="checklist"
                                      Path="/firmakontrol" />
 

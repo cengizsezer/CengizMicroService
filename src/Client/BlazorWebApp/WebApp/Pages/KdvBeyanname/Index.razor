@@ -34,25 +34,72 @@
     }
     else
     {
-        <div class="fk-carousel-wrapper">
-            <RadzenCarousel Auto="false"
-                            PagerOverlay="false"
-                            ShowNavigation="true"
-                            ShowPager="true"
-                            ButtonShade="Shade.Default"
-                            Style="height: 560px;">
-                <Items>
-                    @foreach (var f in firmalar)
-                    {
-                        <RadzenCarouselItem>
-                            <div class="fk-carousel-slide">
-                                <KdvFirmaCard Firma="f" OnGiris="GoToDetay" />
-                            </div>
-                        </RadzenCarouselItem>
-                    }
-                </Items>
-            </RadzenCarousel>
-        </div>
+        <RadzenDataGrid TItem="KdvFirmaCardDto"
+                        Data="@firmalar"
+                        AllowPaging="true" PageSize="20"
+                        AllowSorting="true"
+                        AllowFiltering="false"
+                        RowSelect="@GoToDetay"
+                        Style="cursor:pointer;">
+            <Columns>
+                <RadzenDataGridColumn TItem="KdvFirmaCardDto" Property="KisaAd" Title="Kısa Ad" Width="160px" />
+                <RadzenDataGridColumn TItem="KdvFirmaCardDto" Property="Unvan" Title="Unvan" />
+                <RadzenDataGridColumn TItem="KdvFirmaCardDto" Property="VergiKimlikNo" Title="VKN" Width="150px" />
+
+                <RadzenDataGridColumn TItem="KdvFirmaCardDto" Title="Son Tarama" Width="170px">
+                    <Template Context="f">
+                        @if (f.SonTaramaAt.HasValue)
+                        {
+                            @f.SonTaramaAt.Value.ToString("dd.MM.yyyy HH:mm")
+                        }
+                        else
+                        {
+                            <span class="rz-text-muted">—</span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="KdvFirmaCardDto" Title="BDP" Width="160px" Sortable="false">
+                    <Template Context="f">
+                        @if (f.BdpAlanlariEksik)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="BDP alanları eksik" IsPill="true" />
+                        }
+                        else
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="BDP hazır" IsPill="true" />
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="KdvFirmaCardDto" Title="Tarama Durumu" Width="160px" Sortable="false">
+                    <Template Context="f">
+                        @if (f.SonTaramaDurumu.HasValue)
+                        {
+                            <RadzenBadge BadgeStyle="@DurumStyle(f.SonTaramaDurumu.Value)"
+                                         Text="@($"Tarama: {f.SonTaramaDurumu}")"
+                                         IsPill="true" />
+                        }
+                        else
+                        {
+                            <span class="rz-text-muted">—</span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="KdvFirmaCardDto" Title="" Width="120px" Sortable="false" TextAlign="TextAlign.Center">
+                    <Template Context="f">
+                        <span @onclick:stopPropagation @onkeydown:stopPropagation>
+                            <RadzenButton Text="GİRİŞ"
+                                          Icon="login"
+                                          ButtonStyle="ButtonStyle.Primary"
+                                          Size="ButtonSize.Small"
+                                          Click="@(() => GoToDetay(f))" />
+                        </span>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
     }
 </RadzenStack>
 
@@ -75,4 +122,12 @@
     {
         Navigation.NavigateTo($"/kdv-beyanname/{firma.Id}");
     }
+
+    private static BadgeStyle DurumStyle(KdvBeyannameTaramaDurumu d) => d switch
+    {
+        KdvBeyannameTaramaDurumu.Tamamlandi => BadgeStyle.Success,
+        KdvBeyannameTaramaDurumu.Calisiyor  => BadgeStyle.Info,
+        KdvBeyannameTaramaDurumu.Hatali     => BadgeStyle.Danger,
+        _                                   => BadgeStyle.Light
+    };
 }

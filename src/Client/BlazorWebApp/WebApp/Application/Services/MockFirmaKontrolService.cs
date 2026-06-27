@@ -1,6 +1,9 @@
+using Microsoft.Extensions.DependencyInjection;
 using WebApp.Application.RuleEngine;
 using WebApp.Application.Services.Interfaces;
+using WebApp.Application.Services.Yonetim;
 using WebApp.Domain.Models.FirmaKontrol;
+using WebApp.Shared.Dto.Yonetim;
 
 namespace WebApp.Application.Services
 {
@@ -27,50 +30,122 @@ namespace WebApp.Application.Services
 
         private readonly IHesapPlaniLoader _hesapPlaniLoader;
         private readonly MizanRuleEngine _ruleEngine;
-        private readonly List<Firma> _firms;
+        private readonly IServiceProvider _serviceProvider;
+        private readonly List<Firma> _firms = new();
         private readonly Dictionary<int, List<ControlItem>> _itemsByFirm = new();
         private readonly Dictionary<int, Dictionary<string, decimal?>> _rawCariByFirm = new();
         private readonly Dictionary<int, Dictionary<string, decimal?>> _rawOncekiByFirm = new();
         private readonly Dictionary<int, Dictionary<string, string>> _rawAdByFirm = new();
 
         private readonly SemaphoreSlim _initLock = new(1, 1);
+        private readonly SemaphoreSlim _firmsLock = new(1, 1);
         private HesapPlani? _hesapPlaniTemplate;
         private bool _mizanInitialized;
+        private bool _firmsLoaded;
 
-        public MockFirmaKontrolService(IHesapPlaniLoader hesapPlaniLoader, MizanRuleEngine ruleEngine)
+        public MockFirmaKontrolService(
+            IHesapPlaniLoader hesapPlaniLoader,
+            MizanRuleEngine ruleEngine,
+            IServiceProvider serviceProvider)
         {
             _hesapPlaniLoader = hesapPlaniLoader;
             _ruleEngine = ruleEngine;
-
-            _firms = new List<Firma>
-            {
-                new() { Id = 1, Ad = "Furkan Mühendislik A.Ş.", VergiNo = "1234567890", Sektor = "İnşaat",   Donem = "2025 Hesap Dönemi", LogoText = "FM" },
-                new() { Id = 2, Ad = "Derya Gıda Ltd. Şti.",     VergiNo = "9876543210", Sektor = "Gıda",     Donem = "2025 Hesap Dönemi", LogoText = "DG" },
-                new() { Id = 3, Ad = "Altuner Otomotiv A.Ş.",    VergiNo = "5556667778", Sektor = "Otomotiv", Donem = "2025 Hesap Dönemi", LogoText = "AO" },
-                new() { Id = 4, Ad = "Yayla Kuruyemiş Ltd. Şti.",VergiNo = "1112223334", Sektor = "Perakende",Donem = "2025 Hesap Dönemi", LogoText = "YK" }
-            };
-
-            foreach (var f in _firms)
-                _itemsByFirm[f.Id] = BuildTemplate();
+            _serviceProvider = serviceProvider;
         }
 
-        public Task<IReadOnlyList<Firma>> GetFirmsAsync()
-            => Task.FromResult<IReadOnlyList<Firma>>(_firms);
+        // Firma listesini gerçek "Firmalarım" kaynağından (CatalogService Firma tablosu)
+        // tek seferlik yükler. Singleton olduğumuz için scoped IFirmaApiClient'ı çağrı
+        // anında IServiceProvider üzerinden çözüyoruz (WASM tek-scope). Kontrol şablonu
+        // ve Mizan, her gerçek firma için lazy üretilir — kalıcılık yok, geçici iskelet.
+        private async Task EnsureFirmsLoadedAsync()
+        {
+            if (_firmsLoaded) return;
 
-        public Task<Firma?> GetFirmAsync(int firmaId)
-            => Task.FromResult(_firms.FirstOrDefault(f => f.Id == firmaId));
+            await _firmsLock.WaitAsync();
+            try
+            {
+                if (_firmsLoaded) return;
+
+                List<FirmaDto> gercekFirmalar;
+                try
+                {
+                    var api = _serviceProvider.GetRequiredService<IFirmaApiClient>();
+                    gercekFirmalar = await api.GetAllAsync();
+                }
+                catch
+                {
+                    gercekFirmalar = new List<FirmaDto>();
+                }
+
+                foreach (var dto in gercekFirmalar)
+                {
+                    if (_firms.Any(f => f.Id == dto.Id)) continue;
+
+                    _firms.Add(new Firma
+                    {
+                        Id = dto.Id,
+                        Ad = string.IsNullOrWhiteSpace(dto.Unvan) ? dto.KisaAd : dto.Unvan,
+                        VergiNo = dto.VergiKimlikNo,
+                        Sektor = string.Empty,
+                        Donem = $"{DateTime.Now.Year} Hesap Dönemi",
+                        LogoText = BuildLogoText(dto),
+                        Mizan = _hesapPlaniTemplate?.Clone() ?? new HesapPlani()
+                    });
+
+                    if (!_itemsByFirm.ContainsKey(dto.Id))
+                        _itemsByFirm[dto.Id] = BuildTemplate();
+                }
+
+                _firmsLoaded = true;
+            }
+            finally
+            {
+                _firmsLock.Release();
+            }
+        }
+
+        private static string BuildLogoText(FirmaDto dto)
+        {
+            var kaynak = !string.IsNullOrWhiteSpace(dto.KisaAd) ? dto.KisaAd : dto.Unvan;
+            if (string.IsNullOrWhiteSpace(kaynak)) return "?";
+
+            var parcalar = kaynak.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parcalar.Length >= 2)
+                return $"{char.ToUpperInvariant(parcalar[0][0])}{char.ToUpperInvariant(parcalar[1][0])}";
+
+            return kaynak[..Math.Min(2, kaynak.Length)].ToUpperInvariant();
+        }
+
+        public async Task<IReadOnlyList<Firma>> GetFirmsAsync()
+        {
+            await EnsureFirmsLoadedAsync();
+            return _firms;
+        }
+
+        public async Task<Firma?> GetFirmAsync(int firmaId)
+        {
+            await EnsureFirmsLoadedAsync();
+            return _firms.FirstOrDefault(f => f.Id == firmaId);
+        }
 
         public Task<IReadOnlyList<ControlItem>> GetControlItemsAsync(int firmaId)
         {
+            // Lazy: bu firma için şablon yoksa üret, cache'le ve döndür.
             if (!_itemsByFirm.TryGetValue(firmaId, out var list))
-                return Task.FromResult<IReadOnlyList<ControlItem>>(Array.Empty<ControlItem>());
+            {
+                list = BuildTemplate();
+                _itemsByFirm[firmaId] = list;
+            }
             return Task.FromResult<IReadOnlyList<ControlItem>>(list);
         }
 
         public Task UpdateControlItemAsync(int firmaId, ControlItem item)
         {
             if (!_itemsByFirm.TryGetValue(firmaId, out var list))
-                return Task.CompletedTask;
+            {
+                list = BuildTemplate();
+                _itemsByFirm[firmaId] = list;
+            }
 
             var existing = list.FirstOrDefault(x => x.Id == item.Id);
             if (existing is null) return Task.CompletedTask;
@@ -236,10 +311,12 @@ namespace WebApp.Application.Services
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
-        public Task<VergiHesaplama> GetVergiBilgisiAsync(int firmaId)
+        public async Task<VergiHesaplama> GetVergiBilgisiAsync(int firmaId)
         {
+            await EnsureFirmsLoadedAsync();
+
             var firma = _firms.FirstOrDefault(f => f.Id == firmaId);
-            return Task.FromResult(firma?.VergiBilgisiCariDonem ?? new VergiHesaplama());
+            return firma?.VergiBilgisiCariDonem ?? new VergiHesaplama();
         }
 
         public async Task<IReadOnlyList<UyariSonucu>> GetUyarilarAsync(int firmaId)
@@ -286,6 +363,9 @@ namespace WebApp.Application.Services
                 if (_mizanInitialized) return;
 
                 _hesapPlaniTemplate = await _hesapPlaniLoader.LoadAsync();
+
+                // Gerçek firmalar henüz yüklenmediyse yükle (Mizan'ı bunlara klonlayacağız).
+                await EnsureFirmsLoadedAsync();
 
                 foreach (var f in _firms)
                     f.Mizan = _hesapPlaniTemplate.Clone();

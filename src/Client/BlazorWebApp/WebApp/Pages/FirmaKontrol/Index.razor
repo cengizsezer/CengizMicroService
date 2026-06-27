@@ -9,7 +9,7 @@
 
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
         <RadzenIcon Icon="fact_check" Style="font-size:2rem; color: var(--rz-primary);" />
-        <RadzenText TextStyle="TextStyle.H4" class="rz-m-0">Firma Kontrol</RadzenText>
+        <RadzenText TextStyle="TextStyle.H4" class="rz-m-0">Raporlar</RadzenText>
     </RadzenStack>
 
     <RadzenText TextStyle="TextStyle.Body1" class="rz-color-secondary">
@@ -33,30 +33,57 @@
     }
     else
     {
-        <div class="fk-carousel-wrapper">
-            <RadzenCarousel Auto="false"
-                            PagerOverlay="false"
-                            ShowNavigation="true"
-                            ShowPager="true"
-                            ButtonShade="Shade.Default"
-                            Style="height: 560px;">
-                <Items>
-                    @foreach (var f in firmlar)
-                    {
-                        var stats = GetStats(f.Id);
-                        <RadzenCarouselItem>
-                            <div class="fk-carousel-slide">
-                                <FirmaCard Firma="f"
-                                           TotalCount="stats.Total"
-                                           CheckedCount="stats.Checked"
-                                           IssueCount="stats.Issue"
-                                           OnGiris="GoToDetay" />
-                            </div>
-                        </RadzenCarouselItem>
-                    }
-                </Items>
-            </RadzenCarousel>
-        </div>
+        <RadzenDataGrid TItem="Firma"
+                        Data="@firmlar"
+                        AllowPaging="true" PageSize="20"
+                        AllowSorting="true"
+                        AllowFiltering="false"
+                        RowSelect="@GoToDetay"
+                        Style="cursor:pointer;">
+            <Columns>
+                <RadzenDataGridColumn TItem="Firma" Property="Ad" Title="Firma" />
+                <RadzenDataGridColumn TItem="Firma" Property="VergiNo" Title="VKN" Width="150px" />
+                <RadzenDataGridColumn TItem="Firma" Property="Donem" Title="Dönem" Width="170px" />
+
+                <RadzenDataGridColumn TItem="Firma" Title="Toplam Kontrol" Width="150px" Sortable="false" TextAlign="TextAlign.Center">
+                    <Template Context="f">
+                        @GetStats(f.Id).Total
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="Firma" Title="Tamamlanan" Width="130px" Sortable="false" TextAlign="TextAlign.Center">
+                    <Template Context="f">
+                        @GetStats(f.Id).Checked
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="Firma" Title="Sorun" Width="110px" Sortable="false" TextAlign="TextAlign.Center">
+                    <Template Context="f">
+                        @{ var issue = GetStats(f.Id).Issue; }
+                        @if (issue > 0)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="@issue.ToString()" IsPill="true" />
+                        }
+                        else
+                        {
+                            <span class="rz-text-muted">—</span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="Firma" Title="" Width="120px" Sortable="false" TextAlign="TextAlign.Center">
+                    <Template Context="f">
+                        <span @onclick:stopPropagation @onkeydown:stopPropagation>
+                            <RadzenButton Text="GİRİŞ"
+                                          Icon="login"
+                                          ButtonStyle="ButtonStyle.Primary"
+                                          Size="ButtonSize.Small"
+                                          Click="@(() => GoToDetay(f))" />
+                        </span>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
     }
 </RadzenStack>
 

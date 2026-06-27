@@ -1,0 +1,162 @@
+@page "/fatura/gelen-faturalar"
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.KdvBeyanname
+@using WebApp.Domain.Models.KdvBeyanname
+@using WebApp.Pages.KdvBeyanname.Components
+@attribute [Authorize]
+@inject IKdvBeyannameApiService KdvApi
+
+<RadzenStack Orientation="Orientation.Vertical" Gap="1.5rem" AlignItems="AlignItems.Stretch">
+
+    @if (selectedFirma is null)
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+            <RadzenIcon Icon="move_to_inbox" Style="font-size:2rem; color: var(--rz-primary);" />
+            <RadzenText TextStyle="TextStyle.H4" class="rz-m-0">Gelen Faturalar</RadzenText>
+        </RadzenStack>
+
+        <RadzenText TextStyle="TextStyle.Body1" class="rz-color-secondary">
+            Gelen faturalarını görüntülemek ve taramak istediğiniz firmayı seçin.
+        </RadzenText>
+
+        @if (firmalar is null)
+        {
+            <RadzenCard class="rz-p-4">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+                    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+                    <span>Yükleniyor...</span>
+                </RadzenStack>
+            </RadzenCard>
+        }
+        else if (firmalar.Count == 0)
+        {
+            <RadzenCard class="rz-p-4">
+                <em>Tanımlı firma bulunamadı.</em>
+            </RadzenCard>
+        }
+        else
+        {
+            <RadzenDataGrid TItem="KdvFirmaCardDto"
+                            Data="@firmalar"
+                            AllowPaging="true" PageSize="20"
+                            AllowSorting="true"
+                            AllowFiltering="false"
+                            RowSelect="@SelectFirma"
+                            Style="cursor:pointer;">
+                <Columns>
+                    <RadzenDataGridColumn TItem="KdvFirmaCardDto" Property="KisaAd" Title="Kısa Ad" Width="160px" />
+                    <RadzenDataGridColumn TItem="KdvFirmaCardDto" Property="Unvan" Title="Unvan" />
+                    <RadzenDataGridColumn TItem="KdvFirmaCardDto" Property="VergiKimlikNo" Title="VKN" Width="150px" />
+
+                    <RadzenDataGridColumn TItem="KdvFirmaCardDto" Title="Son Tarama" Width="170px">
+                        <Template Context="f">
+                            @if (f.SonTaramaAt.HasValue)
+                            {
+                                @f.SonTaramaAt.Value.ToString("dd.MM.yyyy HH:mm")
+                            }
+                            else
+                            {
+                                <span class="rz-text-muted">—</span>
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="KdvFirmaCardDto" Title="BDP" Width="160px" Sortable="false">
+                        <Template Context="f">
+                            @if (f.BdpAlanlariEksik)
+                            {
+                                <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="BDP alanları eksik" IsPill="true" />
+                            }
+                            else
+                            {
+                                <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="BDP hazır" IsPill="true" />
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="KdvFirmaCardDto" Title="Tarama Durumu" Width="160px" Sortable="false">
+                        <Template Context="f">
+                            @if (f.SonTaramaDurumu.HasValue)
+                            {
+                                <RadzenBadge BadgeStyle="@DurumStyle(f.SonTaramaDurumu.Value)"
+                                             Text="@($"Tarama: {f.SonTaramaDurumu}")"
+                                             IsPill="true" />
+                            }
+                            else
+                            {
+                                <span class="rz-text-muted">—</span>
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="KdvFirmaCardDto" Title="" Width="120px" Sortable="false" TextAlign="TextAlign.Center">
+                        <Template Context="f">
+                            <span @onclick:stopPropagation @onkeydown:stopPropagation>
+                                <RadzenButton Text="GİRİŞ"
+                                              Icon="login"
+                                              ButtonStyle="ButtonStyle.Primary"
+                                              Size="ButtonSize.Small"
+                                              Click="@(() => SelectFirma(f))" />
+                            </span>
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        }
+    }
+    else
+    {
+        <div class="fk-detay-header">
+            <RadzenButton Icon="arrow_back"
+                          Text="Firma Seçim'e Dön"
+                          ButtonStyle="ButtonStyle.Light"
+                          Size="ButtonSize.Small"
+                          Click="@GoBack" />
+
+            <div style="flex:1; min-width: 0;">
+                <h2 class="fk-detay-title">@selectedFirma.Unvan</h2>
+                <div class="fk-detay-subtitle">
+                    VKN: @selectedFirma.VergiKimlikNo
+                </div>
+            </div>
+
+            @if (selectedFirma.BdpAlanlariEksik)
+            {
+                <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="BDP alanları eksik" />
+            }
+        </div>
+
+        <GelenFaturalarTab FirmaId="@selectedFirma.Id" />
+    }
+</RadzenStack>
+
+@code {
+    private List<KdvFirmaCardDto>? firmalar;
+    private KdvFirmaCardDto? selectedFirma;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            firmalar = await KdvApi.GetFirmalarAsync();
+        }
+        catch
+        {
+            firmalar = new();
+        }
+    }
+
+    private void SelectFirma(KdvFirmaCardDto firma) => selectedFirma = firma;
+
+    private void GoBack() => selectedFirma = null;
+
+    private static BadgeStyle DurumStyle(KdvBeyannameTaramaDurumu d) => d switch
+    {
+        KdvBeyannameTaramaDurumu.Tamamlandi => BadgeStyle.Success,
+        KdvBeyannameTaramaDurumu.Calisiyor  => BadgeStyle.Info,
+        KdvBeyannameTaramaDurumu.Hatali     => BadgeStyle.Danger,
+        _                                   => BadgeStyle.Light
+    };
+}
