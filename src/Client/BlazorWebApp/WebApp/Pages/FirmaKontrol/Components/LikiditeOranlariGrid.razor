@@ -1,0 +1,164 @@
+@using System.Globalization
+@using WebApp.Application.Services
+@using WebApp.Domain.Models.FirmaKontrol
+@inject TooltipService TooltipService
+
+@* Likidite Oranları — bu turda SADECE ilk 3 oran (Cari, Asit-Test, Nakit) + panel iskeleti.
+   Tek kaynak: yüklenen cari dönem mizanı. Tutarlar yeniden HESAPLANMAZ — mevcut public
+   GelirTablosuCalculator.Compute (MizanGrid.Compute ile aynı toplama mantığı) grup
+   toplamlarından ByAd(...) ile okunur (BilancoOzetGrid ile aynı convention).
+
+   ÖNEMLİ: Mizan borç-pozitif konvansiyonda; KVYK gibi pasif kalemler negatif gelir.
+   Likidite oranı büyüklük oranıdır, işaret anlamsız → her kalem Math.Abs ile alınır,
+   oranlar pozitif çıkar. (İşaret/parse mantığına burada DOKUNULMAZ.) *@
+
+@* Başlık tooltip'i: genel açıklama (Radzen TooltipService — hover'da). *@
+<h4 class="fk-detay-section-title"
+    @ref="baslikEl"
+    style="cursor:help; width:fit-content;"
+    @onmouseenter="@(() => TooltipService.Open(baslikEl, BaslikAciklama, TooltipAyar))">
+    Likidite Oranları
+</h4>
+
+<table class="fk-mizan-table">
+    <thead>
+        <tr>
+            <th class="fk-mizan-col-ad">Oran</th>
+            <th class="fk-mizan-col-num">Değer</th>
+            <th class="fk-mizan-col-num">Referans</th>
+            <th class="fk-mizan-col-num">Durum</th>
+        </tr>
+    </thead>
+    <tbody>
+        @for (int i = 0; i < oranlar.Count; i++)
+        {
+            var o = oranlar[i];
+            var idx = i;
+            <tr class="fk-mizan-row main-group">
+                @* Oran adı tooltip'i: formül/not (Radzen TooltipService — hover'da). *@
+                <td class="fk-mizan-col-ad"
+                    @ref="adCells[idx]"
+                    style="cursor:help;"
+                    @onmouseenter="@(() => TooltipService.Open(adCells[idx], o.Tooltip, TooltipAyar))">@o.Ad</td>
+                <td class="fk-mizan-col-num">@FormatOran(o.Deger)</td>
+                <td class="fk-mizan-col-num">@FormatOran(o.Referans)</td>
+                <td class="fk-mizan-col-num">
+                    @if (o.Deger is { } d)
+                    {
+                        @if (d >= o.Referans)
+                        {
+                            <RadzenIcon Icon="check_circle" Style="color:var(--rz-success)" />
+                        }
+                        else
+                        {
+                            <RadzenIcon Icon="warning" Style="color:var(--rz-danger)" />
+                        }
+                    }
+                    else
+                    {
+                        <span>—</span>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (!veriVar)
+{
+    <div style="@NotStyle">
+        <RadzenIcon Icon="hourglass_empty" Style="color:var(--rz-text-secondary-color)" />
+        <span>Cari dönem mizanı yüklendiğinde oranlar otomatik hesaplanır.</span>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public List<MizanSatir> Aktif { get; set; } = new();
+    [Parameter, EditorRequired] public List<MizanSatir> Pasif { get; set; } = new();
+
+    [Parameter] public IReadOnlyDictionary<string, decimal?> CariRawValues { get; set; } =
+        new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+    [Parameter] public IReadOnlyDictionary<string, decimal?> OncekiRawValues { get; set; } =
+        new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+
+    private const string NotStyle =
+        "display:flex; align-items:center; gap:.5rem; margin:.75rem 0; color:var(--rz-text-secondary-color);";
+
+    // Standart likidite referansları. Nakit oranı referansı görev gereği 0,20.
+    private const decimal CariReferans = 2.00m;
+    private const decimal AsitTestReferans = 1.00m;
+    private const decimal NakitReferans = 0.20m;
+
+    // Tooltip içerikleri (Radzen TooltipService ile gösterilir).
+    private const string BaslikAciklama =
+        "İşletmenin kısa vadeli borç ödeyebilme gücünü ölçmek için geliştirilmiş oranlardır.";
+    private static readonly TooltipOptions TooltipAyar = new() { Position = TooltipPosition.Top };
+
+    // Tooltip anchor'ları (başlık + her oran adı hücresi).
+    private ElementReference baslikEl;
+    private ElementReference[] adCells = Array.Empty<ElementReference>();
+
+    private record OranSatir(string Ad, decimal? Deger, decimal Referans, string Tooltip);
+
+    private List<OranSatir> oranlar = new();
+    private bool veriVar;
+
+    protected override void OnParametersSet()
+    {
+        var aktif = GelirTablosuCalculator.Compute(Aktif, CariRawValues, OncekiRawValues);
+        var pasif = GelirTablosuCalculator.Compute(Pasif, CariRawValues, OncekiRawValues);
+
+        decimal? Akt(string ad) => aktif
+            .FirstOrDefault(r => string.Equals(r.Source.Ad?.Trim(), ad, StringComparison.OrdinalIgnoreCase))?.Cari;
+        decimal? Pas(string ad) => pasif
+            .FirstOrDefault(r => string.Equals(r.Source.Ad?.Trim(), ad, StringComparison.OrdinalIgnoreCase))?.Cari;
+
+        // Tek kaynak: cari mizan grup toplamları.
+        var donen = Akt("I -DÖNEN VARLIKLAR");
+        var stok = Akt("E-Stoklar");
+        var hazir = Akt("A-Hazır Değerler");
+        var menkul = Akt("B-Menkul Kıymetler");
+        var kvyk = Pas("III-KISA VADELİ YABANCI KAYNAKLAR");
+
+        veriVar = donen.HasValue || kvyk.HasValue;
+
+        // Cari Oran = Dönen Varlıklar / KVYK
+        var cariOran = Bol(Abs(donen), Abs(kvyk));
+
+        // Asit-Test Oranı = (Dönen Varlıklar - Stoklar) / KVYK
+        var asitPay = donen.HasValue ? Math.Abs(donen.Value) - Abs0(stok) : (decimal?)null;
+        var asitTestOran = Bol(asitPay, Abs(kvyk));
+
+        // Nakit Oran = (Hazır Değerler + Menkul Kıymetler) / KVYK
+        var nakitPay = (hazir.HasValue || menkul.HasValue) ? Abs0(hazir) + Abs0(menkul) : (decimal?)null;
+        var nakitOran = Bol(nakitPay, Abs(kvyk));
+
+        oranlar = new List<OranSatir>
+        {
+            new("Cari Oran", cariOran, CariReferans,
+                "Dönen Varlıklar / KVYK"),
+            new("Asit-Test Oranı (Likidite)", asitTestOran, AsitTestReferans,
+                "(Dönen Varlıklar − Stok) / KVYK"),
+            new("Nakit Oran", nakitOran, NakitReferans,
+                "Stoklar satılamadı, alacaklar alınamadı varsayımıyla KVYK karşılama oranı. Referans 0,20."),
+        };
+
+        // Tooltip anchor dizisini oran sayısına göre hazırla.
+        adCells = new ElementReference[oranlar.Count];
+    }
+
+    // İşaret anlamsız → mutlak değer. Yoksa null.
+    private static decimal? Abs(decimal? v) => v.HasValue ? Math.Abs(v.Value) : (decimal?)null;
+
+    // Toplanan/çıkarılan bileşenlerde eksik kalem 0 sayılır (mutlak değer).
+    private static decimal Abs0(decimal? v) => v.HasValue ? Math.Abs(v.Value) : 0m;
+
+    private static decimal? Bol(decimal? pay, decimal? payda)
+    {
+        if (!pay.HasValue || !payda.HasValue || payda.Value == 0m) return null;
+        return pay.Value / payda.Value;
+    }
+
+    private static string FormatOran(decimal? value) =>
+        value.HasValue ? value.Value.ToString("N2", new CultureInfo("tr-TR")) : "—";
+}

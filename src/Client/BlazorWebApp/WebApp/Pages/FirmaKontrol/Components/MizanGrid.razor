@@ -8,13 +8,17 @@
             <th class="fk-mizan-col-ad">Hesap Adı</th>
             <th class="fk-mizan-col-num">Önceki Dönem</th>
             <th class="fk-mizan-col-num">Cari Dönem</th>
+            @if (ShowYuzde)
+            {
+                <th class="fk-mizan-col-num">Dikey %</th>
+            }
         </tr>
     </thead>
     <tbody>
         @if (Rows.Count == 0)
         {
             <tr>
-                <td colspan="4" class="fk-mizan-empty"><em>Bu bölüm için satır bulunmuyor.</em></td>
+                <td colspan="@ColSpan" class="fk-mizan-empty"><em>Bu bölüm için satır bulunmuyor.</em></td>
             </tr>
         }
         else
@@ -26,6 +30,10 @@
                     <td class="fk-mizan-col-ad">@row.Source.Ad</td>
                     <td class="fk-mizan-col-num">@FormatNumber(row.Onceki)</td>
                     <td class="fk-mizan-col-num">@FormatNumber(row.Cari)</td>
+                    @if (ShowYuzde)
+                    {
+                        <td class="fk-mizan-col-num">@FormatYuzde(row.Cari)</td>
+                    }
                 </tr>
             }
         }
@@ -35,20 +43,38 @@
 @code {
     [Parameter, EditorRequired] public List<MizanSatir> Rows { get; set; } = new();
 
+    // true ise en sağa "Dikey %" kolonu eklenir (Dikey Yüzdeler Analizi sheet'i için).
+    // Parametre verilmediğinde mevcut Aktif/Pasif sekmeleri eskisi gibi 4 kolon kalır.
+    [Parameter] public bool ShowYuzde { get; set; } = false;
+
     private record ComputedRow(MizanSatir Source, decimal? Onceki, decimal? Cari);
 
     private List<ComputedRow> computed = new();
 
+    // Dikey % paydası: bölümün Genel Toplam (Total) satırının cari değeri.
+    private decimal? cariGenelToplam;
+
+    private int ColSpan => ShowYuzde ? 5 : 4;
+
     protected override void OnParametersSet()
     {
         computed = Compute(Rows);
+
+        // Payda = Total satırının cari değeri (Aktif/Pasif'te tek Total bulunur = Genel Toplam).
+        cariGenelToplam = computed
+            .Where(r => r.Source.Tip == SatirTipi.Total)
+            .Select(r => r.Cari)
+            .LastOrDefault(v => v.HasValue);
     }
 
     private static List<ComputedRow> Compute(List<MizanSatir> rows)
     {
         // 1) İlk geçiş: Account satırlarının değerleri olduğu gibi
         // 2) İkinci geçiş: SubGroup -> sonraki SubGroup/MainGroup'a kadarki Account toplamı
-        //    MainGroup -> sonraki MainGroup/Total'a kadarki Account toplamı
+        //    MainGroup -> sonraki ÜST DÜZEY MainGroup/Total'a kadarki Account toplamı.
+        //      (Hesap planında alt gruplar — H-Diğer Dönen Varlıklar, C-Mali Duran Varlıklar
+        //       gibi — yanlışlıkla MainGroup etiketli; bunlarda kesilmeyip üst grubun
+        //       toplamına dahil edilir, yoksa 190-199 gibi hesaplar Dönen toplamından düşer.)
         //    Total -> önceki Total'dan sonraki MainGroup toplamlarının toplamı
         //    Other -> hesaplanmaz
 
@@ -85,7 +111,15 @@
                 }
                 else // MainGroup
                 {
-                    if (jt == SatirTipi.MainGroup || jt == SatirTipi.Total)
+                    // Bir MainGroup toplamı, kendisinden sonraki TÜM SubGroup ve Account
+                    // satırlarını, bir sonraki GERÇEK üst düzey MainGroup (veya Total)
+                    // başlayana kadar kapsar. Hesap planında bazı alt bölüm başlıkları
+                    // (H-Diğer Dönen Varlıklar=190-199, C-Mali Duran Varlıklar,
+                    // Pasif'te I-Diğer Kısa Vadeli Yabancı Kaynaklar ...) yanlışlıkla
+                    // MainGroup etiketli; bunlarda kesilmez, accountları emilir.
+                    // Sadece Total'da veya gerçek üst düzey (tamamı büyük harf) MainGroup'ta kes.
+                    if (jt == SatirTipi.Total ||
+                        (jt == SatirTipi.MainGroup && UstDuzeyMainGroupMu(rows[j].Ad)))
                         break;
                 }
 
@@ -142,6 +176,16 @@
         return result;
     }
 
+    // Gerçek üst düzey bilanço başlıkları TAMAMEN BÜYÜK HARF (örn "I -DÖNEN VARLIKLAR",
+    // "III-KISA VADELİ YABANCI KAYNAKLAR", "V-ÖZ KAYNAKLAR").
+    // Yanlışlıkla MainGroup etiketli alt bölümler başlık-düzeni olup en az bir küçük harf
+    // içerir (örn "H-Diğer Dönen Varlıklar", "I-Diğer Kısa Vadeli Yabancı Kaynaklar").
+    // NOT: Roma rakamı önekine göre ayırmak hatalı olurdu — "I-Diğer Kısa Vadeli..." da
+    // "I" ile başlar ama bir alt gruptur; bu yüzden büyük/küçük harf ölçütü kullanılır.
+    // En az bir HARF olmalı ve hiç küçük harf bulunmamalı.
+    private static bool UstDuzeyMainGroupMu(string? ad) =>
+        !string.IsNullOrEmpty(ad) && ad.Any(char.IsLetter) && !ad.Any(char.IsLower);
+
     private static string RowCssClass(SatirTipi tip) => tip switch
     {
         SatirTipi.MainGroup => "fk-mizan-row main-group",
@@ -154,4 +198,14 @@
 
     private static string FormatNumber(decimal? value) =>
         value.HasValue ? value.Value.ToString("N2", new CultureInfo("tr-TR")) : "—";
+
+    // Satırın cari değerinin Genel Toplam'a oranı. Tutar yoksa veya payda 0/boşsa "—".
+    private string FormatYuzde(decimal? value)
+    {
+        if (!value.HasValue || !cariGenelToplam.HasValue || cariGenelToplam.Value == 0m)
+            return "—";
+
+        var oran = value.Value / cariGenelToplam.Value * 100m;
+        return oran.ToString("N2", new CultureInfo("tr-TR")) + "%";
+    }
 }

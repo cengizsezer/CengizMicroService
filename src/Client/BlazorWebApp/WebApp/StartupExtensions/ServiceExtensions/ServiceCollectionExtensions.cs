@@ -63,7 +63,11 @@ namespace WebApp.StartupExtensions.ServiceExtensions
 
             services.AddMizanRuleEngine();
 
-            services.AddSingleton<IFirmaKontrolService, MockFirmaKontrolService>();
+            // Scoped: WASM'de tek-scope olduğundan in-memory cache'ler app ömrü boyunca
+            // korunur; ayrıca scoped IFirmaApiClient'ı (auth+tenant header pipeline'lı)
+            // doğrudan enjekte edebilir. Singleton iken captive-dependency olur ve client
+            // kök provider'dan auth'suz çözülürdü.
+            services.AddScoped<IFirmaKontrolService, MockFirmaKontrolService>();
             return services;
         }
 

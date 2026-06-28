@@ -39,7 +39,14 @@
       "PowerShell(Get-ChildItem -Path \"C:\\\\GitHub\\\\CengizMicroService\\\\Services\\\\FileApiService\\\\FileApiService.Api\" -Recurse -Directory | Select-Object -First 20 | ForEach-Object { $_.FullName })",
       "Bash(grep -rn \"TicaretSicilCatalog\\\\|Domain.Models.TicaretSicil\\\\|wwwroot/ticaret-sicil\" src/Client/BlazorWebApp/WebApp --include=*.razor --include=*.cs)",
       "Bash(sed -n '27,43p' src/AppGateways/WebAppGateway/Web.ApiGateway/Configurations/ocelot.json)",
-      "PowerShell(dotnet build *)"
+      "PowerShell(dotnet build *)",
+      "Bash(xargs basename -a)",
+      "Bash(xargs ls -la)",
+      "Bash(grep -iA0 'SATIŞ\\\\|KAR\\\\|KÂR\\\\|ZARAR\\\\|FAALİYET\\\\|DÖNEM\\\\|MainGroup\\\\|Total\\\\|690\\\\|691\\\\|692\\\\|NET')",
+      "Bash(awk '/\"gelirTablosu\"/{f=1} f' src/Client/BlazorWebApp/WebApp/wwwroot/data/hesap_plani.json)",
+      "Bash(awk '/\"aktif\"/{f=1} /\"pasif\"/{f=0} f' src/Client/BlazorWebApp/WebApp/wwwroot/data/hesap_plani.json)",
+      "Bash(awk '/\"pasif\"/{f=1} /\"gelirTablosu\"/{f=0} f' src/Client/BlazorWebApp/WebApp/wwwroot/data/hesap_plani.json)",
+      "Bash(python -c ' *)"
     ]
   }
 }

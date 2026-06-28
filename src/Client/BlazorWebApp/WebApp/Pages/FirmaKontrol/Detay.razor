@@ -138,6 +138,63 @@ else
                     }
                 }
             </RadzenTabsItem>
+
+            <RadzenTabsItem Text="Dikey Yüzdeler Analizi" Icon="percent">
+                @if (mizan is null)
+                {
+                    <em>Hesap planı yükleniyor...</em>
+                }
+                else
+                {
+                    <RadzenTabs RenderMode="TabRenderMode.Client" SelectedIndex="0">
+                        <Tabs>
+                            <RadzenTabsItem Text="Bilanço" Icon="account_balance">
+                                <h4 class="fk-detay-section-title">Aktif (Varlıklar)</h4>
+                                <MizanGrid Rows="mizan.Aktif" ShowYuzde="true" />
+
+                                <h4 class="fk-detay-section-title">Pasif (Kaynaklar)</h4>
+                                <MizanGrid Rows="mizan.Pasif" ShowYuzde="true" />
+                            </RadzenTabsItem>
+
+                            <RadzenTabsItem Text="Bilanço Özet" Icon="account_balance_wallet">
+                                <BilancoOzetGrid Aktif="mizan.Aktif"
+                                                 Pasif="mizan.Pasif"
+                                                 CariRawValues="rawCariValues"
+                                                 OncekiRawValues="rawOncekiValues" />
+                            </RadzenTabsItem>
+
+                            <RadzenTabsItem Text="Gelir Tablosu" Icon="trending_up">
+                                <GelirTablosuGrid Rows="mizan.GelirTablosu"
+                                                  CariRawValues="rawCariValues"
+                                                  OncekiRawValues="rawOncekiValues"
+                                                  HesaplananVergi691Cari="@hesaplananVergi691"
+                                                  HideTaxRows="false" />
+                            </RadzenTabsItem>
+
+                            <RadzenTabsItem Text="Gelir Tablosu Özet" Icon="summarize">
+                                <GelirTabloOzetGrid Rows="mizan.GelirTablosu"
+                                                    CariRawValues="rawCariValues"
+                                                    OncekiRawValues="rawOncekiValues"
+                                                    HesaplananVergi691Cari="@hesaplananVergi691" />
+                            </RadzenTabsItem>
+                        </Tabs>
+                    </RadzenTabs>
+                }
+            </RadzenTabsItem>
+
+            <RadzenTabsItem Text="Likidite Oranları" Icon="water_drop">
+                @if (mizan is null)
+                {
+                    <em>Hesap planı yükleniyor...</em>
+                }
+                else
+                {
+                    <LikiditeOranlariGrid Aktif="mizan.Aktif"
+                                          Pasif="mizan.Pasif"
+                                          CariRawValues="rawCariValues"
+                                          OncekiRawValues="rawOncekiValues" />
+                }
+            </RadzenTabsItem>
         </Tabs>
     </RadzenTabs>
 }

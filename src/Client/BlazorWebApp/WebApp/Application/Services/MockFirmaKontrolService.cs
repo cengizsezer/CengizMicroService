@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using WebApp.Application.RuleEngine;
 using WebApp.Application.Services.Interfaces;
 using WebApp.Application.Services.Yonetim;
@@ -30,7 +29,7 @@ namespace WebApp.Application.Services
 
         private readonly IHesapPlaniLoader _hesapPlaniLoader;
         private readonly MizanRuleEngine _ruleEngine;
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IFirmaApiClient _firmaApiClient;
         private readonly List<Firma> _firms = new();
         private readonly Dictionary<int, List<ControlItem>> _itemsByFirm = new();
         private readonly Dictionary<int, Dictionary<string, decimal?>> _rawCariByFirm = new();
@@ -46,17 +45,18 @@ namespace WebApp.Application.Services
         public MockFirmaKontrolService(
             IHesapPlaniLoader hesapPlaniLoader,
             MizanRuleEngine ruleEngine,
-            IServiceProvider serviceProvider)
+            IFirmaApiClient firmaApiClient)
         {
             _hesapPlaniLoader = hesapPlaniLoader;
             _ruleEngine = ruleEngine;
-            _serviceProvider = serviceProvider;
+            _firmaApiClient = firmaApiClient;
         }
 
         // Firma listesini gerçek "Firmalarım" kaynağından (CatalogService Firma tablosu)
-        // tek seferlik yükler. Singleton olduğumuz için scoped IFirmaApiClient'ı çağrı
-        // anında IServiceProvider üzerinden çözüyoruz (WASM tek-scope). Kontrol şablonu
-        // ve Mizan, her gerçek firma için lazy üretilir — kalıcılık yok, geçici iskelet.
+        // tek seferlik yükler. Servis Scoped olduğundan, auth+tenant header pipeline'ı
+        // bağlı scoped IFirmaApiClient'ı doğrudan enjekte edip kullanıyoruz (Firmalarım ile
+        // birebir aynı client). Kontrol şablonu ve Mizan, her gerçek firma için lazy üretilir
+        // — kalıcılık yok, geçici iskelet.
         private async Task EnsureFirmsLoadedAsync()
         {
             if (_firmsLoaded) return;
@@ -69,13 +69,20 @@ namespace WebApp.Application.Services
                 List<FirmaDto> gercekFirmalar;
                 try
                 {
-                    var api = _serviceProvider.GetRequiredService<IFirmaApiClient>();
-                    gercekFirmalar = await api.GetAllAsync();
+                    gercekFirmalar = await _firmaApiClient.GetAllAsync();
                 }
-                catch
+                catch (Exception ex)
                 {
-                    gercekFirmalar = new List<FirmaDto>();
+                    // API çağrısı başarısız: bayrağı YAKMA, sonraki erişimde tekrar denensin.
+                    // Hatayı tarayıcı console'una yüzeye çıkar (sessiz yutma yok).
+                    Console.WriteLine($"[FirmaLoad HATA] {ex}");
+                    return;
                 }
+
+                // Boş liste (henüz firma yok ya da kaynak hazır değil): bayrağı YAKMA,
+                // sonraki erişimde tekrar denensin. Aksi halde singleton kalıcı kilitlenir.
+                if (gercekFirmalar.Count == 0)
+                    return;
 
                 foreach (var dto in gercekFirmalar)
                 {

@@ -1,0 +1,201 @@
+@using System.Globalization
+@using WebApp.Application.Services
+@using WebApp.Domain.Models.FirmaKontrol
+
+@* Gelir Tablosu Özet: Net Satışlar (baz) + 5 kâr kalemi, her biri Net Satışlar'a oranlanır.
+   Tutarlar yeniden HESAPLANMAZ — mevcut public GelirTablosuCalculator.Compute'tan okunur.
+   Net Satışlar, "C-NET SATIŞLAR" başlığında hesap olmadığından, A-BRÜT SATIŞLAR ve
+   B-SATIŞ İNDİRİMLERİ alt-toplamlarının toplamından türetilir.
+   Altta otomatik Yorum bölümü: gider/indirim oran uyarıları + "5 kârda da kâr" olumlu yorumu. *@
+
+<table class="fk-mizan-table">
+    <thead>
+        <tr>
+            <th class="fk-mizan-col-ad">Kalem</th>
+            <th class="fk-mizan-col-num">Tutar</th>
+            <th class="fk-mizan-col-num">Net Satışlara %</th>
+            <th class="fk-mizan-col-num">Durum</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var k in kalemler)
+        {
+            <tr class="@k.Css">
+                <td class="fk-mizan-col-ad">@k.Ad</td>
+                <td class="fk-mizan-col-num">@FormatNumber(k.Tutar)</td>
+                <td class="fk-mizan-col-num">@FormatYuzde(k.Tutar)</td>
+                <td class="fk-mizan-col-num">
+                    @if (k.Kar)
+                    {
+                        @if (k.Tutar is > 0)
+                        {
+                            <RadzenIcon Icon="arrow_upward" Style="color:var(--rz-success)" />
+                        }
+                        else if (k.Tutar is < 0)
+                        {
+                            <RadzenIcon Icon="arrow_downward" Style="color:var(--rz-danger)" />
+                        }
+                        else
+                        {
+                            <span>—</span>
+                        }
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div style="margin-top:1rem;">
+    <h4 class="fk-detay-section-title">Yorum</h4>
+    @if (!netSatislar.HasValue)
+    {
+        <div style="@YorumSatirStyle">
+            <RadzenIcon Icon="hourglass_empty" Style="@($"color:{TonRenk(Ton.Notr)}")" />
+            <span>Veri bekleniyor.</span>
+        </div>
+    }
+    else
+    {
+        @foreach (var y in yorumlar)
+        {
+            <div style="@YorumSatirStyle">
+                <RadzenIcon Icon="@TonIcon(y.Ton)" Style="@($"color:{TonRenk(y.Ton)}")" />
+                <span>@y.Mesaj</span>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<MizanSatir> Rows { get; set; } = new();
+
+    [Parameter] public IReadOnlyDictionary<string, decimal?> CariRawValues { get; set; } =
+        new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+    [Parameter] public IReadOnlyDictionary<string, decimal?> OncekiRawValues { get; set; } =
+        new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+    [Parameter] public decimal? HesaplananVergi691Cari { get; set; }
+
+    private const string YorumSatirStyle = "display:flex; align-items:center; gap:.5rem; margin:.35rem 0;";
+
+    private enum Ton { Iyi, Notr, Asim }
+
+    private record OzetSatir(string Ad, decimal? Tutar, string Css, bool Kar);
+    private record YorumSatir(string Mesaj, Ton Ton);
+
+    private List<OzetSatir> kalemler = new();
+    private List<YorumSatir> yorumlar = new();
+    private decimal? netSatislar;
+
+    // Yorum eşikleri (oransal). Gerekirse buradan ayarlanır.
+    private const decimal IndirimEsik = 0.10m;        // satış indirimleri / brüt satışlar
+    private const decimal MaliyetEsik = 0.80m;        // satışların maliyeti / net satışlar
+    private const decimal FaaliyetGiderEsik = 0.25m;  // faaliyet giderleri / net satışlar
+    private const decimal FinansmanEsik = 0.05m;      // finansman giderleri / net satışlar
+
+    protected override void OnParametersSet()
+    {
+        var computed = GelirTablosuCalculator.Compute(Rows, CariRawValues, OncekiRawValues, HesaplananVergi691Cari);
+
+        decimal? ByAd(string ad) => computed
+            .FirstOrDefault(r => string.Equals(r.Source.Ad?.Trim(), ad, StringComparison.OrdinalIgnoreCase))?.Cari;
+        decimal? ByKod(string kod) => computed
+            .FirstOrDefault(r => r.Source.Kod == kod)?.Cari;
+
+        // Net Satışlar = Brüt Satışlar + Satış İndirimleri (indirimler eksi işaretli gelir).
+        var brut = ByAd("A-BRÜT SATIŞLAR");
+        var indirim = ByAd("B-SATIŞ İNDİRİMLERİ (-)");
+        netSatislar = (brut.HasValue || indirim.HasValue) ? (brut ?? 0m) + (indirim ?? 0m) : null;
+
+        var brutKar = ByAd("BRÜT SATIŞ KARI VEYA ZARARI");
+        var faaliyetKar = ByAd("FAALİYET KARI VEYA ZARARI");
+        var olaganKar = ByAd("OLAĞAN KAR VEYA ZARAR");
+        var ticariKar = ByKod("690");
+        var donemNetKar = ByKod("692");
+
+        kalemler = new List<OzetSatir>
+        {
+            // Koyu mavi + beyaz yazı (total stili) YALNIZCA Net Satışlar'da — %100 referans satırı.
+            new("Net Satışlar", netSatislar, "fk-mizan-row total", Kar: false),
+            // Altındaki 5 kâr kalemi tek tip açık mavi (main-group stili).
+            new("Brüt Satış Karı veya Zararı", brutKar, "fk-mizan-row main-group", Kar: true),
+            new("Faaliyet Karı veya Zararı", faaliyetKar, "fk-mizan-row main-group", Kar: true),
+            new("Olağan Kar veya Zarar", olaganKar, "fk-mizan-row main-group", Kar: true),
+            new("Ticari Kar (Dönem Karı/Zararı) — 690", ticariKar, "fk-mizan-row main-group", Kar: true),
+            new("Dönem Net Karı veya Zararı — 692", donemNetKar, "fk-mizan-row main-group", Kar: true),
+        };
+
+        BuildYorumlar(brut, indirim,
+            maliyet: ByAd("D-SATIŞLARIN MALİYETİ (-)"),
+            faaliyetGideri: ByAd("E-FAALİYET GİDERLERİ (-)"),
+            finansman: ByAd("H-FİNANSMAN GİDERLERİ (-)"),
+            karlar: new[] { brutKar, faaliyetKar, olaganKar, ticariKar, donemNetKar });
+    }
+
+    private void BuildYorumlar(
+        decimal? brut, decimal? indirim, decimal? maliyet,
+        decimal? faaliyetGideri, decimal? finansman, decimal?[] karlar)
+    {
+        yorumlar = new List<YorumSatir>();
+        if (!netSatislar.HasValue) return;  // "Veri bekleniyor" template'te gösterilir
+
+        // Her oran satırı HER ZAMAN görünür: hesaplanabiliyorsa eşiğe göre iyi/aşım,
+        // hesaplanamıyorsa nötr bilgi satırı (artık tamamen gizleme yok).
+        OranSatiri("Satış indirimleri", indirim, brut, IndirimEsik,
+            asimEk: "yüksek.", paydaAd: "brüt satışların");
+        OranSatiri("Satışların maliyeti", maliyet, netSatislar, MaliyetEsik,
+            asimEk: "brüt kâr marjı düşük.", paydaAd: "net satışların");
+        OranSatiri("Faaliyet giderleri", faaliyetGideri, netSatislar, FaaliyetGiderEsik,
+            asimEk: "yüksek.", paydaAd: "net satışların");
+        OranSatiri("Finansman giderleri", finansman, netSatislar, FinansmanEsik,
+            asimEk: "yüksek.", paydaAd: "net satışların");
+
+        // 5 kâr kalemi durumu — her iki halde de satır görünür.
+        if (karlar.All(k => k.HasValue) && karlar.All(k => k!.Value > 0m))
+            yorumlar.Add(new("5 kâr kaleminde de kâr edilmiş, olumlu.", Ton.Iyi));
+        else
+            yorumlar.Add(new("5 kâr kaleminin tamamında kâr edilmemiş.", Ton.Notr));
+    }
+
+    private void OranSatiri(
+        string etiket, decimal? pay, decimal? payda, decimal esik, string asimEk, string paydaAd)
+    {
+        if (!pay.HasValue || !payda.HasValue || payda.Value == 0m)
+        {
+            yorumlar.Add(new($"{etiket} oranı hesaplanamıyor.", Ton.Notr));
+            return;
+        }
+
+        var oran = Math.Abs(pay.Value) / Math.Abs(payda.Value);
+        var asim = oran > esik;
+        var mesaj = $"{etiket} {paydaAd} %{Oran(oran)}'i" + (asim ? $" — {asimEk}" : ".");
+        yorumlar.Add(new(mesaj, asim ? Ton.Asim : Ton.Iyi));
+    }
+
+    private static string Oran(decimal oran) =>
+        (oran * 100m).ToString("N1", new CultureInfo("tr-TR"));
+
+    // Ton renkleri: iyi=yeşil, nötr=gri, aşım=kırmızı (mevcut Radzen değişkenleri).
+    private static string TonRenk(Ton ton) => ton switch
+    {
+        Ton.Iyi => "var(--rz-success)",
+        Ton.Asim => "var(--rz-danger)",
+        _ => "var(--rz-text-secondary-color)"
+    };
+
+    private static string TonIcon(Ton ton) => ton switch
+    {
+        Ton.Iyi => "check_circle",
+        Ton.Asim => "warning",
+        _ => "info"
+    };
+
+    private static string FormatNumber(decimal? value) =>
+        value.HasValue ? value.Value.ToString("N2", new CultureInfo("tr-TR")) : "—";
+
+    private string FormatYuzde(decimal? value)
+    {
+        if (!value.HasValue || !netSatislar.HasValue || netSatislar.Value == 0m) return "—";
+        return (value.Value / netSatislar.Value * 100m).ToString("N2", new CultureInfo("tr-TR")) + "%";
+    }
+}

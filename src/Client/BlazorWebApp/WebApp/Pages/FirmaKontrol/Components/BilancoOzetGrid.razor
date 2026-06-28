@@ -1,0 +1,132 @@
+@using System.Globalization
+@using WebApp.Application.Services
+@using WebApp.Domain.Models.FirmaKontrol
+
+@* Bilanço Özet (T cetveli): solda Aktif, sağda Pasif yan yana.
+   Tutarlar yeniden HESAPLANMAZ — mevcut public GelirTablosuCalculator.Compute'tan
+   (MizanGrid.Compute ile aynı toplama mantığı) MainGroup/Total değerleri okunur.
+   Aktif/Pasif'te 690/691/692 kodu yok, o yüzden calculator'ın o özel mantığı no-op. *@
+
+<RadzenRow Gap="1rem">
+    <RadzenColumn Size="12" SizeMD="6">
+        <h4 class="fk-detay-section-title">Aktif (Varlıklar)</h4>
+        <table class="fk-mizan-table">
+            <thead>
+                <tr>
+                    <th class="fk-mizan-col-ad">Kalem</th>
+                    <th class="fk-mizan-col-num">Tutar</th>
+                    <th class="fk-mizan-col-num">Dikey %</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var k in aktifKalemler)
+                {
+                    <tr class="fk-mizan-row main-group">
+                        <td class="fk-mizan-col-ad">@k.Ad</td>
+                        <td class="fk-mizan-col-num">@FormatNumber(k.Tutar)</td>
+                        <td class="fk-mizan-col-num">@FormatYuzde(k.Tutar, aktifGenelToplam)</td>
+                    </tr>
+                }
+                <tr class="fk-mizan-row total">
+                    <td class="fk-mizan-col-ad">Aktif Toplam</td>
+                    <td class="fk-mizan-col-num">@FormatNumber(aktifGenelToplam)</td>
+                    <td class="fk-mizan-col-num">@FormatYuzde(aktifGenelToplam, aktifGenelToplam)</td>
+                </tr>
+            </tbody>
+        </table>
+    </RadzenColumn>
+
+    <RadzenColumn Size="12" SizeMD="6">
+        <h4 class="fk-detay-section-title">Pasif (Kaynaklar)</h4>
+        <table class="fk-mizan-table">
+            <thead>
+                <tr>
+                    <th class="fk-mizan-col-ad">Kalem</th>
+                    <th class="fk-mizan-col-num">Tutar</th>
+                    <th class="fk-mizan-col-num">Dikey %</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var k in pasifKalemler)
+                {
+                    <tr class="fk-mizan-row main-group">
+                        <td class="fk-mizan-col-ad">@k.Ad</td>
+                        <td class="fk-mizan-col-num">@FormatNumber(k.Tutar)</td>
+                        <td class="fk-mizan-col-num">@FormatYuzde(k.Tutar, pasifGenelToplam)</td>
+                    </tr>
+                }
+                <tr class="fk-mizan-row total">
+                    <td class="fk-mizan-col-ad">Pasif Toplam</td>
+                    <td class="fk-mizan-col-num">@FormatNumber(pasifGenelToplam)</td>
+                    <td class="fk-mizan-col-num">@FormatYuzde(pasifGenelToplam, pasifGenelToplam)</td>
+                </tr>
+            </tbody>
+        </table>
+    </RadzenColumn>
+</RadzenRow>
+
+@code {
+    [Parameter, EditorRequired] public List<MizanSatir> Aktif { get; set; } = new();
+    [Parameter, EditorRequired] public List<MizanSatir> Pasif { get; set; } = new();
+
+    [Parameter] public IReadOnlyDictionary<string, decimal?> CariRawValues { get; set; } =
+        new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+    [Parameter] public IReadOnlyDictionary<string, decimal?> OncekiRawValues { get; set; } =
+        new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+
+    private record Kalem(string Ad, decimal? Tutar);
+
+    private List<Kalem> aktifKalemler = new();
+    private List<Kalem> pasifKalemler = new();
+    private decimal? aktifGenelToplam;
+    private decimal? pasifGenelToplam;
+
+    // SADECE üst düzey 5 ana kalem. JSON'da alt kırılımlar da "MainGroup" etiketli
+    // olduğundan (C-Mali Duran Varlıklar, I-Diğer KVYK ...), Tip filtresi yetmez;
+    // üst düzey kalemler tam adıyla seçilir.
+    private static readonly (string SourceAd, string Label)[] AktifKalemTanim =
+    {
+        ("I -DÖNEN VARLIKLAR", "1- Dönen Varlıklar"),
+        ("II -DURAN VARLIKLAR", "2- Duran Varlıklar"),
+    };
+    private static readonly (string SourceAd, string Label)[] PasifKalemTanim =
+    {
+        ("III-KISA VADELİ YABANCI KAYNAKLAR", "3- KVYK (Kısa Vadeli Yabancı Kaynaklar)"),
+        ("IV -UZUN VADELİ YABANCI KAYNAKLAR", "4- UVYK (Uzun Vadeli Yabancı Kaynaklar)"),
+        ("V-ÖZ KAYNAKLAR", "5- Özkaynaklar"),
+    };
+
+    protected override void OnParametersSet()
+    {
+        (aktifKalemler, aktifGenelToplam) = Ozetle(Aktif, AktifKalemTanim);
+        (pasifKalemler, pasifGenelToplam) = Ozetle(Pasif, PasifKalemTanim);
+    }
+
+    private (List<Kalem> Kalemler, decimal? Toplam) Ozetle(
+        List<MizanSatir> rows, (string SourceAd, string Label)[] tanim)
+    {
+        var computed = GelirTablosuCalculator.Compute(rows, CariRawValues, OncekiRawValues);
+
+        decimal? ByAd(string ad) => computed
+            .FirstOrDefault(r => string.Equals(r.Source.Ad?.Trim(), ad, StringComparison.OrdinalIgnoreCase))?.Cari;
+
+        var kalemler = tanim.Select(t => new Kalem(t.Label, ByAd(t.SourceAd))).ToList();
+
+        // Genel Toplam = bölümün Total satırı (Aktif/Pasif'te tek Total).
+        var toplam = computed
+            .Where(r => r.Source.Tip == SatirTipi.Total)
+            .Select(r => r.Cari)
+            .LastOrDefault(v => v.HasValue);
+
+        return (kalemler, toplam);
+    }
+
+    private static string FormatNumber(decimal? value) =>
+        value.HasValue ? value.Value.ToString("N2", new CultureInfo("tr-TR")) : "—";
+
+    private static string FormatYuzde(decimal? value, decimal? payda)
+    {
+        if (!value.HasValue || !payda.HasValue || payda.Value == 0m) return "—";
+        return (value.Value / payda.Value * 100m).ToString("N2", new CultureInfo("tr-TR")) + "%";
+    }
+}
