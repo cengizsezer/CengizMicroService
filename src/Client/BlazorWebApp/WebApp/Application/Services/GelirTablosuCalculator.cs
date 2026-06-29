@@ -4,10 +4,13 @@ namespace WebApp.Application.Services
 {
     public static class GelirTablosuCalculator
     {
-        // Bilgi amaçlı: 6'lı gider kodu -> mukabil 7'li yansıtma kodu eşleşmesi.
-        // Artık toplama yapılmıyor; muhasebeci 740/750/760/770/780'i ayrı görüp
-        // kapanış kararını kendi verecek (mizan tab'ında ve gelir tablosunda
-        // satır olarak listeleniyor).
+        // 6'lı maliyet/gider kodu -> mukabil 7'li yansıtma kodu eşleşmesi.
+        // İki amaçla kullanılır:
+        //  (1) Bilgi: 740/750/760/770/780 ayrı "YANSITMA" satırı olarak gösterilir.
+        //  (2) Fallback (tek kaynak / çifte sayım yok): 6'lı hesap mizanda BOŞ ise
+        //      tutar 7'li yansıtma hesabında duruyordur → o değer 6'lıya taşınır.
+        //      6'lı DOLU ise 7'liye dokunulmaz. 7'li satırlar ana grup/Total
+        //      toplamlarına hiçbir zaman dahil edilmez, dolayısıyla çifte sayım olmaz.
         public static readonly IReadOnlyDictionary<string, string> YansitmaMap =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -39,9 +42,12 @@ namespace WebApp.Application.Services
             var kaynakKod = new string?[n];
             var yansitmaKod = new string?[n];
 
-            // 1) Account satırları: SADECE kendi mizan bakiyesi.
-            //    Yansıtma toplamı ARTIK YAPILMIYOR — 740/750/760/770/780 ayrı satır
-            //    olarak gösterilir, ana grup toplamına dahil edilmez.
+            // 1) Account satırları: kendi mizan bakiyesi + 6'lı↔7'li yansıtma fallback.
+            //    6'lı maliyet/gider hesabı (620/622/630/631/632/660...) mizanda boşsa,
+            //    tutar mukabil 7'li hesapta (740/750/760/770/780) duruyordur; o değeri
+            //    6'lıya taşırız (else: 6'lı doluysa dokunmayız → çifte sayım yok).
+            //    7'li hesaplar ayrı "YANSITMA" alt grubunda kalır ve ana grup/Total
+            //    toplamlarına dahil edilmez; bu nedenle tutar yalnızca BİR kez sayılır.
             //    Kaynak kod tüm tipler için (kod doluysa) gösterilir — 690/691/692 gibi
             //    başlık/total satırlarında da Hesap Kodu sütununun beslenmesi için.
             for (int i = 0; i < n; i++)
@@ -50,17 +56,27 @@ namespace WebApp.Application.Services
 
                 kaynakKod[i] = string.IsNullOrWhiteSpace(r.Kod) ? null : r.Kod;
 
-                // Bilgi amaçlı yansıtma kodu (UI'da ipucu olarak gösteriliyor)
+                // 6'lı kaynak hesabın mukabil 7'li yansıtma kodu (varsa).
+                string? yKod = null;
                 if (r.Tip == SatirTipi.Account && !string.IsNullOrEmpty(r.Kod) &&
-                    YansitmaMap.TryGetValue(r.Kod, out var yKod))
+                    YansitmaMap.TryGetValue(r.Kod, out var mapped))
                 {
-                    yansitmaKod[i] = yKod;
+                    yKod = mapped;
+                    yansitmaKod[i] = mapped;   // bilgi amaçlı (UI ipucu)
                 }
 
                 if (r.Tip != SatirTipi.Account) continue;
 
                 cari[i] = r.CariDonem;
                 onceki[i] = r.OncekiDonem;
+
+                // Fallback: 6'lı BOŞ ise mukabil 7'li mizan değerini kullan.
+                // (6'lı dolu ise koşullar false kalır → 7'li eklenmez, çifte sayım olmaz.)
+                if (yKod is not null)
+                {
+                    if (!cari[i].HasValue) cari[i] = RawValue(rawCari, yKod);
+                    if (!onceki[i].HasValue) onceki[i] = RawValue(rawOnceki, yKod);
+                }
             }
 
             // 2) SubGroup ve MainGroup toplamları

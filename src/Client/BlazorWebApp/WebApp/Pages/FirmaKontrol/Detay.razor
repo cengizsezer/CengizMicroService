@@ -182,17 +182,18 @@ else
                 }
             </RadzenTabsItem>
 
-            <RadzenTabsItem Text="Likidite Oranları" Icon="water_drop">
+            <RadzenTabsItem Text="Finansal Oranlar" Icon="water_drop">
                 @if (mizan is null)
                 {
                     <em>Hesap planı yükleniyor...</em>
                 }
                 else
                 {
-                    <LikiditeOranlariGrid Aktif="mizan.Aktif"
-                                          Pasif="mizan.Pasif"
-                                          CariRawValues="rawCariValues"
-                                          OncekiRawValues="rawOncekiValues" />
+                    <FinansalOranlarGrid Aktif="mizan.Aktif"
+                                         Pasif="mizan.Pasif"
+                                         GelirTablosu="mizan.GelirTablosu"
+                                         CariRawValues="rawCariValues"
+                                         OncekiRawValues="rawOncekiValues" />
                 }
             </RadzenTabsItem>
         </Tabs>
