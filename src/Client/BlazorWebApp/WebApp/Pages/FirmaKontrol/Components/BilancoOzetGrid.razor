@@ -105,7 +105,12 @@
     private (List<Kalem> Kalemler, decimal? Toplam) Ozetle(
         List<MizanSatir> rows, (string SourceAd, string Label)[] tanim)
     {
-        var computed = GelirTablosuCalculator.Compute(rows, CariRawValues, OncekiRawValues);
+        // Detaylı Bilanço ile AYNI gruplama sınırı (MizanHesaplayici): MainGroup toplamı
+        // bir sonraki gerçek üst düzey MainGroup'a kadar tüm alt grupları (H-Diğer Dönen
+        // Varlıklar=190-199 dahil) emer → Dönen Varlıklar Özet'te de %100 / doğru çıkar.
+        // (İşaret/parse aynen kalır; Aktif/Pasif'te yansıtma kodu olmadığından raw fallback
+        // gerekmez.)
+        var computed = MizanHesaplayici.Compute(rows);
 
         decimal? ByAd(string ad) => computed
             .FirstOrDefault(r => string.Equals(r.Source.Ad?.Trim(), ad, StringComparison.OrdinalIgnoreCase))?.Cari;

@@ -3,19 +3,20 @@
 @using WebApp.Domain.Models.FirmaKontrol
 @inject TooltipService TooltipService
 
-@* Finansal Oranlar — kapsül (grup) + kart yapısı.
-   Bu turda tek grup: "Likidite Oranları" (6 oran). Yapı, ileride Faaliyet / Finansal
-   Yapı / Karlılık gruplarının AYNI kapsül + kart düzeniyle eklenebilmesi için tekrar
-   kullanılabilir kurulmuştur (OranGrup listesi).
+@* Finansal Oranlar — tek tutarlı düzen: her grup bir kapsül; kapsül içi solda ilgili
+   özet tablo (kalem + tutar + dikey %), sağda oran tablosu (Oran/formül | Değer |
+   Referans | Durum). Karlılık grubu iki alt bölümden oluşur (Satış / Sermaye).
 
-   Tek kaynak: yüklenen cari dönem mizanı. Tutarlar yeniden HESAPLANMAZ — mevcut public
+   Tek kaynak: yüklenen mizan. Tutarlar yeniden HESAPLANMAZ — mevcut public
    GelirTablosuCalculator.Compute (MizanGrid.Compute ile aynı toplama mantığı) grup
-   toplamlarından ad/kod ile okunur (BilancoOzetGrid / GelirTabloOzetGrid convention'ı).
+   toplamlarından / kodlardan ad/kod ile okunur (BilancoOzetGrid / GelirTabloOzetGrid
+   convention'ı). Yeni hesaplama motoru kurulmaz.
 
    ÖNEMLİ: Mizan borç-pozitif konvansiyonda; KVYK gibi pasif kalemler negatif gelir.
-   Likidite oranı büyüklük oranıdır, işaret anlamsız → her kalem Math.Abs ile alınır,
-   oranlar pozitif çıkar. (İşaret/parse/kontra mantığına burada DOKUNULMAZ; Math.Abs
-   yalnızca aşağıdaki oran hesaplarında kullanılır.) *@
+   Bu sayfadaki oranlar ve özet tablolar büyüklük/yapı oranıdır, işaret anlamsız → her
+   kalem Math.Abs ile alınır (tutar gösterimi ve % dahil), oranlar pozitif çıkar.
+   (İşaret/parse/kontra ve hesap motorlarına burada DOKUNULMAZ; Math.Abs yalnızca bu
+   sayfanın sunum/oran hesaplarında kullanılır.) *@
 
 @foreach (var grup in gruplar)
 {
@@ -31,42 +32,6 @@
             <span class="fk-foran-grup-aciklama">— @grup.Aciklama</span>
         </div>
 
-        <div class="fk-foran-kartlar">
-            @for (int i = 0; i < grup.Kartlar.Count; i++)
-            {
-                var k = grup.Kartlar[i];
-                <div class="fk-foran-kart">
-                    @* Oran adı — hover tooltip'i not/açıklama içerir (formül asıl kartta yazılı). *@
-                    <span class="fk-foran-kart-ad"
-                          @ref="k.AdEl"
-                          style="cursor:help;"
-                          @onmouseenter="@(() => TooltipService.Open(k.AdEl, k.Tooltip, TooltipAyar))">@k.Ad</span>
-
-                    @* Formül — sürekli görünür (gri, küçük). *@
-                    <div class="fk-foran-kart-formul">@k.Formul</div>
-
-                    @* Hesaplama — gerçek tutarlar (mono); mizan yoksa "—". *@
-                    <div class="fk-foran-kart-hesap">@(k.Hesaplama ?? "—")</div>
-
-                    @* Büyük sonuç + durum. *@
-                    <div class="fk-foran-kart-sonuc">
-                        <span class="fk-foran-kart-deger">@FormatDeger(k)</span>
-                        @if (k.Deger is null)
-                        {
-                            <span class="fk-foran-kart-durum-bos">—</span>
-                        }
-                        else
-                        {
-                            <RadzenIcon Icon="@TonIcon(k.Ton)" Style="@($"color:{TonRenk(k.Ton)}")" />
-                        }
-                    </div>
-
-                    <div class="fk-foran-kart-ref">@k.RefMetni</div>
-                    <div class="fk-foran-kart-yorum" style="@($"color:{TonRenk(k.Ton)}")">@k.Yorum</div>
-                </div>
-            }
-        </div>
-
         @if (!grup.VeriVar)
         {
             <div class="fk-foran-bos">
@@ -74,12 +39,95 @@
                 <span>Cari dönem mizanı yüklendiğinde oranlar otomatik hesaplanır.</span>
             </div>
         }
-        else if (grup.Uyari is not null)
+        else
         {
-            <div class="fk-foran-bos">
-                <RadzenIcon Icon="info" Style="color:var(--rz-text-secondary-color)" />
-                <span>@grup.Uyari</span>
-            </div>
+            @if (grup.Uyari is not null)
+            {
+                <div class="fk-foran-bos">
+                    <RadzenIcon Icon="info" Style="color:var(--rz-text-secondary-color)" />
+                    <span>@grup.Uyari</span>
+                </div>
+            }
+
+            @foreach (var bolum in grup.Bolumler)
+            {
+                <div class="fk-foran-bolum">
+                    @if (bolum.AltBaslik is not null)
+                    {
+                        <div class="fk-foran-alt-baslik">@bolum.AltBaslik</div>
+                    }
+
+                    <RadzenRow Gap="1rem">
+                        @* SOL: ilgili özet tablo — kalem + tutar + dikey % (ilgili toplam %100). *@
+                        <RadzenColumn Size="12" SizeMD="5">
+                            <h4 class="fk-detay-section-title">@bolum.TabloBaslik</h4>
+                            <table class="fk-mizan-table">
+                                <thead>
+                                    <tr>
+                                        <th class="fk-mizan-col-ad">Kalem</th>
+                                        <th class="fk-mizan-col-num">Tutar</th>
+                                        <th class="fk-mizan-col-num">Dikey %</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var r in bolum.SolTablo)
+                                    {
+                                        <tr class="@(r.Toplam ? "fk-mizan-row total" : "fk-mizan-row main-group")">
+                                            <td class="fk-mizan-col-ad">@r.Ad</td>
+                                            <td class="fk-mizan-col-num">@FormatNumber(r.Tutar)</td>
+                                            <td class="fk-mizan-col-num">@FormatYuzde(r.Tutar, r.Payda)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </RadzenColumn>
+
+                        @* SAĞ: oran tablosu — Oran (+formül) | Değer | Referans | Durum. *@
+                        <RadzenColumn Size="12" SizeMD="7">
+                            <h4 class="fk-detay-section-title">Oranlar</h4>
+                            <table class="fk-oran-table">
+                                <thead>
+                                    <tr>
+                                        <th class="fk-oran-col-ad">Oran</th>
+                                        <th class="fk-oran-col-deger">Değer</th>
+                                        <th class="fk-oran-col-ref">Referans</th>
+                                        <th class="fk-oran-col-durum">Durum</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var k in bolum.Oranlar)
+                                    {
+                                        <tr>
+                                            <td class="fk-oran-col-ad">
+                                                <span class="fk-oran-ad"
+                                                      @ref="k.AdEl"
+                                                      style="cursor:help;"
+                                                      @onmouseenter="@(() => TooltipService.Open(k.AdEl, k.Tooltip, TooltipAyar))">@k.Ad</span>
+                                                <div class="fk-oran-formul">@k.Formul</div>
+                                            </td>
+                                            <td class="fk-oran-col-deger fk-oran-deger">@FormatDeger(k)</td>
+                                            <td class="fk-oran-col-ref">@k.RefMetni</td>
+                                            <td class="fk-oran-col-durum">
+                                                @if (k.Deger is null)
+                                                {
+                                                    <span class="fk-foran-kart-durum-bos">—</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="fk-oran-durum" style="@($"color:{TonRenk(k.Ton)}")">
+                                                        <RadzenIcon Icon="@TonIcon(k.Ton)" />
+                                                        <span>@DurumLabel(k.Ton)</span>
+                                                    </span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </div>
+            }
         }
     </div>
 }
@@ -98,31 +146,58 @@
     private const decimal CariReferans = 1.50m;
     private const decimal AsitTestReferans = 1.00m;
     private const decimal NakitReferans = 0.20m;
-    private const decimal CabukReferans = 1.00m;
     private const decimal FaizKarsilamaReferans = 8.00m;
+
+    // Finansal yapı referansları (oranlar % — 0,50 = %50; finansman = kat, ≥ 1).
+    private const decimal KaldiracReferans = 0.50m;       // ≤ %50 olumlu (düşük borçluluk)
+    private const decimal OzkaynakReferans = 0.50m;       // ≥ %50 olumlu
+    private const decimal FinansmanReferans = 1.00m;      // ≥ 1 (özkaynak ≥ yabancı kaynak)
 
     private static readonly TooltipOptions TooltipAyar = new() { Position = TooltipPosition.Top };
 
     private const string LikiditeTooltip =
         "İşletmenin kısa vadeli borç ödeyebilme gücünü ölçmek için geliştirilmiş oranlardır.";
+    private const string FaaliyetTooltip =
+        "Varlıkların ve alacakların ne kadar verimli kullanıldığını ölçen devir oranlarıdır. "
+        + "Devir oranları önceki ve cari dönem ortalaması ile hesaplandığından iki dönem mizan gerektirir.";
+    private const string FinYapiTooltip =
+        "İşletmenin kaynaklarının (borç/özkaynak) yapısını ve finansal bağımsızlığını ölçen oranlardır.";
+    private const string KarlilikTooltip =
+        "İşletmenin kâr üretme performansını; satışlara ve yatırılan sermayeye/varlıklara göre ölçen oranlardır.";
 
     private enum Ton { Iyi, Uyari, Notr }
 
-    // Reusable model: her grup bir kapsül, her kart bir oran.
+    // Sağ oran tablosunun bir satırı.
     private class OranKart
     {
         public string Ad { get; init; } = "";
         public string Formul { get; init; } = "";
-        public string? Hesaplama { get; init; }   // sayısal yerine koyma; veri yoksa null → "—"
         public decimal? Deger { get; init; }
-        public decimal? Referans { get; init; }   // null → nötr/bilgi (referans yok)
         public string RefMetni { get; init; } = "";
         public Ton Ton { get; init; }
-        public string Yorum { get; init; } = "";
         public string Tooltip { get; init; } = "";
-        public string Birim { get; init; } = "";   // değer son eki (örn. " defa", " gün"); likiditede boş
-        public int Ondalik { get; init; } = 2;      // değer ondalık basamağı (süre = 0)
+        public bool Yuzde { get; init; }            // değer % olarak gösterilsin (×100, son ek "%")
+        public string Birim { get; init; } = "";    // % değilse değer son eki (örn. " defa", " gün")
+        public int Ondalik { get; init; } = 2;      // % değilse ondalık basamak (süre = 0)
         public ElementReference AdEl { get; set; }
+    }
+
+    // Sol özet tablonun bir satırı. Tutar/Payda zaten Math.Abs ile pozitif tutulur.
+    private class OranTabloSatir
+    {
+        public string Ad { get; init; } = "";
+        public decimal? Tutar { get; init; }
+        public decimal? Payda { get; init; }   // dikey % paydası (ilgili toplam)
+        public bool Toplam { get; init; }       // ilgili toplam satırı (%100) → total stili
+    }
+
+    // Bir bölüm: solda özet tablo, sağda oran listesi. Karlılık'ta iki bölüm (Satış / Sermaye).
+    private class OranBolum
+    {
+        public string? AltBaslik { get; init; }
+        public string TabloBaslik { get; init; } = "";
+        public List<OranTabloSatir> SolTablo { get; init; } = new();
+        public List<OranKart> Oranlar { get; init; } = new();
     }
 
     private class OranGrup
@@ -132,8 +207,8 @@
         public string Aciklama { get; init; } = "";
         public string Tooltip { get; init; } = "";
         public bool VeriVar { get; init; }
-        public string? Uyari { get; init; }   // doluysa kartların altında uyarı bandı (örn. iki dönem gerekir)
-        public List<OranKart> Kartlar { get; init; } = new();
+        public string? Uyari { get; init; }
+        public List<OranBolum> Bolumler { get; init; } = new();
         public ElementReference BaslikEl { get; set; }
     }
 
@@ -152,118 +227,132 @@
         decimal? Gt(string ad) => gelir
             .FirstOrDefault(r => string.Equals(r.Source.Ad?.Trim(), ad, StringComparison.OrdinalIgnoreCase))?.Cari;
 
-        // Kod bazlı erişim (Çabuk Oran 120/320). Compute önce, yoksa raw.
-        decimal? AktKod(string kod) => aktif.FirstOrDefault(r => r.Source.Kod == kod)?.Cari
-            ?? (CariRawValues.TryGetValue(kod, out var v) ? v : null);
-        decimal? PasKod(string kod) => pasif.FirstOrDefault(r => r.Source.Kod == kod)?.Cari
+        // Kod bazlı erişim (Compute önce, yoksa raw). 690/692 gibi tekil kodlar için.
+        decimal? GtKod(string kod) => gelir.FirstOrDefault(r => r.Source.Kod == kod)?.Cari
             ?? (CariRawValues.TryGetValue(kod, out var v) ? v : null);
 
-        // Tek kaynak: cari mizan grup toplamları / kalemleri.
+        // Grup bazlı (kod-prefix) toplam: bir hesap grubunun (örn. 12 Ticari Alacaklar,
+        // 32 Ticari Borçlar) TÜM Account satırlarının İŞARETLİ bakiyesini toplar. Kontra
+        // hesaplar (122/124/129, 322 ... "(-)") kendi negatif işaretiyle dahil olur →
+        // grubun net büyüklüğü çıkar. Math.Abs grup toplamına (oran hesabında) uygulanır,
+        // tek tek hesaplara DEĞİL; aksi halde kontra kalemler işaret kaybedip toplamı şişirir.
+        // SubGroup başlıkları hesap planında kodsuz olduğundan (kod="") ad yerine kod-prefix
+        // yöntemi seçilmiştir. Tek kaynak: parse zaten raw'ı Account satırlarına yazar.
+        decimal? GrupCari(List<GelirTablosuCalculator.ComputedRow> list, string prefix)
+        {
+            decimal? sum = null;
+            foreach (var r in list)
+                if (r.Source.Tip == SatirTipi.Account && (r.Source.Kod?.StartsWith(prefix) ?? false) && r.Cari.HasValue)
+                    sum = (sum ?? 0m) + r.Cari.Value;
+            return sum;
+        }
+        decimal? GrupOnceki(List<GelirTablosuCalculator.ComputedRow> list, string prefix)
+        {
+            decimal? sum = null;
+            foreach (var r in list)
+                if (r.Source.Tip == SatirTipi.Account && (r.Source.Kod?.StartsWith(prefix) ?? false) && r.OncekiCari.HasValue)
+                    sum = (sum ?? 0m) + r.OncekiCari.Value;
+            return sum;
+        }
+
+        // Bölüm Total satırı (Aktif/Pasif'te tek Total → genel toplam).
+        decimal? GenelToplam(List<GelirTablosuCalculator.ComputedRow> list) => list
+            .Where(r => r.Source.Tip == SatirTipi.Total)
+            .Select(r => r.Cari)
+            .LastOrDefault(v => v.HasValue);
+
+        // --- Bilanço kalemleri ---
         var donen = Akt("I -DÖNEN VARLIKLAR");
+        var duran = Akt("II -DURAN VARLIKLAR");
         var stok = Akt("E-Stoklar");
         var hazir = Akt("A-Hazır Değerler");
         var menkul = Akt("B-Menkul Kıymetler");
+        var aktifToplam = GenelToplam(aktif);
+
         var kvyk = Pas("III-KISA VADELİ YABANCI KAYNAKLAR");
-        var alacak120 = AktKod("120");       // Alıcılar (120 Ticari Alacaklar)
-        var borc320 = PasKod("320");         // Satıcılar (320 Ticari Borçlar)
-        var faaliyetKar = Gt("FAALİYET KARI VEYA ZARARI");   // GelirTablosuCalculator convention'ı (GelirTabloOzetGrid ile aynı)
-        var finansman = Gt("H-FİNANSMAN GİDERLERİ (-)");     // 660 + 661 alt-toplamı
+        var uvyk = Pas("IV -UZUN VADELİ YABANCI KAYNAKLAR");
+        var ozkaynak = Pas("V-ÖZ KAYNAKLAR");
+        var pasifToplam = GenelToplam(pasif);
 
-        var veriVar = donen.HasValue || kvyk.HasValue;
+        // Ticari Alacaklar = 12 grubu (120-129), Ticari Borçlar = 32 grubu (320-329) — grup bazlı.
+        var ticariAlacak = GrupCari(aktif, "12");   // 12 Ticari Alacaklar (işaretli grup toplamı)
+        var ticariBorc = GrupCari(pasif, "32");     // 32 Ticari Borçlar (işaretli grup toplamı)
 
-        // --- Oran hesapları (yalnızca burada Math.Abs) ---
-        // 1) Cari Oran = |Dönen V| / |KVYK|
-        var cariOran = Bol(Abs(donen), Abs(kvyk));
-
-        // 2) Asit-Test = (|Dönen V| − |Stok|) / |KVYK|
-        var asitPay = donen.HasValue ? Math.Abs(donen.Value) - Abs0(stok) : (decimal?)null;
-        var asitTestOran = Bol(asitPay, Abs(kvyk));
-
-        // 3) Stok Bağımlılık = (|KVYK| − (|HD| + |MK|)) / |Stok|
-        var stokBagPay = kvyk.HasValue ? Math.Abs(kvyk.Value) - (Abs0(hazir) + Abs0(menkul)) : (decimal?)null;
-        var stokBagimlilik = Bol(stokBagPay, Abs(stok));
-
-        // 4) Nakit Oran = (|HD| + |MK|) / |KVYK|
-        var nakitPay = (hazir.HasValue || menkul.HasValue) ? Abs0(hazir) + Abs0(menkul) : (decimal?)null;
-        var nakitOran = Bol(nakitPay, Abs(kvyk));
-
-        // 5) Çabuk Oran = |120| / |320|
-        var cabukOran = Bol(Abs(alacak120), Abs(borc320));
-
-        // 6) Faiz Karşılama = |Faaliyet Karı| / |Finansman Gideri| (gider 0 ise → "—")
-        var faizKarsilama = Bol(Abs(faaliyetKar), Abs(finansman));
-
-        var likiditeKartlari = new List<OranKart>
-        {
-            Kart("Cari Oran", CariReferans, cariOran,
-                "Dönen Varlıklar / KVYK",
-                $"{Sayi(donen)} / {Sayi(kvyk)}",
-                "Dönen Varlıklar / KVYK"),
-
-            Kart("Asit-Test Oranı (Likidite)", AsitTestReferans, asitTestOran,
-                "(Dönen Varlıklar − Stok) / KVYK",
-                $"({Sayi(donen)} − {Sayi(stok)}) / {Sayi(kvyk)}",
-                "(Dönen Varlıklar − Stok) / KVYK"),
-
-            Kart("Stok Bağımlılık Oranı", null, stokBagimlilik,
-                "(KVYK − (Hazır Değer + Menkul Kıymet)) / Stok",
-                $"({Sayi(kvyk)} − ({Sayi(hazir)} + {Sayi(menkul)})) / {Sayi(stok)}",
-                "Stoklara bağımlılığı ölçer; referans yok (nötr/bilgi)."),
-
-            Kart("Nakit Oran", NakitReferans, nakitOran,
-                "(Hazır Değer + Menkul Kıymet) / KVYK",
-                $"({Sayi(hazir)} + {Sayi(menkul)}) / {Sayi(kvyk)}",
-                "Stoklar satılamadı, alacaklar alınamadı varsayımıyla KVYK karşılama oranı. Referans 0,20."),
-
-            Kart("Çabuk Oran", CabukReferans, cabukOran,
-                "120 Ticari Alacaklar / 320 Ticari Borçlar",
-                $"{Sayi(alacak120)} / {Sayi(borc320)}",
-                "120 Ticari Alacaklar / 320 Ticari Borçlar"),
-
-            Kart("Faiz Karşılama Oranı", FaizKarsilamaReferans, faizKarsilama,
-                "Faaliyet Karı / Finansman Gideri",
-                $"{Sayi(faaliyetKar)} / {Sayi(finansman)}",
-                "Faaliyet Karı / Finansman Gideri (66). Finansman gideri yoksa hesaplanmaz."),
-        };
-
-        // ===================== FAALİYET ORANLARI (2. kapsül) =====================
-        // Devir oranları varlık/borç ORTALAMASI ile hesaplanır → iki dönem (önceki + cari)
-        // gerekir. Önceki dönem yoksa hesaplama yapılmaz, "iki dönem gerekir" uyarısı çıkar.
-        // Ortalama = (|Önceki| + |Cari|) / 2 (yalnızca burada Math.Abs).
-        bool ikiDonem = aktif.Any(r => r.OncekiCari.HasValue) || pasif.Any(r => r.OncekiCari.HasValue);
-        bool cariVar = aktif.Any(r => r.Cari.HasValue) || pasif.Any(r => r.Cari.HasValue);
-
-        // Ortalama erişimleri (ad bazlı: grup toplamı; kod bazlı: tekil hesap + raw fallback).
-        decimal? OrtAkt(string ad)
-        {
-            var r = aktif.FirstOrDefault(x => string.Equals(x.Source.Ad?.Trim(), ad, StringComparison.OrdinalIgnoreCase));
-            return Ort(r?.Cari, r?.OncekiCari);
-        }
-        decimal? OrtKod(List<GelirTablosuCalculator.ComputedRow> list, string kod)
-        {
-            var r = list.FirstOrDefault(x => x.Source.Kod == kod);
-            var c = r?.Cari ?? (CariRawValues.TryGetValue(kod, out var cv) ? cv : null);
-            var o = r?.OncekiCari ?? (OncekiRawValues.TryGetValue(kod, out var ov) ? ov : null);
-            return Ort(c, o);
-        }
-
-        // Akış (pay) kalemleri — cari dönem gelir tablosu; ortalama DEĞİL. İşaret büyüklüğe indirgenir.
+        // --- Gelir tablosu kalemleri ---
         var brutSatis = Gt("A-BRÜT SATIŞLAR");
         var satisIndirim = Gt("B-SATIŞ İNDİRİMLERİ (-)");
         var netSatisSigned = (brutSatis.HasValue || satisIndirim.HasValue)
             ? (brutSatis ?? 0m) + (satisIndirim ?? 0m) : (decimal?)null;
         var netSatislar = netSatisSigned.HasValue ? Math.Abs(netSatisSigned.Value) : (decimal?)null;
         var smm = Abs(Gt("D-SATIŞLARIN MALİYETİ (-)"));
+        var faaliyetKar = Gt("FAALİYET KARI VEYA ZARARI");
+        var finansman = Gt("H-FİNANSMAN GİDERLERİ (-)");     // 660 + 661 alt-toplamı
+        var brutKar = Gt("BRÜT SATIŞ KARI VEYA ZARARI");
+        var olaganKar = Gt("OLAĞAN KAR VEYA ZARAR");
+        var ticariKar = GtKod("690");        // Ticari Kâr / Dönem Kârı
+        var donemNetKar = GtKod("692");      // Dönem Net Kârı
 
-        // Ortalama (payda) kalemleri.
+        var veriVar = donen.HasValue || kvyk.HasValue || netSatislar.HasValue;
+
+        // ================= LİKİDİTE =================
+        var cariOran = Bol(Abs(donen), Abs(kvyk));
+        var asitPay = donen.HasValue ? Math.Abs(donen.Value) - Abs0(stok) : (decimal?)null;
+        var asitTestOran = Bol(asitPay, Abs(kvyk));
+        var stokBagPay = kvyk.HasValue ? Math.Abs(kvyk.Value) - (Abs0(hazir) + Abs0(menkul)) : (decimal?)null;
+        var stokBagimlilik = Bol(stokBagPay, Abs(stok));
+        var nakitPay = (hazir.HasValue || menkul.HasValue) ? Abs0(hazir) + Abs0(menkul) : (decimal?)null;
+        var nakitOran = Bol(nakitPay, Abs(kvyk));
+        var cabukOran = Bol(Abs(ticariAlacak), Abs(ticariBorc));
+        var faizKarsilama = Bol(Abs(faaliyetKar), Abs(finansman));
+
+        var likiditeBolum = new OranBolum
+        {
+            TabloBaslik = "Likidite Kalemleri",
+            SolTablo = new List<OranTabloSatir>
+            {
+                Row("Dönen Varlıklar", donen, aktifToplam),
+                Row("KVYK", kvyk, pasifToplam),
+                Row("Stok", stok, aktifToplam),
+                Row("Hazır Değerler", hazir, aktifToplam),
+                Row("Menkul Kıymetler", menkul, aktifToplam),
+            },
+            Oranlar = new List<OranKart>
+            {
+                Oran("Cari Oran", "Dönen Varlıklar / KVYK", cariOran, CariReferans, false,
+                    Ref("≥", CariReferans), "Kısa vadeli borç ödeme gücü. Dönen Varlıklar / KVYK."),
+                Oran("Asit-Test Oranı", "(Dönen Varlıklar − Stok) / KVYK", asitTestOran, AsitTestReferans, false,
+                    Ref("≥", AsitTestReferans), "Stok hariç kısa vadeli ödeme gücü. (Dönen Varlıklar − Stok) / KVYK."),
+                Oran("Stok Bağımlılık Oranı", "(KVYK − (Hazır Değer + Menkul Kıymet)) / Stok", stokBagimlilik, null, false,
+                    NotrRef, "KVYK'yi karşılamada stoklara bağımlılığı ölçer; referans yok (nötr/bilgi)."),
+                Oran("Nakit Oran", "(Hazır Değer + Menkul Kıymet) / KVYK", nakitOran, NakitReferans, false,
+                    Ref("≥", NakitReferans), "Stoklar/alacaklar olmadan KVYK karşılama oranı. Referans 0,20."),
+                Oran("Çabuk Oran", "Ticari Alacaklar (12) / Ticari Borçlar (32)", cabukOran, AsitTestReferans, false,
+                    Ref("≥", AsitTestReferans), "Ticari Alacaklar (12 grubu: 120-129) / Ticari Borçlar (32 grubu: 320-329). Kontra hesaplar işaretiyle dahil."),
+                Oran("Faiz Karşılama Oranı", "Faaliyet Karı / Finansman Gideri", faizKarsilama, FaizKarsilamaReferans, false,
+                    Ref("≥", FaizKarsilamaReferans), "Faaliyet Karı / Finansman Gideri (66). Finansman gideri yoksa hesaplanmaz."),
+            },
+        };
+
+        // ================= FAALİYET =================
+        // Devir oranları varlık/borç ORTALAMASI ile → iki dönem (önceki + cari) gerekir.
+        bool ikiDonem = aktif.Any(r => r.OncekiCari.HasValue) || pasif.Any(r => r.OncekiCari.HasValue);
+        bool cariVar = aktif.Any(r => r.Cari.HasValue) || pasif.Any(r => r.Cari.HasValue);
+
+        decimal? OrtAkt(string ad)
+        {
+            var r = aktif.FirstOrDefault(x => string.Equals(x.Source.Ad?.Trim(), ad, StringComparison.OrdinalIgnoreCase));
+            return Ort(r?.Cari, r?.OncekiCari);
+        }
         var ortStok = OrtAkt("E-Stoklar");
-        var ortAlacak = OrtKod(aktif, "120");
-        var ortBorc = OrtKod(pasif, "320");
+        // Ticari Alacak/Borç ortalaması da grup bazlı: önce işaretli grup toplamı (cari/önceki),
+        // sonra ortalama = (|önceki toplam| + |cari toplam|) / 2.
+        var ortAlacak = Ort(GrupCari(aktif, "12"), GrupOnceki(aktif, "12"));
+        var ortBorc = Ort(GrupCari(pasif, "32"), GrupOnceki(pasif, "32"));
         var ortDonen = OrtAkt("I -DÖNEN VARLIKLAR");
         var ortDuran = OrtAkt("II -DURAN VARLIKLAR");
         var ortAktif = (ortDonen.HasValue || ortDuran.HasValue) ? (ortDonen ?? 0m) + (ortDuran ?? 0m) : (decimal?)null;
 
-        // Devir hızları (defa) + süreleri (gün = 365 / hız). İki dönem yoksa hesaplama yapılmaz.
+        // İki dönem yoksa devir oranları + ortalama tablo değerleri hesaplanmaz ("—").
         decimal? G(decimal? v) => ikiDonem ? v : null;
         var stokDevir = G(Bol(smm, ortStok));
         var stokSure = Sure(stokDevir);
@@ -275,41 +364,151 @@
         var duranDevir = G(Bol(netSatislar, ortDuran));
         var aktifDevir = G(Bol(netSatislar, ortAktif));
 
+        // Sol tablo ortalama kalemleri de iki dönem yoksa "—" (ortalama iki dönem gerektirir).
+        var dOrtAktif = G(ortAktif);
+
         const string DefaBirim = " defa";
         const string GunBirim = " gün";
 
-        var faaliyetKartlari = new List<OranKart>
+        var faaliyetBolum = new OranBolum
         {
-            FaalKart("Stok Devir Hızı", stokDevir, "Satışların Maliyeti / Ortalama Stok",
-                $"{Sayi(smm)} / {Sayi(ortStok)}", DefaBirim, 2,
-                "Stokun yılda kaç kez döndüğü. SMM / Ortalama Stok. Ortalama = (önceki + cari) / 2."),
-            FaalKart("Stok Devir Süresi", stokSure, "365 / Stok Devir Hızı",
-                $"365 / {FormatOran(stokDevir)}", GunBirim, 0,
-                "Stokun ortalama kaç günde eridiği. 365 / Stok Devir Hızı."),
+            TabloBaslik = "Faaliyet Kalemleri (Cari & Ortalama)",
+            SolTablo = new List<OranTabloSatir>
+            {
+                Row("Net Satışlar", netSatislar, netSatislar, toplam: true),
+                Row("Satışların Maliyeti", smm, netSatislar),
+                Row("Ortalama Aktif", dOrtAktif, dOrtAktif, toplam: true),
+                Row("Ortalama Dönen Varlıklar", G(ortDonen), dOrtAktif),
+                Row("Ortalama Duran Varlıklar", G(ortDuran), dOrtAktif),
+                Row("Ortalama Ticari Alacak (12)", G(ortAlacak), dOrtAktif),
+                Row("Ortalama Ticari Borç (32)", G(ortBorc), dOrtAktif),
+                Row("Ortalama Stok", G(ortStok), dOrtAktif),
+            },
+            Oranlar = new List<OranKart>
+            {
+                FaalOran("Stok Devir Hızı", "Satışların Maliyeti / Ortalama Stok", stokDevir, DefaBirim, 2,
+                    "Stokun yılda kaç kez döndüğü. SMM / Ortalama Stok. Ortalama = (önceki + cari) / 2."),
+                FaalOran("Stok Devir Süresi", "365 / Stok Devir Hızı", stokSure, GunBirim, 0,
+                    "Stokun ortalama kaç günde eridiği. 365 / Stok Devir Hızı."),
+                FaalOran("Alacak Devir Hızı", "Net Satışlar / Ortalama Ticari Alacak (12)", alacakDevir, DefaBirim, 2,
+                    "Ticari alacakların yılda kaç kez tahsil edildiği. Net Satışlar / Ortalama 12 grubu (120-129)."),
+                FaalOran("Alacak Tahsil Süresi", "365 / Alacak Devir Hızı", alacakSure, GunBirim, 0,
+                    "Alacakların ortalama kaç günde tahsil edildiği. 365 / Alacak Devir Hızı."),
+                FaalOran("Borç Devir Hızı", "Satışların Maliyeti / Ortalama Ticari Borç (32)", borcDevir, DefaBirim, 2,
+                    "Ticari borçların yılda kaç kez ödendiği. SMM / Ortalama 32 grubu (320-329)."),
+                FaalOran("Borç Ödeme Süresi", "365 / Borç Devir Hızı", borcSure, GunBirim, 0,
+                    "Borçların ortalama kaç günde ödendiği. 365 / Borç Devir Hızı."),
+                FaalOran("Dönen Varlık Devir Hızı", "Net Satışlar / Ortalama Dönen Varlıklar", donenDevir, DefaBirim, 2,
+                    "Dönen varlıkların satışa dönüşme verimi. Net Satışlar / Ortalama Dönen Varlıklar."),
+                FaalOran("Duran Varlık Devir Hızı", "Net Satışlar / Ortalama Duran Varlıklar", duranDevir, DefaBirim, 2,
+                    "Duran varlıkların satışa dönüşme verimi. Net Satışlar / Ortalama Duran Varlıklar."),
+                FaalOran("Aktif Devir Hızı", "Net Satışlar / Ortalama Aktif Toplamı", aktifDevir, DefaBirim, 2,
+                    "Toplam varlıkların satış üretme verimi. Net Satışlar / Ortalama Aktif (Dönen + Duran)."),
+            },
+        };
 
-            FaalKart("Alacak Devir Hızı", alacakDevir, "Net Satışlar / Ortalama Ticari Alacaklar (120)",
-                $"{Sayi(netSatislar)} / {Sayi(ortAlacak)}", DefaBirim, 2,
-                "Ticari alacakların yılda kaç kez tahsil edildiği. Net Satışlar / Ortalama 120."),
-            FaalKart("Alacak Tahsil Süresi", alacakSure, "365 / Alacak Devir Hızı",
-                $"365 / {FormatOran(alacakDevir)}", GunBirim, 0,
-                "Alacakların ortalama kaç günde tahsil edildiği. 365 / Alacak Devir Hızı."),
+        // ================= FİNANSAL YAPI =================
+        var yabanciKaynak = (kvyk.HasValue || uvyk.HasValue) ? Abs0(kvyk) + Abs0(uvyk) : (decimal?)null;
+        var kaldirac = Bol(yabanciKaynak, Abs(pasifToplam));
+        var ozkaynakOran = Bol(Abs(ozkaynak), Abs(pasifToplam));
+        var devamliPay = (uvyk.HasValue || ozkaynak.HasValue) ? Abs0(uvyk) + Abs0(ozkaynak) : (decimal?)null;
+        var devamliSermaye = Bol(devamliPay, Abs(pasifToplam));
+        var finansmanOran = Bol(Abs(ozkaynak), yabanciKaynak);
 
-            FaalKart("Borç Devir Hızı", borcDevir, "Satışların Maliyeti / Ortalama Ticari Borçlar (320)",
-                $"{Sayi(smm)} / {Sayi(ortBorc)}", DefaBirim, 2,
-                "Ticari borçların yılda kaç kez ödendiği. SMM / Ortalama 320."),
-            FaalKart("Borç Ödeme Süresi", borcSure, "365 / Borç Devir Hızı",
-                $"365 / {FormatOran(borcDevir)}", GunBirim, 0,
-                "Borçların ortalama kaç günde ödendiği. 365 / Borç Devir Hızı."),
+        var finYapiBolum = new OranBolum
+        {
+            TabloBaslik = "Pasif (Kaynak Yapısı)",
+            SolTablo = new List<OranTabloSatir>
+            {
+                Row("KVYK", kvyk, pasifToplam),
+                Row("UVYK", uvyk, pasifToplam),
+                Row("Özkaynaklar", ozkaynak, pasifToplam),
+                Row("Pasif Toplam", pasifToplam, pasifToplam, toplam: true),
+            },
+            Oranlar = new List<OranKart>
+            {
+                Oran("Finansal Kaldıraç (Borç) Oranı", "Yabancı Kaynak / Pasif", kaldirac, KaldiracReferans, true,
+                    Ref("≤", KaldiracReferans, yuzde: true),
+                    "(KVYK + UVYK) / Pasif. Düşük olması olumlu (düşük borçluluk). Referans ≤ %50.",
+                    yuzde: true),
+                Oran("Özkaynak Oranı", "Özkaynaklar / Pasif", ozkaynakOran, OzkaynakReferans, false,
+                    Ref("≥", OzkaynakReferans, yuzde: true),
+                    "Varlıkların ne kadarının özkaynakla finanse edildiği. Yüksek olması olumlu. Referans ≥ %50.",
+                    yuzde: true),
+                Oran("Devamlı Sermaye Oranı", "(UVYK + Özkaynak) / Pasif", devamliSermaye, null, false,
+                    NotrRef, "Uzun vadeli kaynakların pasif içindeki payı. Referans yok (bilgi/nötr).",
+                    yuzde: true),
+                Oran("Finansman Oranı", "Özkaynak / Yabancı Kaynak", finansmanOran, FinansmanReferans, false,
+                    Ref("≥", FinansmanReferans),
+                    "Özkaynağın yabancı kaynağa oranı. ≥ 1 ise özkaynak ≥ yabancı kaynak (olumlu)."),
+            },
+        };
 
-            FaalKart("Dönen Varlık Devir Hızı", donenDevir, "Net Satışlar / Ortalama Dönen Varlıklar",
-                $"{Sayi(netSatislar)} / {Sayi(ortDonen)}", DefaBirim, 2,
-                "Dönen varlıkların satışa dönüşme verimi. Net Satışlar / Ortalama Dönen Varlıklar."),
-            FaalKart("Duran Varlık Devir Hızı", duranDevir, "Net Satışlar / Ortalama Duran Varlıklar",
-                $"{Sayi(netSatislar)} / {Sayi(ortDuran)}", DefaBirim, 2,
-                "Duran varlıkların satışa dönüşme verimi. Net Satışlar / Ortalama Duran Varlıklar."),
-            FaalKart("Aktif Devir Hızı", aktifDevir, "Net Satışlar / Ortalama Aktif Toplamı",
-                $"{Sayi(netSatislar)} / {Sayi(ortAktif)}", DefaBirim, 2,
-                "Toplam varlıkların satış üretme verimi. Net Satışlar / Ortalama Aktif (Dönen + Duran)."),
+        // ================= KARLILIK =================
+        // A) Satış Karlılığı — hepsi / Net Satışlar (referans yok, yüksek=iyi → durum bilgi).
+        decimal? Marj(decimal? kar) => Bol(Abs(kar), netSatislar);
+        var satisKarlilikBolum = new OranBolum
+        {
+            AltBaslik = "Satış Karlılığı",
+            TabloBaslik = "Gelir Tablosu — Kâr Kalemleri",
+            SolTablo = new List<OranTabloSatir>
+            {
+                Row("Net Satışlar", netSatislar, netSatislar, toplam: true),
+                Row("Brüt Satış Karı", brutKar, netSatislar),
+                Row("Faaliyet Karı", faaliyetKar, netSatislar),
+                Row("Olağan Kar", olaganKar, netSatislar),
+                Row("Ticari Kar (690)", ticariKar, netSatislar),
+                Row("Dönem Net Karı (692)", donemNetKar, netSatislar),
+            },
+            Oranlar = new List<OranKart>
+            {
+                KarOran("Brüt Satış Karlılığı", "Brüt Satış Karı / Net Satışlar", Marj(brutKar),
+                    "Brüt kârın satışlara oranı. Yüksek olması olumlu."),
+                KarOran("Faaliyet Karlılığı", "Faaliyet Karı / Net Satışlar", Marj(faaliyetKar),
+                    "Esas faaliyet kârının satışlara oranı. Yüksek olması olumlu."),
+                KarOran("Olağan Karlılık", "Olağan Kar / Net Satışlar", Marj(olaganKar),
+                    "Olağan kârın satışlara oranı. Yüksek olması olumlu."),
+                KarOran("Ticari Karlılık", "Ticari Kar (690) / Net Satışlar", Marj(ticariKar),
+                    "Dönem ticari kârının (690) satışlara oranı. Yüksek olması olumlu."),
+                KarOran("Net Kar Marjı", "Dönem Net Karı / Net Satışlar", Marj(donemNetKar),
+                    "Dönem net kârının (692) satışlara oranı. Yüksek olması olumlu."),
+            },
+        };
+
+        // B) Sermaye/Varlık Karlılığı — hepsi Dönem Net Karı / kalem (referans yok, yüksek=iyi).
+        var dnk = Abs(donemNetKar);
+        decimal? Getiri(decimal? payda) => Bol(dnk, Abs(payda));
+        var sermayeKarlilikBolum = new OranBolum
+        {
+            AltBaslik = "Sermaye / Varlık Karlılığı",
+            TabloBaslik = "Bilanço — Varlık & Kaynak",
+            SolTablo = new List<OranTabloSatir>
+            {
+                Row("Dönen Varlıklar", donen, aktifToplam),
+                Row("Duran Varlıklar", duran, aktifToplam),
+                Row("Aktif Toplam", aktifToplam, aktifToplam, toplam: true),
+                Row("KVYK", kvyk, pasifToplam),
+                Row("UVYK", uvyk, pasifToplam),
+                Row("Özkaynaklar", ozkaynak, pasifToplam),
+                Row("Pasif Toplam", pasifToplam, pasifToplam, toplam: true),
+            },
+            Oranlar = new List<OranKart>
+            {
+                KarOran("Dönem Net Karı / Dönen Varlıklar", "Dönem Net Karı / Dönen Varlıklar", Getiri(donen),
+                    "Net kârın dönen varlıklara getirisi. Yüksek olması olumlu."),
+                KarOran("Dönem Net Karı / Duran Varlıklar", "Dönem Net Karı / Duran Varlıklar", Getiri(duran),
+                    "Net kârın duran varlıklara getirisi. Yüksek olması olumlu."),
+                KarOran("Aktif Karlılığı (ROA)", "Dönem Net Karı / Aktif Toplam", Getiri(aktifToplam),
+                    "Aktif Kârlılığı (ROA). Net kârın toplam varlıklara getirisi. Yüksek olması olumlu."),
+                KarOran("Dönem Net Karı / KVYK", "Dönem Net Karı / KVYK", Getiri(kvyk),
+                    "Net kârın kısa vadeli yabancı kaynağa oranı. Yüksek olması olumlu."),
+                KarOran("Dönem Net Karı / UVYK", "Dönem Net Karı / UVYK", Getiri(uvyk),
+                    "Net kârın uzun vadeli yabancı kaynağa oranı. Yüksek olması olumlu."),
+                KarOran("Özkaynak Karlılığı (ROE)", "Dönem Net Karı / Özkaynak", Getiri(ozkaynak),
+                    "Özkaynak Kârlılığı (ROE). Net kârın özkaynağa getirisi. Yüksek olması olumlu."),
+                KarOran("Dönem Net Karı / Pasif Toplam", "Dönem Net Karı / Pasif Toplam", Getiri(pasifToplam),
+                    "Net kârın toplam kaynaklara getirisi. Yüksek olması olumlu."),
+            },
         };
 
         gruplar = new List<OranGrup>
@@ -321,86 +520,97 @@
                 Aciklama = "Kısa Vadeli Borç Ödeyebilme Gücü",
                 Tooltip = LikiditeTooltip,
                 VeriVar = veriVar,
-                Kartlar = likiditeKartlari,
+                Bolumler = new List<OranBolum> { likiditeBolum },
             },
             new()
             {
                 Baslik = "Faaliyet Oranları",
                 Ikon = "autorenew",
                 Aciklama = "Varlık ve Alacak Kullanım Verimi",
-                Tooltip = "Varlıkların ve alacakların ne kadar verimli kullanıldığını ölçen devir oranlarıdır. "
-                          + "Devir oranları önceki ve cari dönem ortalaması ile hesaplandığından iki dönem mizan gerektirir.",
+                Tooltip = FaaliyetTooltip,
                 VeriVar = cariVar,
-                // Cari var ama önceki yoksa: hesaplama yapılmaz, uyarı gösterilir.
                 Uyari = (cariVar && !ikiDonem)
                     ? "İki dönem mizan gerekir — faaliyet (devir) oranları önceki ve cari dönem ortalaması ile hesaplanır. Önceki dönem mizanı da yükleyin."
                     : null,
-                Kartlar = faaliyetKartlari,
+                Bolumler = new List<OranBolum> { faaliyetBolum },
             },
-            // İleride: Finansal Yapı / Karlılık grupları aynı OranGrup yapısıyla buraya eklenir.
+            new()
+            {
+                Baslik = "Finansal Yapı Oranları",
+                Ikon = "account_balance",
+                Aciklama = "Kaynak Yapısı ve Borç-Özkaynak Dengesi",
+                Tooltip = FinYapiTooltip,
+                VeriVar = veriVar,
+                Bolumler = new List<OranBolum> { finYapiBolum },
+            },
+            new()
+            {
+                Baslik = "Karlılık Oranları",
+                Ikon = "trending_up",
+                Aciklama = "Kâr Üretme Performansı",
+                Tooltip = KarlilikTooltip,
+                VeriVar = veriVar,
+                Bolumler = new List<OranBolum> { satisKarlilikBolum, sermayeKarlilikBolum },
+            },
         };
     }
 
-    // Kart kurucu: durum (ton + yorum), referans metni ve hesaplama görünürlüğünü tek yerden üretir.
-    private OranKart Kart(string ad, decimal? referans, decimal? deger, string formul, string sayisal, string tooltip)
+    // --- Sol tablo satırı: tutar/payda Math.Abs ile pozitif tutulur. ---
+    private static OranTabloSatir Row(string ad, decimal? tutar, decimal? payda, bool toplam = false) =>
+        new() { Ad = ad, Tutar = Abs(tutar), Payda = Abs(payda), Toplam = toplam };
+
+    // --- Referanslı / nötr oran kartı kurucusu. ---
+    private static OranKart Oran(string ad, string formul, decimal? deger, decimal? referans, bool dusukIyi,
+        string refMetni, string tooltip, bool yuzde = false, string birim = "", int ondalik = 2)
     {
         Ton ton;
-        string yorum;
-        if (!deger.HasValue)            { ton = Ton.Notr; yorum = "—"; }
-        else if (referans is null)      { ton = Ton.Notr; yorum = "Bilgi amaçlı oran"; }
-        else if (deger.Value >= referans.Value) { ton = Ton.Iyi; yorum = "Olumlu"; }
-        else                            { ton = Ton.Uyari; yorum = "Referans altında"; }
+        if (!deger.HasValue || referans is null)
+            ton = Ton.Notr;
+        else
+            ton = (dusukIyi ? deger.Value <= referans.Value : deger.Value >= referans.Value) ? Ton.Iyi : Ton.Uyari;
 
         return new OranKart
         {
-            Ad = ad,
-            Formul = formul,
-            Hesaplama = deger.HasValue ? sayisal : null,  // değer ve hesaplama birlikte boşalır
-            Deger = deger,
-            Referans = referans,
-            RefMetni = referans is null ? "Referans yok (nötr)" : $"Ref ≥ {FormatOran(referans)}",
-            Ton = ton,
-            Yorum = yorum,
-            Tooltip = tooltip,
+            Ad = ad, Formul = formul, Deger = deger, RefMetni = refMetni,
+            Ton = ton, Tooltip = tooltip, Yuzde = yuzde, Birim = birim, Ondalik = ondalik,
         };
     }
 
-    // Faaliyet kartı kurucu — referansı yok (nötr/bilgi); değer birimi (defa/gün) ve ondalık taşır.
-    private OranKart FaalKart(string ad, decimal? deger, string formul, string sayisal,
-        string birim, int ondalik, string tooltip)
-    {
-        var yorum = deger.HasValue ? "Bilgi amaçlı oran" : "—";
-        return new OranKart
+    // Faaliyet kartı — referansı yok (nötr/bilgi); değer birimi (defa/gün) ve ondalık taşır.
+    private static OranKart FaalOran(string ad, string formul, decimal? deger, string birim, int ondalik, string tooltip) =>
+        new()
         {
-            Ad = ad,
-            Formul = formul,
-            Hesaplama = deger.HasValue ? sayisal : null,
-            Deger = deger,
-            Referans = null,
-            RefMetni = "Referans yok (nötr)",
-            Ton = Ton.Notr,
-            Yorum = yorum,
-            Birim = birim,
-            Ondalik = ondalik,
-            Tooltip = tooltip,
+            Ad = ad, Formul = formul, Deger = deger, RefMetni = NotrRef,
+            Ton = Ton.Notr, Tooltip = tooltip, Birim = birim, Ondalik = ondalik,
         };
-    }
 
-    // Ortalama = (|Önceki| + |Cari|) / 2. İkisi de yoksa null. (Yalnızca oran hesaplarında Math.Abs.)
+    // Karlılık kartı — referans yok ama yön belli (yüksek=iyi); durum nötr/bilgi, değer %.
+    private static OranKart KarOran(string ad, string formul, decimal? deger, string tooltip) =>
+        new()
+        {
+            Ad = ad, Formul = formul, Deger = deger, RefMetni = "Yüksek olması olumlu",
+            Ton = Ton.Notr, Tooltip = tooltip, Yuzde = true, Ondalik = 2,
+        };
+
+    private const string NotrRef = "Referans yok (nötr)";
+
+    // Referans metni: yön + değer (oran ya da %).
+    private static string Ref(string yon, decimal referans, bool yuzde = false) =>
+        yuzde
+            ? $"Ref {yon} {(referans * 100m).ToString("N0", Tr)}%"
+            : $"Ref {yon} {referans.ToString("N2", Tr)}";
+
+    // Ortalama = (|Önceki| + |Cari|) / 2. İkisi de yoksa null. (Yalnızca sunum/oran için Math.Abs.)
     private static decimal? Ort(decimal? cari, decimal? onceki)
     {
         if (!cari.HasValue && !onceki.HasValue) return null;
         return (Abs0(cari) + Abs0(onceki)) / 2m;
     }
 
-    // Süre (gün) = 365 / devir hızı. Hız yok/0 ise null.
     private static decimal? Sure(decimal? hiz) =>
         (hiz.HasValue && hiz.Value != 0m) ? 365m / hiz.Value : (decimal?)null;
 
-    // İşaret anlamsız → mutlak değer. Yoksa null.
     private static decimal? Abs(decimal? v) => v.HasValue ? Math.Abs(v.Value) : (decimal?)null;
-
-    // Toplanan/çıkarılan bileşenlerde eksik kalem 0 sayılır (mutlak değer).
     private static decimal Abs0(decimal? v) => v.HasValue ? Math.Abs(v.Value) : 0m;
 
     private static decimal? Bol(decimal? pay, decimal? payda)
@@ -409,18 +619,34 @@
         return pay.Value / payda.Value;
     }
 
-    // Hesaplama satırında kalem tutarı: mutlak değer, ondalıksız (kompakt). Yoksa "0".
-    private static string Sayi(decimal? v) =>
-        Math.Abs(v ?? 0m).ToString("N0", new CultureInfo("tr-TR"));
+    private static readonly CultureInfo Tr = new("tr-TR");
 
-    private static string FormatOran(decimal? value) =>
-        value.HasValue ? value.Value.ToString("N2", new CultureInfo("tr-TR")) : "—";
+    // Sol tablo tutarı: N2 (zaten pozitif). Yoksa "—".
+    private static string FormatNumber(decimal? value) =>
+        value.HasValue ? value.Value.ToString("N2", Tr) : "—";
 
-    // Kart değeri: ondalık + birim (likidite: N2, birim yok → FormatOran ile aynı çıktı).
-    private static string FormatDeger(OranKart k) =>
-        k.Deger.HasValue
-            ? k.Deger.Value.ToString("N" + k.Ondalik, new CultureInfo("tr-TR")) + k.Birim
-            : "—";
+    // Dikey %: tutar / payda (her ikisi de pozitif). Payda 0/yok → "—".
+    private static string FormatYuzde(decimal? value, decimal? payda)
+    {
+        if (!value.HasValue || !payda.HasValue || payda.Value == 0m) return "—";
+        return (value.Value / payda.Value * 100m).ToString("N2", Tr) + "%";
+    }
+
+    // Oran değeri: % ise ×100 + "%", değilse N(ondalik) + birim. Yoksa "—".
+    private static string FormatDeger(OranKart k)
+    {
+        if (!k.Deger.HasValue) return "—";
+        return k.Yuzde
+            ? (k.Deger.Value * 100m).ToString("N2", Tr) + "%"
+            : k.Deger.Value.ToString("N" + k.Ondalik, Tr) + k.Birim;
+    }
+
+    private static string DurumLabel(Ton ton) => ton switch
+    {
+        Ton.Iyi => "Olumlu",
+        Ton.Uyari => "Olumsuz",
+        _ => "bilgi"
+    };
 
     private static string TonRenk(Ton ton) => ton switch
     {
@@ -431,8 +657,8 @@
 
     private static string TonIcon(Ton ton) => ton switch
     {
-        Ton.Iyi => "check_circle",
-        Ton.Uyari => "warning",
+        Ton.Iyi => "arrow_upward",
+        Ton.Uyari => "arrow_downward",
         _ => "info"
     };
 }

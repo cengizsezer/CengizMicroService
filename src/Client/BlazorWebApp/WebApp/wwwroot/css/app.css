@@ -1022,6 +1022,91 @@ code {
     color: var(--rz-text-secondary-color);
 }
 
+/* Bölüm: solda özet tablo + sağda oran tablosu (RadzenRow). Karlılık'ta iki bölüm. */
+.fk-foran-bolum {
+    margin-top: 0.5rem;
+}
+
+.fk-foran-bolum + .fk-foran-bolum {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--rz-border);
+}
+
+.fk-foran-alt-baslik {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--rz-text-color);
+    margin: 0.25rem 0 0.5rem;
+}
+
+/* Sağ oran tablosu — sol özet tabloyla (fk-mizan-table) aynı dil. */
+.fk-oran-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    background: #fff;
+}
+
+.fk-oran-table thead th {
+    background: var(--rz-base-100, #f1f5f9);
+    color: var(--rz-text-color);
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    font-weight: 700;
+    border-bottom: 2px solid var(--rz-border);
+}
+
+.fk-oran-table tbody td {
+    padding: 0.45rem 0.75rem;
+    border-bottom: 1px solid var(--rz-base-200, #e2e8f0);
+    vertical-align: top;
+}
+
+.fk-oran-table .fk-oran-col-deger {
+    text-align: right;
+    white-space: nowrap;
+    width: 110px;
+    font-variant-numeric: tabular-nums;
+}
+
+.fk-oran-table .fk-oran-col-ref {
+    width: 130px;
+    white-space: nowrap;
+    color: var(--rz-text-secondary-color);
+    font-size: 0.82rem;
+}
+
+.fk-oran-table .fk-oran-col-durum {
+    width: 110px;
+    white-space: nowrap;
+}
+
+.fk-oran-ad {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+/* Formül — oran adının altında, sürekli görünür (gri/küçük). */
+.fk-oran-formul {
+    font-size: 0.78rem;
+    color: var(--rz-text-secondary-color);
+    line-height: 1.3;
+    margin-top: 0.1rem;
+}
+
+.fk-oran-deger {
+    font-weight: 700;
+}
+
+.fk-oran-durum {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
 .fk-mizan-upload-label {
     display: block;
     margin-bottom: 0.4rem;
