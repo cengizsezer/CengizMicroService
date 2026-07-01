@@ -178,6 +178,9 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             services.AddScoped<IFirmaApiClient>(sp =>
                 new FirmaApiClient(sp.GetRequiredService<HttpClient>()));
 
+            services.AddScoped<WebApp.Application.Services.FirmaKontrol.IFirmaKontrolApiClient>(sp =>
+                new WebApp.Application.Services.FirmaKontrol.FirmaKontrolApiClient(sp.GetRequiredService<HttpClient>()));
+
             services.AddScoped<IKdvBeyannameApiService>(sp =>
                 new KdvBeyannameApiService(sp.GetRequiredService<HttpClient>()));
 

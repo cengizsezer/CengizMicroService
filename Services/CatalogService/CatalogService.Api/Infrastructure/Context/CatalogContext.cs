@@ -70,6 +70,15 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<AppSetting> AppSettings => Set<AppSetting>();
         public DbSet<Duzenleyen> Duzenleyenler => Set<Duzenleyen>();
 
+        // Firma Kontrol / Raporlar modülü — kontrol maddelerinin firma-bazlı durumu + özel maddeler
+        public DbSet<Features.FirmaKontrol.Domain.FirmaKontrolMadde> FirmaKontrolMaddeler => Set<Features.FirmaKontrol.Domain.FirmaKontrolMadde>();
+
+        // Firma Kontrol / Raporlar modülü — ham mizan satırları (firma + dönem + yıl bazında)
+        public DbSet<Features.FirmaKontrol.Domain.FirmaKontrolMizanSatir> FirmaKontrolMizanSatirlari => Set<Features.FirmaKontrol.Domain.FirmaKontrolMizanSatir>();
+
+        // Firma Kontrol / Raporlar modülü — vergi paneli girdileri (firma + dönem + yıl bazında)
+        public DbSet<Features.FirmaKontrol.Domain.FirmaKontrolVergi> FirmaKontrolVergiler => Set<Features.FirmaKontrol.Domain.FirmaKontrolVergi>();
+
         // Ticaret Sicil İşlemleri modülü (ortak referans içerik; tenant'a bağlı değil)
         public DbSet<Features.TicaretSicil.Domain.TicaretSicilIslem> TicaretSicilIslemler => Set<Features.TicaretSicil.Domain.TicaretSicilIslem>();
         public DbSet<Features.TicaretSicil.Domain.TicaretSicilAdim> TicaretSicilAdimlar => Set<Features.TicaretSicil.Domain.TicaretSicilAdim>();
@@ -107,6 +116,11 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new KdvBeyannameMizanConfiguration());
             builder.ApplyConfiguration(new AppSettingConfiguration());
             builder.ApplyConfiguration(new DuzenleyenConfiguration());
+
+            // Firma Kontrol / Raporlar modülü
+            builder.ApplyConfiguration(new FirmaKontrolMaddeEntityTypeConfiguration());
+            builder.ApplyConfiguration(new FirmaKontrolMizanSatirEntityTypeConfiguration());
+            builder.ApplyConfiguration(new FirmaKontrolVergiEntityTypeConfiguration());
 
             // Ticaret Sicil İşlemleri modülü
             builder.ApplyConfiguration(new TicaretSicilIslemEntityTypeConfiguration());

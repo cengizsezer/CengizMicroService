@@ -1,0 +1,158 @@
+@using WebApp.Domain.Models.FirmaKontrol
+
+<RadzenFieldset class="fk-kategori-panel" AllowCollapse="true">
+    <HeaderTemplate>
+        <div class="fk-kategori-header">
+            <span class="fk-kategori-title">Özel Kontrol Maddeleri</span>
+            <span class="fk-kategori-counter @(CheckedCount == TotalCount && TotalCount > 0 ? "is-complete" : null)">
+                (@CheckedCount/@TotalCount kontrol edildi)
+            </span>
+        </div>
+    </HeaderTemplate>
+    <ChildContent>
+        @if (Items.Count == 0)
+        {
+            <em>Henüz firmaya özel kontrol maddesi eklenmedi.</em>
+        }
+        else
+        {
+            @foreach (var item in Items)
+            {
+                <div class="fk-ozel-row">
+                    @if (editingId == item.Id)
+                    {
+                        <div class="fk-ozel-row-body fk-ozel-edit">
+                            <RadzenTextArea @bind-Value="editText"
+                                            Placeholder="Madde metni..."
+                                            Rows="2"
+                                            Style="width: 100%;" />
+                            <div class="fk-ozel-edit-actions">
+                                <RadzenButton Icon="save"
+                                              Text="Kaydet"
+                                              ButtonStyle="ButtonStyle.Primary"
+                                              Size="ButtonSize.Small"
+                                              Disabled="@(string.IsNullOrWhiteSpace(editText) || saving)"
+                                              Click="@(() => SaveEdit(item))" />
+                                <RadzenButton Icon="close"
+                                              Text="İptal"
+                                              ButtonStyle="ButtonStyle.Light"
+                                              Size="ButtonSize.Small"
+                                              Disabled="@saving"
+                                              Click="CancelEdit" />
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="fk-ozel-row-body">
+                            <KontrolMaddesi Item="item" OnChanged="OnItemChanged" />
+                        </div>
+                        <RadzenButton Icon="edit"
+                                      Variant="Variant.Text"
+                                      Size="ButtonSize.Medium"
+                                      class="fk-ozel-icon-btn fk-ozel-icon-edit"
+                                      title="Düzenle"
+                                      Click="@(() => StartEdit(item))" />
+                        <RadzenButton Icon="delete"
+                                      Variant="Variant.Text"
+                                      Size="ButtonSize.Medium"
+                                      class="fk-ozel-icon-btn fk-ozel-icon-delete"
+                                      title="Sil"
+                                      Click="@(() => OnDeleteClick(item))" />
+                    }
+                </div>
+            }
+        }
+
+        <div class="fk-ozel-ekle">
+            <RadzenTextArea @bind-Value="newText"
+                            Placeholder="Yeni özel kontrol maddesi metni..."
+                            Rows="2"
+                            Style="flex: 1;" />
+            <RadzenButton Icon="add"
+                          Text="Ekle"
+                          ButtonStyle="ButtonStyle.Primary"
+                          Size="ButtonSize.Small"
+                          Disabled="@(string.IsNullOrWhiteSpace(newText) || adding)"
+                          Click="OnAddClick" />
+        </div>
+    </ChildContent>
+</RadzenFieldset>
+
+@code {
+    [Parameter] public List<ControlItem> Items { get; set; } = new();
+    [Parameter] public EventCallback<ControlItem> OnChanged { get; set; }
+    [Parameter] public EventCallback<string> OnAdd { get; set; }
+    [Parameter] public EventCallback<(ControlItem Item, string YeniMetin)> OnEdit { get; set; }
+    [Parameter] public EventCallback<ControlItem> OnDelete { get; set; }
+
+    private string? newText;
+    private bool adding;
+
+    private int? editingId;
+    private string? editText;
+    private bool saving;
+
+    private int TotalCount => Items.Count;
+    private int CheckedCount => Items.Count(i => i.IsChecked);
+
+    private async Task OnItemChanged(ControlItem item)
+    {
+        if (OnChanged.HasDelegate)
+            await OnChanged.InvokeAsync(item);
+        StateHasChanged();
+    }
+
+    private async Task OnAddClick()
+    {
+        if (string.IsNullOrWhiteSpace(newText)) return;
+
+        adding = true;
+        try
+        {
+            if (OnAdd.HasDelegate)
+                await OnAdd.InvokeAsync(newText.Trim());
+            newText = null;
+        }
+        finally
+        {
+            adding = false;
+        }
+    }
+
+    private void StartEdit(ControlItem item)
+    {
+        editingId = item.Id;
+        editText = item.Question;
+    }
+
+    private void CancelEdit()
+    {
+        editingId = null;
+        editText = null;
+    }
+
+    private async Task SaveEdit(ControlItem item)
+    {
+        if (string.IsNullOrWhiteSpace(editText)) return;
+
+        saving = true;
+        try
+        {
+            if (OnEdit.HasDelegate)
+                await OnEdit.InvokeAsync((item, editText.Trim()));
+            editingId = null;
+            editText = null;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private async Task OnDeleteClick(ControlItem item)
+    {
+        if (OnDelete.HasDelegate)
+            await OnDelete.InvokeAsync(item);
+    }
+}

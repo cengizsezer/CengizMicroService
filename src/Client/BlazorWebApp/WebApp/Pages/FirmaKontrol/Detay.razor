@@ -75,6 +75,12 @@ else
                                          Items="categoryItems"
                                          OnChanged="OnItemChanged" />
                     }
+
+                    <OzelKontrolBolumu Items="CustomItems"
+                                       OnChanged="OnItemChanged"
+                                       OnAdd="OnAddOzel"
+                                       OnEdit="OnEditOzel"
+                                       OnDelete="OnDeleteOzel" />
                 }
             </RadzenTabsItem>
 
@@ -252,9 +258,11 @@ else
         hesaplananVergi691 = VergiHesabiHelper.HesaplananVergi691(kv25, vergiBilgisi);
     }
 
-    private void OnVergiPanelChanged()
+    private async Task OnVergiPanelChanged()
     {
         RecomputeHesaplananVergi691();
+        if (vergiBilgisi is not null)
+            await FirmaKontrolService.SaveVergiBilgisiAsync(FirmaId, vergiBilgisi);
         StateHasChanged();
     }
 
@@ -273,6 +281,34 @@ else
 
     private List<ControlItem> ItemsByCategory(string category) =>
         items?.Where(i => i.Category == category).ToList() ?? new();
+
+    // Firmaya özel maddeler — CategoryOrder'a dahil değil, ayrı bölümde gösterilir.
+    private List<ControlItem> CustomItems =>
+        items?.Where(i => i.IsCustom).ToList() ?? new();
+
+    private async Task OnAddOzel(string metin)
+    {
+        await FirmaKontrolService.AddOzelKontrolMaddesiAsync(FirmaId, MockFirmaKontrolService.CatOzel, metin);
+        var fetched = await FirmaKontrolService.GetControlItemsAsync(FirmaId);
+        items = fetched.ToList();
+        StateHasChanged();
+    }
+
+    private async Task OnEditOzel((ControlItem Item, string YeniMetin) e)
+    {
+        await FirmaKontrolService.UpdateOzelKontrolMaddesiAsync(FirmaId, e.Item.Id, e.YeniMetin);
+        var fetched = await FirmaKontrolService.GetControlItemsAsync(FirmaId);
+        items = fetched.ToList();
+        StateHasChanged();
+    }
+
+    private async Task OnDeleteOzel(ControlItem item)
+    {
+        await FirmaKontrolService.DeleteOzelKontrolMaddesiAsync(FirmaId, item.Id);
+        var fetched = await FirmaKontrolService.GetControlItemsAsync(FirmaId);
+        items = fetched.ToList();
+        StateHasChanged();
+    }
 
     private int TotalItems => items?.Count ?? 0;
     private int TotalChecked => items?.Count(i => i.IsChecked) ?? 0;

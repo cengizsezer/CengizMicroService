@@ -619,6 +619,81 @@ code {
     border-color: #DC2626;
 }
 
+/* Özel kontrol maddeleri bölümü */
+.fk-ozel-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+}
+
+/* Özel madde satırı: düzenle / sil ikon butonları.
+   min-height 50px = KontrolMaddesi başlığıyla aynı → dropdown ile dikey ortalı. */
+.fk-ozel-row .fk-ozel-icon-btn.rz-button {
+    min-width: 0;
+    min-height: 50px;
+    padding: 0 0.55rem;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.fk-ozel-row .fk-ozel-icon-btn.rz-button .rzi {
+    font-size: 20px;
+    margin: 0;
+}
+
+/* Düzenle (kalem) — net accent mavi */
+.fk-ozel-icon-edit.rz-button,
+.fk-ozel-icon-edit.rz-button .rzi {
+    color: #2563EB !important;
+}
+
+.fk-ozel-icon-edit.rz-button:hover {
+    background: rgba(37, 99, 235, 0.12);
+    color: #1D4ED8 !important;
+}
+
+/* Sil (çöp kutusu) — belirgin kırmızı */
+.fk-ozel-icon-delete.rz-button,
+.fk-ozel-icon-delete.rz-button .rzi {
+    color: #DC2626 !important;
+}
+
+.fk-ozel-icon-delete.rz-button:hover {
+    background: rgba(220, 38, 38, 0.14);
+    color: #B91C1C !important;
+}
+
+.fk-ozel-row-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.fk-ozel-ekle {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed var(--rz-border);
+}
+
+.fk-ozel-edit {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.fk-ozel-edit-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
 .fk-kategori-header {
     display: flex;
     align-items: center;

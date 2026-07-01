@@ -34,6 +34,15 @@ namespace WebApp.Application.Services.Interfaces
 
         Task UpdateControlItemAsync(int firmaId, ControlItem item);
 
+        /// <summary>Firmaya özel yeni kontrol maddesi ekler ve oluşan maddeyi döndürür.</summary>
+        Task<ControlItem> AddOzelKontrolMaddesiAsync(int firmaId, string category, string soruMetni);
+
+        /// <summary>Firmaya özel kontrol maddesinin metnini günceller.</summary>
+        Task UpdateOzelKontrolMaddesiAsync(int firmaId, int id, string yeniMetin);
+
+        /// <summary>Firmaya özel kontrol maddesini siler.</summary>
+        Task DeleteOzelKontrolMaddesiAsync(int firmaId, int id);
+
         Task<HesapPlani> GetMizanAsync(int firmaId);
 
         Task<MizanUpdateResult> UpdateMizanFromExcelAsync(int firmaId, MizanParseResult parseResult, Donem donem);
@@ -49,6 +58,9 @@ namespace WebApp.Application.Services.Interfaces
         Task<IReadOnlyDictionary<string, string>> GetRawMizanAdlarAsync(int firmaId);
 
         Task<VergiHesaplama> GetVergiBilgisiAsync(int firmaId);
+
+        /// <summary>Vergi paneli girdilerini (VergiHesaplama) DB'ye kalıcı kaydeder.</summary>
+        Task SaveVergiBilgisiAsync(int firmaId, VergiHesaplama vergi);
 
         Task<IReadOnlyList<UyariSonucu>> GetUyarilarAsync(int firmaId);
     }
