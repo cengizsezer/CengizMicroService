@@ -15,5 +15,8 @@
 
         // tek hedef adres
         public string RecipientEmail { get; set; } = "";
+
+        // Ekran görüntüsü / belge ekleri (opsiyonel). null = ek gönderilmedi.
+        public List<JobAttachmentRequest>? Attachments { get; set; }
     }
 }

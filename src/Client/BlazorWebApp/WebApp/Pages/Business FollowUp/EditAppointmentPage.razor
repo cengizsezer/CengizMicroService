@@ -5,22 +5,22 @@
 <RadzenTemplateForm TItem="Appointment" Data="@model" Submit=@OnSubmit>
     <RadzenStack Gap="1rem">
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
-            <RadzenLabel Text="Title" Style="width: 6rem;" />
+            <RadzenLabel Text="Başlık" Style="width: 6rem;" />
             <RadzenTextBox @bind-Value="@model.Text" Name="Text" Style="width: 12rem;" />
-            <RadzenRequiredValidator Component="Text" Text="Title is required" />
+            <RadzenRequiredValidator Component="Text" Text="Başlık zorunlu" />
         </RadzenStack>
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
-            <RadzenLabel Text="Start" Style="width: 6rem;" />
+            <RadzenLabel Text="Başlangıç" Style="width: 6rem;" />
             <RadzenDatePicker @bind-Value="@model.Start" Name="Start" ShowTime="true" Style="width: 12rem;" />
-            <RadzenRequiredValidator Component="Start" Text="Start is required" />
+            <RadzenRequiredValidator Component="Start" Text="Başlangıç zorunlu" />
         </RadzenStack>
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
-            <RadzenLabel Text="End" Style="width: 6rem;" />
+            <RadzenLabel Text="Bitiş" Style="width: 6rem;" />
             <RadzenDatePicker Name="End" @bind-Value="@model.End" ShowTime="true" Style="width: 12rem;" />
-            <RadzenRequiredValidator Component="End" Text="End is required" />
+            <RadzenRequiredValidator Component="End" Text="Bitiş zorunlu" />
         </RadzenStack>
         <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End">
-            <RadzenButton ButtonType="ButtonType.Submit" Text="Save" />
+            <RadzenButton ButtonType="ButtonType.Submit" Text="Kaydet" />
         </RadzenStack>
     </RadzenStack>
 </RadzenTemplateForm>

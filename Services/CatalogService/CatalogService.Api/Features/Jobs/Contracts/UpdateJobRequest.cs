@@ -14,5 +14,8 @@
         public bool RemindOneDayBefore { get; set; } = true;
         public bool RemindOnDay { get; set; } = true;
         public string Timezone { get; set; } = "Europe/Istanbul";
+
+        // Ekran görüntüsü / belge ekleri (opsiyonel). null = ek gönderilmedi (mevcutlara dokunma).
+        public List<JobAttachmentRequest>? Attachments { get; set; }
     }
 }

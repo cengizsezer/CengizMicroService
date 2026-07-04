@@ -40,6 +40,7 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<EducationItem> EducationItems { get; set; } = default!;
         public DbSet<Job> Jobs { get; set; } = default!;
         public DbSet<JobAssignment> JobAssignments { get; set; } = default!;
+        public DbSet<JobAttachment> JobAttachments { get; set; } = default!;
 
         // Personel mail eşlemesi (global; tenant'a bağlı değil)
         public DbSet<PersonnelEmail> PersonnelEmails => Set<PersonnelEmail>();
@@ -96,6 +97,7 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new EducationItemEntityTypeConfiguration());
             builder.ApplyConfiguration(new JobEntityTypeConfiguration());
             builder.ApplyConfiguration(new JobAssignmentEntityTypeConfiguration());
+            builder.ApplyConfiguration(new JobAttachmentEntityTypeConfiguration());
             builder.ApplyConfiguration(new PersonnelEmailEntityTypeConfiguration());
             builder.ApplyConfiguration(new AccountNodesEntityTypeConfiguration());
             builder.ApplyConfiguration(new DeclarationEntityTypeConfiguration());

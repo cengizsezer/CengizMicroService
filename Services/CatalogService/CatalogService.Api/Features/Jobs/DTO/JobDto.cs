@@ -11,5 +11,6 @@ namespace CatalogService.Api.Features.Jobs.DTO
         public DateTime End { get; set; }
         public JobStatus Status { get; set; }
         public List<JobAssignmentDto> Assignments { get; set; } = new();
+        public List<JobAttachmentDto> Attachments { get; set; } = new();
     }
 }

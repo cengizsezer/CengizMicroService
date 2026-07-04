@@ -58,8 +58,9 @@ namespace WebApp.StartupExtensions.Culture
 
         public async Task InitializeCultureAsync()
         {
-            var culture = await GetCurrentCultureAsync();
-            await SetCultureAsync(culture);
+            // Türk firması: uygulama her zaman Türkçe açılır (tarayıcı dili/önceki tercih ne olursa olsun).
+            // Takvim (Radzen Scheduler) ay/gün adlarını ve tarih formatını bu kültürden alır.
+            await SetCultureAsync("tr-TR");
         }
 
         private static string ValidateCulture(string culture)

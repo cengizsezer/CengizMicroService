@@ -15,5 +15,9 @@
 
         // KULLANICININ GİRDİĞİ TEK ADRES
         public string RecipientEmail { get; set; } = "";
+
+        // Ekran görüntüsü / belge ekleri (opsiyonel). null = ek gönderilmedi.
+        // Yükleme akışı Parça 2-3'te bağlanacak; backend persist için hazır.
+        public List<JobAttachmentRequest>? Attachments { get; set; }
     }
 }

@@ -3,6 +3,9 @@
 @using WebApp.Shared.Dto.Scheduling
 @inject IJobsApi JobsApi
 @inject AuthenticationStateProvider Auth // me.Id lazım olabilir
+@inject DialogService DialogService
+@inject IFileApiService FileApi
+@using Radzen
 @using System.Security.Claims;
 <h3>ATANMIŞ GÖREVLER</h3>
 
@@ -14,24 +17,33 @@
     <ChildContent>
         <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" Wrap="FlexWrap.Wrap" class="rz-p-12">
             <RadzenDropZone Value="JobStatus.NotStarted" class="rz-display-flex rz-flex-column rz-background-color-warning-lighter rz-border-warning-light rz-border-radius-2 rz-p-4" Style="flex: 1; gap: 1rem;">
-                <RadzenText Text="Not started" TextStyle="TextStyle.Subtitle2" />
+                <RadzenText Text="Başlanmadı" TextStyle="TextStyle.Subtitle2" />
             </RadzenDropZone>
             <RadzenDropZone Value="JobStatus.Started" class="rz-display-flex rz-flex-column rz-background-color-info-lighter rz-border-info-light rz-border-radius-2 rz-p-4" Style="flex: 1; gap: 1rem;">
-                <RadzenText Text="Started" TextStyle="TextStyle.Subtitle2" />
+                <RadzenText Text="Başlandı" TextStyle="TextStyle.Subtitle2" />
             </RadzenDropZone>
             <RadzenDropZone Value="JobStatus.Completed" class="rz-display-flex rz-flex-column rz-background-color-success-lighter rz-border-success-light rz-border-radius-2 rz-p-4" Style="flex: 1; gap: 1rem;">
-                <RadzenText Text="Completed" TextStyle="TextStyle.Subtitle2" />
+                <RadzenText Text="Tamamlandı" TextStyle="TextStyle.Subtitle2" />
             </RadzenDropZone>
             <RadzenDropZone Value="JobStatus.Deleted" class="rz-display-flex rz-flex-column rz-background-color-danger-lighter rz-border-danger-light rz-border-radius-2 rz-p-4" Style="flex: 1; gap: 1rem;">
-                <RadzenText Text="Drop here to delete" TextStyle="TextStyle.Subtitle2" />
+                <RadzenText Text="Silmek için buraya bırak" TextStyle="TextStyle.Subtitle2" />
             </RadzenDropZone>
         </RadzenStack>
     </ChildContent>
     <Template>
-        <div class="rz-card rz-variant-filled rz-background-color-primary-light rz-color-on-primary-light rz-p-3">
+        <div class="rz-card rz-variant-filled rz-background-color-primary-light rz-color-on-primary-light rz-p-3"
+             style="cursor:pointer;" @onclick="@(() => OpenDetail(context))">
             <strong>@context.Title</strong><br />
             <small>@(context.Start.ToString("g")) - @(context.End.ToString("g"))</small><br />
             <span>@context.Description</span>
+            @if (context.Attachments is { Count: > 0 })
+            {
+                <div style="display:inline-flex;align-items:center;gap:.2rem;margin-top:.35rem;font-size:.8rem;opacity:.85;"
+                     title="@(context.Attachments.Count) ek">
+                    <RadzenIcon Icon="attach_file" Style="font-size:1rem;" />
+                    <span>@context.Attachments.Count</span>
+                </div>
+            }
         </div>
     </Template>
 </RadzenDropZoneContainer>
@@ -72,7 +84,11 @@
                         Description = j.Description,
                         Start = j.Start,
                         End = j.End,
-                        Me = a
+                        Me = a,
+                        Attachments = j.Attachments ?? new(),
+                        AssigneeNames = j.Assignments
+                                         .Where(x => x.Status != JobStatus.Deleted)
+                                         .Select(x => x.UserName).ToList()
                     }))
                 .ToList();
     }
@@ -119,10 +135,24 @@
             // (İsteğe bağlı) emin misin?
             // if (!await ConfirmAsync("Bu iş herkesten silinecek, emin misiniz?")) return;
 
+            // FileId'leri Job silmeden ÖNCE al (kartın belleğindeki eklerden).
+            var fileIds = args.Item.Attachments?
+                .Select(a => a.FileId)
+                .Where(id => id > 0)
+                .Distinct()
+                .ToList() ?? new List<int>();
+
             try
             {
                 await JobsApi.DeleteAsync(args.Item.JobId); // 👈 job’u sil
-                                                            // aynı job’a ait tüm kartları listeden çıkar
+
+                // Yetim dosya önleme: Job'a ait eklerin MinIO dosyalarını da temizle.
+                foreach (var fid in fileIds)
+                {
+                    try { await FileApi.DeleteAsync(fid); } catch { }
+                }
+
+                // aynı job’a ait tüm kartları listeden çıkar
                 var toRemove = data.Where(d => d.JobId == args.Item.JobId).ToList();
                 foreach (var x in toRemove) data.Remove(x);
                 StateHasChanged();
@@ -220,6 +250,26 @@
     //     StateHasChanged();
     // }
 
+    // Karta tıklayınca detay paneli (view-only). Kanban'dan düzenleme Parça 5/sonraki tur.
+    async Task OpenDetail(TaskCardVm card)
+    {
+        await DialogService.OpenAsync<JobDetailPage>(
+            card.Title,
+            new Dictionary<string, object>
+            {
+                ["JobId"] = card.JobId,
+                ["Title"] = card.Title,
+                ["Description"] = card.Description,
+                ["Start"] = card.Start,
+                ["End"] = card.End,
+                ["AssigneeNames"] = card.AssigneeNames,
+                ["Status"] = card.Status,
+                ["Attachments"] = card.Attachments,
+                ["CanEdit"] = false
+            },
+            new DialogOptions { Width = "1000px", Height = "720px", Resizable = true, Draggable = true });
+    }
+
     public class TaskCardVm
     {
         public long JobId { get; set; }
@@ -230,5 +280,7 @@
         public DateTime Start { get; set; }
         public DateTime End { get; set; }
         public JobAssignmentDto? Me { get; set; }
+        public List<JobAttachmentDto> Attachments { get; set; } = new();
+        public List<string> AssigneeNames { get; set; } = new();
     }
 }

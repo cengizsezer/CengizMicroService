@@ -1,0 +1,309 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.Scheduling
+@inject IFileApiService FileApi
+@inject DialogService DialogService
+@inject IJSRuntime JS
+
+@* Ticaret Sicil Detay.razor düzeni: solda görev bilgisi + ekler, sağda büyük görüntüleyici. *@
+<div class="jd-detay-grid">
+
+    @* ---- Sol: görev bilgisi + ekler ---- *@
+    <div class="jd-sol">
+        <RadzenStack Gap="0.75rem">
+            <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">@Title</RadzenText>
+
+            @if (!string.IsNullOrWhiteSpace(Description))
+            {
+                <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary rz-m-0">@Description</RadzenText>
+            }
+
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap">
+                <RadzenIcon Icon="schedule" Style="font-size:1.1rem;color:var(--rz-text-secondary-color);" />
+                <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0">
+                    @Start.ToString("g") &ndash; @End.ToString("g")
+                </RadzenText>
+            </RadzenStack>
+
+            @if (AssigneeNames is { Count: > 0 })
+            {
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Wrap="FlexWrap.Wrap">
+                    <RadzenIcon Icon="group" Style="font-size:1.1rem;color:var(--rz-text-secondary-color);" />
+                    <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0">@string.Join(", ", AssigneeNames)</RadzenText>
+                </RadzenStack>
+            }
+
+            <RadzenBadge BadgeStyle="@StatusStyle" Text="@StatusText" class="rz-align-self-start" />
+
+            @if (CanEdit)
+            {
+                <RadzenButton Text="Düzenle" Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                              class="rz-align-self-start" Click="@(() => DialogService.Close("edit"))" />
+            }
+
+            <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-mt-2 rz-mb-0">Ekler ve notlar</RadzenText>
+
+            @if (Attachments is null || Attachments.Count == 0)
+            {
+                <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary">Bu görevde ek yok.</RadzenText>
+            }
+            else
+            {
+                <RadzenStack Gap="0.5rem">
+                    @foreach (var ek in Attachments)
+                    {
+                        var isSelected = secili?.Id == ek.Id;
+                        <div class="jd-ek @(isSelected ? "jd-ek-selected" : "")" @onclick="@(() => SelectAttachment(ek))">
+                            <RadzenIcon Icon="@(ek.Tur == JobAttachmentTur.Resim ? "image" : "picture_as_pdf")"
+                                        Style="@(ek.Tur == JobAttachmentTur.Resim ? "color:var(--rz-primary);" : "color:var(--rz-danger);")" />
+                            <div class="jd-ek-meta">
+                                <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0 jd-ek-name" title="@ek.FileName">@ek.FileName</RadzenText>
+                                @if (!string.IsNullOrWhiteSpace(ek.Not))
+                                {
+                                    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary rz-m-0">@ek.Not</RadzenText>
+                                }
+                            </div>
+                        </div>
+                    }
+                </RadzenStack>
+            }
+        </RadzenStack>
+    </div>
+
+    @* ---- Sağ: büyük görüntüleyici (sticky) ---- *@
+    <div class="jd-viewer">
+        <RadzenCard class="rz-p-0 jd-viewer-card">
+            @if (secili is null)
+            {
+                <div class="jd-viewer-empty">
+                    <RadzenIcon Icon="touch_app" Style="font-size:2.5rem; color: var(--rz-text-disabled-color);" />
+                    <RadzenText TextStyle="TextStyle.Body1" class="rz-color-secondary rz-mt-2">
+                        Görüntülemek için soldan bir eke tıklayın.
+                    </RadzenText>
+                </div>
+            }
+            else
+            {
+                <div class="jd-viewer-head">
+                    <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-m-0">@secili.FileName</RadzenText>
+                    @if (!string.IsNullOrWhiteSpace(seciliUrl))
+                    {
+                        <RadzenButton Icon="open_in_new" Text="Yeni sekmede aç"
+                                      ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                                      Click="@(() => OpenInNewTab(seciliUrl!))" />
+                    }
+                </div>
+
+                <div class="jd-viewer-body">
+                    @if (viewerYukleniyor)
+                    {
+                        <div class="jd-viewer-empty">
+                            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate"
+                                                       Size="ProgressBarCircularSize.Small" />
+                            <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary rz-mt-2">Yükleniyor...</RadzenText>
+                        </div>
+                    }
+                    else if (string.IsNullOrWhiteSpace(seciliUrl))
+                    {
+                        <div class="jd-viewer-empty">
+                            <RadzenIcon Icon="broken_image" Style="font-size:2.5rem; color: var(--rz-warning);" />
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-mt-2 rz-mb-1">Belge görüntülenemiyor</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary" Style="text-align:center;">
+                                Belgeye şu an erişilemiyor. Lütfen daha sonra tekrar deneyin.
+                            </RadzenText>
+                        </div>
+                    }
+                    else if (secili.Tur == JobAttachmentTur.Resim)
+                    {
+                        <img src="@seciliUrl" alt="@secili.FileName" class="jd-viewer-img" />
+                    }
+                    else
+                    {
+                        <object data="@seciliUrl" type="application/pdf" class="jd-viewer-frame">
+                            <div class="jd-viewer-empty">
+                                <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary rz-mb-2">
+                                    Belge tarayıcıda gösterilemiyor.
+                                </RadzenText>
+                                <RadzenButton Icon="open_in_new" Text="Bağlantıyı aç"
+                                              ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                                              Click="@(() => OpenInNewTab(seciliUrl!))" />
+                            </div>
+                        </object>
+                    }
+                </div>
+            }
+        </RadzenCard>
+    </div>
+</div>
+
+<style>
+    .jd-detay-grid {
+        display: grid;
+        grid-template-columns: minmax(260px, 1fr) minmax(0, 1.5fr);
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .jd-viewer {
+        position: sticky;
+        top: 0;
+    }
+
+    .jd-viewer-card {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 220px);
+        min-height: 400px;
+        overflow: hidden;
+    }
+
+    .jd-viewer-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .5rem;
+        padding: .65rem .85rem;
+        border-bottom: 1px solid var(--rz-border-color, #e0e0e0);
+    }
+
+    .jd-viewer-body {
+        flex: 1;
+        min-height: 0;
+        position: relative;
+    }
+
+    .jd-viewer-frame {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+
+    .jd-viewer-img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        background: var(--rz-base-200, #fafafa);
+    }
+
+    .jd-viewer-empty {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        text-align: center;
+    }
+
+    .jd-ek {
+        display: flex;
+        align-items: flex-start;
+        gap: .5rem;
+        padding: .5rem;
+        border: 1px solid var(--rz-border-color, #e0e0e0);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background .12s, border-color .12s;
+    }
+
+        .jd-ek:hover {
+            background: var(--rz-base-200, #f5f5f5);
+        }
+
+        .jd-ek.jd-ek-selected {
+            border-color: var(--rz-primary);
+            background: var(--rz-primary-lighter, #eef2ff);
+        }
+
+    .jd-ek-meta {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .jd-ek-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    @@media (max-width: 900px) {
+        .jd-detay-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .jd-viewer {
+            position: static;
+        }
+
+        .jd-viewer-card {
+            height: 60vh;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public long JobId { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public DateTime Start { get; set; }
+    [Parameter] public DateTime End { get; set; }
+    [Parameter] public List<string>? AssigneeNames { get; set; }
+    [Parameter] public JobStatus Status { get; set; }
+    [Parameter] public List<JobAttachmentDto>? Attachments { get; set; }
+    [Parameter] public bool CanEdit { get; set; }
+
+    private JobAttachmentDto? secili;
+    private string? seciliUrl;
+    private bool viewerYukleniyor;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Kolaylık: ilk ek varsa otomatik seç ve büyük panelde göster.
+        if (Attachments is { Count: > 0 })
+            await SelectAttachment(Attachments[0]);
+    }
+
+    private async Task SelectAttachment(JobAttachmentDto ek)
+    {
+        secili = ek;
+        seciliUrl = null;
+        viewerYukleniyor = true;
+        StateHasChanged();
+
+        try
+        {
+            // Presigned URL (30 dk) — Ticaret Sicil Detay.razor ile aynı akış.
+            var dto = await FileApi.GetDownloadAsync(ek.FileId);
+            seciliUrl = dto?.PresignedUrl;
+        }
+        catch
+        {
+            seciliUrl = null;
+        }
+
+        viewerYukleniyor = false;
+        StateHasChanged();
+    }
+
+    private async Task OpenInNewTab(string url)
+        => await JS.InvokeVoidAsync("open", url, "_blank");
+
+    private string StatusText => Status switch
+    {
+        JobStatus.NotStarted => "Başlanmadı",
+        JobStatus.Started => "Başlandı",
+        JobStatus.Completed => "Tamamlandı",
+        JobStatus.Deleted => "Silindi",
+        _ => Status.ToString()
+    };
+
+    private BadgeStyle StatusStyle => Status switch
+    {
+        JobStatus.NotStarted => BadgeStyle.Warning,
+        JobStatus.Started => BadgeStyle.Info,
+        JobStatus.Completed => BadgeStyle.Success,
+        JobStatus.Deleted => BadgeStyle.Danger,
+        _ => BadgeStyle.Light
+    };
+}

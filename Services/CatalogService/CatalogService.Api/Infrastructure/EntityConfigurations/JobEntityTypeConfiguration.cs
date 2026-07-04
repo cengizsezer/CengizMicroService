@@ -22,6 +22,11 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
              .HasForeignKey(x => x.JobId)
              .OnDelete(DeleteBehavior.Cascade);
 
+            b.HasMany(x => x.Attachments)
+             .WithOne(x => x.Job)
+             .HasForeignKey(x => x.JobId)
+             .OnDelete(DeleteBehavior.Cascade);
+
             b.HasIndex(x => new { x.TenantNo, x.Start, x.End });
         }
     }

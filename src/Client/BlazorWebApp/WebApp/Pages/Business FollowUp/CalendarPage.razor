@@ -3,6 +3,7 @@
 @using WebApp.Shared.Dto.Scheduling
 @inject DialogService DialogService
 @inject IJobsApi JobsApi
+@inject IFileApiService FileApi
 @inject NotificationService Notif
 @inject AuthenticationStateProvider Auth
 @using System.Security.Claims;
@@ -19,9 +20,10 @@
                  AppointmentSelect="@OnAppointmentSelect"
                  AppointmentRender="@OnAppointmentRender"
                  MonthSelect="@OnMonthSelect"
+                 TodayText="Bugün"
                  style="height: 768px;">
-    <RadzenMonthView />
-    <RadzenYearView StartMonth="@startMonth" />
+    <RadzenMonthView Text="Ay" />
+    <RadzenYearView Text="Yıl" StartMonth="@startMonth" />
 </RadzenScheduler>
 
 @code {
@@ -116,7 +118,8 @@
                                .Select(a => a.UserId).ToList(),
                 AssigneeNames = j.Assignments
                                  .Where(a => a.Status != JobStatus.Deleted)
-                                 .Select(a => a.UserName).ToList()
+                                 .Select(a => a.UserName).ToList(),
+                Attachments = j.Attachments ?? new()
             })
             .ToList();
 
@@ -150,7 +153,7 @@
 
     void OnSlotRender(SchedulerSlotRenderEventArgs args)
     {
-        if (args.View.Text == "Month" && args.Start.Date == DateTime.Today)
+        if (args.View.Text == "Ay" && args.Start.Date == DateTime.Today)
             args.Attributes["style"] = "background: var(--rz-scheduler-highlight-background-color, rgba(255,220,40,.2));";
 
         if ((args.View.Text == "Planner" || args.View.Text == "Timeline") && args.Start.Month == 12 && startMonth != Month.January)
@@ -163,15 +166,38 @@
 
     async Task OnSlotSelect(SchedulerSlotSelectEventArgs args)
     {
-        if (args.View.Text == "Year") return;
+        if (args.View.Text == "Yıl") return;
 
         // Add dialog: CreateJobRequest döndüreceğiz
-        var createReq = await DialogService.OpenAsync<AddAppointmentPage>("Add Appointment",
-            new Dictionary<string, object> { { "Start", args.Start }, { "End", args.End } });
+        var createReq = await DialogService.OpenAsync<AddAppointmentPage>("Randevu ekle",
+            new Dictionary<string, object> { { "Start", args.Start }, { "End", args.End } },
+            new DialogOptions { Width = "460px" });
 
         if (createReq is CreateJobRequest req)
         {
-            await JobsApi.CreateAsync(req);                            // backend’e kaydet
+            try
+            {
+                await JobsApi.CreateAsync(req);                        // backend’e kaydet
+            }
+            catch (Exception ex)
+            {
+                // Telafi: Job kaydı başarısızsa modalda yüklenmiş ekleri (MinIO) geri al.
+                if (req.Attachments is { Count: > 0 })
+                    foreach (var a in req.Attachments)
+                    {
+                        try { await FileApi.DeleteAsync(a.FileId); } catch { }
+                    }
+
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Randevu kaydedilemedi",
+                    Detail = ex.Message,
+                    Duration = 4000
+                });
+                return;
+            }
+
             await LoadMonth(args.Start);                               // ayı tazele
         }
     }
@@ -188,15 +214,37 @@
     {
         var current = args.Data;
 
+        // Önce detay paneli (solda bilgi + ekler, sağda büyük görsel/PDF). Düzenle'ye basılırsa edit modalı açılır.
+        var detailResult = await DialogService.OpenAsync<JobDetailPage>(
+            current.Title,
+            new Dictionary<string, object>
+            {
+                ["JobId"] = current.JobId,
+                ["Title"] = current.Title,
+                ["Description"] = current.Description,
+                ["Start"] = current.Start,
+                ["End"] = current.End,
+                ["AssigneeNames"] = current.AssigneeNames,
+                ["Attachments"] = current.Attachments,
+                ["CanEdit"] = true
+            },
+            new DialogOptions { Width = "1000px", Height = "720px", Resizable = true, Draggable = true }
+        );
+
+        if (detailResult as string != "edit")
+            return;
+
+        // Düzenle → mevcut edit modalı; mevcut ekleri InitialAttachments ile yükle (eski ekler düşmesin).
         var result = await DialogService.OpenAsync<AddAppointmentPage>(
-            $"{current.Title} – Edit",
+            $"{current.Title} – Düzenle",
             new Dictionary<string, object>
             {
                 ["Start"] = current.Start,
                 ["End"] = current.End,
                 ["InitialTitle"] = current.Title,
                 ["InitialDescription"] = current.Description,
-                ["InitialAssigneeIds"] = current.AssigneeIds // List<string>
+                ["InitialAssigneeIds"] = current.AssigneeIds, // List<string>
+                ["InitialAttachments"] = current.Attachments  // List<JobAttachmentDto>
             }
         );
 
@@ -228,5 +276,6 @@
         public string Description { get; set; } = "";
         public List<string> AssigneeIds { get; set; } = new();   // IDs
         public List<string> AssigneeNames { get; set; } = new(); // UI gösterimi
+        public List<JobAttachmentDto> Attachments { get; set; } = new(); // detay paneli için ekler
     }
 }

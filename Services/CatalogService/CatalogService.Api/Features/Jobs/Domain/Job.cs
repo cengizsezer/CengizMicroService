@@ -22,5 +22,8 @@ namespace CatalogService.Api.Features.Jobs.Domain
         public bool IsDeleted { get; set; } = false;
         public DateTime DeletedAtUtc { get; set; } = DateTime.UtcNow;
         public ICollection<JobAssignment> Assignments { get; set; } = new List<JobAssignment>();
+
+        // Ekran görüntüsü / belge ekleri (asıl dosya FileApiService'te; burada metadata + not)
+        public ICollection<JobAttachment> Attachments { get; set; } = new List<JobAttachment>();
     }
 }

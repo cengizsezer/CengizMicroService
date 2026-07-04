@@ -1,140 +1,303 @@
 ﻿@page "/add-appointment"
+@using System.IO
 @using Radzen
 @using Radzen.Blazor
+@using Microsoft.AspNetCore.Components.Forms
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Shared.Dto.Scheduling
 @using WebApp.Shared.Dto.Admin
 
+@implements IAsyncDisposable
+
 @inject IUserAdminService Admin
 @inject IUsersService UsersService
 @inject DialogService DialogService
+@inject IFileApiService FileApi
+@inject NotificationService Notif
+@inject IJSRuntime JS
 
 @using WebApp.Localize
 
 @inject Microsoft.Extensions.Localization.IStringLocalizer<WebApp.Localize.AppTexts> T
 
-<RadzenTemplateForm TItem="CreateJobRequest" Data="@model" Submit="@OnSubmit">
-    <RadzenStack Gap="1rem">
+<div class="appt">
 
-        <!-- Title -->
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
-            <RadzenLabel Text="@T[TextKeys.AddAppointment_Title]" Style="width: 6rem;" />
-            <RadzenTextBox @bind-Value="model.Title" Name="Title" Style="width: 18rem;" />
-            <RadzenRequiredValidator Component="Title" Text="@T[TextKeys.Validation_TitleRequired]" />
-        </RadzenStack>
+    <RadzenTemplateForm TItem="CreateJobRequest" Data="@model" Submit="@OnSubmit">
+        <RadzenStack Gap="0.875rem">
 
-        <!-- Description -->
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
-            <RadzenLabel Text="@T[TextKeys.AddAppointment_Description]" Style="width: 6rem;" />
-            <RadzenTextBox @bind-Value="model.Description" Name="Description" Style="width: 24rem;" />
-        </RadzenStack>
-
-        <!-- Start -->
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
-            <RadzenLabel Text="@T[TextKeys.AddAppointment_Start]" Style="width: 6rem;" />
-            <RadzenDatePicker @bind-Value="model.Start" Name="Start" ShowTime="true" Style="width: 16rem;" />
-            <RadzenRequiredValidator Component="Start" Text="@T[TextKeys.Validation_StartRequired]" />
-        </RadzenStack>
-
-        <!-- End -->
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
-            <RadzenLabel Text="@T[TextKeys.AddAppointment_End]" Style="width: 6rem;" />
-            <RadzenDatePicker @bind-Value="model.End" Name="End" ShowTime="true" Style="width: 16rem;" />
-            <RadzenRequiredValidator Component="End" Text="@T[TextKeys.Validation_EndRequired]" />
-        </RadzenStack>
-
-        <!-- Assignees -->
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
-            <RadzenLabel Text="@T[TextKeys.AddAppointment_Assignees]" Style="width: 6rem;" />
-            <RadzenDropDown Data="@users"
-                            TextProperty="FullName"
-                            ValueProperty="Id"
-                            Multiple="true"
-                            TValue="IList<string>"
-                            @bind-Value="selectedAssignees"
-                            Placeholder="Kişi seçiniz..."
-                            AllowClear="true"
-                            Style="width: 24rem;" />
-        </RadzenStack>
-
-        <!-- Alarm toggle -->
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
-            <RadzenCheckBox @bind-Value="model.AlarmEnabled" Name="AlarmEnabled" />
-            <RadzenLabel Text="@T[TextKeys.AddAppointment_AlarmToggle]" Component="AlarmEnabled" Style="margin-left:.5rem" />
-        </RadzenStack>
-
-        <!-- Alarm details -->
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap" Style="gap:1.25rem;">
-            <div>
-                <RadzenCheckBox @bind-Value="model.RemindOneDayBefore"
-                                Name="RemindOneDayBefore"
-                                Disabled="@(!model.AlarmEnabled || DisabledPrevDay)" />
-                <RadzenLabel Text="@T[TextKeys.AddAppointment_RemindPrevDay]" Component="RemindOneDayBefore" Style="margin-left:.5rem" />
-                @if (DisabledPrevDay && !string.IsNullOrEmpty(PrevDayHintKey))
-                {
-                    <RadzenHint Text="@T[PrevDayHintKey]" />
-                }
+            <!-- Title -->
+            <div class="fld">
+                <span class="fld-lbl">@T[TextKeys.AddAppointment_Title]</span>
+                <RadzenTextBox @bind-Value="model.Title" Name="Title" Style="width:100%" />
+                <RadzenRequiredValidator Component="Title" Text="@T[TextKeys.Validation_TitleRequired]" />
             </div>
 
-            <div>
-                <RadzenCheckBox @bind-Value="model.RemindOnDay"
-                                Name="RemindOnDay"
-                                Disabled="@(!model.AlarmEnabled || DisabledOnDay)" />
-                <RadzenLabel Text="@T[TextKeys.AddAppointment_RemindOnDay]" Component="RemindOnDay" Style="margin-left:.5rem" />
-                @if (DisabledOnDay)
-                {
-                    <RadzenHint Text="@T[TextKeys.Hint_OnDayPast]" />
-                }
+            <!-- Description -->
+            <div class="fld">
+                <span class="fld-lbl">@T[TextKeys.AddAppointment_Description]</span>
+                <RadzenTextArea @bind-Value="model.Description" Name="Description" Rows="3" Style="width:100%" />
             </div>
 
-            <div style="display:flex;align-items:center;gap:.5rem;">
-                <RadzenLabel Text="@T[TextKeys.AddAppointment_Timezone]" />
+            <!-- Start | End -->
+            <div class="fld-row">
+                <div class="fld">
+                    <span class="fld-lbl">@T[TextKeys.AddAppointment_Start]</span>
+                    <RadzenDatePicker @bind-Value="model.Start" Name="Start" ShowTime="true" Style="width:100%" />
+                    <RadzenRequiredValidator Component="Start" Text="@T[TextKeys.Validation_StartRequired]" />
+                </div>
+                <div class="fld">
+                    <span class="fld-lbl">@T[TextKeys.AddAppointment_End]</span>
+                    <RadzenDatePicker @bind-Value="model.End" Name="End" ShowTime="true" Style="width:100%" />
+                    <RadzenRequiredValidator Component="End" Text="@T[TextKeys.Validation_EndRequired]" />
+                </div>
+            </div>
+
+            <!-- Assignees -->
+            <div class="fld">
+                <span class="fld-lbl">@T[TextKeys.AddAppointment_Assignees]</span>
+                <RadzenDropDown Data="@users"
+                                TextProperty="FullName"
+                                ValueProperty="Id"
+                                Multiple="true"
+                                TValue="IList<string>"
+                                @bind-Value="selectedAssignees"
+                                Placeholder="Kişi seçiniz..."
+                                AllowClear="true"
+                                Style="width:100%" />
+            </div>
+
+            <!-- Alarm -->
+            <div class="appt-group">
+                <div class="chk-row">
+                    <RadzenCheckBox @bind-Value="model.AlarmEnabled" Name="AlarmEnabled" />
+                    <RadzenLabel Text="@T[TextKeys.AddAppointment_AlarmToggle]" Component="AlarmEnabled" />
+                </div>
+
+                <div class="chk-row">
+                    <RadzenCheckBox @bind-Value="model.RemindOneDayBefore"
+                                    Name="RemindOneDayBefore"
+                                    Disabled="@(!model.AlarmEnabled || DisabledPrevDay)" />
+                    <RadzenLabel Text="@T[TextKeys.AddAppointment_RemindPrevDay]" Component="RemindOneDayBefore" />
+                    @if (DisabledPrevDay && !string.IsNullOrEmpty(PrevDayHintKey))
+                    {
+                        <RadzenHint Text="@T[PrevDayHintKey]" />
+                    }
+                </div>
+
+                <div class="chk-row">
+                    <RadzenCheckBox @bind-Value="model.RemindOnDay"
+                                    Name="RemindOnDay"
+                                    Disabled="@(!model.AlarmEnabled || DisabledOnDay)" />
+                    <RadzenLabel Text="@T[TextKeys.AddAppointment_RemindOnDay]" Component="RemindOnDay" />
+                    @if (DisabledOnDay)
+                    {
+                        <RadzenHint Text="@T[TextKeys.Hint_OnDayPast]" />
+                    }
+                </div>
+            </div>
+
+            <!-- Timezone -->
+            <div class="fld">
+                <span class="fld-lbl">@T[TextKeys.AddAppointment_Timezone]</span>
                 <RadzenDropDown @bind-Value="model.Timezone"
                                 Data="@timezones"
-                                Style="width:16rem;"
+                                Style="width:100%"
                                 AllowClear="false" />
             </div>
-           
 
-        </RadzenStack>
+            <!-- Send To (e-posta) -->
+            <div class="fld fld-rel">
+                <span class="fld-lbl">@T[TextKeys.AddAppointment_Email]</span>
+                <RadzenTextBox Name="RecipientEmail"
+                               @bind-Value="model.RecipientEmail"
+                               Style="display:block;width:100%;"
+                               Placeholder="user@gmail.com" />
 
-        <!-- Send To -->
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
-            <RadzenFieldset Text="@T[TextKeys.AddAppointment_EnterEmail]">
-                <RadzenStack Gap="2rem" class="rz-p-4 rz-p-md-12">
-                    <RadzenRow AlignItems="AlignItems.Center" RowGap="0.25rem">
-                        <RadzenColumn Size="12" SizeMD="4" class="rz-text-align-start rz-text-align-md-end">
-                            <RadzenLabel Text="@T[TextKeys.AddAppointment_Email]" Component="RecipientEmail" />
-                        </RadzenColumn>
+                <RadzenRequiredValidator Component="RecipientEmail"
+                                         Text="@T[TextKeys.Validation_EmailRequired]"
+                                         Popup="@popup"
+                                         Style="position:absolute" />
 
-                        <RadzenColumn Size="12" SizeMD="8">
-                            <RadzenTextBox Name="RecipientEmail"
-                                           @bind-Value="model.RecipientEmail"
-                                           Style="display:block;width:100%;"
-                                           Placeholder="user@gmail.com" />
+                <RadzenEmailValidator Component="RecipientEmail"
+                                      Text="@T[TextKeys.Validation_EmailInvalid]"
+                                      Popup="@popup"
+                                      Style="position:absolute" />
+            </div>
 
-                            <RadzenRequiredValidator Component="RecipientEmail"
-                                                     Text="@T[TextKeys.Validation_EmailRequired]"
-                                                     Popup="@popup"
-                                                     Style="position:absolute" />
+        <!-- Ekran görüntüsü / belge ekleri (yakala + önizle + not; yükleme Parça 3) -->
+        <RadzenStack Gap="0.5rem">
+            <RadzenLabel Text="Ekran görüntüsü / belge" />
+            <div @ref="dropZoneRef" class="ja-dropzone">
+                <RadzenIcon Icon="content_paste" Style="font-size:1.5rem;color:var(--rz-primary);" />
+                <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0">
+                    Ekran görüntüsünü <b>Ctrl+V</b> ile yapıştır, dosyayı buraya <b>sürükle-bırak</b> ya da aşağıdan seç.
+                </RadzenText>
+                <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary rz-m-0">PNG / JPEG / PDF</RadzenText>
+                <InputFile OnChange="OnFilesSelected" multiple accept=".png,.jpg,.jpeg,.pdf" class="ja-input-file" />
+            </div>
 
-                            <RadzenEmailValidator Component="RecipientEmail"
-                                                  Text="@T[TextKeys.Validation_EmailInvalid]"
-                                                  Popup="@popup"
-                                                  Style="position:absolute" />
-                        </RadzenColumn>
-                    </RadzenRow>
+            @if (attachments.Count > 0)
+            {
+                <RadzenStack Gap="0.5rem">
+                    @foreach (var att in attachments)
+                    {
+                        <div class="ja-item">
+                            <div class="ja-thumb">
+                                @if (att.IsImage && !string.IsNullOrEmpty(att.PreviewSrc))
+                                {
+                                    <img src="@att.PreviewSrc" alt="@att.FileName" />
+                                }
+                                else
+                                {
+                                    <RadzenIcon Icon="@(att.IsImage ? "image" : "picture_as_pdf")"
+                                                Style="@(att.IsImage ? "font-size:2rem;color:var(--rz-primary);" : "font-size:2rem;color:var(--rz-danger);")" />
+                                }
+                            </div>
+                            <div class="ja-meta">
+                                <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 ja-name" title="@att.FileName">@att.FileName</RadzenText>
+                                <RadzenTextArea @bind-Value="att.Not" Rows="2" Placeholder="Bu görsel/belge için not..." Style="width:100%" />
+                            </div>
+                            <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                                          title="Kaldır" Click="@(() => RemoveAttachment(att))" />
+                        </div>
+                    }
                 </RadzenStack>
-            </RadzenFieldset>
+            }
         </RadzenStack>
 
         <!-- Submit -->
-        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End">
-            <RadzenButton ButtonType="ButtonType.Submit" Text="@T[TextKeys.AddAppointment_Save]" />
-        </RadzenStack>
+            <div class="appt-footer">
+                <RadzenButton ButtonType="ButtonType.Submit" Text="@T[TextKeys.AddAppointment_Save]"
+                              ButtonStyle="ButtonStyle.Primary"
+                              IsBusy="@submitting" Disabled="@submitting" />
+            </div>
 
-    </RadzenStack>
-</RadzenTemplateForm>
+        </RadzenStack>
+    </RadzenTemplateForm>
+</div>
+
+<style>
+    /* --- Randevu ekle modal yerleşimi --- */
+    .appt {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: 1.25rem 1.5rem; /* dikey ~20px, yatay ~24px iç nefes payı */
+    }
+
+    .fld {
+        display: flex;
+        flex-direction: column;
+        gap: .3rem;
+    }
+
+    .fld-rel {
+        position: relative;
+    }
+
+    .fld-lbl {
+        font-size: .78rem;
+        font-weight: 500;
+        color: var(--rz-text-secondary-color, #6b7280);
+    }
+
+    .fld-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: .75rem;
+    }
+
+    .appt-group {
+        display: flex;
+        flex-direction: column;
+        gap: .5rem;
+        padding: .65rem .7rem;
+        border: 1px solid var(--rz-border-color, #e5e7eb);
+        border-radius: 8px;
+    }
+
+    .chk-row {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        flex-wrap: wrap;
+    }
+
+    .appt-footer {
+        display: flex;
+        justify-content: flex-end;
+        padding-top: .6rem;
+        margin-top: .2rem;
+        border-top: 1px solid var(--rz-border-color, #e5e7eb);
+    }
+
+    @@media (max-width: 380px) {
+        .fld-row {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .ja-dropzone {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: .35rem;
+        text-align: center;
+        padding: 1rem;
+        border: 2px dashed var(--rz-border-color, #cfcfcf);
+        border-radius: 8px;
+        background: var(--rz-base-200, #fafafa);
+        transition: border-color .15s, background .15s;
+    }
+
+        .ja-dropzone.ja-dragover {
+            border-color: var(--rz-primary);
+            background: var(--rz-primary-lighter, #eef2ff);
+        }
+
+    .ja-input-file {
+        display: block;
+        max-width: 100%;
+    }
+
+    .ja-item {
+        display: flex;
+        align-items: flex-start;
+        gap: .6rem;
+        padding: .5rem;
+        border: 1px solid var(--rz-border-color, #e0e0e0);
+        border-radius: 6px;
+    }
+
+    .ja-thumb {
+        flex: 0 0 auto;
+        width: 64px;
+        height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        background: var(--rz-base-100, #fff);
+        border-radius: 4px;
+    }
+
+        .ja-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+    .ja-meta {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .ja-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+</style>
 
 @code {
     [Parameter] public DateTime Start { get; set; }
@@ -142,6 +305,7 @@
     [Parameter] public string? InitialTitle { get; set; }
     [Parameter] public string? InitialDescription { get; set; }
     [Parameter] public IList<string>? InitialAssigneeIds { get; set; }
+    [Parameter] public List<JobAttachmentDto>? InitialAttachments { get; set; }
 
     CreateJobRequest model = new()
     {
@@ -251,6 +415,32 @@
         if (!string.IsNullOrWhiteSpace(InitialDescription)) model.Description = InitialDescription;
         selectedAssignees = (InitialAssigneeIds?.ToList() ?? new List<string>());
 
+        // Edit: mevcut ekleri state'e yükle (FileId>0 → yeniden yüklenmez; önizleme presigned URL ile).
+        if (InitialAttachments is { Count: > 0 })
+        {
+            foreach (var a in InitialAttachments)
+                attachments.Add(new PendingJobAttachment
+                {
+                    FileId = a.FileId,
+                    FileName = a.FileName,
+                    ContentType = a.ContentType,
+                    Tur = a.Tur,
+                    Not = a.Not
+                    // DataUrl boş: mevcut ek. PreviewUrl aşağıda presigned ile doldurulur.
+                });
+
+            // Önizleme için presigned URL'leri (30 dk) getir.
+            foreach (var att in attachments.Where(x => x.FileId > 0))
+            {
+                try
+                {
+                    var dto = await FileApi.GetDownloadAsync(att.FileId);
+                    att.PreviewUrl = dto?.PresignedUrl;
+                }
+                catch { /* önizleme getirilemezse ikon/placeholder gösterilir */ }
+            }
+        }
+
 
         var rm = new System.Resources.ResourceManager(
           "WebApp.Localize.AppTexts", typeof(WebApp.Localize.AppTexts).Assembly);
@@ -261,6 +451,7 @@
 
     async Task OnSubmit(CreateJobRequest _)
     {
+        if (submitting) return;
         if (model.End < model.Start) return;
 
         model.RecipientEmail = (model.RecipientEmail ?? "").Trim().ToLowerInvariant();
@@ -276,7 +467,172 @@
             model.RemindOnDay = false;
         }
 
+        // --- Ekleri FileApiService'e (MinIO) yükle; FileId'leri model.Attachments'a yaz ---
+        // (Ticaret Sicil deseni: generic /uploads → Id → DTO'ya map; hata olursa telafi silme.)
+        // Mevcut ekler (FileId>0) YENİDEN yüklenmez; sadece FileId'leri geçirilir → eski ekler düşmez.
+        var hadInitial = InitialAttachments is { Count: > 0 };
+
+        if (attachments.Count > 0)
+        {
+            submitting = true;
+            StateHasChanged();
+
+            var result = new List<JobAttachmentRequest>();
+            var newlyUploadedIds = new List<int>(); // telafi yalnız bu submit'te YENİ yüklenenleri kapsar
+            try
+            {
+                foreach (var att in attachments)
+                {
+                    if (att.FileId > 0)
+                    {
+                        // Mevcut ek: yeniden yükleme yok, doğrudan geçir.
+                        result.Add(new JobAttachmentRequest
+                        {
+                            FileId = att.FileId,
+                            FileName = att.FileName,
+                            ContentType = att.ContentType,
+                            Tur = att.Tur,
+                            Not = string.IsNullOrWhiteSpace(att.Not) ? null : att.Not.Trim()
+                        });
+                        continue;
+                    }
+
+                    // Yeni yakalanan: base64 → yükle → FileId.
+                    var bytes = DecodeDataUrl(att.DataUrl);
+                    if (bytes is null || bytes.Length == 0)
+                        throw new InvalidOperationException($"'{att.FileName}' okunamadı.");
+
+                    var up = await FileApi.UploadGenericBytesAsync(bytes, att.FileName, att.ContentType, "jobs");
+                    if (up is null)
+                        throw new InvalidOperationException($"'{att.FileName}' yüklenemedi.");
+
+                    newlyUploadedIds.Add(up.Id);
+                    result.Add(new JobAttachmentRequest
+                    {
+                        FileId = up.Id,
+                        FileName = up.FileName,
+                        ContentType = up.ContentType,
+                        Tur = att.Tur,
+                        Not = string.IsNullOrWhiteSpace(att.Not) ? null : att.Not.Trim()
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                // Telafi: SADECE bu submit'te yeni yüklenenleri geri al (mevcut ekleri silme!).
+                foreach (var fid in newlyUploadedIds)
+                {
+                    try { await FileApi.DeleteAsync(fid); } catch { }
+                }
+
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Ekler yüklenemedi",
+                    Detail = ex.Message,
+                    Duration = 4000
+                });
+
+                submitting = false;
+                StateHasChanged();
+                return; // modalı kapatma; kullanıcı tekrar deneyebilir
+            }
+
+            model.Attachments = result;
+            submitting = false;
+        }
+        else
+        {
+            // Hiç ek kalmadı. Edit'te başta ek vardıysa → boş liste (backend sync hepsini siler).
+            // Create'te (baştan ek yoktu) → null (dokunma).
+            model.Attachments = hadInitial ? new List<JobAttachmentRequest>() : null;
+        }
+
         DialogService.Close(model);
-        await Task.CompletedTask;
+    }
+
+    // "data:&lt;ct&gt;;base64,&lt;veri&gt;" → ham byte[]
+    static byte[]? DecodeDataUrl(string dataUrl)
+    {
+        if (string.IsNullOrWhiteSpace(dataUrl)) return null;
+        var comma = dataUrl.IndexOf(',');
+        var b64 = comma >= 0 ? dataUrl.Substring(comma + 1) : dataUrl;
+        try { return Convert.FromBase64String(b64); }
+        catch { return null; }
+    }
+
+    // ---- Ekran görüntüsü / belge ekleri (client state; FileApiService'e yükleme Parça 3) ----
+    List<PendingJobAttachment> attachments = new();
+    ElementReference dropZoneRef;
+    DotNetObjectReference<AddAppointmentPage>? selfRef;
+    bool jsRegistered;
+    bool submitting; // ekler yüklenirken submit UI kilidi
+
+    const long MaxAttachmentBytes = 15 * 1024 * 1024; // 15 MB
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !jsRegistered)
+        {
+            selfRef = DotNetObjectReference.Create(this);
+            // Ctrl+V (paste) + sürükle-bırak dinleyicilerini bağla
+            await JS.InvokeVoidAsync("jobAttachments.register", selfRef, dropZoneRef);
+            jsRegistered = true;
+        }
+    }
+
+    // JS helper paste/drop ile yakalanan dosyayı buraya geçirir (data-URL / base64)
+    [JSInvokable]
+    public Task OnAttachmentCaptured(string fileName, string contentType, string dataUrl, long size)
+    {
+        AddAttachment(fileName, contentType, dataUrl, size);
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    // Tıkla-yükle (yedek yöntem): InputFile ile seçilen dosyaları oku → base64
+    async Task OnFilesSelected(InputFileChangeEventArgs e)
+    {
+        foreach (var file in e.GetMultipleFiles(maximumFileCount: 20))
+        {
+            if (file.Size > MaxAttachmentBytes) continue;
+
+            using var ms = new MemoryStream();
+            await file.OpenReadStream(MaxAttachmentBytes).CopyToAsync(ms);
+            var b64 = Convert.ToBase64String(ms.ToArray());
+            var ct = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
+            AddAttachment(file.Name, ct, $"data:{ct};base64,{b64}", file.Size);
+        }
+        StateHasChanged();
+    }
+
+    void AddAttachment(string fileName, string contentType, string dataUrl, long size)
+    {
+        var ct = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType;
+        var tur = ct.StartsWith("image", StringComparison.OrdinalIgnoreCase)
+            ? JobAttachmentTur.Resim
+            : JobAttachmentTur.Pdf;
+
+        attachments.Add(new PendingJobAttachment
+        {
+            FileName = string.IsNullOrWhiteSpace(fileName) ? "ek" : fileName,
+            ContentType = ct,
+            Tur = tur,
+            DataUrl = dataUrl,
+            Size = size
+        });
+    }
+
+    void RemoveAttachment(PendingJobAttachment att) => attachments.Remove(att);
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (jsRegistered)
+                await JS.InvokeVoidAsync("jobAttachments.unregister");
+        }
+        catch { /* dialog/circuit kapanışında JS erişilemeyebilir */ }
+        selfRef?.Dispose();
     }
 }

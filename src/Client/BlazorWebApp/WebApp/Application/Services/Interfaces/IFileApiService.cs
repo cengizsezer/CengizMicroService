@@ -15,6 +15,12 @@ namespace WebApp.Application.Services.Interfaces
         /// <summary>Modüle bağlı olmayan genel dosya yükler ve FileApiService kaydının Id'sini döner.</summary>
         Task<GenericUploadResultDto?> UploadGenericAsync(IBrowserFile file, string folder, CancellationToken ct = default);
 
+        /// <summary>
+        /// Ham byte'lardan genel dosya yükler (ör. panodan yapıştırılan görsel; IBrowserFile yoktur)
+        /// ve FileApiService kaydının Id'sini döner. Aynı /uploads endpoint'ini kullanır.
+        /// </summary>
+        Task<GenericUploadResultDto?> UploadGenericBytesAsync(byte[] bytes, string fileName, string contentType, string folder, CancellationToken ct = default);
+
         Task<bool> UploadCompanyDocAsync(
     IBrowserFile file, string companyId, int year,
     string docCategory, string? description = null, int? sequenceNo = null,

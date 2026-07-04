@@ -130,6 +130,31 @@ namespace WebApp.Application.Services
             return env?.Data;
         }
 
+        public async Task<GenericUploadResultDto?> UploadGenericBytesAsync(byte[] bytes, string fileName, string contentType, string folder, CancellationToken ct = default)
+        {
+            using var content = new MultipartFormDataContent();
+
+            var ct2 = contentType;
+            if (string.IsNullOrWhiteSpace(ct2) || ct2 == "application/octet-stream")
+            {
+                var ext = Path.GetExtension(fileName);
+                if (!string.IsNullOrEmpty(ext) && MimeByExt.TryGetValue(ext, out var mime))
+                    ct2 = mime;
+            }
+
+            var fileContent = new ByteArrayContent(bytes ?? Array.Empty<byte>());
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(ct2 ?? "application/octet-stream");
+            content.Add(fileContent, "file", string.IsNullOrWhiteSpace(fileName) ? "ek" : fileName);
+            content.Add(new StringContent(folder ?? "genel"), "folder");
+
+            using var resp = await _http.PostAsync("uploads", content, ct);
+            if (!resp.IsSuccessStatusCode) return null;
+
+            var json = await resp.Content.ReadAsStringAsync(ct);
+            var env = JsonConvert.DeserializeObject<HttpDataResponse<GenericUploadResultDto>>(json);
+            return env?.Data;
+        }
+
         // -------- Helpers --------
         private async Task<T?> GetAndUnwrapAsync<T>(string url, CancellationToken ct)
         {

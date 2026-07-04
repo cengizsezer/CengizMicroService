@@ -1007,6 +1007,49 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("JobAssignments", "catalog");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.Jobs.Domain.JobAttachment", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasDefaultValue("application/octet-stream");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FileId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<long>("JobId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Not")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("Tur")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobId");
+
+                    b.ToTable("JobAttachments", "catalog");
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.KdvBeyanname.Domain.AppSetting", b =>
                 {
                     b.Property<string>("Key")
@@ -2026,6 +2069,17 @@ namespace CatalogService.Api.Migrations
                     b.Navigation("Job");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.Jobs.Domain.JobAttachment", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.Jobs.Domain.Job", "Job")
+                        .WithMany("Attachments")
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Job");
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.KdvBeyanname.Domain.GelenFatura", b =>
                 {
                     b.HasOne("CatalogService.Api.Features.Firmalar.Domain.Firma", "Firma")
@@ -2106,6 +2160,8 @@ namespace CatalogService.Api.Migrations
             modelBuilder.Entity("CatalogService.Api.Features.Jobs.Domain.Job", b =>
                 {
                     b.Navigation("Assignments");
+
+                    b.Navigation("Attachments");
                 });
 
             modelBuilder.Entity("CatalogService.Api.Features.TicaretSicil.Domain.TicaretSicilAdim", b =>

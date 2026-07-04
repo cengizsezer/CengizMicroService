@@ -40,6 +40,21 @@ namespace CatalogService.Api.Features.Jobs.Service
             foreach (var uid in req.AssigneeIds.Distinct())
                 job.Assignments.Add(new JobAssignment { UserId = uid, UserName = uid, Status = JobStatus.NotStarted });
 
+            // Ekran görüntüsü / belge ekleri (opsiyonel). Dosyalar FileApiService'e önceden
+            // yüklenmiş olur; burada yalnızca metadata + FileId + not saklanır.
+            if (req.Attachments is { Count: > 0 })
+            {
+                foreach (var att in req.Attachments)
+                    job.Attachments.Add(new JobAttachment
+                    {
+                        FileId = att.FileId,
+                        FileName = att.FileName,
+                        ContentType = att.ContentType,
+                        Tur = att.Tur,
+                        Not = att.Not
+                    });
+            }
+
             _db.Add(job);
             await _db.SaveChangesAsync(ct); // JobId lazım
 
@@ -148,6 +163,7 @@ namespace CatalogService.Api.Features.Jobs.Service
         {
             var job = await _db.Set<Job>()
                 .Include(j => j.Assignments)
+                .Include(j => j.Attachments)
                 .FirstOrDefaultAsync(j => j.Id == id, ct)
                 ?? throw new KeyNotFoundException("Job not found.");
 
@@ -173,6 +189,39 @@ namespace CatalogService.Api.Features.Jobs.Service
             // silinecekler
             var toRemove = job.Assignments.Where(a => !newIds.Contains(a.UserId)).ToList();
             if (toRemove.Count > 0) _db.RemoveRange(toRemove);
+
+            // --- ek sync (FileId bazlı). req.Attachments null ise mevcut eklere DOKUNMA.
+            if (req.Attachments is not null)
+            {
+                var incomingFileIds = req.Attachments.Select(x => x.FileId).ToHashSet();
+
+                // gelen listede olmayan mevcut ekleri kaldır
+                var attToRemove = job.Attachments.Where(a => !incomingFileIds.Contains(a.FileId)).ToList();
+                if (attToRemove.Count > 0) _db.RemoveRange(attToRemove);
+
+                foreach (var inc in req.Attachments)
+                {
+                    var existing = job.Attachments.FirstOrDefault(a => a.FileId == inc.FileId);
+                    if (existing is null)
+                    {
+                        job.Attachments.Add(new JobAttachment
+                        {
+                            FileId = inc.FileId,
+                            FileName = inc.FileName,
+                            ContentType = inc.ContentType,
+                            Tur = inc.Tur,
+                            Not = inc.Not
+                        });
+                    }
+                    else
+                    {
+                        existing.FileName = inc.FileName;
+                        existing.ContentType = inc.ContentType;
+                        existing.Tur = inc.Tur;
+                        existing.Not = inc.Not;
+                    }
+                }
+            }
 
             await _db.SaveChangesAsync(ct);
 
@@ -249,6 +298,7 @@ namespace CatalogService.Api.Features.Jobs.Service
                 var q = _db.Set<Job>()
                     .Where(x => x.TenantNo == tenantNo && !x.IsDeleted && x.End >= from && x.Start <= to)
                     .Include(x => x.Assignments)
+                    .Include(x => x.Attachments)
                     .AsNoTracking();
 
                 if (!string.IsNullOrWhiteSpace(assigneeId))
@@ -317,7 +367,19 @@ namespace CatalogService.Api.Features.Jobs.Service
                 UserId = a.UserId,
                 UserName = string.IsNullOrWhiteSpace(a.UserName) ? a.UserId : a.UserName,
                 Status = a.Status
-            }).ToList()
+            }).ToList(),
+            Attachments = j.Attachments
+                .OrderBy(a => a.CreatedAt)
+                .Select(a => new JobAttachmentDto
+                {
+                    Id = a.Id,
+                    FileId = a.FileId,
+                    FileName = a.FileName,
+                    ContentType = a.ContentType,
+                    Tur = a.Tur,
+                    Not = a.Not,
+                    CreatedAt = a.CreatedAt
+                }).ToList()
         };
     }
 }
