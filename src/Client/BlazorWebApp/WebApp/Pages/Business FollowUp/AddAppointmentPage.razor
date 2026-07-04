@@ -22,7 +22,10 @@
 
 <div class="appt">
 
-    <RadzenTemplateForm TItem="CreateJobRequest" Data="@model" Submit="@OnSubmit">
+    <RadzenTemplateForm TItem="CreateJobRequest" Data="@model" Submit="@OnSubmit"
+                        Style="display:flex;flex-direction:column;min-height:0;flex:1 1 auto;overflow:hidden;">
+        <!-- Kaydırılabilir gövde: içerik uzasa da sadece bu alan scroll olur -->
+        <div class="appt-body">
         <RadzenStack Gap="0.875rem">
 
             <!-- Title -->
@@ -138,7 +141,7 @@
 
             @if (attachments.Count > 0)
             {
-                <RadzenStack Gap="0.5rem">
+                <RadzenStack Gap="0.5rem" class="ja-list">
                     @foreach (var att in attachments)
                     {
                         <div class="ja-item">
@@ -165,14 +168,14 @@
             }
         </RadzenStack>
 
-        <!-- Submit -->
-            <div class="appt-footer">
-                <RadzenButton ButtonType="ButtonType.Submit" Text="@T[TextKeys.AddAppointment_Save]"
-                              ButtonStyle="ButtonStyle.Primary"
-                              IsBusy="@submitting" Disabled="@submitting" />
-            </div>
-
         </RadzenStack>
+        </div>
+        <!-- Sabit footer: gövde ne kadar uzarsa uzasın Kaydet her zaman görünür/erişilebilir -->
+        <div class="appt-footer">
+            <RadzenButton ButtonType="ButtonType.Submit" Text="@T[TextKeys.AddAppointment_Save]"
+                          ButtonStyle="ButtonStyle.Primary"
+                          IsBusy="@submitting" Disabled="@submitting" />
+        </div>
     </RadzenTemplateForm>
 </div>
 
@@ -182,7 +185,18 @@
         width: 100%;
         max-width: 100%;
         box-sizing: border-box;
+        display: flex; /* [gövde scroll] + [sabit footer] için flex column */
+        flex-direction: column;
+        max-height: 85vh; /* modal ekran yüksekliğini aşmaz */
         padding: 1.25rem 1.5rem; /* dikey ~20px, yatay ~24px iç nefes payı */
+    }
+
+    /* Orta gövde: içerik uzunsa dikey kayar, footer sabit kalır */
+    .appt-body {
+        flex: 1 1 auto;
+        min-height: 0; /* flex child'ın scroll olabilmesi için şart */
+        overflow-y: auto;
+        padding-right: .25rem; /* scrollbar için hafif boşluk */
     }
 
     .fld {
@@ -224,11 +238,18 @@
     }
 
     .appt-footer {
+        flex: 0 0 auto; /* küçülmez, her zaman görünür */
         display: flex;
         justify-content: flex-end;
         padding-top: .6rem;
-        margin-top: .2rem;
+        margin-top: .6rem;
         border-top: 1px solid var(--rz-border-color, #e5e7eb);
+    }
+
+    /* Ekler listesi çok uzarsa kendi içinde de makul scroll alsın (opsiyonel) */
+    .ja-list {
+        max-height: 260px;
+        overflow-y: auto;
     }
 
     @@media (max-width: 380px) {
