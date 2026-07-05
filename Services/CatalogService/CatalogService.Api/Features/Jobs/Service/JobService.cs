@@ -360,6 +360,7 @@ namespace CatalogService.Api.Features.Jobs.Service
             Description = j.Description,
             Start = j.Start,
             End = j.End,
+            CreatedAt = j.CreatedAt,
             Status = j.Status,
             Assignments = j.Assignments.Select(a => new JobAssignmentDto
             {

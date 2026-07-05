@@ -16,34 +16,66 @@
                          Drop="@OnDrop">
     <ChildContent>
         <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" Wrap="FlexWrap.Wrap" class="rz-p-12">
-            <RadzenDropZone Value="JobStatus.NotStarted" class="rz-display-flex rz-flex-column rz-background-color-warning-lighter rz-border-warning-light rz-border-radius-2 rz-p-4" Style="flex: 1; gap: 1rem;">
-                <RadzenText Text="Başlanmadı" TextStyle="TextStyle.Subtitle2" />
-            </RadzenDropZone>
-            <RadzenDropZone Value="JobStatus.Started" class="rz-display-flex rz-flex-column rz-background-color-info-lighter rz-border-info-light rz-border-radius-2 rz-p-4" Style="flex: 1; gap: 1rem;">
-                <RadzenText Text="Başlandı" TextStyle="TextStyle.Subtitle2" />
-            </RadzenDropZone>
-            <RadzenDropZone Value="JobStatus.Completed" class="rz-display-flex rz-flex-column rz-background-color-success-lighter rz-border-success-light rz-border-radius-2 rz-p-4" Style="flex: 1; gap: 1rem;">
-                <RadzenText Text="Tamamlandı" TextStyle="TextStyle.Subtitle2" />
-            </RadzenDropZone>
-            <RadzenDropZone Value="JobStatus.Deleted" class="rz-display-flex rz-flex-column rz-background-color-danger-lighter rz-border-danger-light rz-border-radius-2 rz-p-4" Style="flex: 1; gap: 1rem;">
-                <RadzenText Text="Silmek için buraya bırak" TextStyle="TextStyle.Subtitle2" />
-            </RadzenDropZone>
+            <div class="rz-border-radius-2 rz-p-4" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .75rem; max-height: calc(100vh - 220px); background: #f4f5f7; border: 1px solid #e5e7eb;">
+                <div style="display: flex; align-items: center; gap: .4rem;">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #EF9F27; flex: none;"></span>
+                    <RadzenText Text="Başlanmadı" TextStyle="TextStyle.Subtitle2" Style="color: #3f3f46;" />
+                </div>
+                <RadzenDropZone Value="JobStatus.NotStarted" class="rz-display-flex rz-flex-column" Style="flex: 1; min-height: 0; overflow-y: auto; gap: 1rem;">
+                </RadzenDropZone>
+            </div>
+            <div class="rz-border-radius-2 rz-p-4" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .75rem; max-height: calc(100vh - 220px); background: #f4f5f7; border: 1px solid #e5e7eb;">
+                <div style="display: flex; align-items: center; gap: .4rem;">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #378ADD; flex: none;"></span>
+                    <RadzenText Text="Başlandı" TextStyle="TextStyle.Subtitle2" Style="color: #3f3f46;" />
+                </div>
+                <RadzenDropZone Value="JobStatus.Started" class="rz-display-flex rz-flex-column" Style="flex: 1; min-height: 0; overflow-y: auto; gap: 1rem;">
+                </RadzenDropZone>
+            </div>
+            <div class="rz-border-radius-2 rz-p-4" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .75rem; max-height: calc(100vh - 220px); background: #f4f5f7; border: 1px solid #e5e7eb;">
+                <div style="display: flex; align-items: center; gap: .4rem;">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #1D9E75; flex: none;"></span>
+                    <RadzenText Text="Tamamlandı" TextStyle="TextStyle.Subtitle2" Style="color: #3f3f46;" />
+                </div>
+                <RadzenDropZone Value="JobStatus.Completed" class="rz-display-flex rz-flex-column" Style="flex: 1; min-height: 0; overflow-y: auto; gap: 1rem;">
+                </RadzenDropZone>
+            </div>
+            <div class="rz-border-radius-2 rz-p-4" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .75rem; max-height: calc(100vh - 220px); background: #f4f5f7; border: 1px solid #f0c9c7;">
+                <div style="display: flex; align-items: center; gap: .4rem;">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #E24B4A; flex: none;"></span>
+                    <RadzenText Text="Silmek için buraya bırak" TextStyle="TextStyle.Subtitle2" Style="color: #3f3f46;" />
+                </div>
+                <RadzenDropZone Value="JobStatus.Deleted" class="rz-display-flex rz-flex-column" Style="flex: 1; min-height: 0; overflow-y: auto; gap: 1rem;">
+                </RadzenDropZone>
+            </div>
         </RadzenStack>
     </ChildContent>
     <Template>
-        <div class="rz-card rz-variant-filled rz-background-color-primary-light rz-color-on-primary-light rz-p-3"
-             style="cursor:pointer;" @onclick="@(() => OpenDetail(context))">
-            <strong>@context.Title</strong><br />
-            <small>@(context.Start.ToString("g")) - @(context.End.ToString("g"))</small><br />
-            <span>@context.Description</span>
-            @if (context.Attachments is { Count: > 0 })
+        <div class="rz-card" @onclick="@(() => OpenDetail(context))"
+             style="cursor:pointer;background:#ffffff;border:1px solid #ececf1;border-left:3px solid #7F77DD;border-radius:12px;padding:.65rem .8rem;display:flex;flex-direction:column;gap:.3rem;">
+            <div style="color:#2b2b36;font-weight:500;font-size:14px;line-height:1.25;">@context.Title</div>
+            @if (!string.IsNullOrWhiteSpace(context.Description))
             {
-                <div style="display:inline-flex;align-items:center;gap:.2rem;margin-top:.35rem;font-size:.8rem;opacity:.85;"
-                     title="@(context.Attachments.Count) ek">
-                    <RadzenIcon Icon="attach_file" Style="font-size:1rem;" />
-                    <span>@context.Attachments.Count</span>
-                </div>
+                <div style="color:#9a9aa8;font-size:12px;line-height:1.3;">@context.Description</div>
             }
+            <div style="display:flex;align-items:center;gap:.3rem;color:#8a8a97;font-size:12px;">
+                <RadzenIcon Icon="calendar_today" Style="font-size:14px;" />
+                <span>@(context.Start.ToString("d MMM")) – @(context.End.ToString("d MMM"))</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f1f1f5;padding-top:.35rem;margin-top:.1rem;">
+                <div style="display:flex;align-items:center;gap:.25rem;color:#b6b6c2;font-size:11px;">
+                    <RadzenIcon Icon="schedule" Style="font-size:13px;" />
+                    <span>@(context.CreatedAt.ToString("dd.MM.yyyy")) eklendi</span>
+                </div>
+                @if (context.Attachments is { Count: > 0 })
+                {
+                    <div style="display:flex;align-items:center;gap:.2rem;color:#8a8a97;font-size:11px;"
+                         title="@(context.Attachments.Count) ek">
+                        <RadzenIcon Icon="attach_file" Style="font-size:14px;" />
+                        <span>@context.Attachments.Count</span>
+                    </div>
+                }
+            </div>
         </div>
     </Template>
 </RadzenDropZoneContainer>
@@ -84,6 +116,7 @@
                         Description = j.Description,
                         Start = j.Start,
                         End = j.End,
+                        CreatedAt = j.CreatedAt,
                         Me = a,
                         Attachments = j.Attachments ?? new(),
                         AssigneeNames = j.Assignments
@@ -279,6 +312,7 @@
         public string? Description { get; set; }
         public DateTime Start { get; set; }
         public DateTime End { get; set; }
+        public DateTime CreatedAt { get; set; }
         public JobAssignmentDto? Me { get; set; }
         public List<JobAttachmentDto> Attachments { get; set; } = new();
         public List<string> AssigneeNames { get; set; } = new();
