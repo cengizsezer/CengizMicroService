@@ -128,6 +128,70 @@ namespace CatalogService.Api.Features.KdvBeyanname.Controllers
             }
         }
 
+        // ── Tek fatura PDF (Sovos.IncomingInvoiceWorker'a proxy) ───────────
+
+        [HttpPost("{firmaId:int}/fatura-pdf")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status502BadGateway)]
+        public async Task<IActionResult> FaturaPdfProxy(
+            int firmaId,
+            [FromQuery] string faturaNo,
+            [FromQuery] int yil,
+            [FromQuery] int ay,
+            CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(faturaNo))
+                return BadRequest(new { mesaj = "faturaNo zorunlu." });
+            if (yil < 2000 || yil > 2100 || ay < 1 || ay > 12)
+                return BadRequest(new { mesaj = "Geçersiz yil/ay." });
+
+            var workerBaseUrl = _config["IncomingInvoiceWorker:BaseUrl"];
+            if (string.IsNullOrWhiteSpace(workerBaseUrl))
+                return StatusCode(StatusCodes.Status502BadGateway, new
+                {
+                    mesaj = "IncomingInvoiceWorker:BaseUrl yapılandırılmadı."
+                });
+
+            var client = _httpFactory.CreateClient("incoming-invoice-worker");
+            client.BaseAddress = new Uri(workerBaseUrl);
+            // Canlı scrape (login dahil) 10-25 sn sürebilir; bol timeout ver.
+            client.Timeout = TimeSpan.FromSeconds(120);
+
+            try
+            {
+                var url = $"api/kdv-beyanname/{firmaId}/fatura-pdf" +
+                          $"?faturaNo={Uri.EscapeDataString(faturaNo)}&yil={yil}&ay={ay}";
+                var resp = await client.PostAsync(url, content: null, ct);
+                var body = await resp.Content.ReadAsStringAsync(ct);
+
+                if (!resp.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning(
+                        "Worker fatura-pdf başarısız: {Status} {Body}", resp.StatusCode, body);
+                    return StatusCode((int)resp.StatusCode, new
+                    {
+                        mesaj = "Worker fatura PDF isteğini reddetti.",
+                        detay = body
+                    });
+                }
+
+                return Content(body, "application/json");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Worker'a bağlanılamadı (fatura-pdf, FirmaId={Id}, FaturaNo={No})",
+                    firmaId, faturaNo);
+                return StatusCode(StatusCodes.Status502BadGateway, new
+                {
+                    mesaj = "Worker servisine ulaşılamadı.",
+                    detay = ex.Message
+                });
+            }
+        }
+
         // ── Tarama geçmişi ─────────────────────────────────────────────────
 
         [HttpGet("{firmaId:int}/taramalar")]

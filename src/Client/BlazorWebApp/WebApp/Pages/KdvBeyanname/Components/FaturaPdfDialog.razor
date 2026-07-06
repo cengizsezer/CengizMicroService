@@ -1,0 +1,36 @@
+@using Radzen
+@using Radzen.Blazor
+@inject DialogService DialogService
+@inject IJSRuntime JS
+
+<RadzenStack Orientation="Orientation.Vertical" Gap="0.75rem" Style="height:100%;">
+
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                 JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap" Gap="0.5rem">
+        <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0 rz-color-secondary">
+            <RadzenIcon Icon="picture_as_pdf" class="rz-mr-1" />@FileName
+        </RadzenText>
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+            <RadzenButton Icon="download" Text="İndir"
+                          ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                          Click="@OpenInNewTab" />
+            <RadzenButton Icon="close" Text="Kapat"
+                          ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                          Click="@(() => DialogService.Close())" />
+        </RadzenStack>
+    </RadzenStack>
+
+    <iframe src="@PresignedUrl"
+            style="flex:1 1 auto; width:100%; min-height:0; border:1px solid var(--rz-border-light); border-radius:6px; background:#fff;"
+            title="@($"Fatura {FaturaNo} PDF")"></iframe>
+</RadzenStack>
+
+@code {
+    [Parameter] public string PresignedUrl { get; set; } = string.Empty;
+    [Parameter] public string FaturaNo { get; set; } = string.Empty;
+    [Parameter] public string FileName { get; set; } = string.Empty;
+
+    // Presigned URL cross-origin (MinIO) olduğu için yeni sekmede açmak en güvenilir yol.
+    private async Task OpenInNewTab()
+        => await JS.InvokeVoidAsync("window.open", PresignedUrl, "_blank");
+}

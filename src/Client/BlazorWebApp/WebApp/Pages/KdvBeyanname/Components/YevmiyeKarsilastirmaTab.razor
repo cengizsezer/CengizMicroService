@@ -6,6 +6,7 @@
 @using WebApp.Domain.Models.KdvBeyanname
 @inject IKdvBeyannameApiService KdvApi
 @inject NotificationService Notif
+@inject DialogService DialogService
 
 <RadzenCard class="rz-mb-3 rz-p-4">
     <RadzenStack Orientation="Orientation.Vertical" Gap="0.75rem">
@@ -321,6 +322,20 @@ else
                         <RadzenDataGridColumn Property="ToplamTutar" Title="Toplam" Width="130px" TextAlign="TextAlign.Right">
                             <Template Context="row">@FormatPara(row.ToplamTutar)</Template>
                         </RadzenDataGridColumn>
+                        <RadzenDataGridColumn TItem="KdvKarsilastirmaSatiri" Title="PDF" Width="80px"
+                                              Sortable="false" Filterable="false" TextAlign="TextAlign.Center">
+                            <Template Context="row">
+                                <RadzenButton Icon="picture_as_pdf"
+                                              ButtonStyle="ButtonStyle.Primary"
+                                              Variant="Variant.Text"
+                                              Size="ButtonSize.Small"
+                                              IsBusy="@(pdfBusyFaturaNo == row.FaturaNo)"
+                                              BusyText=""
+                                              Disabled="@pdfBusy"
+                                              title="Faturanın PDF'ini Sovos'tan getir"
+                                              Click="@(() => OnPdfClick(row))" />
+                            </Template>
+                        </RadzenDataGridColumn>
                     </Columns>
                 </RadzenDataGrid>
             }
@@ -434,6 +449,10 @@ else
 
     private bool eslesenCollapsed = true;   // Eşleşen geniş listesi — default kapalı
     private bool fazlaCollapsed = false;
+
+    // Tek fatura PDF çekimi — aynı anda tek çekim (aynı DP oturumu çakışmasın).
+    private bool pdfBusy;
+    private string? pdfBusyFaturaNo;
 
     private int previousFirmaId;
     private string previousDonem = string.Empty;
@@ -566,4 +585,105 @@ else
 
     private static string FormatPara(decimal? tutar) =>
         tutar.HasValue ? tutar.Value.ToString("N2", TrCulture) + " TL" : "—";
+
+    // ── Tek fatura PDF: getir → presigned URL → dialog (önizleme + indir) ──
+    private async Task OnPdfClick(KdvKarsilastirmaSatiri row)
+    {
+        if (pdfBusy || string.IsNullOrWhiteSpace(row.FaturaNo)) return;
+
+        if (!TryParseDonem(Donem, out var yil, out var ay))
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary  = "Dönem geçersiz",
+                Detail   = "PDF için geçerli bir dönem (YYYY-MM) gerekli.",
+                Duration = 4000
+            });
+            return;
+        }
+
+        pdfBusy = true;
+        pdfBusyFaturaNo = row.FaturaNo;
+        Notif.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Info,
+            Summary  = "PDF getiriliyor",
+            Detail   = "Sovos'tan çekiliyor... (ilk sefer 10-25 sn sürebilir)",
+            Duration = 8000
+        });
+        StateHasChanged();
+
+        try
+        {
+            var pdf = await KdvApi.GetFaturaPdfAsync(FirmaId, row.FaturaNo, yil, ay);
+            var url = await KdvApi.GetFilePresignedUrlAsync(pdf.FileId);
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary  = "Hata",
+                    Detail   = "PDF önizleme adresi alınamadı.",
+                    Duration = 5000
+                });
+                return;
+            }
+
+            await DialogService.OpenAsync<FaturaPdfDialog>(
+                $"Fatura {pdf.FaturaNo}",
+                new Dictionary<string, object>
+                {
+                    ["PresignedUrl"] = url,
+                    ["FaturaNo"]     = pdf.FaturaNo,
+                    ["FileName"]     = string.IsNullOrWhiteSpace(pdf.FileName)
+                                         ? $"{pdf.FaturaNo}.pdf" : pdf.FileName!
+                },
+                new DialogOptions
+                {
+                    Width = "80vw",
+                    Height = "85vh",
+                    Resizable = true,
+                    Draggable = true,
+                    CloseDialogOnOverlayClick = true
+                });
+        }
+        catch (FaturaPdfHataException ex) when (ex.StatusCode == 409)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary  = "Captcha",
+                Detail   = "Sovos'ta captcha çıktı; lütfen daha sonra tekrar deneyin.",
+                Duration = 6000
+            });
+        }
+        catch (Exception) // 502/500/timeout — hepsi kullanıcıya aynı: tekrar dene
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary  = "PDF çekilemedi",
+                Detail   = "Fatura PDF'i çekilemedi. Lütfen tekrar deneyin.",
+                Duration = 6000
+            });
+        }
+        finally
+        {
+            pdfBusy = false;
+            pdfBusyFaturaNo = null;
+            StateHasChanged();
+        }
+    }
+
+    // "yyyy-MM" → yil, ay
+    private static bool TryParseDonem(string donem, out int yil, out int ay)
+    {
+        yil = 0; ay = 0;
+        if (string.IsNullOrWhiteSpace(donem) || donem.Length != 7 || donem[4] != '-')
+            return false;
+        return int.TryParse(donem.AsSpan(0, 4), out yil)
+               && int.TryParse(donem.AsSpan(5, 2), out ay)
+               && ay is >= 1 and <= 12;
+    }
 }

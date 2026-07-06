@@ -68,6 +68,7 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<GelenFatura> GelenFaturalar => Set<GelenFatura>();
         public DbSet<KdvBeyannameYevmiye> KdvBeyannameYevmiye => Set<KdvBeyannameYevmiye>();
         public DbSet<KdvBeyannameMizan> KdvBeyannameMizan => Set<KdvBeyannameMizan>();
+        public DbSet<GelenFaturaPdf> GelenFaturaPdfleri => Set<GelenFaturaPdf>();
         public DbSet<AppSetting> AppSettings => Set<AppSetting>();
         public DbSet<Duzenleyen> Duzenleyenler => Set<Duzenleyen>();
 
@@ -116,6 +117,7 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new GelenFaturaConfiguration());
             builder.ApplyConfiguration(new KdvBeyannameYevmiyeConfiguration());
             builder.ApplyConfiguration(new KdvBeyannameMizanConfiguration());
+            builder.ApplyConfiguration(new GelenFaturaPdfConfiguration());
             builder.ApplyConfiguration(new AppSettingConfiguration());
             builder.ApplyConfiguration(new DuzenleyenConfiguration());
 

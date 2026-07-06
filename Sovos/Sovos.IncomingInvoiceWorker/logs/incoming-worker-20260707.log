@@ -1,0 +1,241 @@
+2026-07-07 00:42:37.795 +03:00 [WRN] Overriding address(es) 'http://localhost:5021'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2026-07-07 00:42:37.857 +03:00 [INF] Now listening on: http://localhost:5021
+2026-07-07 00:42:37.942 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-07-07 00:42:37.946 +03:00 [INF] Hosting environment: Development
+2026-07-07 00:42:37.948 +03:00 [INF] Content root path: C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker
+2026-07-07 00:44:25.532 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/3/tara - application/json; charset=utf-8 null
+2026-07-07 00:44:25.578 +03:00 [INF] Executing endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker)'
+2026-07-07 00:44:25.599 +03:00 [INF] Route matched with {action = "Tara", controller = "IncomingInvoice"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Tara(Int32, Sovos.IncomingInvoiceWorker.Controllers.TaramaRequest, System.Threading.CancellationToken) on controller Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController (Sovos.IncomingInvoiceWorker).
+2026-07-07 00:44:26.327 +03:00 [WRN] Entity 'Job' has a global query filter defined and is the required end of a relationship with the entity 'JobAssignment'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-07-07 00:44:26.328 +03:00 [WRN] Entity 'Job' has a global query filter defined and is the required end of a relationship with the entity 'JobAttachment'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-07-07 00:44:27.047 +03:00 [INF] Executed DbCommand (41ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT CASE
+    WHEN EXISTS (
+        SELECT 1
+        FROM [Firmalar] AS [f]
+        WHERE [f].[Id] = @__firmaId_0) THEN CAST(1 AS bit)
+    ELSE CAST(0 AS bit)
+END
+2026-07-07 00:44:27.079 +03:00 [INF] Executing AcceptedResult, writing value of type '<>f__AnonymousType3`3[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-07-07 00:44:27.082 +03:00 [INF] Tara başladı (FirmaId=3, 2026-07-01 - 2026-07-07)
+2026-07-07 00:44:27.089 +03:00 [INF] Executed action Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker) in 1485.2544ms
+2026-07-07 00:44:27.091 +03:00 [INF] Executed endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker)'
+2026-07-07 00:44:27.097 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/3/tara - 202 null application/json; charset=utf-8 1565.1274ms
+2026-07-07 00:44:27.262 +03:00 [INF] Executed DbCommand (8ms) [Parameters=[@p0='?' (DbType = DateTime2), @p1='?' (DbType = DateTime2), @p2='?' (DbType = DateTime2), @p3='?' (DbType = DateTime2), @p4='?' (DbType = Int32), @p5='?' (DbType = Int32), @p6='?' (DbType = Int32), @p7='?' (Size = 2000)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+INSERT INTO [KdvBeyannameTaramalar] ([BaslangicAt], [BaslangicTarihi], [BitisAt], [BitisTarihi], [BulunanFaturaSayisi], [Durum], [FirmaId], [HataMesaji])
+OUTPUT INSERTED.[Id]
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7);
+2026-07-07 00:44:27.307 +03:00 [INF] Executed DbCommand (2ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [f].[Id], [f].[Aktif], [f].[CreatedAt], [f].[DuzenleyenId], [f].[Email], [f].[KisaAd], [f].[Telefon], [f].[TelefonAlanKodu], [f].[TicaretSicilNo], [f].[Unvan], [f].[UpdatedAt], [f].[VergiDairesi], [f].[VergiDairesiKodu], [f].[VergiKimlikNo], [f].[YetkiliAdi], [f].[YetkiliSoyadi]
+FROM [Firmalar] AS [f]
+WHERE [f].[Id] = @__firmaId_0
+2026-07-07 00:44:27.392 +03:00 [INF] Executed DbCommand (2ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[FirmaId] = @__firmaId_0
+2026-07-07 00:44:27.418 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Gelen Fatura taraması başlıyor (aralık 01.07.2026 - 07.07.2026)
+2026-07-07 00:44:48.245 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Login başarılı (deneme 1)
+2026-07-07 00:44:48.247 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Gelen Fatura sayfasına gidiliyor
+2026-07-07 00:44:50.175 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Gelen Fatura sayfası yüklendi
+2026-07-07 00:44:50.191 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Tarih filtresi 01.07.2026 - 07.07.2026
+2026-07-07 00:44:51.077 +03:00 [INF] Executed DbCommand (5ms) [Parameters=[@p3='?' (DbType = Int64), @p0='?' (DbType = DateTime2), @p1='?' (DbType = Int32), @p2='?' (Size = 2000)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+UPDATE [KdvBeyannameTaramalar] SET [BitisAt] = @p0, [Durum] = @p1, [HataMesaji] = @p2
+OUTPUT 1
+WHERE [Id] = @p3;
+2026-07-07 00:44:51.081 +03:00 [ERR] FirmaId 3: Tarama hatası (TaramaId=7)
+Microsoft.Playwright.TargetClosedException: Target page, context or browser has been closed
+   at Microsoft.Playwright.Transport.Connection.InnerSendMessageToServerAsync[T](ChannelOwner object, String method, Dictionary`2 dictionary, Boolean keepNulls) in /_/src/Playwright/Transport/Connection.cs:line 206
+   at Microsoft.Playwright.Transport.Connection.WrapApiCallAsync[T](Func`1 action, Boolean isInternal) in /_/src/Playwright/Transport/Connection.cs:line 532
+   at Sovos.IncomingInvoiceWorker.Services.IncomingInvoiceScraper.ApplyDateFilterAsync(IPage page, Company company, DateTime fromDate, DateTime toDate) in C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker\Services\IncomingInvoiceScraper.cs:line 183
+   at Sovos.IncomingInvoiceWorker.Services.IncomingInvoiceScraper.FetchIncomingInvoicesAsync(Company company, String decryptedPassword, DateTime fromDate, DateTime toDate, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker\Services\IncomingInvoiceScraper.cs:line 61
+   at Sovos.IncomingInvoiceWorker.Services.IncomingInvoiceScraper.FetchIncomingInvoicesAsync(Company company, String decryptedPassword, DateTime fromDate, DateTime toDate, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker\Services\IncomingInvoiceScraper.cs:line 70
+   at Sovos.IncomingInvoiceWorker.Services.IncomingInvoiceScraper.FetchIncomingInvoicesAsync(Company company, String decryptedPassword, DateTime fromDate, DateTime toDate, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker\Services\IncomingInvoiceScraper.cs:line 70
+   at Sovos.IncomingInvoiceWorker.Services.IncomingInvoiceOrchestrator.RunForFirmaAsync(Int32 firmaId, DateTime fromDate, DateTime toDate, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker\Services\IncomingInvoiceOrchestrator.cs:line 79
+2026-07-07 00:44:51.085 +03:00 [INF] Tara bitti (FirmaId=3)
+2026-07-07 00:45:30.788 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/3/tara - application/json; charset=utf-8 null
+2026-07-07 00:45:30.791 +03:00 [INF] Executing endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker)'
+2026-07-07 00:45:30.792 +03:00 [INF] Route matched with {action = "Tara", controller = "IncomingInvoice"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Tara(Int32, Sovos.IncomingInvoiceWorker.Controllers.TaramaRequest, System.Threading.CancellationToken) on controller Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController (Sovos.IncomingInvoiceWorker).
+2026-07-07 00:45:30.801 +03:00 [INF] Executed DbCommand (3ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT CASE
+    WHEN EXISTS (
+        SELECT 1
+        FROM [Firmalar] AS [f]
+        WHERE [f].[Id] = @__firmaId_0) THEN CAST(1 AS bit)
+    ELSE CAST(0 AS bit)
+END
+2026-07-07 00:45:30.803 +03:00 [INF] Executing AcceptedResult, writing value of type '<>f__AnonymousType3`3[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-07-07 00:45:30.804 +03:00 [INF] Tara başladı (FirmaId=3, 2026-07-01 - 2026-07-07)
+2026-07-07 00:45:30.804 +03:00 [INF] Executed action Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker) in 10.4048ms
+2026-07-07 00:45:30.810 +03:00 [INF] Executed endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker)'
+2026-07-07 00:45:30.811 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/3/tara - 202 null application/json; charset=utf-8 22.8562ms
+2026-07-07 00:45:30.814 +03:00 [INF] Executed DbCommand (2ms) [Parameters=[@p0='?' (DbType = DateTime2), @p1='?' (DbType = DateTime2), @p2='?' (DbType = DateTime2), @p3='?' (DbType = DateTime2), @p4='?' (DbType = Int32), @p5='?' (DbType = Int32), @p6='?' (DbType = Int32), @p7='?' (Size = 2000)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+INSERT INTO [KdvBeyannameTaramalar] ([BaslangicAt], [BaslangicTarihi], [BitisAt], [BitisTarihi], [BulunanFaturaSayisi], [Durum], [FirmaId], [HataMesaji])
+OUTPUT INSERTED.[Id]
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7);
+2026-07-07 00:45:30.818 +03:00 [INF] Executed DbCommand (2ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [f].[Id], [f].[Aktif], [f].[CreatedAt], [f].[DuzenleyenId], [f].[Email], [f].[KisaAd], [f].[Telefon], [f].[TelefonAlanKodu], [f].[TicaretSicilNo], [f].[Unvan], [f].[UpdatedAt], [f].[VergiDairesi], [f].[VergiDairesiKodu], [f].[VergiKimlikNo], [f].[YetkiliAdi], [f].[YetkiliSoyadi]
+FROM [Firmalar] AS [f]
+WHERE [f].[Id] = @__firmaId_0
+2026-07-07 00:45:30.824 +03:00 [INF] Executed DbCommand (2ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[FirmaId] = @__firmaId_0
+2026-07-07 00:45:30.826 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Gelen Fatura taraması başlıyor (aralık 01.07.2026 - 07.07.2026)
+2026-07-07 00:45:38.043 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Login başarılı (deneme 1)
+2026-07-07 00:45:38.045 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Gelen Fatura sayfasına gidiliyor
+2026-07-07 00:45:39.633 +03:00 [INF] Executed DbCommand (3ms) [Parameters=[@p3='?' (DbType = Int64), @p0='?' (DbType = DateTime2), @p1='?' (DbType = Int32), @p2='?' (Size = 2000)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+UPDATE [KdvBeyannameTaramalar] SET [BitisAt] = @p0, [Durum] = @p1, [HataMesaji] = @p2
+OUTPUT 1
+WHERE [Id] = @p3;
+2026-07-07 00:45:39.636 +03:00 [ERR] FirmaId 3: Tarama hatası (TaramaId=8)
+Microsoft.Playwright.TargetClosedException: Target page, context or browser has been closed
+Call log:
+  - navigating to "https://portal.digitalplanet.com.tr/NetInvoice/Inbox.aspx", waiting until "load"
+   at Microsoft.Playwright.Transport.Connection.InnerSendMessageToServerAsync[T](ChannelOwner object, String method, Dictionary`2 dictionary, Boolean keepNulls) in /_/src/Playwright/Transport/Connection.cs:line 206
+   at Microsoft.Playwright.Transport.Connection.WrapApiCallAsync[T](Func`1 action, Boolean isInternal) in /_/src/Playwright/Transport/Connection.cs:line 532
+   at Microsoft.Playwright.Core.Frame.GotoAsync(String url, FrameGotoOptions options) in /_/src/Playwright/Core/Frame.cs:line 793
+   at Sovos.IncomingInvoiceWorker.Services.IncomingInvoiceScraper.NavigateToIncomingInvoicesAsync(IPage page, Company company) in C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker\Services\IncomingInvoiceScraper.cs:line 159
+   at Sovos.IncomingInvoiceWorker.Services.IncomingInvoiceScraper.FetchIncomingInvoicesAsync(Company company, String decryptedPassword, DateTime fromDate, DateTime toDate, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker\Services\IncomingInvoiceScraper.cs:line 60
+   at Sovos.IncomingInvoiceWorker.Services.IncomingInvoiceScraper.FetchIncomingInvoicesAsync(Company company, String decryptedPassword, DateTime fromDate, DateTime toDate, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker\Services\IncomingInvoiceScraper.cs:line 70
+   at Sovos.IncomingInvoiceWorker.Services.IncomingInvoiceScraper.FetchIncomingInvoicesAsync(Company company, String decryptedPassword, DateTime fromDate, DateTime toDate, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker\Services\IncomingInvoiceScraper.cs:line 70
+   at Sovos.IncomingInvoiceWorker.Services.IncomingInvoiceOrchestrator.RunForFirmaAsync(Int32 firmaId, DateTime fromDate, DateTime toDate, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker\Services\IncomingInvoiceOrchestrator.cs:line 79
+2026-07-07 00:45:39.641 +03:00 [INF] Tara bitti (FirmaId=3)
+2026-07-07 02:15:32.827 +03:00 [WRN] Overriding address(es) 'http://localhost:5021'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2026-07-07 02:15:32.891 +03:00 [INF] Now listening on: http://localhost:5021
+2026-07-07 02:15:32.983 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-07-07 02:15:32.988 +03:00 [INF] Hosting environment: Development
+2026-07-07 02:15:32.993 +03:00 [INF] Content root path: C:\GitHub\CengizMicroService\Sovos\Sovos.IncomingInvoiceWorker
+2026-07-07 02:16:24.112 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/3/tara - application/json; charset=utf-8 null
+2026-07-07 02:16:24.165 +03:00 [INF] Executing endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker)'
+2026-07-07 02:16:24.189 +03:00 [INF] Route matched with {action = "Tara", controller = "IncomingInvoice"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Tara(Int32, Sovos.IncomingInvoiceWorker.Controllers.TaramaRequest, System.Threading.CancellationToken) on controller Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController (Sovos.IncomingInvoiceWorker).
+2026-07-07 02:16:24.960 +03:00 [WRN] Entity 'Job' has a global query filter defined and is the required end of a relationship with the entity 'JobAssignment'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-07-07 02:16:24.961 +03:00 [WRN] Entity 'Job' has a global query filter defined and is the required end of a relationship with the entity 'JobAttachment'. This may lead to unexpected results when the required entity is filtered out. Either configure the navigation as optional, or define matching query filters for both entities in the navigation. See https://go.microsoft.com/fwlink/?linkid=2131316 for more information.
+2026-07-07 02:16:25.692 +03:00 [INF] Executed DbCommand (38ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT CASE
+    WHEN EXISTS (
+        SELECT 1
+        FROM [Firmalar] AS [f]
+        WHERE [f].[Id] = @__firmaId_0) THEN CAST(1 AS bit)
+    ELSE CAST(0 AS bit)
+END
+2026-07-07 02:16:25.717 +03:00 [INF] Tara başladı (FirmaId=3, 2026-06-01 - 2026-06-30)
+2026-07-07 02:16:25.718 +03:00 [INF] Executing AcceptedResult, writing value of type '<>f__AnonymousType3`3[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-07-07 02:16:25.727 +03:00 [INF] Executed action Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker) in 1533.7658ms
+2026-07-07 02:16:25.729 +03:00 [INF] Executed endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.Tara (Sovos.IncomingInvoiceWorker)'
+2026-07-07 02:16:25.734 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/3/tara - 202 null application/json; charset=utf-8 1622.8641ms
+2026-07-07 02:16:25.923 +03:00 [INF] Executed DbCommand (10ms) [Parameters=[@p0='?' (DbType = DateTime2), @p1='?' (DbType = DateTime2), @p2='?' (DbType = DateTime2), @p3='?' (DbType = DateTime2), @p4='?' (DbType = Int32), @p5='?' (DbType = Int32), @p6='?' (DbType = Int32), @p7='?' (Size = 2000)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+INSERT INTO [KdvBeyannameTaramalar] ([BaslangicAt], [BaslangicTarihi], [BitisAt], [BitisTarihi], [BulunanFaturaSayisi], [Durum], [FirmaId], [HataMesaji])
+OUTPUT INSERTED.[Id]
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7);
+2026-07-07 02:16:25.974 +03:00 [INF] Executed DbCommand (2ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [f].[Id], [f].[Aktif], [f].[CreatedAt], [f].[DuzenleyenId], [f].[Email], [f].[KisaAd], [f].[Telefon], [f].[TelefonAlanKodu], [f].[TicaretSicilNo], [f].[Unvan], [f].[UpdatedAt], [f].[VergiDairesi], [f].[VergiDairesiKodu], [f].[VergiKimlikNo], [f].[YetkiliAdi], [f].[YetkiliSoyadi]
+FROM [Firmalar] AS [f]
+WHERE [f].[Id] = @__firmaId_0
+2026-07-07 02:16:26.067 +03:00 [INF] Executed DbCommand (3ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[FirmaId] = @__firmaId_0
+2026-07-07 02:16:26.099 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Gelen Fatura taraması başlıyor (aralık 01.06.2026 - 30.06.2026)
+2026-07-07 02:16:35.100 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Login başarılı (deneme 1)
+2026-07-07 02:16:35.103 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Gelen Fatura sayfasına gidiliyor
+2026-07-07 02:16:36.876 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Gelen Fatura sayfası yüklendi
+2026-07-07 02:16:36.890 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Tarih filtresi 01.06.2026 - 30.06.2026
+2026-07-07 02:16:40.160 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Sorgula tıklandı
+2026-07-07 02:16:40.540 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: XLSX indir butonu tıklanıyor (#exportToXLSXButton)
+2026-07-07 02:16:42.092 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: XLSX indirildi → C:\Users\cengi\AppData\Local\Temp\dp-gelen-3-20260706231641943.xlsx
+2026-07-07 02:16:42.900 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: 8 gelen fatura parse edildi
+2026-07-07 02:16:43.566 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Logout yapıldı
+2026-07-07 02:16:43.568 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Tarama tamamlandı. 8 gelen fatura. Süre: 17467ms
+2026-07-07 02:16:43.955 +03:00 [INF] Executed DbCommand (12ms) [Parameters=[@__firmaId_0='?' (DbType = Int32), @__fromDate_1='?' (DbType = DateTime2), @__toDate_2='?' (DbType = DateTime2)], CommandType='"Text"', CommandTimeout='30']
+DELETE FROM [g]
+FROM [GelenFaturalar] AS [g]
+WHERE [g].[FirmaId] = @__firmaId_0 AND [g].[FaturaTarihi] >= @__fromDate_1 AND [g].[FaturaTarihi] <= @__toDate_2
+2026-07-07 02:16:44.027 +03:00 [INF] Executed DbCommand (6ms) [Parameters=[@__firmaId_0='?' (DbType = Int32), @__faturaNolar_1='?' (Size = 4000)], CommandType='"Text"', CommandTimeout='30']
+SELECT [g].[Id], [g].[FaturaNo], [g].[FaturaTarihi], [g].[FirmaId], [g].[GondericiUnvan], [g].[GondericiVkn], [g].[Kaynak], [g].[KdvOrani], [g].[KdvTutari], [g].[MatrahTutari], [g].[ParaBirimi], [g].[SonGuncelleme], [g].[Statu], [g].[ToplamTutar]
+FROM [GelenFaturalar] AS [g]
+WHERE [g].[FirmaId] = @__firmaId_0 AND [g].[FaturaNo] IN (
+    SELECT [f].[value]
+    FROM OPENJSON(@__faturaNolar_1) WITH ([value] nvarchar(50) '$') AS [f]
+)
+2026-07-07 02:16:44.107 +03:00 [INF] Executed DbCommand (17ms) [Parameters=[@p0='?' (Size = 50), @p1='?' (DbType = DateTime2), @p2='?' (DbType = Int32), @p3='?' (Size = 300), @p4='?' (Size = 20), @p5='?' (Size = 20), @p6='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p7='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p8='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p9='?' (Size = 10), @p10='?' (DbType = DateTime2), @p11='?' (Size = 50), @p12='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p13='?' (Size = 50), @p14='?' (DbType = DateTime2), @p15='?' (DbType = Int32), @p16='?' (Size = 300), @p17='?' (Size = 20), @p18='?' (Size = 20), @p19='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p20='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p21='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p22='?' (Size = 10), @p23='?' (DbType = DateTime2), @p24='?' (Size = 50), @p25='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p26='?' (Size = 50), @p27='?' (DbType = DateTime2), @p28='?' (DbType = Int32), @p29='?' (Size = 300), @p30='?' (Size = 20), @p31='?' (Size = 20), @p32='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p33='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p34='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p35='?' (Size = 10), @p36='?' (DbType = DateTime2), @p37='?' (Size = 50), @p38='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p39='?' (Size = 50), @p40='?' (DbType = DateTime2), @p41='?' (DbType = Int32), @p42='?' (Size = 300), @p43='?' (Size = 20), @p44='?' (Size = 20), @p45='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p46='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p47='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p48='?' (Size = 10), @p49='?' (DbType = DateTime2), @p50='?' (Size = 50), @p51='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p52='?' (Size = 50), @p53='?' (DbType = DateTime2), @p54='?' (DbType = Int32), @p55='?' (Size = 300), @p56='?' (Size = 20), @p57='?' (Size = 20), @p58='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p59='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p60='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p61='?' (Size = 10), @p62='?' (DbType = DateTime2), @p63='?' (Size = 50), @p64='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p65='?' (Size = 50), @p66='?' (DbType = DateTime2), @p67='?' (DbType = Int32), @p68='?' (Size = 300), @p69='?' (Size = 20), @p70='?' (Size = 20), @p71='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p72='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p73='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p74='?' (Size = 10), @p75='?' (DbType = DateTime2), @p76='?' (Size = 50), @p77='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p78='?' (Size = 50), @p79='?' (DbType = DateTime2), @p80='?' (DbType = Int32), @p81='?' (Size = 300), @p82='?' (Size = 20), @p83='?' (Size = 20), @p84='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p85='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p86='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p87='?' (Size = 10), @p88='?' (DbType = DateTime2), @p89='?' (Size = 50), @p90='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p91='?' (Size = 50), @p92='?' (DbType = DateTime2), @p93='?' (DbType = Int32), @p94='?' (Size = 300), @p95='?' (Size = 20), @p96='?' (Size = 20), @p97='?' (Precision = 5) (Scale = 2) (DbType = Decimal), @p98='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p99='?' (Precision = 18) (Scale = 2) (DbType = Decimal), @p100='?' (Size = 10), @p101='?' (DbType = DateTime2), @p102='?' (Size = 50), @p103='?' (Precision = 18) (Scale = 2) (DbType = Decimal)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+MERGE [GelenFaturalar] USING (
+VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, 0),
+(@p13, @p14, @p15, @p16, @p17, @p18, @p19, @p20, @p21, @p22, @p23, @p24, @p25, 1),
+(@p26, @p27, @p28, @p29, @p30, @p31, @p32, @p33, @p34, @p35, @p36, @p37, @p38, 2),
+(@p39, @p40, @p41, @p42, @p43, @p44, @p45, @p46, @p47, @p48, @p49, @p50, @p51, 3),
+(@p52, @p53, @p54, @p55, @p56, @p57, @p58, @p59, @p60, @p61, @p62, @p63, @p64, 4),
+(@p65, @p66, @p67, @p68, @p69, @p70, @p71, @p72, @p73, @p74, @p75, @p76, @p77, 5),
+(@p78, @p79, @p80, @p81, @p82, @p83, @p84, @p85, @p86, @p87, @p88, @p89, @p90, 6),
+(@p91, @p92, @p93, @p94, @p95, @p96, @p97, @p98, @p99, @p100, @p101, @p102, @p103, 7)) AS i ([FaturaNo], [FaturaTarihi], [FirmaId], [GondericiUnvan], [GondericiVkn], [Kaynak], [KdvOrani], [KdvTutari], [MatrahTutari], [ParaBirimi], [SonGuncelleme], [Statu], [ToplamTutar], _Position) ON 1=0
+WHEN NOT MATCHED THEN
+INSERT ([FaturaNo], [FaturaTarihi], [FirmaId], [GondericiUnvan], [GondericiVkn], [Kaynak], [KdvOrani], [KdvTutari], [MatrahTutari], [ParaBirimi], [SonGuncelleme], [Statu], [ToplamTutar])
+VALUES (i.[FaturaNo], i.[FaturaTarihi], i.[FirmaId], i.[GondericiUnvan], i.[GondericiVkn], i.[Kaynak], i.[KdvOrani], i.[KdvTutari], i.[MatrahTutari], i.[ParaBirimi], i.[SonGuncelleme], i.[Statu], i.[ToplamTutar])
+OUTPUT INSERTED.[Id], i._Position;
+2026-07-07 02:16:44.112 +03:00 [INF] FirmaId 3: GelenFaturalar upsert — 8 yeni, 0 güncellendi (toplam 8).
+2026-07-07 02:16:44.124 +03:00 [INF] Executed DbCommand (6ms) [Parameters=[@p3='?' (DbType = Int64), @p0='?' (DbType = DateTime2), @p1='?' (DbType = Int32), @p2='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+UPDATE [KdvBeyannameTaramalar] SET [BitisAt] = @p0, [BulunanFaturaSayisi] = @p1, [Durum] = @p2
+OUTPUT 1
+WHERE [Id] = @p3;
+2026-07-07 02:16:44.129 +03:00 [INF] FirmaId 3: Tarama tamamlandı (TaramaId=9, 8 fatura).
+2026-07-07 02:16:44.131 +03:00 [INF] Tara bitti (FirmaId=3)
+2026-07-07 02:17:10.133 +03:00 [INF] Request starting HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/3/fatura-pdf?faturaNo=YKB2026001133881&yil=2026&ay=6 - null 0
+2026-07-07 02:17:10.136 +03:00 [INF] Executing endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.FaturaPdf (Sovos.IncomingInvoiceWorker)'
+2026-07-07 02:17:10.141 +03:00 [INF] Route matched with {action = "FaturaPdf", controller = "IncomingInvoice"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] FaturaPdf(Int32, System.String, Int32, Int32, System.Threading.CancellationToken) on controller Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController (Sovos.IncomingInvoiceWorker).
+2026-07-07 02:17:10.155 +03:00 [INF] Executed DbCommand (2ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT CASE
+    WHEN EXISTS (
+        SELECT 1
+        FROM [Firmalar] AS [f]
+        WHERE [f].[Id] = @__firmaId_0) THEN CAST(1 AS bit)
+    ELSE CAST(0 AS bit)
+END
+2026-07-07 02:17:10.173 +03:00 [INF] Executed DbCommand (4ms) [Parameters=[@__firmaId_0='?' (DbType = Int32), @__faturaNo_1='?' (Size = 50)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [g].[Id], [g].[FaturaNo], [g].[FileId], [g].[FileName], [g].[FirmaId], [g].[OlusturmaTarihi]
+FROM [GelenFaturaPdfleri] AS [g]
+WHERE [g].[FirmaId] = @__firmaId_0 AND [g].[FaturaNo] = @__faturaNo_1
+2026-07-07 02:17:10.176 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[@__firmaId_0='?' (DbType = Int32), @__faturaNo_1='?' (Size = 50)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [g].[Id], [g].[FaturaNo], [g].[FileId], [g].[FileName], [g].[FirmaId], [g].[OlusturmaTarihi]
+FROM [GelenFaturaPdfleri] AS [g]
+WHERE [g].[FirmaId] = @__firmaId_0 AND [g].[FaturaNo] = @__faturaNo_1
+2026-07-07 02:17:10.180 +03:00 [INF] Executed DbCommand (2ms) [Parameters=[@__firmaId_0='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+SELECT TOP(1) [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[FirmaId] = @__firmaId_0
+2026-07-07 02:17:10.185 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Tek fatura PDF indirme başlıyor (FaturaNo=YKB2026001133881)
+2026-07-07 02:17:20.309 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Login başarılı (deneme 1)
+2026-07-07 02:17:20.310 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Gelen Fatura sayfasına gidiliyor
+2026-07-07 02:17:21.989 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Gelen Fatura sayfası yüklendi
+2026-07-07 02:17:21.990 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Tarih filtresi 01.06.2026 - 30.06.2026
+2026-07-07 02:17:25.159 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Sorgula tıklandı
+2026-07-07 02:17:29.840 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: PDF-ZIP indirildi → C:\Users\cengi\AppData\Local\Temp\dp-pdf-3-20260706231729111.zip (öneri ad: YKB2026001133881-5513C364-255E-1E4D-E063-2907010A88F2.zip)
+2026-07-07 02:17:30.524 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: Logout yapıldı
+2026-07-07 02:17:30.525 +03:00 [INF] Firma PKF İSTANBUL KURUMSAL STRATEJİ VE FİNANSAL DANIŞMANLIK A.Ş.: YKB2026001133881 PDF çıkarıldı (85464 byte). Süre: 20338ms
+2026-07-07 02:17:30.860 +03:00 [INF] Start processing HTTP request POST http://localhost:5009/api/file/v1/uploads
+2026-07-07 02:17:30.864 +03:00 [INF] Sending HTTP request POST http://localhost:5009/api/file/v1/uploads
+2026-07-07 02:17:31.402 +03:00 [INF] Received HTTP response headers after 535.5138ms - 200
+2026-07-07 02:17:31.404 +03:00 [INF] End processing HTTP request after 545.2993ms - 200
+2026-07-07 02:17:31.425 +03:00 [INF] Executed DbCommand (4ms) [Parameters=[@p0='?' (Size = 50), @p1='?' (DbType = Int32), @p2='?' (Size = 260), @p3='?' (DbType = Int32), @p4='?' (DbType = DateTime2)], CommandType='"Text"', CommandTimeout='30']
+SET IMPLICIT_TRANSACTIONS OFF;
+SET NOCOUNT ON;
+INSERT INTO [GelenFaturaPdfleri] ([FaturaNo], [FileId], [FileName], [FirmaId], [OlusturmaTarihi])
+OUTPUT INSERTED.[Id]
+VALUES (@p0, @p1, @p2, @p3, @p4);
+2026-07-07 02:17:31.428 +03:00 [INF] PDF çekildi + kaydedildi: FirmaId=3 FaturaNo=YKB2026001133881 FileId=1029
+2026-07-07 02:17:31.430 +03:00 [INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType4`4[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Boolean, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+2026-07-07 02:17:31.433 +03:00 [INF] Executed action Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.FaturaPdf (Sovos.IncomingInvoiceWorker) in 21290.4905ms
+2026-07-07 02:17:31.434 +03:00 [INF] Executed endpoint 'Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController.FaturaPdf (Sovos.IncomingInvoiceWorker)'
+2026-07-07 02:17:31.437 +03:00 [INF] Request finished HTTP/1.1 POST http://localhost:5021/api/kdv-beyanname/3/fatura-pdf?faturaNo=YKB2026001133881&yil=2026&ay=6 - 200 null application/json; charset=utf-8 21303.9994ms

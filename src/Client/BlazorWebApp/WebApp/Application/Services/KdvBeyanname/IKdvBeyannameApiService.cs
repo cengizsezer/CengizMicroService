@@ -21,6 +21,11 @@ namespace WebApp.Application.Services.KdvBeyanname
         Task<List<BeklenenKolon>> GetYevmiyeBeklenenBasliklarAsync(CancellationToken ct = default);
 
         Task<KdvKarsilastirmaSonucu> GetKarsilastirmaAsync(int firmaId, string donem, CancellationToken ct = default);
+
+        // Tek fatura PDF: Sovos'tan canlı çeker (ya da cache), FileId döner.
+        Task<FaturaPdfResult> GetFaturaPdfAsync(int firmaId, string faturaNo, int yil, int ay, CancellationToken ct = default);
+        // FileApiService presigned indirme URL'i (UI iframe/indir ile açar).
+        Task<string?> GetFilePresignedUrlAsync(int fileId, CancellationToken ct = default);
         Task<KdvSonuc> GetSonucAsync(int firmaId, string donem, CancellationToken ct = default);
 
         // XML indirme — backend byte[] döndürüyor. Wrapper hem byte hem dosya adını verir.

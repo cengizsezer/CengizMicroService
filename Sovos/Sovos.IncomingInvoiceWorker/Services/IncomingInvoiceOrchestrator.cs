@@ -17,6 +17,7 @@ public class IncomingInvoiceOrchestrator : IIncomingInvoiceOrchestrator
     private readonly IIncomingInvoiceScraper _scraper;
     private readonly IGelenFaturaUpsertService _upsert;
     private readonly ICredentialProtector _protector;
+    private readonly IFirmaLock _firmaLock;
     private readonly ILogger<IncomingInvoiceOrchestrator> _logger;
 
     public IncomingInvoiceOrchestrator(
@@ -25,6 +26,7 @@ public class IncomingInvoiceOrchestrator : IIncomingInvoiceOrchestrator
         IIncomingInvoiceScraper scraper,
         IGelenFaturaUpsertService upsert,
         ICredentialProtector protector,
+        IFirmaLock firmaLock,
         ILogger<IncomingInvoiceOrchestrator> logger)
     {
         _catalog = catalog;
@@ -32,6 +34,7 @@ public class IncomingInvoiceOrchestrator : IIncomingInvoiceOrchestrator
         _scraper = scraper;
         _upsert = upsert;
         _protector = protector;
+        _firmaLock = firmaLock;
         _logger = logger;
     }
 
@@ -75,6 +78,10 @@ public class IncomingInvoiceOrchestrator : IIncomingInvoiceOrchestrator
                     "DP şifresi decrypt edilemedi. DataProtection key folder'ı paylaşımını kontrol edin.",
                     ex);
             }
+
+            // Firma kilidi — aynı DP hesabına manuel PDF çekimi ile eşzamanlı
+            // oturum açılmasını engelle (aynı process içinde).
+            using var firmaLock = await _firmaLock.AcquireAsync(firmaId, ct);
 
             var scraped = await _scraper.FetchIncomingInvoicesAsync(
                 company, decryptedPassword, fromDate, toDate, ct);

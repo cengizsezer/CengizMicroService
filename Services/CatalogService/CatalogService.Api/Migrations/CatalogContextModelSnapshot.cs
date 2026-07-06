@@ -1198,6 +1198,40 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("GelenFaturalar", (string)null);
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.KdvBeyanname.Domain.GelenFaturaPdf", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("FaturaNo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("FileId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<int>("FirmaId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FirmaId", "FaturaNo")
+                        .IsUnique();
+
+                    b.ToTable("GelenFaturaPdfleri", (string)null);
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.KdvBeyanname.Domain.KdvBeyannameMizan", b =>
                 {
                     b.Property<long>("Id")

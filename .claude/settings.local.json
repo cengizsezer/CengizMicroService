@@ -46,7 +46,12 @@
       "Bash(awk '/\"gelirTablosu\"/{f=1} f' src/Client/BlazorWebApp/WebApp/wwwroot/data/hesap_plani.json)",
       "Bash(awk '/\"aktif\"/{f=1} /\"pasif\"/{f=0} f' src/Client/BlazorWebApp/WebApp/wwwroot/data/hesap_plani.json)",
       "Bash(awk '/\"pasif\"/{f=1} /\"gelirTablosu\"/{f=0} f' src/Client/BlazorWebApp/WebApp/wwwroot/data/hesap_plani.json)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(command -v sqlcmd)",
+      "Bash(command -v bcp)",
+      "Bash(curl -s -m 4 -o /dev/null -w \"FileApi\\(5009\\): %{http_code}\\\\n\" http://localhost:5009/swagger/index.html)",
+      "Bash(curl -s -m 4 -o /dev/null -w \"MinIO\\(9000\\): %{http_code}\\\\n\" http://localhost:9000/minio/health/live)",
+      "Bash(curl -s -m 4 -o /dev/null -w \"Worker\\(5021\\): %{http_code}\\\\n\" http://localhost:5021/api/kdv-beyanname/health)"
     ]
   }
 }

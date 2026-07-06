@@ -1751,6 +1751,66 @@
   },
   {
     "ContainingType": "CatalogService.Api.Features.KdvBeyanname.Controllers.KdvBeyannameController",
+    "Method": "FaturaPdfProxy",
+    "RelativePath": "api/catalog/kdv-beyanname/{firmaId}/fatura-pdf",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "faturaNo",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "yil",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "ay",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Void",
+        "MediaTypes": [],
+        "StatusCode": 200
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 400
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      },
+      {
+        "Type": "System.Void",
+        "MediaTypes": [],
+        "StatusCode": 502
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.KdvBeyanname.Controllers.KdvBeyannameController",
     "Method": "GetGelenFaturalar",
     "RelativePath": "api/catalog/kdv-beyanname/{firmaId}/gelen-faturalar",
     "HttpMethod": "GET",
@@ -3411,6 +3471,37 @@
         "StatusCode": 200
       }
     ]
+  },
+  {
+    "ContainingType": "Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController",
+    "Method": "FaturaPdf",
+    "RelativePath": "api/kdv-beyanname/{firmaId}/fatura-pdf",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "faturaNo",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "yil",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "ay",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
   },
   {
     "ContainingType": "Sovos.IncomingInvoiceWorker.Controllers.IncomingInvoiceController",

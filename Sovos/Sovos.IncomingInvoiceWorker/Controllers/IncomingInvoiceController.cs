@@ -2,6 +2,7 @@ using CatalogService.Api.Infrastructure.Context;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sovos.IncomingInvoiceWorker.Services;
+using Sovos.InvoiceWorker.Core.Exceptions;
 
 namespace Sovos.IncomingInvoiceWorker.Controllers;
 
@@ -10,13 +11,16 @@ namespace Sovos.IncomingInvoiceWorker.Controllers;
 public class IncomingInvoiceController : ControllerBase
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IInvoicePdfService _pdfService;
     private readonly ILogger<IncomingInvoiceController> _logger;
 
     public IncomingInvoiceController(
         IServiceScopeFactory scopeFactory,
+        IInvoicePdfService pdfService,
         ILogger<IncomingInvoiceController> logger)
     {
         _scopeFactory = scopeFactory;
+        _pdfService = pdfService;
         _logger = logger;
     }
 
@@ -79,6 +83,61 @@ public class IncomingInvoiceController : ControllerBase
             status = "queued",
             mesaj = "Tarama başlatıldı. Sonucu /api/kdv-beyanname/{firmaId}/tarama-durumu ile sorgulayabilirsiniz."
         });
+    }
+
+    /// <summary>
+    /// Tek bir faturanın PDF'ini DP portalından canlı çeker (ya da daha önce
+    /// çekildiyse cache'ten döner), FileApiService'e kaydeder ve FileId döndürür.
+    /// SENKRON: scrape 10-25 sn sürebilir; çağıran timeout'u buna göre ayarlamalı.
+    /// </summary>
+    [HttpPost("{firmaId:int}/fatura-pdf")]
+    public async Task<IActionResult> FaturaPdf(
+        int firmaId,
+        [FromQuery] string faturaNo,
+        [FromQuery] int yil,
+        [FromQuery] int ay,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(faturaNo))
+            return BadRequest(new { message = "faturaNo zorunlu." });
+        if (yil < 2000 || yil > 2100 || ay < 1 || ay > 12)
+            return BadRequest(new { message = "Geçersiz yil/ay." });
+
+        using (var scope = _scopeFactory.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<CatalogContext>();
+            var exists = await db.Firmalar.AnyAsync(f => f.Id == firmaId, ct);
+            if (!exists)
+                return NotFound(new { firmaId, message = "Firma bulunamadı." });
+        }
+
+        try
+        {
+            var result = await _pdfService.GetOrFetchAsync(firmaId, faturaNo, yil, ay, ct);
+            return Ok(new
+            {
+                faturaNo = result.FaturaNo,
+                fileId = result.FileId,
+                fileName = result.FileName,
+                cached = result.Cached
+            });
+        }
+        catch (SovosCaptchaActiveException)
+        {
+            return StatusCode(StatusCodes.Status409Conflict,
+                new { faturaNo, message = "DP portalında captcha aktif; manuel müdahale gerekli." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Fatura PDF çekme hatası (FirmaId={Id}, FaturaNo={No})", firmaId, faturaNo);
+            return StatusCode(StatusCodes.Status502BadGateway, new { faturaNo, message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Fatura PDF beklenmeyen hata (FirmaId={Id}, FaturaNo={No})", firmaId, faturaNo);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new { faturaNo, message = "Beklenmeyen hata: " + ex.Message });
+        }
     }
 }
 

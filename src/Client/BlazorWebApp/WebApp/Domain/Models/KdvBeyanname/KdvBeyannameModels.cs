@@ -225,4 +225,25 @@ namespace WebApp.Domain.Models.KdvBeyanname
             Detay = detay;
         }
     }
+
+    // ── Tek fatura PDF ─────────────────────────────────────────────────────
+
+    /// <summary>Fatura PDF proxy yanıtı: { faturaNo, fileId, fileName, cached }.</summary>
+    public class FaturaPdfResult
+    {
+        public string FaturaNo { get; set; } = string.Empty;
+        public int FileId { get; set; }
+        public string? FileName { get; set; }
+        public bool Cached { get; set; }
+    }
+
+    /// <summary>Fatura PDF çağrısı başarısız olduğunda HTTP status'u taşıyan hata.</summary>
+    public class FaturaPdfHataException : Exception
+    {
+        public int StatusCode { get; }
+
+        public FaturaPdfHataException(int statusCode, string? message = null)
+            : base(message ?? $"Fatura PDF hatası (HTTP {statusCode}).")
+            => StatusCode = statusCode;
+    }
 }

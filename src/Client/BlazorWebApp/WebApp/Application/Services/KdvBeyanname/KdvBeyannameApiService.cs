@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using WebApp.Domain.Models.KdvBeyanname;
 
 namespace WebApp.Application.Services.KdvBeyanname
@@ -135,6 +136,69 @@ namespace WebApp.Application.Services.KdvBeyanname
             => await _http.GetFromJsonAsync<KdvSonuc>(
                    $"{Base}/{firmaId}/sonuc?donem={donem}", ct)
                ?? new();
+
+        // ── Tek fatura PDF ─────────────────────────────────────────────────
+
+        public async Task<FaturaPdfResult> GetFaturaPdfAsync(
+            int firmaId, string faturaNo, int yil, int ay, CancellationToken ct = default)
+        {
+            var url = $"{Base}/{firmaId}/fatura-pdf" +
+                      $"?faturaNo={Uri.EscapeDataString(faturaNo)}&yil={yil}&ay={ay}";
+
+            // İlk çekim login dahil sürebilir; default HttpClient timeout'u (100sn) yeterli.
+            var resp = await _http.PostAsync(url, content: null, ct);
+            if (!resp.IsSuccessStatusCode)
+                throw new FaturaPdfHataException((int)resp.StatusCode);
+
+            return await resp.Content.ReadFromJsonAsync<FaturaPdfResult>(cancellationToken: ct)
+                   ?? throw new FaturaPdfHataException(500);
+        }
+
+        public async Task<string?> GetFilePresignedUrlAsync(int fileId, CancellationToken ct = default)
+        {
+            var resp = await _http.GetAsync($"file/v1/download?id={fileId}", ct);
+            if (!resp.IsSuccessStatusCode) return null;
+            var json = await resp.Content.ReadAsStringAsync(ct);
+            return ExtractStringProp(json, "presignedUrl");
+        }
+
+        // HttpDataResponse<FileDto> zarfından presignedUrl'i property adına göre
+        // özyinelemeli çıkarır (wrapper şekli/casing'e bağımlı değil).
+        private static string? ExtractStringProp(string json, string propName)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(json);
+                return FindString(doc.RootElement, propName);
+            }
+            catch { return null; }
+        }
+
+        private static string? FindString(JsonElement el, string propName)
+        {
+            if (el.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var p in el.EnumerateObject())
+                    if (string.Equals(p.Name, propName, StringComparison.OrdinalIgnoreCase)
+                        && p.Value.ValueKind == JsonValueKind.String)
+                        return p.Value.GetString();
+
+                foreach (var p in el.EnumerateObject())
+                {
+                    var found = FindString(p.Value, propName);
+                    if (found is not null) return found;
+                }
+            }
+            else if (el.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in el.EnumerateArray())
+                {
+                    var found = FindString(item, propName);
+                    if (found is not null) return found;
+                }
+            }
+            return null;
+        }
 
         public async Task<(byte[] Content, string FileName)?> IndirXmlAsync(
             int firmaId, string donem, CancellationToken ct = default)

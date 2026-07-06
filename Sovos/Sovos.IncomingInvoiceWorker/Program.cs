@@ -50,6 +50,11 @@ builder.Services.AddScoped<IIncomingInvoiceScraper, IncomingInvoiceScraper>();
 builder.Services.AddScoped<IGelenFaturaUpsertService, GelenFaturaUpsertService>();
 builder.Services.AddScoped<IIncomingInvoiceOrchestrator, IncomingInvoiceOrchestrator>();
 
+// Tek fatura PDF çekimi: firma bazlı kilit (singleton) + PDF servisi + FileApi HttpClient.
+builder.Services.AddSingleton<IFirmaLock, FirmaLock>();
+builder.Services.AddScoped<IInvoicePdfService, InvoicePdfService>();
+builder.Services.AddHttpClient("file-api");
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
