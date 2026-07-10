@@ -1,0 +1,261 @@
+@page "/mevzuat-notlari"
+@using System.Globalization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.MevzuatNotlari
+
+@inject IMevzuatNotuApi Api
+@inject DialogService Dialog
+@inject NotificationService Notif
+@implements IDisposable
+
+<RadzenStack Orientation="Orientation.Vertical" Gap="1rem">
+
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap" Gap="0.75rem">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+            <RadzenIcon Icon="menu_book" Style="font-size:2rem; color: var(--rz-primary);" />
+            <div>
+                <RadzenText TextStyle="TextStyle.H4" class="rz-m-0">Mevzuat notları</RadzenText>
+                <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary rz-m-0">@notlar.Count not</RadzenText>
+            </div>
+        </RadzenStack>
+        <RadzenButton Text="Yeni not" Icon="add_circle" ButtonStyle="ButtonStyle.Primary"
+                      Click="@OpenCreateAsync" />
+    </RadzenStack>
+
+    <RadzenTextBox Value="@arama" @oninput="@OnSearchInput"
+                   Placeholder="Notlarda ara (başlık, madde, özet, etiket)..."
+                   Style="width:100%; max-width:520px;" />
+
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.4rem" Wrap="FlexWrap.Wrap" AlignItems="AlignItems.Center">
+        <RadzenButton Text="@($"Tümü {ToplamAdet}")" Size="ButtonSize.Small"
+                      ButtonStyle="@(selectedKategori is null ? ButtonStyle.Primary : ButtonStyle.Light)"
+                      Click="@(() => SelectKategoriAsync(null))" />
+        @foreach (var kat in Kategoriler)
+        {
+            <RadzenButton Text="@($"{kat} {AdetOf(kat)}")" Size="ButtonSize.Small"
+                          ButtonStyle="@(selectedKategori == kat ? ButtonStyle.Primary : ButtonStyle.Light)"
+                          Click="@(() => SelectKategoriAsync(kat))" />
+        }
+    </RadzenStack>
+
+    @if (loading)
+    {
+        <RadzenCard class="rz-p-4">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+                <span>Yükleniyor...</span>
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else if (notlar.Count == 0)
+    {
+        <RadzenCard class="rz-p-4" Style="border: 1px dashed var(--rz-border-light); background: var(--rz-base-50);">
+            <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenIcon Icon="menu_book" Style="font-size:3rem; color: var(--rz-text-secondary);" />
+                <RadzenText TextStyle="TextStyle.H6" class="rz-m-0">Kayıt bulunamadı</RadzenText>
+                <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary">
+                    Arama/filtreyi değiştirin veya "Yeni not" ile ilk kaydı oluşturun.
+                </RadzenText>
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else
+    {
+        <RadzenStack Gap="0.75rem">
+            @foreach (var not in notlar)
+            {
+                <RadzenCard class="mn-card rz-p-3" Style="cursor:pointer;"
+                            @onclick="@(() => OpenDetayAsync(not))">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <RadzenBadge Text="@not.Kategori" BadgeStyle="@BadgeStyleFor(not.Kategori)" />
+                        @if (!string.IsNullOrWhiteSpace(not.MaddeNo))
+                        {
+                            <span class="mn-madde">@not.MaddeNo</span>
+                        }
+                        <div style="flex:1;"></div>
+                        <span class="mn-tarih">@Tarih(not.OlusturmaTarihi)</span>
+                    </RadzenStack>
+
+                    <div class="mn-baslik">@not.Baslik</div>
+
+                    @if (!string.IsNullOrWhiteSpace(not.Ozet))
+                    {
+                        <div class="mn-ozet">@not.Ozet</div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(not.Etiketler))
+                    {
+                        <div class="mn-etiket">@string.Join(" · ", EtiketlerOf(not))</div>
+                    }
+                </RadzenCard>
+            }
+        </RadzenStack>
+    }
+</RadzenStack>
+
+<style>
+    .mn-card { transition: box-shadow .15s ease, transform .15s ease; }
+    .mn-card:hover { box-shadow: var(--rz-shadow-3); transform: translateY(-1px); }
+    .mn-madde {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px; color: var(--rz-text-secondary);
+    }
+    .mn-tarih { font-size: 12px; color: var(--rz-text-secondary); }
+    .mn-baslik { font-size: 15px; font-weight: 500; margin-top: .4rem; }
+    .mn-ozet { font-size: 13px; color: var(--rz-text-secondary); margin-top: .2rem; }
+    .mn-etiket { font-size: 12px; color: var(--rz-text-secondary); margin-top: .45rem; }
+</style>
+
+@code {
+    private static readonly string[] Kategoriler = { "GVK", "KVK", "VUK", "KDV", "SGK", "TTK" };
+    private static readonly CultureInfo TrCulture = new("tr-TR");
+
+    private List<MevzuatNotuDto> notlar = new();
+    private Dictionary<string, int> kategoriSayilari = new();
+
+    private string arama = string.Empty;
+    private string? selectedKategori;
+    private bool loading = true;
+
+    private CancellationTokenSource? _debounceCts;
+
+    private int ToplamAdet => kategoriSayilari.Values.Sum();
+    private int AdetOf(string kat) => kategoriSayilari.TryGetValue(kat, out var n) ? n : 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshSayilariAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        StateHasChanged();
+        try
+        {
+            notlar = await Api.GetAllAsync(selectedKategori, string.IsNullOrWhiteSpace(arama) ? null : arama);
+        }
+        catch (Exception ex)
+        {
+            notlar = new();
+            ShowError($"Yüklenemedi: {ex.Message}");
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshSayilariAsync()
+    {
+        try { kategoriSayilari = await Api.GetKategoriSayilariAsync(); }
+        catch { kategoriSayilari = new(); }
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        arama = e.Value?.ToString() ?? string.Empty;
+
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+        try
+        {
+            await Task.Delay(300, token);
+            if (!token.IsCancellationRequested)
+                await LoadAsync();
+        }
+        catch (TaskCanceledException) { /* yeni tuş vuruşu geldi */ }
+    }
+
+    private async Task SelectKategoriAsync(string? kat)
+    {
+        selectedKategori = kat;
+        await LoadAsync();
+    }
+
+    private async Task OpenCreateAsync()
+    {
+        var result = await Dialog.OpenAsync<MevzuatNotuFormDialog>(
+            "Yeni not",
+            new Dictionary<string, object>(),
+            new DialogOptions { Width = "720px", CloseDialogOnOverlayClick = false });
+
+        if (result is true)
+            await ReloadAllAsync();
+    }
+
+    private async Task OpenDetayAsync(MevzuatNotuDto not)
+    {
+        var result = await Dialog.OpenAsync<MevzuatNotuDetayDialog>(
+            not.Baslik,
+            new Dictionary<string, object> { ["Not"] = not },
+            new DialogOptions
+            {
+                Width = "600px",
+                Height = "auto",
+                CloseDialogOnOverlayClick = true,
+                ShowTitle = false
+            });
+
+        if (result is string s)
+        {
+            if (s == "deleted")
+            {
+                await ReloadAllAsync();
+            }
+            else if (s == "edit")
+            {
+                var edited = await Dialog.OpenAsync<MevzuatNotuFormDialog>(
+                    $"Düzenle — {not.Baslik}",
+                    new Dictionary<string, object> { ["Existing"] = not },
+                    new DialogOptions { Width = "720px", CloseDialogOnOverlayClick = false });
+
+                if (edited is true)
+                    await ReloadAllAsync();
+            }
+        }
+    }
+
+    private async Task ReloadAllAsync()
+    {
+        await RefreshSayilariAsync();
+        await LoadAsync();
+    }
+
+    private static string Tarih(DateTime dt) => dt.ToString("dd MMM", TrCulture);
+
+    private static IEnumerable<string> EtiketlerOf(MevzuatNotuDto not) =>
+        (not.Etiketler ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private static BadgeStyle BadgeStyleFor(string kategori) => kategori?.ToUpperInvariant() switch
+    {
+        "GVK" => BadgeStyle.Success,   // yeşil
+        "KVK" => BadgeStyle.Secondary, // mor
+        "VUK" => BadgeStyle.Warning,   // turuncu
+        "KDV" => BadgeStyle.Info,      // mavi
+        "SGK" => BadgeStyle.Danger,    // kırmızı
+        "TTK" => BadgeStyle.Light,     // gri
+        _ => BadgeStyle.Light
+    };
+
+    private void ShowError(string msg) =>
+        Notif.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Error,
+            Summary  = "Hata",
+            Detail   = msg,
+            Duration = 5000
+        });
+
+    public void Dispose()
+    {
+        try { _debounceCts?.Cancel(); } catch { }
+        _debounceCts?.Dispose();
+    }
+}

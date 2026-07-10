@@ -140,9 +140,12 @@ namespace CatalogService.Api.Features.KdvBeyanname.Services
                 .Where(g => g.FirmaId == firmaId);
 
             if (baslangic.HasValue)
-                query = query.Where(g => g.FaturaTarihi >= baslangic.Value);
+                query = query.Where(g => g.FaturaTarihi >= baslangic.Value.Date);
             if (bitis.HasValue)
-                query = query.Where(g => g.FaturaTarihi <= bitis.Value);
+            {
+                var bitisUst = bitis.Value.Date.AddDays(1);
+                query = query.Where(g => g.FaturaTarihi < bitisUst);
+            }
 
             return await query
                 .OrderByDescending(g => g.FaturaTarihi)

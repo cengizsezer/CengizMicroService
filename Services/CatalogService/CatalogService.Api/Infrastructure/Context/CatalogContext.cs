@@ -86,6 +86,9 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<Features.TicaretSicil.Domain.TicaretSicilAdim> TicaretSicilAdimlar => Set<Features.TicaretSicil.Domain.TicaretSicilAdim>();
         public DbSet<Features.TicaretSicil.Domain.TicaretSicilEk> TicaretSicilEkler => Set<Features.TicaretSicil.Domain.TicaretSicilEk>();
 
+        // Mevzuat Notları modülü (ortak referans içerik; tenant'a bağlı değil)
+        public DbSet<Features.MevzuatNotlari.Domain.MevzuatNotu> MevzuatNotlari => Set<Features.MevzuatNotlari.Domain.MevzuatNotu>();
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -130,6 +133,9 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new TicaretSicilIslemEntityTypeConfiguration());
             builder.ApplyConfiguration(new TicaretSicilAdimEntityTypeConfiguration());
             builder.ApplyConfiguration(new TicaretSicilEkEntityTypeConfiguration());
+
+            // Mevzuat Notları modülü
+            builder.ApplyConfiguration(new MevzuatNotuEntityTypeConfiguration());
 
 
             SetBuilderPKFConfiguration(builder);

@@ -1,0 +1,140 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.MevzuatNotlari
+
+@inject IMevzuatNotuApi Api
+@inject DialogService Dialog
+@inject NotificationService Notif
+
+<RadzenTemplateForm TItem="MevzuatNotuDto" Data="@Model" Submit="@OnSubmit">
+    <RadzenStack Gap="0.75rem">
+
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.75rem">
+            <RadzenFormField Text="Kategori" Variant="Variant.Outlined" Style="width: 160px;">
+                <RadzenDropDown Name="Kategori" @bind-Value="Model.Kategori"
+                                Data="@Kategoriler" Style="width:100%"
+                                Placeholder="Seçin" />
+            </RadzenFormField>
+            <RadzenRequiredValidator Component="Kategori" Text="Kategori zorunlu" />
+
+            <RadzenFormField Text="Madde No" Variant="Variant.Outlined" Style="flex:1;">
+                <RadzenTextBox Name="MaddeNo" @bind-Value="Model.MaddeNo" Style="width:100%" MaxLength="50"
+                               Placeholder="Örn: Md. 328, Mük. Md. 20/B" />
+            </RadzenFormField>
+        </RadzenStack>
+
+        <RadzenFormField Text="Başlık" Variant="Variant.Outlined">
+            <RadzenTextBox Name="Baslik" @bind-Value="Model.Baslik" Style="width:100%" MaxLength="200" />
+        </RadzenFormField>
+        <RadzenRequiredValidator Component="Baslik" Text="Başlık zorunlu" />
+
+        <RadzenFormField Text="Özet" Variant="Variant.Outlined">
+            <RadzenTextArea Name="Ozet" @bind-Value="Model.Ozet" Style="width:100%" MaxLength="300" Rows="2" />
+        </RadzenFormField>
+
+        <RadzenFormField Text="İçerik (markdown)" Variant="Variant.Outlined">
+            <RadzenTextArea Name="Icerik" @bind-Value="Model.Icerik" Style="width:100%" Rows="10" />
+        </RadzenFormField>
+
+        <RadzenFormField Text="Etiketler (virgülle ayırın)" Variant="Variant.Outlined">
+            <RadzenTextBox Name="Etiketler" @bind-Value="Model.Etiketler" Style="width:100%" MaxLength="200"
+                           Placeholder="amortisman, yeniden değerleme" />
+        </RadzenFormField>
+
+        <RadzenFormField Text="Kaynak (GİB linki / özelge no)" Variant="Variant.Outlined">
+            <RadzenTextBox Name="Kaynak" @bind-Value="Model.Kaynak" Style="width:100%" MaxLength="500" />
+        </RadzenFormField>
+
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+            <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light"
+                          Click="@(() => Dialog.Close(false))" Disabled="@busy" />
+            <RadzenButton Text="@(busy ? "Kaydediliyor..." : "Kaydet")"
+                          Icon="@(busy ? "" : "save")"
+                          IsBusy="@busy"
+                          BusyText="Kaydediliyor..."
+                          ButtonStyle="ButtonStyle.Primary"
+                          ButtonType="ButtonType.Submit"
+                          Disabled="@busy" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public MevzuatNotuDto? Existing { get; set; }
+
+    private static readonly string[] Kategoriler = { "GVK", "KVK", "VUK", "KDV", "SGK", "TTK" };
+
+    private MevzuatNotuDto Model { get; set; } = new();
+    private bool busy;
+
+    private bool IsEdit => Existing is not null && Existing.Id > 0;
+
+    protected override void OnInitialized()
+    {
+        if (Existing is not null)
+        {
+            Model = new MevzuatNotuDto
+            {
+                Id        = Existing.Id,
+                Kategori  = Existing.Kategori,
+                MaddeNo   = Existing.MaddeNo,
+                Baslik    = Existing.Baslik,
+                Ozet      = Existing.Ozet,
+                Icerik    = Existing.Icerik,
+                Etiketler = Existing.Etiketler,
+                Kaynak    = Existing.Kaynak,
+            };
+        }
+    }
+
+    private async Task OnSubmit(MevzuatNotuDto _)
+    {
+        busy = true;
+        try
+        {
+            Model.Kategori  = Model.Kategori?.Trim() ?? string.Empty;
+            Model.MaddeNo   = Model.MaddeNo?.Trim();
+            Model.Baslik    = Model.Baslik?.Trim() ?? string.Empty;
+            Model.Ozet      = Model.Ozet?.Trim();
+            Model.Etiketler = Model.Etiketler?.Trim();
+            Model.Kaynak    = Model.Kaynak?.Trim();
+
+            var result = IsEdit
+                ? await Api.UpdateAsync(Existing!.Id, Model)
+                : await Api.CreateAsync(Model);
+
+            if (result is null)
+            {
+                ShowError("Kayıt işlemi başarısız oldu.");
+                return;
+            }
+
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary  = IsEdit ? "Güncellendi" : "Eklendi",
+                Detail   = $"{Model.Baslik} kaydedildi.",
+                Duration = 3000
+            });
+            Dialog.Close(true);
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex.Message);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private void ShowError(string msg) =>
+        Notif.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Error,
+            Summary  = "Hata",
+            Detail   = msg,
+            Duration = 5000
+        });
+}

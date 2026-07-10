@@ -1,0 +1,307 @@
+@using System.Text
+@using System.Text.RegularExpressions
+@using System.Globalization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.MevzuatNotlari
+
+@inject IMevzuatNotuApi Api
+@inject DialogService Dialog
+@inject NotificationService Notif
+
+<div class="mn-dialog">
+
+    <div class="mn-header">
+        <RadzenButton Icon="close" Variant="Variant.Text" class="mn-close"
+                      Click="@(() => Dialog.Close())" />
+
+        <div class="mn-meta">
+            <RadzenBadge Text="@Not.Kategori" BadgeStyle="@BadgeStyleFor(Not.Kategori)" />
+            @if (!string.IsNullOrWhiteSpace(Not.MaddeNo))
+            {
+                <span class="mn-madde">@Not.MaddeNo</span>
+            }
+            <span class="mn-dot">·</span>
+            <span class="mn-tarih">@Tarih(Not.OlusturmaTarihi)</span>
+        </div>
+
+        <div class="mn-title">@Not.Baslik</div>
+    </div>
+
+    <div class="mn-body">
+        @if (!string.IsNullOrWhiteSpace(Not.Ozet))
+        {
+            <div class="mn-ozet-box">
+                <div class="mn-label">Özet</div>
+                <div class="mn-ozet-text">@Not.Ozet</div>
+            </div>
+        }
+
+        <div class="mn-icerik">
+            @RenderMarkdown(Not.Icerik)
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Not.Kaynak))
+        {
+            <div class="mn-kaynak">
+                <div class="mn-label">Kaynak</div>
+                @if (IsUrl(Not.Kaynak))
+                {
+                    <a class="mn-kaynak-link" href="@Not.Kaynak" target="_blank" rel="noopener noreferrer">
+                        <RadzenIcon Icon="open_in_new" Style="font-size:0.95rem;" />
+                        <span>@Not.Kaynak</span>
+                    </a>
+                }
+                else
+                {
+                    <span class="rz-color-secondary">@Not.Kaynak</span>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="mn-footer">
+        <RadzenButton Text="Sil" Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined"
+                      Click="@DeleteAsync" Disabled="@busy" />
+        <RadzenButton Text="Düzenle" Icon="edit" ButtonStyle="ButtonStyle.Primary"
+                      Click="@(() => Dialog.Close("edit"))" Disabled="@busy" />
+    </div>
+</div>
+
+<style>
+    /* Üç bölge: header (sabit) / body (scroll) / footer (sabit) */
+    .mn-dialog {
+        display: flex;
+        flex-direction: column;
+        max-height: 85vh;
+        overflow: hidden;
+    }
+
+    /* 1) HEADER */
+    .mn-header {
+        position: relative;
+        flex-shrink: 0;
+        padding: 1.25rem 1.5rem 1rem;
+        border-bottom: 0.5px solid var(--rz-border-light);
+    }
+
+    .mn-close {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        padding: 0;
+        border: none;
+    }
+
+    .mn-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .mn-madde {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        color: var(--rz-text-secondary);
+    }
+    .mn-dot { color: var(--rz-text-secondary); }
+    .mn-tarih { font-size: 12px; color: var(--rz-text-secondary); }
+
+    .mn-title {
+        margin-top: 0.5rem;
+        font-size: 18px;
+        font-weight: 500;
+        line-height: 1.4;
+        padding-right: 2.5rem; /* kapat butonuyla çakışmasın */
+    }
+
+    /* 2) BODY */
+    .mn-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.25rem 1.5rem;
+    }
+
+    .mn-label {
+        font-size: 11px;
+        color: var(--rz-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
+
+    .mn-ozet-box {
+        background: var(--rz-base-200);
+        border-radius: 8px;
+        padding: 0.875rem 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .mn-ozet-box .mn-label { margin-bottom: 0.25rem; }
+    .mn-ozet-text { font-size: 14px; color: var(--rz-text-color); }
+
+    .mn-icerik {
+        max-width: 70ch;
+        font-size: 15px;
+        line-height: 1.7;
+        color: var(--rz-text-color);
+    }
+    .mn-icerik h2 { font-size: 19px; margin: 1rem 0 0.4rem; }
+    .mn-icerik h3 { font-size: 17px; margin: 1rem 0 0.4rem; }
+    .mn-icerik h4 { font-size: 15px; margin: 1rem 0 0.4rem; }
+    .mn-icerik p { margin: 0 0 1rem; }
+    .mn-icerik ul { margin: 0 0 1rem 1.2rem; }
+    .mn-icerik code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        background: var(--rz-base-200); padding: 1px 4px; border-radius: 3px; font-size: 13px;
+    }
+
+    .mn-kaynak {
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+        border-top: 0.5px solid var(--rz-border-light);
+    }
+    .mn-kaynak .mn-label { margin-bottom: 0.35rem; }
+    .mn-kaynak-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 14px;
+    }
+
+    /* 3) FOOTER */
+    .mn-footer {
+        flex-shrink: 0;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 1rem 1.5rem;
+        border-top: 0.5px solid var(--rz-border-light);
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public MevzuatNotuDto Not { get; set; } = default!;
+
+    private static readonly CultureInfo TrCulture = new("tr-TR");
+    private bool busy;
+
+    private static string Tarih(DateTime dt) => dt.ToString("dd MMM yyyy", TrCulture);
+
+    private static bool IsUrl(string s) =>
+        Uri.TryCreate(s, UriKind.Absolute, out var u) &&
+        (u.Scheme == Uri.UriSchemeHttp || u.Scheme == Uri.UriSchemeHttps);
+
+    private static BadgeStyle BadgeStyleFor(string kategori) => kategori?.ToUpperInvariant() switch
+    {
+        "GVK" => BadgeStyle.Success,  // yeşil
+        "KVK" => BadgeStyle.Secondary,// mor
+        "VUK" => BadgeStyle.Warning,  // turuncu
+        "KDV" => BadgeStyle.Info,     // mavi
+        "SGK" => BadgeStyle.Danger,   // kırmızı
+        "TTK" => BadgeStyle.Light,    // gri
+        _ => BadgeStyle.Light
+    };
+
+    private async Task DeleteAsync()
+    {
+        var confirm = await Dialog.Confirm(
+            $"'{Not.Baslik}' silinecek. Devam edilsin mi?",
+            "Notu Sil",
+            new ConfirmOptions { OkButtonText = "Evet, sil", CancelButtonText = "Vazgeç" });
+
+        if (confirm != true) return;
+
+        busy = true;
+        try
+        {
+            var ok = await Api.DeleteAsync(Not.Id);
+            if (!ok)
+            {
+                Notif.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary  = "Hata",
+                    Detail   = "Kayıt bulunamadı.",
+                    Duration = 4000
+                });
+                return;
+            }
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary  = "Silindi",
+                Detail   = $"{Not.Baslik} silindi.",
+                Duration = 3000
+            });
+            Dialog.Close("deleted");
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary  = "Hata",
+                Detail   = ex.Message,
+                Duration = 5000
+            });
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    // --- Basit markdown -> HTML (bağımlılık yok) ---
+    private static MarkupString RenderMarkdown(string? md)
+    {
+        if (string.IsNullOrWhiteSpace(md)) return (MarkupString)"<p class=\"rz-color-secondary\"><em>İçerik yok.</em></p>";
+
+        var lines = md.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
+        var sb = new StringBuilder();
+        bool inList = false;
+
+        foreach (var raw in lines)
+        {
+            var line = raw.TrimEnd();
+
+            if (string.IsNullOrWhiteSpace(line)) { CloseList(sb, ref inList); continue; }
+
+            if (line.StartsWith("### ")) { CloseList(sb, ref inList); sb.Append($"<h4>{Inline(line[4..])}</h4>"); continue; }
+            if (line.StartsWith("## "))  { CloseList(sb, ref inList); sb.Append($"<h3>{Inline(line[3..])}</h3>"); continue; }
+            if (line.StartsWith("# "))   { CloseList(sb, ref inList); sb.Append($"<h2>{Inline(line[2..])}</h2>"); continue; }
+
+            if (line.StartsWith("- ") || line.StartsWith("* "))
+            {
+                if (!inList) { sb.Append("<ul>"); inList = true; }
+                sb.Append($"<li>{Inline(line[2..])}</li>");
+                continue;
+            }
+
+            CloseList(sb, ref inList);
+            sb.Append($"<p>{Inline(line)}</p>");
+        }
+
+        CloseList(sb, ref inList);
+        return (MarkupString)sb.ToString();
+    }
+
+    private static void CloseList(StringBuilder sb, ref bool inList)
+    {
+        if (inList) { sb.Append("</ul>"); inList = false; }
+    }
+
+    private static string Inline(string s)
+    {
+        var e = System.Net.WebUtility.HtmlEncode(s);
+        // link [text](http...) — yalnızca http/https
+        e = Regex.Replace(e, @"\[([^\]]+)\]\((https?:[^)\s]+)\)",
+            m => $"<a href=\"{m.Groups[2].Value}\" target=\"_blank\" rel=\"noopener noreferrer\">{m.Groups[1].Value}</a>");
+        e = Regex.Replace(e, @"\*\*([^*]+)\*\*", "<strong>$1</strong>");
+        e = Regex.Replace(e, @"\*([^*]+)\*", "<em>$1</em>");
+        e = Regex.Replace(e, @"`([^`]+)`", "<code>$1</code>");
+        return e;
+    }
+}
