@@ -52,7 +52,10 @@
       "Bash(curl -s -m 4 -o /dev/null -w \"FileApi\\(5009\\): %{http_code}\\\\n\" http://localhost:5009/swagger/index.html)",
       "Bash(curl -s -m 4 -o /dev/null -w \"MinIO\\(9000\\): %{http_code}\\\\n\" http://localhost:9000/minio/health/live)",
       "Bash(curl -s -m 4 -o /dev/null -w \"Worker\\(5021\\): %{http_code}\\\\n\" http://localhost:5021/api/kdv-beyanname/health)",
-      "PowerShell(dotnet ef *)"
+      "PowerShell(dotnet ef *)",
+      "Read(//c/Users/cengi/AppData/Local/Temp/claude/C--GitHub-CengizMicroService/ebe5d785-05d1-4c39-846a-ce015871d769/scratchpad/**)",
+      "Bash(python preview.py)",
+      "Bash(py preview.py)"
     ]
   }
 }

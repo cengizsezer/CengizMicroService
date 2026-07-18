@@ -454,9 +454,29 @@
         var sb = new StringBuilder();
         bool inList = false;
 
-        foreach (var raw in lines)
+        for (int i = 0; i < lines.Length; i++)
         {
-            var line = raw.TrimEnd();
+            var line = lines[i].TrimEnd();
+
+            // [[dal]] node-şeması bloğu: kök başlığı + hemen altındaki ardışık "- " dalları
+            if (line.StartsWith("[[dal]]"))
+            {
+                CloseList(sb, ref inList);
+                var kok = line.Substring("[[dal]]".Length).Trim();
+                var dallar = new List<string>();
+                int j = i + 1;
+                while (j < lines.Length)
+                {
+                    var next = lines[j].TrimEnd();
+                    if (string.IsNullOrWhiteSpace(next) || !next.StartsWith("- ")) break;
+                    dallar.Add(next[2..]);
+                    j++;
+                }
+                sb.Append(RenderDal(kok, dallar));
+                i = j - 1; // tüketilen dal satırlarını atla
+                continue;
+            }
+
             if (string.IsNullOrWhiteSpace(line)) { CloseList(sb, ref inList); continue; }
 
             if (line.StartsWith("### ")) { CloseList(sb, ref inList); sb.Append($"<h4>{Inline(line[4..])}</h4>"); continue; }
@@ -476,6 +496,34 @@
 
         CloseList(sb, ref inList);
         return (MarkupString)sb.ToString();
+    }
+
+    // Kök kutudan oklarla dallara bağlanan yatay ezber şeması (had/link/kart DEĞİL, sadece metin kutuları)
+    private static string RenderDal(string kok, List<string> dallar)
+    {
+        if (dallar.Count == 0)
+            return $"<p>{Inline(kok)}</p>";
+
+        var kokBox =
+            "<div style=\"flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; " +
+            "padding:10px 16px; border:2px solid #4a5568; border-radius:8px; background:#f7fafc; " +
+            "font-weight:600; text-align:center; max-width:220px; color:#2d3748\">" + Inline(kok) + "</div>";
+
+        var branchRows = new StringBuilder();
+        foreach (var dal in dallar)
+        {
+            branchRows.Append(
+                "<div style=\"display:flex; align-items:center; gap:6px\">" +
+                "<span style=\"color:#a0aec0; font-size:20px; line-height:1\">&#8594;</span>" +
+                "<div style=\"padding:7px 12px; border:1px solid #cbd5e0; border-radius:6px; " +
+                "background:#fff; color:#2d3748; max-width:260px\">" + Inline(dal) + "</div>" +
+                "</div>");
+        }
+
+        return
+            "<div style=\"display:flex; align-items:center; gap:14px; margin:.9rem 0; " +
+            "padding:6px 2px; overflow-x:auto\">" + kokBox +
+            "<div style=\"display:flex; flex-direction:column; gap:8px\">" + branchRows + "</div></div>";
     }
 
     private static void CloseList(StringBuilder sb, ref bool inList)

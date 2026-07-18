@@ -17,7 +17,7 @@ namespace CatalogService.Api.Features.SmmmTakip
             var kok = await EnsureKonuAsync(db, "smmm-takip", "SMMM Takip", null, 1, null, ct);
             var gelir = await EnsureKonuAsync(db, "gelir-unsurlari", "Gelir Unsurları", kok.Id, 1, null, ct);
 
-            await EnsureKonuAsync(db, "ticari-kazanc", "Ticari Kazanç", gelir.Id, 1, null, ct);
+            await EnsureKonuAsync(db, "ticari-kazanc", "Ticari Kazanç", gelir.Id, 1, TicariKazancIcerik, ct);
             await EnsureKonuAsync(db, "zirai-kazanc", "Zirai Kazanç", gelir.Id, 2, null, ct);
             var basitUsul = await EnsureKonuAsync(db, "basit-usul", "Basit Usul", gelir.Id, 3, BasitUsulIcerik, ct);
             await EnsureKonuAsync(db, "serbest-meslek", "Serbest Meslek", gelir.Id, 4, null, ct);
@@ -95,6 +95,22 @@ namespace CatalogService.Api.Features.SmmmTakip
             }
             await db.SaveChangesAsync(ct);
         }
+
+        // [[dal]] node-şeması örneği — kök kutudan dallara yatay ezber şeması çizer.
+        private const string TicariKazancIcerik =
+@"### Ticari Kazancın Tespit Usulleri
+
+Ticari kazanç iki usulden biriyle tespit edilir; gerçek usul de kendi içinde ikiye ayrılır.
+
+[[dal]] Ticari Kazanç
+- Basit Usul
+- Gerçek Usul
+
+[[dal]] Gerçek Usul
+- Bilanço Esası
+- İşletme Hesabı Esası
+
+**Not:** Basit usul şartları ihlal edilirse takip eden takvim yılından itibaren gerçek usule geçilir.";
 
         // Tablosuz markdown — hand-rolled RenderMarkdown helper'ı tablo desteklemez.
         private const string BasitUsulIcerik =
