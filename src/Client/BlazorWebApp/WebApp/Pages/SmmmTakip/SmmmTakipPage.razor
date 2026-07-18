@@ -1,0 +1,496 @@
+@page "/smmm-takip"
+@using System.Text
+@using System.Text.RegularExpressions
+@using System.Globalization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.SmmmTakip
+@using Microsoft.AspNetCore.Components.Web
+@inject ISmmmTakipApi Api
+@inject DialogService Dialog
+@inject NotificationService Notif
+
+<style>
+    .st-left { height: calc(100vh - 140px); display: flex; flex-direction: column; }
+    .st-viewer { min-height: 220px; padding: 12px 16px; border-radius: 6px; border: 1px solid #eee; background: #fff; }
+    .st-md { max-width: 74ch; font-size: 15px; line-height: 1.7; }
+    .st-md h2 { font-size: 19px; margin: 1rem 0 .4rem; }
+    .st-md h3 { font-size: 17px; margin: 1rem 0 .4rem; }
+    .st-md h4 { font-size: 15px; margin: 1rem 0 .4rem; }
+    .st-md p { margin: 0 0 .8rem; }
+    .st-md ul { margin: 0 0 .8rem 1.2rem; }
+    .st-md code { font-family: ui-monospace, Consolas, monospace; background: #f3f3f3; padding: 1px 4px; border-radius: 3px; font-size: 13px; }
+    .st-panel { border: 1px solid #eee; border-radius: 6px; padding: 12px 16px; margin-top: 12px; background: #fff; }
+    .st-form-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 8px; }
+    .st-form-row > div { display: flex; flex-direction: column; gap: 2px; }
+    .st-form-row label { font-size: 11px; color: #888; }
+    .st-year-chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+</style>
+
+<div class="row">
+    <!-- SOL: Konu ağacı -->
+    <div class="col-4">
+        <div class="st-left">
+            <RadzenTextBox placeholder="Ara (başlık)" type="search"
+                           @oninput="Filter" style="width:100%; margin-bottom:8px" />
+
+            <div style="flex:0 0 auto">
+                <RadzenTree Style="width:100%" Change="@OnSelect">
+                    @foreach (var root in _viewRoots)
+                    {
+                        @RenderNode(root)
+                    }
+                </RadzenTree>
+            </div>
+
+            <div class="rz-mt-3">
+                <RadzenButton Text="Yeni Konu" Icon="add" ButtonStyle="ButtonStyle.Secondary"
+                              Size="ButtonSize.Small" Click="@(() => _yeniKonuAcik = !_yeniKonuAcik)" />
+            </div>
+
+            @if (_yeniKonuAcik)
+            {
+                <div class="st-panel">
+                    <div class="st-form-row">
+                        <div style="flex:1 1 100%">
+                            <label>Başlık</label>
+                            <RadzenTextBox @bind-Value="_yeniKonu.Baslik" Style="width:100%" />
+                        </div>
+                        <div style="flex:1 1 100%">
+                            <label>Üst Konu</label>
+                            <RadzenDropDown TValue="int?" @bind-Value="_yeniKonu.UstKonuId" Data="_konuSecenekleri"
+                                            TextProperty="Ad" ValueProperty="Id" AllowClear="true"
+                                            Placeholder="(Kök)" Style="width:100%" />
+                        </div>
+                        <div>
+                            <label>Sıra</label>
+                            <RadzenNumeric TValue="int" @bind-Value="_yeniKonu.Sira" Style="width:90px" />
+                        </div>
+                    </div>
+                    <RadzenButton Text="Kaydet" Icon="save" Size="ButtonSize.Small"
+                                  ButtonStyle="ButtonStyle.Primary" Click="@CreateKonuAsync" />
+                    <RadzenButton Text="Vazgeç" Size="ButtonSize.Small" Click="@(() => _yeniKonuAcik = false)" />
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- SAĞ: Detay -->
+    <div class="col-8">
+        @if (_detay is null)
+        {
+            <div class="text-muted">Soldan bir konu seçin.</div>
+        }
+        else
+        {
+            <div style="display:flex; justify-content:space-between; align-items:center">
+                <h4 style="margin:0">@_detay.Baslik</h4>
+                <div>
+                    @if (!_editIcerik)
+                    {
+                        <RadzenButton Text="Düzenle" Icon="edit" Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Primary" Click="@StartEditIcerik" class="rz-mr-1" />
+                        <RadzenButton Text="Konuyu Sil" Icon="delete" Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" Click="@DeleteKonuAsync" />
+                    }
+                </div>
+            </div>
+
+            <!-- İçerik (markdown) -->
+            <div class="st-viewer rz-mt-2">
+                @if (!_editIcerik)
+                {
+                    <div class="st-md">@RenderMarkdown(_detay.IcerikMd)</div>
+                }
+                else
+                {
+                    <RadzenTextArea @bind-Value="_icerikDraft" Style="width:100%; min-height:260px; font-family:ui-monospace,Consolas,monospace" />
+                    <div class="rz-mt-2">
+                        <RadzenButton Text="Kaydet" Icon="save" Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Primary" Click="@SaveIcerikAsync" class="rz-mr-1" />
+                        <RadzenButton Text="Vazgeç" Size="ButtonSize.Small" Click="@(() => _editIcerik = false)" />
+                    </div>
+                }
+            </div>
+
+            <!-- Hadler -->
+            <div class="st-panel">
+                <div class="st-year-chips">
+                    <strong>Hadler</strong>
+                    <span class="rz-ml-2" style="font-size:12px;color:#888">Yıl:</span>
+                    <RadzenNumeric TValue="int" Value="_seciliYil" Change="@OnYilChanged" Min="2000" Max="2100" Style="width:100px" />
+                    @foreach (var y in _yillar)
+                    {
+                        <RadzenButton Text="@y.ToString()" Size="ButtonSize.ExtraSmall"
+                                      ButtonStyle="@(y == _seciliYil ? ButtonStyle.Primary : ButtonStyle.Light)"
+                                      Click="@(() => SetYil(y))" />
+                    }
+                    <RadzenButton Text="Yeni Had" Icon="add" Size="ButtonSize.ExtraSmall"
+                                  ButtonStyle="ButtonStyle.Secondary" Click="@(() => _yeniHadAcik = !_yeniHadAcik)" class="rz-ml-2" />
+                </div>
+
+                @if (_yeniHadAcik)
+                {
+                    <div class="st-panel">
+                        <div class="st-form-row">
+                            <div><label>Kod</label><RadzenTextBox @bind-Value="_yeniHad.Kod" Style="width:180px" /></div>
+                            <div style="flex:1 1 220px"><label>Ad</label><RadzenTextBox @bind-Value="_yeniHad.Ad" Style="width:100%" /></div>
+                            <div>
+                                <label>Birim</label>
+                                <RadzenDropDown TValue="string" @bind-Value="_yeniHad.Birim" Data="_birimler" Style="width:90px" />
+                            </div>
+                            <div><label>Dayanak</label><RadzenTextBox @bind-Value="_yeniHad.Dayanak" Style="width:140px" /></div>
+                            <div><label>Sıra</label><RadzenNumeric TValue="int" @bind-Value="_yeniHad.Sira" Style="width:80px" /></div>
+                        </div>
+                        <RadzenButton Text="Kaydet" Icon="save" Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Primary" Click="@CreateHadAsync" />
+                        <RadzenButton Text="Vazgeç" Size="ButtonSize.Small" Click="@(() => _yeniHadAcik = false)" />
+                    </div>
+                }
+
+                @if (_detay.Hadler.Count == 0)
+                {
+                    <div class="text-muted rz-mt-2">Bu konu için tanımlı had yok.</div>
+                }
+                else
+                {
+                    <table class="rz-mt-2" style="width:100%; border-collapse:collapse; font-size:14px">
+                        <thead>
+                            <tr style="text-align:left; border-bottom:1px solid #eee; color:#666">
+                                <th style="padding:6px">Kalem</th>
+                                <th style="padding:6px">Kod</th>
+                                <th style="padding:6px">Dayanak</th>
+                                <th style="padding:6px; width:200px">@_seciliYil Değeri</th>
+                                <th style="padding:6px; width:150px"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var h in _detay.Hadler)
+                            {
+                                <tr style="border-bottom:1px solid #f5f5f5">
+                                    <td style="padding:6px">@h.Ad</td>
+                                    <td style="padding:6px"><code>@h.Kod</code></td>
+                                    <td style="padding:6px">@h.Dayanak</td>
+                                    <td style="padding:6px">
+                                        <div style="display:flex; align-items:center; gap:6px">
+                                            <RadzenNumeric TValue="decimal?" Value="@GetDeger(h.Id)"
+                                                           Change="@(v => _degerInput[h.Id] = v)" Style="width:120px" />
+                                            <span style="font-size:12px;color:#888">@h.Birim</span>
+                                        </div>
+                                    </td>
+                                    <td style="padding:6px">
+                                        <RadzenButton Icon="save" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Primary"
+                                                      Click="@(() => SaveDegerAsync(h))" title="Değeri kaydet" />
+                                        <RadzenButton Icon="delete" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Danger"
+                                                      Variant="Variant.Outlined" Click="@(() => DeleteHadAsync(h))" title="Haddi sil" />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private static readonly CultureInfo Tr = new("tr-TR");
+    private readonly string[] _birimler = { "TL", "%", "adet" };
+
+    // Ağaç
+    List<SmmmKonuAgacDto> _agac = new();
+    List<SmmmKonuAgacDto> _viewRoots = new();
+    string _term = string.Empty;
+    List<KonuSecenek> _konuSecenekleri = new();
+
+    // Seçili konu
+    SmmmKonuDetayDto? _detay;
+    int _seciliYil = DateTime.Now.Year;
+    List<int> _yillar = new();
+
+    // İçerik düzenleme
+    bool _editIcerik;
+    string? _icerikDraft;
+
+    // Değer girişi (hadId -> değer)
+    readonly Dictionary<int, decimal?> _degerInput = new();
+
+    // Yeni kayıt formları
+    bool _yeniKonuAcik;
+    bool _yeniHadAcik;
+    SmmmKonuSaveDto _yeniKonu = new();
+    SmmmHadSaveDto _yeniHad = new() { Birim = "TL" };
+
+    protected override async Task OnInitializedAsync() => await LoadAgacAsync();
+
+    async Task LoadAgacAsync()
+    {
+        _agac = await Api.GetAgacAsync();
+        _viewRoots = _agac;
+        _konuSecenekleri = FlattenSecenekler(_agac);
+        StateHasChanged();
+    }
+
+    // ---- Ağaç render ----
+    RenderFragment RenderNode(SmmmKonuAgacDto n) => __builder =>
+    {
+        __builder.OpenComponent<RadzenTreeItem>(0);
+        __builder.AddAttribute(1, "Text", n.Baslik);
+        __builder.AddAttribute(2, "Value", n);
+        __builder.AddAttribute(3, "Expanded", !string.IsNullOrWhiteSpace(_term));
+        __builder.AddAttribute(4, "ChildContent", (RenderFragment)((b) =>
+        {
+            foreach (var c in n.AltKonular)
+                b.AddContent(5, RenderNode(c));
+        }));
+        __builder.CloseComponent();
+    };
+
+    async Task OnSelect(TreeEventArgs args)
+    {
+        if (args.Value is not SmmmKonuAgacDto node) return;
+        await LoadKonuAsync(node.Id);
+    }
+
+    async Task LoadKonuAsync(int id)
+    {
+        _editIcerik = false;
+        _yeniHadAcik = false;
+        _detay = await Api.GetKonuByIdAsync(id);
+        if (_detay is null) return;
+
+        _yillar = _detay.Hadler
+            .SelectMany(h => h.Degerler.Select(d => d.Yil))
+            .Distinct().OrderByDescending(y => y).ToList();
+
+        if (_yillar.Count > 0 && !_yillar.Contains(_seciliYil))
+            _seciliYil = _yillar.First();
+
+        RefreshDegerInput();
+        StateHasChanged();
+    }
+
+    // ---- Yıl ----
+    void OnYilChanged(int y) => SetYil(y);
+
+    void SetYil(int y)
+    {
+        _seciliYil = y;
+        RefreshDegerInput();
+    }
+
+    void RefreshDegerInput()
+    {
+        _degerInput.Clear();
+        if (_detay is null) return;
+        foreach (var h in _detay.Hadler)
+            _degerInput[h.Id] = h.Degerler.FirstOrDefault(d => d.Yil == _seciliYil)?.Deger;
+    }
+
+    decimal? GetDeger(int hadId) => _degerInput.TryGetValue(hadId, out var v) ? v : null;
+
+    // ---- İçerik ----
+    void StartEditIcerik()
+    {
+        _icerikDraft = _detay?.IcerikMd;
+        _editIcerik = true;
+    }
+
+    async Task SaveIcerikAsync()
+    {
+        if (_detay is null) return;
+        var dto = new SmmmKonuSaveDto
+        {
+            UstKonuId = _detay.UstKonuId,
+            Baslik = _detay.Baslik,
+            Slug = _detay.Slug,
+            IcerikMd = _icerikDraft,
+            Sira = _detay.Sira,
+            Aktif = _detay.Aktif
+        };
+        var updated = await Api.UpdateKonuAsync(_detay.Id, dto);
+        if (updated is not null)
+        {
+            _detay = updated;
+            _editIcerik = false;
+            Toast("Kaydedildi", $"{_detay.Baslik} içeriği güncellendi.");
+        }
+        else Toast("Hata", "İçerik kaydedilemedi.", NotificationSeverity.Error);
+    }
+
+    // ---- Konu ----
+    async Task CreateKonuAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_yeniKonu.Baslik)) { Toast("Eksik", "Başlık zorunlu.", NotificationSeverity.Warning); return; }
+        var created = await Api.CreateKonuAsync(_yeniKonu);
+        if (created is not null)
+        {
+            _yeniKonu = new();
+            _yeniKonuAcik = false;
+            await LoadAgacAsync();
+            await LoadKonuAsync(created.Id);
+            Toast("Eklendi", "Yeni konu oluşturuldu.");
+        }
+        else Toast("Hata", "Konu eklenemedi.", NotificationSeverity.Error);
+    }
+
+    async Task DeleteKonuAsync()
+    {
+        if (_detay is null) return;
+        var onay = await Dialog.Confirm($"'{_detay.Baslik}' silinsin mi? (Hadleri de silinir)", "Konuyu Sil",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        var ok = await Api.DeleteKonuAsync(_detay.Id);
+        if (ok)
+        {
+            _detay = null;
+            await LoadAgacAsync();
+            Toast("Silindi", "Konu silindi.");
+        }
+        else Toast("Silinemedi", "Alt konusu olan bir konu silinemez. Önce alt konuları silin veya taşıyın.", NotificationSeverity.Warning);
+    }
+
+    // ---- Had ----
+    async Task CreateHadAsync()
+    {
+        if (_detay is null) return;
+        if (string.IsNullOrWhiteSpace(_yeniHad.Kod) || string.IsNullOrWhiteSpace(_yeniHad.Ad))
+        { Toast("Eksik", "Kod ve Ad zorunlu.", NotificationSeverity.Warning); return; }
+
+        _yeniHad.KonuId = _detay.Id;
+        var created = await Api.CreateHadAsync(_yeniHad);
+        if (created is not null)
+        {
+            _yeniHad = new() { Birim = "TL" };
+            _yeniHadAcik = false;
+            await LoadKonuAsync(_detay.Id);
+            Toast("Eklendi", "Yeni had oluşturuldu.");
+        }
+        else Toast("Hata", "Had eklenemedi (kod benzersiz olmalı).", NotificationSeverity.Error);
+    }
+
+    async Task DeleteHadAsync(SmmmHadDto h)
+    {
+        if (_detay is null) return;
+        var onay = await Dialog.Confirm($"'{h.Ad}' haddi silinsin mi?", "Haddi Sil",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        if (await Api.DeleteHadAsync(h.Id))
+        {
+            await LoadKonuAsync(_detay.Id);
+            Toast("Silindi", "Had silindi.");
+        }
+        else Toast("Hata", "Had silinemedi.", NotificationSeverity.Error);
+    }
+
+    // ---- Had değeri (yıl bazlı upsert) ----
+    async Task SaveDegerAsync(SmmmHadDto h)
+    {
+        if (_detay is null) return;
+        var deger = GetDeger(h.Id);
+        if (deger is null) { Toast("Eksik", "Değer girin.", NotificationSeverity.Warning); return; }
+
+        var dto = new SmmmHadDegeriSaveDto { HadId = h.Id, Yil = _seciliYil, Deger = deger.Value };
+        var sonuc = await Api.UpsertHadDegeriAsync(dto);
+        if (sonuc is not null)
+        {
+            await LoadKonuAsync(_detay.Id);
+            Toast("Kaydedildi", $"{h.Ad} — {_seciliYil}: {deger.Value.ToString("N0", Tr)} {h.Birim}");
+        }
+        else Toast("Hata", "Değer kaydedilemedi.", NotificationSeverity.Error);
+    }
+
+    // ---- Arama ----
+    void Filter(ChangeEventArgs e)
+    {
+        _term = (e.Value?.ToString() ?? string.Empty).Trim();
+        _viewRoots = string.IsNullOrWhiteSpace(_term) ? _agac : FilterTree(_agac, _term);
+        StateHasChanged();
+    }
+
+    static List<SmmmKonuAgacDto> FilterTree(List<SmmmKonuAgacDto> roots, string term)
+    {
+        var list = new List<SmmmKonuAgacDto>();
+        foreach (var r in roots)
+        {
+            var match = r.Baslik.Contains(term, StringComparison.OrdinalIgnoreCase);
+            var kids = FilterTree(r.AltKonular, term);
+            if (match || kids.Count > 0)
+                list.Add(new SmmmKonuAgacDto
+                {
+                    Id = r.Id, UstKonuId = r.UstKonuId, Baslik = r.Baslik, Slug = r.Slug,
+                    Sira = r.Sira, Aktif = r.Aktif, AltKonular = kids
+                });
+        }
+        return list;
+    }
+
+    static List<KonuSecenek> FlattenSecenekler(List<SmmmKonuAgacDto> roots, int depth = 0)
+    {
+        var list = new List<KonuSecenek>();
+        foreach (var r in roots)
+        {
+            list.Add(new KonuSecenek { Id = r.Id, Ad = new string('—', depth) + (depth > 0 ? " " : "") + r.Baslik });
+            list.AddRange(FlattenSecenekler(r.AltKonular, depth + 1));
+        }
+        return list;
+    }
+
+    void Toast(string ozet, string detay, NotificationSeverity sev = NotificationSeverity.Success) =>
+        Notif.Notify(new NotificationMessage { Severity = sev, Summary = ozet, Detail = detay, Duration = 3500 });
+
+    public class KonuSecenek { public int? Id { get; set; } public string Ad { get; set; } = ""; }
+
+    // ---- Markdown -> HTML (bağımlılıksız; MevzuatNotu ile aynı) ----
+    private static MarkupString RenderMarkdown(string? md)
+    {
+        if (string.IsNullOrWhiteSpace(md)) return (MarkupString)"<p style=\"color:#999\"><em>İçerik yok.</em></p>";
+
+        var lines = md.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
+        var sb = new StringBuilder();
+        bool inList = false;
+
+        foreach (var raw in lines)
+        {
+            var line = raw.TrimEnd();
+            if (string.IsNullOrWhiteSpace(line)) { CloseList(sb, ref inList); continue; }
+
+            if (line.StartsWith("### ")) { CloseList(sb, ref inList); sb.Append($"<h4>{Inline(line[4..])}</h4>"); continue; }
+            if (line.StartsWith("## "))  { CloseList(sb, ref inList); sb.Append($"<h3>{Inline(line[3..])}</h3>"); continue; }
+            if (line.StartsWith("# "))   { CloseList(sb, ref inList); sb.Append($"<h2>{Inline(line[2..])}</h2>"); continue; }
+
+            if (line.StartsWith("- ") || line.StartsWith("* "))
+            {
+                if (!inList) { sb.Append("<ul>"); inList = true; }
+                sb.Append($"<li>{Inline(line[2..])}</li>");
+                continue;
+            }
+
+            CloseList(sb, ref inList);
+            sb.Append($"<p>{Inline(line)}</p>");
+        }
+
+        CloseList(sb, ref inList);
+        return (MarkupString)sb.ToString();
+    }
+
+    private static void CloseList(StringBuilder sb, ref bool inList)
+    {
+        if (inList) { sb.Append("</ul>"); inList = false; }
+    }
+
+    private static string Inline(string s)
+    {
+        var e = System.Net.WebUtility.HtmlEncode(s);
+        e = Regex.Replace(e, @"\[([^\]]+)\]\((https?:[^)\s]+)\)",
+            m => $"<a href=\"{m.Groups[2].Value}\" target=\"_blank\" rel=\"noopener noreferrer\">{m.Groups[1].Value}</a>");
+        e = Regex.Replace(e, @"\*\*([^*]+)\*\*", "<strong>$1</strong>");
+        e = Regex.Replace(e, @"\*([^*]+)\*", "<em>$1</em>");
+        e = Regex.Replace(e, @"`([^`]+)`", "<code>$1</code>");
+        return e;
+    }
+}

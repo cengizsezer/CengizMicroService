@@ -89,6 +89,11 @@ namespace CatalogService.Api.Infrastructure.Context
         // Mevzuat Notları modülü (ortak referans içerik; tenant'a bağlı değil)
         public DbSet<Features.MevzuatNotlari.Domain.MevzuatNotu> MevzuatNotlari => Set<Features.MevzuatNotlari.Domain.MevzuatNotu>();
 
+        // SMMM Takip modülü (ortak referans içerik; tenant'a bağlı değil)
+        public DbSet<Features.SmmmTakip.Domain.SmmmKonu> SmmmKonular => Set<Features.SmmmTakip.Domain.SmmmKonu>();
+        public DbSet<Features.SmmmTakip.Domain.SmmmHad> SmmmHadler => Set<Features.SmmmTakip.Domain.SmmmHad>();
+        public DbSet<Features.SmmmTakip.Domain.SmmmHadDegeri> SmmmHadDegerleri => Set<Features.SmmmTakip.Domain.SmmmHadDegeri>();
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -136,6 +141,11 @@ namespace CatalogService.Api.Infrastructure.Context
 
             // Mevzuat Notları modülü
             builder.ApplyConfiguration(new MevzuatNotuEntityTypeConfiguration());
+
+            // SMMM Takip modülü
+            builder.ApplyConfiguration(new SmmmKonuEntityTypeConfiguration());
+            builder.ApplyConfiguration(new SmmmHadEntityTypeConfiguration());
+            builder.ApplyConfiguration(new SmmmHadDegeriEntityTypeConfiguration());
 
 
             SetBuilderPKFConfiguration(builder);

@@ -150,6 +150,9 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             services.AddScoped<IMevzuatNotuApi>(sp =>
                 new MevzuatNotuApi(sp.GetRequiredService<HttpClient>()));
 
+            services.AddScoped<ISmmmTakipApi>(sp =>
+                new SmmmTakipApi(sp.GetRequiredService<HttpClient>()));
+
             services.AddScoped<IUserAdminService>(sp =>
                 new UserAdminService(sp.GetRequiredService<HttpClient>()));
 

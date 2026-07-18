@@ -1835,6 +1835,128 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("PersonnelEmails", "catalog");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.SmmmTakip.Domain.SmmmHad", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("Birim")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("Dayanak")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Kod")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("KonuId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Sira")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Kod")
+                        .IsUnique();
+
+                    b.HasIndex("KonuId");
+
+                    b.ToTable("SmmmHadler", "catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.SmmmTakip.Domain.SmmmHadDegeri", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Deger")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("GuncellenmeTarihi")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("HadId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Not")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Teblig")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Yil")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HadId", "Yil")
+                        .IsUnique();
+
+                    b.ToTable("SmmmHadDegerleri", "catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.SmmmTakip.Domain.SmmmKonu", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Aktif")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Baslik")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<DateTime?>("GuncellenmeTarihi")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IcerikMd")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Sira")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int?>("UstKonuId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.HasIndex("UstKonuId");
+
+                    b.ToTable("SmmmKonular", "catalog");
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.TicaretSicil.Domain.TicaretSicilAdim", b =>
                 {
                     b.Property<int>("Id")
@@ -2208,6 +2330,32 @@ namespace CatalogService.Api.Migrations
                     b.Navigation("Firma");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.SmmmTakip.Domain.SmmmHad", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.SmmmTakip.Domain.SmmmKonu", null)
+                        .WithMany("Hadler")
+                        .HasForeignKey("KonuId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.SmmmTakip.Domain.SmmmHadDegeri", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.SmmmTakip.Domain.SmmmHad", null)
+                        .WithMany("Degerler")
+                        .HasForeignKey("HadId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.SmmmTakip.Domain.SmmmKonu", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.SmmmTakip.Domain.SmmmKonu", null)
+                        .WithMany("AltKonular")
+                        .HasForeignKey("UstKonuId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.TicaretSicil.Domain.TicaretSicilAdim", b =>
                 {
                     b.HasOne("CatalogService.Api.Features.TicaretSicil.Domain.TicaretSicilIslem", null)
@@ -2246,6 +2394,18 @@ namespace CatalogService.Api.Migrations
                     b.Navigation("Assignments");
 
                     b.Navigation("Attachments");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.SmmmTakip.Domain.SmmmHad", b =>
+                {
+                    b.Navigation("Degerler");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.SmmmTakip.Domain.SmmmKonu", b =>
+                {
+                    b.Navigation("AltKonular");
+
+                    b.Navigation("Hadler");
                 });
 
             modelBuilder.Entity("CatalogService.Api.Features.TicaretSicil.Domain.TicaretSicilAdim", b =>

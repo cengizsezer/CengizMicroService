@@ -126,6 +126,7 @@ builder.Services.AddScoped<IBankaTakipService, BankaTakipService>();
 builder.Services.AddScoped<IHesapNotService, HesapNotService>();
 builder.Services.AddScoped<CatalogService.Api.Features.TicaretSicil.Services.ITicaretSicilService, CatalogService.Api.Features.TicaretSicil.Services.TicaretSicilService>();
 builder.Services.AddScoped<CatalogService.Api.Features.MevzuatNotlari.Services.IMevzuatNotuService, CatalogService.Api.Features.MevzuatNotlari.Services.MevzuatNotuService>();
+builder.Services.AddScoped<CatalogService.Api.Features.SmmmTakip.Services.ISmmmTakipService, CatalogService.Api.Features.SmmmTakip.Services.SmmmTakipService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolMaddeService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolMaddeService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolMizanService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolMizanService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolVergiService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolVergiService>();
@@ -475,6 +476,9 @@ IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf')
 
             logger.LogInformation("📜 Ticaret Sicil İşlemleri seed uygulanıyor...");
             await CatalogService.Api.Features.TicaretSicil.TicaretSicilSeed.SeedAsync(ctxOnce);
+
+            logger.LogInformation("🧮 SMMM Takip seed uygulanıyor...");
+            await CatalogService.Api.Features.SmmmTakip.SmmmTakipSeed.SeedAsync(ctxOnce);
         }
 
         var seeder = new CatalogContextSeed();
