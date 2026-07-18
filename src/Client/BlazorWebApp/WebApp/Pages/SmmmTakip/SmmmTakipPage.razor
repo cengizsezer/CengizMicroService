@@ -14,7 +14,9 @@
 <style>
     .st-left { height: calc(100vh - 140px); display: flex; flex-direction: column; }
     .st-viewer { min-height: 220px; padding: 12px 16px; border-radius: 6px; border: 1px solid #eee; background: #fff; }
-    .st-md { max-width: 74ch; font-size: 15px; line-height: 1.7; }
+    .st-md { font-size: 15px; line-height: 1.7; }
+    /* Okuma genişliği (74ch) yalnızca metin akışına; şema/tablo panelin tamamına yayılsın. */
+    .st-md h2, .st-md h3, .st-md h4, .st-md p, .st-md ul { max-width: 74ch; }
     .st-md h2 { font-size: 19px; margin: 1rem 0 .4rem; }
     .st-md h3 { font-size: 17px; margin: 1rem 0 .4rem; }
     .st-md h4 { font-size: 15px; margin: 1rem 0 .4rem; }
@@ -97,11 +99,24 @@
                 </div>
             </div>
 
+            <!-- Şema yazı boyutu (tüm dal şemalarını birlikte büyütür/küçültür) -->
+            @if (!_editIcerik)
+            {
+                <div style="display:flex; align-items:center; gap:6px; margin:8px 0" title="Dal şemalarının yazı boyutu">
+                    <span style="font-size:12px; color:var(--text-secondary,#718096)">Şema boyutu</span>
+                    <RadzenButton Text="A−" Size="ButtonSize.Small" Variant="Variant.Outlined"
+                                  Disabled="@(_semaOlcekIdx == 0)" Click="@SemaKucult" />
+                    <span style="min-width:76px; text-align:center; font-size:13px; font-weight:600">@_semaOlcekAd[_semaOlcekIdx]</span>
+                    <RadzenButton Text="A+" Size="ButtonSize.Small" Variant="Variant.Outlined"
+                                  Disabled="@(_semaOlcekIdx == _semaOlcekler.Length - 1)" Click="@SemaBuyut" />
+                </div>
+            }
+
             <!-- İçerik (markdown) -->
             <div class="st-viewer rz-mt-2">
                 @if (!_editIcerik)
                 {
-                    <div class="st-md">@RenderMarkdown(_detay.IcerikMd)</div>
+                    <div class="st-md" style="@SemaScaleStyle">@RenderMarkdown(_detay.IcerikMd)</div>
                 }
                 else
                 {
@@ -213,6 +228,16 @@
     // İçerik düzenleme
     bool _editIcerik;
     string? _icerikDraft;
+
+    // Şema yazı ölçeği (A− / A+): tüm dal şemalarının font/ikon/çizgi boyutları bununla çarpılır (CSS --sema-scale).
+    // Sadece sayfa açıkken geçerli (localStorage yok — WASM'da sorunsuz kalsın).
+    static readonly double[] _semaOlcekler = { 0.9, 1.0, 1.15, 1.3 };
+    static readonly string[] _semaOlcekAd = { "Küçük", "Orta", "Büyük", "Çok Büyük" };
+    int _semaOlcekIdx = 1;
+    double SemaOlcek => _semaOlcekler[_semaOlcekIdx];
+    string SemaScaleStyle => $"--sema-scale:{SemaOlcek.ToString(CultureInfo.InvariantCulture)}";
+    void SemaKucult() { if (_semaOlcekIdx > 0) _semaOlcekIdx--; }
+    void SemaBuyut() { if (_semaOlcekIdx < _semaOlcekler.Length - 1) _semaOlcekIdx++; }
 
     // Değer girişi (hadId -> değer)
     readonly Dictionary<int, decimal?> _degerInput = new();
@@ -458,22 +483,38 @@
         {
             var line = lines[i].TrimEnd();
 
-            // [[dal]] node-şeması bloğu: kök başlığı + hemen altındaki ardışık "- " dalları
-            if (line.StartsWith("[[dal]]"))
+            // [[dal]] / [[dal-dikey]] node-şeması bloğu: kök başlığı + ardışık "- " dalları.
+            // "> " satırları = o dalın çok satırlı not paneli. Blok, boş satırda veya
+            // "- "/">" olmayan satırda biter. Opsiyonel genişlik: [[dal-dikey w=760]]
+            var trigM = Regex.Match(line, @"^\[\[dal(-dikey)?(?:\s+w=(\d+))?\]\]\s*(.*)$");
+            if (trigM.Success)
             {
                 CloseList(sb, ref inList);
-                var kok = line.Substring("[[dal]]".Length).Trim();
-                var dallar = new List<string>();
+                var dikey = trigM.Groups[1].Success;               // "-dikey" varsa dikey şema
+                int? genislik = trigM.Groups[2].Success ? int.Parse(trigM.Groups[2].Value) : null;
+                var kok = trigM.Groups[3].Value.Trim();
+                var dallar = new List<DalItem>();
+                DalItem? cur = null;
                 int j = i + 1;
                 while (j < lines.Length)
                 {
                     var next = lines[j].TrimEnd();
-                    if (string.IsNullOrWhiteSpace(next) || !next.StartsWith("- ")) break;
-                    dallar.Add(next[2..]);
+                    if (string.IsNullOrWhiteSpace(next)) break; // boş satır bloğu bitirir
+                    var t = next.TrimStart();
+                    if (t.StartsWith("- "))
+                    {
+                        cur = ParseDalItem(t[2..]);
+                        dallar.Add(cur);
+                    }
+                    else if (t.StartsWith(">") && cur is not null)
+                    {
+                        cur.Panel.Add(t[1..].TrimStart()); // dalın not paneli satırı
+                    }
+                    else break; // "- "/">" olmayan satır bloğu bitirir
                     j++;
                 }
-                sb.Append(RenderDal(kok, dallar));
-                i = j - 1; // tüketilen dal satırlarını atla
+                sb.Append(dikey ? RenderDalDikey(kok, dallar, genislik) : RenderDalYatay(kok, dallar, genislik));
+                i = j - 1; // tüketilen satırları atla
                 continue;
             }
 
@@ -498,32 +539,171 @@
         return (MarkupString)sb.ToString();
     }
 
-    // Kök kutudan oklarla dallara bağlanan yatay ezber şeması (had/link/kart DEĞİL, sadece metin kutuları)
-    private static string RenderDal(string kok, List<string> dallar)
+    // Bir dal satırının ayrıştırılmış hâli: kutu metni + işaret + tek-satır not + çok-satır panel
+    private sealed class DalItem
     {
-        if (dallar.Count == 0)
-            return $"<p>{Inline(kok)}</p>";
+        public string Text = "";
+        public char? Marker;            // '*' (uyarı) | '!' (tehlike) | null
+        public string? InlineNote;      // "//" sonrası tek satır not
+        public List<string> Panel = new();  // "> " satırlarından çok satırlı not paneli
+    }
+
+    // "- <metin> [*|!] [// tek-satır-not]" gramerini ayrıştırır. İşaret ve "//" kutu metnine dahil EDİLMEZ.
+    private static DalItem ParseDalItem(string s)
+    {
+        var item = new DalItem();
+
+        // "//" tek-satır not ( "https://" gibi şema içindeki // hariç )
+        var note = Regex.Match(s, @"(?<!:)//");
+        if (note.Success)
+        {
+            var n = s[(note.Index + 2)..].Trim();
+            item.InlineNote = string.IsNullOrEmpty(n) ? null : n;
+            s = s[..note.Index];
+        }
+
+        s = s.TrimEnd();
+
+        // sondaki işaret: tek başına '*' veya '!' (boşlukla ayrılmış ya da tüm metin)
+        var mk = Regex.Match(s, @"(?:^|\s)([*!])$");
+        if (mk.Success)
+        {
+            item.Marker = mk.Groups[1].Value[0];
+            s = s[..mk.Index].TrimEnd();
+        }
+
+        item.Text = s.Trim();
+        return item;
+    }
+
+    // Şema boyutu: sabit px'i sayfa ölçek faktörüyle (CSS --sema-scale, A−/A+ ile değişir) çarpar.
+    // Tek yerden büyüt/küçült: tüm font/ikon/çizgi boyutları bu değere bağlı.
+    private static string Sc(double px) =>
+        $"calc({px.ToString(CultureInfo.InvariantCulture)}px * var(--sema-scale, 1))";
+
+    // İşaret ikonu: dolu yıldız (uyarı) / dolu üçgen (tehlike). Renk teması yoksa fallback kullanır.
+    private static string MarkerIcon(char? marker) => marker switch
+    {
+        '*' => "<span title=\"Önemli\" style=\"color:var(--text-warning,#d98a00); font-size:" + Sc(17) + "; line-height:1\">&#9733;</span>",
+        '!' => "<span title=\"Dikkat\" style=\"color:var(--text-danger,#c0392b); font-size:" + Sc(16) + "; line-height:1\">&#9650;</span>",
+        _ => ""
+    };
+
+    private static string DalBorder(char? marker) => marker switch
+    {
+        '*' => "var(--text-warning,#d98a00)",
+        '!' => "var(--text-danger,#c0392b)",
+        _ => "#cbd5e0"
+    };
+
+    // Kutunun ALTINDAKI notlar: tek-satır not (küçük, soluk, tek satır) + çok-satır not paneli
+    private static string DalNotlar(DalItem d)
+    {
+        var sb = new StringBuilder();
+        if (d.InlineNote is not null)
+            sb.Append("<div style=\"font-size:" + Sc(14) + "; color:var(--text-primary,#1a202c); margin-top:4px; line-height:1.8\">"
+                      + Inline(d.InlineNote) + "</div>");
+        if (d.Panel.Count > 0)
+        {
+            sb.Append("<div style=\"margin-top:6px; padding:6px 9px; border:1px solid #e2e8f0; border-radius:6px; "
+                      + "background:#fbfcfd; text-align:left\">");
+            foreach (var p in d.Panel)
+                sb.Append("<div style=\"font-size:" + Sc(14) + "; color:var(--text-primary,#1a202c); line-height:1.8\">"
+                          + Inline(p) + "</div>");
+            sb.Append("</div>");
+        }
+        return sb.ToString();
+    }
+
+    // Yatay şema kutusu (inline)
+    private static string DalBoxInline(DalItem d)
+    {
+        var icon = MarkerIcon(d.Marker);
+        return "<div style=\"display:inline-flex; align-items:center; gap:5px; padding:7px 12px; border:1px solid "
+               + DalBorder(d.Marker) + "; border-radius:6px; background:#fff; color:var(--text-primary,#1a202c); "
+               + "font-weight:600; font-size:" + Sc(16) + "; max-width:260px\">"
+               + Inline(d.Text) + (icon.Length > 0 ? " " + icon : "") + "</div>";
+    }
+
+    // Dikey şema kutusu (blok, kolon genişliğinde, ortalı)
+    private static string DalBoxBlock(DalItem d)
+    {
+        var icon = MarkerIcon(d.Marker);
+        return "<div style=\"box-sizing:border-box; width:100%; padding:8px 10px; border:1px solid "
+               + DalBorder(d.Marker) + "; border-radius:6px; background:#fff; color:var(--text-primary,#1a202c); "
+               + "font-weight:600; text-align:center; font-size:" + Sc(16) + "\">"
+               + Inline(d.Text) + (icon.Length > 0 ? " " + icon : "") + "</div>";
+    }
+
+    // [[dal]] — YATAY: kök solda, dallar sağda alt alta, her dala chevron-right (→). Opsiyonel w=N genişlik.
+    private static string RenderDalYatay(string kok, List<DalItem> dallar, int? genislik = null)
+    {
+        if (dallar.Count == 0) return $"<p>{Inline(kok)}</p>";
+
+        var wrapStyle = genislik is int w
+            ? $"max-width:{w}px; margin:.9rem auto;"
+            : "margin:.9rem 0;";
 
         var kokBox =
-            "<div style=\"flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; " +
-            "padding:10px 16px; border:2px solid #4a5568; border-radius:8px; background:#f7fafc; " +
-            "font-weight:600; text-align:center; max-width:220px; color:#2d3748\">" + Inline(kok) + "</div>";
+            "<div style=\"flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; "
+            + "padding:10px 16px; border:2px solid #4a5568; border-radius:8px; background:#f7fafc; "
+            + "font-weight:600; font-size:" + Sc(18) + "; text-align:center; max-width:220px; color:var(--text-primary,#1a202c)\">"
+            + Inline(kok) + "</div>";
 
-        var branchRows = new StringBuilder();
-        foreach (var dal in dallar)
+        var rows = new StringBuilder();
+        foreach (var d in dallar)
         {
-            branchRows.Append(
-                "<div style=\"display:flex; align-items:center; gap:6px\">" +
-                "<span style=\"color:#a0aec0; font-size:20px; line-height:1\">&#8594;</span>" +
-                "<div style=\"padding:7px 12px; border:1px solid #cbd5e0; border-radius:6px; " +
-                "background:#fff; color:#2d3748; max-width:260px\">" + Inline(dal) + "</div>" +
-                "</div>");
+            rows.Append(
+                "<div style=\"display:flex; align-items:flex-start; gap:6px\">"
+                + "<span style=\"color:#a0aec0; font-size:" + Sc(20) + "; line-height:1.6\">&#8594;</span>"
+                + "<div style=\"display:flex; flex-direction:column\">" + DalBoxInline(d) + DalNotlar(d) + "</div>"
+                + "</div>");
         }
 
         return
-            "<div style=\"display:flex; align-items:center; gap:14px; margin:.9rem 0; " +
-            "padding:6px 2px; overflow-x:auto\">" + kokBox +
-            "<div style=\"display:flex; flex-direction:column; gap:8px\">" + branchRows + "</div></div>";
+            "<div style=\"display:flex; align-items:flex-start; gap:14px; " + wrapStyle
+            + " padding:6px 2px; overflow-x:auto\">" + kokBox
+            + "<div style=\"display:flex; flex-direction:column; gap:12px\">" + rows + "</div></div>";
+    }
+
+    // [[dal-dikey]] — DİKEY: kök ortada üstte, aşağı stem + yatay dağıtıcı, dallar altta yan yana,
+    // her dala chevron-down (↓); her dalın altında içeriğe göre uzunlukta not paneli.
+    // w=N verilmezse kapsayıcının TAM genişliğine yayılır; w=N verilirse N px, ortalı, dar ekranda küçülür.
+    private static string RenderDalDikey(string kok, List<DalItem> dallar, int? genislik = null)
+    {
+        if (dallar.Count == 0) return $"<p>{Inline(kok)}</p>";
+
+        var wrapStyle = genislik is int gw
+            ? $"max-width:{gw}px; margin:1rem auto;"   // ortalı; max-width dar ekranda küçültür
+            : "width:100%; margin:1rem 0;";            // tam genişlik
+
+        var kokBox =
+            "<div style=\"display:inline-flex; align-items:center; justify-content:center; padding:10px 18px; "
+            + "border:2px solid #4a5568; border-radius:8px; background:#f7fafc; font-weight:600; color:var(--text-primary,#1a202c); "
+            + "font-size:" + Sc(18) + "; text-align:center; max-width:280px\">" + Inline(kok) + "</div>";
+
+        // yatay dağıtıcı çizgiyi kolon merkezlerine yaklaştırmak için kenardan ~yarım kolon içeri al
+        var inset = (100.0 / (2 * dallar.Count)).ToString("0.###", CultureInfo.InvariantCulture);
+
+        var cols = new StringBuilder();
+        foreach (var d in dallar)
+        {
+            cols.Append(
+                "<div style=\"flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center\">"
+                + "<div style=\"width:2px; height:" + Sc(14) + "; background:#cbd5e0\"></div>"                // dağıtıcıdan aşağı bağlantı
+                + "<span style=\"color:#a0aec0; font-size:" + Sc(20) + "; line-height:1\">&#8595;</span>"    // chevron-down
+                + "<div style=\"width:100%; margin-top:4px\">" + DalBoxBlock(d) + "</div>"
+                + "<div style=\"width:100%\">" + DalNotlar(d) + "</div>"
+                + "</div>");
+        }
+
+        return
+            "<div style=\"" + wrapStyle + " padding:6px 4px\">"
+            + "<div style=\"display:flex; justify-content:center\">" + kokBox + "</div>"
+            + "<div style=\"display:flex; justify-content:center\"><div style=\"width:2px; height:" + Sc(18) + "; background:#cbd5e0\"></div></div>"
+            + "<div style=\"padding:0 " + inset + "%\"><div style=\"height:2px; background:#cbd5e0\"></div></div>"
+            + "<div style=\"display:flex; gap:12px; align-items:flex-start\">" + cols + "</div>"
+            + "</div>";
     }
 
     private static void CloseList(StringBuilder sb, ref bool inList)
