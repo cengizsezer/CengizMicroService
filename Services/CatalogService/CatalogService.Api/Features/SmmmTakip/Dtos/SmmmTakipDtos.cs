@@ -36,6 +36,7 @@ namespace CatalogService.Api.Features.SmmmTakip.Dtos
         public int KonuId { get; set; }
         public string Kod { get; set; } = string.Empty;
         public string Ad { get; set; } = string.Empty;
+        public string? Aciklama { get; set; }
         public string Birim { get; set; } = "TL";
         public string? Dayanak { get; set; }
         public int Sira { get; set; }
@@ -78,6 +79,7 @@ namespace CatalogService.Api.Features.SmmmTakip.Dtos
         public int KonuId { get; set; }
         public string Kod { get; set; } = string.Empty;
         public string Ad { get; set; } = string.Empty;
+        public string? Aciklama { get; set; }
         public string Birim { get; set; } = "TL";
         public string? Dayanak { get; set; }
         public int Sira { get; set; }

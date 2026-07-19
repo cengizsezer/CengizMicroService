@@ -28,6 +28,20 @@
     .st-form-row > div { display: flex; flex-direction: column; gap: 2px; }
     .st-form-row label { font-size: 11px; color: #888; }
     .st-year-chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+
+    /* Had kartı — okunur (kilitli) görünüm */
+    .st-had-card { display: flex; gap: 14px; align-items: flex-start; padding: 12px 14px; border: 1px solid #eee; border-radius: 8px; margin-bottom: 10px; background: #fff; }
+    .st-had-body { flex: 1 1 auto; min-width: 0; }
+    .st-had-ad { font-size: 12px; color: var(--text-secondary,#718096); margin-bottom: 3px; }
+    .st-had-ad code { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #a0aec0; }
+    .st-had-aciklama { font-size: 14px; line-height: 1.6; color: var(--text-primary,#1a202c); white-space: pre-wrap; word-break: break-word; }
+    .st-had-aciklama-bos { font-size: 14px; color: #a0aec0; font-style: italic; }
+    .st-had-dayanak { margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--rz-primary,#1976d2); }
+    .st-had-deger-wrap { flex: 0 0 auto; text-align: right; min-width: 120px; }
+    .st-had-deger { font-size: 20px; font-weight: 600; color: var(--text-primary,#1a202c); line-height: 1.2; }
+    .st-had-deger .birim { font-size: 12px; font-weight: 500; color: var(--text-secondary,#718096); margin-left: 3px; }
+    .st-had-yil { font-size: 12px; color: var(--text-secondary,#718096); margin-top: 3px; }
+    .st-had-actions { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
 </style>
 
 <div class="row">
@@ -170,40 +184,84 @@
                 }
                 else
                 {
-                    <table class="rz-mt-2" style="width:100%; border-collapse:collapse; font-size:14px">
-                        <thead>
-                            <tr style="text-align:left; border-bottom:1px solid #eee; color:#666">
-                                <th style="padding:6px">Kalem</th>
-                                <th style="padding:6px">Kod</th>
-                                <th style="padding:6px">Dayanak</th>
-                                <th style="padding:6px; width:200px">@_seciliYil Değeri</th>
-                                <th style="padding:6px; width:150px"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var h in _detay.Hadler)
+                    <div class="rz-mt-2">
+                        @foreach (var h in _detay.Hadler)
+                        {
+                            @if (_editHadId == h.Id)
                             {
-                                <tr style="border-bottom:1px solid #f5f5f5">
-                                    <td style="padding:6px">@h.Ad</td>
-                                    <td style="padding:6px"><code>@h.Kod</code></td>
-                                    <td style="padding:6px">@h.Dayanak</td>
-                                    <td style="padding:6px">
-                                        <div style="display:flex; align-items:center; gap:6px">
-                                            <RadzenNumeric TValue="decimal?" Value="@GetDeger(h.Id)"
-                                                           Change="@(v => _degerInput[h.Id] = v)" Style="width:120px" />
-                                            <span style="font-size:12px;color:#888">@h.Birim</span>
+                                <!-- DÜZENLE MODU — sadece bu satır forma döner -->
+                                <div class="st-panel" style="margin-bottom:10px">
+                                    <div class="st-form-row">
+                                        <div style="flex:1 1 100%">
+                                            <label>Kanun içeriği (açıklama)</label>
+                                            <RadzenTextArea @bind-Value="_draft.Aciklama" Style="width:100%; min-height:120px" />
                                         </div>
-                                    </td>
-                                    <td style="padding:6px">
-                                        <RadzenButton Icon="save" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Primary"
-                                                      Click="@(() => SaveDegerAsync(h))" title="Değeri kaydet" />
+                                    </div>
+                                    <div class="st-form-row">
+                                        <div style="flex:1 1 260px">
+                                            <label>Kanun / Dayanak</label>
+                                            <RadzenTextBox @bind-Value="_draft.Dayanak" Style="width:100%" />
+                                        </div>
+                                        <div>
+                                            <label>@_seciliYil Tutarı</label>
+                                            <RadzenNumeric TValue="decimal?" @bind-Value="_draft.Deger" Style="width:150px" />
+                                        </div>
+                                        <div>
+                                            <label>Birim</label>
+                                            <RadzenDropDown TValue="string" @bind-Value="_draft.Birim" Data="_birimler" Style="width:90px" />
+                                        </div>
+                                    </div>
+                                    <div class="st-form-row">
+                                        <div style="flex:1 1 220px"><label>Etiket (Ad)</label><RadzenTextBox @bind-Value="_draft.Ad" Style="width:100%" /></div>
+                                        <div><label>Kod</label><RadzenTextBox @bind-Value="_draft.Kod" Style="width:180px" /></div>
+                                        <div><label>Sıra</label><RadzenNumeric TValue="int" @bind-Value="_draft.Sira" Style="width:80px" /></div>
+                                    </div>
+                                    <RadzenButton Text="Kaydet" Icon="save" Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Primary" Click="@(() => SaveHadAsync(h))" class="rz-mr-1" />
+                                    <RadzenButton Text="Vazgeç" Size="ButtonSize.Small" Click="@CancelEditHad" />
+                                </div>
+                            }
+                            else
+                            {
+                                <!-- OKUNUR (KİLİTLİ) GÖRÜNÜM — sadece metin, input yok -->
+                                <div class="st-had-card">
+                                    <div class="st-had-body">
+                                        <div class="st-had-ad">@h.Ad <code>@h.Kod</code></div>
+                                        @if (!string.IsNullOrWhiteSpace(h.Aciklama))
+                                        {
+                                            <div class="st-had-aciklama">@h.Aciklama</div>
+                                        }
+                                        else
+                                        {
+                                            <div class="st-had-aciklama-bos">— kanun içeriği girilmemiş —</div>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(h.Dayanak))
+                                        {
+                                            <div class="st-had-dayanak">@h.Dayanak</div>
+                                        }
+                                    </div>
+                                    <div class="st-had-deger-wrap">
+                                        @{ var d = GetYilDeger(h); }
+                                        @if (d.HasValue)
+                                        {
+                                            <div class="st-had-deger">@d.Value.ToString("#,##0.##", Tr)<span class="birim">@h.Birim</span></div>
+                                        }
+                                        else
+                                        {
+                                            <div class="st-had-deger" style="color:#a0aec0">—</div>
+                                        }
+                                        <div class="st-had-yil">@_seciliYil</div>
+                                    </div>
+                                    <div class="st-had-actions">
+                                        <RadzenButton Text="Düzenle" Icon="edit" Size="ButtonSize.ExtraSmall"
+                                                      ButtonStyle="ButtonStyle.Primary" Click="@(() => StartEditHad(h))" />
                                         <RadzenButton Icon="delete" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Danger"
                                                       Variant="Variant.Outlined" Click="@(() => DeleteHadAsync(h))" title="Haddi sil" />
-                                    </td>
-                                </tr>
+                                    </div>
+                                </div>
                             }
-                        </tbody>
-                    </table>
+                        }
+                    </div>
                 }
             </div>
         }
@@ -239,8 +297,9 @@
     void SemaKucult() { if (_semaOlcekIdx > 0) _semaOlcekIdx--; }
     void SemaBuyut() { if (_semaOlcekIdx < _semaOlcekler.Length - 1) _semaOlcekIdx++; }
 
-    // Değer girişi (hadId -> değer)
-    readonly Dictionary<int, decimal?> _degerInput = new();
+    // Had düzenleme — aynı anda tek satır açık; null = tümü kilitli okunur görünüm.
+    int? _editHadId;
+    HadDraft _draft = new();
 
     // Yeni kayıt formları
     bool _yeniKonuAcik;
@@ -283,6 +342,7 @@
     {
         _editIcerik = false;
         _yeniHadAcik = false;
+        _editHadId = null;
         _detay = await Api.GetKonuByIdAsync(id);
         if (_detay is null) return;
 
@@ -293,7 +353,6 @@
         if (_yillar.Count > 0 && !_yillar.Contains(_seciliYil))
             _seciliYil = _yillar.First();
 
-        RefreshDegerInput();
         StateHasChanged();
     }
 
@@ -302,19 +361,13 @@
 
     void SetYil(int y)
     {
+        // Yıl değişince açık düzenleme (o yılın tutarı için) kapanır — karışıklık olmasın.
         _seciliYil = y;
-        RefreshDegerInput();
+        _editHadId = null;
     }
 
-    void RefreshDegerInput()
-    {
-        _degerInput.Clear();
-        if (_detay is null) return;
-        foreach (var h in _detay.Hadler)
-            _degerInput[h.Id] = h.Degerler.FirstOrDefault(d => d.Yil == _seciliYil)?.Deger;
-    }
-
-    decimal? GetDeger(int hadId) => _degerInput.TryGetValue(hadId, out var v) ? v : null;
+    // Seçili yıla ait tutar (okunur modda gösterilir; input yok, değişmez).
+    decimal? GetYilDeger(SmmmHadDto h) => h.Degerler.FirstOrDefault(d => d.Yil == _seciliYil)?.Deger;
 
     // ---- İçerik ----
     void StartEditIcerik()
@@ -412,21 +465,71 @@
         else Toast("Hata", "Had silinemedi.", NotificationSeverity.Error);
     }
 
-    // ---- Had değeri (yıl bazlı upsert) ----
-    async Task SaveDegerAsync(SmmmHadDto h)
+    // ---- Had düzenleme (satır bazlı kilitli/düzenle döngüsü) ----
+
+    // Düzenle: sadece bu satır forma döner. Başka satır açıksa otomatik kapanır (tek satır kuralı).
+    void StartEditHad(SmmmHadDto h)
+    {
+        _editHadId = h.Id;
+        _draft = new HadDraft
+        {
+            Kod = h.Kod,
+            Ad = h.Ad,
+            Aciklama = h.Aciklama,
+            Birim = string.IsNullOrWhiteSpace(h.Birim) ? "TL" : h.Birim,
+            Dayanak = h.Dayanak,
+            Sira = h.Sira,
+            Deger = GetYilDeger(h)   // o yılın mevcut tutarı
+        };
+    }
+
+    // Vazgeç: değişiklikleri at, kilitli görünüme dön.
+    void CancelEditHad() => _editHadId = null;
+
+    // Kaydet: had alanları + o yılın tutarı yazılır, satır kilitli okunur görünüme döner.
+    async Task SaveHadAsync(SmmmHadDto h)
     {
         if (_detay is null) return;
-        var deger = GetDeger(h.Id);
-        if (deger is null) { Toast("Eksik", "Değer girin.", NotificationSeverity.Warning); return; }
+        if (string.IsNullOrWhiteSpace(_draft.Kod) || string.IsNullOrWhiteSpace(_draft.Ad))
+        { Toast("Eksik", "Kod ve Ad (etiket) zorunlu.", NotificationSeverity.Warning); return; }
 
-        var dto = new SmmmHadDegeriSaveDto { HadId = h.Id, Yil = _seciliYil, Deger = deger.Value };
-        var sonuc = await Api.UpsertHadDegeriAsync(dto);
-        if (sonuc is not null)
+        var hadDto = new SmmmHadSaveDto
         {
-            await LoadKonuAsync(_detay.Id);
-            Toast("Kaydedildi", $"{h.Ad} — {_seciliYil}: {deger.Value.ToString("N0", Tr)} {h.Birim}");
+            KonuId = h.KonuId,
+            Kod = _draft.Kod,
+            Ad = _draft.Ad,
+            Aciklama = _draft.Aciklama,
+            Birim = string.IsNullOrWhiteSpace(_draft.Birim) ? "TL" : _draft.Birim,
+            Dayanak = _draft.Dayanak,
+            Sira = _draft.Sira
+        };
+
+        var updated = await Api.UpdateHadAsync(h.Id, hadDto);
+        if (updated is null) { Toast("Hata", "Kaydedilemedi (kod benzersiz olmalı).", NotificationSeverity.Error); return; }
+
+        // Yıl bazlı tutar upsert'i — sadece bir değer girildiyse (Düzenle demeden tutar değişmez).
+        if (_draft.Deger.HasValue)
+        {
+            var degerDto = new SmmmHadDegeriSaveDto { HadId = h.Id, Yil = _seciliYil, Deger = _draft.Deger.Value };
+            var sonuc = await Api.UpsertHadDegeriAsync(degerDto);
+            if (sonuc is null) { Toast("Kısmi", "Alanlar kaydedildi ama tutar kaydedilemedi.", NotificationSeverity.Warning); }
         }
-        else Toast("Hata", "Değer kaydedilemedi.", NotificationSeverity.Error);
+
+        _editHadId = null;
+        await LoadKonuAsync(_detay.Id);
+        Toast("Kaydedildi", $"{_draft.Ad} güncellendi.");
+    }
+
+    // Satır düzenleme taslağı (formdaki değerler; Vazgeç'te atılır).
+    class HadDraft
+    {
+        public string Kod { get; set; } = "";
+        public string Ad { get; set; } = "";
+        public string? Aciklama { get; set; }
+        public string Birim { get; set; } = "TL";
+        public string? Dayanak { get; set; }
+        public int Sira { get; set; }
+        public decimal? Deger { get; set; }
     }
 
     // ---- Arama ----

@@ -1843,6 +1843,9 @@ namespace CatalogService.Api.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Aciklama")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Ad")
                         .IsRequired()
                         .HasMaxLength(250)

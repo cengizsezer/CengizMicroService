@@ -160,6 +160,7 @@ namespace CatalogService.Api.Features.SmmmTakip.Services
                 KonuId = dto.KonuId,
                 Kod = dto.Kod.Trim(),
                 Ad = dto.Ad.Trim(),
+                Aciklama = NullIfEmpty(dto.Aciklama),
                 Birim = string.IsNullOrWhiteSpace(dto.Birim) ? "TL" : dto.Birim.Trim(),
                 Dayanak = dto.Dayanak?.Trim(),
                 Sira = dto.Sira
@@ -181,6 +182,7 @@ namespace CatalogService.Api.Features.SmmmTakip.Services
 
             had.Kod = kod;
             had.Ad = dto.Ad.Trim();
+            had.Aciklama = NullIfEmpty(dto.Aciklama);
             had.Birim = string.IsNullOrWhiteSpace(dto.Birim) ? "TL" : dto.Birim.Trim();
             had.Dayanak = dto.Dayanak?.Trim();
             had.Sira = dto.Sira;
@@ -255,6 +257,7 @@ namespace CatalogService.Api.Features.SmmmTakip.Services
                 KonuId = h.KonuId,
                 Kod = h.Kod,
                 Ad = h.Ad,
+                Aciklama = h.Aciklama,
                 Birim = h.Birim,
                 Dayanak = h.Dayanak,
                 Sira = h.Sira,
@@ -268,6 +271,8 @@ namespace CatalogService.Api.Features.SmmmTakip.Services
                     .ToList()
             };
         }
+
+        private static string? NullIfEmpty(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
         private static SmmmHadDegeriDto ToDegerDto(SmmmHadDegeri d) => new()
         {

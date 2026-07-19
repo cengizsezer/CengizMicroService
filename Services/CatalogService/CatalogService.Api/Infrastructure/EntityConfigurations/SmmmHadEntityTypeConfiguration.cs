@@ -21,6 +21,9 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
                    .IsRequired()
                    .HasMaxLength(250);
 
+            // Kanun içeriği: uzun metin (nvarchar(max)).
+            builder.Property(x => x.Aciklama);
+
             builder.Property(x => x.Birim)
                    .IsRequired()
                    .HasMaxLength(10);

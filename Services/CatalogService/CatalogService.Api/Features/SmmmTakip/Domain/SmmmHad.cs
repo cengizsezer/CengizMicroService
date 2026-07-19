@@ -13,6 +13,9 @@ namespace CatalogService.Api.Features.SmmmTakip.Domain
 
         public string Ad { get; set; } = string.Empty;
 
+        /// <summary>Kanun içeriği / uzun açıklama metni. Boş olabilir.</summary>
+        public string? Aciklama { get; set; }
+
         /// <summary>"TL" | "%" | "adet".</summary>
         public string Birim { get; set; } = "TL";
 
