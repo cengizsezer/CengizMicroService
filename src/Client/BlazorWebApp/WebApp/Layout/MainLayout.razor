@@ -84,7 +84,7 @@
 
                 @if (canViewCalendar)
                 {
-                    <RadzenPanelMenuItem Text="Görevler" Icon="home" Expanded="false">
+                    <RadzenPanelMenuItem Text="Görevler" Icon="home" @bind-Expanded="gorevlerAcik">
                         <RadzenPanelMenuItem Text="Takvim" Icon="event" Path="/calendarpage" />
                         <RadzenPanelMenuItem Text="Görevlerim" Icon="event" Path="/AssignedTaskPage" />
                     </RadzenPanelMenuItem>
@@ -141,6 +141,15 @@
                 <RadzenPanelMenuItem Text="SMMM Takip"
                                      Icon="balance"
                                      Path="/smmm-takip" />
+
+                <RadzenPanelMenuItem Text="Muhasebe" Icon="account_tree">
+                    <RadzenPanelMenuItem Text="Hesap Planı" Icon="account_tree" Path="/muhasebe/hesap-plani" />
+                    <RadzenPanelMenuItem Text="Fiş Girişi" Icon="post_add" Path="/muhasebe/fis" />
+                    <RadzenPanelMenuItem Text="Fişler" Icon="receipt_long" Path="/muhasebe/fisler" />
+                    <RadzenPanelMenuItem Text="Mizan" Icon="table_chart" Path="/muhasebe/mizan" />
+                    <RadzenPanelMenuItem Text="T Cetveli" Icon="account_balance_wallet" Path="/muhasebe/ekstre" />
+                    <RadzenPanelMenuItem Text="Masraf Merkezleri" Icon="donut_small" Path="/muhasebe/masraf-merkezi" />
+                </RadzenPanelMenuItem>
 
                 <RadzenPanelMenuItem Text="Finans" Icon="account_balance">
                     <RadzenPanelMenuItem Text="Firma Gruplama" Icon="category" Path="/finans/firma-gruplama" />
@@ -281,6 +290,29 @@
     [Inject] NavigationManager Navigation { get; set; } = default!;
 
     void ToggleSidebar() => isCollapsed = !isCollapsed;
+
+    // "Görevler" grubunun açık/kapalı durumu. Radzen, geçerli rotayla eşleşen alt öğeyi
+    // göstermek için üst grubu kendiliğinden açar; giriş sonrası /calendarpage'e gidildiği
+    // ve o da bu grubun altında olduğu için grup her açılışta açık geliyordu.
+    // ("Expanded=false" yazmak işe yaramıyordu: o zaten varsayılan değer.)
+    bool gorevlerAcik;
+    bool gorevlerBaslangicUygulandi;
+
+    /// <summary>
+    /// Başlangıç durumunu bir kez uygular: menü öğesi göründükten sonra grup kapatılır.
+    /// İzin sorgusu asenkron olduğu için öğe ilk render'da henüz basılmamış olabiliyor,
+    /// bu yüzden canViewCalendar true olana kadar bekleniyor. Sonrasında kullanıcının
+    /// açma/kapama işlemleri ve sayfa gezinmeleri normal Radzen davranışıyla sürer;
+    /// diğer menü gruplarına dokunulmaz.
+    /// </summary>
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (gorevlerBaslangicUygulandi || !canViewCalendar) return;
+
+        gorevlerBaslangicUygulandi = true;
+        gorevlerAcik = false;
+        StateHasChanged();
+    }
     private bool canViewBeyannameTakip;
     private bool canViewVergiOdeme;
 

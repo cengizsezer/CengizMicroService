@@ -1,4 +1,5 @@
 @page "/firmakontrol/{FirmaId:int}"
+@using Microsoft.AspNetCore.WebUtilities
 @using Radzen
 @using WebApp.Application.RuleEngine
 @using WebApp.Application.Services
@@ -57,7 +58,8 @@ else
         </RadzenStack>
     </div>
 
-    <RadzenTabs RenderMode="TabRenderMode.Client" SelectedIndex="0">
+    @* Sekme, kalem yönetiminden "Geri" ile dönüşte ?sekme=vergi ile seçilir. *@
+    <RadzenTabs RenderMode="TabRenderMode.Client" @bind-SelectedIndex="secilenSekme">
         <Tabs>
             <RadzenTabsItem Text="Firma Kontrol" Icon="fact_check">
                 @if (items is null || items.Count == 0)
@@ -121,6 +123,10 @@ else
                 }
             </RadzenTabsItem>
 
+            @* Gelir tablosu yalnızca 6'lı ve 7'li seriyi gösterir (690, 691, 692 ve
+               yansıtma hesapları dâhil). HideTaxRows=false olmalı: true olsaydı 690'dan
+               sonrası kesilir, 691 ve 692 satırları kaybolurdu.
+               Vergi Hesaplaması artık kendi sekmesinde. *@
             <RadzenTabsItem Text="Gelir Tablosu" Icon="trending_up">
                 @if (mizan is null)
                 {
@@ -133,15 +139,23 @@ else
                                       OncekiRawValues="rawOncekiValues"
                                       HesaplananVergi691Cari="@hesaplananVergi691"
                                       HideTaxRows="false" />
+                }
+            </RadzenTabsItem>
 
-                    @if (vergiBilgisi is not null)
-                    {
-                        <VergiHesabiPanel Model="vergiBilgisi"
-                                          TicariKarCari="@cariDonemKari"
-                                          TicariKarFromMizan="@TicariKar690FromMizan"
-                                          MizanVergi691Cari="@MizanVergi691Cari"
-                                          OnInputChanged="@OnVergiPanelChanged" />
-                    }
+            @* Vergi Hesaplaması: kurumlar vergisi beyannamesinin tam yapısı.
+               690 ticari kârı gelir tablosundan gelir ve panelde düzenlenemez; hesabın
+               tamamı sunucudaki motorda yapılır (POST /catalog/firma-kontrol/vergi/onizle). *@
+            <RadzenTabsItem Text="Vergi Hesaplaması" Icon="receipt_long">
+                @if (mizan is null)
+                {
+                    <em>Hesap planı yükleniyor...</em>
+                }
+                else
+                {
+                    <VergiBeyannamePanel FirmaId="@FirmaId"
+                                         DonemYil="@VergiDonemYili"
+                                         TicariKar="@(cariDonemKari ?? 0m)"
+                                         KatalogAnahtari="@katalogAnahtari" />
                 }
             </RadzenTabsItem>
 
@@ -220,6 +234,10 @@ else
     private IReadOnlyDictionary<string, string> rawAdValues =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+    // Vergi beyannamesi dönemi. Mevcut vergi paneli de cari yılı kullanıyor
+    // (MockFirmaKontrolService.CurrentYil); geçmiş dönem seçimi ayrı bir iş.
+    private short VergiDonemYili => (short)DateTime.Now.Year;
+
     private decimal? cariDonemKari;
     private decimal? oncekiDonemKari;
     private VergiHesaplama? vergiBilgisi;
@@ -227,8 +245,25 @@ else
 
     private IReadOnlyList<UyariSonucu> uyarilar = Array.Empty<UyariSonucu>();
 
+    // Sekme indeksi: RadzenTabsItem sırasıyla eşleşir. Sekme sırası değişirse burası da güncellenmeli.
+    private const int VergiSekmesiIndeksi = 5;
+
+    private int secilenSekme;
+
+    /// <summary>Kalem yönetiminden dönüşte gelen tazelik anahtarı; panele aktarılır.</summary>
+    private string? katalogAnahtari;
+
     protected override async Task OnParametersSetAsync()
     {
+        // Kalem yönetiminden "Geri": ?sekme=vergi ile Vergi Hesaplaması sekmesi açılır,
+        // ?katalog=... değiştiyse panel kalem listesini yeniden çeker.
+        var sorgu = QueryHelpers.ParseQuery(Navigation.ToAbsoluteUri(Navigation.Uri).Query);
+
+        if (sorgu.TryGetValue("sekme", out var sekme) && sekme == "vergi")
+            secilenSekme = VergiSekmesiIndeksi;
+
+        katalogAnahtari = sorgu.TryGetValue("katalog", out var anahtar) ? anahtar.ToString() : null;
+
         firma = await FirmaKontrolService.GetFirmAsync(FirmaId);
         if (firma is null)
         {

@@ -1,0 +1,277 @@
+@using System.Globalization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.FirmaKontrol
+@using WebApp.Shared.Dto.FirmaKontrol
+
+@inject IVergiBeyannameApiClient Api
+@inject DialogService Dialog
+
+@*
+    Vergi kalemi ekleme/düzenleme. Sistem kaleminde kod ve grup kilitlidir; ad, açıklama,
+    hatırlatma, sıra no ve üst sınır düzenlenebilir. Buradaki kontroller yalnızca kullanıcı
+    deneyimi içindir — aynı kurallar sunucuda da zorlanır.
+*@
+
+<div style="display:flex; flex-direction:column; gap:10px">
+
+    @if (Kalem?.SistemKalemi == true)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">
+            Bu bir sistem kalemi: kodu ve grubu değiştirilemez. Ad, açıklama, hatırlatma,
+            sıra ve üst sınır alanları düzenlenebilir.
+        </RadzenAlert>
+    }
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap">
+        <div style="flex:0 0 150px; display:flex; flex-direction:column; gap:3px">
+            <label class="vkf-etiket">Kod</label>
+            <input class="vkf-inp" maxlength="20" value="@_kod" disabled="@KodKilitli"
+                   @oninput="@(e => { _kod = e.Value?.ToString() ?? string.Empty; _hata = null; })" />
+        </div>
+
+        <div style="flex:1 1 240px; display:flex; flex-direction:column; gap:3px">
+            <label class="vkf-etiket">Ad</label>
+            <input class="vkf-inp" maxlength="200" value="@_ad"
+                   @oninput="@(e => { _ad = e.Value?.ToString() ?? string.Empty; _hata = null; })" />
+        </div>
+    </div>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap">
+        <div style="flex:1 1 200px; display:flex; flex-direction:column; gap:3px">
+            <label class="vkf-etiket">Grup</label>
+            <select class="vkf-inp" value="@((int)_grup)" disabled="@KodKilitli"
+                    @onchange="@(e => _grup = (VergiKalemGrubu)int.Parse(e.Value?.ToString() ?? "1"))">
+                <option value="1">İlaveler (KKEG)</option>
+                <option value="2">Zarar olsa dahi indirilecek</option>
+                <option value="3">Kazanç varsa indirilecek</option>
+                <option value="4">Mahsuplar</option>
+            </select>
+        </div>
+
+        <div style="flex:1 1 160px; display:flex; flex-direction:column; gap:3px">
+            <label class="vkf-etiket">Kanun maddesi</label>
+            <input class="vkf-inp" maxlength="100" value="@_kanun"
+                   @oninput="@(e => _kanun = e.Value?.ToString())" />
+        </div>
+
+        <div style="flex:0 0 90px; display:flex; flex-direction:column; gap:3px">
+            <label class="vkf-etiket">Sıra</label>
+            <input class="vkf-inp" value="@_siraNo"
+                   @onchange="@(e => _siraNo = short.TryParse(e.Value?.ToString(), out var s) ? s : _siraNo)" />
+        </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:3px">
+        <label class="vkf-etiket">Alt grup (ekranda kümeleme başlığı)</label>
+        <input class="vkf-inp" maxlength="100" value="@_altGrup" @oninput="@(e => _altGrup = e.Value?.ToString())" />
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:3px">
+        <label class="vkf-etiket">Açıklama</label>
+        <textarea class="vkf-inp" rows="2" maxlength="1000" @oninput="@(e => _aciklama = e.Value?.ToString())">@_aciklama</textarea>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:3px">
+        <label class="vkf-etiket">Hatırlatma (tutar girilince ekranda gösterilir)</label>
+        <textarea class="vkf-inp" rows="2" maxlength="1000" @oninput="@(e => _hatirlatma = e.Value?.ToString())">@_hatirlatma</textarea>
+    </div>
+
+    <!-- Üst sınır -->
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end">
+        <div style="flex:1 1 200px; display:flex; flex-direction:column; gap:3px">
+            <label class="vkf-etiket">Üst sınır türü</label>
+            <select class="vkf-inp" value="@((int)(_ustSinirTuru ?? UstSinirTuru.Yok))"
+                    @onchange="@(e => _ustSinirTuru = (UstSinirTuru)int.Parse(e.Value?.ToString() ?? "0"))">
+                <option value="0">Yok</option>
+                <option value="1">Kurum kazancının yüzdesi</option>
+                <option value="2">Sabit tutar</option>
+            </select>
+        </div>
+
+        <div style="flex:0 0 150px; display:flex; flex-direction:column; gap:3px">
+            <label class="vkf-etiket">@(_ustSinirTuru == UstSinirTuru.KurumKazanciYuzdesi ? "Yüzde" : "Tutar")</label>
+            <input class="vkf-inp" value="@(_ustSinirDeger?.ToString("0.##", Kultur))"
+                   disabled="@(_ustSinirTuru is null or UstSinirTuru.Yok)"
+                   @onchange="@(e => _ustSinirDeger = TutarCoz(e.Value?.ToString()))" />
+        </div>
+
+        <div style="flex:1 1 180px; display:flex; flex-direction:column; gap:3px">
+            <label class="vkf-etiket">Oran bilgisi (yalnızca gösterim)</label>
+            <input class="vkf-inp" maxlength="200" value="@_oranBilgisi" @oninput="@(e => _oranBilgisi = e.Value?.ToString())" />
+        </div>
+    </div>
+
+    <!-- Bayraklar -->
+    <div style="display:flex; gap:16px; flex-wrap:wrap; font-size:13px">
+        <label style="display:flex; align-items:center; gap:6px">
+            <input type="checkbox" checked="@_devredebilir" @onchange="@(e => _devredebilir = (bool)(e.Value ?? false))" />
+            Kullanılmayan kısım devreder
+        </label>
+
+        <label style="display:flex; align-items:center; gap:6px"
+               title="KVK 32/C yurt içi asgari kurumlar vergisi matrahından düşülebilen kalem.">
+            <input type="checkbox" checked="@_asgariMatrahtanDuser" @onchange="@(e => _asgariMatrahtanDuser = (bool)(e.Value ?? false))" />
+            Asgari matrahtan düşer (32/C)
+        </label>
+
+        @if (_grup == VergiKalemGrubu.Kkeg)
+        {
+            <label style="display:flex; align-items:center; gap:6px">
+                <input type="checkbox" checked="@_istisnayaIliskin"
+                       @onchange="@(e => _istisnayaIliskin = (bool)(e.Value ?? false))" />
+                İstisnaya ilişkin KKEG (matraha net etkisi yok)
+            </label>
+        }
+    </div>
+
+    @if (_grup == VergiKalemGrubu.Kkeg && _istisnayaIliskin)
+    {
+        <div style="display:flex; flex-direction:column; gap:3px">
+            <label class="vkf-etiket">Büyüteceği istisna kalemi</label>
+            <select class="vkf-inp" value="@(_bagliIstisnaId?.ToString() ?? "")"
+                    @onchange="@(e => _bagliIstisnaId = int.TryParse(e.Value?.ToString(), out var id) ? id : null)">
+                <option value="">— seçilmedi (matrahı artıran KKEG gibi işlenir) —</option>
+                @foreach (var i in Grup2Kalemleri)
+                {
+                    <option value="@i.Id">@i.Kod — @i.Ad</option>
+                }
+            </select>
+        </div>
+    }
+
+    @if (_hata is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">
+            @_hata
+        </RadzenAlert>
+    }
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+        <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Disabled="@_islemde"
+                      Click="@(() => Dialog.Close(null))" />
+        <RadzenButton Text="Kaydet" Icon="save" ButtonStyle="ButtonStyle.Primary"
+                      Disabled="@(!Gecerli || _islemde)" IsBusy="@_islemde" Click="@KaydetAsync" />
+    </RadzenStack>
+</div>
+
+<style>
+    .vkf-etiket { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .vkf-inp { border: 1px solid #cbd5e0; border-radius: 4px; padding: 6px 8px; font-size: 13px; width: 100%; }
+    .vkf-inp:disabled { background: #f7fafc; color: #718096; }
+</style>
+
+@code {
+    /// <summary>Düzenlenecek kalem; null ise yeni kalem eklenir.</summary>
+    [Parameter] public VergiKalemiDto? Kalem { get; set; }
+
+    /// <summary>Bağlı istisna seçicisini beslemek için tüm katalog.</summary>
+    [Parameter] public List<VergiKalemiDto> Kalemler { get; set; } = new();
+
+    static readonly CultureInfo Kultur = new("tr-TR");
+
+    string _kod = string.Empty;
+    string _ad = string.Empty;
+    VergiKalemGrubu _grup = VergiKalemGrubu.Kkeg;
+    string? _altGrup;
+    string? _kanun;
+    string? _aciklama;
+    string? _hatirlatma;
+    string? _oranBilgisi;
+    UstSinirTuru? _ustSinirTuru = UstSinirTuru.Yok;
+    decimal? _ustSinirDeger;
+    bool _devredebilir;
+    bool _istisnayaIliskin;
+    int? _bagliIstisnaId;
+    bool _asgariMatrahtanDuser;
+    short _siraNo = 99;
+
+    string? _hata;
+    bool _islemde;
+
+    bool KodKilitli => Kalem?.SistemKalemi == true;
+
+    bool Gecerli => _kod.Trim().Length is > 0 and <= 20 && _ad.Trim().Length is > 0 and <= 200;
+
+    List<VergiKalemiDto> Grup2Kalemleri =>
+        Kalemler.Where(k => k.Grup == VergiKalemGrubu.ZararOlsaDahi)
+                .OrderBy(k => k.SiraNo)
+                .ToList();
+
+    protected override void OnParametersSet()
+    {
+        if (Kalem is null) return;
+
+        _kod = Kalem.Kod;
+        _ad = Kalem.Ad;
+        _grup = Kalem.Grup;
+        _altGrup = Kalem.AltGrup;
+        _kanun = Kalem.KanunMaddesi;
+        _aciklama = Kalem.Aciklama;
+        _hatirlatma = Kalem.Hatirlatma;
+        _oranBilgisi = Kalem.OranBilgisi;
+        _ustSinirTuru = Kalem.UstSinirTuru ?? UstSinirTuru.Yok;
+        _ustSinirDeger = Kalem.UstSinirDeger;
+        _devredebilir = Kalem.DevredebilirMi;
+        _istisnayaIliskin = Kalem.IstisnayaIliskinMi;
+        _bagliIstisnaId = Kalem.BagliIstisnaKalemiId;
+        _asgariMatrahtanDuser = Kalem.AsgariMatrahtanDuser;
+        _siraNo = Kalem.SiraNo;
+    }
+
+    async Task KaydetAsync()
+    {
+        if (!Gecerli || _islemde) return;
+
+        _islemde = true;
+        _hata = null;
+
+        var dto = new VergiKalemiYazDto
+        {
+            Kod = _kod.Trim(),
+            Ad = _ad.Trim(),
+            Grup = _grup,
+            AltGrup = Bos(_altGrup),
+            KanunMaddesi = Bos(_kanun),
+            Aciklama = Bos(_aciklama),
+            Hatirlatma = Bos(_hatirlatma),
+            OranBilgisi = Bos(_oranBilgisi),
+            UstSinirTuru = _ustSinirTuru == UstSinirTuru.Yok ? null : _ustSinirTuru,
+            UstSinirDeger = _ustSinirTuru == UstSinirTuru.Yok ? null : _ustSinirDeger,
+            DevredebilirMi = _devredebilir,
+            IstisnayaIliskinMi = _grup == VergiKalemGrubu.Kkeg && _istisnayaIliskin,
+            BagliIstisnaKalemiId = _grup == VergiKalemGrubu.Kkeg && _istisnayaIliskin ? _bagliIstisnaId : null,
+            AsgariMatrahtanDuser = _asgariMatrahtanDuser,
+            SiraNo = _siraNo
+        };
+
+        try
+        {
+            var sonuc = Kalem is null
+                ? await Api.KalemEkleAsync(dto)
+                : await Api.KalemGuncelleAsync(Kalem.Id, dto);
+
+            Dialog.Close(sonuc);
+        }
+        catch (Exception ex)
+        {
+            _hata = string.IsNullOrWhiteSpace(ex.Message) ? "Kalem kaydedilemedi." : ex.Message;
+        }
+        finally
+        {
+            _islemde = false;
+        }
+    }
+
+    static string? Bos(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();
+
+    static decimal? TutarCoz(string? metin)
+    {
+        var s = (metin ?? string.Empty).Replace(" ", string.Empty).Trim();
+        if (s.Length == 0) return null;
+
+        if (s.Contains(',')) s = s.Replace(".", string.Empty).Replace(',', '.');
+
+        return decimal.TryParse(s, NumberStyles.Number, CultureInfo.InvariantCulture, out var d) ? d : null;
+    }
+}

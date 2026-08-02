@@ -965,6 +965,41 @@ code {
     font-style: italic;
 }
 
+/* --- Kompakt tutar kolonları: Aktif, Pasif, Mizan ve Gelir Tablosu sekmeleri ---
+
+   Sorun: "Hesap Adı" kolonuna genişlik verilmemiş, tablo ise width:100%.
+   Artan genişliğin tamamını ad kolonu yuttuğu için geniş ekranda hesap adı ile
+   sağa yaslı tutarlar arasında büyük bir boşluk kalıyordu. Yalnızca tutar
+   kolonlarını daraltmak boşluğu büyütürdü (serbest kalan genişlik yine ada
+   giderdi), bu yüzden tablonun toplam genişliği de sınırlanıyor.
+   Hizalama (sağa yaslı) ve sayı biçimi değişmiyor.
+
+   Not: bu sınıf yalnızca ilgili dört sekmenin tablolarına eklenir; Bilanço Özet,
+   Gelir Tablosu Özet ve Finansal Oranlar tabloları eski genişlikte kalır. */
+
+.fk-mizan-table.fk-mizan-kompakt {
+    /* kod 90 + ad ~490 + iki tutar kolonu + payı: ad kolonu hâlâ rahat okunur. */
+    max-width: 880px;
+}
+
+.fk-mizan-table.fk-mizan-kompakt .fk-mizan-col-num {
+    width: 120px;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+/* Gelir Tablosu'nda Kaynak Hesap + Yansıtma kolonları da var; tutarların
+   ada yakınlığı aynı kalsın diye tavan o iki kolon kadar yükseltiliyor. */
+.fk-mizan-table.fk-mizan-kompakt.fk-gt-table {
+    max-width: 1090px;
+}
+
+/* Dikey % kolonu eklendiğinde (Dikey Yüzdeler Analizi > Bilanço) bir tutar
+   kolonu daha çizilir; tavan o kadar genişler, kolon genişlikleri aynı kalır. */
+.fk-mizan-table.fk-mizan-kompakt.fk-mizan-yuzdeli {
+    max-width: 1000px;
+}
+
 .fk-mizan-empty {
     text-align: center;
     padding: 1.5rem;

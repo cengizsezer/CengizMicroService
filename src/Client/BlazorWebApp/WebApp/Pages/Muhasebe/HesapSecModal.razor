@@ -1,0 +1,213 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.Muhasebe
+
+@inject IMuhasebeApi Api
+@inject DialogService Dialog
+
+@*
+    Hesap planı ağacı seçici. Fiş girişinde F2 ile açılır; orada yalnızca hareket gören
+    ve aktif hesaplar seçilebilir (iş kuralı 14), diğerleri gezinme için gösterilir ama
+    tıklanamaz. T cetvelinde ise üst hesabın ekstresi de alınabildiği için (iş kuralı 19)
+    çağıran TumHesaplarSecilebilir ile bu kısıtı kaldırır.
+    Seçim, çağırana HesapPlaniDto olarak döner.
+*@
+
+<style>
+    .hs-arama { margin-bottom: 8px; }
+    .hs-govde { max-height: 55vh; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; background: #fff; }
+    .hs-satir { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-bottom: 1px solid #f5f5f5; }
+    .hs-satir.secilebilir { cursor: pointer; }
+    .hs-satir.secilebilir:hover { background: #f0f7ff; }
+    .hs-chevron { flex: 0 0 22px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: #718096; border-radius: 4px; }
+    .hs-chevron.tiklanir { cursor: pointer; }
+    .hs-chevron.tiklanir:hover { background: #edf2f7; }
+    .hs-chevron.bos { visibility: hidden; }
+    .hs-kod { flex: 0 0 160px; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+    .hs-ad { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hs-pasif { color: #cbd5e0; }
+    .hs-gecersiz { color: #a0aec0; }
+    .hs-bos { padding: 20px; text-align: center; color: #a0aec0; }
+    .hs-ipucu { font-size: 12px; color: #a0aec0; margin-top: 6px; }
+</style>
+
+<RadzenTextBox Value="@_arama" @oninput="AramaDegisti" class="hs-arama"
+               placeholder="Kod veya hesap adı ara" type="search" Style="width:100%" />
+
+@if (_yukleniyor)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+}
+else
+{
+    <div class="hs-govde">
+        @if (_kokler.Count == 0)
+        {
+            <div class="hs-bos">Hesap planı boş.</div>
+        }
+        else if (_gorunur is not null && _gorunur.Count == 0)
+        {
+            <div class="hs-bos">Aramanıza uyan hesap bulunamadı.</div>
+        }
+        else
+        {
+            @foreach (var kok in _kokler)
+            {
+                @DugumCiz(kok, 0)
+            }
+        }
+    </div>
+
+    <div class="hs-ipucu">
+        @(TumHesaplarSecilebilir
+            ? "Üst hesap seçilirse alt ağacın tamamı toplanır."
+            : "Yalnızca hareket gören ve aktif hesaplar seçilebilir.")
+    </div>
+}
+
+<RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" class="rz-mt-3">
+    <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Click="@(() => Dialog.Close(null))" />
+</RadzenStack>
+
+@code {
+    /// <summary>
+    /// Açık olduğunda üst hesaplar ve hareket görmeyenler de seçilebilir (T cetveli).
+    /// Kapalıyken fiş girişinin kuralı geçerlidir: yalnızca hareket gören + aktif.
+    /// </summary>
+    [Parameter] public bool TumHesaplarSecilebilir { get; set; }
+
+    bool _yukleniyor = true;
+    string _arama = string.Empty;
+
+    List<HesapPlaniDto> _duz = new();
+    List<HesapPlaniDto> _kokler = new();
+    Dictionary<int, HesapPlaniDto> _sozluk = new();
+
+    readonly HashSet<int> _acik = new();
+    HashSet<int>? _gorunur;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _duz = await Api.GetHesapPlaniAsync();
+        _sozluk = _duz.ToDictionary(h => h.Id);
+
+        foreach (var h in _duz) h.Cocuklar.Clear();
+        foreach (var h in _duz.Where(h => h.UstHesapId is not null))
+            if (_sozluk.TryGetValue(h.UstHesapId!.Value, out var ust))
+                ust.Cocuklar.Add(h);
+
+        _kokler = _duz.Where(h => h.UstHesapId is null).ToList();
+        foreach (var k in _kokler) _acik.Add(k.Id);
+
+        _yukleniyor = false;
+    }
+
+    bool Secilebilir(HesapPlaniDto h) => TumHesaplarSecilebilir || (h.HareketGorur && h.Aktif);
+
+    void AramaDegisti(ChangeEventArgs e)
+    {
+        _arama = e.Value?.ToString() ?? string.Empty;
+        GorunurluguHesapla();
+    }
+
+    /// <summary>Eşleşenler + ataları (otomatik açılır) + altları.</summary>
+    void GorunurluguHesapla()
+    {
+        var terim = _arama.Trim();
+        if (terim.Length == 0)
+        {
+            _gorunur = null;
+            return;
+        }
+
+        var eslesen = _duz
+            .Where(h => h.Kod.Contains(terim, StringComparison.OrdinalIgnoreCase)
+                     || h.KodDuz.Contains(terim, StringComparison.OrdinalIgnoreCase)
+                     || h.Ad.Contains(terim, StringComparison.OrdinalIgnoreCase))
+            .Select(h => h.Id)
+            .ToHashSet();
+
+        var gorunur = new HashSet<int>(eslesen);
+
+        foreach (var id in eslesen)
+        {
+            if (!_sozluk.TryGetValue(id, out var h)) continue;
+            foreach (var ataId in AtaIdler(h.Yol))
+            {
+                gorunur.Add(ataId);
+                _acik.Add(ataId);
+            }
+        }
+
+        foreach (var h in _duz)
+            if (!gorunur.Contains(h.Id) && AtaIdler(h.Yol).Any(eslesen.Contains))
+                gorunur.Add(h.Id);
+
+        _gorunur = gorunur;
+    }
+
+    static IEnumerable<int> AtaIdler(string yol)
+    {
+        foreach (var parca in yol.Split('/', StringSplitOptions.RemoveEmptyEntries))
+            if (int.TryParse(parca, out var id))
+                yield return id;
+    }
+
+    bool Gorunur(HesapPlaniDto h) => _gorunur is null || _gorunur.Contains(h.Id);
+
+    void Degistir(HesapPlaniDto h)
+    {
+        if (!_acik.Remove(h.Id)) _acik.Add(h.Id);
+    }
+
+    void Sec(HesapPlaniDto h)
+    {
+        if (!Secilebilir(h)) return;
+        Dialog.Close(h);
+    }
+
+    RenderFragment DugumCiz(HesapPlaniDto h, int derinlik) => __builder =>
+    {
+        if (!Gorunur(h)) return;
+
+        var gorunurCocuklar = h.Cocuklar.Where(Gorunur).ToList();
+        var acik = _acik.Contains(h.Id);
+        var secilebilir = Secilebilir(h);
+
+        <div class="hs-satir @(secilebilir ? "secilebilir" : "")"
+             @onclick="@(() => Sec(h))"
+             title="@(secilebilir ? "Seç" : h.Aktif ? "Bu hesap hareket görmüyor" : "Bu hesap pasif")">
+
+            @if (gorunurCocuklar.Count > 0)
+            {
+                <span class="hs-chevron tiklanir" @onclick="@(() => Degistir(h))" @onclick:stopPropagation="true">
+                    <RadzenIcon Icon="@(acik ? "expand_more" : "chevron_right")" Style="font-size:18px" />
+                </span>
+            }
+            else
+            {
+                <span class="hs-chevron bos"></span>
+            }
+
+            <span class="hs-kod @(h.Aktif ? (secilebilir ? "" : "hs-gecersiz") : "hs-pasif")"
+                  style="@($"padding-left:{derinlik * 16}px")">@h.Kod</span>
+
+            <span class="hs-ad @(h.Aktif ? (secilebilir ? "" : "hs-gecersiz") : "hs-pasif")">
+                @h.Ad
+                @if (!h.Aktif)
+                {
+                    <span style="font-size:10px;padding:1px 6px;border-radius:10px;background:#fff5f5;color:#742a2a;margin-left:6px">pasif</span>
+                }
+            </span>
+        </div>
+
+        @if (acik)
+        {
+            foreach (var c in gorunurCocuklar)
+            {
+                @DugumCiz(c, derinlik + 1)
+            }
+        }
+    };
+}

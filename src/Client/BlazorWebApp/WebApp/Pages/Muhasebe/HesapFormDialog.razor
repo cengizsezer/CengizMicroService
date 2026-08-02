@@ -1,0 +1,498 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.Muhasebe
+
+@inject IMuhasebeApi Api
+@inject DialogService Dialog
+
+@*
+    Hesap ekleme / düzenleme diyaloğu.
+    Kullanıcıdan tam kod alınmaz (iş kuralı 3): üst hesap seçilidir, yalnızca son segment
+    girilir. Segment uzunluğu ve ayraç maskeden gelir; istemci maskeyi bilmez, "sonraki-kod"
+    ucunun döndüğü Kod ile Segment farkından kod önekini ve hane sayısını çıkarır.
+    Karakter kullanıcıdan istenmez, üst hesaptan miras alınır (iş kuralı 5).
+    Buradaki doğrulamalar yalnızca kullanıcı deneyimi içindir; tek savunma hattı sunucudur.
+*@
+
+<style>
+    .hf-row { display: flex; flex-wrap: wrap; gap: 12px; }
+    .hf-col { display: flex; flex-direction: column; gap: 3px; }
+    .hf-col label { font-size: 11px; color: var(--text-secondary, #718096); }
+    .hf-kod { font-family: ui-monospace, Consolas, monospace; }
+    .hf-onizleme { border: 1px solid #eee; border-radius: 6px; padding: 10px 12px; background: #fafafa; }
+    .hf-onizleme-kod { font-family: ui-monospace, Consolas, monospace; font-size: 20px; font-weight: 600; letter-spacing: .5px; }
+    .hf-onizleme-satir { font-size: 12px; color: var(--text-secondary, #718096); margin-top: 3px; }
+    .hf-ust { font-size: 12px; color: var(--text-secondary, #718096); }
+    .hf-ust code { font-family: ui-monospace, Consolas, monospace; }
+    .hf-hata { font-size: 12px; color: #c53030; }
+    .hf-onay { display: flex; align-items: center; gap: 6px; }
+</style>
+
+@if (_yukleniyor)
+{
+    <div class="rz-p-4"><RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" /></div>
+}
+else if (_acilisHatasi is not null)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">
+        @_acilisHatasi
+    </RadzenAlert>
+    <div class="rz-mt-3">
+        <RadzenButton Text="Kapat" ButtonStyle="ButtonStyle.Light" Click="@(() => Dialog.Close(false))" />
+    </div>
+}
+else
+{
+    <RadzenStack Gap="0.9rem">
+
+        <div class="hf-ust">
+            Üst hesap: <code>@_ustKod</code> @_ustAd
+        </div>
+
+        <!-- Banka muavini: kod TCMB EFT listesinden gelir, kullanıcı elle yazmaz -->
+        @if (BankaSecilebilir)
+        {
+            <div class="hf-onay">
+                <RadzenCheckBox @bind-Value="_bankaMuavini" Name="bankaMuavini" Disabled="@Kilitli"
+                                Change="@((bool _) => BankaModuDegisti())" />
+                <RadzenLabel Text="Banka muavini" Component="bankaMuavini" />
+            </div>
+
+            @if (_bankaMuavini)
+            {
+                <div class="hf-col" style="flex:1 1 100%">
+                    <label>Banka (TCMB EFT)</label>
+                    <RadzenDropDown TValue="string" Data="@_bankalar" ValueProperty="Kod" TextProperty="Etiket"
+                                    Value="@_bankaKodu" ValueChanged="@BankaSecildi" TItem="BankaKoduDto"
+                                    AllowFiltering="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                    Placeholder="Banka seçin" Disabled="@Kilitli" Style="width:100%" />
+                    @if (_bankalar.Count == 0)
+                    {
+                        <span class="hf-hata">Banka listesi alınamadı.</span>
+                    }
+                </div>
+
+                <div class="hf-col" style="flex:1 1 100%">
+                    <label>IBAN (opsiyonel)</label>
+                    <RadzenTextBox Value="@_iban" @oninput="IbanDegisti" Disabled="@Kilitli"
+                                   Placeholder="TR.." Style="width:100%" class="hf-kod" />
+                </div>
+            }
+        }
+
+        <div class="hf-row">
+            @if (KebirModu)
+            {
+                <!-- İş kuralı 7: kebir ekleme serbest kod girişi kabul etmez; boş kodlar listelenir. -->
+                <div class="hf-col" style="flex:0 0 200px">
+                    <label>Kebir kodu</label>
+                    <RadzenDropDown TValue="string" TItem="BosKebirDto" Data="@_kebirSecenekleri"
+                                    ValueProperty="Segment" TextProperty="Kod"
+                                    Value="@_segment" ValueChanged="@KebirSecildi"
+                                    Placeholder="Boş kod seçin" Disabled="@Kilitli" Style="width:100%" />
+                    @if (_kebirSecenekleri.Count == 0)
+                    {
+                        <span class="hf-hata">Bu grubun altında boş kebir kodu kalmadı.</span>
+                    }
+                    else
+                    {
+                        <span style="font-size:11px;color:#a0aec0">Yalnızca kullanılmamış kodlar listelenir</span>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="hf-col" style="flex:0 0 130px">
+                    <label>Kod segmenti</label>
+                    <RadzenTextBox Value="@_segment" @oninput="SegmentDegisti" class="hf-kod"
+                                   Disabled="@SegmentKilitli" Style="width:100%" />
+                    @if (SegmentHatasi is not null)
+                    {
+                        <span class="hf-hata">@SegmentHatasi</span>
+                    }
+                    else if (!SegmentKilitli)
+                    {
+                        <span style="font-size:11px;color:#a0aec0">@_segmentUzunluk hane · kısa girilirse sola sıfır doldurulur</span>
+                    }
+                </div>
+            }
+
+            <div class="hf-col" style="flex:1 1 240px">
+                <label>Hesap adı</label>
+                <RadzenTextBox Value="@_ad" @oninput="AdDegisti" Style="width:100%" />
+                @if (AdHatasi is not null)
+                {
+                    <span class="hf-hata">@AdHatasi</span>
+                }
+            </div>
+        </div>
+
+        <div class="hf-onay">
+            <RadzenCheckBox @bind-Value="_hareketGorur" Name="hareketGorur" Disabled="@Kilitli" />
+            <RadzenLabel Text="Hareket görür (fiş kesilebilir)" Component="hareketGorur" />
+        </div>
+
+        <div class="hf-onay">
+            <RadzenCheckBox @bind-Value="_dovizTakipli" Name="dovizTakipli" Disabled="@Kilitli"
+                            Change="@((bool _) => DovizModuDegisti())" />
+            <RadzenLabel Text="Döviz takipli" Component="dovizTakipli" />
+        </div>
+
+        @if (_dovizTakipli)
+        {
+            <div class="hf-col" style="max-width:200px">
+                <label>Para birimi</label>
+                <RadzenDropDown TValue="string" Data="@ParaBirimleri" @bind-Value="_paraBirimi"
+                                Placeholder="Seçin" Disabled="@Kilitli" Style="width:100%" />
+                @if (ParaBirimiHatasi is not null)
+                {
+                    <span class="hf-hata">@ParaBirimiHatasi</span>
+                }
+            </div>
+        }
+
+        <!-- Canlı önizleme: tam kod, ad, seviye, miras alınan karakter -->
+        <div class="hf-onizleme">
+            <div class="hf-onizleme-kod">@TamKod</div>
+            <div class="hf-onizleme-satir">@(string.IsNullOrWhiteSpace(_ad) ? "(hesap adı girilmedi)" : _ad)</div>
+            <div class="hf-onizleme-satir">
+                @_seviye. seviye · @MuhasebeEtiket.Tur(_tur) ·
+                karakter <strong>@MuhasebeEtiket.Karakter(_karakter)</strong> (üst hesaptan miras)
+            </div>
+        </div>
+
+        @if (Kilitli)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">
+                Bu standart bir hesap; yalnızca hesap adı güncellenebilir.
+            </RadzenAlert>
+        }
+
+        @if (_kayitHatasi is not null)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">
+                @_kayitHatasi
+            </RadzenAlert>
+        }
+
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+            <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Click="@(() => Dialog.Close(false))" />
+            <RadzenButton Text="@(DuzenlemeMi ? "Güncelle" : "Kaydet")" Icon="save" ButtonStyle="ButtonStyle.Primary"
+                          Disabled="@(!Gecerli || _kaydediliyor)" IsBusy="@_kaydediliyor" Click="@KaydetAsync" />
+        </RadzenStack>
+
+    </RadzenStack>
+}
+
+@code {
+    /// <summary>Altına hesap açılacak üst hesap. Düzenleme modunda düzenlenen hesabın üstü.</summary>
+    [Parameter] public HesapPlaniDto? Ust { get; set; }
+
+    /// <summary>Doluysa düzenleme modu; boşsa ekleme modu.</summary>
+    [Parameter] public HesapPlaniDto? Mevcut { get; set; }
+
+    static readonly string[] ParaBirimleri = { "USD", "EUR", "GBP", "CHF", "JPY", "CAD", "AUD", "SEK", "NOK", "DKK" };
+
+    /// <summary>TCMB EFT kodları 4 hanelidir; banka seçici yalnızca 4 haneli segment seviyesinde anlamlı.</summary>
+    const int BankaSegmentUzunlugu = 4;
+
+    bool _yukleniyor = true;
+    bool _kaydediliyor;
+    string? _acilisHatasi;
+    string? _kayitHatasi;
+
+    // Kod: önek maskeden gelen tam koddan çıkarılır, kullanıcı yalnızca segmenti girer.
+    string _onEk = string.Empty;
+    string _segment = string.Empty;
+    int _segmentUzunluk = 1;
+    byte _seviye = 1;
+    HesapKarakter _karakter;
+    HesapTuru _tur;
+
+    string _ustKod = string.Empty;
+    string _ustAd = string.Empty;
+
+    string _ad = string.Empty;
+    bool _hareketGorur = true;
+    bool _dovizTakipli;
+    string? _paraBirimi;
+    bool _bankaMuavini;
+    string? _bankaKodu;
+    string? _iban;
+
+    /// <summary>TCMB EFT listesi; API'nin banka-kodlari ucundan gelir.</summary>
+    List<BankaKoduDto> _bankalar = new();
+
+    /// <summary>
+    /// İş kuralı 7: üst hesap bir grupsa açılacak hesap kebirdir ve kodu serbest girilemez;
+    /// "bos-kebirler" ucundan gelen kullanılmamış kodlardan seçilir. Uç yalnızca grup
+    /// hesapları için 200 döner, diğer seviyelerde hata verir — mod bu şekilde anlaşılır.
+    /// </summary>
+    List<BosKebirDto> _kebirSecenekleri = new();
+    bool _kebirModu;
+
+    bool DuzenlemeMi => Mevcut is not null;
+
+    /// <summary>İş kuralı 6: sistem hesabında yalnızca ad güncellenebilir.</summary>
+    bool Kilitli => Mevcut?.SistemHesabi == true;
+
+    bool SegmentKilitli => Kilitli || _bankaMuavini;
+
+    bool KebirModu => _kebirModu && !Kilitli;
+
+    /// <summary>Kebir seviyesinde banka muavini açılmaz; TCMB kodu 4 hanelidir.</summary>
+    bool BankaSecilebilir => !KebirModu && _segmentUzunluk == BankaSegmentUzunlugu;
+
+    string TamKod => _onEk + DoldurulmusSegment;
+
+    string DoldurulmusSegment =>
+        SegmentGecerli ? _segment.Trim().PadLeft(_segmentUzunluk, '0') : new string('•', _segmentUzunluk);
+
+    bool SegmentGecerli
+    {
+        get
+        {
+            var s = (_segment ?? string.Empty).Trim();
+            return s.Length > 0 && s.Length <= _segmentUzunluk && s.All(char.IsAsciiDigit);
+        }
+    }
+
+    string? SegmentHatasi
+    {
+        get
+        {
+            if (SegmentKilitli) return null;
+
+            if (KebirModu)
+                return string.IsNullOrWhiteSpace(_segment) ? "Boş bir kebir kodu seçin." : null;
+
+            var s = (_segment ?? string.Empty).Trim();
+            if (s.Length == 0) return "Kod segmenti zorunlu.";
+            if (!s.All(char.IsAsciiDigit)) return "Yalnızca rakam girilebilir.";
+            if (s.Length > _segmentUzunluk) return $"En fazla {_segmentUzunluk} hane olabilir.";
+            return null;
+        }
+    }
+
+    string? AdHatasi => string.IsNullOrWhiteSpace(_ad) ? "Hesap adı zorunlu." : null;
+
+    string? ParaBirimiHatasi =>
+        _dovizTakipli && string.IsNullOrWhiteSpace(_paraBirimi) ? "Para birimi seçin." : null;
+
+    /// <summary>Kaydet butonu doğrulama geçmeden aktifleşmez.</summary>
+    bool Gecerli
+    {
+        get
+        {
+            if (AdHatasi is not null) return false;
+            if (Kilitli) return true;                      // yalnızca ad değişebilir
+            if (SegmentHatasi is not null) return false;
+            if (ParaBirimiHatasi is not null) return false;
+            if (_bankaMuavini && string.IsNullOrWhiteSpace(_bankaKodu)) return false;
+            return true;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _ustKod = Ust?.Kod ?? "—";
+        _ustAd = Ust?.Ad ?? string.Empty;
+
+        if (DuzenlemeMi) YukleDuzenleme();
+        else await YukleEklemeAsync();
+
+        if (_acilisHatasi is null)
+        {
+            await KebirSecenekleriniYukleAsync();
+
+            if (BankaSecilebilir)
+                _bankalar = await Api.GetBankaKodlariAsync();
+        }
+
+        _yukleniyor = false;
+    }
+
+    /// <summary>
+    /// Üst hesap grupsa kebir kodu listesini çeker (iş kuralı 7). Düzenleme modunda
+    /// hesabın mevcut kodu da listeye eklenir, aksi hâlde seçili değer listede olmazdı.
+    /// </summary>
+    async Task KebirSecenekleriniYukleAsync()
+    {
+        if (Ust is null || Kilitli) return;
+
+        var (bosKebirler, _) = await Api.GetBosKebirlerAsync(Ust.Id);
+        if (bosKebirler is null) return;      // üst hesap grup değil → serbest segment girişi
+
+        _kebirModu = true;
+        _kebirSecenekleri = bosKebirler;
+
+        if (DuzenlemeMi && Mevcut is not null &&
+            !_kebirSecenekleri.Any(k => k.Segment == Mevcut.SegmentKod))
+        {
+            _kebirSecenekleri.Insert(0, new BosKebirDto
+            {
+                Segment = Mevcut.SegmentKod,
+                Kod = Mevcut.Kod
+            });
+        }
+
+        // Ekleme modunda "sonraki-kod"un önerdiği segment listede yoksa ilk boş koda düş.
+        if (!DuzenlemeMi && !_kebirSecenekleri.Any(k => k.Segment == _segment))
+            _segment = _kebirSecenekleri.FirstOrDefault()?.Segment ?? string.Empty;
+    }
+
+    void KebirSecildi(string segment)
+    {
+        _segment = segment ?? string.Empty;
+        _kayitHatasi = null;
+    }
+
+    void YukleDuzenleme()
+    {
+        var m = Mevcut!;
+
+        _segment = m.SegmentKod;
+        _segmentUzunluk = Math.Max(m.SegmentKod.Length, 1);
+        _onEk = OnekCikar(m.Kod, m.SegmentKod);
+        _seviye = m.Seviye;
+        _karakter = m.Karakter;
+        _tur = m.HesapTuru;
+
+        _ad = m.Ad;
+        _hareketGorur = m.HareketGorur;
+        _paraBirimi = m.ParaBirimi;
+        _dovizTakipli = !string.IsNullOrWhiteSpace(m.ParaBirimi);
+        _bankaKodu = m.BankaKodu;
+        _bankaMuavini = !string.IsNullOrWhiteSpace(m.BankaKodu);
+        _iban = m.Iban;
+    }
+
+    async Task YukleEklemeAsync()
+    {
+        if (Ust is null)
+        {
+            _acilisHatasi = "Üst hesap seçilmeden hesap açılamaz.";
+            return;
+        }
+
+        // Kod alanı "sonraki-kod" ucundan gelen ilk boş değerle dolu açılır.
+        var (sonraki, hata) = await Api.GetSonrakiKodAsync(Ust.Id);
+        if (sonraki is null)
+        {
+            _acilisHatasi = hata ?? "Yeni hesap kodu alınamadı.";
+            return;
+        }
+
+        _segment = sonraki.Segment;
+        _segmentUzunluk = Math.Max(sonraki.Segment.Length, 1);
+        _onEk = OnekCikar(sonraki.Kod, sonraki.Segment);
+        _seviye = sonraki.Seviye;
+
+        // Karakter üst hesaptan miras alınır (iş kuralı 5); kullanıcıya yalnızca gösterilir.
+        _karakter = Ust.Karakter;
+        _tur = _seviye <= 1 ? HesapTuru.Sinif : (HesapTuru)Math.Min((int)_seviye, (int)HesapTuru.Muavin);
+    }
+
+    /// <summary>Tam koddan son segmenti düşerek kod önekini (ayraç dâhil) bulur.</summary>
+    static string OnekCikar(string tamKod, string segment)
+        => tamKod.EndsWith(segment, StringComparison.Ordinal)
+            ? tamKod[..^segment.Length]
+            : tamKod;
+
+    void SegmentDegisti(ChangeEventArgs e)
+    {
+        _segment = e.Value?.ToString() ?? string.Empty;
+        _kayitHatasi = null;
+    }
+
+    void AdDegisti(ChangeEventArgs e)
+    {
+        _ad = e.Value?.ToString() ?? string.Empty;
+        _kayitHatasi = null;
+    }
+
+    void IbanDegisti(ChangeEventArgs e) => _iban = e.Value?.ToString();
+
+    void BankaModuDegisti()
+    {
+        if (!_bankaMuavini)
+        {
+            _bankaKodu = null;
+            _iban = null;
+        }
+        _kayitHatasi = null;
+    }
+
+    /// <summary>Banka seçilince kod TCMB listesinden gelir; kullanıcı elle yazmaz.</summary>
+    void BankaSecildi(string kod)
+    {
+        _bankaKodu = kod;
+
+        var banka = _bankalar.FirstOrDefault(b => b.Kod == kod);
+        if (banka is null) return;
+
+        _segment = banka.Kod;
+        if (string.IsNullOrWhiteSpace(_ad)) _ad = banka.Ad;
+        _kayitHatasi = null;
+    }
+
+    void DovizModuDegisti()
+    {
+        if (!_dovizTakipli) _paraBirimi = null;
+        _kayitHatasi = null;
+    }
+
+    async Task KaydetAsync()
+    {
+        if (!Gecerli) return;
+
+        _kaydediliyor = true;
+        _kayitHatasi = null;
+
+        var paraBirimi = _dovizTakipli ? _paraBirimi : null;
+        var bankaKodu = _bankaMuavini ? _bankaKodu : null;
+        var iban = _bankaMuavini ? _iban : null;
+
+        string? hata;
+
+        if (DuzenlemeMi)
+        {
+            var (_, h) = await Api.UpdateHesapAsync(Mevcut!.Id, new HesapPlaniUpdateDto
+            {
+                Ad = _ad.Trim(),
+                // Sistem hesabında kod değişmez; segment gönderilmez ki sunucu kodu korusun.
+                Segment = Kilitli ? null : _segment.Trim(),
+                HareketGorur = Kilitli ? Mevcut.HareketGorur : _hareketGorur,
+                ParaBirimi = Kilitli ? Mevcut.ParaBirimi : paraBirimi,
+                BankaKodu = Kilitli ? Mevcut.BankaKodu : bankaKodu,
+                Iban = Kilitli ? Mevcut.Iban : iban
+            });
+            hata = h;
+        }
+        else
+        {
+            var (_, h) = await Api.CreateHesapAsync(new HesapPlaniCreateDto
+            {
+                UstHesapId = Ust!.Id,
+                Segment = _segment.Trim(),
+                Ad = _ad.Trim(),
+                HareketGorur = _hareketGorur,
+                ParaBirimi = paraBirimi,
+                BankaKodu = bankaKodu,
+                Iban = iban
+            });
+            hata = h;
+        }
+
+        _kaydediliyor = false;
+
+        if (hata is not null)
+        {
+            _kayitHatasi = hata;
+            return;
+        }
+
+        Dialog.Close(true);
+    }
+}

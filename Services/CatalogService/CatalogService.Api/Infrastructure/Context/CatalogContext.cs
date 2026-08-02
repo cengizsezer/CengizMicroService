@@ -81,6 +81,14 @@ namespace CatalogService.Api.Infrastructure.Context
         // Firma Kontrol / Raporlar modülü — vergi paneli girdileri (firma + dönem + yıl bazında)
         public DbSet<Features.FirmaKontrol.Domain.FirmaKontrolVergi> FirmaKontrolVergiler => Set<Features.FirmaKontrol.Domain.FirmaKontrolVergi>();
 
+        // Firma Kontrol / Kurumlar vergisi beyannamesi — kalem katalogu (firmadan bağımsız)
+        public DbSet<Features.FirmaKontrol.Domain.VergiKalemi> VergiKalemleri => Set<Features.FirmaKontrol.Domain.VergiKalemi>();
+
+        // Firma Kontrol / Kurumlar vergisi beyannamesi — firma + dönem bazında girdiler
+        public DbSet<Features.FirmaKontrol.Domain.VergiHesaplama> VergiHesaplamalar => Set<Features.FirmaKontrol.Domain.VergiHesaplama>();
+        public DbSet<Features.FirmaKontrol.Domain.VergiHesaplamaSatir> VergiHesaplamaSatirlari => Set<Features.FirmaKontrol.Domain.VergiHesaplamaSatir>();
+        public DbSet<Features.FirmaKontrol.Domain.GecmisYilZarari> GecmisYilZararlari => Set<Features.FirmaKontrol.Domain.GecmisYilZarari>();
+
         // Ticaret Sicil İşlemleri modülü (ortak referans içerik; tenant'a bağlı değil)
         public DbSet<Features.TicaretSicil.Domain.TicaretSicilIslem> TicaretSicilIslemler => Set<Features.TicaretSicil.Domain.TicaretSicilIslem>();
         public DbSet<Features.TicaretSicil.Domain.TicaretSicilAdim> TicaretSicilAdimlar => Set<Features.TicaretSicil.Domain.TicaretSicilAdim>();
@@ -93,6 +101,13 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<Features.SmmmTakip.Domain.SmmmKonu> SmmmKonular => Set<Features.SmmmTakip.Domain.SmmmKonu>();
         public DbSet<Features.SmmmTakip.Domain.SmmmHad> SmmmHadler => Set<Features.SmmmTakip.Domain.SmmmHad>();
         public DbSet<Features.SmmmTakip.Domain.SmmmHadDegeri> SmmmHadDegerleri => Set<Features.SmmmTakip.Domain.SmmmHadDegeri>();
+
+        // Muhasebe modülü (Hesap Planı + Fiş/Yevmiye) — firma (tenant) bazlı
+        public DbSet<Features.Muhasebe.Domain.KodMaskesi> KodMaskeleri => Set<Features.Muhasebe.Domain.KodMaskesi>();
+        public DbSet<Features.Muhasebe.Domain.HesapPlani> HesapPlanlari => Set<Features.Muhasebe.Domain.HesapPlani>();
+        public DbSet<Features.Muhasebe.Domain.MasrafMerkezi> MasrafMerkezleri => Set<Features.Muhasebe.Domain.MasrafMerkezi>();
+        public DbSet<Features.Muhasebe.Domain.Fis> Fisler => Set<Features.Muhasebe.Domain.Fis>();
+        public DbSet<Features.Muhasebe.Domain.FisSatir> FisSatirlar => Set<Features.Muhasebe.Domain.FisSatir>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -133,6 +148,10 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new FirmaKontrolMaddeEntityTypeConfiguration());
             builder.ApplyConfiguration(new FirmaKontrolMizanSatirEntityTypeConfiguration());
             builder.ApplyConfiguration(new FirmaKontrolVergiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new VergiKalemiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new VergiHesaplamaEntityTypeConfiguration());
+            builder.ApplyConfiguration(new VergiHesaplamaSatirEntityTypeConfiguration());
+            builder.ApplyConfiguration(new GecmisYilZarariEntityTypeConfiguration());
 
             // Ticaret Sicil İşlemleri modülü
             builder.ApplyConfiguration(new TicaretSicilIslemEntityTypeConfiguration());
@@ -147,6 +166,13 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new SmmmHadEntityTypeConfiguration());
             builder.ApplyConfiguration(new SmmmHadDegeriEntityTypeConfiguration());
 
+            // Muhasebe modülü (Hesap Planı + Fiş)
+            builder.ApplyConfiguration(new KodMaskesiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new HesapPlaniEntityTypeConfiguration());
+            builder.ApplyConfiguration(new MasrafMerkeziEntityTypeConfiguration());
+            builder.ApplyConfiguration(new FisEntityTypeConfiguration());
+            builder.ApplyConfiguration(new FisSatirEntityTypeConfiguration());
+
 
             SetBuilderPKFConfiguration(builder);
 
@@ -159,6 +185,12 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.Entity<Personnel>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
             builder.Entity<Job>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
             builder.Entity<CustomerCompany>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
+
+            // Muhasebe modülü tenant filtreleri (FisSatir, bağlı olduğu Fis üzerinden izole olur)
+            builder.Entity<Features.Muhasebe.Domain.KodMaskesi>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
+            builder.Entity<Features.Muhasebe.Domain.HesapPlani>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
+            builder.Entity<Features.Muhasebe.Domain.MasrafMerkezi>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
+            builder.Entity<Features.Muhasebe.Domain.Fis>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
         }
 
 

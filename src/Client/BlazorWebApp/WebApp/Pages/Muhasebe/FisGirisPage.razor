@@ -1,0 +1,967 @@
+@page "/muhasebe/fis"
+@page "/muhasebe/fis/{Id:int}"
+
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Web
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.Muhasebe
+
+@implements IAsyncDisposable
+
+@inject IMuhasebeApi Api
+@inject DialogService Dialog
+@inject NotificationService Notif
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@*
+    Fiş giriş ekranı. Buradaki tüm kontroller kullanıcı deneyimi içindir; iş kuralları
+    (10–17) sunucuda zorlanır. Denge, toplamlar ve denkleştirme önerisi her satır
+    değişiminde yeniden hesaplanır — kaydete basınca değil.
+*@
+
+<style>
+    .fg-baslik { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 12px; }
+    .fg-alan { display: flex; flex-direction: column; gap: 3px; }
+    .fg-alan label { font-size: 11px; color: var(--text-secondary, #718096); }
+    .fg-inp { border: 1px solid #cbd5e0; border-radius: 4px; padding: 5px 8px; font-size: 13px; background: #fff; }
+    .fg-inp:disabled { background: #f7fafc; color: #a0aec0; }
+    .fg-inp:focus { outline: 2px solid #90cdf4; outline-offset: -1px; }
+
+    .fg-rozet { font-size: 10px; padding: 2px 8px; border-radius: 10px; }
+    .fg-rozet-kaynak { background: #ebf8ff; color: #2c5282; }
+    .fg-rozet-taslak { background: #fffaf0; color: #975a16; }
+    .fg-rozet-kesin { background: #f0fff4; color: #22543d; }
+    .fg-rozet-doviz { background: #faf5ff; color: #553c9a; margin-left: 6px; }
+
+    .fg-tablo { border: 1px solid #e2e8f0; border-radius: 6px; overflow: visible; background: #fff; }
+    .fg-satir { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-bottom: 1px solid #f1f5f9; }
+    .fg-satir.fg-head { background: #f8fafc; font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .fg-satir:last-child { border-bottom: none; }
+
+    .fg-c-kod    { flex: 0 0 190px; position: relative; }
+    .fg-c-ad     { flex: 1 1 200px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+    .fg-c-mm     { flex: 0 0 150px; }
+    .fg-c-acik   { flex: 1 1 160px; min-width: 0; }
+    .fg-c-tutar  { flex: 0 0 130px; }
+    .fg-c-sil    { flex: 0 0 34px; text-align: center; }
+
+    .fg-c-kod .fg-inp, .fg-c-acik .fg-inp, .fg-c-mm select { width: 100%; }
+    .fg-c-kod .fg-inp { font-family: ui-monospace, Consolas, monospace; }
+    .fg-c-tutar .fg-inp { width: 100%; text-align: right; font-variant-numeric: tabular-nums; }
+    .fg-c-tutar .fg-inp::placeholder { color: #cbd5e0; font-style: italic; }
+
+    .fg-oneri { position: absolute; z-index: 40; top: 100%; left: 0; min-width: 380px; background: #fff;
+                border: 1px solid #cbd5e0; border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.12); max-height: 260px; overflow-y: auto; }
+    .fg-oneri-satir { display: flex; gap: 10px; padding: 5px 10px; cursor: pointer; font-size: 13px; }
+    .fg-oneri-satir:hover, .fg-oneri-satir.secili { background: #ebf8ff; }
+    .fg-oneri-kod { flex: 0 0 150px; font-family: ui-monospace, Consolas, monospace; }
+    .fg-oneri-ad { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fg-oneri-bos { padding: 8px 10px; font-size: 12px; color: #a0aec0; }
+
+    .fg-serit { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 12px; padding: 10px 14px;
+                border-radius: 6px; font-size: 14px; font-variant-numeric: tabular-nums; }
+    .fg-serit-ok { background: #f0fff4; border: 1px solid #9ae6b4; color: #22543d; }
+    .fg-serit-hata { background: #fff5f5; border: 1px solid #feb2b2; color: #742a2a; }
+    .fg-serit strong { font-weight: 600; }
+    .fg-fark-uygula { text-decoration: underline; cursor: pointer; }
+
+    .fg-ipucu { margin-top: 8px; font-size: 12px; color: #a0aec0; }
+    .fg-ipucu kbd { font-family: ui-monospace, Consolas, monospace; background: #edf2f7; border-radius: 3px; padding: 1px 5px; }
+    .fg-mm-yok { font-size: 12px; color: #cbd5e0; }
+    .fg-inp.fg-uyari { border-color: #f6ad55; background: #fffaf0; }
+</style>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+    <h4 style="margin:0">
+        Fiş Girişi
+        @if (_fisNo is not null)
+        {
+            <span style="font-family:ui-monospace,Consolas,monospace; color:#4a5568; margin-left:8px">@_fisNo</span>
+        }
+    </h4>
+    <div style="display:flex; gap:6px; align-items:center">
+        <span class="fg-rozet fg-rozet-kaynak">@KaynakEtiket(_kaynak)</span>
+        <span class="fg-rozet @(_durum == FisDurum.Kesinlesmis ? "fg-rozet-kesin" : "fg-rozet-taslak")">
+            @(_durum == FisDurum.Kesinlesmis ? "Kesinleşmiş" : "Taslak")
+        </span>
+    </div>
+</div>
+
+@if (_yukleniyor)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+}
+else
+{
+    @if (Kilitli)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">
+            Bu fiş kesinleşmiş; değiştirilemez. Düzeltme için ters kayıt fişi oluşturun.
+        </RadzenAlert>
+    }
+
+    <!-- Başlık -->
+    <div class="fg-baslik">
+        <div class="fg-alan">
+            <label>Fiş türü</label>
+            <select class="fg-inp" value="@((int)_fisTuru)" disabled="@Kilitli"
+                    @onchange="@(e => _fisTuru = (FisTuru)int.Parse(e.Value?.ToString() ?? "4"))">
+                @foreach (var t in Enum.GetValues<FisTuru>())
+                {
+                    <option value="@((int)t)">@TurEtiket(t)</option>
+                }
+            </select>
+        </div>
+
+        <div class="fg-alan">
+            <label>Tarih</label>
+            @* Native <input type="date"> tarayıcı diline göre biçimlenir (İngilizce
+               tarayıcıda AA/GG/YYYY); Radzen seçicisi biçimi bizim belirlediğimiz gibi çizer. *@
+            <RadzenDatePicker TValue="DateTime" Value="@_tarih" Disabled="@Kilitli"
+                              DateFormat="@MuhasebeEtiket.TarihBicimi" Culture="@MuhasebeEtiket.Kultur"
+                              ShowTime="false" Style="width:150px"
+                              Change="@(a => { if (a is DateTime d) _tarih = d.Date; })" />
+        </div>
+
+        <div class="fg-alan">
+            <label>Fiş no</label>
+            <input class="fg-inp" style="width:130px; font-family:ui-monospace,Consolas,monospace"
+                   value="@(_fisNo ?? "otomatik")" disabled readonly />
+        </div>
+
+        <div class="fg-alan">
+            <label>Belge no</label>
+            <input class="fg-inp" style="width:140px" value="@_belgeNo" disabled="@Kilitli"
+                   @oninput="@(e => _belgeNo = e.Value?.ToString())" />
+        </div>
+
+        <div class="fg-alan" style="flex:1 1 240px">
+            <label>Açıklama</label>
+            <input class="fg-inp" style="width:100%" value="@_aciklama" disabled="@Kilitli"
+                   @oninput="@(e => _aciklama = e.Value?.ToString())" />
+        </div>
+    </div>
+
+    <!-- Satırlar -->
+    <div class="fg-tablo">
+        <div class="fg-satir fg-head">
+            <span class="fg-c-kod">Hesap kodu</span>
+            <span class="fg-c-ad">Hesap adı</span>
+            <span class="fg-c-mm">Masraf merkezi</span>
+            <span class="fg-c-acik">Açıklama</span>
+            <span class="fg-c-tutar" style="text-align:right">Borç</span>
+            <span class="fg-c-tutar" style="text-align:right">Alacak</span>
+            <span class="fg-c-sil"></span>
+        </div>
+
+        @foreach (var satir in _satirlar)
+        {
+            var sonSatir = ReferenceEquals(satir, _satirlar[^1]);
+
+            @* @key: satır silinince DOM öğeleri indekse göre yeniden eşlenmesin,
+               aksi hâlde silinen satırın kutu içeriği bir alttaki satırda kalabilir. *@
+            <div class="fg-satir" @key="satir">
+                <!-- Hesap arama: koda da isme de göre, yalnızca hareket görenler -->
+                <span class="fg-c-kod">
+                    <input class="fg-inp" value="@satir.HesapArama" disabled="@Kilitli"
+                           placeholder="kod / ad · F2"
+                           @oninput="@(e => HesapAramaDegisti(satir, e))"
+                           @onfocus="@(() => OdakSatir(satir, true))"
+                           @onblur="@(() => OneriKapat(satir))"
+                           @onkeydown="@(e => HesapKlavye(satir, e))" />
+
+                    @if (ReferenceEquals(_oneriSatir, satir) && satir.Oneriler.Count > 0)
+                    {
+                        @*
+                            Seçim mousedown'da yapılır, click'te değil: click'ten önce input blur
+                            olur, blur öneri kutusunu kapatır ve tıklanan öğe DOM'dan kalkacağı için
+                            click hiç ulaşmazdı. preventDefault ise odağın kutudan çıkmasını engeller
+                            — ancak Blazor bunu yalnızca olaya gerçek bir işleyici bağlıysa uygular,
+                            bu yüzden boş lambda da olsa @onmousedown yazmak şart.
+                        *@
+                        <div class="fg-oneri" @onmousedown="@(() => { })" @onmousedown:preventDefault="true">
+                            @for (var i = 0; i < satir.Oneriler.Count; i++)
+                            {
+                                var h = satir.Oneriler[i];
+                                var secili = i == satir.OneriIndex;
+                                <div class="fg-oneri-satir @(secili ? "secili" : "")"
+                                     @onmousedown="@(() => HesapSec(satir, h))" @onmousedown:preventDefault="true">
+                                    <span class="fg-oneri-kod">@h.Kod</span>
+                                    <span class="fg-oneri-ad">@h.Ad</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else if (ReferenceEquals(_oneriSatir, satir) && !string.IsNullOrWhiteSpace(satir.HesapArama) && satir.HesapId is null)
+                    {
+                        <div class="fg-oneri">
+                            <div class="fg-oneri-bos">Hareket gören hesap bulunamadı. <kbd>F2</kbd> ile ağaçtan seçin.</div>
+                        </div>
+                    }
+                </span>
+
+                <span class="fg-c-ad" title="@satir.HesapAd">
+                    @satir.HesapAd
+                    @if (satir.DovizMi)
+                    {
+                        <span class="fg-rozet fg-rozet-doviz" title="Döviz satırı — tutarlar TL karşılığıdır">@satir.ParaBirimi</span>
+                    }
+                </span>
+
+                <span class="fg-c-mm">
+                    @if (_masrafMerkezleri.Count > 0)
+                    {
+                        <select class="fg-inp @(MerkezPasifMi(satir) ? "fg-uyari" : "")" disabled="@Kilitli"
+                                title="@(MerkezPasifMi(satir) ? "Bu masraf merkezi pasife alınmış; kaydetmeden önce değiştirin veya boşaltın." : null)"
+                                value="@(satir.MasrafMerkeziId?.ToString() ?? "")"
+                                @onchange="@(e => MasrafMerkeziDegisti(satir, e))">
+                            <option value="">—</option>
+                            @foreach (var mm in _masrafMerkezleri)
+                            {
+                                <option value="@mm.MasrafMerkeziId">@mm.Etiket@(mm.Aktif ? "" : " (pasif)")</option>
+                            }
+                        </select>
+                    }
+                    else
+                    {
+                        <span class="fg-mm-yok" title="Bu firmada tanımlı masraf merkezi yok">
+                            @(satir.MasrafMerkeziAd ?? "—")
+                        </span>
+                    }
+                </span>
+
+                <span class="fg-c-acik">
+                    <input class="fg-inp" value="@satir.Aciklama" disabled="@Kilitli"
+                           @oninput="@(e => satir.Aciklama = e.Value?.ToString())"
+                           @onfocus="@(() => OdakSatir(satir, false))" />
+                </span>
+
+                <!-- Borç yazılınca alacak kilitlenir, tersi de geçerli -->
+                <span class="fg-c-tutar">
+                    <input class="fg-inp" inputmode="decimal" value="@satir.BorcMetni"
+                           disabled="@(Kilitli || satir.AlacakDolu)"
+                           placeholder="@Oneri(satir, sonSatir, borcMu: true)"
+                           @oninput="@(e => TutarDegisti(satir, true, e))"
+                           @onblur="@(() => TutarBlur(satir, true))"
+                           @onfocus="@(() => OdakSatir(satir, false))"
+                           @onkeydown="@(e => TutarKlavye(satir, sonSatir, true, e))" />
+                </span>
+
+                <span class="fg-c-tutar">
+                    <input class="fg-inp" inputmode="decimal" value="@satir.AlacakMetni"
+                           disabled="@(Kilitli || satir.BorcDolu)"
+                           placeholder="@Oneri(satir, sonSatir, borcMu: false)"
+                           @oninput="@(e => TutarDegisti(satir, false, e))"
+                           @onblur="@(() => TutarBlur(satir, false))"
+                           @onfocus="@(() => OdakSatir(satir, false))"
+                           @onkeydown="@(e => TutarKlavye(satir, sonSatir, false, e))" />
+                </span>
+
+                <span class="fg-c-sil">
+                    @if (!Kilitli && !satir.Bos)
+                    {
+                        <RadzenButton Icon="close" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                                      Variant="Variant.Text" title="Satırı sil" Click="@(() => SatirSil(satir))" />
+                    }
+                </span>
+            </div>
+        }
+    </div>
+
+    <!-- Canlı denge şeridi -->
+    <div class="fg-serit @(Dengede ? "fg-serit-ok" : "fg-serit-hata")">
+        @if (Dengede)
+        {
+            <span>✓ <strong>fiş dengede</strong> · fark @Para(0m)</span>
+            <span>borç @Para(ToplamBorc) · alacak @Para(ToplamAlacak)</span>
+
+            @if (!Kaydedilebilir && !Kilitli)
+            {
+                <span style="color:#975a16">— @EksikNedeni</span>
+            }
+        }
+        else
+        {
+            <span>
+                borç <strong>@Para(ToplamBorc)</strong> ·
+                alacak <strong>@Para(ToplamAlacak)</strong> ·
+                fark <strong>@Para(Math.Abs(Fark))</strong>
+            </span>
+            @if (Fark != 0 && !Kilitli)
+            {
+                <span class="fg-fark-uygula" @onclick="FarkiUygula">farkı son satıra uygula</span>
+            }
+        }
+    </div>
+
+    @if (_hata is not null)
+    {
+        <div class="rz-mt-2">
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">
+                @_hata
+            </RadzenAlert>
+        </div>
+    }
+
+    <!-- Aksiyonlar -->
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" class="rz-mt-3" Wrap="FlexWrap.Wrap">
+        @if (Kilitli)
+        {
+            <RadzenButton Text="Ters kayıt oluştur" Icon="swap_vert" ButtonStyle="ButtonStyle.Warning"
+                          Disabled="@_islemde" IsBusy="@_islemde" Click="@TersKayitAsync" />
+            <RadzenButton Text="Yeni fiş" Icon="note_add" ButtonStyle="ButtonStyle.Light" Click="@YeniFis" />
+        }
+        else
+        {
+            <RadzenButton Text="Kaydet" Icon="save" ButtonStyle="ButtonStyle.Primary"
+                          Disabled="@(!Kaydedilebilir || _islemde)" IsBusy="@_islemde"
+                          Click="@(() => KaydetAsync(false, false))" />
+
+            <RadzenButton Text="Kaydet ve yeni" Icon="playlist_add" ButtonStyle="ButtonStyle.Secondary"
+                          Disabled="@(!Kaydedilebilir || _islemde)"
+                          Click="@(() => KaydetAsync(false, true))" />
+
+            <RadzenButton Text="Kaydet ve kesinleştir" Icon="lock" ButtonStyle="ButtonStyle.Success"
+                          Disabled="@(!Kaydedilebilir || _islemde)"
+                          Click="@(() => KaydetAsync(true, false))" />
+
+            <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Click="@VazgecAsync" />
+
+            @if (_id is int mevcutId)
+            {
+                <RadzenButton Text="Taslağı sil" Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined"
+                              Disabled="@_islemde" Click="@(() => TaslakSilAsync(mevcutId))" />
+            }
+        }
+    </RadzenStack>
+
+    <div class="fg-ipucu">
+        <kbd>Ctrl</kbd>+<kbd>S</kbd> kaydet ·
+        <kbd>Ctrl</kbd>+<kbd>Enter</kbd> kaydet ve yeni fiş ·
+        <kbd>F2</kbd> hesap planı ağacı ·
+        <kbd>Esc</kbd> vazgeç ·
+        son satırın tutar alanında <kbd>Enter</kbd> farkı kabul eder
+    </div>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    /// <summary>Ekrandaki bir fiş satırı. Sunucuya gitmeyen alanlar da burada tutulur.</summary>
+    sealed class SatirVm
+    {
+        public int? HesapId { get; set; }
+        public string HesapArama { get; set; } = string.Empty;
+        public string HesapAd { get; set; } = string.Empty;
+
+        public int? MasrafMerkeziId { get; set; }
+        public string? MasrafMerkeziAd { get; set; }
+        public string? Aciklama { get; set; }
+
+        public decimal? Borc { get; set; }
+        public decimal? Alacak { get; set; }
+        public string BorcMetni { get; set; } = string.Empty;
+        public string AlacakMetni { get; set; } = string.Empty;
+
+        // Ekranda düzenlenmez; yüklenen fişte varsa korunup aynen geri gönderilir (iş kuralı 17).
+        public string ParaBirimi { get; set; } = "TRY";
+        public decimal? Doviz { get; set; }
+        public decimal? Kur { get; set; }
+
+        public List<HesapPlaniDto> Oneriler { get; set; } = new();
+        public int OneriIndex { get; set; }
+
+        public bool DovizMi => !string.Equals(ParaBirimi, "TRY", StringComparison.OrdinalIgnoreCase);
+        public bool BorcDolu => (Borc ?? 0m) > 0m;
+        public bool AlacakDolu => (Alacak ?? 0m) > 0m;
+        public bool Bos => HesapId is null && !BorcDolu && !AlacakDolu
+                           && string.IsNullOrWhiteSpace(HesapArama) && string.IsNullOrWhiteSpace(Aciklama);
+    }
+
+    const int OneriLimiti = 8;
+
+    bool _yukleniyor = true;
+    bool _islemde;
+    string? _hata;
+
+    int? _id;
+    string? _fisNo;
+    FisDurum _durum = FisDurum.Taslak;
+    FisKaynak _kaynak = FisKaynak.Manuel;
+
+    FisTuru _fisTuru = FisTuru.Mahsup;
+    DateTime _tarih = DateTime.Today;
+    string? _belgeNo;
+    string? _aciklama;
+
+    readonly List<SatirVm> _satirlar = new();
+    List<HesapPlaniDto> _hareketGorenler = new();
+    List<MasrafMerkeziSecenekDto> _masrafMerkezleri = new();
+
+    SatirVm? _oneriSatir;
+    SatirVm? _aktifSatir;
+
+    DotNetObjectReference<FisGirisPage>? _ref;
+
+    bool Kilitli => _durum == FisDurum.Kesinlesmis;
+
+    // ---- Toplamlar: her satır değişiminde yeniden hesaplanır ----
+
+    IEnumerable<SatirVm> DoluSatirlar => _satirlar.Where(s => !s.Bos);
+    decimal ToplamBorc => DoluSatirlar.Sum(s => s.Borc ?? 0m);
+    decimal ToplamAlacak => DoluSatirlar.Sum(s => s.Alacak ?? 0m);
+    decimal Fark => ToplamBorc - ToplamAlacak;
+    bool Dengede => Fark == 0m && ToplamBorc > 0m;
+
+    bool Kaydedilebilir =>
+        !Kilitli
+        && DoluSatirlar.Count() >= 2
+        && DoluSatirlar.All(s => s.HesapId is not null && (s.BorcDolu ^ s.AlacakDolu))
+        && !DoluSatirlar.Any(MerkezPasifMi)
+        && Dengede;
+
+    /// <summary>
+    /// Taslak kaydedildikten sonra masraf merkezi pasife alınmış olabilir; sunucu böyle bir
+    /// satırı reddeder. Kullanıcı kaydete basıp hata almadan önce satırda uyarılır.
+    /// </summary>
+    bool MerkezPasifMi(SatirVm satir)
+        => satir.MasrafMerkeziId is int id
+           && _masrafMerkezleri.Any(m => m.MasrafMerkeziId == id && !m.Aktif);
+
+    /// <summary>Denge sağlandığı hâlde kaydet pasifse nedenini şeritte açıklar.</summary>
+    string EksikNedeni
+    {
+        get
+        {
+            if (DoluSatirlar.Count() < 2) return "fiş en az iki satır içermeli";
+            if (DoluSatirlar.Any(s => s.HesapId is null)) return "hesabı seçilmemiş satır var";
+            if (DoluSatirlar.Any(s => !(s.BorcDolu ^ s.AlacakDolu))) return "her satırda ya borç ya alacak dolu olmalı";
+            if (DoluSatirlar.Any(MerkezPasifMi)) return "pasife alınmış masraf merkezi seçili satır var";
+            return string.Empty;
+        }
+    }
+
+    // ---- Yaşam döngüsü ----
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _yukleniyor = true;
+
+        if (_hareketGorenler.Count == 0)
+            _hareketGorenler = await Api.GetHareketGorenlerAsync();
+
+        // Seçicide yalnızca aktif merkezler listelenir; pasife alınmış bir merkeze bağlı
+        // eski fiş açılırsa o merkez FisYukleAsync içinde listeye geri eklenir.
+        if (_masrafMerkezleri.Count == 0)
+            _masrafMerkezleri = await Api.GetMasrafMerkezleriAsync();
+
+        if (Id is int id)
+        {
+            if (_id != id) await FisYukleAsync(id);
+        }
+        else if (_id is not null || _satirlar.Count == 0)
+        {
+            Sifirla();
+        }
+
+        _yukleniyor = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        _ref = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("fisKisayol.bagla", _ref);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("fisKisayol.cikar"); }
+        catch (JSDisconnectedException) { /* sayfa kapanıyor */ }
+        catch (InvalidOperationException) { /* prerender/teardown */ }
+
+        _ref?.Dispose();
+    }
+
+    [JSInvokable]
+    public async Task KisayolAsync(string komut)
+    {
+        switch (komut)
+        {
+            case "kaydet":
+                if (Kaydedilebilir && !_islemde) await KaydetAsync(false, false);
+                break;
+            case "kaydetVeYeni":
+                if (Kaydedilebilir && !_islemde) await KaydetAsync(false, true);
+                break;
+            case "hesapAgaci":
+                await HesapAgaciAcAsync();
+                break;
+            case "vazgec":
+                await VazgecAsync();
+                break;
+        }
+
+        StateHasChanged();
+    }
+
+    // ---- Yükleme ----
+
+    void Sifirla()
+    {
+        _id = null;
+        _fisNo = null;
+        _durum = FisDurum.Taslak;
+        _kaynak = FisKaynak.Manuel;
+        _fisTuru = FisTuru.Mahsup;
+        _tarih = DateTime.Today;
+        _belgeNo = null;
+        _aciklama = null;
+        _hata = null;
+
+        _satirlar.Clear();
+        _satirlar.Add(new SatirVm());
+        _satirlar.Add(new SatirVm());
+        SatirlariDuzenle();
+    }
+
+    async Task FisYukleAsync(int id)
+    {
+        var fis = await Api.GetFisAsync(id);
+        if (fis is null)
+        {
+            _hata = "Fiş bulunamadı.";
+            Sifirla();
+            return;
+        }
+
+        _id = fis.Id;
+        _fisNo = fis.FisNo;
+        _durum = fis.Durum;
+        _kaynak = fis.Kaynak;
+        _fisTuru = fis.FisTuru;
+        _tarih = fis.Tarih.Date;
+        _belgeNo = fis.BelgeNo;
+        _aciklama = fis.Aciklama;
+        _hata = null;
+
+        _satirlar.Clear();
+        foreach (var s in fis.Satirlar.OrderBy(x => x.SiraNo))
+        {
+            _satirlar.Add(new SatirVm
+            {
+                HesapId = s.HesapId,
+                HesapArama = s.HesapKod,
+                HesapAd = s.HesapAd,
+                MasrafMerkeziId = s.MasrafMerkeziId,
+                MasrafMerkeziAd = s.MasrafMerkeziAd,
+                Aciklama = s.Aciklama,
+                Borc = s.Borc > 0 ? s.Borc : null,
+                Alacak = s.Alacak > 0 ? s.Alacak : null,
+                BorcMetni = s.Borc > 0 ? Para(s.Borc) : string.Empty,
+                AlacakMetni = s.Alacak > 0 ? Para(s.Alacak) : string.Empty,
+                ParaBirimi = s.ParaBirimi,
+                Doviz = s.Doviz,
+                Kur = s.Kur
+            });
+        }
+
+        await PasifMasrafMerkezleriniEkleAsync(fis);
+
+        SatirlariDuzenle();
+    }
+
+    /// <summary>
+    /// Fişte pasife alınmış bir masraf merkezi varsa seçici onu göstermez ve kayıtta
+    /// sessizce düşerdi; bu yüzden yalnız o merkezler pasif liste çekilip tamamlanır.
+    /// </summary>
+    async Task PasifMasrafMerkezleriniEkleAsync(FisDto fis)
+    {
+        var eksik = fis.Satirlar
+                       .Where(s => s.MasrafMerkeziId is int mm && _masrafMerkezleri.All(x => x.MasrafMerkeziId != mm))
+                       .Select(s => s.MasrafMerkeziId!.Value)
+                       .Distinct()
+                       .ToList();
+
+        if (eksik.Count == 0) return;
+
+        var hepsi = await Api.GetMasrafMerkezleriAsync(pasifDahil: true);
+        _masrafMerkezleri.AddRange(hepsi.Where(m => eksik.Contains(m.MasrafMerkeziId)));
+    }
+
+    // ---- Satır yönetimi ----
+
+    /// <summary>Son satır her zaman boş durur; doldurulunca altına yenisi eklenir.</summary>
+    void SatirlariDuzenle()
+    {
+        if (Kilitli) return;
+
+        while (_satirlar.Count >= 2 && _satirlar[^1].Bos && _satirlar[^2].Bos)
+            _satirlar.RemoveAt(_satirlar.Count - 1);
+
+        if (_satirlar.Count == 0 || !_satirlar[^1].Bos)
+            _satirlar.Add(new SatirVm());
+    }
+
+    void SatirSil(SatirVm satir)
+    {
+        _satirlar.Remove(satir);
+        if (ReferenceEquals(_oneriSatir, satir)) _oneriSatir = null;
+        if (ReferenceEquals(_aktifSatir, satir)) _aktifSatir = null;
+        SatirlariDuzenle();
+    }
+
+    void OdakSatir(SatirVm satir, bool oneriAc)
+    {
+        _aktifSatir = satir;
+        _oneriSatir = oneriAc ? satir : null;
+    }
+
+    void OneriKapat(SatirVm satir)
+    {
+        if (ReferenceEquals(_oneriSatir, satir)) _oneriSatir = null;
+    }
+
+    // ---- Hesap arama ----
+
+    void HesapAramaDegisti(SatirVm satir, ChangeEventArgs e)
+    {
+        satir.HesapArama = e.Value?.ToString() ?? string.Empty;
+        satir.HesapId = null;
+        satir.HesapAd = string.Empty;
+        satir.OneriIndex = 0;
+        _oneriSatir = satir;
+        _hata = null;
+
+        var terim = satir.HesapArama.Trim();
+        satir.Oneriler = terim.Length == 0
+            ? new List<HesapPlaniDto>()
+            : _hareketGorenler
+                .Where(h => h.Kod.Contains(terim, StringComparison.OrdinalIgnoreCase)
+                         || h.KodDuz.Contains(terim, StringComparison.OrdinalIgnoreCase)
+                         || h.Ad.Contains(terim, StringComparison.OrdinalIgnoreCase))
+                .Take(OneriLimiti)
+                .ToList();
+
+        SatirlariDuzenle();
+    }
+
+    void HesapKlavye(SatirVm satir, KeyboardEventArgs e)
+    {
+        if (satir.Oneriler.Count == 0) return;
+
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                satir.OneriIndex = Math.Min(satir.OneriIndex + 1, satir.Oneriler.Count - 1);
+                break;
+            case "ArrowUp":
+                satir.OneriIndex = Math.Max(satir.OneriIndex - 1, 0);
+                break;
+            case "Enter":
+            case "Tab":
+                HesapSec(satir, satir.Oneriler[Math.Clamp(satir.OneriIndex, 0, satir.Oneriler.Count - 1)]);
+                break;
+        }
+    }
+
+    void HesapSec(SatirVm satir, HesapPlaniDto hesap)
+    {
+        satir.HesapId = hesap.Id;
+        satir.HesapArama = hesap.Kod;
+        satir.HesapAd = hesap.Ad;
+        satir.Oneriler = new List<HesapPlaniDto>();
+        satir.OneriIndex = 0;
+        _oneriSatir = null;
+        _hata = null;
+
+        SatirlariDuzenle();
+    }
+
+    /// <summary>F2: hesap planı ağacı modal olarak açılır.</summary>
+    async Task HesapAgaciAcAsync()
+    {
+        if (Kilitli) return;
+
+        var hedef = _aktifSatir ?? _satirlar.LastOrDefault();
+        if (hedef is null) return;
+
+        var secim = await Dialog.OpenAsync<HesapSecModal>(
+            "Hesap seç",
+            new Dictionary<string, object>(),
+            new DialogOptions { Width = "720px" });
+
+        if (secim is HesapPlaniDto hesap)
+        {
+            HesapSec(hedef, hesap);
+            StateHasChanged();
+        }
+    }
+
+    void MasrafMerkeziDegisti(SatirVm satir, ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString();
+        satir.MasrafMerkeziId = int.TryParse(v, out var id) ? id : null;
+        SatirlariDuzenle();
+    }
+
+    // ---- Tutarlar ----
+
+    void TutarDegisti(SatirVm satir, bool borcMu, ChangeEventArgs e)
+    {
+        var metin = e.Value?.ToString() ?? string.Empty;
+        var deger = TutarCoz(metin);
+
+        if (borcMu)
+        {
+            satir.BorcMetni = metin;
+            satir.Borc = deger;
+            // Borç yazılınca alacak kilitlenir: karşı taraf temizlenir.
+            if ((deger ?? 0m) > 0m) { satir.Alacak = null; satir.AlacakMetni = string.Empty; }
+        }
+        else
+        {
+            satir.AlacakMetni = metin;
+            satir.Alacak = deger;
+            if ((deger ?? 0m) > 0m) { satir.Borc = null; satir.BorcMetni = string.Empty; }
+        }
+
+        _hata = null;
+        SatirlariDuzenle();
+    }
+
+    void TutarBlur(SatirVm satir, bool borcMu)
+    {
+        if (borcMu && satir.Borc is decimal b) satir.BorcMetni = Para(b);
+        else if (!borcMu && satir.Alacak is decimal a) satir.AlacakMetni = Para(a);
+    }
+
+    /// <summary>
+    /// Son satırın tutar alanında fark, soluk öneri olarak gösterilir (placeholder);
+    /// <c>Enter</c> ile tek tuşta kabul edilir.
+    /// </summary>
+    string? Oneri(SatirVm satir, bool sonSatir, bool borcMu)
+    {
+        if (Kilitli || !sonSatir || Fark == 0m) return null;
+
+        // Borç fazlaysa eksik olan alacak tarafındadır, tersi de geçerli.
+        var oneriTarafi = Fark > 0m ? false : true;
+        if (borcMu != oneriTarafi) return null;
+
+        return Para(Math.Abs(Fark));
+    }
+
+    void TutarKlavye(SatirVm satir, bool sonSatir, bool borcMu, KeyboardEventArgs e)
+    {
+        if (e.Key != "Enter") return;
+        if (Oneri(satir, sonSatir, borcMu) is null) return;
+
+        OneriUygula(satir, borcMu);
+    }
+
+    void FarkiUygula()
+    {
+        var son = _satirlar.LastOrDefault();
+        if (son is null || Fark == 0m) return;
+
+        OneriUygula(son, borcMu: Fark < 0m);
+    }
+
+    void OneriUygula(SatirVm satir, bool borcMu)
+    {
+        var tutar = Math.Abs(Fark);
+        if (tutar == 0m) return;
+
+        if (borcMu)
+        {
+            satir.Borc = tutar;
+            satir.BorcMetni = Para(tutar);
+            satir.Alacak = null;
+            satir.AlacakMetni = string.Empty;
+        }
+        else
+        {
+            satir.Alacak = tutar;
+            satir.AlacakMetni = Para(tutar);
+            satir.Borc = null;
+            satir.BorcMetni = string.Empty;
+        }
+
+        SatirlariDuzenle();
+    }
+
+    // ---- Kaydetme ----
+
+    FisYazDto Istek(bool kesinlestir) => new()
+    {
+        Tarih = _tarih,
+        FisTuru = _fisTuru,
+        BelgeNo = _belgeNo,
+        Aciklama = _aciklama,
+        Kaynak = _kaynak,
+        Kesinlestir = kesinlestir,
+        Satirlar = DoluSatirlar.Select(s => new FisSatirYazDto
+        {
+            HesapId = s.HesapId!.Value,
+            MasrafMerkeziId = s.MasrafMerkeziId,
+            Aciklama = s.Aciklama,
+            Borc = s.Borc ?? 0m,
+            Alacak = s.Alacak ?? 0m,
+            // Döviz alanları ekranda düzenlenmiyor; yüklenen değerler aynen korunur.
+            ParaBirimi = s.ParaBirimi,
+            Doviz = s.Doviz,
+            Kur = s.Kur
+        }).ToList()
+    };
+
+    async Task KaydetAsync(bool kesinlestir, bool sonrasindaYeni)
+    {
+        if (!Kaydedilebilir || _islemde) return;
+
+        _islemde = true;
+        _hata = null;
+
+        var istek = Istek(kesinlestir);
+        var (fis, hata) = _id is int id
+            ? await Api.UpdateFisAsync(id, istek)
+            : await Api.CreateFisAsync(istek);
+
+        _islemde = false;
+
+        if (hata is not null || fis is null)
+        {
+            _hata = hata ?? "Fiş kaydedilemedi.";
+            return;
+        }
+
+        Bildir(NotificationSeverity.Success,
+            $"{fis.FisNo} numaralı fiş {(fis.Durum == FisDurum.Kesinlesmis ? "kesinleştirildi" : "taslak olarak kaydedildi")}.");
+
+        if (sonrasindaYeni)
+        {
+            Sifirla();
+            Nav.NavigateTo("/muhasebe/fis");
+            return;
+        }
+
+        // Kaydedilen fişin üzerinde kal: numara ve durum ekrana yansısın.
+        _id = fis.Id;
+        _fisNo = fis.FisNo;
+        _durum = fis.Durum;
+        Nav.NavigateTo($"/muhasebe/fis/{fis.Id}");
+    }
+
+    async Task TaslakSilAsync(int id)
+    {
+        var onay = await Dialog.Confirm(
+            "Bu taslak fiş silinecek. İşlem geri alınamaz.",
+            "Taslağı sil",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+
+        if (onay != true) return;
+
+        _islemde = true;
+        var (ok, hata) = await Api.DeleteFisAsync(id);
+        _islemde = false;
+
+        if (!ok)
+        {
+            _hata = hata ?? "Taslak silinemedi.";
+            return;
+        }
+
+        Bildir(NotificationSeverity.Success, "Taslak fiş silindi.");
+        YeniFis();
+    }
+
+    async Task TersKayitAsync()
+    {
+        if (_id is not int id) return;
+
+        _islemde = true;
+        var (ters, hata) = await Api.TersKayitAsync(id, new TersKayitDto());
+        _islemde = false;
+
+        if (hata is not null || ters is null)
+        {
+            _hata = hata ?? "Ters kayıt oluşturulamadı.";
+            return;
+        }
+
+        Bildir(NotificationSeverity.Success, $"Ters kayıt {ters.FisNo} numarasıyla taslak olarak oluşturuldu.");
+        Nav.NavigateTo($"/muhasebe/fis/{ters.Id}");
+    }
+
+    async Task VazgecAsync()
+    {
+        if (Kilitli || !DoluSatirlar.Any())
+        {
+            YeniFis();
+            return;
+        }
+
+        var onay = await Dialog.Confirm(
+            "Girilen satırlar kaybolacak. Vazgeçmek istiyor musunuz?",
+            "Vazgeç",
+            new ConfirmOptions { OkButtonText = "Vazgeç", CancelButtonText = "Devam et" });
+
+        if (onay == true) YeniFis();
+    }
+
+    void YeniFis()
+    {
+        Sifirla();
+        Nav.NavigateTo("/muhasebe/fis");
+    }
+
+    // ---- Yardımcılar ----
+
+    /// <summary>
+    /// Tutar çözümlemesi: virgül varsa nokta binlik ayraç sayılır, yoksa nokta ondalık
+    /// ayraç kabul edilir (sayısal tuş takımı alışkanlığı).
+    /// </summary>
+    static decimal? TutarCoz(string? metin)
+    {
+        var s = (metin ?? string.Empty).Replace(" ", string.Empty).Trim();
+        if (s.Length == 0) return null;
+
+        if (s.Contains(',')) s = s.Replace(".", string.Empty).Replace(',', '.');
+
+        return decimal.TryParse(s, NumberStyles.Number, CultureInfo.InvariantCulture, out var d) ? d : null;
+    }
+
+    /// <summary>Tutar gösterimi tr-TR ile sabit: "N2" kültüre bağlı olsaydı 1.250,50 yerine 1,250.50 yazardı.</summary>
+    static string Para(decimal tutar) => MuhasebeEtiket.Para(tutar);
+
+    static string TurEtiket(FisTuru t) => t switch
+    {
+        FisTuru.Acilis => "Açılış",
+        FisTuru.Tahsil => "Tahsil",
+        FisTuru.Tediye => "Tediye",
+        FisTuru.Mahsup => "Mahsup",
+        FisTuru.Kapanis => "Kapanış",
+        _ => t.ToString()
+    };
+
+    static string KaynakEtiket(FisKaynak k) => k switch
+    {
+        FisKaynak.Manuel => "Manuel",
+        FisKaynak.WhatsApp => "WhatsApp",
+        FisKaynak.Ekstre => "Ekstre",
+        FisKaynak.Otomatik => "Otomatik",
+        _ => k.ToString()
+    };
+
+    void Bildir(NotificationSeverity seviye, string mesaj) =>
+        Notif.Notify(new NotificationMessage
+        {
+            Severity = seviye,
+            Summary = seviye == NotificationSeverity.Error ? "İşlem yapılamadı" : "Tamam",
+            Detail = mesaj,
+            Duration = 4000
+        });
+}

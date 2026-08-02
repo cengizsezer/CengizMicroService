@@ -1,0 +1,288 @@
+﻿@page "/muhasebe/mizan"
+
+@using System.Globalization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.Muhasebe
+
+@inject IMuhasebeApi Api
+@inject NotificationService Notif
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@*
+    Mizan. Satırlar alt ağaç toplamını taşıdığı için (iş kuralı 19) üst satırlar soluk
+    gösterilir; mükerrersiz tutar yalnızca YaprakMi satırlardadır. Genel toplam sunucuda
+    yaprak hesaplar üzerinden hesaplanır, satırların toplanmasıyla değil.
+    Yalnızca kesinleşmiş fişler girer; taslaklar ayrı şeritte özetlenir (iş kuralı 21).
+*@
+
+<style>
+    .mz-arac { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 10px; }
+    .mz-alan { display: flex; flex-direction: column; gap: 3px; }
+    .mz-alan label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .mz-inp { border: 1px solid #cbd5e0; border-radius: 4px; padding: 5px 8px; font-size: 13px; background: #fff; }
+
+    .mz-tablo { border: 1px solid #eee; border-radius: 6px; background: #fff; overflow: hidden; }
+    .mz-satir { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-bottom: 1px solid #f5f5f5; }
+    .mz-head { background: #fafafa; border-bottom: 1px solid #eee; font-size: 11px; color: #718096;
+               text-transform: uppercase; letter-spacing: .3px; }
+    .mz-satir:hover:not(.mz-head):not(.mz-toplam) { background: #f8fbff; }
+
+    .mz-kod { flex: 0 0 170px; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+    .mz-ad { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mz-tutar { flex: 0 0 130px; text-align: right; font-variant-numeric: tabular-nums; }
+    .mz-c-git { flex: 0 0 34px; text-align: right; }
+
+    /* Üst satır alt ağacın toplamıdır → soluk; yaprak satır normal. */
+    .mz-ust .mz-kod, .mz-ust .mz-ad, .mz-ust .mz-tutar { color: #a0aec0; }
+    .mz-yaprak .mz-kod, .mz-yaprak .mz-ad { color: #1a202c; }
+    .mz-sifir { color: #cbd5e0; }
+    .mz-pasif .mz-ad { text-decoration: line-through; }
+
+    .mz-toplam { background: #f7fafc; border-top: 2px solid #e2e8f0; font-weight: 600; }
+    .mz-serit { margin-top: 10px; padding: 8px 12px; border-radius: 6px; font-size: 13px; }
+    .mz-serit-taslak { background: #fffaf0; border: 1px solid #fbd38d; color: #7b341e; }
+    .mz-bos { padding: 26px; text-align: center; color: #a0aec0; }
+    .mz-rozet { font-size: 10px; padding: 1px 6px; border-radius: 10px; margin-left: 6px; background: #fff5f5; color: #742a2a; }
+</style>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+    <h4 style="margin:0">Mizan</h4>
+    <RadzenButton Text="Excel'e aktar" Icon="download" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                  Disabled="@(_mizan is null || _mizan.Satirlar.Count == 0)" Click="@ExcelAktarAsync" />
+</div>
+
+<div class="mz-arac">
+    <div class="mz-alan">
+        <label>Başlangıç</label>
+        <RadzenDatePicker TValue="DateTime?" Value="@_bas" AllowClear="true" ShowTime="false"
+                          DateFormat="@MuhasebeEtiket.TarihBicimi" Culture="@MuhasebeEtiket.Kultur"
+                          Style="width:150px" Change="@(a => _bas = (a as DateTime?)?.Date)" />
+    </div>
+    <div class="mz-alan">
+        <label>Bitiş</label>
+        <RadzenDatePicker TValue="DateTime?" Value="@_bit" AllowClear="true" ShowTime="false"
+                          DateFormat="@MuhasebeEtiket.TarihBicimi" Culture="@MuhasebeEtiket.Kultur"
+                          Style="width:150px" Change="@(a => _bit = (a as DateTime?)?.Date)" />
+    </div>
+    <div class="mz-alan">
+        <label>Seviye</label>
+        <select class="mz-inp" value="@(_seviye?.ToString() ?? "")"
+                @onchange="@(e => { _seviye = byte.TryParse(e.Value?.ToString(), out var s) ? s : null; })">
+            <option value="3">Sadece kebir</option>
+            <option value="4">Kebir + 1. muavin</option>
+            <option value="">Tümü</option>
+        </select>
+    </div>
+
+    <RadzenButton Text="Getir" Icon="search" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                  Disabled="@_yukleniyor" IsBusy="@_yukleniyor" Click="@YukleAsync" />
+    <RadzenButton Text="Filtreyi temizle" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                  Disabled="@_yukleniyor" Click="@TemizleAsync" />
+</div>
+
+@if (_yukleniyor)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+}
+else if (_mizan is null)
+{
+    <div class="mz-bos">Mizan alınamadı. Filtreyi değiştirip tekrar deneyin.</div>
+}
+else
+{
+    @if (!_mizan.GenelToplam.Dengede)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">
+            Mizan dengede değil: borç toplamı @Para(_mizan.GenelToplam.ToplamBorc),
+            alacak toplamı @Para(_mizan.GenelToplam.ToplamAlacak).
+            Fark @Para(Math.Abs(_mizan.GenelToplam.ToplamBorc - _mizan.GenelToplam.ToplamAlacak)).
+        </RadzenAlert>
+    }
+
+    <div class="mz-tablo">
+        <div class="mz-satir mz-head">
+            <span class="mz-kod">Hesap kodu</span>
+            <span class="mz-ad">Hesap adı</span>
+            <span class="mz-tutar">Borç toplam</span>
+            <span class="mz-tutar">Alacak toplam</span>
+            <span class="mz-tutar">Borç bakiye</span>
+            <span class="mz-tutar">Alacak bakiye</span>
+            <span class="mz-c-git"></span>
+        </div>
+
+        @if (_mizan.Satirlar.Count == 0)
+        {
+            <div class="mz-bos">
+                Bu dönemde kesinleşmiş hareket yok.
+                @if (_mizan.Taslak.FisSayisi > 0)
+                {
+                    <text>Yalnızca taslak fişler var; taslaklar mizana girmez (iş kuralı 21).</text>
+                }
+            </div>
+        }
+        else
+        {
+            @foreach (var s in _mizan.Satirlar)
+            {
+                <div class="mz-satir @(s.YaprakMi ? "mz-yaprak" : "mz-ust") @(s.Aktif ? "" : "mz-pasif")"
+                     title="@Ipucu(s)">
+                    <span class="mz-kod" style="@Girinti(s)">@s.Kod</span>
+                    <span class="mz-ad">
+                        @s.Ad
+                        @if (!s.Aktif)
+                        {
+                            <span class="mz-rozet">pasif</span>
+                        }
+                    </span>
+                    <span class="mz-tutar @(s.ToplamBorc == 0 ? "mz-sifir" : "")">@Para(s.ToplamBorc)</span>
+                    <span class="mz-tutar @(s.ToplamAlacak == 0 ? "mz-sifir" : "")">@Para(s.ToplamAlacak)</span>
+                    <span class="mz-tutar @(s.BorcBakiye == 0 ? "mz-sifir" : "")">@Para(s.BorcBakiye)</span>
+                    <span class="mz-tutar @(s.AlacakBakiye == 0 ? "mz-sifir" : "")">@Para(s.AlacakBakiye)</span>
+                    <span class="mz-c-git">
+                        <RadzenButton Icon="receipt_long" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                                      Variant="Variant.Text" title="T cetvelini aç"
+                                      Click="@(() => EkstreAc(s.HesapId))" />
+                    </span>
+                </div>
+            }
+
+            <div class="mz-satir mz-toplam">
+                <span class="mz-kod">GENEL TOPLAM</span>
+                <span class="mz-ad">yaprak hesaplar üzerinden</span>
+                <span class="mz-tutar">@Para(_mizan.GenelToplam.ToplamBorc)</span>
+                <span class="mz-tutar">@Para(_mizan.GenelToplam.ToplamAlacak)</span>
+                <span class="mz-tutar">@Para(_mizan.GenelToplam.BorcBakiye)</span>
+                <span class="mz-tutar">@Para(_mizan.GenelToplam.AlacakBakiye)</span>
+                <span class="mz-c-git"></span>
+            </div>
+        }
+    </div>
+
+    @if (_mizan.Taslak.FisSayisi > 0)
+    {
+        <div class="mz-serit mz-serit-taslak">
+            Mizana girmeyen <strong>@_mizan.Taslak.FisSayisi</strong> taslak fiş var ·
+            borç @Para(_mizan.Taslak.ToplamBorc) · alacak @Para(_mizan.Taslak.ToplamAlacak).
+            <a href="/muhasebe/fisler?durum=0" style="margin-left:6px">Taslakları aç</a>
+        </div>
+    }
+}
+
+@code {
+    MizanDto? _mizan;
+    bool _yukleniyor = true;
+
+    DateTime? _bas;
+    DateTime? _bit;
+    byte? _seviye = 3;   // varsayılan: sadece kebir
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        _mizan = await Api.GetMizanAsync(_bas, _bit, _seviye);
+        _yukleniyor = false;
+    }
+
+    async Task TemizleAsync()
+    {
+        _bas = null;
+        _bit = null;
+        _seviye = null;
+        await YukleAsync();
+    }
+
+    void EkstreAc(int hesapId)
+    {
+        var q = new List<string>();
+        if (_bas is DateTime b) q.Add($"bas={b:yyyy-MM-dd}");
+        if (_bit is DateTime e) q.Add($"bit={e:yyyy-MM-dd}");
+
+        Nav.NavigateTo($"/muhasebe/ekstre/{hesapId}" + (q.Count > 0 ? "?" + string.Join("&", q) : string.Empty));
+    }
+
+    /// <summary>Seviyeye göre girinti; ağaç hissi kaybolmasın.</summary>
+    static string Girinti(MizanSatirDto s) => $"padding-left:{Math.Max(0, s.Seviye - 1) * 14}px";
+
+    static string Ipucu(MizanSatirDto s)
+        => s.YaprakMi
+            ? $"{MuhasebeEtiket.Tur(s.HesapTuru)} · {MuhasebeEtiket.Karakter(s.Karakter)}"
+            : $"{MuhasebeEtiket.Tur(s.HesapTuru)} · {MuhasebeEtiket.Karakter(s.Karakter)} · tutarlar alt ağacın toplamıdır";
+
+    static string Para(decimal t) => MuhasebeEtiket.Para(t);
+
+    async Task ExcelAktarAsync()
+    {
+        if (_mizan is null) return;
+
+        var basliklar = new[] { "Hesap kodu", "Hesap adı", "Seviye", "Yaprak", "Borç toplam", "Alacak toplam", "Borç bakiye", "Alacak bakiye" };
+
+        var satirlar = _mizan.Satirlar.Select(s => new string?[]
+        {
+            s.Kod,
+            s.Ad,
+            s.Seviye.ToString(),
+            s.YaprakMi ? "Evet" : "Hayır",
+            Para(s.ToplamBorc),
+            Para(s.ToplamAlacak),
+            Para(s.BorcBakiye),
+            Para(s.AlacakBakiye)
+        }).ToList();
+
+        // Genel toplam satırların toplamı değildir (üst satırlar mükerrer sayardı);
+        // sunucunun yaprak hesaplardan hesapladığı toplam yazılır.
+        satirlar.Add(new string?[]
+        {
+            "GENEL TOPLAM", "yaprak hesaplar üzerinden", "", "",
+            Para(_mizan.GenelToplam.ToplamBorc),
+            Para(_mizan.GenelToplam.ToplamAlacak),
+            Para(_mizan.GenelToplam.BorcBakiye),
+            Para(_mizan.GenelToplam.AlacakBakiye)
+        });
+
+        var ust = new List<string>
+        {
+            "Mizan",
+            $"Dönem: {DonemMetni()}",
+            $"Seviye: {(_seviye is byte s2 ? (s2 == 3 ? "sadece kebir" : $"{s2}. seviyeye kadar") : "tümü")}",
+            $"Genel toplam dengede mi: {(_mizan.GenelToplam.Dengede ? "evet" : "HAYIR")}"
+        };
+
+        if (_mizan.Taslak.FisSayisi > 0)
+            ust.Add($"Mizana girmeyen taslak fiş: {_mizan.Taslak.FisSayisi}");
+
+        var bytes = CsvAktarim.Olustur(basliklar, satirlar, ust);
+        await JS.InvokeVoidAsync("downloadFileFromBytes", CsvAktarim.DosyaAdi($"mizan-{DosyaDonem()}"), bytes);
+
+        Notif.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Success,
+            Summary = "Dışa aktarıldı",
+            Detail = $"{_mizan.Satirlar.Count} satır Excel dosyasına yazıldı.",
+            Duration = 4000
+        });
+    }
+
+    string DonemMetni()
+        => (_bas, _bit) switch
+        {
+            (null, null) => "tüm geçmiş",
+            (DateTime b, null) => $"{MuhasebeEtiket.Tarih(b)} sonrası",
+            (null, DateTime e) => $"{MuhasebeEtiket.Tarih(e)} öncesi",
+            (DateTime b, DateTime e) => $"{MuhasebeEtiket.Tarih(b)} — {MuhasebeEtiket.Tarih(e)}"
+        };
+
+    string DosyaDonem()
+        => (_bas, _bit) switch
+        {
+            (null, null) => "tum-gecmis",
+            (DateTime b, null) => $"{b:yyyyMMdd}-sonrasi",
+            (null, DateTime e) => $"{e:yyyyMMdd}-oncesi",
+            (DateTime b, DateTime e) => $"{b:yyyyMMdd}-{e:yyyyMMdd}"
+        };
+}

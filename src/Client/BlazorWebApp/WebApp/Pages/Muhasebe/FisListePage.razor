@@ -1,0 +1,348 @@
+﻿@page "/muhasebe/fisler"
+
+@using System.Globalization
+@using Microsoft.AspNetCore.WebUtilities
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.Muhasebe
+
+@inject IMuhasebeApi Api
+@inject DialogService Dialog
+@inject NotificationService Notif
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@*
+    Fiş listesi. GET /fis?bas=&bit=&durum=&hesapId= ucunu kullanır; satıra tıklanınca
+    fiş giriş ekranı açılır. Kesinleşmiş fiş silinemez (iş kuralı 15), listede yalnızca
+    taslakların sil aksiyonu çıkar.
+*@
+
+<style>
+    .fl-arac { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 10px; }
+    .fl-alan { display: flex; flex-direction: column; gap: 3px; }
+    .fl-alan label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .fl-inp { border: 1px solid #cbd5e0; border-radius: 4px; padding: 5px 8px; font-size: 13px; background: #fff; }
+
+    .fl-tablo { border: 1px solid #eee; border-radius: 6px; background: #fff; overflow: hidden; }
+    .fl-satir { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+    .fl-head { background: #fafafa; border-bottom: 1px solid #eee; font-size: 11px; color: #718096;
+               text-transform: uppercase; letter-spacing: .3px; }
+    .fl-satir:not(.fl-head):hover { background: #f8fbff; }
+    .fl-satir:not(.fl-head) { cursor: pointer; }
+    .fl-satir:hover .fl-aksiyon { visibility: visible; }
+
+    .fl-no { flex: 0 0 110px; font-family: ui-monospace, Consolas, monospace; }
+    .fl-tarih { flex: 0 0 90px; font-variant-numeric: tabular-nums; }
+    .fl-tur { flex: 0 0 80px; }
+    .fl-belge { flex: 0 0 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fl-aciklama { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fl-tutar { flex: 0 0 120px; text-align: right; font-variant-numeric: tabular-nums; }
+    .fl-durum { flex: 0 0 100px; }
+    .fl-aksiyon { flex: 0 0 40px; text-align: right; visibility: hidden; }
+
+    .fl-rozet { font-size: 10px; padding: 1px 7px; border-radius: 10px; }
+    .fl-rozet-taslak { background: #fffaf0; color: #7b341e; }
+    .fl-rozet-kesin { background: #f0fff4; color: #22543d; }
+    .fl-rozet-kaynak { background: #edf2f7; color: #4a5568; margin-left: 6px; }
+    .fl-toplam { background: #f7fafc; border-top: 2px solid #e2e8f0; font-weight: 600; }
+    .fl-bos { padding: 26px; text-align: center; color: #a0aec0; }
+</style>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+    <h4 style="margin:0">Fişler</h4>
+    <div style="display:flex; gap:6px">
+        <RadzenButton Text="Excel'e aktar" Icon="download" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                      Disabled="@(_fisler.Count == 0)" Click="@ExcelAktarAsync" />
+        <RadzenButton Text="Yeni fiş" Icon="post_add" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                      Click="@(() => Nav.NavigateTo("/muhasebe/fis"))" />
+    </div>
+</div>
+
+<div class="fl-arac">
+    <div class="fl-alan">
+        <label>Başlangıç</label>
+        <RadzenDatePicker TValue="DateTime?" Value="@_bas" AllowClear="true" ShowTime="false"
+                          DateFormat="@MuhasebeEtiket.TarihBicimi" Culture="@MuhasebeEtiket.Kultur"
+                          Style="width:150px" Change="@(a => _bas = (a as DateTime?)?.Date)" />
+    </div>
+    <div class="fl-alan">
+        <label>Bitiş</label>
+        <RadzenDatePicker TValue="DateTime?" Value="@_bit" AllowClear="true" ShowTime="false"
+                          DateFormat="@MuhasebeEtiket.TarihBicimi" Culture="@MuhasebeEtiket.Kultur"
+                          Style="width:150px" Change="@(a => _bit = (a as DateTime?)?.Date)" />
+    </div>
+    <div class="fl-alan">
+        <label>Durum</label>
+        <select class="fl-inp" value="@(_durum is null ? "" : ((byte)_durum).ToString())"
+                @onchange="@(e => { _durum = byte.TryParse(e.Value?.ToString(), out var d) ? (FisDurum)d : null; })">
+            <option value="">Tümü</option>
+            <option value="0">Taslak</option>
+            <option value="1">Kesinleşmiş</option>
+        </select>
+    </div>
+    <div class="fl-alan" style="flex:1 1 240px">
+        <label>Hesap (isteğe bağlı)</label>
+        <div style="display:flex; gap:6px">
+            <input class="fl-inp" style="flex:1 1 auto" readonly
+                   value="@(_hesap is null ? "Tüm hesaplar" : $"{_hesap.Kod} — {_hesap.Ad}")" />
+            <RadzenButton Text="Seç" Icon="account_tree" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                          Click="@HesapSecAsync" />
+            @if (_hesap is not null)
+            {
+                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                              title="Hesap filtresini kaldır" Click="@(() => { _hesap = null; return YukleAsync(); })" />
+            }
+        </div>
+    </div>
+
+    <RadzenButton Text="Getir" Icon="search" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                  Disabled="@_yukleniyor" IsBusy="@_yukleniyor" Click="@YukleAsync" />
+    <RadzenButton Text="Filtreyi temizle" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                  Disabled="@_yukleniyor" Click="@TemizleAsync" />
+</div>
+
+@if (_yukleniyor)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+}
+else
+{
+    <div class="fl-tablo">
+        <div class="fl-satir fl-head">
+            <span class="fl-no">Fiş no</span>
+            <span class="fl-tarih">Tarih</span>
+            <span class="fl-tur">Tür</span>
+            <span class="fl-belge">Belge no</span>
+            <span class="fl-aciklama">Açıklama</span>
+            <span class="fl-tutar">Tutar</span>
+            <span class="fl-durum">Durum</span>
+            <span class="fl-aksiyon"></span>
+        </div>
+
+        @if (_fisler.Count == 0)
+        {
+            <div class="fl-bos">Bu filtreye uyan fiş yok.</div>
+        }
+        else
+        {
+            @foreach (var f in _fisler)
+            {
+                <div class="fl-satir" @key="f" @onclick="@(() => Nav.NavigateTo($"/muhasebe/fis/{f.Id}"))">
+                    <span class="fl-no">@f.FisNo</span>
+                    <span class="fl-tarih">@MuhasebeEtiket.Tarih(f.Tarih)</span>
+                    <span class="fl-tur">@TurEtiket(f.FisTuru)</span>
+                    <span class="fl-belge">@(string.IsNullOrWhiteSpace(f.BelgeNo) ? "—" : f.BelgeNo)</span>
+                    <span class="fl-aciklama">
+                        @(string.IsNullOrWhiteSpace(f.Aciklama) ? "—" : f.Aciklama)
+                        @if (f.Kaynak != FisKaynak.Manuel)
+                        {
+                            <span class="fl-rozet fl-rozet-kaynak">@KaynakEtiket(f.Kaynak)</span>
+                        }
+                    </span>
+                    <span class="fl-tutar">@Para(f.ToplamBorc)</span>
+                    <span class="fl-durum">
+                        <span class="fl-rozet @(f.Durum == FisDurum.Kesinlesmis ? "fl-rozet-kesin" : "fl-rozet-taslak")">
+                            @(f.Durum == FisDurum.Kesinlesmis ? "kesinleşmiş" : "taslak")
+                        </span>
+                    </span>
+                    <span class="fl-aksiyon" @onclick:stopPropagation="true">
+                        @if (f.Durum == FisDurum.Taslak)
+                        {
+                            <RadzenButton Icon="delete" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                                          Variant="Variant.Text" title="Taslağı sil"
+                                          Disabled="@_islemde" Click="@(() => TaslakSilAsync(f))" />
+                        }
+                    </span>
+                </div>
+            }
+
+            <div class="fl-satir fl-toplam">
+                <span class="fl-no">@_fisler.Count fiş</span>
+                <span class="fl-tarih"></span>
+                <span class="fl-tur"></span>
+                <span class="fl-belge"></span>
+                <span class="fl-aciklama">
+                    @{
+                        var taslakSayisi = _fisler.Count(f => f.Durum == FisDurum.Taslak);
+                    }
+                    @if (taslakSayisi > 0)
+                    {
+                        <text>@taslakSayisi taslak · raporlara girmez</text>
+                    }
+                </span>
+                <span class="fl-tutar">@Para(_fisler.Sum(f => f.ToplamBorc))</span>
+                <span class="fl-durum"></span>
+                <span class="fl-aksiyon"></span>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    List<FisOzetDto> _fisler = new();
+    bool _yukleniyor = true;
+    bool _islemde;
+
+    DateTime? _bas;
+    DateTime? _bit;
+    FisDurum? _durum;
+    HesapPlaniDto? _hesap;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Mizandaki "Taslakları aç" bağlantısı durumu query string ile taşır.
+        var q = QueryHelpers.ParseQuery(Nav.ToAbsoluteUri(Nav.Uri).Query);
+        if (q.TryGetValue("durum", out var d) && byte.TryParse(d, out var durum))
+            _durum = (FisDurum)durum;
+
+        await YukleAsync();
+    }
+
+    async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        _fisler = await Api.GetFisListeAsync(_bas, _bit, _durum, _hesap?.Id);
+        _yukleniyor = false;
+    }
+
+    async Task TemizleAsync()
+    {
+        _bas = null;
+        _bit = null;
+        _durum = null;
+        _hesap = null;
+        await YukleAsync();
+    }
+
+    async Task HesapSecAsync()
+    {
+        // Filtrede üst hesap da seçilebilir; uç alt ağacı kapsar.
+        var secim = await Dialog.OpenAsync<HesapSecModal>(
+            "Hesap seç",
+            new Dictionary<string, object> { [nameof(HesapSecModal.TumHesaplarSecilebilir)] = true },
+            new DialogOptions { Width = "720px" });
+
+        if (secim is HesapPlaniDto hesap)
+        {
+            _hesap = hesap;
+            await YukleAsync();
+        }
+    }
+
+    async Task TaslakSilAsync(FisOzetDto fis)
+    {
+        var onay = await Dialog.Confirm(
+            $"{fis.FisNo} numaralı taslak fiş silinecek. İşlem geri alınamaz.",
+            "Taslağı sil",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+
+        if (onay != true) return;
+
+        _islemde = true;
+        var (ok, hata) = await Api.DeleteFisAsync(fis.Id);
+        _islemde = false;
+
+        if (!ok)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "İşlem yapılamadı",
+                Detail = hata ?? "Taslak silinemedi.",
+                Duration = 5000
+            });
+            return;
+        }
+
+        Notif.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Success,
+            Summary = "Tamam",
+            Detail = $"{fis.FisNo} numaralı taslak silindi.",
+            Duration = 4000
+        });
+
+        await YukleAsync();
+    }
+
+    static string Para(decimal t) => MuhasebeEtiket.Para(t);
+
+    static string TurEtiket(FisTuru t) => t switch
+    {
+        FisTuru.Acilis => "Açılış",
+        FisTuru.Tahsil => "Tahsil",
+        FisTuru.Tediye => "Tediye",
+        FisTuru.Mahsup => "Mahsup",
+        FisTuru.Kapanis => "Kapanış",
+        _ => t.ToString()
+    };
+
+    static string KaynakEtiket(FisKaynak k) => k switch
+    {
+        FisKaynak.Manuel => "Manuel",
+        FisKaynak.WhatsApp => "WhatsApp",
+        FisKaynak.Ekstre => "Ekstre",
+        FisKaynak.Otomatik => "Otomatik",
+        _ => k.ToString()
+    };
+
+    async Task ExcelAktarAsync()
+    {
+        var basliklar = new[] { "Fiş no", "Tarih", "Tür", "Belge no", "Açıklama", "Kaynak", "Satır", "Borç", "Alacak", "Durum" };
+
+        var satirlar = _fisler.Select(f => new string?[]
+        {
+            f.FisNo,
+            MuhasebeEtiket.Tarih(f.Tarih),
+            TurEtiket(f.FisTuru),
+            f.BelgeNo,
+            f.Aciklama,
+            KaynakEtiket(f.Kaynak),
+            f.SatirSayisi.ToString(),
+            Para(f.ToplamBorc),
+            Para(f.ToplamAlacak),
+            f.Durum == FisDurum.Kesinlesmis ? "Kesinleşmiş" : "Taslak"
+        }).ToList();
+
+        satirlar.Add(new string?[]
+        {
+            "TOPLAM", "", "", "", $"{_fisler.Count} fiş", "", "",
+            Para(_fisler.Sum(f => f.ToplamBorc)),
+            Para(_fisler.Sum(f => f.ToplamAlacak)),
+            ""
+        });
+
+        var ust = new List<string>
+        {
+            "Fiş listesi",
+            $"Dönem: {DonemMetni()}",
+            $"Durum: {(_durum is null ? "tümü" : _durum == FisDurum.Kesinlesmis ? "kesinleşmiş" : "taslak")}"
+        };
+
+        if (_hesap is not null)
+            ust.Add($"Hesap: {_hesap.Kod} {_hesap.Ad}");
+
+        var bytes = CsvAktarim.Olustur(basliklar, satirlar, ust);
+        await JS.InvokeVoidAsync("downloadFileFromBytes", CsvAktarim.DosyaAdi("fis-listesi"), bytes);
+
+        Notif.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Success,
+            Summary = "Dışa aktarıldı",
+            Detail = $"{_fisler.Count} fiş Excel dosyasına yazıldı.",
+            Duration = 4000
+        });
+    }
+
+    string DonemMetni()
+        => (_bas, _bit) switch
+        {
+            (null, null) => "tüm geçmiş",
+            (DateTime b, null) => $"{MuhasebeEtiket.Tarih(b)} sonrası",
+            (null, DateTime e) => $"{MuhasebeEtiket.Tarih(e)} öncesi",
+            (DateTime b, DateTime e) => $"{MuhasebeEtiket.Tarih(b)} — {MuhasebeEtiket.Tarih(e)}"
+        };
+}

@@ -1,0 +1,395 @@
+﻿@page "/firma-kontrol/vergi-kalemleri"
+
+@using Microsoft.AspNetCore.WebUtilities
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.FirmaKontrol
+@using WebApp.Pages.FirmaKontrol.Components
+@using WebApp.Shared.Dto.FirmaKontrol
+
+@inject IVergiBeyannameApiClient Api
+@inject NotificationService Notif
+@inject DialogService Dialog
+@inject NavigationManager Nav
+
+@*
+    Vergi beyanname kalemlerinin yönetimi. Gruba göre sekmeli liste.
+    Sistem kalemlerinde kod ve grup kilitlidir (sunucu da bunu zorlar); kullanıcının
+    eklediği kalemler tamamen düzenlenebilir ve hiç kullanılmamışsa silinebilir.
+    Sıralama, satırdaki yukarı/aşağı düğmeleriyle değişir ve topluca kaydedilir.
+*@
+
+<style>
+    .vk-arac { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
+    .vk-arama { border: 1px solid #cbd5e0; border-radius: 4px; padding: 5px 8px; font-size: 13px; min-width: 260px; }
+
+    .vk-tablo { border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; overflow: hidden; }
+    .vk-satir { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+    .vk-head { background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #718096;
+               text-transform: uppercase; letter-spacing: .3px; }
+    .vk-satir:not(.vk-head):hover { background: #f8fbff; }
+
+    .vk-sira { flex: 0 0 62px; display: flex; gap: 2px; }
+    .vk-kod { flex: 0 0 96px; font-family: ui-monospace, Consolas, monospace; }
+    .vk-ad { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .vk-kanun { flex: 0 0 130px; font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #a0aec0; }
+    .vk-sinir { flex: 0 0 150px; font-size: 12px; color: #4a5568; }
+    .vk-aksiyon { flex: 0 0 118px; text-align: right; }
+
+    .vk-pasif .vk-kod, .vk-pasif .vk-ad { color: #a0aec0; text-decoration: line-through; }
+    .vk-rozet { font-size: 10px; padding: 1px 6px; border-radius: 10px; margin-left: 6px; }
+    .vk-rozet-sistem { background: #edf2f7; color: #4a5568; }
+    .vk-rozet-ozel { background: #e6fffa; color: #234e52; }
+    .vk-rozet-devir { background: #ebf8ff; color: #2a4365; }
+    .vk-rozet-asgari { background: #f0fff4; color: #22543d; }
+    .vk-bos { padding: 26px; text-align: center; color: #a0aec0; }
+</style>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+    <h4 style="margin:0">Vergi Kalemleri</h4>
+    <div style="display:flex; gap:6px">
+        <RadzenButton Text="@GeriEtiketi" Icon="arrow_back" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                      Click="@Geri" />
+        <RadzenButton Text="Sıralamayı kaydet" Icon="save" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
+                      Disabled="@(!_siraKirli || _islemde)" Click="@SiralamayiKaydetAsync" />
+        <RadzenButton Text="Yeni kalem" Icon="add" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                      Click="@(() => KalemFormuAc(null))" />
+    </div>
+</div>
+
+<div class="vk-arac">
+    <input class="vk-arama" type="search" placeholder="Kod, ad veya kanun maddesinde ara"
+           value="@_arama" @oninput="@(e => _arama = e.Value?.ToString() ?? string.Empty)" />
+
+    <label style="display:flex; align-items:center; gap:6px; font-size:13px">
+        <input type="checkbox" checked="@_pasifDahil"
+               @onchange="@(async e => { _pasifDahil = (bool)(e.Value ?? false); await YukleAsync(); })" />
+        Pasifleri de göster
+    </label>
+</div>
+
+@if (_yukleniyor)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+}
+else
+{
+    <RadzenTabs RenderMode="TabRenderMode.Client" SelectedIndex="0">
+        <Tabs>
+            @foreach (var grup in Gruplar)
+            {
+                <RadzenTabsItem Text="@GrupAdi(grup)">
+                    @GrupListesi(grup)
+                </RadzenTabsItem>
+            }
+        </Tabs>
+    </RadzenTabs>
+}
+
+@code {
+    static readonly VergiKalemGrubu[] Gruplar =
+    {
+        VergiKalemGrubu.Kkeg,
+        VergiKalemGrubu.ZararOlsaDahi,
+        VergiKalemGrubu.KazancVarsa,
+        VergiKalemGrubu.Mahsup
+    };
+
+    List<VergiKalemiDto> _kalemler = new();
+    string _arama = string.Empty;
+    bool _pasifDahil;
+    bool _yukleniyor = true;
+    bool _islemde;
+    bool _siraKirli;
+
+    /// <summary>
+    /// Ekrana Vergi Hesaplaması sekmesinden gelindiyse o firmanın kimliği; doğrudan URL ile
+    /// açıldıysa null kalır ve "Geri" eski davranışını (firma listesi) korur.
+    /// </summary>
+    int? _gelinenFirmaId;
+
+    /// <summary>Katalogda değişiklik yapıldıysa dönüşte hesaplama ekranı listeyi tazelesin.</summary>
+    bool _katalogDegisti;
+
+    string GeriEtiketi => _gelinenFirmaId is null ? "Geri" : "Vergi Hesaplamasına dön";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sorgu = QueryHelpers.ParseQuery(Nav.ToAbsoluteUri(Nav.Uri).Query);
+        if (sorgu.TryGetValue("firmaId", out var ham) && int.TryParse(ham, out var id) && id > 0)
+            _gelinenFirmaId = id;
+
+        await YukleAsync();
+    }
+
+    /// <summary>
+    /// Gelinen firmanın Vergi Hesaplaması sekmesine döner. Referans yoksa (doğrudan URL)
+    /// firma listesine gider — mevcut davranış korunur.
+    /// </summary>
+    void Geri()
+    {
+        if (_gelinenFirmaId is not int firmaId)
+        {
+            Nav.NavigateTo("/firmakontrol");
+            return;
+        }
+
+        var adres = $"/firmakontrol/{firmaId}?sekme=vergi";
+
+        // Katalog değiştiyse anahtar da değişsin ki panel listeyi yeniden çeksin.
+        if (_katalogDegisti)
+            adres += $"&katalog={DateTime.UtcNow.Ticks}";
+
+        Nav.NavigateTo(adres);
+    }
+
+    async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        try
+        {
+            _kalemler = await Api.GetKalemlerAsync(_pasifDahil);
+            _siraKirli = false;
+        }
+        catch (Exception ex)
+        {
+            Bildir(NotificationSeverity.Error, Mesaj(ex));
+        }
+        finally
+        {
+            _yukleniyor = false;
+        }
+    }
+
+    static string GrupAdi(VergiKalemGrubu grup) => grup switch
+    {
+        VergiKalemGrubu.Kkeg => "İlaveler (KKEG)",
+        VergiKalemGrubu.ZararOlsaDahi => "Zarar olsa dahi indirilecek",
+        VergiKalemGrubu.KazancVarsa => "Kazanç varsa indirilecek",
+        VergiKalemGrubu.Mahsup => "Mahsuplar",
+        _ => grup.ToString()
+    };
+
+    List<VergiKalemiDto> GrupKalemleri(VergiKalemGrubu grup)
+    {
+        var terim = _arama.Trim();
+
+        return _kalemler
+            .Where(k => k.Grup == grup)
+            .Where(k => terim.Length == 0
+                        || k.Kod.Contains(terim, StringComparison.OrdinalIgnoreCase)
+                        || k.Ad.Contains(terim, StringComparison.OrdinalIgnoreCase)
+                        || (k.KanunMaddesi?.Contains(terim, StringComparison.OrdinalIgnoreCase) ?? false))
+            .OrderBy(k => k.SiraNo)
+            .ThenBy(k => k.Kod)
+            .ToList();
+    }
+
+    RenderFragment GrupListesi(VergiKalemGrubu grup) => __builder =>
+    {
+        var liste = GrupKalemleri(grup);
+
+        <div class="vk-tablo">
+            <div class="vk-satir vk-head">
+                <span class="vk-sira">Sıra</span>
+                <span class="vk-kod">Kod</span>
+                <span class="vk-ad">Ad</span>
+                <span class="vk-kanun">Kanun</span>
+                <span class="vk-sinir">Üst sınır</span>
+                <span class="vk-aksiyon"></span>
+            </div>
+
+            @if (liste.Count == 0)
+            {
+                <div class="vk-bos">Bu grupta kalem yok.</div>
+            }
+            else
+            {
+                @foreach (var k in liste)
+                {
+                    <div class="vk-satir @(k.Aktif ? "" : "vk-pasif")" @key="k.Id">
+                        <span class="vk-sira">
+                            <RadzenButton Icon="arrow_upward" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                                          Variant="Variant.Text" title="Yukarı taşı"
+                                          Disabled="@(liste.First() == k)" Click="@(() => Tasi(liste, k, -1))" />
+                            <RadzenButton Icon="arrow_downward" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                                          Variant="Variant.Text" title="Aşağı taşı"
+                                          Disabled="@(liste.Last() == k)" Click="@(() => Tasi(liste, k, 1))" />
+                        </span>
+                        <span class="vk-kod">@k.Kod</span>
+                        <span class="vk-ad">
+                            @k.Ad
+                            <span class="vk-rozet @(k.SistemKalemi ? "vk-rozet-sistem" : "vk-rozet-ozel")">
+                                @(k.SistemKalemi ? "sistem" : "özel")
+                            </span>
+                            @if (k.DevredebilirMi)
+                            {
+                                <span class="vk-rozet vk-rozet-devir">devreder</span>
+                            }
+                            @if (k.AsgariMatrahtanDuser)
+                            {
+                                <span class="vk-rozet vk-rozet-asgari">32/C</span>
+                            }
+                            @if (k.IstisnayaIliskinMi)
+                            {
+                                <span class="vk-rozet vk-rozet-devir">
+                                    istisnaya ilişkin@(k.BagliIstisnaKod is null ? " · bağsız" : $" → {k.BagliIstisnaKod}")
+                                </span>
+                            }
+                        </span>
+                        <span class="vk-kanun">@k.KanunMaddesi</span>
+                        <span class="vk-sinir">@UstSinirMetni(k)</span>
+                        <span class="vk-aksiyon">
+                            <RadzenButton Icon="edit" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                                          Variant="Variant.Text" title="Düzenle" Click="@(() => KalemFormuAc(k))" />
+                            @if (k.Aktif)
+                            {
+                                <RadzenButton Icon="block" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                                              Variant="Variant.Text" title="Pasife al"
+                                              Disabled="@_islemde" Click="@(() => PasifeAlAsync(k))" />
+                            }
+                            @if (!k.SistemKalemi)
+                            {
+                                <RadzenButton Icon="delete" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                                              Variant="Variant.Text" title="Sil"
+                                              Disabled="@_islemde" Click="@(() => SilAsync(k))" />
+                            }
+                        </span>
+                    </div>
+                }
+            }
+        </div>
+    };
+
+    static string UstSinirMetni(VergiKalemiDto k) => (k.UstSinirTuru, k.UstSinirDeger) switch
+    {
+        (WebApp.Shared.Dto.FirmaKontrol.UstSinirTuru.KurumKazanciYuzdesi, decimal d) => $"Kurum kazancının %{d:0.##}'i",
+        (WebApp.Shared.Dto.FirmaKontrol.UstSinirTuru.SabitTutar, decimal d) => $"En fazla {d:N2}",
+        _ => k.OranBilgisi ?? "—"
+    };
+
+    /// <summary>Satırı listede kaydırır; sıra numaraları yeniden atanır ve toplu kaydedilir.</summary>
+    void Tasi(List<VergiKalemiDto> liste, VergiKalemiDto kalem, int yon)
+    {
+        var indeks = liste.IndexOf(kalem);
+        var hedef = indeks + yon;
+        if (indeks < 0 || hedef < 0 || hedef >= liste.Count) return;
+
+        liste.RemoveAt(indeks);
+        liste.Insert(hedef, kalem);
+
+        for (var i = 0; i < liste.Count; i++)
+            liste[i].SiraNo = (short)(i + 1);
+
+        _siraKirli = true;
+    }
+
+    async Task SiralamayiKaydetAsync()
+    {
+        _islemde = true;
+        try
+        {
+            var sira = _kalemler.Select(k => new VergiKalemSiraDto { KalemId = k.Id, SiraNo = k.SiraNo }).ToList();
+            await Api.SiralamayiKaydetAsync(sira);
+
+            _siraKirli = false;
+            _katalogDegisti = true;
+            Bildir(NotificationSeverity.Success, "Sıralama kaydedildi.");
+        }
+        catch (Exception ex)
+        {
+            Bildir(NotificationSeverity.Error, Mesaj(ex));
+        }
+        finally
+        {
+            _islemde = false;
+        }
+    }
+
+    async Task KalemFormuAc(VergiKalemiDto? kalem)
+    {
+        var parametreler = new Dictionary<string, object>
+        {
+            [nameof(VergiKalemFormDialog.Kalem)] = kalem!,
+            [nameof(VergiKalemFormDialog.Kalemler)] = _kalemler
+        };
+
+        var sonuc = await Dialog.OpenAsync<VergiKalemFormDialog>(
+            kalem is null ? "Yeni vergi kalemi" : $"Kalem: {kalem.Kod}",
+            parametreler,
+            new DialogOptions { Width = "620px" });
+
+        if (sonuc is VergiKalemiDto)
+        {
+            _katalogDegisti = true;
+            await YukleAsync();
+        }
+    }
+
+    async Task PasifeAlAsync(VergiKalemiDto kalem)
+    {
+        var onay = await Dialog.Confirm(
+            $"{kalem.Kod} — {kalem.Ad} pasife alınacak. Yeni beyannamelerde seçilemez, geçmiş kayıtlarda görünmeye devam eder.",
+            "Pasife al",
+            new ConfirmOptions { OkButtonText = "Pasife al", CancelButtonText = "Vazgeç" });
+
+        if (onay != true) return;
+
+        _islemde = true;
+        try
+        {
+            await Api.KalemPasifeAlAsync(kalem.Id);
+            _katalogDegisti = true;
+            Bildir(NotificationSeverity.Success, $"{kalem.Kod} pasife alındı.");
+            await YukleAsync();
+        }
+        catch (Exception ex)
+        {
+            Bildir(NotificationSeverity.Error, Mesaj(ex));
+        }
+        finally
+        {
+            _islemde = false;
+        }
+    }
+
+    async Task SilAsync(VergiKalemiDto kalem)
+    {
+        var onay = await Dialog.Confirm(
+            $"{kalem.Kod} — {kalem.Ad} silinecek. İşlem geri alınamaz.",
+            "Kalemi sil",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+
+        if (onay != true) return;
+
+        _islemde = true;
+        try
+        {
+            await Api.KalemSilAsync(kalem.Id);
+            _katalogDegisti = true;
+            Bildir(NotificationSeverity.Success, $"{kalem.Kod} silindi.");
+            await YukleAsync();
+        }
+        catch (Exception ex)
+        {
+            // Kullanılmış kalem için sunucu 409 + Türkçe mesaj döner.
+            Bildir(NotificationSeverity.Error, Mesaj(ex));
+        }
+        finally
+        {
+            _islemde = false;
+        }
+    }
+
+    static string Mesaj(Exception ex) =>
+        string.IsNullOrWhiteSpace(ex.Message) ? "İşlem tamamlanamadı. Lütfen tekrar deneyin." : ex.Message;
+
+    void Bildir(NotificationSeverity seviye, string mesaj) =>
+        Notif.Notify(new NotificationMessage
+        {
+            Severity = seviye,
+            Summary = seviye == NotificationSeverity.Error ? "İşlem yapılamadı" : "Tamam",
+            Detail = mesaj,
+            Duration = 5000
+        });
+}

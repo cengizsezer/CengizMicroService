@@ -1,0 +1,899 @@
+﻿@using System.Globalization
+@using Microsoft.AspNetCore.Components.Routing
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.FirmaKontrol
+@using WebApp.Shared.Dto.FirmaKontrol
+
+@implements IDisposable
+
+@inject IVergiBeyannameApiClient Api
+@inject NotificationService Notif
+@inject DialogService Dialog
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@*
+    Kurumlar vergisi beyannamesi. Tek kolon, yukarıdan aşağı beyanname sırası.
+    Hesabın tamamı sunucudaki motorda yapılır (POST /vergi/onizle); buradaki kontroller
+    yalnızca kullanıcı deneyimi içindir, tek savunma hattı değildir.
+    Otomatik kayıt yoktur; kaydedilmemiş değişiklikle sayfadan ayrılırken uyarı çıkar.
+*@
+
+<style>
+    .vb-bolum { border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; margin-bottom: 10px; overflow: hidden; }
+    .vb-bolum-basi { display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: pointer;
+                     background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+    .vb-bolum-basi:hover { background: #f1f5f9; }
+    .vb-bolum-ad { font-weight: 600; font-size: 14px; flex: 1 1 auto; }
+    .vb-bolum-tutar { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .vb-bolum-govde { padding: 6px 14px 12px; }
+    .vb-altyazi { font-size: 12px; color: #718096; margin: 6px 0 8px; }
+
+    /* Bölümlerin görsel ayrımı — şartnamedeki çerçeve renkleri */
+    .vb-kutu { border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; }
+    .vb-kutu-notr { border-color: #cbd5e0; background: #fff; }
+    .vb-kutu-yesil { border-color: #9ae6b4; background: #f0fff4; }
+    .vb-kutu-mavi { border-color: #90cdf4; background: #ebf8ff; }
+    .vb-kutu-sari { border-color: #f6e05e; background: #fffff0; }
+    .vb-kutu-basi { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: #4a5568; }
+
+    .vb-satir { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid #f1f5f9; }
+    .vb-satir:last-child { border-bottom: none; }
+    .vb-satir.vb-asim { background: #fff5f5; }
+
+    .vb-kod { flex: 0 0 78px; font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #a0aec0; }
+    .vb-ad { flex: 1 1 auto; min-width: 0; font-size: 13px; }
+    .vb-kanun { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #a0aec0; margin-left: 6px; }
+    .vb-tutar-hucre { flex: 0 0 150px; text-align: right; }
+    .vb-not-hucre { flex: 0 0 34px; text-align: right; }
+
+    .vb-inp { width: 100%; border: 1px solid #cbd5e0; border-radius: 4px; padding: 4px 7px; font-size: 13px;
+              text-align: right; font-variant-numeric: tabular-nums; background: #fff; }
+    .vb-inp:disabled { background: #f7fafc; color: #4a5568; }
+    .vb-inp.vb-inp-asim { border-color: #fc8181; background: #fff5f5; }
+
+    .vb-hatirlatma { font-size: 12px; color: #7b341e; background: #fffaf0; border-left: 3px solid #f6ad55;
+                     padding: 4px 8px; margin: 2px 0 6px 78px; border-radius: 0 4px 4px 0; }
+    .vb-geri-donus { font-size: 12px; color: #22543d; margin: 2px 0 6px 78px; }
+    .vb-uyari-satir { font-size: 12px; color: #742a2a; margin: 2px 0 6px 78px; display: flex; align-items: center; gap: 8px; }
+
+    .vb-aratoplam { display: flex; align-items: center; gap: 10px; padding: 8px 14px; margin-bottom: 10px;
+                    border-radius: 8px; background: #f7fafc; border: 1px solid #e2e8f0; font-weight: 600; }
+    .vb-aratoplam .vb-ad { font-size: 14px; }
+    .vb-aratoplam-vurgu { background: #ebf8ff; border-color: #90cdf4; }
+    .vb-sonuc { background: #f0fff4; border-color: #9ae6b4; font-size: 16px; }
+
+    .vb-vergi-kolonlar { display: flex; gap: 12px; flex-wrap: wrap; }
+    .vb-vergi-kolon { flex: 1 1 240px; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; background: #fff; }
+    .vb-vergi-kolon.vb-uygulanan { border-color: #9ae6b4; background: #f0fff4; }
+    .vb-vergi-kolon-ad { font-size: 12px; text-transform: uppercase; letter-spacing: .3px; color: #718096; }
+    .vb-vergi-kolon-tutar { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 4px; }
+
+    .vb-arac { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
+    .vb-arama { border: 1px solid #cbd5e0; border-radius: 4px; padding: 5px 8px; font-size: 13px; min-width: 220px; }
+    .vb-rozet { font-size: 10px; padding: 1px 6px; border-radius: 10px; margin-left: 6px; }
+    .vb-rozet-devir { background: #e6fffa; color: #234e52; }
+    .vb-rozet-kirli { background: #fffaf0; color: #7b341e; }
+    .vb-bos { padding: 10px; font-size: 13px; color: #a0aec0; }
+</style>
+
+@if (_yukleniyor)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+}
+else if (_sonuc is null)
+{
+    <div class="vb-bos">Vergi hesaplaması yüklenemedi. Sayfayı yenileyip tekrar deneyin.</div>
+}
+else
+{
+    <!-- Araç çubuğu -->
+    <div class="vb-arac">
+        <input class="vb-arama" type="search" placeholder="Kalem ara: kod, ad veya kanun maddesi"
+               value="@_arama" @oninput="@(e => _arama = e.Value?.ToString() ?? string.Empty)" />
+
+        <label style="display:flex; align-items:center; gap:6px; font-size:13px">
+            <input type="checkbox" checked="@_tumKalemleriGoster"
+                   @onchange="@(e => _tumKalemleriGoster = (bool)(e.Value ?? false))" />
+            Tüm kalemleri göster
+        </label>
+
+        <div style="display:flex; align-items:center; gap:6px; font-size:13px">
+            <span>KV oranı</span>
+            <input class="vb-inp" style="width:70px" value="@Bicim(_kvOrani)"
+                   @onchange="@(e => { _kvOrani = TutarCoz(e.Value?.ToString()) ?? 25m; Kirlendi(); })" />
+            <span>%</span>
+        </div>
+
+        <label style="display:flex; align-items:center; gap:6px; font-size:13px"
+               title="İlk defa faaliyete başlayan kurumlar 3 hesap dönemi asgari vergiden muaftır.">
+            <input type="checkbox" checked="@_asgariKvHesapla"
+                   @onchange="@(e => { _asgariKvHesapla = (bool)(e.Value ?? false); Kirlendi(); })" />
+            Asgari KV hesapla (32/C)
+        </label>
+
+        <div style="flex:1 1 auto"></div>
+
+        @if (_kirli)
+        {
+            <span class="vb-rozet vb-rozet-kirli">kaydedilmemiş değişiklik var</span>
+        }
+
+        <RadzenButton Text="Hesapla" Icon="calculate" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                      Disabled="@_islemde" Click="@HesaplaAsync" />
+        <RadzenButton Text="Excel" Icon="download" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                      Disabled="@_islemde" Click="@ExcelAktarAsync" />
+        @* Firma bilgisi query string ile taşınır; kalem yönetimi "Geri" ile bu sekmeye döner. *@
+        <RadzenButton Text="Kalem yönetimi" Icon="tune" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                      Click="@(() => Nav.NavigateTo($"/firma-kontrol/vergi-kalemleri?firmaId={FirmaId}"))" />
+        <RadzenButton Text="Kaydet" Icon="save" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                      Disabled="@(!_kirli || _islemde)" IsBusy="@_islemde" Click="@KaydetAsync" />
+    </div>
+
+    <!-- 1. Ticari bilanço kârı -->
+    <div class="vb-aratoplam">
+        <span class="vb-kod">690</span>
+        <span class="vb-ad">
+            Ticari bilanço kârı / zararı
+            <span class="vb-kanun">gelir tablosundan</span>
+        </span>
+        <span class="vb-bolum-tutar">@Bicim(_sonuc.TicariKar)</span>
+    </div>
+
+    <!-- 2. İlaveler -->
+    var ilaveAcik = Acik("ilaveler");
+    <div class="vb-bolum">
+        <div class="vb-bolum-basi" @onclick="@(() => Degistir("ilaveler"))">
+            <RadzenIcon Icon="@(ilaveAcik ? "expand_more" : "chevron_right")" Style="font-size:18px" />
+            <span class="vb-bolum-ad">İlaveler (+)</span>
+            <span class="vb-bolum-tutar">@Bicim(_sonuc.IlaveHamToplam)</span>
+        </div>
+
+        @if (ilaveAcik)
+        {
+            <div class="vb-bolum-govde">
+                <!-- 2a. Matrahı artıran KKEG -->
+                <div class="vb-kutu vb-kutu-notr">
+                    <div class="vb-kutu-basi">Matrahı artıran KKEG</div>
+                    <div class="vb-altyazi">Kalıcı fark · vergi yükünü doğrudan artırır</div>
+                    @KalemListesi(_sonuc.Ilaveler.Where(x => x.MatrahiArtirir).ToList())
+                    <div class="vb-satir" style="font-weight:600; border-top:1px solid #e2e8f0">
+                        <span class="vb-kod"></span>
+                        <span class="vb-ad">Ara toplam</span>
+                        <span class="vb-tutar-hucre">@Bicim(_sonuc.IlaveMatrahaEtkiEden)</span>
+                        <span class="vb-not-hucre"></span>
+                    </div>
+                </div>
+
+                <!-- 2b. İstisnaya ilişkin KKEG -->
+                <div class="vb-kutu vb-kutu-yesil">
+                    <div class="vb-kutu-basi">İstisnaya ilişkin KKEG</div>
+                    <div class="vb-altyazi">Aynı tutar istisna kazancına eklenir · matraha net etkisi yok</div>
+                    @KalemListesi(_sonuc.Ilaveler.Where(x => !x.MatrahiArtirir).ToList(), geriDonusGoster: true)
+                    <div class="vb-satir" style="font-weight:600; border-top:1px solid #9ae6b4">
+                        <span class="vb-kod"></span>
+                        <span class="vb-ad">Ara toplam</span>
+                        <span class="vb-tutar-hucre">@Bicim(_sonuc.IlaveHamToplam - _sonuc.IlaveMatrahaEtkiEden)</span>
+                        <span class="vb-not-hucre"></span>
+                    </div>
+                </div>
+
+                <div class="vb-satir" style="font-weight:600">
+                    <span class="vb-kod"></span>
+                    <span class="vb-ad">Ham ilave toplamı <span class="vb-kanun">beyannameye yazılan</span></span>
+                    <span class="vb-tutar-hucre">@Bicim(_sonuc.IlaveHamToplam)</span>
+                    <span class="vb-not-hucre"></span>
+                </div>
+                <div class="vb-satir" style="font-weight:600">
+                    <span class="vb-kod"></span>
+                    <span class="vb-ad">Matraha etki eden kısım</span>
+                    <span class="vb-tutar-hucre">@Bicim(_sonuc.IlaveMatrahaEtkiEden)</span>
+                    <span class="vb-not-hucre"></span>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- 3. Kâr ve ilaveler toplamı -->
+    <div class="vb-aratoplam">
+        <span class="vb-kod"></span>
+        <span class="vb-ad">Kâr ve ilaveler toplamı</span>
+        <span class="vb-bolum-tutar">@Bicim(_sonuc.KarVeIlavelerToplami)</span>
+    </div>
+
+    <!-- 4. Zarar olsa dahi indirilecek istisnalar -->
+    var g2Acik = Acik("grup2");
+    <div class="vb-bolum">
+        <div class="vb-bolum-basi" @onclick="@(() => Degistir("grup2"))">
+            <RadzenIcon Icon="@(g2Acik ? "expand_more" : "chevron_right")" Style="font-size:18px" />
+            <span class="vb-bolum-ad">Zarar olsa dahi indirilecek istisna ve indirimler (−)</span>
+            <span class="vb-bolum-tutar">@Bicim(_sonuc.ZararOlsaDahiToplam)</span>
+        </div>
+
+        @if (g2Acik)
+        {
+            <div class="vb-bolum-govde">
+                <div class="vb-kutu vb-kutu-mavi">
+                    <div class="vb-altyazi">Matrahı negatife çekebilir, oluşan zarar devreder</div>
+                    @KalemListesi(_sonuc.ZararOlsaDahiIndirimler)
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- 5. Kâr / Zarar -->
+    <div class="vb-aratoplam">
+        <span class="vb-kod"></span>
+        <span class="vb-ad">Kâr / Zarar</span>
+        <span class="vb-bolum-tutar">@Bicim(_sonuc.KarZarar)</span>
+    </div>
+
+    <!-- 6. Geçmiş yıl zararları -->
+    var zararAcik = Acik("zarar");
+    <div class="vb-bolum">
+        <div class="vb-bolum-basi" @onclick="@(() => Degistir("zarar"))">
+            <RadzenIcon Icon="@(zararAcik ? "expand_more" : "chevron_right")" Style="font-size:18px" />
+            <span class="vb-bolum-ad">Geçmiş yıl zararları (−)</span>
+            <span class="vb-bolum-tutar">@Bicim(_sonuc.ZararMahsupToplami)</span>
+        </div>
+
+        @if (zararAcik)
+        {
+            <div class="vb-bolum-govde">
+                <div class="vb-altyazi">
+                    En eski yıldan başlayarak mahsup edilir; @VergiSabit.ZararYilSiniri hesap döneminden eski zarar mahsup edilemez.
+                </div>
+
+                @foreach (var z in _zararlar.OrderBy(z => z.ZararYili).ToList())
+                {
+                    var mahsup = _sonuc.ZararMahsuplari.FirstOrDefault(m => m.ZararYili == z.ZararYili);
+
+                    <div class="vb-satir @(mahsup is not null && !mahsup.MahsupEdilebilir ? "vb-asim" : "")" @key="z">
+                        <span class="vb-kod">@z.ZararYili</span>
+                        <span class="vb-ad">
+                            @z.ZararYili yılı zararı
+                            @if (mahsup is not null && mahsup.MahsupEdilen > 0)
+                            {
+                                <span class="vb-kanun">mahsup @Bicim(mahsup.MahsupEdilen)</span>
+                            }
+                            @if (mahsup is not null && mahsup.DevredenTutar > 0)
+                            {
+                                <span class="vb-rozet vb-rozet-devir">devreden @Bicim(mahsup.DevredenTutar)</span>
+                            }
+                        </span>
+                        <span class="vb-tutar-hucre">
+                            <input class="vb-inp" value="@Bicim(z.ZararTutari)"
+                                   @onchange="@(e => { z.ZararTutari = TutarCoz(e.Value?.ToString()) ?? 0m; Kirlendi(); })" />
+                        </span>
+                        <span class="vb-not-hucre">
+                            <RadzenButton Icon="close" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                                          Variant="Variant.Text" title="Satırı sil"
+                                          Click="@(() => ZararSil(z))" />
+                        </span>
+                    </div>
+
+                    @if (mahsup?.Uyari is not null)
+                    {
+                        <div class="vb-uyari-satir">⚠ @mahsup.Uyari</div>
+                    }
+                }
+
+                <div style="display:flex; gap:8px; align-items:center; margin-top:8px">
+                    <input class="vb-inp" style="width:90px; text-align:left" placeholder="Yıl"
+                           value="@_yeniZararYili"
+                           @onchange="@(e => _yeniZararYili = e.Value?.ToString() ?? string.Empty)" />
+                    <RadzenButton Text="Zarar yılı ekle" Icon="add" ButtonStyle="ButtonStyle.Light"
+                                  Size="ButtonSize.Small" Click="@ZararEkle" />
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- 7. Kazanç varsa indirilecek indirimler -->
+    var g3Acik = Acik("grup3");
+    <div class="vb-bolum">
+        <div class="vb-bolum-basi" @onclick="@(() => Degistir("grup3"))">
+            <RadzenIcon Icon="@(g3Acik ? "expand_more" : "chevron_right")" Style="font-size:18px" />
+            <span class="vb-bolum-ad">Kazancın bulunması hâlinde indirilecek indirimler (−)</span>
+            <span class="vb-bolum-tutar">@Bicim(_sonuc.KazancVarsaToplam)</span>
+        </div>
+
+        @if (g3Acik)
+        {
+            <div class="vb-bolum-govde">
+                <div class="vb-kutu vb-kutu-sari">
+                    <div class="vb-altyazi">
+                        Matrahı sıfırın altına indiremez · üst sınır tabanı (kurum kazancı):
+                        <strong>@Bicim(_sonuc.KurumKazanci)</strong>
+                    </div>
+                    @KalemListesi(_sonuc.KazancVarsaIndirimler, sinirGoster: true)
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- 8. Matrah -->
+    <div class="vb-aratoplam vb-aratoplam-vurgu">
+        <span class="vb-kod"></span>
+        <span class="vb-ad">MATRAH</span>
+        <span class="vb-bolum-tutar" style="font-size:18px">@Bicim(_sonuc.Matrah)</span>
+    </div>
+
+    <!-- 9. Vergi hesabı -->
+    <div class="vb-bolum">
+        <div class="vb-bolum-basi" style="cursor:default">
+            <span class="vb-bolum-ad">Vergi hesabı</span>
+        </div>
+        <div class="vb-bolum-govde">
+            <div class="vb-vergi-kolonlar">
+                <div class="vb-vergi-kolon @(_sonuc.AsgariUygulandi ? "" : "vb-uygulanan")">
+                    <div class="vb-vergi-kolon-ad">Normal hesaplanan vergi</div>
+                    <div class="vb-vergi-kolon-tutar">@Bicim(_sonuc.NormalVergi)</div>
+                    <div class="vb-altyazi" style="margin-bottom:0">
+                        Matrah @Bicim(_sonuc.Matrah) × %@Bicim(_kvOrani)
+                        @if (_sonuc.IndirimliOranMatrahi > 0)
+                        {
+                            <text> · indirimli kısım @Bicim(_sonuc.IndirimliOranMatrahi)</text>
+                        }
+                    </div>
+                </div>
+
+                @if (_sonuc.AsgariKvHesaplandi)
+                {
+                    <div class="vb-vergi-kolon @(_sonuc.AsgariUygulandi ? "vb-uygulanan" : "")">
+                        <div class="vb-vergi-kolon-ad">Yurt içi asgari KV (32/C)</div>
+                        <div class="vb-vergi-kolon-tutar">@Bicim(_sonuc.AsgariVergi)</div>
+                        <div class="vb-altyazi" style="margin-bottom:0">
+                            Asgari matrah @Bicim(_sonuc.AsgariMatrah) × %@Bicim(VergiSabit.AsgariOran)
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="vb-altyazi" style="margin-top:8px">
+                @(_sonuc.AsgariKvHesaplandi
+                    ? "Yüksek olan uygulanır."
+                    : "Asgari kurumlar vergisi hesabı kapalı; normal hesaplanan vergi uygulanır.")
+            </div>
+
+            <div class="vb-satir" style="font-weight:600; border-top:1px solid #e2e8f0">
+                <span class="vb-kod"></span>
+                <span class="vb-ad">Hesaplanan kurumlar vergisi</span>
+                <span class="vb-tutar-hucre">@Bicim(_sonuc.HesaplananVergi)</span>
+                <span class="vb-not-hucre"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 10. Mahsuplar -->
+    var mahsupAcik = Acik("mahsup");
+    <div class="vb-bolum">
+        <div class="vb-bolum-basi" @onclick="@(() => Degistir("mahsup"))">
+            <RadzenIcon Icon="@(mahsupAcik ? "expand_more" : "chevron_right")" Style="font-size:18px" />
+            <span class="vb-bolum-ad">Mahsuplar (−)</span>
+            <span class="vb-bolum-tutar">@Bicim(_sonuc.MahsupToplami)</span>
+        </div>
+
+        @if (mahsupAcik)
+        {
+            <div class="vb-bolum-govde">
+                @KalemListesi(_sonuc.Mahsuplar)
+            </div>
+        }
+    </div>
+
+    <!-- 11. Ödenecek kurumlar vergisi -->
+    <div class="vb-aratoplam vb-sonuc">
+        <span class="vb-kod"></span>
+        <span class="vb-ad">@(_sonuc.OdenecekVergi >= 0 ? "ÖDENECEK KURUMLAR VERGİSİ" : "İADE / MAHSUP EDİLECEK")</span>
+        <span class="vb-bolum-tutar" style="font-size:20px">@Bicim(Math.Abs(_sonuc.OdenecekVergi))</span>
+    </div>
+
+    @if (_sonuc.Uyarilar.Count > 0)
+    {
+        <div style="margin-top:10px">
+            @foreach (var u in _sonuc.Uyarilar)
+            {
+                <RadzenAlert AlertStyle="@(u.Seviye == VergiUyariSeviyesi.Bilgi ? AlertStyle.Info : AlertStyle.Warning)"
+                             Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">
+                    @u.Mesaj
+                </RadzenAlert>
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+    [Parameter, EditorRequired] public short DonemYil { get; set; }
+
+    /// <summary>690 ticari bilanço kârı; gelir tablosundan gelir ve ekranda düzenlenemez.</summary>
+    [Parameter] public decimal TicariKar { get; set; }
+
+    /// <summary>
+    /// Kalem katalogunun tazeliğini işaretler. Kalem yönetiminden değişiklik yapılıp
+    /// dönüldüğünde bu değer değişir ve panel katalogu yeniden çeker; böylece ekran
+    /// silinmiş/pasife alınmış ya da yeni eklenmiş kalemlerle çalışır.
+    /// </summary>
+    [Parameter] public string? KatalogAnahtari { get; set; }
+
+    /// <summary>Sabitler ekranda da gösterildiği için tek yerde.</summary>
+    public static class VergiSabit
+    {
+        public const decimal AsgariOran = 10m;
+        public const int ZararYilSiniri = 5;
+    }
+
+    private static readonly CultureInfo Kultur = new("tr-TR");
+
+    List<VergiKalemiDto> _kalemler = new();
+    readonly Dictionary<int, decimal> _tutarlar = new();
+    readonly Dictionary<int, string?> _notlar = new();
+    readonly List<GecmisYilZarariYazDto> _zararlar = new();
+    readonly HashSet<string> _kapali = new();
+    readonly HashSet<int> _hatirlatmaAcik = new();
+
+    VergiSonucDto? _sonuc;
+    decimal _kvOrani = 25m;
+    decimal? _indirimliOran;
+    decimal? _indirimliOranMatrahi;
+    bool _asgariKvHesapla = true;
+    string? _notlarMetni;
+
+    string _arama = string.Empty;
+    string _yeniZararYili = string.Empty;
+    bool _tumKalemleriGoster;
+    bool _yukleniyor = true;
+    bool _islemde;
+    bool _kirli;
+    decimal _sonYuklenenTicariKar;
+    string? _sonKatalogAnahtari;
+
+    IDisposable? _gezinmeKaydi;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Kaydedilmemiş değişiklikle uygulama içinde başka sayfaya geçişte uyarı.
+        _gezinmeKaydi = Nav.RegisterLocationChangingHandler(GezinmeOncesi);
+
+        _sonKatalogAnahtari = KatalogAnahtari;
+        await YukleAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_yukleniyor) return;
+
+        // Kalem yönetiminden değişiklikle dönüldü: katalog tazelensin.
+        // (Sayfa yeniden kurulmadan yalnızca query string değiştiğinde de bu yol çalışır.)
+        if (_sonKatalogAnahtari != KatalogAnahtari)
+        {
+            _sonKatalogAnahtari = KatalogAnahtari;
+            await KatalogYenileAsync();
+            return;
+        }
+
+        // Gelir tablosu değişince 690 güncellenir ve hesap yenilenir.
+        if (_sonYuklenenTicariKar != TicariKar)
+        {
+            _sonYuklenenTicariKar = TicariKar;
+            await HesaplaAsync();
+        }
+    }
+
+    /// <summary>
+    /// Kalem katalogunu yeniden çeker ve hesabı tazeler. Kullanıcının girdiği tutarlar
+    /// korunur; katalogdan kalkan (silinmiş) kalemlerin tutarları düşürülür, çünkü
+    /// artık gösterilecek satırları yoktur.
+    /// </summary>
+    async Task KatalogYenileAsync()
+    {
+        try
+        {
+            _kalemler = await Api.GetKalemlerAsync();
+
+            var gecerliIdler = _kalemler.Select(k => k.Id).ToHashSet();
+            foreach (var kalkan in _tutarlar.Keys.Where(id => !gecerliIdler.Contains(id)).ToList())
+            {
+                _tutarlar.Remove(kalkan);
+                _notlar.Remove(kalkan);
+            }
+
+            await HesaplaAsync();
+        }
+        catch (Exception ex)
+        {
+            Bildir(NotificationSeverity.Error, Mesaj(ex));
+        }
+    }
+
+    public void Dispose() => _gezinmeKaydi?.Dispose();
+
+    async ValueTask GezinmeOncesi(LocationChangingContext ctx)
+    {
+        if (!_kirli) return;
+
+        var devam = await Dialog.Confirm(
+            "Vergi hesaplamasında kaydedilmemiş değişiklikler var. Sayfadan ayrılırsanız bu değişiklikler kaybolur.",
+            "Kaydedilmemiş değişiklik",
+            new ConfirmOptions { OkButtonText = "Yine de ayrıl", CancelButtonText = "Kal" });
+
+        if (devam != true) ctx.PreventNavigation();
+    }
+
+    async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        _sonYuklenenTicariKar = TicariKar;
+
+        try
+        {
+            _kalemler = await Api.GetKalemlerAsync();
+
+            var kayit = await Api.GetBeyannameAsync(FirmaId, DonemYil);
+            if (kayit is not null)
+            {
+                _kvOrani = kayit.KvOrani;
+                _indirimliOran = kayit.IndirimliOran;
+                _indirimliOranMatrahi = kayit.IndirimliOranMatrahi;
+                _asgariKvHesapla = kayit.AsgariKvHesapla;
+                _notlarMetni = kayit.Notlar;
+
+                foreach (var s in kayit.Satirlar)
+                {
+                    _tutarlar[s.VergiKalemiId] = s.Tutar;
+                    _notlar[s.VergiKalemiId] = s.Aciklama;
+                }
+
+                _zararlar.Clear();
+                _zararlar.AddRange(kayit.GecmisYilZararlari.Select(z => new GecmisYilZarariYazDto
+                {
+                    ZararYili = z.ZararYili,
+                    ZararTutari = z.ZararTutari
+                }));
+            }
+
+            // Varsayılan olarak yalnızca özet bölümler açık dursun.
+            _kapali.Add("grup2");
+            _kapali.Add("grup3");
+            _kapali.Add("zarar");
+            _kapali.Add("mahsup");
+
+            _sonuc = await Api.OnizleAsync(Istek());
+            _kirli = false;
+        }
+        catch (Exception ex)
+        {
+            Bildir(NotificationSeverity.Error, Mesaj(ex));
+        }
+        finally
+        {
+            _yukleniyor = false;
+        }
+    }
+
+    VergiBeyannameYazDto Istek() => new()
+    {
+        DonemYil = DonemYil,
+        TicariKar = TicariKar,
+        KvOrani = _kvOrani,
+        IndirimliOran = _indirimliOran,
+        IndirimliOranMatrahi = _indirimliOranMatrahi,
+        AsgariKvHesapla = _asgariKvHesapla,
+        Notlar = _notlarMetni,
+        Satirlar = _tutarlar
+            .Where(t => t.Value != 0 || !string.IsNullOrWhiteSpace(_notlar.GetValueOrDefault(t.Key)))
+            .Select(t => new VergiSatirYazDto
+            {
+                VergiKalemiId = t.Key,
+                Tutar = t.Value,
+                Aciklama = _notlar.GetValueOrDefault(t.Key)
+            }).ToList(),
+        GecmisYilZararlari = _zararlar.Select(z => new GecmisYilZarariYazDto
+        {
+            ZararYili = z.ZararYili,
+            ZararTutari = z.ZararTutari
+        }).ToList()
+    };
+
+    /// <summary>Sunucudaki motora hesaplatır; ekranda kural yürütülmez.</summary>
+    async Task HesaplaAsync()
+    {
+        if (_islemde) return;
+
+        _islemde = true;
+        try
+        {
+            _sonuc = await Api.OnizleAsync(Istek());
+        }
+        catch (Exception ex)
+        {
+            Bildir(NotificationSeverity.Error, Mesaj(ex));
+        }
+        finally
+        {
+            _islemde = false;
+        }
+    }
+
+    async Task KaydetAsync()
+    {
+        if (_islemde) return;
+
+        _islemde = true;
+        try
+        {
+            var kayit = await Api.KaydetAsync(FirmaId, Istek());
+            _sonuc = kayit.Sonuc;
+            _kirli = false;
+
+            Bildir(NotificationSeverity.Success, $"{DonemYil} dönemi vergi hesaplaması kaydedildi.");
+        }
+        catch (Exception ex)
+        {
+            Bildir(NotificationSeverity.Error, Mesaj(ex));
+        }
+        finally
+        {
+            _islemde = false;
+        }
+    }
+
+    /// <summary>
+    /// Excel sunucuda ClosedXML ile üretilir (gerçek .xlsx). Kayıtlı beyanname üzerinden
+    /// çalıştığı için kaydedilmemiş değişiklik varsa önce kaydetmesi istenir.
+    /// </summary>
+    async Task ExcelAktarAsync()
+    {
+        if (_islemde) return;
+
+        if (_kirli)
+        {
+            var kaydet = await Dialog.Confirm(
+                "Excel çıktısı en son kaydedilen hesaplamadan üretilir. Kaydedilmemiş değişiklikleriniz var; önce kaydedilsin mi?",
+                "Kaydedilmemiş değişiklik",
+                new ConfirmOptions { OkButtonText = "Kaydet ve indir", CancelButtonText = "Vazgeç" });
+
+            if (kaydet != true) return;
+            await KaydetAsync();
+            if (_kirli) return;   // kayıt başarısızsa indirmeye geçme
+        }
+
+        _islemde = true;
+        try
+        {
+            var dosya = await Api.ExcelAsync(FirmaId, DonemYil);
+            if (dosya is null)
+            {
+                Bildir(NotificationSeverity.Error, "Bu dönem için kayıtlı vergi hesaplaması yok. Önce kaydedin.");
+                return;
+            }
+
+            await JS.InvokeVoidAsync("downloadFileFromBytes", dosya.Value.DosyaAdi, dosya.Value.Icerik);
+            Bildir(NotificationSeverity.Success, $"{dosya.Value.DosyaAdi} indirildi.");
+        }
+        catch (Exception ex)
+        {
+            Bildir(NotificationSeverity.Error, Mesaj(ex));
+        }
+        finally
+        {
+            _islemde = false;
+        }
+    }
+
+    // ── Satır çizimi ──
+
+    /// <summary>Sıfır tutarlı kalemler varsayılan gizli; arama ve "tümünü göster" bunu ezer.</summary>
+    bool Gorunur(VergiSonucSatirDto satir)
+    {
+        var terim = _arama.Trim();
+        if (terim.Length > 0)
+            return satir.Kod.Contains(terim, StringComparison.OrdinalIgnoreCase)
+                || satir.Ad.Contains(terim, StringComparison.OrdinalIgnoreCase)
+                || (satir.KanunMaddesi?.Contains(terim, StringComparison.OrdinalIgnoreCase) ?? false);
+
+        return _tumKalemleriGoster || satir.GirilenTutar != 0m;
+    }
+
+    RenderFragment KalemListesi(List<VergiSonucSatirDto> satirlar, bool geriDonusGoster = false, bool sinirGoster = false) => __builder =>
+    {
+        var gorunurler = satirlar.Where(Gorunur).ToList();
+
+        if (gorunurler.Count == 0)
+        {
+            <div class="vb-bos">
+                @(_arama.Trim().Length > 0
+                    ? "Aramanıza uyan kalem yok."
+                    : "Tutar girilmiş kalem yok. \"Tüm kalemleri göster\" ile boş kalemleri açabilirsiniz.")
+            </div>
+        }
+        else
+        {
+            foreach (var s in gorunurler)
+            {
+                var asim = s.SinirAsimi > 0;
+                var hatirlatmaGorunur = s.GirilenTutar != 0m || _hatirlatmaAcik.Contains(s.VergiKalemiId);
+
+                <div class="vb-satir @(asim ? "vb-asim" : "")" @key="s.VergiKalemiId">
+                    <span class="vb-kod">@s.Kod</span>
+                    <span class="vb-ad">
+                        @s.Ad
+                        @if (!string.IsNullOrWhiteSpace(s.KanunMaddesi))
+                        {
+                            <span class="vb-kanun">@s.KanunMaddesi</span>
+                        }
+                        @if (s.DevredenTutar > 0)
+                        {
+                            <span class="vb-rozet vb-rozet-devir">devreden @Bicim(s.DevredenTutar)</span>
+                        }
+                    </span>
+                    <span class="vb-tutar-hucre">
+                        <input class="vb-inp @(asim ? "vb-inp-asim" : "")" value="@Bicim(s.GirilenTutar)"
+                               @onchange="@(e => TutarDegisti(s.VergiKalemiId, e))" />
+                    </span>
+                    <span class="vb-not-hucre">
+                        @if (!string.IsNullOrWhiteSpace(s.Hatirlatma))
+                        {
+                            <RadzenButton Icon="info_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                                          Variant="Variant.Text" title="Hatırlatmayı göster"
+                                          Click="@(() => HatirlatmaDegistir(s.VergiKalemiId))" />
+                        }
+                    </span>
+                </div>
+
+                @if (hatirlatmaGorunur && !string.IsNullOrWhiteSpace(s.Hatirlatma))
+                {
+                    <div class="vb-hatirlatma">@s.Hatirlatma</div>
+                }
+
+                @if (geriDonusGoster && s.GirilenTutar != 0m)
+                {
+                    var bagli = BagliIstisnaSatiri(s.VergiKalemiId);
+                    if (bagli is not null)
+                    {
+                        <div class="vb-geri-donus">
+                            ↳ @bagli.Ad @Bicim(bagli.GirilenTutar) → <strong>@Bicim(bagli.EfektifTutar)</strong> olarak hesaplanacak
+                        </div>
+                    }
+                }
+
+                @if (sinirGoster && asim)
+                {
+                    <div class="vb-uyari-satir">
+                        <span>
+                            ⚠ Üst sınır @Bicim(s.UstSinirTutari ?? 0m) · aşan tutar <strong>@Bicim(s.SinirAsimi)</strong>
+                        </span>
+                        @if (Kkeg17() is int kkeg17Id)
+                        {
+                            <RadzenButton Text="KKEG-17'ye taşı" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Warning"
+                                          Click="@(() => AsimiTasiAsync(s, kkeg17Id))" />
+                        }
+                    </div>
+                }
+
+                @if (s.YananTutar > 0)
+                {
+                    <div class="vb-uyari-satir">
+                        ⚠ Kazanç yetersizliği nedeniyle @Bicim(s.YananTutar) indirilemedi; bu kalem devretmez.
+                    </div>
+                }
+
+                <div style="margin: 0 0 6px 78px">
+                    <input class="vb-inp" style="text-align:left; font-size:12px" placeholder="Not (isteğe bağlı)"
+                           value="@_notlar.GetValueOrDefault(s.VergiKalemiId)"
+                           @onchange="@(e => NotDegisti(s.VergiKalemiId, e))" />
+                </div>
+            }
+        }
+    };
+
+    VergiSonucSatirDto? BagliIstisnaSatiri(int kkegKalemId)
+    {
+        var kalem = _kalemler.FirstOrDefault(k => k.Id == kkegKalemId);
+        if (kalem?.BagliIstisnaKalemiId is not int bagliId) return null;
+
+        return _sonuc?.ZararOlsaDahiIndirimler.FirstOrDefault(x => x.VergiKalemiId == bagliId);
+    }
+
+    int? Kkeg17() => _kalemler.FirstOrDefault(k => k.Kod == "KKEG-17")?.Id;
+
+    /// <summary>Üst sınırı aşan tutarı KKEG-17'ye taşır: kaynak kalem sınıra çekilir.</summary>
+    async Task AsimiTasiAsync(VergiSonucSatirDto satir, int kkeg17Id)
+    {
+        var asim = satir.SinirAsimi;
+        if (asim <= 0) return;
+
+        _tutarlar[satir.VergiKalemiId] = satir.UstSinirTutari ?? 0m;
+        _tutarlar[kkeg17Id] = _tutarlar.GetValueOrDefault(kkeg17Id) + asim;
+
+        Kirlendi();
+        await HesaplaAsync();
+
+        Bildir(NotificationSeverity.Success,
+            $"{Bicim(asim)} TL aşan tutar KKEG-17 (bağış ve yardımların indirilemeyen kısmı) kalemine taşındı.");
+    }
+
+    async Task TutarDegisti(int kalemId, ChangeEventArgs e)
+    {
+        _tutarlar[kalemId] = TutarCoz(e.Value?.ToString()) ?? 0m;
+        Kirlendi();
+        await HesaplaAsync();
+    }
+
+    void NotDegisti(int kalemId, ChangeEventArgs e)
+    {
+        var metin = e.Value?.ToString();
+        _notlar[kalemId] = string.IsNullOrWhiteSpace(metin) ? null : metin;
+        Kirlendi();
+    }
+
+    void HatirlatmaDegistir(int kalemId)
+    {
+        if (!_hatirlatmaAcik.Remove(kalemId)) _hatirlatmaAcik.Add(kalemId);
+    }
+
+    async Task ZararEkle()
+    {
+        if (!short.TryParse(_yeniZararYili.Trim(), out var yil) || yil < 1990 || yil > DonemYil)
+        {
+            Bildir(NotificationSeverity.Error, $"Geçerli bir zarar yılı girin (1990 – {DonemYil}).");
+            return;
+        }
+
+        if (_zararlar.Any(z => z.ZararYili == yil))
+        {
+            Bildir(NotificationSeverity.Error, $"{yil} yılı zaten listede.");
+            return;
+        }
+
+        _zararlar.Add(new GecmisYilZarariYazDto { ZararYili = yil, ZararTutari = 0m });
+        _yeniZararYili = string.Empty;
+        Kirlendi();
+        await HesaplaAsync();
+    }
+
+    async Task ZararSil(GecmisYilZarariYazDto zarar)
+    {
+        _zararlar.Remove(zarar);
+        Kirlendi();
+        await HesaplaAsync();
+    }
+
+    void Kirlendi() => _kirli = true;
+
+    bool Acik(string bolum) => !_kapali.Contains(bolum);
+
+    void Degistir(string bolum)
+    {
+        if (!_kapali.Remove(bolum)) _kapali.Add(bolum);
+    }
+
+    // ── Biçim ──
+
+    static string Bicim(decimal tutar) => tutar.ToString("N2", Kultur);
+
+    /// <summary>Virgül varsa nokta binlik ayraç sayılır; yoksa nokta ondalık kabul edilir.</summary>
+    static decimal? TutarCoz(string? metin)
+    {
+        var s = (metin ?? string.Empty).Replace(" ", string.Empty).Trim();
+        if (s.Length == 0) return null;
+
+        if (s.Contains(',')) s = s.Replace(".", string.Empty).Replace(',', '.');
+
+        return decimal.TryParse(s, NumberStyles.Number, CultureInfo.InvariantCulture, out var d) ? d : null;
+    }
+
+    static string Mesaj(Exception ex) =>
+        string.IsNullOrWhiteSpace(ex.Message) ? "İşlem tamamlanamadı. Lütfen tekrar deneyin." : ex.Message;
+
+    void Bildir(NotificationSeverity seviye, string mesaj) =>
+        Notif.Notify(new NotificationMessage
+        {
+            Severity = seviye,
+            Summary = seviye == NotificationSeverity.Error ? "İşlem yapılamadı" : "Tamam",
+            Detail = mesaj,
+            Duration = 5000
+        });
+}

@@ -153,6 +153,9 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             services.AddScoped<ISmmmTakipApi>(sp =>
                 new SmmmTakipApi(sp.GetRequiredService<HttpClient>()));
 
+            services.AddScoped<IMuhasebeApi>(sp =>
+                new MuhasebeApi(sp.GetRequiredService<HttpClient>()));
+
             services.AddScoped<IUserAdminService>(sp =>
                 new UserAdminService(sp.GetRequiredService<HttpClient>()));
 
@@ -186,6 +189,9 @@ namespace WebApp.StartupExtensions.ServiceExtensions
 
             services.AddScoped<WebApp.Application.Services.FirmaKontrol.IFirmaKontrolApiClient>(sp =>
                 new WebApp.Application.Services.FirmaKontrol.FirmaKontrolApiClient(sp.GetRequiredService<HttpClient>()));
+
+            services.AddScoped<WebApp.Application.Services.FirmaKontrol.IVergiBeyannameApiClient>(sp =>
+                new WebApp.Application.Services.FirmaKontrol.VergiBeyannameApiClient(sp.GetRequiredService<HttpClient>()));
 
             services.AddScoped<IKdvBeyannameApiService>(sp =>
                 new KdvBeyannameApiService(sp.GetRequiredService<HttpClient>()));

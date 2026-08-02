@@ -1,0 +1,97 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.Muhasebe
+
+@inject IMuhasebeApi Api
+@inject DialogService Dialog
+
+@*
+    Yeni masraf merkezi. Kod firma içinde tekildir ve pasif merkez de kodu tuttuğu için
+    tekillik sunucuda 409 ile döner; buradaki kontroller yalnızca kullanıcı deneyimi
+    içindir, tek savunma hattı değildir. Güncelleme yok: merkez ya açıktır ya pasiftir.
+*@
+
+<div style="display:flex; flex-direction:column; gap:12px">
+    <div style="display:flex; flex-direction:column; gap:3px">
+        <label style="font-size:11px; color:#718096; text-transform:uppercase; letter-spacing:.3px">
+            Kod (en fazla @KodUzunluk karakter)
+        </label>
+        <input class="mmf-inp" style="border:1px solid #cbd5e0; border-radius:4px; padding:6px 8px;
+                                      font-family:ui-monospace,Consolas,monospace"
+               maxlength="@KodUzunluk" value="@_kod" disabled="@_islemde"
+               @oninput="@(e => { _kod = e.Value?.ToString() ?? string.Empty; _hata = null; })" />
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:3px">
+        <label style="font-size:11px; color:#718096; text-transform:uppercase; letter-spacing:.3px">
+            Ad (en fazla @AdUzunluk karakter)
+        </label>
+        <input style="border:1px solid #cbd5e0; border-radius:4px; padding:6px 8px"
+               maxlength="@AdUzunluk" value="@_ad" disabled="@_islemde"
+               @oninput="@(e => { _ad = e.Value?.ToString() ?? string.Empty; _hata = null; })" />
+    </div>
+
+    @if (_onizleme is not null)
+    {
+        <div style="font-size:13px; color:#4a5568; background:#f7fafc; border:1px solid #e2e8f0;
+                    border-radius:6px; padding:8px 10px">
+            Fiş satırında şöyle görünecek: <strong>@_onizleme</strong>
+        </div>
+    }
+
+    @if (_hata is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">
+            @_hata
+        </RadzenAlert>
+    }
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+        <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Disabled="@_islemde"
+                      Click="@(() => Dialog.Close(null))" />
+        <RadzenButton Text="Kaydet" Icon="save" ButtonStyle="ButtonStyle.Primary"
+                      Disabled="@(!Gecerli || _islemde)" IsBusy="@_islemde" Click="@KaydetAsync" />
+    </RadzenStack>
+</div>
+
+@code {
+    const int KodUzunluk = 10;
+    const int AdUzunluk = 100;
+
+    string _kod = string.Empty;
+    string _ad = string.Empty;
+    string? _hata;
+    bool _islemde;
+
+    bool Gecerli => _kod.Trim().Length > 0
+                    && _kod.Trim().Length <= KodUzunluk
+                    && _ad.Trim().Length > 0
+                    && _ad.Trim().Length <= AdUzunluk;
+
+    string? _onizleme => Gecerli ? $"{_kod.Trim()} — {_ad.Trim()}" : null;
+
+    async Task KaydetAsync()
+    {
+        if (!Gecerli || _islemde) return;
+
+        _islemde = true;
+        _hata = null;
+
+        var (eklenen, hata) = await Api.CreateMasrafMerkeziAsync(new MasrafMerkeziYazDto
+        {
+            Kod = _kod.Trim(),
+            Ad = _ad.Trim()
+        });
+
+        _islemde = false;
+
+        if (hata is not null || eklenen is null)
+        {
+            _hata = hata ?? "Masraf merkezi eklenemedi.";
+            return;
+        }
+
+        Dialog.Close(eklenen);
+    }
+}

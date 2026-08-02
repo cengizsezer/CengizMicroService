@@ -1,0 +1,363 @@
+﻿@page "/muhasebe/ekstre"
+@page "/muhasebe/ekstre/{HesapId:int}"
+
+@using System.Globalization
+@using Microsoft.AspNetCore.WebUtilities
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.Muhasebe
+
+@inject IMuhasebeApi Api
+@inject DialogService Dialog
+@inject NotificationService Notif
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@*
+    T cetveli (hesap ekstresi). Solda borç, sağda alacak hareketleri; en üstte devir
+    satırı (Bas tarihinden önceki kesinleşmiş hareketlerin toplamı), en altta kolon
+    toplamları ve yönlü bakiye. Üst hesap seçilirse alt ağacın tamamı toplanır
+    (iş kuralı 19). Yalnızca kesinleşmiş fişler; taslaklar ayrı listelenir (kural 21).
+    Bir harekete tıklanınca ilgili fiş açılır.
+*@
+
+<style>
+    .ek-arac { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 10px; }
+    .ek-alan { display: flex; flex-direction: column; gap: 3px; }
+    .ek-alan label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .ek-inp { border: 1px solid #cbd5e0; border-radius: 4px; padding: 5px 8px; font-size: 13px; background: #fff; }
+
+    .ek-baslik { border: 1px solid #eee; border-radius: 6px; background: #fff; padding: 10px 14px; margin-bottom: 10px;
+                 display: flex; flex-wrap: wrap; gap: 18px; align-items: baseline; }
+    .ek-baslik-kod { font-family: ui-monospace, Consolas, monospace; font-size: 16px; font-weight: 600; }
+    .ek-baslik-ad { font-size: 15px; }
+    .ek-etiket { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; margin-right: 4px; }
+
+    .ek-t { display: flex; gap: 14px; align-items: flex-start; }
+    .ek-kolon { flex: 1 1 0; min-width: 0; border: 1px solid #eee; border-radius: 6px; background: #fff; overflow: hidden; }
+    .ek-kolon-basi { padding: 6px 10px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
+    .ek-borc .ek-kolon-basi { background: #ebf8ff; color: #2a4365; border-bottom: 1px solid #bee3f8; }
+    .ek-alacak .ek-kolon-basi { background: #f0fff4; color: #22543d; border-bottom: 1px solid #c6f6d5; }
+
+    .ek-satir { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-bottom: 1px solid #f5f5f5;
+                font-size: 13px; cursor: pointer; }
+    .ek-satir:hover { background: #f8fbff; }
+    .ek-tarih { flex: 0 0 78px; font-variant-numeric: tabular-nums; color: #4a5568; }
+    .ek-aciklama { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ek-tutar { flex: 0 0 110px; text-align: right; font-variant-numeric: tabular-nums; }
+    .ek-fisno { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #a0aec0; margin-right: 6px; }
+    .ek-alt { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #a0aec0; margin-left: 6px; }
+
+    .ek-devir { background: #fafafa; cursor: default; font-style: italic; color: #4a5568; }
+    .ek-devir:hover { background: #fafafa; }
+    .ek-toplam { display: flex; gap: 8px; padding: 6px 10px; background: #f7fafc; border-top: 2px solid #e2e8f0;
+                 font-weight: 600; font-size: 13px; }
+    .ek-bos { padding: 20px; text-align: center; color: #a0aec0; font-size: 13px; }
+
+    .ek-bakiye { margin-top: 12px; padding: 10px 14px; border-radius: 6px; background: #f7fafc;
+                 border: 1px solid #e2e8f0; display: flex; gap: 18px; align-items: baseline; font-size: 15px; }
+    .ek-serit { margin-top: 10px; padding: 8px 12px; border-radius: 6px; font-size: 13px;
+                background: #fffaf0; border: 1px solid #fbd38d; color: #7b341e; }
+</style>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+    <h4 style="margin:0">T Cetveli</h4>
+    <RadzenButton Text="Excel'e aktar" Icon="download" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                  Disabled="@(_ekstre is null)" Click="@ExcelAktarAsync" />
+</div>
+
+<div class="ek-arac">
+    <div class="ek-alan" style="flex:1 1 260px">
+        <label>Hesap</label>
+        <div style="display:flex; gap:6px">
+            <input class="ek-inp" style="flex:1 1 auto" readonly
+                   value="@(_ekstre is null ? "Hesap seçin" : $"{_ekstre.Kod} — {_ekstre.Ad}")" />
+            <RadzenButton Text="Seç" Icon="account_tree" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                          Click="@HesapSecAsync" />
+        </div>
+    </div>
+
+    <div class="ek-alan">
+        <label>Başlangıç</label>
+        <RadzenDatePicker TValue="DateTime?" Value="@_bas" AllowClear="true" ShowTime="false"
+                          DateFormat="@MuhasebeEtiket.TarihBicimi" Culture="@MuhasebeEtiket.Kultur"
+                          Style="width:150px" Change="@(a => _bas = (a as DateTime?)?.Date)" />
+    </div>
+    <div class="ek-alan">
+        <label>Bitiş</label>
+        <RadzenDatePicker TValue="DateTime?" Value="@_bit" AllowClear="true" ShowTime="false"
+                          DateFormat="@MuhasebeEtiket.TarihBicimi" Culture="@MuhasebeEtiket.Kultur"
+                          Style="width:150px" Change="@(a => _bit = (a as DateTime?)?.Date)" />
+    </div>
+
+    <RadzenButton Text="Getir" Icon="search" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                  Disabled="@(_hesapId is null || _yukleniyor)" IsBusy="@_yukleniyor" Click="@YukleAsync" />
+</div>
+
+@if (_hesapId is null)
+{
+    <div class="ek-bos">T cetvelini görmek için bir hesap seçin. Üst hesap seçerseniz alt ağacın tamamı toplanır.</div>
+}
+else if (_yukleniyor)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+}
+else if (_ekstre is null)
+{
+    <div class="ek-bos">Hesap ekstresi alınamadı. Hesabı ve dönemi kontrol edip tekrar deneyin.</div>
+}
+else
+{
+    <div class="ek-baslik">
+        <span>
+            <span class="ek-baslik-kod">@_ekstre.Kod</span>
+            <span class="ek-baslik-ad" style="margin-left:10px">@_ekstre.Ad</span>
+        </span>
+        <span><span class="ek-etiket">Dönem</span>@DonemMetni()</span>
+        <span><span class="ek-etiket">Karakter</span>@MuhasebeEtiket.Karakter(_ekstre.Karakter)</span>
+        <span><span class="ek-etiket">Tür</span>@MuhasebeEtiket.Tur(_ekstre.HesapTuru)</span>
+        @if (!_ekstre.HareketGorur)
+        {
+            <span style="font-size:12px;color:#718096">alt ağaç toplamı</span>
+        }
+        @if (!_ekstre.Aktif)
+        {
+            <span style="font-size:10px;padding:1px 6px;border-radius:10px;background:#fff5f5;color:#742a2a">pasif</span>
+        }
+    </div>
+
+    <div class="ek-t">
+        <!-- Borç kolonu -->
+        <div class="ek-kolon ek-borc">
+            <div class="ek-kolon-basi">Borç</div>
+
+            @if (_ekstre.DevirBorc != 0m)
+            {
+                <div class="ek-satir ek-devir">
+                    <span class="ek-tarih">devir</span>
+                    <span class="ek-aciklama">Önceki dönemlerden devir</span>
+                    <span class="ek-tutar">@Para(_ekstre.DevirBorc)</span>
+                </div>
+            }
+
+            @if (_ekstre.BorcHareketleri.Count == 0 && _ekstre.DevirBorc == 0m)
+            {
+                <div class="ek-bos">Borç hareketi yok.</div>
+            }
+            else
+            {
+                @foreach (var h in _ekstre.BorcHareketleri)
+                {
+                    @HareketSatiri(h)
+                }
+            }
+
+            <div class="ek-toplam">
+                <span class="ek-tarih">toplam</span>
+                <span class="ek-aciklama">@(_ekstre.DevirBorc != 0m ? "devir dâhil" : "")</span>
+                <span class="ek-tutar">@Para(_ekstre.KapanisBorc)</span>
+            </div>
+        </div>
+
+        <!-- Alacak kolonu -->
+        <div class="ek-kolon ek-alacak">
+            <div class="ek-kolon-basi">Alacak</div>
+
+            @if (_ekstre.DevirAlacak != 0m)
+            {
+                <div class="ek-satir ek-devir">
+                    <span class="ek-tarih">devir</span>
+                    <span class="ek-aciklama">Önceki dönemlerden devir</span>
+                    <span class="ek-tutar">@Para(_ekstre.DevirAlacak)</span>
+                </div>
+            }
+
+            @if (_ekstre.AlacakHareketleri.Count == 0 && _ekstre.DevirAlacak == 0m)
+            {
+                <div class="ek-bos">Alacak hareketi yok.</div>
+            }
+            else
+            {
+                @foreach (var h in _ekstre.AlacakHareketleri)
+                {
+                    @HareketSatiri(h)
+                }
+            }
+
+            <div class="ek-toplam">
+                <span class="ek-tarih">toplam</span>
+                <span class="ek-aciklama">@(_ekstre.DevirAlacak != 0m ? "devir dâhil" : "")</span>
+                <span class="ek-tutar">@Para(_ekstre.KapanisAlacak)</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="ek-bakiye">
+        <span><span class="ek-etiket">Bakiye</span><strong>@Para(Math.Abs(_ekstre.Bakiye))</strong></span>
+        <span><strong>@MuhasebeEtiket.Yon(_ekstre.Yon)</strong></span>
+        @if (_ekstre.DevirBakiye != 0m)
+        {
+            <span style="font-size:13px;color:#718096">
+                (devir @Para(Math.Abs(_ekstre.DevirBakiye)) · dönem hareketi
+                borç @Para(_ekstre.ToplamBorc) · alacak @Para(_ekstre.ToplamAlacak))
+            </span>
+        }
+    </div>
+
+    @if (_ekstre.Taslak.FisSayisi > 0)
+    {
+        <div class="ek-serit">
+            Cetvele girmeyen <strong>@_ekstre.Taslak.FisSayisi</strong> taslak fiş hareketi var ·
+            borç @Para(_ekstre.Taslak.ToplamBorc) · alacak @Para(_ekstre.Taslak.ToplamAlacak).
+            Taslaklar yalnızca kesinleştirilince cetvele girer (iş kuralı 21).
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int? HesapId { get; set; }
+
+    EkstreDto? _ekstre;
+    bool _yukleniyor;
+
+    int? _hesapId;
+    DateTime? _bas;
+    DateTime? _bit;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Mizandan gelen bağlantı dönemi query string ile taşır.
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var q = QueryHelpers.ParseQuery(uri.Query);
+
+        if (q.TryGetValue("bas", out var bas) && DateTime.TryParse(bas, CultureInfo.InvariantCulture, DateTimeStyles.None, out var b))
+            _bas = b.Date;
+        if (q.TryGetValue("bit", out var bit) && DateTime.TryParse(bit, CultureInfo.InvariantCulture, DateTimeStyles.None, out var e))
+            _bit = e.Date;
+
+        if (HesapId is int id && _hesapId != id)
+        {
+            _hesapId = id;
+            await YukleAsync();
+        }
+    }
+
+    async Task YukleAsync()
+    {
+        if (_hesapId is not int id) return;
+
+        _yukleniyor = true;
+        _ekstre = await Api.GetEkstreAsync(id, _bas, _bit);
+        _yukleniyor = false;
+    }
+
+    async Task HesapSecAsync()
+    {
+        // T cetvelinde üst hesap da seçilebilir: alt ağacın tamamı toplanır (kural 19).
+        var secim = await Dialog.OpenAsync<HesapSecModal>(
+            "Hesap seç",
+            new Dictionary<string, object> { [nameof(HesapSecModal.TumHesaplarSecilebilir)] = true },
+            new DialogOptions { Width = "720px" });
+
+        if (secim is HesapPlaniDto hesap)
+        {
+            _hesapId = hesap.Id;
+            Nav.NavigateTo(EkstreAdresi(hesap.Id));
+            await YukleAsync();
+        }
+    }
+
+    string EkstreAdresi(int hesapId)
+    {
+        var q = new List<string>();
+        if (_bas is DateTime b) q.Add($"bas={b:yyyy-MM-dd}");
+        if (_bit is DateTime e) q.Add($"bit={e:yyyy-MM-dd}");
+
+        return $"/muhasebe/ekstre/{hesapId}" + (q.Count > 0 ? "?" + string.Join("&", q) : string.Empty);
+    }
+
+    /// <summary>Satıra tıklanınca ilgili fiş açılır.</summary>
+    void FisAc(int fisId) => Nav.NavigateTo($"/muhasebe/fis/{fisId}");
+
+    RenderFragment HareketSatiri(EkstreSatirDto h) => __builder =>
+    {
+        <div class="ek-satir" @key="h" @onclick="@(() => FisAc(h.FisId))"
+             title="@($"{h.FisNo} · {MuhasebeEtiket.Tarih(h.Tarih)} · fişi açmak için tıklayın")">
+            <span class="ek-tarih">@MuhasebeEtiket.TarihKisa(h.Tarih)</span>
+            <span class="ek-aciklama">
+                <span class="ek-fisno">@h.FisNo</span>
+                @(string.IsNullOrWhiteSpace(h.Aciklama) ? "—" : h.Aciklama)
+                @if (_ekstre is not null && h.HesapId != _ekstre.HesapId)
+                {
+                    <span class="ek-alt">@h.HesapKod</span>
+                }
+            </span>
+            <span class="ek-tutar">@Para(h.Tutar)</span>
+        </div>
+    };
+
+    static string Para(decimal t) => MuhasebeEtiket.Para(t);
+
+    string DonemMetni()
+        => (_bas, _bit) switch
+        {
+            (null, null) => "tüm geçmiş",
+            (DateTime b, null) => $"{MuhasebeEtiket.Tarih(b)} sonrası",
+            (null, DateTime e) => $"{MuhasebeEtiket.Tarih(e)} öncesi",
+            (DateTime b, DateTime e) => $"{MuhasebeEtiket.Tarih(b)} — {MuhasebeEtiket.Tarih(e)}"
+        };
+
+    async Task ExcelAktarAsync()
+    {
+        if (_ekstre is null) return;
+
+        var basliklar = new[] { "Taraf", "Tarih", "Fiş no", "Açıklama", "Alt hesap", "Tutar" };
+        var satirlar = new List<string?[]>();
+
+        if (_ekstre.DevirBorc != 0m)
+            satirlar.Add(new string?[] { "Borç", "", "", "Önceki dönemlerden devir", "", Para(_ekstre.DevirBorc) });
+
+        satirlar.AddRange(_ekstre.BorcHareketleri.Select(h => new string?[]
+        {
+            "Borç", MuhasebeEtiket.Tarih(h.Tarih), h.FisNo, h.Aciklama, h.HesapKod, Para(h.Tutar)
+        }));
+
+        if (_ekstre.DevirAlacak != 0m)
+            satirlar.Add(new string?[] { "Alacak", "", "", "Önceki dönemlerden devir", "", Para(_ekstre.DevirAlacak) });
+
+        satirlar.AddRange(_ekstre.AlacakHareketleri.Select(h => new string?[]
+        {
+            "Alacak", MuhasebeEtiket.Tarih(h.Tarih), h.FisNo, h.Aciklama, h.HesapKod, Para(h.Tutar)
+        }));
+
+        satirlar.Add(new string?[] { "Borç toplam", "", "", "devir dâhil", "", Para(_ekstre.KapanisBorc) });
+        satirlar.Add(new string?[] { "Alacak toplam", "", "", "devir dâhil", "", Para(_ekstre.KapanisAlacak) });
+        satirlar.Add(new string?[] { "Bakiye", "", "", MuhasebeEtiket.Yon(_ekstre.Yon), "", Para(Math.Abs(_ekstre.Bakiye)) });
+
+        var ust = new List<string>
+        {
+            $"T Cetveli — {_ekstre.Kod} {_ekstre.Ad}",
+            $"Dönem: {DonemMetni()}",
+            $"Karakter: {MuhasebeEtiket.Karakter(_ekstre.Karakter)} · Tür: {MuhasebeEtiket.Tur(_ekstre.HesapTuru)}"
+        };
+
+        if (!_ekstre.HareketGorur)
+            ust.Add("Üst hesap: tutarlar alt ağacın toplamıdır.");
+
+        if (_ekstre.Taslak.FisSayisi > 0)
+            ust.Add($"Cetvele girmeyen taslak fiş: {_ekstre.Taslak.FisSayisi}");
+
+        var bytes = CsvAktarim.Olustur(basliklar, satirlar, ust);
+        await JS.InvokeVoidAsync("downloadFileFromBytes", CsvAktarim.DosyaAdi($"ekstre-{_ekstre.Kod}"), bytes);
+
+        Notif.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Success,
+            Summary = "Dışa aktarıldı",
+            Detail = $"{_ekstre.Kod} hesabının ekstresi Excel dosyasına yazıldı.",
+            Duration = 4000
+        });
+    }
+}

@@ -127,9 +127,16 @@ builder.Services.AddScoped<IHesapNotService, HesapNotService>();
 builder.Services.AddScoped<CatalogService.Api.Features.TicaretSicil.Services.ITicaretSicilService, CatalogService.Api.Features.TicaretSicil.Services.TicaretSicilService>();
 builder.Services.AddScoped<CatalogService.Api.Features.MevzuatNotlari.Services.IMevzuatNotuService, CatalogService.Api.Features.MevzuatNotlari.Services.MevzuatNotuService>();
 builder.Services.AddScoped<CatalogService.Api.Features.SmmmTakip.Services.ISmmmTakipService, CatalogService.Api.Features.SmmmTakip.Services.SmmmTakipService>();
+builder.Services.AddScoped<CatalogService.Api.Features.Muhasebe.Services.IHesapPlaniService, CatalogService.Api.Features.Muhasebe.Services.HesapPlaniService>();
+builder.Services.AddScoped<CatalogService.Api.Features.Muhasebe.Services.IFisService, CatalogService.Api.Features.Muhasebe.Services.FisService>();
+builder.Services.AddScoped<CatalogService.Api.Features.Muhasebe.Services.IRaporService, CatalogService.Api.Features.Muhasebe.Services.RaporService>();
+builder.Services.AddScoped<CatalogService.Api.Features.Muhasebe.Services.IMasrafMerkeziService, CatalogService.Api.Features.Muhasebe.Services.MasrafMerkeziService>();
+// Ortak referans veri, dosyadan bir kez okunup bellekte tutulur.
+builder.Services.AddSingleton<CatalogService.Api.Features.Muhasebe.Services.IBankaKoduService, CatalogService.Api.Features.Muhasebe.Services.BankaKoduService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolMaddeService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolMaddeService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolMizanService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolMizanService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolVergiService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolVergiService>();
+builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IVergiBeyannameService, CatalogService.Api.Features.FirmaKontrol.Services.VergiBeyannameService>();
 builder.Services.AddScoped<IPayrollCalculationEngine, PayrollCalculationEngine>();
 builder.Services.AddScoped<IDistributionComparisonService, DistributionComparisonService>();
 builder.Services.AddScoped<IDistributionExportService, DistributionExportService>();
@@ -479,6 +486,10 @@ IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf')
 
             logger.LogInformation("🧮 SMMM Takip seed uygulanıyor...");
             await CatalogService.Api.Features.SmmmTakip.SmmmTakipSeed.SeedAsync(ctxOnce);
+
+            // Kurumlar vergisi beyanname kalemleri: katalog firmadan bağımsız, bir kez yüklenir.
+            logger.LogInformation("🧾 Vergi kalemleri seed uygulanıyor...");
+            await CatalogService.Api.Features.FirmaKontrol.VergiKalemSeed.SeedAsync(ctxOnce, envHost);
         }
 
         var seeder = new CatalogContextSeed();
@@ -490,6 +501,7 @@ IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf')
             using var ctx = new CatalogContext(options, new FixedTenantAccessor(t));
             await seeder.SeedAsync(ctx, envHost, logger, new[] { t }, force: true);
             await AccountPlanSeed.SeedAsync(ctx, logger);
+            await CatalogService.Api.Features.Muhasebe.MuhasebeSeed.SeedAsync(ctx, envHost);
 
         }
     }

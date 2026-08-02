@@ -1,0 +1,352 @@
+﻿@page "/muhasebe/masraf-merkezi"
+
+@using System.Globalization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.Muhasebe
+
+@inject IMuhasebeApi Api
+@inject DialogService Dialog
+@inject NotificationService Notif
+@inject IJSRuntime JS
+
+@*
+    Masraf merkezi yönetimi ve dağılım raporu. Hesap planındaki kural 8 ile aynı çizgide
+    silme yok: kullanılmayan merkez pasife çekilir, geçmiş fişlerde ve raporlarda görünür.
+    Tutarlar rapor ucundan gelir ve yalnızca kesinleşmiş fişleri içerir (iş kuralı 21).
+*@
+
+<style>
+    .mm-arac { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 10px; }
+    .mm-alan { display: flex; flex-direction: column; gap: 3px; }
+    .mm-alan label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .mm-inp { border: 1px solid #cbd5e0; border-radius: 4px; padding: 5px 8px; font-size: 13px; background: #fff; }
+
+    .mm-tablo { border: 1px solid #eee; border-radius: 6px; background: #fff; overflow: hidden; }
+    .mm-satir { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+    .mm-head { background: #fafafa; border-bottom: 1px solid #eee; font-size: 11px; color: #718096;
+               text-transform: uppercase; letter-spacing: .3px; }
+    .mm-satir:not(.mm-head):hover { background: #f8fbff; }
+    .mm-satir:hover .mm-aksiyon { visibility: visible; }
+
+    .mm-chevron { flex: 0 0 22px; display: flex; align-items: center; justify-content: center; color: #718096;
+                  border-radius: 4px; cursor: pointer; }
+    .mm-chevron:hover { background: #edf2f7; }
+    .mm-chevron.bos { visibility: hidden; cursor: default; }
+    .mm-kod { flex: 0 0 120px; font-family: ui-monospace, Consolas, monospace; }
+    .mm-ad { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mm-tutar { flex: 0 0 130px; text-align: right; font-variant-numeric: tabular-nums; }
+    .mm-aksiyon { flex: 0 0 40px; text-align: right; visibility: hidden; }
+
+    .mm-alt { background: #fcfdff; }
+    .mm-alt .mm-kod { padding-left: 30px; color: #4a5568; }
+    .mm-alt .mm-ad { color: #4a5568; }
+
+    .mm-pasif .mm-kod, .mm-pasif .mm-ad { color: #a0aec0; text-decoration: line-through; }
+    .mm-rozet { font-size: 10px; padding: 1px 7px; border-radius: 10px; margin-left: 6px; background: #fff5f5; color: #742a2a; }
+    .mm-sifir { color: #cbd5e0; }
+    .mm-toplam { background: #f7fafc; border-top: 2px solid #e2e8f0; font-weight: 600; }
+    .mm-dagitilmamis { background: #fffaf0; }
+    .mm-bos { padding: 26px; text-align: center; color: #a0aec0; }
+</style>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+    <h4 style="margin:0">Masraf Merkezleri</h4>
+    <div style="display:flex; gap:6px">
+        <RadzenButton Text="Excel'e aktar" Icon="download" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                      Disabled="@(_merkezler.Count == 0)" Click="@ExcelAktarAsync" />
+        <RadzenButton Text="Yeni merkez" Icon="add" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                      Click="@YeniMerkezAsync" />
+    </div>
+</div>
+
+<div class="mm-arac">
+    <div class="mm-alan">
+        <label>Başlangıç</label>
+        <RadzenDatePicker TValue="DateTime?" Value="@_bas" AllowClear="true" ShowTime="false"
+                          DateFormat="@MuhasebeEtiket.TarihBicimi" Culture="@MuhasebeEtiket.Kultur"
+                          Style="width:150px" Change="@(a => _bas = (a as DateTime?)?.Date)" />
+    </div>
+    <div class="mm-alan">
+        <label>Bitiş</label>
+        <RadzenDatePicker TValue="DateTime?" Value="@_bit" AllowClear="true" ShowTime="false"
+                          DateFormat="@MuhasebeEtiket.TarihBicimi" Culture="@MuhasebeEtiket.Kultur"
+                          Style="width:150px" Change="@(a => _bit = (a as DateTime?)?.Date)" />
+    </div>
+
+    <RadzenButton Text="Getir" Icon="search" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                  Disabled="@_yukleniyor" IsBusy="@_yukleniyor" Click="@YukleAsync" />
+
+    <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin-bottom:5px">
+        <input type="checkbox" checked="@_pasifDahil"
+               @onchange="@(async e => { _pasifDahil = (bool)(e.Value ?? false); await YukleAsync(); })" />
+        Pasifleri de göster
+    </label>
+</div>
+
+@if (_yukleniyor)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+}
+else
+{
+    <div class="mm-tablo">
+        <div class="mm-satir mm-head">
+            <span class="mm-chevron bos"></span>
+            <span class="mm-kod">Kod</span>
+            <span class="mm-ad">Ad</span>
+            <span class="mm-tutar">Borç</span>
+            <span class="mm-tutar">Alacak</span>
+            <span class="mm-tutar">Bakiye</span>
+            <span class="mm-aksiyon"></span>
+        </div>
+
+        @if (_merkezler.Count == 0)
+        {
+            <div class="mm-bos">
+                Tanımlı masraf merkezi yok. "Yeni merkez" ile ekleyin; fiş satırlarında seçilebilir hâle gelir.
+            </div>
+        }
+        else
+        {
+            @foreach (var m in _merkezler)
+            {
+                var rapor = RaporSatiri(m.MasrafMerkeziId);
+                var acik = _acik.Contains(m.MasrafMerkeziId);
+                var hesaplar = rapor?.Hesaplar ?? new List<MasrafMerkeziHesapDto>();
+
+                <div class="mm-satir @(m.Aktif ? "" : "mm-pasif")" @key="m">
+                    <span class="mm-chevron @(hesaplar.Count == 0 ? "bos" : "")"
+                          @onclick="@(() => Degistir(m.MasrafMerkeziId))">
+                        <RadzenIcon Icon="@(acik ? "expand_more" : "chevron_right")" Style="font-size:18px" />
+                    </span>
+                    <span class="mm-kod">@m.Kod</span>
+                    <span class="mm-ad">
+                        @m.Ad
+                        @if (!m.Aktif)
+                        {
+                            <span class="mm-rozet">pasif</span>
+                        }
+                    </span>
+                    <span class="mm-tutar @(Sifir(rapor?.ToplamBorc))">@Para(rapor?.ToplamBorc ?? 0m)</span>
+                    <span class="mm-tutar @(Sifir(rapor?.ToplamAlacak))">@Para(rapor?.ToplamAlacak ?? 0m)</span>
+                    <span class="mm-tutar @(Sifir(rapor?.Bakiye))">@Para(rapor?.Bakiye ?? 0m)</span>
+                    <span class="mm-aksiyon">
+                        @if (m.Aktif)
+                        {
+                            <RadzenButton Icon="block" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                                          Variant="Variant.Text" title="Pasife al"
+                                          Disabled="@_islemde" Click="@(() => PasifeAlAsync(m))" />
+                        }
+                    </span>
+                </div>
+
+                @if (acik)
+                {
+                    @foreach (var h in hesaplar)
+                    {
+                        <div class="mm-satir mm-alt" @key="h">
+                            <span class="mm-chevron bos"></span>
+                            <span class="mm-kod">@h.Kod</span>
+                            <span class="mm-ad">@h.Ad</span>
+                            <span class="mm-tutar @(Sifir(h.Borc))">@Para(h.Borc)</span>
+                            <span class="mm-tutar @(Sifir(h.Alacak))">@Para(h.Alacak)</span>
+                            <span class="mm-tutar">@Para(h.Borc - h.Alacak)</span>
+                            <span class="mm-aksiyon"></span>
+                        </div>
+                    }
+                }
+            }
+
+            @if (_rapor?.Dagitilmamis is MasrafMerkeziSatirDto dagitilmamis)
+            {
+                <div class="mm-satir mm-dagitilmamis">
+                    <span class="mm-chevron bos"></span>
+                    <span class="mm-kod">—</span>
+                    <span class="mm-ad">Masraf merkezi seçilmemiş hareketler</span>
+                    <span class="mm-tutar">@Para(dagitilmamis.ToplamBorc)</span>
+                    <span class="mm-tutar">@Para(dagitilmamis.ToplamAlacak)</span>
+                    <span class="mm-tutar">@Para(dagitilmamis.Bakiye)</span>
+                    <span class="mm-aksiyon"></span>
+                </div>
+            }
+
+            <div class="mm-satir mm-toplam">
+                <span class="mm-chevron bos"></span>
+                <span class="mm-kod">TOPLAM</span>
+                <span class="mm-ad">@_merkezler.Count merkez</span>
+                <span class="mm-tutar">@Para(_rapor?.ToplamBorc ?? 0m)</span>
+                <span class="mm-tutar">@Para(_rapor?.ToplamAlacak ?? 0m)</span>
+                <span class="mm-tutar"></span>
+                <span class="mm-aksiyon"></span>
+            </div>
+        }
+    </div>
+
+    <div style="margin-top:8px; font-size:12px; color:#a0aec0">
+        Tutarlar yalnızca kesinleşmiş fişlerden gelir; taslaklar dâhil değildir.
+        Merkez silinmez, pasife alınır — geçmiş fişlerde ve raporlarda görünmeye devam eder.
+    </div>
+}
+
+@code {
+    List<MasrafMerkeziSecenekDto> _merkezler = new();
+    MasrafMerkeziRaporDto? _rapor;
+
+    bool _yukleniyor = true;
+    bool _islemde;
+    bool _pasifDahil = true;
+
+    DateTime? _bas;
+    DateTime? _bit;
+
+    readonly HashSet<int> _acik = new();
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    async Task YukleAsync()
+    {
+        _yukleniyor = true;
+
+        // Tanım listesi ile rapor ayrı uçlardan gelir: hareketi olmayan merkez de listelenmeli.
+        _merkezler = await Api.GetMasrafMerkezleriAsync(_pasifDahil);
+        _rapor = await Api.GetMasrafMerkeziRaporAsync(_bas, _bit);
+
+        _yukleniyor = false;
+    }
+
+    MasrafMerkeziSatirDto? RaporSatiri(int id)
+        => _rapor?.Satirlar.FirstOrDefault(s => s.MasrafMerkeziId == id);
+
+    void Degistir(int id)
+    {
+        if (!_acik.Remove(id)) _acik.Add(id);
+    }
+
+    async Task YeniMerkezAsync()
+    {
+        var sonuc = await Dialog.OpenAsync<MasrafMerkeziFormDialog>(
+            "Yeni masraf merkezi",
+            new Dictionary<string, object>(),
+            new DialogOptions { Width = "460px" });
+
+        if (sonuc is MasrafMerkeziSecenekDto eklenen)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Tamam",
+                Detail = $"{eklenen.Kod} — {eklenen.Ad} eklendi.",
+                Duration = 4000
+            });
+
+            await YukleAsync();
+        }
+    }
+
+    async Task PasifeAlAsync(MasrafMerkeziSecenekDto merkez)
+    {
+        var onay = await Dialog.Confirm(
+            $"{merkez.Kod} — {merkez.Ad} pasife alınacak. Yeni fişlerde seçilemez, geçmiş kayıtlarda görünmeye devam eder.",
+            "Pasife al",
+            new ConfirmOptions { OkButtonText = "Pasife al", CancelButtonText = "Vazgeç" });
+
+        if (onay != true) return;
+
+        _islemde = true;
+        var (_, hata) = await Api.MasrafMerkeziPasifeAlAsync(merkez.MasrafMerkeziId);
+        _islemde = false;
+
+        if (hata is not null)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "İşlem yapılamadı",
+                Detail = hata,
+                Duration = 5000
+            });
+            return;
+        }
+
+        Notif.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Success,
+            Summary = "Tamam",
+            Detail = $"{merkez.Kod} pasife alındı.",
+            Duration = 4000
+        });
+
+        await YukleAsync();
+    }
+
+    static string Para(decimal t) => MuhasebeEtiket.Para(t);
+    static string Sifir(decimal? t) => (t ?? 0m) == 0m ? "mm-sifir" : string.Empty;
+
+    async Task ExcelAktarAsync()
+    {
+        var basliklar = new[] { "Kod", "Ad", "Durum", "Hesap kodu", "Hesap adı", "Borç", "Alacak", "Bakiye" };
+        var satirlar = new List<string?[]>();
+
+        foreach (var m in _merkezler)
+        {
+            var rapor = RaporSatiri(m.MasrafMerkeziId);
+
+            satirlar.Add(new string?[]
+            {
+                m.Kod, m.Ad, m.Aktif ? "Aktif" : "Pasif", "", "",
+                Para(rapor?.ToplamBorc ?? 0m),
+                Para(rapor?.ToplamAlacak ?? 0m),
+                Para(rapor?.Bakiye ?? 0m)
+            });
+
+            foreach (var h in rapor?.Hesaplar ?? new List<MasrafMerkeziHesapDto>())
+                satirlar.Add(new string?[]
+                {
+                    m.Kod, "", "", h.Kod, h.Ad, Para(h.Borc), Para(h.Alacak), Para(h.Borc - h.Alacak)
+                });
+        }
+
+        if (_rapor?.Dagitilmamis is MasrafMerkeziSatirDto d)
+            satirlar.Add(new string?[]
+            {
+                "—", "Masraf merkezi seçilmemiş hareketler", "", "", "",
+                Para(d.ToplamBorc), Para(d.ToplamAlacak), Para(d.Bakiye)
+            });
+
+        satirlar.Add(new string?[]
+        {
+            "TOPLAM", $"{_merkezler.Count} merkez", "", "", "",
+            Para(_rapor?.ToplamBorc ?? 0m), Para(_rapor?.ToplamAlacak ?? 0m), ""
+        });
+
+        var ust = new List<string>
+        {
+            "Masraf merkezi dağılımı",
+            $"Dönem: {DonemMetni()}",
+            "Tutarlar yalnızca kesinleşmiş fişlerden gelir."
+        };
+
+        var bytes = CsvAktarim.Olustur(basliklar, satirlar, ust);
+        await JS.InvokeVoidAsync("downloadFileFromBytes", CsvAktarim.DosyaAdi("masraf-merkezi"), bytes);
+
+        Notif.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Success,
+            Summary = "Dışa aktarıldı",
+            Detail = $"{_merkezler.Count} merkez Excel dosyasına yazıldı.",
+            Duration = 4000
+        });
+    }
+
+    string DonemMetni()
+        => (_bas, _bit) switch
+        {
+            (null, null) => "tüm geçmiş",
+            (DateTime b, null) => $"{MuhasebeEtiket.Tarih(b)} sonrası",
+            (null, DateTime e) => $"{MuhasebeEtiket.Tarih(e)} öncesi",
+            (DateTime b, DateTime e) => $"{MuhasebeEtiket.Tarih(b)} — {MuhasebeEtiket.Tarih(e)}"
+        };
+}

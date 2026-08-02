@@ -1,0 +1,403 @@
+@page "/muhasebe/hesap-plani"
+
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.Muhasebe
+
+@inject IMuhasebeApi Api
+@inject DialogService Dialog
+@inject NotificationService Notif
+
+@*
+    Hesap planı ağacı. Ağaç tek istekte düz liste olarak çekilip istemcide kurulur;
+    bakiye kolonu mizan ucundan gelir (bakiye hiçbir tabloda saklanmaz — iş kuralı 18).
+    Üst hesapların bakiyesi alt ağacın toplamıdır (iş kuralı 19), bu yüzden soluk gösterilir.
+*@
+
+<style>
+    .hp-arac { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
+    .hp-cip { display: flex; gap: 6px; }
+
+    .hp-tablo { border: 1px solid #eee; border-radius: 6px; background: #fff; overflow: hidden; }
+    .hp-baslik, .hp-satir { display: flex; align-items: center; gap: 8px; padding: 5px 10px; }
+    .hp-baslik { background: #fafafa; border-bottom: 1px solid #eee; font-size: 11px; color: var(--text-secondary, #718096); text-transform: uppercase; letter-spacing: .3px; }
+    .hp-satir { border-bottom: 1px solid #f5f5f5; }
+    .hp-satir:hover { background: #f8fbff; }
+    .hp-satir:hover .hp-aksiyon { visibility: visible; }
+
+    .hp-chevron { flex: 0 0 22px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px; color: #718096; }
+    .hp-chevron:hover { background: #edf2f7; }
+    .hp-chevron.bos { cursor: default; visibility: hidden; }
+
+    .hp-kod { flex: 0 0 170px; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+    .hp-ad { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hp-bakiye { flex: 0 0 150px; text-align: right; font-variant-numeric: tabular-nums; }
+    .hp-aksiyon { flex: 0 0 118px; text-align: right; visibility: hidden; }
+
+    /* Üst hesabın bakiyesi hesaplanmıştır → soluk; yaprakların bakiyesi normal. */
+    .hp-bakiye-ust { color: #a0aec0; }
+    .hp-bakiye-yaprak { color: var(--text-primary, #1a202c); }
+    .hp-bakiye-yok { color: #cbd5e0; }
+
+    .hp-pasif .hp-kod, .hp-pasif .hp-ad { color: #a0aec0; text-decoration: line-through; }
+    .hp-rozet { font-size: 10px; padding: 1px 6px; border-radius: 10px; margin-left: 6px; vertical-align: middle; }
+    .hp-rozet-ozel { background: #e6fffa; color: #234e52; }
+    .hp-rozet-pasif { background: #fff5f5; color: #742a2a; }
+    .hp-kilit { font-size: 13px; color: #cbd5e0; vertical-align: middle; margin-left: 4px; }
+    .hp-eslesme { background: #fffbe6; }
+    .hp-bos { padding: 24px; text-align: center; color: #a0aec0; }
+</style>
+
+<h4 class="rz-mb-3">Hesap Planı</h4>
+
+<div class="hp-arac">
+    <RadzenTextBox Value="@_arama" @oninput="AramaDegisti" placeholder="Kod veya hesap adı ara" type="search"
+                   Style="width:280px" />
+
+    <div class="hp-cip">
+        @foreach (var f in Filtreler)
+        {
+            <RadzenButton Text="@f.Etiket" Size="ButtonSize.Small"
+                          ButtonStyle="@(_filtre == f.Deger ? ButtonStyle.Primary : ButtonStyle.Light)"
+                          Variant="@(_filtre == f.Deger ? Variant.Filled : Variant.Outlined)"
+                          Click="@(() => FiltreSec(f.Deger))" />
+        }
+    </div>
+
+    <RadzenButton Text="Tümünü aç" Icon="unfold_more" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light"
+                  Click="@TumunuAc" />
+    <RadzenButton Text="Tümünü kapat" Icon="unfold_less" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light"
+                  Click="@TumunuKapat" />
+    <RadzenButton Text="Yenile" Icon="refresh" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light"
+                  Click="@(() => YukleAsync())" />
+</div>
+
+@if (_yukleniyor)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+}
+else
+{
+    <div class="hp-tablo">
+        <div class="hp-baslik">
+            <span class="hp-chevron bos"></span>
+            <span class="hp-kod">Kod</span>
+            <span class="hp-ad">Hesap adı</span>
+            <span class="hp-bakiye">Bakiye</span>
+            <span class="hp-aksiyon"></span>
+        </div>
+
+        @if (_kokler.Count == 0)
+        {
+            <div class="hp-bos">Hesap planı boş.</div>
+        }
+        else if (_gorunur is not null && _gorunur.Count == 0)
+        {
+            <div class="hp-bos">Aramanıza uyan hesap bulunamadı.</div>
+        }
+        else
+        {
+            @foreach (var kok in _kokler)
+            {
+                @DugumCiz(kok, 0)
+            }
+        }
+    </div>
+
+    <div style="margin-top:8px; font-size:12px; color:#a0aec0">
+        Üst hesapların bakiyesi alt ağaçtan hesaplanır ve soluk gösterilir. Bakiyeler yalnızca
+        kesinleşmiş fişleri içerir.
+    </div>
+}
+
+@code {
+    record FiltreSecenegi(string Etiket, Filtre Deger);
+
+    enum Filtre { Tumu, HareketGorenler, Bakiyeli }
+
+    static readonly FiltreSecenegi[] Filtreler =
+    {
+        new("Tümü", Filtre.Tumu),
+        new("Sadece hareket görenler", Filtre.HareketGorenler),
+        new("Bakiyeli", Filtre.Bakiyeli)
+    };
+
+    bool _yukleniyor = true;
+    string _arama = string.Empty;
+    Filtre _filtre = Filtre.Tumu;
+
+    List<HesapPlaniDto> _duz = new();
+    List<HesapPlaniDto> _kokler = new();
+    Dictionary<int, HesapPlaniDto> _sozluk = new();
+    Dictionary<int, decimal> _bakiyeler = new();
+
+    readonly HashSet<int> _acik = new();
+
+    /// <summary>Filtre/arama etkinken görünecek düğümler; boşsa filtre yok demektir.</summary>
+    HashSet<int>? _gorunur;
+
+    /// <summary>Aramaya doğrudan uyan düğümler (satır vurgusu için).</summary>
+    readonly HashSet<int> _eslesenler = new();
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        StateHasChanged();
+
+        // Ağaç tek istekte çekilir, istemcide kurulur.
+        _duz = await Api.GetHesapPlaniAsync();
+        _sozluk = _duz.ToDictionary(h => h.Id);
+
+        foreach (var h in _duz) h.Cocuklar.Clear();
+        foreach (var h in _duz.Where(h => h.UstHesapId is not null))
+            if (_sozluk.TryGetValue(h.UstHesapId!.Value, out var ust))
+                ust.Cocuklar.Add(h);
+
+        _kokler = _duz.Where(h => h.UstHesapId is null).ToList();
+
+        // Bakiye kolonu mizandan gelir; hesap planı tablosunda bakiye tutulmaz.
+        var mizan = await Api.GetMizanAsync();
+        _bakiyeler = mizan?.Satirlar.ToDictionary(s => s.HesapId, s => s.Bakiye) ?? new();
+
+        // İlk açılışta kök sınıflar açık gelsin.
+        if (_acik.Count == 0)
+            foreach (var k in _kokler) _acik.Add(k.Id);
+
+        GorunurluguHesapla();
+
+        _yukleniyor = false;
+        StateHasChanged();
+    }
+
+    // ---- Arama ve filtre ----
+
+    void AramaDegisti(ChangeEventArgs e)
+    {
+        _arama = e.Value?.ToString() ?? string.Empty;
+        GorunurluguHesapla();
+    }
+
+    void FiltreSec(Filtre f)
+    {
+        _filtre = f;
+        GorunurluguHesapla();
+    }
+
+    bool FiltreEtkin => !string.IsNullOrWhiteSpace(_arama) || _filtre != Filtre.Tumu;
+
+    /// <summary>
+    /// Görünürlük: eşleşenler + tüm ataları + tüm altları. Ataların açık olması,
+    /// eşleşen düğümün ağaçta görünmesini sağlar (arama yazdıkça otomatik açılır).
+    /// </summary>
+    void GorunurluguHesapla()
+    {
+        _eslesenler.Clear();
+
+        if (!FiltreEtkin)
+        {
+            _gorunur = null;
+            return;
+        }
+
+        foreach (var h in _duz)
+            if (Eslesiyor(h)) _eslesenler.Add(h.Id);
+
+        var gorunur = new HashSet<int>(_eslesenler);
+
+        foreach (var id in _eslesenler)
+        {
+            if (!_sozluk.TryGetValue(id, out var h)) continue;
+
+            // Ata zinciri: hem görünür olsun hem de otomatik açılsın.
+            foreach (var ataId in AtaIdler(h.Yol))
+            {
+                gorunur.Add(ataId);
+                _acik.Add(ataId);
+            }
+        }
+
+        // Eşleşen düğümün altları da görünür olsun ki kullanıcı içine inebilsin
+        // (otomatik açılmazlar, chevron ile açılırlar).
+        foreach (var h in _duz)
+            if (!gorunur.Contains(h.Id) && AtaIdler(h.Yol).Any(_eslesenler.Contains))
+                gorunur.Add(h.Id);
+
+        _gorunur = gorunur;
+    }
+
+    bool Eslesiyor(HesapPlaniDto h)
+    {
+        if (_filtre == Filtre.HareketGorenler && !h.HareketGorur) return false;
+        if (_filtre == Filtre.Bakiyeli && Bakiye(h) == 0m) return false;
+
+        var terim = _arama.Trim();
+        if (terim.Length == 0) return true;
+
+        return h.Kod.Contains(terim, StringComparison.OrdinalIgnoreCase)
+            || h.KodDuz.Contains(terim, StringComparison.OrdinalIgnoreCase)
+            || h.Ad.Contains(terim, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Materialized path'teki ata Id'leri: "/1/2/" → 1, 2.</summary>
+    static IEnumerable<int> AtaIdler(string yol)
+    {
+        foreach (var parca in yol.Split('/', StringSplitOptions.RemoveEmptyEntries))
+            if (int.TryParse(parca, out var id))
+                yield return id;
+    }
+
+    bool Gorunur(HesapPlaniDto h) => _gorunur is null || _gorunur.Contains(h.Id);
+
+    // ---- Ağaç ----
+
+    void Degistir(HesapPlaniDto h)
+    {
+        if (!_acik.Remove(h.Id)) _acik.Add(h.Id);
+    }
+
+    void TumunuAc()
+    {
+        foreach (var h in _duz.Where(x => x.Cocuklar.Count > 0)) _acik.Add(h.Id);
+    }
+
+    void TumunuKapat() => _acik.Clear();
+
+    decimal Bakiye(HesapPlaniDto h) => _bakiyeler.TryGetValue(h.Id, out var b) ? b : 0m;
+
+    RenderFragment DugumCiz(HesapPlaniDto h, int derinlik) => __builder =>
+    {
+        if (!Gorunur(h)) return;
+
+        var gorunurCocuklar = h.Cocuklar.Where(Gorunur).ToList();
+        var acik = _acik.Contains(h.Id);
+        var yaprak = h.Cocuklar.Count == 0;
+        var bakiye = Bakiye(h);
+
+        <div class="hp-satir @(h.Aktif ? "" : "hp-pasif") @(_eslesenler.Contains(h.Id) && FiltreEtkin ? "hp-eslesme" : "")">
+
+            @if (gorunurCocuklar.Count > 0)
+            {
+                <span class="hp-chevron" @onclick="@(() => Degistir(h))" title="@(acik ? "Kapat" : "Aç")">
+                    <RadzenIcon Icon="@(acik ? "expand_more" : "chevron_right")" Style="font-size:18px" />
+                </span>
+            }
+            else
+            {
+                <span class="hp-chevron bos"></span>
+            }
+
+            <span class="hp-kod" style="@($"padding-left:{derinlik * 16}px")">@h.Kod</span>
+
+            <span class="hp-ad" title="@h.Ad">
+                @h.Ad
+                @if (h.SistemHesabi)
+                {
+                    <RadzenIcon Icon="lock" class="hp-kilit" title="Standart hesap — kodu değiştirilemez" />
+                }
+                else
+                {
+                    <span class="hp-rozet hp-rozet-ozel">özel</span>
+                }
+                @if (!h.Aktif)
+                {
+                    <span class="hp-rozet hp-rozet-pasif">pasif</span>
+                }
+            </span>
+
+            <span class="hp-bakiye @(bakiye == 0m ? "hp-bakiye-yok" : yaprak ? "hp-bakiye-yaprak" : "hp-bakiye-ust")"
+                  title="@(yaprak ? "Hesabın kendi bakiyesi" : "Alt ağacın toplamı")">
+                @MuhasebeEtiket.Para(bakiye)
+            </span>
+
+            <span class="hp-aksiyon">
+                <RadzenButton Icon="add" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                              Variant="Variant.Text" title="Alt hesap ekle"
+                              Click="@(() => AltHesapEkleAsync(h))" />
+                <RadzenButton Icon="edit" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                              Variant="Variant.Text" title="Düzenle"
+                              Click="@(() => DuzenleAsync(h))" />
+                <RadzenButton Icon="block" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                              Variant="Variant.Text" title="Pasife al"
+                              Disabled="@(!h.Aktif)"
+                              Click="@(() => PasifeAlAsync(h))" />
+            </span>
+        </div>
+
+        @if (acik)
+        {
+            foreach (var c in gorunurCocuklar)
+            {
+                @DugumCiz(c, derinlik + 1)
+            }
+        }
+    };
+
+    // ---- Satır aksiyonları ----
+
+    async Task AltHesapEkleAsync(HesapPlaniDto ust)
+    {
+        var sonuc = await Dialog.OpenAsync<HesapFormDialog>(
+            $"{ust.Kod} altına yeni hesap",
+            new Dictionary<string, object> { ["Ust"] = ust },
+            new DialogOptions { Width = "620px" });
+
+        if (sonuc is bool ok && ok)
+        {
+            _acik.Add(ust.Id);
+            await YukleAsync();
+            Bildir(NotificationSeverity.Success, "Hesap eklendi.");
+        }
+    }
+
+    async Task DuzenleAsync(HesapPlaniDto h)
+    {
+        var parametreler = new Dictionary<string, object> { ["Mevcut"] = h };
+        if (h.UstHesapId is int ustId && _sozluk.TryGetValue(ustId, out var ust))
+            parametreler["Ust"] = ust;
+
+        var sonuc = await Dialog.OpenAsync<HesapFormDialog>(
+            $"{h.Kod} — düzenle",
+            parametreler,
+            new DialogOptions { Width = "620px" });
+
+        if (sonuc is bool ok && ok)
+        {
+            await YukleAsync();
+            Bildir(NotificationSeverity.Success, "Hesap güncellendi.");
+        }
+    }
+
+    async Task PasifeAlAsync(HesapPlaniDto h)
+    {
+        var onay = await Dialog.Confirm(
+            $"'{h.Kod} {h.Ad}' hesabı ve varsa alt hesapları pasife alınacak. " +
+            "Pasif hesap yeni fişlerde seçilemez, geçmiş raporlarda görünmeye devam eder.",
+            "Pasife al",
+            new ConfirmOptions { OkButtonText = "Pasife al", CancelButtonText = "Vazgeç" });
+
+        if (onay != true) return;
+
+        var (_, hata) = await Api.PasifeAlAsync(h.Id);
+
+        if (hata is not null)
+        {
+            Bildir(NotificationSeverity.Error, hata);
+            return;
+        }
+
+        await YukleAsync();
+        Bildir(NotificationSeverity.Success, "Hesap pasife alındı.");
+    }
+
+    void Bildir(NotificationSeverity seviye, string mesaj) =>
+        Notif.Notify(new NotificationMessage
+        {
+            Severity = seviye,
+            Summary = seviye == NotificationSeverity.Error ? "İşlem yapılamadı" : "Tamam",
+            Detail = mesaj,
+            Duration = 4000
+        });
+}
