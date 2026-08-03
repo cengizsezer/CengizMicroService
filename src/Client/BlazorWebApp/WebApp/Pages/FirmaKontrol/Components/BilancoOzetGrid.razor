@@ -3,9 +3,9 @@
 @using WebApp.Domain.Models.FirmaKontrol
 
 @* Bilanço Özet (T cetveli): solda Aktif, sağda Pasif yan yana.
-   Tutarlar yeniden HESAPLANMAZ — mevcut public GelirTablosuCalculator.Compute'tan
-   (MizanGrid.Compute ile aynı toplama mantığı) MainGroup/Total değerleri okunur.
-   Aktif/Pasif'te 690/691/692 kodu yok, o yüzden calculator'ın o özel mantığı no-op. *@
+   Tutarlar yeniden HESAPLANMAZ — gruplama/toplamanın tek kaynağı olan
+   MizanHesaplayici.Compute'tan MainGroup/Total değerleri okunur (detaylı Bilanço,
+   Dikey Yüzdeler ve Finansal Oranlar da aynı yerden besleniyor). *@
 
 <RadzenRow Gap="1rem">
     <RadzenColumn Size="12" SizeMD="6">
@@ -98,19 +98,19 @@
 
     protected override void OnParametersSet()
     {
-        (aktifKalemler, aktifGenelToplam) = Ozetle(Aktif, AktifKalemTanim);
-        (pasifKalemler, pasifGenelToplam) = Ozetle(Pasif, PasifKalemTanim);
+        (aktifKalemler, aktifGenelToplam) = Ozetle(Aktif, AktifKalemTanim, MaliTabloBolumu.Aktif);
+        (pasifKalemler, pasifGenelToplam) = Ozetle(Pasif, PasifKalemTanim, MaliTabloBolumu.Pasif);
     }
 
     private (List<Kalem> Kalemler, decimal? Toplam) Ozetle(
-        List<MizanSatir> rows, (string SourceAd, string Label)[] tanim)
+        List<MizanSatir> rows, (string SourceAd, string Label)[] tanim, MaliTabloBolumu bolum)
     {
         // Detaylı Bilanço ile AYNI gruplama sınırı (MizanHesaplayici): MainGroup toplamı
         // bir sonraki gerçek üst düzey MainGroup'a kadar tüm alt grupları (H-Diğer Dönen
         // Varlıklar=190-199 dahil) emer → Dönen Varlıklar Özet'te de %100 / doğru çıkar.
-        // (İşaret/parse aynen kalır; Aktif/Pasif'te yansıtma kodu olmadığından raw fallback
-        // gerekmez.)
-        var computed = MizanHesaplayici.Compute(rows);
+        // (İşaret bölüme göre normalize edilir — Pasif alacak-pozitif; Aktif/Pasif'te
+        // yansıtma kodu olmadığından raw fallback gerekmez.)
+        var computed = MizanHesaplayici.Compute(rows, bolum);
 
         decimal? ByAd(string ad) => computed
             .FirstOrDefault(r => string.Equals(r.Source.Ad?.Trim(), ad, StringComparison.OrdinalIgnoreCase))?.Cari;

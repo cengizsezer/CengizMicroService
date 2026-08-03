@@ -7,16 +7,16 @@
    özet tablo (kalem + tutar + dikey %), sağda oran tablosu (Oran/formül | Değer |
    Referans | Durum). Karlılık grubu iki alt bölümden oluşur (Satış / Sermaye).
 
-   Tek kaynak: yüklenen mizan. Tutarlar yeniden HESAPLANMAZ — mevcut public
-   GelirTablosuCalculator.Compute (MizanGrid.Compute ile aynı toplama mantığı) grup
-   toplamlarından / kodlardan ad/kod ile okunur (BilancoOzetGrid / GelirTabloOzetGrid
-   convention'ı). Yeni hesaplama motoru kurulmaz.
+   Tek kaynak: yüklenen mizan. Tutarlar yeniden HESAPLANMAZ — Aktif/Pasif için
+   MizanHesaplayici.Compute (Bilanço, Bilanço Özet ve Dikey Yüzdeler ile aynı),
+   gelir tablosu için GelirTablosuCalculator.Compute (o da MizanHesaplayici'ye
+   devreder) sonuçlarından ad/kod ile okunur. Yeni hesaplama motoru kurulmaz.
 
-   ÖNEMLİ: Mizan borç-pozitif konvansiyonda; KVYK gibi pasif kalemler negatif gelir.
-   Bu sayfadaki oranlar ve özet tablolar büyüklük/yapı oranıdır, işaret anlamsız → her
-   kalem Math.Abs ile alınır (tutar gösterimi ve % dahil), oranlar pozitif çıkar.
-   (İşaret/parse/kontra ve hesap motorlarına burada DOKUNULMAZ; Math.Abs yalnızca bu
-   sayfanın sunum/oran hesaplarında kullanılır.) *@
+   ÖNEMLİ: Tutarlar MaliTabloIsareti ile bölümün sunum yönüne normalize edilir (Pasif
+   ve gelir tablosu ters çevrilir). Yine de bu sayfadaki oranlar ve özet tablolar
+   büyüklük/yapı oranıdır, işaret anlamsız → her kalem Math.Abs ile alınır (tutar
+   gösterimi ve % dahil), oranlar pozitif çıkar. (Math.Abs yalnızca bu sayfanın
+   sunum/oran hesaplarında kullanılır.) *@
 
 @foreach (var grup in gruplar)
 {
@@ -216,8 +216,10 @@
 
     protected override void OnParametersSet()
     {
-        var aktif = GelirTablosuCalculator.Compute(Aktif, CariRawValues, OncekiRawValues);
-        var pasif = GelirTablosuCalculator.Compute(Pasif, CariRawValues, OncekiRawValues);
+        // Aktif/Pasif Bilanço ve Bilanço Özet ile AYNI hesaplayıcıdan gelir → "I -DÖNEN
+        // VARLIKLAR" gibi grup toplamları tüm sekmelerde aynı çıkar.
+        var aktif = MizanHesaplayici.Compute(Aktif, MaliTabloBolumu.Aktif);
+        var pasif = MizanHesaplayici.Compute(Pasif, MaliTabloBolumu.Pasif);
         var gelir = GelirTablosuCalculator.Compute(GelirTablosu, CariRawValues, OncekiRawValues);
 
         decimal? Akt(string ad) => aktif
@@ -228,8 +230,10 @@
             .FirstOrDefault(r => string.Equals(r.Source.Ad?.Trim(), ad, StringComparison.OrdinalIgnoreCase))?.Cari;
 
         // Kod bazlı erişim (Compute önce, yoksa raw). 690/692 gibi tekil kodlar için.
+        // Raw fallback ham borç-pozitif değerdir → gelir tablosu işaretine çevrilir.
         decimal? GtKod(string kod) => gelir.FirstOrDefault(r => r.Source.Kod == kod)?.Cari
-            ?? (CariRawValues.TryGetValue(kod, out var v) ? v : null);
+            ?? MaliTabloIsareti.Uygula(
+                CariRawValues.TryGetValue(kod, out var v) ? v : null, MaliTabloBolumu.GelirTablosu);
 
         // Grup bazlı (kod-prefix) toplam: bir hesap grubunun (örn. 12 Ticari Alacaklar,
         // 32 Ticari Borçlar) TÜM Account satırlarının İŞARETLİ bakiyesini toplar. Kontra
@@ -238,7 +242,7 @@
         // tek tek hesaplara DEĞİL; aksi halde kontra kalemler işaret kaybedip toplamı şişirir.
         // SubGroup başlıkları hesap planında kodsuz olduğundan (kod="") ad yerine kod-prefix
         // yöntemi seçilmiştir. Tek kaynak: parse zaten raw'ı Account satırlarına yazar.
-        decimal? GrupCari(List<GelirTablosuCalculator.ComputedRow> list, string prefix)
+        decimal? GrupCari(List<MizanHesaplayici.ComputedRow> list, string prefix)
         {
             decimal? sum = null;
             foreach (var r in list)
@@ -246,17 +250,17 @@
                     sum = (sum ?? 0m) + r.Cari.Value;
             return sum;
         }
-        decimal? GrupOnceki(List<GelirTablosuCalculator.ComputedRow> list, string prefix)
+        decimal? GrupOnceki(List<MizanHesaplayici.ComputedRow> list, string prefix)
         {
             decimal? sum = null;
             foreach (var r in list)
-                if (r.Source.Tip == SatirTipi.Account && (r.Source.Kod?.StartsWith(prefix) ?? false) && r.OncekiCari.HasValue)
-                    sum = (sum ?? 0m) + r.OncekiCari.Value;
+                if (r.Source.Tip == SatirTipi.Account && (r.Source.Kod?.StartsWith(prefix) ?? false) && r.Onceki.HasValue)
+                    sum = (sum ?? 0m) + r.Onceki.Value;
             return sum;
         }
 
         // Bölüm Total satırı (Aktif/Pasif'te tek Total → genel toplam).
-        decimal? GenelToplam(List<GelirTablosuCalculator.ComputedRow> list) => list
+        decimal? GenelToplam(List<MizanHesaplayici.ComputedRow> list) => list
             .Where(r => r.Source.Tip == SatirTipi.Total)
             .Select(r => r.Cari)
             .LastOrDefault(v => v.HasValue);
@@ -335,13 +339,13 @@
 
         // ================= FAALİYET =================
         // Devir oranları varlık/borç ORTALAMASI ile → iki dönem (önceki + cari) gerekir.
-        bool ikiDonem = aktif.Any(r => r.OncekiCari.HasValue) || pasif.Any(r => r.OncekiCari.HasValue);
+        bool ikiDonem = aktif.Any(r => r.Onceki.HasValue) || pasif.Any(r => r.Onceki.HasValue);
         bool cariVar = aktif.Any(r => r.Cari.HasValue) || pasif.Any(r => r.Cari.HasValue);
 
         decimal? OrtAkt(string ad)
         {
             var r = aktif.FirstOrDefault(x => string.Equals(x.Source.Ad?.Trim(), ad, StringComparison.OrdinalIgnoreCase));
-            return Ort(r?.Cari, r?.OncekiCari);
+            return Ort(r?.Cari, r?.Onceki);
         }
         var ortStok = OrtAkt("E-Stoklar");
         // Ticari Alacak/Borç ortalaması da grup bazlı: önce işaretli grup toplamı (cari/önceki),

@@ -3,9 +3,9 @@
 @using WebApp.Domain.Models.FirmaKontrol
 
 @* Gelir Tablosu Özet: Net Satışlar (baz) + 5 kâr kalemi, her biri Net Satışlar'a oranlanır.
-   Tutarlar yeniden HESAPLANMAZ — mevcut public GelirTablosuCalculator.Compute'tan okunur.
-   Net Satışlar, "C-NET SATIŞLAR" başlığında hesap olmadığından, A-BRÜT SATIŞLAR ve
-   B-SATIŞ İNDİRİMLERİ alt-toplamlarının toplamından türetilir.
+   Tutarlar yeniden HESAPLANMAZ — mevcut public GelirTablosuCalculator.Compute'tan okunur
+   (işaretler orada normalize edilir: gelir +, gider/maliyet −).
+   Net Satışlar doğrudan "C-NET SATIŞLAR" kümülatif ara toplamından gelir.
    Altta otomatik Yorum bölümü: gider/indirim oran uyarıları + "5 kârda da kâr" olumlu yorumu. *@
 
 <table class="fk-mizan-table">
@@ -102,10 +102,12 @@
         decimal? ByKod(string kod) => computed
             .FirstOrDefault(r => r.Source.Kod == kod)?.Cari;
 
-        // Net Satışlar = Brüt Satışlar + Satış İndirimleri (indirimler eksi işaretli gelir).
+        // Net Satışlar = C-NET SATIŞLAR ara toplamı (kümülatif: A brüt + B indirimler).
+        // Ara toplam satırı hiç değer üretmezse A + B'den türetilir.
         var brut = ByAd("A-BRÜT SATIŞLAR");
         var indirim = ByAd("B-SATIŞ İNDİRİMLERİ (-)");
-        netSatislar = (brut.HasValue || indirim.HasValue) ? (brut ?? 0m) + (indirim ?? 0m) : null;
+        netSatislar = ByAd("C-NET SATIŞLAR")
+            ?? ((brut.HasValue || indirim.HasValue) ? (brut ?? 0m) + (indirim ?? 0m) : null);
 
         var brutKar = ByAd("BRÜT SATIŞ KARI VEYA ZARARI");
         var faaliyetKar = ByAd("FAALİYET KARI VEYA ZARARI");

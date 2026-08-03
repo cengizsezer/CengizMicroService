@@ -44,6 +44,10 @@
 @code {
     [Parameter, EditorRequired] public List<MizanSatir> Rows { get; set; } = new();
 
+    // Hangi bölüm gösteriliyor — tutarların sunum işaretini belirler (MaliTabloIsareti).
+    // Aktif borç-pozitif kalır, Pasif alacak-pozitife çevrilir.
+    [Parameter, EditorRequired] public MaliTabloBolumu Bolum { get; set; }
+
     // true ise en sağa "Dikey %" kolonu eklenir (Dikey Yüzdeler Analizi sheet'i için).
     // Parametre verilmediğinde mevcut Aktif/Pasif sekmeleri eskisi gibi 4 kolon kalır.
     [Parameter] public bool ShowYuzde { get; set; } = false;
@@ -57,7 +61,7 @@
 
     protected override void OnParametersSet()
     {
-        computed = MizanHesaplayici.Compute(Rows);
+        computed = MizanHesaplayici.Compute(Rows, Bolum);
 
         // Payda = Total satırının cari değeri (Aktif/Pasif'te tek Total bulunur = Genel Toplam).
         cariGenelToplam = computed

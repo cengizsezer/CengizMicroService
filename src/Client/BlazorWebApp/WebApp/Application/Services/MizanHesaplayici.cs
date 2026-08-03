@@ -2,38 +2,66 @@ using WebApp.Domain.Models.FirmaKontrol;
 
 namespace WebApp.Application.Services
 {
-    // Detaylı Bilanço (MizanGrid) gruplama/toplama mantığının TEK kaynağı.
-    // Hem detaylı Bilanço hem Bilanço Özet bu yardımcıyı kullanır → MainGroup
-    // sınırı (örn. I-Dönen Varlıklar) her iki yerde de AYNI çıkar.
+    // Mizan gruplama/toplama mantığının TEK kaynağı. Bilanço (Aktif/Pasif) doğrudan,
+    // gelir tablosu ise GelirTablosuCalculator üzerinden buraya bağlanır. Böylece
+    // "I -DÖNEN VARLIKLAR" gibi bir grup toplamı Bilanço, Bilanço Özet, Dikey Yüzdeler
+    // ve Finansal Oranlar sekmelerinde AYNI çıkar — ikinci bir toplama mantığı yoktur.
     //
-    // Sınır kuralı: bir MainGroup toplamı, kendisinden sonraki TÜM SubGroup/Account
-    // satırlarını bir sonraki GERÇEK üst düzey MainGroup (veya Total) başlayana kadar
-    // kapsar. Hesap planında bazı alt bölüm başlıkları (H-Diğer Dönen Varlıklar=190-199,
-    // C-Mali Duran Varlıklar, Pasif'te I-Diğer Kısa Vadeli Yabancı Kaynaklar ...) yanlışlıkla
-    // MainGroup etiketlidir; bunlarda kesilmez, account'ları üst gruba emilir.
-    //
-    // İşaret/parse mantığına dokunulmaz: Account değerleri olduğu gibi (CariDonem/OncekiDonem)
-    // alınır; Pasif kalemleri eskisi gibi negatif kalır.
+    // Kurallar:
+    //  1) Account — ham bakiye (çözücü verilmişse ondan) MaliTabloIsareti ile bölümün
+    //     sunum yönüne çevrilir. Ham mizan bakiyesi borç-pozitiftir (borç − alacak);
+    //     Aktif olduğu gibi kalır, Pasif ve gelir tablosu ters çevrilir. Grup/Total
+    //     toplamları bu işaretli değerler üzerinden alınır; Dikey % pay ve payda
+    //     birlikte döndüğü için değişmez.
+    //  2) SubGroup — kendisinden sonraki ilk SubGroup/MainGroup/Total'a kadarki hesaplar.
+    //  3) MainGroup — bir sonraki Total veya GERÇEK üst düzey MainGroup'a kadar. Hesap
+    //     planında bazı alt bölüm başlıkları (H-Diğer Dönen Varlıklar=190-199, C-Mali
+    //     Duran Varlıklar, Pasif'te I-Diğer Kısa Vadeli Yabancı Kaynaklar ...) yanlışlıkla
+    //     MainGroup etiketlidir; bunlarda kesilmez, hesapları üst gruba emilir.
+    //  4) Total — KÜMÜLATİF: tablonun başından o satıra kadarki tüm hesaplar. Bilanço'da
+    //     tek Total (genel toplam) bulunduğundan sonuç değişmez; gelir tablosunda ara
+    //     toplamların birikmesini sağlar (net satışlar → brüt kâr → ... → 690).
     public static class MizanHesaplayici
     {
         public record ComputedRow(MizanSatir Source, decimal? Onceki, decimal? Cari);
 
-        public static List<ComputedRow> Compute(List<MizanSatir> rows)
+        /// <summary>
+        /// Bir Account satırının HAM (işaretsiz) dönem değerlerini çözer. Varsayılan
+        /// davranış satırın kendi bakiyesidir; gelir tablosu 6'lı↔7'li yansıtma
+        /// fallback'ini bu kanaldan verir.
+        /// </summary>
+        public delegate (decimal? Onceki, decimal? Cari) HamDegerCozucu(MizanSatir satir);
+
+        /// <param name="hamDeger">
+        /// Account ham değer çözücüsü. null ise satırın OncekiDonem/CariDonem'i kullanılır.
+        /// </param>
+        /// <param name="toplamaGirmeyenKodlar">
+        /// Kümülatif Total toplamına DAHİL EDİLMEYECEK hesap kodları (gelir tablosunda
+        /// 690/691/692 ve 7'li yansıtma hesapları). null ise hepsi toplanır.
+        /// </param>
+        public static List<ComputedRow> Compute(
+            List<MizanSatir> rows,
+            MaliTabloBolumu bolum,
+            HamDegerCozucu? hamDeger = null,
+            IReadOnlySet<string>? toplamaGirmeyenKodlar = null)
         {
             var oncekiVals = new decimal?[rows.Count];
             var cariVals = new decimal?[rows.Count];
 
-            // Account değerleri
+            // 1) Account değerleri — ham değer çözülür, sonra bölümün sunum işaretine çevrilir.
             for (int i = 0; i < rows.Count; i++)
             {
-                if (rows[i].Tip == SatirTipi.Account)
-                {
-                    oncekiVals[i] = rows[i].OncekiDonem;
-                    cariVals[i] = rows[i].CariDonem;
-                }
+                if (rows[i].Tip != SatirTipi.Account) continue;
+
+                var (hamOnceki, hamCari) = hamDeger is null
+                    ? (rows[i].OncekiDonem, rows[i].CariDonem)
+                    : hamDeger(rows[i]);
+
+                oncekiVals[i] = MaliTabloIsareti.Uygula(hamOnceki, bolum);
+                cariVals[i] = MaliTabloIsareti.Uygula(hamCari, bolum);
             }
 
-            // SubGroup ve MainGroup toplamları
+            // 2) SubGroup ve MainGroup toplamları
             for (int i = 0; i < rows.Count; i++)
             {
                 var t = rows[i].Tip;
@@ -61,10 +89,10 @@ namespace WebApp.Application.Services
 
                     if (jt == SatirTipi.Account)
                     {
-                        if (rows[j].OncekiDonem.HasValue)
-                            sumOnceki = (sumOnceki ?? 0m) + rows[j].OncekiDonem!.Value;
-                        if (rows[j].CariDonem.HasValue)
-                            sumCari = (sumCari ?? 0m) + rows[j].CariDonem!.Value;
+                        if (oncekiVals[j].HasValue)
+                            sumOnceki = (sumOnceki ?? 0m) + oncekiVals[j]!.Value;
+                        if (cariVals[j].HasValue)
+                            sumCari = (sumCari ?? 0m) + cariVals[j]!.Value;
                     }
                 }
 
@@ -72,32 +100,23 @@ namespace WebApp.Application.Services
                 cariVals[i] = sumCari;
             }
 
-            // Total satırları: önceki Total'dan sonraki tüm Account'ların toplamı
+            // 3) Total satırları: tablonun başından o satıra kadarki tüm Account'lar (kümülatif).
             for (int i = 0; i < rows.Count; i++)
             {
                 if (rows[i].Tip != SatirTipi.Total) continue;
 
-                int start = 0;
-                for (int k = i - 1; k >= 0; k--)
-                {
-                    if (rows[k].Tip == SatirTipi.Total)
-                    {
-                        start = k + 1;
-                        break;
-                    }
-                }
-
                 decimal? sumOnceki = null;
                 decimal? sumCari = null;
 
-                for (int j = start; j < i; j++)
+                for (int j = 0; j < i; j++)
                 {
                     if (rows[j].Tip != SatirTipi.Account) continue;
+                    if (toplamaGirmeyenKodlar?.Contains(rows[j].Kod ?? string.Empty) == true) continue;
 
-                    if (rows[j].OncekiDonem.HasValue)
-                        sumOnceki = (sumOnceki ?? 0m) + rows[j].OncekiDonem!.Value;
-                    if (rows[j].CariDonem.HasValue)
-                        sumCari = (sumCari ?? 0m) + rows[j].CariDonem!.Value;
+                    if (oncekiVals[j].HasValue)
+                        sumOnceki = (sumOnceki ?? 0m) + oncekiVals[j]!.Value;
+                    if (cariVals[j].HasValue)
+                        sumCari = (sumCari ?? 0m) + cariVals[j]!.Value;
                 }
 
                 oncekiVals[i] = sumOnceki;

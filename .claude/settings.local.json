@@ -91,7 +91,8 @@
       "PowerShell(. \"C:\\\\Users\\\\cengi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--GitHub-CengizMicroService\\\\b63b7205-e00c-45ae-8e54-aecdbb9f04ab\\\\scratchpad\\\\api.ps1\"; $hg = Api GET \"/hesap-plani/hareket-gorenler\"; \"hareket goren: $\\($hg.Veri.Count\\)\"; $hg.Veri | Select-Object -First 8 | ForEach-Object { \"  $\\($_.id\\)  $\\($_.kod\\)  $\\($_.ad\\)  karakter=$\\($_.karakter\\)\" }; \"---\"; $hg.Veri | Where-Object { $_.kod -in @\\(\"100\",\"102\",\"770\",\"320\",\"600\"\\) } | ForEach-Object { \"  SEC $\\($_.id\\) $\\($_.kod\\) $\\($_.ad\\)\" })",
       "PowerShell(& \"C:\\\\Users\\\\cengi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--GitHub-CengizMicroService\\\\b63b7205-e00c-45ae-8e54-aecdbb9f04ab\\\\scratchpad\\\\test-fis.ps1\")",
       "PowerShell(. \"C:\\\\Users\\\\cengi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--GitHub-CengizMicroService\\\\b63b7205-e00c-45ae-8e54-aecdbb9f04ab\\\\scratchpad\\\\api.ps1\"; $mm = Get-Content \"C:\\\\Users\\\\cengi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--GitHub-CengizMicroService\\\\b63b7205-e00c-45ae-8e54-aecdbb9f04ab\\\\scratchpad\\\\mm.json\" -Raw | ConvertFrom-Json; \"mm.json IdariId=$\\($mm.IdariId\\) SatisId=$\\($mm.SatisId\\)\"; $f = Api GET \"/fis/1\"; $f.Veri.satirlar | ForEach-Object { \"satir hesapId=$\\($_.hesapId\\) mmId=[$\\($_.masrafMerkeziId\\)] mmAd=[$\\($_.masrafMerkeziAd\\)] borc=$\\($_.borc\\) alacak=$\\($_.alacak\\)\" })",
-      "PowerShell(& \"C:\\\\Users\\\\cengi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--GitHub-CengizMicroService\\\\b63b7205-e00c-45ae-8e54-aecdbb9f04ab\\\\scratchpad\\\\test-fis2.ps1\")"
+      "PowerShell(& \"C:\\\\Users\\\\cengi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--GitHub-CengizMicroService\\\\b63b7205-e00c-45ae-8e54-aecdbb9f04ab\\\\scratchpad\\\\test-fis2.ps1\")",
+      "PowerShell(dotnet test *)"
     ]
   }
 }

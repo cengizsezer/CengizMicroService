@@ -2,6 +2,20 @@ using WebApp.Domain.Models.FirmaKontrol;
 
 namespace WebApp.Application.Services
 {
+    /// <summary>
+    /// Gelir tablosu sunum değerlerini hesaplar.
+    ///
+    /// Gruplama/toplama/işaret mantığı BURADA DEĞİL, tek kaynak olan
+    /// <see cref="MizanHesaplayici"/> içindedir; bu sınıf yalnızca gelir tablosuna
+    /// özgü katmanları ekler:
+    ///  • 6'lı↔7'li yansıtma fallback'i (ham değer çözücüsü olarak),
+    ///  • kümülatif ara toplama girmeyecek kodlar (690/691/692 + yansıtma),
+    ///  • 690/691/692 satırlarının mizan öncelikli / formül fallback'li doldurulması,
+    ///  • UI'ın kullandığı Kaynak Hesap ve Yansıtma kodu sütunları.
+    ///
+    /// Bilanço (Aktif/Pasif) doğrudan <see cref="MizanHesaplayici"/> ile hesaplanır —
+    /// böylece grup toplamları tüm sekmelerde aynı çıkar.
+    /// </summary>
     public static class GelirTablosuCalculator
     {
         // 6'lı maliyet/gider kodu -> mukabil 7'li yansıtma kodu eşleşmesi.
@@ -21,6 +35,14 @@ namespace WebApp.Application.Services
                 ["660"] = "780"
             };
 
+        // Kümülatif ara toplamlara (Total satırları) GİRMEYEN hesap kodları:
+        //  • 690/691/692 — kendileri sonuç satırıdır, alt kalemlerden türetilir.
+        //  • 740/750/760/770/780 — yansıtma; tutarları zaten 6'lı hesaba taşındı,
+        //    tekrar toplanırsa çifte sayım olur.
+        private static readonly HashSet<string> ToplamaGirmeyenKodlar =
+            new(new[] { "690", "691", "692", "740", "750", "760", "770", "780" },
+                StringComparer.OrdinalIgnoreCase);
+
         public class ComputedRow
         {
             public MizanSatir Source { get; set; } = default!;
@@ -37,105 +59,66 @@ namespace WebApp.Application.Services
             decimal? hesaplananVergi691Cari = null)
         {
             var n = rows.Count;
-            var cari = new decimal?[n];
-            var onceki = new decimal?[n];
             var kaynakKod = new string?[n];
             var yansitmaKod = new string?[n];
 
-            // 1) Account satırları: kendi mizan bakiyesi + 6'lı↔7'li yansıtma fallback.
-            //    6'lı maliyet/gider hesabı (620/622/630/631/632/660...) mizanda boşsa,
-            //    tutar mukabil 7'li hesapta (740/750/760/770/780) duruyordur; o değeri
-            //    6'lıya taşırız (else: 6'lı doluysa dokunmayız → çifte sayım yok).
-            //    7'li hesaplar ayrı "YANSITMA" alt grubunda kalır ve ana grup/Total
-            //    toplamlarına dahil edilmez; bu nedenle tutar yalnızca BİR kez sayılır.
-            //    Kaynak kod tüm tipler için (kod doluysa) gösterilir — 690/691/692 gibi
-            //    başlık/total satırlarında da Hesap Kodu sütununun beslenmesi için.
+            // Ham (borç-pozitif) mizan bakiyesini gelir tablosu sunum işaretine çevirir:
+            // gelir alacak bakiyeli → artı, gider/maliyet borç bakiyeli → eksi.
+            // Ayrıntı: MaliTabloIsareti. (Account satırlarını MizanHesaplayici çevirir;
+            // bu yerel yardımcı yalnızca aşağıdaki 690/691/692 override'ları içindir.)
+            static decimal? Isaretle(decimal? ham) =>
+                MaliTabloIsareti.Uygula(ham, MaliTabloBolumu.GelirTablosu);
+
+            // Kaynak kod tüm tipler için (kod doluysa) gösterilir — 690/691/692 gibi
+            // başlık/total satırlarında da Hesap Kodu sütununun beslenmesi için.
+            // Yansıtma kodu yalnızca 6'lı Account satırlarında bilgi amaçlı (UI ipucu).
             for (int i = 0; i < n; i++)
             {
                 var r = rows[i];
-
                 kaynakKod[i] = string.IsNullOrWhiteSpace(r.Kod) ? null : r.Kod;
 
-                // 6'lı kaynak hesabın mukabil 7'li yansıtma kodu (varsa).
-                string? yKod = null;
                 if (r.Tip == SatirTipi.Account && !string.IsNullOrEmpty(r.Kod) &&
                     YansitmaMap.TryGetValue(r.Kod, out var mapped))
-                {
-                    yKod = mapped;
-                    yansitmaKod[i] = mapped;   // bilgi amaçlı (UI ipucu)
-                }
-
-                if (r.Tip != SatirTipi.Account) continue;
-
-                cari[i] = r.CariDonem;
-                onceki[i] = r.OncekiDonem;
-
-                // Fallback: 6'lı BOŞ ise mukabil 7'li mizan değerini kullan.
-                // (6'lı dolu ise koşullar false kalır → 7'li eklenmez, çifte sayım olmaz.)
-                if (yKod is not null)
-                {
-                    if (!cari[i].HasValue) cari[i] = RawValue(rawCari, yKod);
-                    if (!onceki[i].HasValue) onceki[i] = RawValue(rawOnceki, yKod);
-                }
+                    yansitmaKod[i] = mapped;
             }
 
-            // 2) SubGroup ve MainGroup toplamları
+            // Gruplama / toplama / işaret: TEK KAYNAK — MizanHesaplayici.
+            // Buraya yalnızca gelir tablosuna özgü iki girdi verilir: ham değer çözücüsü
+            // (yansıtma fallback'i) ve kümülatif ara toplama girmeyecek kodlar.
+            var hesaplanan = MizanHesaplayici.Compute(
+                rows,
+                MaliTabloBolumu.GelirTablosu,
+                YansitmaliHamDeger,
+                ToplamaGirmeyenKodlar);
+
+            var cari = new decimal?[n];
+            var onceki = new decimal?[n];
             for (int i = 0; i < n; i++)
             {
-                var t = rows[i].Tip;
-                if (t != SatirTipi.SubGroup && t != SatirTipi.MainGroup) continue;
-
-                decimal? sumCari = null, sumOnceki = null;
-
-                for (int j = i + 1; j < n; j++)
-                {
-                    var jt = rows[j].Tip;
-
-                    if (t == SatirTipi.SubGroup)
-                    {
-                        if (jt == SatirTipi.SubGroup || jt == SatirTipi.MainGroup || jt == SatirTipi.Total)
-                            break;
-                    }
-                    else
-                    {
-                        if (jt == SatirTipi.MainGroup || jt == SatirTipi.Total) break;
-                    }
-
-                    if (jt == SatirTipi.Account)
-                    {
-                        if (cari[j].HasValue) sumCari = (sumCari ?? 0m) + cari[j]!.Value;
-                        if (onceki[j].HasValue) sumOnceki = (sumOnceki ?? 0m) + onceki[j]!.Value;
-                    }
-                }
-
-                cari[i] = sumCari;
-                onceki[i] = sumOnceki;
+                cari[i] = hesaplanan[i].Cari;
+                onceki[i] = hesaplanan[i].Onceki;
             }
 
-            // 3) Total satırları: önceki Total'dan sonraki Account'ların toplamı
-            for (int i = 0; i < n; i++)
+            // 6'lı maliyet/gider hesabı (620/622/630/631/632/660...) mizanda boşsa, tutar
+            // mukabil 7'li hesapta (740/750/760/770/780) duruyordur; o değeri 6'lıya
+            // taşırız (6'lı doluysa dokunmayız → çifte sayım yok). 7'li satırlar ayrı
+            // "YANSITMA" alt grubunda kalır ve ToplamaGirmeyenKodlar sayesinde kümülatif
+            // ara toplamlara dahil edilmez; tutar yalnızca BİR kez sayılır.
+            (decimal? Onceki, decimal? Cari) YansitmaliHamDeger(MizanSatir s)
             {
-                if (rows[i].Tip != SatirTipi.Total) continue;
+                var c = s.CariDonem;
+                var o = s.OncekiDonem;
 
-                int start = 0;
-                for (int k = i - 1; k >= 0; k--)
+                if (!string.IsNullOrEmpty(s.Kod) && YansitmaMap.TryGetValue(s.Kod, out var yKod))
                 {
-                    if (rows[k].Tip == SatirTipi.Total) { start = k + 1; break; }
+                    if (!c.HasValue) c = RawValue(rawCari, yKod);
+                    if (!o.HasValue) o = RawValue(rawOnceki, yKod);
                 }
 
-                decimal? sumCari = null, sumOnceki = null;
-                for (int j = start; j < i; j++)
-                {
-                    if (rows[j].Tip != SatirTipi.Account) continue;
-                    if (cari[j].HasValue) sumCari = (sumCari ?? 0m) + cari[j]!.Value;
-                    if (onceki[j].HasValue) sumOnceki = (sumOnceki ?? 0m) + onceki[j]!.Value;
-                }
-
-                cari[i] = sumCari;
-                onceki[i] = sumOnceki;
+                return (o, c);
             }
 
-            // 4) 690 / 691 / 692 — Mizan öncelikli, formül fallback.
+            // 690 / 691 / 692 — Mizan öncelikli, formül fallback.
             //    Muhasebeci kapanış sonrası bu satırları mizana yazdıysa
             //    "doğru kabul" edilir ve formülün önüne geçer. Mizanda boşsa
             //    690 = Total scan sonucu (mevcut), 691 = vergi panelinden -1 ile,
@@ -148,27 +131,30 @@ namespace WebApp.Application.Services
                 else if (rows[i].Kod == "692") idx692 = i;
             }
 
-            // 690 — mizanda varsa override; yoksa Total scan sonucu kalır
+            // 690 — mizanda varsa override; yoksa kümülatif Total sonucu kalır.
+            // (Kâr edilmişse 690 alacak bakiyelidir → işaretlenince artı çıkar.)
             if (idx690 >= 0)
             {
                 var m690c = RawValue(rawCari, "690");
-                if (m690c.HasValue) cari[idx690] = m690c;
+                if (m690c.HasValue) cari[idx690] = Isaretle(m690c);
 
                 var m690o = RawValue(rawOnceki, "690");
-                if (m690o.HasValue) onceki[idx690] = m690o;
+                if (m690o.HasValue) onceki[idx690] = Isaretle(m690o);
             }
 
-            // 691 — mizanda varsa override; yoksa vergi panelinden -1 ile
+            // 691 — mizanda varsa override; yoksa vergi panelinden -1 ile.
+            // hesaplananVergi691Cari zaten pozitif vergi tutarıdır (sunum işareti
+            // taşımaz); indirim kalemi olduğu için -1 ile eksiye çevrilir.
             if (idx691 >= 0)
             {
                 var m691c = RawValue(rawCari, "691");
                 if (m691c.HasValue)
-                    cari[idx691] = m691c;
+                    cari[idx691] = Isaretle(m691c);
                 else
                     cari[idx691] = hesaplananVergi691Cari.HasValue ? -1m * hesaplananVergi691Cari.Value : 0m;
 
                 var m691o = RawValue(rawOnceki, "691");
-                if (m691o.HasValue) onceki[idx691] = m691o;
+                if (m691o.HasValue) onceki[idx691] = Isaretle(m691o);
             }
 
             // 692 — mizanda varsa override; yoksa 690 + 691
@@ -177,7 +163,7 @@ namespace WebApp.Application.Services
                 var m692c = RawValue(rawCari, "692");
                 if (m692c.HasValue)
                 {
-                    cari[idx692] = m692c;
+                    cari[idx692] = Isaretle(m692c);
                 }
                 else if (idx690 >= 0)
                 {
@@ -190,7 +176,7 @@ namespace WebApp.Application.Services
                 var m692o = RawValue(rawOnceki, "692");
                 if (m692o.HasValue)
                 {
-                    onceki[idx692] = m692o;
+                    onceki[idx692] = Isaretle(m692o);
                 }
                 else if (idx690 >= 0)
                 {
