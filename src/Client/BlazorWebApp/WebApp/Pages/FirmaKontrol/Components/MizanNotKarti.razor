@@ -1,0 +1,214 @@
+@using System.Globalization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Shared.Dto.FirmaKontrol
+
+@* Tek bir mizan notu. Görüntüleme ve düzenleme aynı kartın içinde — düzenlemek
+   için ayrı dialog açılmaz, satır yerinde textarea'ya döner.
+
+   Bayatlık/değişmedi hesabı BU KARTTA YAPILMAZ: MizanTab notlar indekslenirken bir
+   kez hesaplayıp Bayat / Degismedi / GuncelBakiye olarak geçer (render döngüsünde
+   hesap yok). *@
+
+<div class="fk-not-karti @KapsamClass">
+    @if (!duzenleniyor)
+    {
+        <div class="fk-not-karti-ust">
+            <span class="fk-not-tip-rozet @KapsamClass">@KapsamEtiketi</span>
+
+            @if (Not.NotTuru == MizanNotTuru.Duzeltilecek)
+            {
+                <span class="fk-not-tur-rozet">
+                    <RadzenIcon Icon="build" /> Düzeltilecek
+                </span>
+            }
+
+            @if (GosterHesapKodu)
+            {
+                <span class="fk-not-karti-kod">@Not.HesapKodu</span>
+            }
+
+            @if (Not.UyariBastir)
+            {
+                <span class="fk-not-bastir-rozet"
+                      title="Bu hesabın otomatik uyarısı 'Notla Açıklanmış' sayacına alınıyor.">
+                    <RadzenIcon Icon="notifications_off" /> Uyarı bastırılmış
+                </span>
+            }
+
+            <div class="fk-not-karti-aksiyon">
+                <RadzenButton Icon="edit"
+                              ButtonStyle="ButtonStyle.Light"
+                              Variant="Variant.Text"
+                              Size="ButtonSize.ExtraSmall"
+                              title="Notu düzenle"
+                              Click="@Duzenle" />
+                <RadzenButton Icon="delete"
+                              ButtonStyle="ButtonStyle.Danger"
+                              Variant="Variant.Text"
+                              Size="ButtonSize.ExtraSmall"
+                              title="Notu sil"
+                              Click="@Sil" />
+            </div>
+        </div>
+
+        <div class="fk-not-karti-metin">@Not.Metin</div>
+
+        @* Snapshot yoksa hiçbir şey gösterilmez. *@
+        @if (Bayat)
+        {
+            <div class="fk-not-bayat">
+                <span>
+                    Bakiye değişti: @Tutar(Not.SnapshotBakiye) → @Tutar(GuncelBakiye)
+                    @if (Not.SnapshotTarihi.HasValue)
+                    {
+                        @($" ({Not.SnapshotTarihi.Value.ToLocalTime():dd.MM.yyyy}'dan beri)")
+                    }
+                </span>
+                <RadzenButton Text="Güncel say"
+                              Icon="sync"
+                              ButtonStyle="ButtonStyle.Light"
+                              Size="ButtonSize.ExtraSmall"
+                              title="Not metnine dokunmadan snapshot'ı güncel bakiyeye eşitler."
+                              Click="@SnapshotYenile" />
+            </div>
+        }
+        else if (Degismedi && Not.NotTuru == MizanNotTuru.Duzeltilecek)
+        {
+            @* Düzeltilecek not + bakiye hiç oynamamış = iş büyük ihtimalle yapılmamış. *@
+            <div class="fk-not-degismedi">
+                <RadzenIcon Icon="pending_actions" />
+                <span>Bakiye değişmedi — düzeltme henüz yapılmamış olabilir.</span>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="fk-not-form-satir">
+            <span class="fk-not-form-label">Kapsam:</span>
+            <RadzenRadioButtonList @bind-Value="taslakKalici"
+                                   TValue="bool"
+                                   Orientation="Orientation.Horizontal"
+                                   class="fk-not-tip-secim">
+                <Items>
+                    <RadzenRadioButtonListItem Text="Kalıcı not" Value="true" />
+                    <RadzenRadioButtonListItem Text="@($"{HedefDonemYili} dönemi")" Value="false" />
+                </Items>
+            </RadzenRadioButtonList>
+        </div>
+
+        <div class="fk-not-form-satir">
+            <span class="fk-not-form-label">Tür:</span>
+            <RadzenRadioButtonList @bind-Value="taslakNotTuru"
+                                   TValue="int"
+                                   Orientation="Orientation.Horizontal"
+                                   class="fk-not-tip-secim">
+                <Items>
+                    <RadzenRadioButtonListItem Text="Açıklama" Value="MizanNotTuru.Aciklama" />
+                    <RadzenRadioButtonListItem Text="Düzeltilecek" Value="MizanNotTuru.Duzeltilecek" />
+                </Items>
+            </RadzenRadioButtonList>
+        </div>
+
+        <RadzenTextArea @bind-Value="taslakMetin"
+                        rows="3"
+                        class="fk-not-textarea"
+                        aria-label="Not metni" />
+
+        <div class="fk-not-form-alt">
+            <RadzenCheckBox @bind-Value="taslakUyariBastir" Name="@BastirAlanAdi" />
+            <RadzenLabel Text="Bu hesabın otomatik uyarısını bastır"
+                         Component="@BastirAlanAdi"
+                         class="fk-not-form-label" />
+
+            <div class="fk-not-form-butonlar">
+                <RadzenButton Text="Vazgeç"
+                              ButtonStyle="ButtonStyle.Light"
+                              Size="ButtonSize.Small"
+                              Click="@Vazgec" />
+                <RadzenButton Text="Kaydet"
+                              ButtonStyle="ButtonStyle.Primary"
+                              Size="ButtonSize.Small"
+                              Disabled="@(string.IsNullOrWhiteSpace(taslakMetin))"
+                              Click="@Kaydet" />
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public MizanNotuDto Not { get; set; } = default!;
+
+    /// <summary>Kalıcı nottan dönem notuna geçilirse yazılacak yıl.</summary>
+    [Parameter, EditorRequired] public int AktifYil { get; set; }
+
+    /// <summary>Alt hesap notlarında kodun ("381.01") ayrıca gösterilmesi için.</summary>
+    [Parameter] public bool GosterHesapKodu { get; set; }
+
+    /// <summary>Notun hesabının mizandaki güncel bakiyesi (MizanTab'da hesaplanır).</summary>
+    [Parameter] public decimal? GuncelBakiye { get; set; }
+
+    /// <summary>Snapshot var ve güncel bakiyeden farklı.</summary>
+    [Parameter] public bool Bayat { get; set; }
+
+    /// <summary>Snapshot var ve güncel bakiyeyle birebir aynı.</summary>
+    [Parameter] public bool Degismedi { get; set; }
+
+    [Parameter] public EventCallback<(long Id, MizanNotuGuncelleDto Dto)> OnGuncelle { get; set; }
+    [Parameter] public EventCallback<MizanNotuDto> OnSnapshotYenile { get; set; }
+    [Parameter] public EventCallback<MizanNotuDto> OnSil { get; set; }
+
+    private bool duzenleniyor;
+    private string taslakMetin = string.Empty;
+    private bool taslakUyariBastir;
+    private bool taslakKalici;
+    private int taslakNotTuru;
+
+    /// <summary>
+    /// "Dönem notu" seçilirse hangi yıl yazılacak: not zaten dönem notuysa kendi yılı
+    /// korunur (devirle gelmiş eski yıl kaybolmasın), değilse aktif dönem.
+    /// </summary>
+    private int HedefDonemYili => Not.DonemYili ?? AktifYil;
+
+    private string KapsamClass => Not.DonemYili.HasValue ? "is-donem" : "is-kalici";
+
+    private string KapsamEtiketi => Not.DonemYili.HasValue
+        ? $"{Not.DonemYili} dönemi"
+        : "Kalıcı";
+
+    private string BastirAlanAdi => $"fk-not-bastir-{Not.Id}";
+
+    private static string Tutar(decimal? deger) =>
+        deger.HasValue ? deger.Value.ToString("N2", new CultureInfo("tr-TR")) : "—";
+
+    private void Duzenle()
+    {
+        taslakMetin = Not.Metin;
+        taslakUyariBastir = Not.UyariBastir;
+        taslakKalici = !Not.DonemYili.HasValue;
+        taslakNotTuru = Not.NotTuru;
+        duzenleniyor = true;
+    }
+
+    private void Vazgec() => duzenleniyor = false;
+
+    private async Task Kaydet()
+    {
+        if (string.IsNullOrWhiteSpace(taslakMetin)) return;
+
+        // Hesap kodu sabit; kapsam değişimi sunucuda kaydı yerinde taşır (PUT .../{id}).
+        await OnGuncelle.InvokeAsync((Not.Id, new MizanNotuGuncelleDto
+        {
+            Metin = taslakMetin.Trim(),
+            NotTuru = taslakNotTuru,
+            DonemYili = taslakKalici ? null : HedefDonemYili,
+            UyariBastir = taslakUyariBastir
+        }));
+
+        duzenleniyor = false;
+    }
+
+    private async Task SnapshotYenile() => await OnSnapshotYenile.InvokeAsync(Not);
+
+    private async Task Sil() => await OnSil.InvokeAsync(Not);
+}

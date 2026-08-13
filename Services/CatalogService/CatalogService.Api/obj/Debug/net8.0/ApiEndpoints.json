@@ -1058,6 +1058,319 @@
   },
   {
     "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "GetMizanNotlari",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/mizan-notlari",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "yil",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.FirmaKontrol.Dtos.MizanNotuDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "UpsertMizanNotu",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/mizan-notlari",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.FirmaKontrol.Dtos.MizanNotuUpsertDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.FirmaKontrol.Dtos.MizanNotuDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 400
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "GuncelleMizanNotu",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/mizan-notlari/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "id",
+        "Type": "System.Int64",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.FirmaKontrol.Dtos.MizanNotuGuncelleDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.FirmaKontrol.Dtos.MizanNotuDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 400
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 409
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "DeleteMizanNotu",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/mizan-notlari/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "id",
+        "Type": "System.Int64",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Void",
+        "MediaTypes": [],
+        "StatusCode": 204
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "SnapshotYenile",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/mizan-notlari/{id}/snapshot-yenile",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "id",
+        "Type": "System.Int64",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.FirmaKontrol.Dtos.MizanNotuDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 409
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "DevretMizanNotlari",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/mizan-notlari/devir",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "req",
+        "Type": "CatalogService.Api.Features.FirmaKontrol.Dtos.MizanNotuDevirRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.FirmaKontrol.Dtos.MizanNotuDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 400
+      },
+      {
+        "Type": "Microsoft.AspNetCore.Mvc.ProblemDetails",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "GetDevirAdaylari",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/mizan-notlari/devir-adaylari",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "kaynakYil",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "hedefYil",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.FirmaKontrol.Dtos.MizanNotuDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
     "Method": "GetVergi",
     "RelativePath": "api/catalog/firma-kontrol/{firmaId}/vergi",
     "HttpMethod": "GET",

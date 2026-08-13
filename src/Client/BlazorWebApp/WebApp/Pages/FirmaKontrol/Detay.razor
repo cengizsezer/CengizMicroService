@@ -31,12 +31,24 @@ else
 
         <div style="flex:1; min-width: 0;">
             <h2 class="fk-detay-title">@firma.Ad</h2>
+            @* Dönem artık seçiciden gelir; firma.Donem'deki sabit metin kullanılmıyor
+               (o metin DateTime.Now.Year'dan üretiliyordu ve seçimle çelişirdi). *@
             <div class="fk-detay-subtitle">
-                VKN: @firma.VergiNo &nbsp;·&nbsp; @firma.Sektor &nbsp;·&nbsp; @firma.Donem
+                VKN: @firma.VergiNo &nbsp;·&nbsp; @firma.Sektor &nbsp;·&nbsp; @secilenDonemYili Hesap Dönemi
             </div>
         </div>
 
         <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
+            <div class="fk-donem-secici">
+                <RadzenLabel Text="Hesap Dönemi" Component="fk-donem-secici" />
+                <RadzenDropDown @bind-Value="secilenDonemYili"
+                                Name="fk-donem-secici"
+                                Data="@donemYillari"
+                                TValue="int"
+                                Change="@(async _ => await DonemDegistiAsync())"
+                                Style="width: 110px;" />
+            </div>
+
             <RadzenBadge BadgeStyle="BadgeStyle.Primary"
                          Text="@($"{TotalChecked}/{TotalItems} kontrol")" />
             @if (TotalIssues > 0)
@@ -93,7 +105,8 @@ else
                 }
                 else
                 {
-                    <MizanTab Mizan="mizan"
+                    <MizanTab FirmaId="@FirmaId"
+                              Mizan="mizan"
                               Uyarilar="uyarilar"
                               RawCari="rawCariValues"
                               RawOnceki="rawOncekiValues"
@@ -234,9 +247,16 @@ else
     private IReadOnlyDictionary<string, string> rawAdValues =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-    // Vergi beyannamesi dönemi. Mevcut vergi paneli de cari yılı kullanıyor
-    // (MockFirmaKontrolService.CurrentYil); geçmiş dönem seçimi ayrı bir iş.
-    private short VergiDonemYili => (short)DateTime.Now.Year;
+    // Seçili hesap dönemi — tek kaynak servistedir, bu alan onun UI aynasıdır.
+    private int secilenDonemYili;
+
+    // Seçilebilir dönemler. DeclarationFollow'daki desenle aynı: birkaç geçmiş yıl +
+    // gelecek yıl (erken kapanış / devir için).
+    private static readonly IReadOnlyList<int> donemYillari =
+        Enumerable.Range(DateTime.Now.Year - 5, 7).Reverse().ToList();
+
+    // Vergi beyannamesi dönemi de aynı seçiciden beslenir.
+    private short VergiDonemYili => (short)secilenDonemYili;
 
     private decimal? cariDonemKari;
     private decimal? oncekiDonemKari;
@@ -264,6 +284,9 @@ else
 
         katalogAnahtari = sorgu.TryGetValue("katalog", out var anahtar) ? anahtar.ToString() : null;
 
+        // Seçili dönemi servisten al (varsayılan: içinde bulunulan yıl).
+        secilenDonemYili = FirmaKontrolService.AktifDonemYili;
+
         firma = await FirmaKontrolService.GetFirmAsync(FirmaId);
         if (firma is null)
         {
@@ -279,6 +302,23 @@ else
         vergiBilgisi = await FirmaKontrolService.GetVergiBilgisiAsync(FirmaId);
         RecomputeHesaplananVergi691();
         uyarilar = await FirmaKontrolService.GetUyarilarAsync(FirmaId);
+    }
+
+    /// <summary>
+    /// Dönem değişti: servisin önbellekleri düşer, döneme bağlı ne varsa yeniden çekilir.
+    /// Kontrol maddeleri döneme bağlı olmadığından yeniden yüklenmez.
+    /// </summary>
+    private async Task DonemDegistiAsync()
+    {
+        FirmaKontrolService.SetDonemYili(secilenDonemYili);
+
+        mizan = await FirmaKontrolService.GetMizanAsync(FirmaId);
+        await ReloadMizanRawAsync();
+        vergiBilgisi = await FirmaKontrolService.GetVergiBilgisiAsync(FirmaId);
+        RecomputeHesaplananVergi691();
+        uyarilar = await FirmaKontrolService.GetUyarilarAsync(FirmaId);
+
+        StateHasChanged();
     }
 
     private void RecomputeHesaplananVergi691()

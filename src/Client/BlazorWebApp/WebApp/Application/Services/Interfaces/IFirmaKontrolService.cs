@@ -1,5 +1,6 @@
 using WebApp.Application.RuleEngine;
 using WebApp.Domain.Models.FirmaKontrol;
+using WebApp.Shared.Dto.FirmaKontrol;
 
 namespace WebApp.Application.Services.Interfaces
 {
@@ -63,5 +64,51 @@ namespace WebApp.Application.Services.Interfaces
         Task SaveVergiBilgisiAsync(int firmaId, VergiHesaplama vergi);
 
         Task<IReadOnlyList<UyariSonucu>> GetUyarilarAsync(int firmaId);
+
+        // ── Mizan hesap notları ─────────────────────────────────────────────
+
+        /// <summary>
+        /// Seçili hesap dönemi yılı. Mizan, vergi paneli ve notlar bu yıl üzerinden
+        /// okunup yazılır — Firma Kontrol ekranındaki TEK dönem kaynağıdır.
+        /// Varsayılan içinde bulunulan yıldır; kullanıcı <see cref="SetDonemYili"/>
+        /// ile değiştirir (seçim sayfa ömrüyle sınırlı, kalıcı saklanmaz).
+        /// </summary>
+        int AktifDonemYili { get; }
+
+        /// <summary>
+        /// Seçili hesap dönemini değiştirir. Döneme bağlı tüm bellek önbellekleri
+        /// (mizan, ham değerler, notlar, vergi girdileri) düşürülür ki yeni dönemde
+        /// eski yılın verisi ekranda kalmasın.
+        /// </summary>
+        void SetDonemYili(int yil);
+
+        /// <summary>
+        /// Firmanın mizan notları: kalıcı notlar (DonemYili=null) + aktif dönemin
+        /// notları. Mizan ekranı bunu TEK çağrıda alır — satır başına sorgu yoktur.
+        /// </summary>
+        Task<IReadOnlyList<MizanNotuDto>> GetMizanNotlariAsync(int firmaId);
+
+        /// <summary>Notu yazar; aynı (HesapKodu, DonemYili) için mevcut not güncellenir.</summary>
+        Task<MizanNotuDto> SaveMizanNotuAsync(int firmaId, MizanNotuUpsertDto dto);
+
+        /// <summary>
+        /// Mevcut notu Id ile günceller. Upsert'ten farkı: notun tipi (kalıcı ↔ dönem
+        /// notu) burada değişebilir — tip anahtarın parçası olduğu için upsert'le olmaz.
+        /// </summary>
+        Task<MizanNotuDto> UpdateMizanNotuAsync(int firmaId, long id, MizanNotuGuncelleDto dto);
+
+        /// <summary>
+        /// "Güncel say": notun metnine dokunmadan snapshot'ını güncel mizan bakiyesiyle
+        /// tazeler. Hesap mizanda yoksa snapshot korunur ve hata döner.
+        /// </summary>
+        Task<MizanNotuDto> SnapshotYenileAsync(int firmaId, long id);
+
+        Task DeleteMizanNotuAsync(int firmaId, long id);
+
+        /// <summary>Dönem devri adayları: kaynak yılda olup hedef yılda karşılığı olmayan notlar.</summary>
+        Task<IReadOnlyList<MizanNotuDto>> GetNotDevirAdaylariAsync(int firmaId, int kaynakYil, int hedefYil);
+
+        /// <summary>Seçilen notları hedef döneme taşır; oluşan yeni notlar döner.</summary>
+        Task<IReadOnlyList<MizanNotuDto>> DevretMizanNotlariAsync(int firmaId, MizanNotuDevirRequest req);
     }
 }

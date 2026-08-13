@@ -1,0 +1,171 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Shared.Dto.FirmaKontrol
+
+@* Yeni hesap dönemi açılırken geçen dönemin notlarını taşıma paneli. Mizan tablosunun
+   üstünde inline açılır — not editörüyle aynı gerekçe: scroll ve filtreler korunsun. *@
+
+<div class="fk-not-devir">
+    <div class="fk-not-devir-baslik">
+        <RadzenIcon Icon="move_down" />
+        <span>Geçen dönemin notlarını taşı</span>
+        <RadzenButton Icon="close"
+                      ButtonStyle="ButtonStyle.Light"
+                      Variant="Variant.Text"
+                      Size="ButtonSize.ExtraSmall"
+                      title="Kapat"
+                      Click="@(() => OnKapat.InvokeAsync())" />
+    </div>
+
+    <div class="fk-not-devir-yillar">
+        <RadzenLabel Text="Kaynak dönem" Component="fk-devir-kaynak" />
+        <RadzenNumeric @bind-Value="kaynakYil"
+                       Name="fk-devir-kaynak"
+                       TValue="int"
+                       Min="2000"
+                       Max="2100"
+                       Change="@(async _ => await YillariUygula())"
+                       class="fk-not-devir-yil-input" />
+
+        <RadzenIcon Icon="arrow_forward" />
+
+        <RadzenLabel Text="Hedef dönem" Component="fk-devir-hedef" />
+        <RadzenNumeric @bind-Value="hedefYil"
+                       Name="fk-devir-hedef"
+                       TValue="int"
+                       Min="2000"
+                       Max="2100"
+                       Change="@(async _ => await YillariUygula())"
+                       class="fk-not-devir-yil-input" />
+    </div>
+
+    @* Etiketteki Türkçe ek kuralı sunucuda (MizanNotuService.AblatifEki) — burada
+       örnekle anlatılır ki aynı mantık iki yerde ayrı ayrı yaşamasın. *@
+    <div class="fk-not-devir-aciklama">
+        Kalıcı notlar her dönemde göründüğü için listede yer almaz — taşınmalarına gerek yoktur.
+        Taşınan notun sonuna kaynak dönem etiketi eklenir, örn. <strong>"(2025'ten devir)"</strong>.
+    </div>
+
+    @if (Yukleniyor)
+    {
+        <div class="fk-not-devir-durum">
+            <RadzenProgressBarCircular ShowValue="false"
+                                       Mode="ProgressBarMode.Indeterminate"
+                                       Size="ProgressBarCircularSize.ExtraSmall" />
+            <span>Aday notlar getiriliyor...</span>
+        </div>
+    }
+    else if (kaynakYil == hedefYil)
+    {
+        <div class="fk-not-devir-durum"><em>Kaynak ve hedef dönem aynı olamaz.</em></div>
+    }
+    else if (Adaylar.Count == 0)
+    {
+        <div class="fk-not-devir-durum">
+            <em>@kaynakYil döneminden taşınacak not bulunamadı. (Hedef dönemde karşılığı olanlar listelenmez.)</em>
+        </div>
+    }
+    else
+    {
+        <div class="fk-not-devir-tumu">
+            <RadzenCheckBox @bind-Value="tumunuSec" Name="fk-devir-tumu" Change="@((bool _) => TumunuSecDegisti())" />
+            <RadzenLabel Text="Tümünü seç" Component="fk-devir-tumu" class="fk-not-form-label" />
+        </div>
+
+        <div class="fk-not-devir-liste">
+            @foreach (var aday in Adaylar)
+            {
+                <label class="fk-not-devir-satir @(secili.Contains(aday.Id) ? "is-secili" : null)">
+                    <input type="checkbox"
+                           checked="@secili.Contains(aday.Id)"
+                           @onchange="@(e => SecimDegisti(aday.Id, e.Value is bool b && b))" />
+                    <span class="fk-not-devir-kod">@aday.HesapKodu</span>
+                    <span class="fk-not-devir-metin">@aday.Metin</span>
+                    @if (aday.UyariBastir)
+                    {
+                        <RadzenIcon Icon="notifications_off" class="fk-not-devir-bastir" />
+                    }
+                </label>
+            }
+        </div>
+
+        <div class="fk-not-devir-butonlar">
+            <RadzenButton Text="@($"Seçilenleri taşı ({secili.Count})")"
+                          Icon="move_down"
+                          ButtonStyle="ButtonStyle.Primary"
+                          Size="ButtonSize.Small"
+                          Disabled="@(secili.Count == 0)"
+                          Click="@Devret" />
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int AktifYil { get; set; }
+
+    [Parameter] public IReadOnlyList<MizanNotuDto> Adaylar { get; set; } = Array.Empty<MizanNotuDto>();
+
+    [Parameter] public bool Yukleniyor { get; set; }
+
+    /// <summary>Yıl aralığı değiştiğinde aday listesini yeniden çekmesi için ebeveyne haber verir.</summary>
+    [Parameter] public EventCallback<(int KaynakYil, int HedefYil)> OnYillarDegisti { get; set; }
+
+    [Parameter] public EventCallback<(int KaynakYil, int HedefYil, List<long> NotIdleri)> OnDevret { get; set; }
+
+    [Parameter] public EventCallback OnKapat { get; set; }
+
+    private int kaynakYil;
+    private int hedefYil;
+    private bool tumunuSec;
+    private readonly HashSet<long> secili = new();
+
+    private bool yillarKuruldu;
+
+    protected override void OnParametersSet()
+    {
+        if (!yillarKuruldu)
+        {
+            kaynakYil = AktifYil - 1;
+            hedefYil = AktifYil;
+            yillarKuruldu = true;
+        }
+
+        // Aday listesi değiştiyse artık listede olmayan seçimler düşsün.
+        var gecerliIdler = Adaylar.Select(a => a.Id).ToHashSet();
+        secili.RemoveWhere(id => !gecerliIdler.Contains(id));
+        tumunuSec = Adaylar.Count > 0 && secili.Count == Adaylar.Count;
+    }
+
+    private async Task YillariUygula()
+    {
+        secili.Clear();
+        tumunuSec = false;
+
+        if (kaynakYil != hedefYil)
+            await OnYillarDegisti.InvokeAsync((kaynakYil, hedefYil));
+    }
+
+    private void SecimDegisti(long id, bool secildi)
+    {
+        if (secildi) secili.Add(id);
+        else secili.Remove(id);
+
+        tumunuSec = Adaylar.Count > 0 && secili.Count == Adaylar.Count;
+    }
+
+    private void TumunuSecDegisti()
+    {
+        secili.Clear();
+        if (tumunuSec)
+            foreach (var aday in Adaylar) secili.Add(aday.Id);
+    }
+
+    private async Task Devret()
+    {
+        if (secili.Count == 0) return;
+
+        await OnDevret.InvokeAsync((kaynakYil, hedefYil, secili.ToList()));
+        secili.Clear();
+        tumunuSec = false;
+    }
+}

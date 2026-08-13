@@ -1,0 +1,265 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Shared.Dto.FirmaKontrol
+
+@* Mizan satırının ALTINA inline açılan not paneli. Dialog kullanılmaz: tablo kendi
+   scroll kabında (.fk-mizan-tab-sol) durduğundan panel açılıp kapanırken kullanıcının
+   scroll pozisyonu ve açık filtreleri olduğu gibi kalır. *@
+
+<div class="fk-not-paneli">
+    <div class="fk-not-paneli-baslik">
+        <span class="fk-not-paneli-kod">@HesapKodu</span>
+        <span class="fk-not-paneli-ad">@HesapAdi</span>
+        <RadzenButton Icon="close"
+                      ButtonStyle="ButtonStyle.Light"
+                      Variant="Variant.Text"
+                      Size="ButtonSize.ExtraSmall"
+                      title="Not panelini kapat"
+                      Click="@(() => OnKapat.InvokeAsync())" />
+    </div>
+
+    @foreach (var not in KendiNotlari)
+    {
+        <MizanNotKarti @key="not.Id"
+                       Not="not"
+                       AktifYil="@AktifYil"
+                       GuncelBakiye="@BakiyeFor(not)"
+                       Bayat="@Durum(not).Bayat"
+                       Degismedi="@Durum(not).Degismedi"
+                       OnGuncelle="OnGuncelle"
+                       OnSnapshotYenile="OnSnapshotYenile"
+                       OnSil="OnSil" />
+    }
+
+    @if (AltNotlari.Count > 0)
+    {
+        <div class="fk-not-alt-baslik">
+            Alt hesap notları (@AltNotlari.Count)
+        </div>
+
+        @foreach (var not in AltNotlari)
+        {
+            <MizanNotKarti @key="not.Id"
+                           Not="not"
+                           AktifYil="@AktifYil"
+                           GosterHesapKodu="true"
+                           GuncelBakiye="@BakiyeFor(not)"
+                           Bayat="@Durum(not).Bayat"
+                           Degismedi="@Durum(not).Degismedi"
+                           OnGuncelle="OnGuncelle"
+                           OnSnapshotYenile="OnSnapshotYenile"
+                           OnSil="OnSil" />
+        }
+    }
+
+    @if (KendiNotlari.Count == 0 && AltNotlari.Count == 0 && !formAcik)
+    {
+        <div class="fk-not-bos">Bu hesap için henüz not yazılmamış.</div>
+    }
+
+    @if (!formAcik)
+    {
+        <RadzenButton Icon="add"
+                      Text="Not ekle"
+                      ButtonStyle="ButtonStyle.Light"
+                      Size="ButtonSize.Small"
+                      Click="@FormuAc" />
+    }
+    else
+    {
+        <div class="fk-not-form">
+            <div class="fk-not-form-satir">
+                <RadzenLabel Text="Hesap kodu" Component="@KodAlanAdi" class="fk-not-form-label" />
+                <RadzenTextBox @bind-Value="yeniKod"
+                               Name="@KodAlanAdi"
+                               Placeholder="381 veya 381.01"
+                               class="fk-not-kod-input" />
+
+                <span class="fk-not-form-label">Kapsam:</span>
+                <RadzenRadioButtonList @bind-Value="yeniKalici"
+                                       TValue="bool"
+                                       Orientation="Orientation.Horizontal"
+                                       class="fk-not-tip-secim">
+                    <Items>
+                        <RadzenRadioButtonListItem Text="Kalıcı not" Value="true" />
+                        <RadzenRadioButtonListItem Text="@($"{AktifYil} dönemi")" Value="false" />
+                    </Items>
+                </RadzenRadioButtonList>
+            </div>
+
+            <div class="fk-not-form-satir">
+                <span class="fk-not-form-label">Tür:</span>
+                <RadzenRadioButtonList @bind-Value="yeniNotTuru"
+                                       TValue="int"
+                                       Orientation="Orientation.Horizontal"
+                                       class="fk-not-tip-secim">
+                    <Items>
+                        <RadzenRadioButtonListItem Text="Açıklama" Value="MizanNotTuru.Aciklama" />
+                        <RadzenRadioButtonListItem Text="Düzeltilecek" Value="MizanNotTuru.Duzeltilecek" />
+                    </Items>
+                </RadzenRadioButtonList>
+            </div>
+
+            <RadzenTextArea @bind-Value="yeniMetin"
+                            rows="3"
+                            class="fk-not-textarea"
+                            Placeholder="Bu hesabın bakiyesi neden böyle? Örn: X firmasının Aralık faturası Ocak'ta geldiği için tahakkuk ettirildi, ellemeyin."
+                            aria-label="Yeni not metni" />
+
+            @if (CakisanNot is not null)
+            {
+                <div class="fk-not-cakisma">
+                    <RadzenIcon Icon="info" />
+                    Bu hesabın @(yeniKalici ? "kalıcı notu" : $"{AktifYil} dönem notu") zaten var —
+                    kaydederseniz mevcut not güncellenir.
+                </div>
+            }
+
+            <div class="fk-not-form-alt">
+                <RadzenCheckBox @bind-Value="yeniUyariBastir" Name="@BastirAlanAdi" />
+                <RadzenLabel Text="Bu hesabın otomatik uyarısını bastır"
+                             Component="@BastirAlanAdi"
+                             class="fk-not-form-label" />
+
+                <div class="fk-not-form-butonlar">
+                    <RadzenButton Text="Vazgeç"
+                                  ButtonStyle="ButtonStyle.Light"
+                                  Size="ButtonSize.Small"
+                                  Click="@FormuKapat" />
+                    <RadzenButton Text="Kaydet"
+                                  ButtonStyle="ButtonStyle.Primary"
+                                  Size="ButtonSize.Small"
+                                  Disabled="@(string.IsNullOrWhiteSpace(yeniMetin))"
+                                  Click="@Kaydet" />
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Panelin açıldığı mizan satırının kodu (3 haneli ana hesap).</summary>
+    [Parameter, EditorRequired] public string HesapKodu { get; set; } = string.Empty;
+
+    [Parameter] public string HesapAdi { get; set; } = string.Empty;
+
+    /// <summary>Dönem notu seçildiğinde yazılacak yıl.</summary>
+    [Parameter, EditorRequired] public int AktifYil { get; set; }
+
+    /// <summary>Bu ana hesaba bağlı TÜM notlar (kendi notları + alt kırılım notları).</summary>
+    [Parameter] public IReadOnlyList<MizanNotuDto> Notlar { get; set; } = Array.Empty<MizanNotuDto>();
+
+    /// <summary>
+    /// Not Id → bayatlık durumu. MizanTab'da notlar indekslenirken bir kez hesaplanır;
+    /// burada ve kartlarda sadece okunur.
+    /// </summary>
+    [Parameter] public IReadOnlyDictionary<long, MizanNotDurumu> Durumlar { get; set; } =
+        new Dictionary<long, MizanNotDurumu>();
+
+    /// <summary>Satırın (ana hesabın) mizandaki güncel cari bakiyesi.</summary>
+    [Parameter] public decimal? GuncelBakiye { get; set; }
+
+    /// <summary>Yeni not ekleme (upsert).</summary>
+    [Parameter] public EventCallback<MizanNotuUpsertDto> OnKaydet { get; set; }
+
+    /// <summary>Mevcut notu Id ile güncelleme — tip değişimi buradan gider.</summary>
+    [Parameter] public EventCallback<(long Id, MizanNotuGuncelleDto Dto)> OnGuncelle { get; set; }
+
+    /// <summary>"Güncel say" — snapshot'ı güncel bakiyeye eşitler.</summary>
+    [Parameter] public EventCallback<MizanNotuDto> OnSnapshotYenile { get; set; }
+
+    [Parameter] public EventCallback<MizanNotuDto> OnSil { get; set; }
+    [Parameter] public EventCallback OnKapat { get; set; }
+
+    private static readonly MizanNotDurumu BosDurum = new();
+
+    private MizanNotDurumu Durum(MizanNotuDto not) =>
+        Durumlar.TryGetValue(not.Id, out var d) ? d : BosDurum;
+
+    /// <summary>
+    /// Güncel bakiye yalnızca hesabın KENDİ notlarına aittir. Alt kırılım notunda
+    /// (381.01) ana hesabın bakiyesi gösterilmez — yanıltıcı olur; zaten alt kodların
+    /// mizanda karşılığı olmadığı için snapshot'ları da null'dur.
+    /// </summary>
+    private decimal? BakiyeFor(MizanNotuDto not) =>
+        string.Equals(not.HesapKodu, HesapKodu, StringComparison.OrdinalIgnoreCase)
+            ? GuncelBakiye
+            : null;
+
+    private bool formAcik;
+    private string yeniKod = string.Empty;
+    private string yeniMetin = string.Empty;
+    private bool yeniKalici = true;
+    private int yeniNotTuru = MizanNotTuru.Aciklama;
+    private bool yeniUyariBastir;
+
+    private string acikOlduguKod = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        // Panel başka bir satıra taşındıysa yarım kalan form temizlensin.
+        if (!string.Equals(acikOlduguKod, HesapKodu, StringComparison.OrdinalIgnoreCase))
+        {
+            acikOlduguKod = HesapKodu;
+            FormuKapat();
+        }
+    }
+
+    // Kalıcı not üstte, dönem notu altında — sıra servisten geldiği gibi korunur.
+    private List<MizanNotuDto> KendiNotlari =>
+        Notlar.Where(n => string.Equals(n.HesapKodu, HesapKodu, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    private List<MizanNotuDto> AltNotlari =>
+        Notlar.Where(n => !string.Equals(n.HesapKodu, HesapKodu, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    private string KodAlanAdi => $"fk-not-yeni-kod-{HesapKodu}";
+    private string BastirAlanAdi => $"fk-not-yeni-bastir-{HesapKodu}";
+
+    /// <summary>Girilen kod+tip için zaten not varsa o not — kaydetmenin üzerine yazacağını bildirmek için.</summary>
+    private MizanNotuDto? CakisanNot
+    {
+        get
+        {
+            var kod = EtkinKod;
+            int? donem = yeniKalici ? null : AktifYil;
+
+            return Notlar.FirstOrDefault(n =>
+                string.Equals(n.HesapKodu, kod, StringComparison.OrdinalIgnoreCase) &&
+                n.DonemYili == donem);
+        }
+    }
+
+    private string EtkinKod => string.IsNullOrWhiteSpace(yeniKod) ? HesapKodu : yeniKod.Trim();
+
+    private void FormuAc()
+    {
+        yeniKod = HesapKodu;
+        yeniMetin = string.Empty;
+        yeniKalici = true;
+        yeniNotTuru = MizanNotTuru.Aciklama;
+        yeniUyariBastir = false;
+        formAcik = true;
+    }
+
+    private void FormuKapat()
+    {
+        formAcik = false;
+        yeniMetin = string.Empty;
+    }
+
+    private async Task Kaydet()
+    {
+        if (string.IsNullOrWhiteSpace(yeniMetin)) return;
+
+        await OnKaydet.InvokeAsync(new MizanNotuUpsertDto
+        {
+            HesapKodu = EtkinKod,
+            Metin = yeniMetin.Trim(),
+            NotTuru = yeniNotTuru,
+            DonemYili = yeniKalici ? null : AktifYil,
+            UyariBastir = yeniUyariBastir
+        });
+
+        FormuKapat();
+    }
+}

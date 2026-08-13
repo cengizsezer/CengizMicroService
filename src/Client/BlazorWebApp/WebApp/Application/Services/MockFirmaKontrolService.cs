@@ -55,13 +55,23 @@ namespace WebApp.Application.Services
         private readonly SemaphoreSlim _vergiHydrateLock = new(1, 1);
         private readonly HashSet<int> _vergiHydratedFirms = new();
 
+        // Mizan notları da aynı desende: firma başına TEK çağrı, scope ömrü boyunca
+        // bellekte. Mizan hidrasyonundan ayrı tutulur ki not API'si hata verirse
+        // mizan yüklemesi etkilenmesin (ve tersi).
+        private readonly Dictionary<int, List<MizanNotuDto>> _notlarByFirm = new();
+        private readonly SemaphoreSlim _notHydrateLock = new(1, 1);
+        private readonly HashSet<int> _notHydratedFirms = new();
+
         private HesapPlani? _hesapPlaniTemplate;
         private bool _mizanInitialized;
         private bool _firmsLoaded;
 
-        // Hesap dönemi yılı — hem yazma hem okuma bu yıl üzerinden. Yıl bazlı geçmiş
-        // için ucu açık; şimdilik cari yıl kullanılır.
-        private static int CurrentYil => DateTime.Now.Year;
+        // Seçili hesap dönemi yılı — hem yazma hem okuma bu yıl üzerinden gider.
+        // Firma Kontrol ekranındaki dönem seçicisi burayı değiştirir; seçim scope
+        // ömrüyle sınırlıdır (F5'te içinde bulunulan yıla döner).
+        private int _donemYili = DateTime.Now.Year;
+
+        private int CurrentYil => _donemYili;
 
         public MockFirmaKontrolService(
             IHesapPlaniLoader hesapPlaniLoader,
@@ -562,6 +572,162 @@ namespace WebApp.Application.Services
             };
 
             return _ruleEngine.Calistir(context);
+        }
+
+        // ── Mizan hesap notları ─────────────────────────────────────────────
+
+        public int AktifDonemYili => _donemYili;
+
+        public void SetDonemYili(int yil)
+        {
+            if (yil == _donemYili) return;
+
+            _donemYili = yil;
+
+            // Döneme bağlı her şey düşer. Hidrasyon API hatası alsa bile eski yılın
+            // verisi ekranda KALMAMALI — bu yüzden bayrakların yanında bellekteki
+            // nesneler de sıfırlanıyor.
+            _mizanHydratedFirms.Clear();
+            _rawCariByFirm.Clear();
+            _rawOncekiByFirm.Clear();
+            _rawAdByFirm.Clear();
+
+            _notHydratedFirms.Clear();
+            _notlarByFirm.Clear();
+
+            _vergiHydratedFirms.Clear();
+
+            foreach (var firma in _firms)
+            {
+                if (_hesapPlaniTemplate is not null)
+                    firma.Mizan = _hesapPlaniTemplate.Clone();
+
+                // Vergi hidrasyonu kayıt yoksa üzerine yazmıyor; burada sıfırlanmazsa
+                // önceki dönemin girdileri yeni dönemde görünmeye devam ederdi.
+                firma.VergiBilgisiCariDonem = new VergiHesaplama();
+            }
+
+            // Kontrol maddeleri (FirmaKontrolMadde) döneme bağlı DEĞİL — dokunulmuyor.
+        }
+
+        public async Task<IReadOnlyList<MizanNotuDto>> GetMizanNotlariAsync(int firmaId)
+        {
+            await EnsureNotlarHydratedAsync(firmaId);
+
+            // Kopya döndürülür: çağıran listeyi sıralayıp filtreleyebilsin, cache bozulmasın.
+            return _notlarByFirm.TryGetValue(firmaId, out var liste)
+                ? liste.ToList()
+                : Array.Empty<MizanNotuDto>();
+        }
+
+        public async Task<MizanNotuDto> SaveMizanNotuAsync(int firmaId, MizanNotuUpsertDto dto)
+        {
+            await EnsureNotlarHydratedAsync(firmaId);
+
+            var kaydedilen = await _kontrolApiClient.UpsertMizanNotuAsync(firmaId, dto);
+
+            // Bellek DB ile aynı kalsın: aynı Id varsa değiştir, yoksa ekle.
+            var liste = NotListesi(firmaId);
+            var idx = liste.FindIndex(n => n.Id == kaydedilen.Id);
+            if (idx >= 0) liste[idx] = kaydedilen;
+            else liste.Add(kaydedilen);
+
+            return kaydedilen;
+        }
+
+        public async Task<MizanNotuDto> UpdateMizanNotuAsync(int firmaId, long id, MizanNotuGuncelleDto dto)
+        {
+            await EnsureNotlarHydratedAsync(firmaId);
+
+            var guncellenen = await _kontrolApiClient.GuncelleMizanNotuAsync(firmaId, id, dto);
+
+            // Tip değişmiş olabilir (DonemYili) — kaydı sunucudan dönen haliyle değiştir.
+            var liste = NotListesi(firmaId);
+            var idx = liste.FindIndex(n => n.Id == guncellenen.Id);
+            if (idx >= 0) liste[idx] = guncellenen;
+            else liste.Add(guncellenen);
+
+            return guncellenen;
+        }
+
+        public async Task<MizanNotuDto> SnapshotYenileAsync(int firmaId, long id)
+        {
+            await EnsureNotlarHydratedAsync(firmaId);
+
+            var yenilenen = await _kontrolApiClient.SnapshotYenileAsync(firmaId, id);
+
+            var liste = NotListesi(firmaId);
+            var idx = liste.FindIndex(n => n.Id == yenilenen.Id);
+            if (idx >= 0) liste[idx] = yenilenen;
+            else liste.Add(yenilenen);
+
+            return yenilenen;
+        }
+
+        public async Task DeleteMizanNotuAsync(int firmaId, long id)
+        {
+            await EnsureNotlarHydratedAsync(firmaId);
+
+            await _kontrolApiClient.DeleteMizanNotuAsync(firmaId, id);
+            NotListesi(firmaId).RemoveAll(n => n.Id == id);
+        }
+
+        public async Task<IReadOnlyList<MizanNotuDto>> GetNotDevirAdaylariAsync(int firmaId, int kaynakYil, int hedefYil) =>
+            await _kontrolApiClient.GetDevirAdaylariAsync(firmaId, kaynakYil, hedefYil);
+
+        public async Task<IReadOnlyList<MizanNotuDto>> DevretMizanNotlariAsync(int firmaId, MizanNotuDevirRequest req)
+        {
+            await EnsureNotlarHydratedAsync(firmaId);
+
+            var yeniler = await _kontrolApiClient.DevretMizanNotlariAsync(firmaId, req);
+
+            // Hedef aktif dönemse taşınan notlar ekranda hemen görünsün.
+            if (req.HedefYil == CurrentYil && yeniler.Count > 0)
+                NotListesi(firmaId).AddRange(yeniler);
+
+            return yeniler;
+        }
+
+        // Firmanın notlarını DB'den bir kez (scope ömrü) belleğe yükler. Kalıcı notlar
+        // + aktif dönemin notları tek çağrıda gelir. API hata verirse bayrak YAKILMAZ.
+        private async Task EnsureNotlarHydratedAsync(int firmaId)
+        {
+            if (_notHydratedFirms.Contains(firmaId)) return;
+
+            await _notHydrateLock.WaitAsync();
+            try
+            {
+                if (_notHydratedFirms.Contains(firmaId)) return;
+
+                List<MizanNotuDto> notlar;
+                try
+                {
+                    notlar = await _kontrolApiClient.GetMizanNotlariAsync(firmaId, CurrentYil);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[MizanNotLoad HATA] {ex}");
+                    return;
+                }
+
+                _notlarByFirm[firmaId] = notlar;
+                _notHydratedFirms.Add(firmaId);
+            }
+            finally
+            {
+                _notHydrateLock.Release();
+            }
+        }
+
+        private List<MizanNotuDto> NotListesi(int firmaId)
+        {
+            if (!_notlarByFirm.TryGetValue(firmaId, out var liste))
+            {
+                liste = new List<MizanNotuDto>();
+                _notlarByFirm[firmaId] = liste;
+            }
+
+            return liste;
         }
 
         public async Task ResetMizanAsync(int firmaId)

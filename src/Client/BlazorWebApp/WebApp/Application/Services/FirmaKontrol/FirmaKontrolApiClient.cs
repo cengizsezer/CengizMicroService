@@ -83,6 +83,78 @@ namespace WebApp.Application.Services.FirmaKontrol
                 await ApiErrorParser.ThrowAsync(response, ct);
         }
 
+        // ── Mizan hesap notları ─────────────────────────────────────────────
+
+        public async Task<List<MizanNotuDto>> GetMizanNotlariAsync(int firmaId, int? yil, CancellationToken ct = default)
+        {
+            var url = yil.HasValue
+                ? $"{Base}/{firmaId}/mizan-notlari?yil={yil.Value}"
+                : $"{Base}/{firmaId}/mizan-notlari";
+
+            var response = await _httpClient.GetAsync(url, ct);
+            if (!response.IsSuccessStatusCode)
+                await ApiErrorParser.ThrowAsync(response, ct);
+
+            return await response.Content.ReadFromJsonAsync<List<MizanNotuDto>>(cancellationToken: ct)
+                   ?? new List<MizanNotuDto>();
+        }
+
+        public async Task<MizanNotuDto> UpsertMizanNotuAsync(int firmaId, MizanNotuUpsertDto dto, CancellationToken ct = default)
+        {
+            var response = await _httpClient.PutAsJsonAsync($"{Base}/{firmaId}/mizan-notlari", dto, ct);
+            if (!response.IsSuccessStatusCode)
+                await ApiErrorParser.ThrowAsync(response, ct);
+
+            return (await response.Content.ReadFromJsonAsync<MizanNotuDto>(cancellationToken: ct))!;
+        }
+
+        public async Task<MizanNotuDto> GuncelleMizanNotuAsync(int firmaId, long id, MizanNotuGuncelleDto dto, CancellationToken ct = default)
+        {
+            var response = await _httpClient.PutAsJsonAsync($"{Base}/{firmaId}/mizan-notlari/{id}", dto, ct);
+            if (!response.IsSuccessStatusCode)
+                await ApiErrorParser.ThrowAsync(response, ct);
+
+            return (await response.Content.ReadFromJsonAsync<MizanNotuDto>(cancellationToken: ct))!;
+        }
+
+        public async Task<MizanNotuDto> SnapshotYenileAsync(int firmaId, long id, CancellationToken ct = default)
+        {
+            var response = await _httpClient.PostAsync($"{Base}/{firmaId}/mizan-notlari/{id}/snapshot-yenile", null, ct);
+            if (!response.IsSuccessStatusCode)
+                await ApiErrorParser.ThrowAsync(response, ct);
+
+            return (await response.Content.ReadFromJsonAsync<MizanNotuDto>(cancellationToken: ct))!;
+        }
+
+        public async Task DeleteMizanNotuAsync(int firmaId, long id, CancellationToken ct = default)
+        {
+            var response = await _httpClient.DeleteAsync($"{Base}/{firmaId}/mizan-notlari/{id}", ct);
+            if (!response.IsSuccessStatusCode)
+                await ApiErrorParser.ThrowAsync(response, ct);
+        }
+
+        public async Task<List<MizanNotuDto>> GetDevirAdaylariAsync(int firmaId, int kaynakYil, int hedefYil, CancellationToken ct = default)
+        {
+            var response = await _httpClient.GetAsync(
+                $"{Base}/{firmaId}/mizan-notlari/devir-adaylari?kaynakYil={kaynakYil}&hedefYil={hedefYil}", ct);
+
+            if (!response.IsSuccessStatusCode)
+                await ApiErrorParser.ThrowAsync(response, ct);
+
+            return await response.Content.ReadFromJsonAsync<List<MizanNotuDto>>(cancellationToken: ct)
+                   ?? new List<MizanNotuDto>();
+        }
+
+        public async Task<List<MizanNotuDto>> DevretMizanNotlariAsync(int firmaId, MizanNotuDevirRequest req, CancellationToken ct = default)
+        {
+            var response = await _httpClient.PostAsJsonAsync($"{Base}/{firmaId}/mizan-notlari/devir", req, ct);
+            if (!response.IsSuccessStatusCode)
+                await ApiErrorParser.ThrowAsync(response, ct);
+
+            return await response.Content.ReadFromJsonAsync<List<MizanNotuDto>>(cancellationToken: ct)
+                   ?? new List<MizanNotuDto>();
+        }
+
         // ── Vergi paneli girdileri ──────────────────────────────────────────
 
         public async Task<FirmaKontrolVergiDto?> GetVergiAsync(int firmaId, int donem, int yil, CancellationToken ct = default)

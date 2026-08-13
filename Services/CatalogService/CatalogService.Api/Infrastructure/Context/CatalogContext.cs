@@ -78,6 +78,9 @@ namespace CatalogService.Api.Infrastructure.Context
         // Firma Kontrol / Raporlar modülü — ham mizan satırları (firma + dönem + yıl bazında)
         public DbSet<Features.FirmaKontrol.Domain.FirmaKontrolMizanSatir> FirmaKontrolMizanSatirlari => Set<Features.FirmaKontrol.Domain.FirmaKontrolMizanSatir>();
 
+        // Firma Kontrol / Raporlar modülü — mizan hesap satırlarına yazılan gerekçe notları
+        public DbSet<Features.FirmaKontrol.Domain.MizanNotu> MizanNotlari => Set<Features.FirmaKontrol.Domain.MizanNotu>();
+
         // Firma Kontrol / Raporlar modülü — vergi paneli girdileri (firma + dönem + yıl bazında)
         public DbSet<Features.FirmaKontrol.Domain.FirmaKontrolVergi> FirmaKontrolVergiler => Set<Features.FirmaKontrol.Domain.FirmaKontrolVergi>();
 
@@ -147,6 +150,7 @@ namespace CatalogService.Api.Infrastructure.Context
             // Firma Kontrol / Raporlar modülü
             builder.ApplyConfiguration(new FirmaKontrolMaddeEntityTypeConfiguration());
             builder.ApplyConfiguration(new FirmaKontrolMizanSatirEntityTypeConfiguration());
+            builder.ApplyConfiguration(new MizanNotuEntityTypeConfiguration());
             builder.ApplyConfiguration(new FirmaKontrolVergiEntityTypeConfiguration());
             builder.ApplyConfiguration(new VergiKalemiEntityTypeConfiguration());
             builder.ApplyConfiguration(new VergiHesaplamaEntityTypeConfiguration());

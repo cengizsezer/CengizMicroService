@@ -14,7 +14,8 @@
     <RadzenStack Gap="1rem">
 
         <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" ShowIcon="true" Shade="Shade.Lighter">
-            <strong>Yüklenen dönem:</strong> @DonemLabel
+            @* Yükleme hangi hesap dönemine yazılacak — üstteki dönem seçicisinden gelir. *@
+            <strong>Yüklenen dönem:</strong> @DonemLabel — <strong>@FirmaKontrolService.AktifDonemYili</strong> hesap dönemine yazılacak
             <br />
             <strong>Beklenen Excel formatı:</strong>
             <ul style="margin: 0.5rem 0 0 1.25rem; padding: 0;">

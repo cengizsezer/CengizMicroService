@@ -135,6 +135,7 @@ builder.Services.AddScoped<CatalogService.Api.Features.Muhasebe.Services.IMasraf
 builder.Services.AddSingleton<CatalogService.Api.Features.Muhasebe.Services.IBankaKoduService, CatalogService.Api.Features.Muhasebe.Services.BankaKoduService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolMaddeService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolMaddeService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolMizanService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolMizanService>();
+builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IMizanNotuService, CatalogService.Api.Features.FirmaKontrol.Services.MizanNotuService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolVergiService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolVergiService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IVergiBeyannameService, CatalogService.Api.Features.FirmaKontrol.Services.VergiBeyannameService>();
 builder.Services.AddScoped<IPayrollCalculationEngine, PayrollCalculationEngine>();

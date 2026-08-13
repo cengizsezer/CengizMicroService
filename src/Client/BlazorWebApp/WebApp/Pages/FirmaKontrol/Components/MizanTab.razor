@@ -1,7 +1,13 @@
 @using System.Globalization
+@using Radzen
+@using Radzen.Blazor
 @using WebApp.Application.RuleEngine
+@using WebApp.Application.Services.Interfaces
 @using WebApp.Domain.Models.FirmaKontrol
+@using WebApp.Shared.Dto.FirmaKontrol
 @inject IJSRuntime JS
+@inject IFirmaKontrolService FirmaKontrolService
+@inject NotificationService Notif
 
 @if (!HasMizan)
 {
@@ -18,6 +24,32 @@ else
 {
     <div class="fk-mizan-tab-layout">
         <div class="fk-mizan-tab-sol">
+            <div class="fk-mizan-not-toolbar">
+                <div class="fk-mizan-not-filtre">
+                    <RadzenCheckBox @bind-Value="sadeceNotlu" Name="fk-sadece-notlu" Change="@((bool _) => TazeleGorunenSatirlar())" />
+                    <RadzenLabel Text="Sadece notlu hesaplar" Component="fk-sadece-notlu" class="fk-not-form-label" />
+                    @* Adet toggle kapalıyken de görünür — kaç hesapta not olduğu her an bilinsin. *@
+                    <span class="fk-mizan-not-adet">@NotluHesapAdedi hesapta not var</span>
+                </div>
+
+                <RadzenButton Icon="move_down"
+                              Text="Geçen dönemin notlarını taşı"
+                              ButtonStyle="@(devirAcik ? ButtonStyle.Primary : ButtonStyle.Light)"
+                              Variant="@(devirAcik ? Variant.Filled : Variant.Outlined)"
+                              Size="ButtonSize.Small"
+                              Click="@DevirPaneliniAcKapat" />
+            </div>
+
+            @if (devirAcik)
+            {
+                <MizanNotDevirPaneli AktifYil="@AktifYil"
+                                     Adaylar="devirAdaylari"
+                                     Yukleniyor="devirYukleniyor"
+                                     OnYillarDegisti="DevirAdaylariYukle"
+                                     OnDevret="Devret"
+                                     OnKapat="@(() => devirAcik = false)" />
+            }
+
             <table class="fk-mizan-table fk-mizan-tab-table fk-mizan-kompakt">
                 <thead>
                     <tr>
@@ -25,29 +57,78 @@ else
                         <th class="fk-mizan-col-ad">Hesap Adı</th>
                         <th class="fk-mizan-col-num">Önceki Dönem</th>
                         <th class="fk-mizan-col-num">Cari Dönem</th>
+                        <th class="fk-mizan-col-not">Not</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var row in accountRows)
+                    @if (gorunenSatirlar.Count == 0)
                     {
-                        var seviye = HighestSeviyeForKod(row.Kod);
-                        var rowSeviyeClass = seviye switch
-                        {
-                            UyariSeviyesi.Kritik => "fk-mizan-row-kritik",
-                            UyariSeviyesi.Uyari => "fk-mizan-row-uyari",
-                            UyariSeviyesi.Bilgi => "fk-mizan-row-bilgi",
-                            _ => null
-                        };
-                        var isHighlighted = string.Equals(highlightedKod, row.Kod, StringComparison.OrdinalIgnoreCase);
-                        var hasUyari = seviye is not null;
-                        <tr id="@RowId(row.Kod)"
-                            class="fk-mizan-row account @rowSeviyeClass @(isHighlighted ? "fk-mizan-highlight" : null) @(hasUyari ? "fk-mizan-row-clickable" : null)"
-                            @onclick="@(() => OnRowClicked(row.Kod, hasUyari))">
-                            <td class="fk-mizan-col-kod">@row.Kod</td>
-                            <td class="fk-mizan-col-ad">@row.Ad</td>
-                            <td class="fk-mizan-col-num">@FormatNumber(row.OncekiDonem)</td>
-                            <td class="fk-mizan-col-num">@FormatNumber(row.CariDonem)</td>
+                        <tr>
+                            <td colspan="5" class="fk-mizan-empty">
+                                <em>Notu olan hesap bulunamadı.</em>
+                            </td>
                         </tr>
+                    }
+                    else
+                    {
+                        @foreach (var row in gorunenSatirlar)
+                        {
+                            var ozet = NotOzetiFor(row.Kod);
+                            var seviye = HighestSeviyeForKod(row.Kod);
+                            var rowSeviyeClass = seviye switch
+                            {
+                                UyariSeviyesi.Kritik => "fk-mizan-row-kritik",
+                                UyariSeviyesi.Uyari => "fk-mizan-row-uyari",
+                                UyariSeviyesi.Bilgi => "fk-mizan-row-bilgi",
+                                _ => null
+                            };
+                            var isHighlighted = string.Equals(highlightedKod, row.Kod, StringComparison.OrdinalIgnoreCase);
+                            var hasUyari = seviye is not null;
+                            var bastirmaMetni = ozet?.BastirmaMetni;
+                            <tr @key="row.Kod"
+                                id="@RowId(row.Kod)"
+                                class="fk-mizan-row account @rowSeviyeClass @SeritClass(ozet) @(isHighlighted ? "fk-mizan-highlight" : null) @(hasUyari ? "fk-mizan-row-clickable" : null) @(bastirmaMetni is not null ? "fk-mizan-row-bastirilmis" : null)"
+                                title="@bastirmaMetni"
+                                @onclick="@(() => OnRowClicked(row.Kod, hasUyari))">
+                                <td class="fk-mizan-col-kod">@row.Kod</td>
+                                <td class="fk-mizan-col-ad">@row.Ad</td>
+                                <td class="fk-mizan-col-num">@FormatNumber(row.OncekiDonem)</td>
+                                <td class="fk-mizan-col-num">@FormatNumber(row.CariDonem)</td>
+                                <td class="fk-mizan-col-not">
+                                    <button type="button"
+                                            class="fk-not-btn @(acikNotKodu == row.Kod ? "is-acik" : null)"
+                                            title="@NotButonBaslik(ozet)"
+                                            @onclick:stopPropagation="true"
+                                            @onclick="@(() => NotPaneliniAcKapat(row.Kod))">
+                                        <RadzenIcon Icon="sticky_note_2" class="@NotIkonClass(ozet)" />
+                                        @if (ozet is not null && ozet.AltNotAdedi > 0)
+                                        {
+                                            <span class="fk-not-rozet"
+                                                  title="@($"Alt hesaplarda {ozet.AltNotAdedi} not")">@ozet.AltNotAdedi</span>
+                                        }
+                                    </button>
+                                </td>
+                            </tr>
+
+                            @if (acikNotKodu == row.Kod)
+                            {
+                                <tr class="fk-mizan-not-satiri" @key="@($"not-{row.Kod}")">
+                                    <td colspan="5">
+                                        <MizanNotPaneli HesapKodu="@row.Kod"
+                                                        HesapAdi="@row.Ad"
+                                                        AktifYil="@AktifYil"
+                                                        Notlar="NotlarForKod(row.Kod)"
+                                                        Durumlar="notDurumuById"
+                                                        GuncelBakiye="@row.CariDonem"
+                                                        OnKaydet="NotKaydet"
+                                                        OnGuncelle="NotGuncelle"
+                                                        OnSnapshotYenile="NotSnapshotYenile"
+                                                        OnSil="NotSil"
+                                                        OnKapat="@(() => acikNotKodu = null)" />
+                                    </td>
+                                </tr>
+                            }
+                        }
                     }
                 </tbody>
             </table>
@@ -58,53 +139,90 @@ else
 
             <div class="fk-uyari-stat-row">
                 <button type="button"
-                        class="fk-uyari-stat kritik @(activeFilter == UyariSeviyesi.Kritik ? "is-active" : null)"
-                        @onclick="@(() => SetFilter(UyariSeviyesi.Kritik))">
+                        class="fk-uyari-stat kritik @(filtre == UyariFiltresi.Kritik ? "is-active" : null)"
+                        @onclick="@(() => SetFilter(UyariFiltresi.Kritik))">
                     <div class="fk-uyari-stat-num">@KritikCount</div>
                     <div class="fk-uyari-stat-label">KRİTİK</div>
                 </button>
                 <button type="button"
-                        class="fk-uyari-stat uyari @(activeFilter == UyariSeviyesi.Uyari ? "is-active" : null)"
-                        @onclick="@(() => SetFilter(UyariSeviyesi.Uyari))">
+                        class="fk-uyari-stat uyari @(filtre == UyariFiltresi.Uyari ? "is-active" : null)"
+                        @onclick="@(() => SetFilter(UyariFiltresi.Uyari))">
                     <div class="fk-uyari-stat-num">@UyariCount</div>
                     <div class="fk-uyari-stat-label">UYARI</div>
                 </button>
                 <button type="button"
-                        class="fk-uyari-stat bilgi @(activeFilter == UyariSeviyesi.Bilgi ? "is-active" : null)"
-                        @onclick="@(() => SetFilter(UyariSeviyesi.Bilgi))">
+                        class="fk-uyari-stat bilgi @(filtre == UyariFiltresi.Bilgi ? "is-active" : null)"
+                        @onclick="@(() => SetFilter(UyariFiltresi.Bilgi))">
                     <div class="fk-uyari-stat-num">@BilgiCount</div>
                     <div class="fk-uyari-stat-label">BİLGİ</div>
                 </button>
+                <button type="button"
+                        class="fk-uyari-stat aciklanmis @(filtre == UyariFiltresi.NotlaAciklanmis ? "is-active" : null)"
+                        title="Notla açıklandığı için Kritik/Uyarı sayacından çıkarılan uyarılar."
+                        @onclick="@(() => SetFilter(UyariFiltresi.NotlaAciklanmis))">
+                    <div class="fk-uyari-stat-num">@bastirilanUyarilar.Count</div>
+                    <div class="fk-uyari-stat-label">NOTLA AÇIKLANMIŞ</div>
+                </button>
             </div>
 
-            <div class="fk-uyari-toplam">Toplam: <strong>@Uyarilar.Count</strong> uyarı</div>
+            <div class="fk-uyari-toplam">Toplam: <strong>@aktifUyarilar.Count</strong> uyarı</div>
 
             <div class="fk-uyari-panel-filtre">
                 <span class="fk-uyari-filtre-label">Filtre:</span>
                 <RadzenButton Text="Tümü"
-                              ButtonStyle="@FilterStyle(null)"
-                              Variant="@FilterVariant(null)"
+                              ButtonStyle="@FilterStyle(UyariFiltresi.Tumu)"
+                              Variant="@FilterVariant(UyariFiltresi.Tumu)"
                               Size="ButtonSize.Small"
-                              Click="@(() => SetFilter(null))" />
+                              Click="@(() => SetFilter(UyariFiltresi.Tumu))" />
                 <RadzenButton Text="Kritik"
-                              ButtonStyle="@FilterStyle(UyariSeviyesi.Kritik)"
-                              Variant="@FilterVariant(UyariSeviyesi.Kritik)"
+                              ButtonStyle="@FilterStyle(UyariFiltresi.Kritik)"
+                              Variant="@FilterVariant(UyariFiltresi.Kritik)"
                               Size="ButtonSize.Small"
-                              Click="@(() => SetFilter(UyariSeviyesi.Kritik))" />
+                              Click="@(() => SetFilter(UyariFiltresi.Kritik))" />
                 <RadzenButton Text="Uyarı"
-                              ButtonStyle="@FilterStyle(UyariSeviyesi.Uyari)"
-                              Variant="@FilterVariant(UyariSeviyesi.Uyari)"
+                              ButtonStyle="@FilterStyle(UyariFiltresi.Uyari)"
+                              Variant="@FilterVariant(UyariFiltresi.Uyari)"
                               Size="ButtonSize.Small"
-                              Click="@(() => SetFilter(UyariSeviyesi.Uyari))" />
+                              Click="@(() => SetFilter(UyariFiltresi.Uyari))" />
                 <RadzenButton Text="Bilgi"
-                              ButtonStyle="@FilterStyle(UyariSeviyesi.Bilgi)"
-                              Variant="@FilterVariant(UyariSeviyesi.Bilgi)"
+                              ButtonStyle="@FilterStyle(UyariFiltresi.Bilgi)"
+                              Variant="@FilterVariant(UyariFiltresi.Bilgi)"
                               Size="ButtonSize.Small"
-                              Click="@(() => SetFilter(UyariSeviyesi.Bilgi))" />
+                              Click="@(() => SetFilter(UyariFiltresi.Bilgi))" />
             </div>
 
             <div class="fk-uyari-panel-list">
-                @if (FilteredUyarilar.Count == 0)
+                @if (filtre == UyariFiltresi.NotlaAciklanmis)
+                {
+                    @if (bastirilanUyarilar.Count == 0)
+                    {
+                        <div class="fk-uyari-panel-empty">
+                            <em>Notla açıklanmış uyarı yok. Bir notu kaydederken "uyarıyı bastır" seçeneğini işaretleyin.</em>
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var uyari in bastirilanUyarilar)
+                        {
+                            <div class="fk-uyari-bastirilan" @key="uyari.KuralKodu">
+                                <div class="fk-uyari-bastirilan-ust">
+                                    <span class="fk-uyari-kart-kod">@uyari.HesapKodu</span>
+                                    <span class="fk-uyari-bastirilan-baslik">@uyari.Baslik</span>
+                                </div>
+                                <div class="fk-uyari-bastirilan-not">
+                                    <RadzenIcon Icon="sticky_note_2" />
+                                    @(NotOzetiFor(uyari.HesapKodu)?.BastirmaMetni)
+                                </div>
+                                <RadzenButton Icon="notifications_active"
+                                              Text="Bastırmayı kaldır"
+                                              ButtonStyle="ButtonStyle.Light"
+                                              Size="ButtonSize.ExtraSmall"
+                                              Click="@(() => BastirmayiKaldir(uyari))" />
+                            </div>
+                        }
+                    }
+                }
+                else if (FilteredUyarilar.Count == 0)
                 {
                     <div class="fk-uyari-panel-empty">
                         <em>Bu filtrede gösterilecek uyarı yok.</em>
@@ -126,6 +244,7 @@ else
 }
 
 @code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
     [Parameter, EditorRequired] public HesapPlani Mizan { get; set; } = new();
     [Parameter, EditorRequired] public IReadOnlyList<UyariSonucu> Uyarilar { get; set; } = Array.Empty<UyariSonucu>();
 
@@ -147,12 +266,76 @@ else
     [Parameter] public IReadOnlyDictionary<string, string> RawAdByKod { get; set; } =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-    private UyariSeviyesi? activeFilter;
+    private enum UyariFiltresi { Tumu, Kritik, Uyari, Bilgi, NotlaAciklanmis }
+
+    /// <summary>Bir mizan satırının not durumu — render sırasında satır başına LINQ çalışmasın diye önceden hesaplanır.</summary>
+    private sealed class NotOzeti
+    {
+        public bool KendiNotuVar { get; init; }
+        public int AltNotAdedi { get; init; }
+        public bool KaliciVar { get; init; }
+
+        /// <summary>Uyarıyı bastıran notun metni (tooltip). Bastırma yoksa null.</summary>
+        public string? BastirmaMetni { get; init; }
+    }
+
+    private UyariFiltresi filtre = UyariFiltresi.Tumu;
     private string? highlightedKod;
     private List<MizanSatir> accountRows = new();
+    private List<MizanSatir> gorunenSatirlar = new();
     private Dictionary<string, UyariSeviyesi> seviyeByKod = new(StringComparer.OrdinalIgnoreCase);
 
-    protected override void OnParametersSet()
+    // ── Not durumu ──────────────────────────────────────────────────────────
+    private List<MizanNotuDto> notlar = new();
+    private Dictionary<string, List<MizanNotuDto>> notlarByAnaHesap = new(StringComparer.OrdinalIgnoreCase);
+    private Dictionary<string, NotOzeti> notOzetiByKod = new(StringComparer.OrdinalIgnoreCase);
+
+    // Bayatlık karşılaştırması NOT BAŞINA yapılır (her notun kendi snapshot'ı var),
+    // bu yüzden kod bazlı notOzetiByKod'un yanında ayrı bir sözlükte tutulur.
+    // İkisi de IndeksleNotlar'da bir kez kurulur; render döngüsünde hesap yok.
+    private Dictionary<long, MizanNotDurumu> notDurumuById = new();
+
+    // Kod -> mizandaki güncel cari bakiye; snapshot karşılaştırmasının payandası.
+    private Dictionary<string, decimal?> bakiyeByKod = new(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly List<MizanNotuDto> BosNotListesi = new();
+
+    private string? acikNotKodu;
+    private bool sadeceNotlu;
+
+    private List<UyariSonucu> aktifUyarilar = new();
+    private List<UyariSonucu> bastirilanUyarilar = new();
+
+    // ── Dönem devri ─────────────────────────────────────────────────────────
+    private bool devirAcik;
+    private bool devirYukleniyor;
+    private IReadOnlyList<MizanNotuDto> devirAdaylari = Array.Empty<MizanNotuDto>();
+
+    // Notlar firma+dönem başına TEK kez çekilir. Dönem de anahtarda: seçici yılı
+    // değiştirdiğinde eski dönemin notları ekranda kalmamalı.
+    private (int FirmaId, int Yil) notlarAnahtari;
+
+    private int AktifYil => FirmaKontrolService.AktifDonemYili;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        KurSatirlar();
+
+        var anahtar = (FirmaId, AktifYil);
+        if (notlarAnahtari != anahtar)
+        {
+            // Dönem/firma değişti: açık kalan panellerin bağlamı da geçersiz.
+            acikNotKodu = null;
+            devirAcik = false;
+
+            notlarAnahtari = anahtar;
+            await NotlariYukleAsync();
+        }
+
+        IndeksleNotlar();
+    }
+
+    private void KurSatirlar()
     {
         // 1) HesapPlani'ndeki tüm satırları kod-bazlı lookup (ad bulma için)
         var allByKod = Mizan.Aktif.Concat(Mizan.Pasif).Concat(Mizan.GelirTablosu)
@@ -201,7 +384,111 @@ else
             })
             .ToList();
 
-        seviyeByKod = Uyarilar
+        bakiyeByKod = accountRows.ToDictionary(
+            r => r.Kod,
+            r => r.CariDonem,
+            StringComparer.OrdinalIgnoreCase);
+    }
+
+    // ── Notlar ──────────────────────────────────────────────────────────────
+
+    private async Task NotlariYukleAsync()
+    {
+        try
+        {
+            notlar = (await FirmaKontrolService.GetMizanNotlariAsync(FirmaId)).ToList();
+        }
+        catch (Exception ex)
+        {
+            // Notlar alınamazsa mizan yine de çalışsın — sessiz yutma yok.
+            Console.WriteLine($"[MizanNot HATA] {ex}");
+            notlar = new List<MizanNotuDto>();
+            Notif.Notify(NotificationSeverity.Warning, "Notlar getirilemedi",
+                "Mizan notları yüklenemedi. Sayfayı yenilemeyi deneyin.");
+        }
+    }
+
+    /// <summary>
+    /// Notları ana hesap koduna göre indeksler ve satır başına özet çıkarır.
+    /// Render döngüsünde satır başına LINQ çalışmaması için burada bir kez yapılır —
+    /// mizan performansı bozulmasın.
+    /// </summary>
+    private void IndeksleNotlar()
+    {
+        notlarByAnaHesap = notlar
+            .GroupBy(n => string.IsNullOrWhiteSpace(n.AnaHesapKodu) ? n.HesapKodu : n.AnaHesapKodu,
+                     StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g
+                    // Önce hesabın kendi notları, sonra alt kırılımlar; her ikisinde de kalıcı üstte.
+                    .OrderBy(n => string.Equals(n.HesapKodu, g.Key, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                    .ThenBy(n => n.HesapKodu, StringComparer.Ordinal)
+                    .ThenBy(n => n.DonemYili.HasValue)
+                    .ToList(),
+                StringComparer.OrdinalIgnoreCase);
+
+        notOzetiByKod = notlarByAnaHesap.ToDictionary(
+            kv => kv.Key,
+            kv =>
+            {
+                var kendi = kv.Value
+                    .Where(n => string.Equals(n.HesapKodu, kv.Key, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                // Bastırma tooltip'i: kalıcı not önceliklidir (listede zaten üstte).
+                var bastiran = kv.Value.FirstOrDefault(n => n.UyariBastir);
+
+                return new NotOzeti
+                {
+                    KendiNotuVar = kendi.Count > 0,
+                    AltNotAdedi = kv.Value.Count - kendi.Count,
+                    // Şerit satırın tamamını temsil eder: kalıcı not alt kırılımda olsa da
+                    // satır "kalıcı" rengiyle işaretlenir.
+                    KaliciVar = kv.Value.Any(n => !n.DonemYili.HasValue),
+                    BastirmaMetni = bastiran?.Metin
+                };
+            },
+            StringComparer.OrdinalIgnoreCase);
+
+        // Snapshot ↔ güncel bakiye karşılaştırması: not başına bir kez.
+        // Snapshot yoksa iki bayrak da false → kartta hiçbir sinyal gösterilmez.
+        notDurumuById = notlar.ToDictionary(
+            n => n.Id,
+            n =>
+            {
+                bakiyeByKod.TryGetValue(n.HesapKodu, out var guncel);
+
+                var karsilastirilabilir = n.SnapshotBakiye.HasValue && guncel.HasValue;
+
+                return new MizanNotDurumu
+                {
+                    GuncelBakiye = guncel,
+                    Bayat = karsilastirilabilir && n.SnapshotBakiye!.Value != guncel!.Value,
+                    Degismedi = karsilastirilabilir && n.SnapshotBakiye!.Value == guncel!.Value
+                };
+            });
+
+        HesaplaUyariGruplari();
+        TazeleGorunenSatirlar();
+    }
+
+    /// <summary>UyariBastir'lı notu olan hesapların uyarılarını "Notla Açıklanmış" grubuna ayırır.</summary>
+    private void HesaplaUyariGruplari()
+    {
+        aktifUyarilar = new List<UyariSonucu>();
+        bastirilanUyarilar = new List<UyariSonucu>();
+
+        foreach (var u in Uyarilar)
+        {
+            if (notOzetiByKod.TryGetValue(u.HesapKodu, out var ozet) && ozet.BastirmaMetni is not null)
+                bastirilanUyarilar.Add(u);
+            else
+                aktifUyarilar.Add(u);
+        }
+
+        // Satır renklendirmesi yalnızca bastırılmamış uyarılardan gelir.
+        seviyeByKod = aktifUyarilar
             .GroupBy(u => u.HesapKodu, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
                 g => g.Key,
@@ -209,30 +496,229 @@ else
                 StringComparer.OrdinalIgnoreCase);
     }
 
+    private void TazeleGorunenSatirlar()
+    {
+        gorunenSatirlar = sadeceNotlu
+            ? accountRows.Where(r => notOzetiByKod.ContainsKey(r.Kod)).ToList()
+            : accountRows;
+    }
+
+    private NotOzeti? NotOzetiFor(string kod) =>
+        notOzetiByKod.TryGetValue(kod, out var o) ? o : null;
+
+    private IReadOnlyList<MizanNotuDto> NotlarForKod(string kod) =>
+        notlarByAnaHesap.TryGetValue(kod, out var l) ? l : BosNotListesi;
+
+    private int NotluHesapAdedi => accountRows.Count(r => notOzetiByKod.ContainsKey(r.Kod));
+
+    /// <summary>Kendi notu olan hesapta dolu, yalnızca alt hesap notu olanda soluk ikon.</summary>
+    private static string NotIkonClass(NotOzeti? ozet) =>
+        ozet?.KendiNotuVar == true ? "fk-not-ikon is-dolu" : "fk-not-ikon is-bos";
+
+    private static string SeritClass(NotOzeti? ozet)
+    {
+        if (ozet is null) return string.Empty;
+        return ozet.KaliciVar ? "fk-mizan-row-not-kalici" : "fk-mizan-row-not-donem";
+    }
+
+    private static string NotButonBaslik(NotOzeti? ozet)
+    {
+        if (ozet is null) return "Not ekle";
+
+        var parcalar = new List<string>();
+        if (ozet.KendiNotuVar) parcalar.Add("Bu hesabın notu var");
+        if (ozet.AltNotAdedi > 0) parcalar.Add($"alt hesaplarda {ozet.AltNotAdedi} not");
+
+        return parcalar.Count > 0 ? string.Join(" · ", parcalar) : "Not ekle";
+    }
+
+    private void NotPaneliniAcKapat(string kod)
+    {
+        acikNotKodu = string.Equals(acikNotKodu, kod, StringComparison.OrdinalIgnoreCase) ? null : kod;
+    }
+
+    private async Task NotKaydet(MizanNotuUpsertDto dto)
+    {
+        try
+        {
+            await FirmaKontrolService.SaveMizanNotuAsync(FirmaId, dto);
+            await NotlariTazeleAsync();
+            Notif.Notify(NotificationSeverity.Success, "Not kaydedildi", $"{dto.HesapKodu} hesabının notu güncellendi.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MizanNotKaydet HATA] {ex}");
+            Notif.Notify(NotificationSeverity.Error, "Not kaydedilemedi", ex.Message);
+        }
+    }
+
+    private async Task NotGuncelle((long Id, MizanNotuGuncelleDto Dto) e)
+    {
+        try
+        {
+            var guncellenen = await FirmaKontrolService.UpdateMizanNotuAsync(FirmaId, e.Id, e.Dto);
+            await NotlariTazeleAsync();
+            Notif.Notify(NotificationSeverity.Success, "Not güncellendi",
+                $"{guncellenen.HesapKodu} hesabının notu {(guncellenen.DonemYili.HasValue ? $"{guncellenen.DonemYili} dönem notu" : "kalıcı not")} olarak kaydedildi.");
+        }
+        catch (Exception ex)
+        {
+            // Hedef tipte zaten not varsa sunucu 409 döner; mesajı olduğu gibi gösterilir.
+            Console.WriteLine($"[MizanNotGuncelle HATA] {ex}");
+            Notif.Notify(NotificationSeverity.Error, "Not güncellenemedi", ex.Message);
+        }
+    }
+
+    private async Task NotSnapshotYenile(MizanNotuDto not)
+    {
+        try
+        {
+            await FirmaKontrolService.SnapshotYenileAsync(FirmaId, not.Id);
+            await NotlariTazeleAsync();
+            Notif.Notify(NotificationSeverity.Success, "Snapshot güncellendi",
+                $"{not.HesapKodu} hesabının notu güncel bakiyeye göre işaretlendi.");
+        }
+        catch (Exception ex)
+        {
+            // Hesap mizanda yoksa sunucu 409 döner ve snapshot korunur.
+            Console.WriteLine($"[MizanNotSnapshot HATA] {ex}");
+            Notif.Notify(NotificationSeverity.Warning, "Güncellenemedi", ex.Message);
+        }
+    }
+
+    private async Task NotSil(MizanNotuDto not)
+    {
+        try
+        {
+            await FirmaKontrolService.DeleteMizanNotuAsync(FirmaId, not.Id);
+            await NotlariTazeleAsync();
+            Notif.Notify(NotificationSeverity.Success, "Not silindi", $"{not.HesapKodu} hesabının notu kaldırıldı.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MizanNotSil HATA] {ex}");
+            Notif.Notify(NotificationSeverity.Error, "Not silinemedi", ex.Message);
+        }
+    }
+
+    private async Task BastirmayiKaldir(UyariSonucu uyari)
+    {
+        // Aynı hesapta birden çok bastıran not olabilir (kalıcı + dönem) — hepsi açılır.
+        var hedefler = NotlarForKod(uyari.HesapKodu).Where(n => n.UyariBastir).ToList();
+        if (hedefler.Count == 0) return;
+
+        try
+        {
+            foreach (var not in hedefler)
+            {
+                // Id ile güncelleme: notun tipi ve kodu aynen kalsın, sadece bastırma kalksın.
+                await FirmaKontrolService.UpdateMizanNotuAsync(FirmaId, not.Id, new MizanNotuGuncelleDto
+                {
+                    Metin = not.Metin,
+                    DonemYili = not.DonemYili,
+                    UyariBastir = false
+                });
+            }
+
+            await NotlariTazeleAsync();
+            Notif.Notify(NotificationSeverity.Success, "Uyarı geri alındı",
+                $"{uyari.HesapKodu} hesabının uyarısı yeniden listeleniyor. Not silinmedi.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MizanNotBastirma HATA] {ex}");
+            Notif.Notify(NotificationSeverity.Error, "İşlem başarısız", ex.Message);
+        }
+    }
+
+    private async Task NotlariTazeleAsync()
+    {
+        notlar = (await FirmaKontrolService.GetMizanNotlariAsync(FirmaId)).ToList();
+        IndeksleNotlar();
+    }
+
+    // ── Dönem devri ─────────────────────────────────────────────────────────
+
+    private async Task DevirPaneliniAcKapat()
+    {
+        devirAcik = !devirAcik;
+
+        if (devirAcik)
+            await DevirAdaylariYukle((AktifYil - 1, AktifYil));
+    }
+
+    private async Task DevirAdaylariYukle((int KaynakYil, int HedefYil) yillar)
+    {
+        devirYukleniyor = true;
+        try
+        {
+            devirAdaylari = await FirmaKontrolService.GetNotDevirAdaylariAsync(FirmaId, yillar.KaynakYil, yillar.HedefYil);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MizanNotDevirAday HATA] {ex}");
+            devirAdaylari = Array.Empty<MizanNotuDto>();
+            Notif.Notify(NotificationSeverity.Error, "Adaylar getirilemedi", ex.Message);
+        }
+        finally
+        {
+            devirYukleniyor = false;
+        }
+    }
+
+    private async Task Devret((int KaynakYil, int HedefYil, List<long> NotIdleri) e)
+    {
+        try
+        {
+            var yeniler = await FirmaKontrolService.DevretMizanNotlariAsync(FirmaId, new MizanNotuDevirRequest
+            {
+                KaynakYil = e.KaynakYil,
+                HedefYil = e.HedefYil,
+                NotIdleri = e.NotIdleri
+            });
+
+            await NotlariTazeleAsync();
+            await DevirAdaylariYukle((e.KaynakYil, e.HedefYil));
+
+            Notif.Notify(NotificationSeverity.Success, "Notlar taşındı",
+                $"{yeniler.Count} not {e.HedefYil} dönemine taşındı.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MizanNotDevir HATA] {ex}");
+            Notif.Notify(NotificationSeverity.Error, "Notlar taşınamadı", ex.Message);
+        }
+    }
+
+    // ── Uyarı paneli ────────────────────────────────────────────────────────
+
     private bool HasMizan => accountRows.Any(r => r.CariDonem.HasValue || r.OncekiDonem.HasValue);
 
-    private int KritikCount => Uyarilar.Count(u => u.Seviye == UyariSeviyesi.Kritik);
-    private int UyariCount => Uyarilar.Count(u => u.Seviye == UyariSeviyesi.Uyari);
-    private int BilgiCount => Uyarilar.Count(u => u.Seviye == UyariSeviyesi.Bilgi);
+    private int KritikCount => aktifUyarilar.Count(u => u.Seviye == UyariSeviyesi.Kritik);
+    private int UyariCount => aktifUyarilar.Count(u => u.Seviye == UyariSeviyesi.Uyari);
+    private int BilgiCount => aktifUyarilar.Count(u => u.Seviye == UyariSeviyesi.Bilgi);
 
-    private List<UyariSonucu> FilteredUyarilar =>
-        (activeFilter is null
-            ? Uyarilar
-            : Uyarilar.Where(u => u.Seviye == activeFilter)).ToList();
+    private List<UyariSonucu> FilteredUyarilar => filtre switch
+    {
+        UyariFiltresi.Kritik => aktifUyarilar.Where(u => u.Seviye == UyariSeviyesi.Kritik).ToList(),
+        UyariFiltresi.Uyari => aktifUyarilar.Where(u => u.Seviye == UyariSeviyesi.Uyari).ToList(),
+        UyariFiltresi.Bilgi => aktifUyarilar.Where(u => u.Seviye == UyariSeviyesi.Bilgi).ToList(),
+        _ => aktifUyarilar
+    };
 
     private UyariSeviyesi? HighestSeviyeForKod(string kod) =>
         seviyeByKod.TryGetValue(kod, out var s) ? s : (UyariSeviyesi?)null;
 
-    private void SetFilter(UyariSeviyesi? seviye)
+    private void SetFilter(UyariFiltresi secilen)
     {
-        activeFilter = activeFilter == seviye ? null : seviye;
+        filtre = filtre == secilen ? UyariFiltresi.Tumu : secilen;
     }
 
-    private ButtonStyle FilterStyle(UyariSeviyesi? seviye) =>
-        activeFilter == seviye ? ButtonStyle.Primary : ButtonStyle.Base;
+    private ButtonStyle FilterStyle(UyariFiltresi f) =>
+        filtre == f ? ButtonStyle.Primary : ButtonStyle.Base;
 
-    private Variant FilterVariant(UyariSeviyesi? seviye) =>
-        activeFilter == seviye ? Variant.Filled : Variant.Outlined;
+    private Variant FilterVariant(UyariFiltresi f) =>
+        filtre == f ? Variant.Filled : Variant.Outlined;
 
     private async Task OnKartSecildi(UyariSonucu uyari)
     {
@@ -246,12 +732,12 @@ else
         if (!hasUyari) return;
 
         highlightedKod = kod;
-        var uyari = Uyarilar.FirstOrDefault(u => string.Equals(u.HesapKodu, kod, StringComparison.OrdinalIgnoreCase));
+        var uyari = aktifUyarilar.FirstOrDefault(u => string.Equals(u.HesapKodu, kod, StringComparison.OrdinalIgnoreCase));
 
         // Filtre aktifken karta gidemiyorsa filtreyi temizle
-        if (uyari is not null && activeFilter is not null && uyari.Seviye != activeFilter)
+        if (uyari is not null && filtre != UyariFiltresi.Tumu && !FilteredUyarilar.Contains(uyari))
         {
-            activeFilter = null;
+            filtre = UyariFiltresi.Tumu;
         }
 
         StateHasChanged();
