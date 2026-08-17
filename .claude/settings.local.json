@@ -94,7 +94,9 @@
       "PowerShell(& \"C:\\\\Users\\\\cengi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--GitHub-CengizMicroService\\\\b63b7205-e00c-45ae-8e54-aecdbb9f04ab\\\\scratchpad\\\\test-fis2.ps1\")",
       "PowerShell(dotnet test *)",
       "Bash(xargs cat)",
-      "PowerShell(Stop-Process *)"
+      "PowerShell(Stop-Process *)",
+      "Read(//c/Users/cengi/.nuget/packages/flaui.core/**)",
+      "Read(//c/Users/cengi/.nuget/packages/flaui.core/4.0.0/lib/**)"
     ]
   }
 }

@@ -1,0 +1,73 @@
+{
+  "Ad": "ORKA Ac ve Firma Sec",
+  "Aciklama": "En temel zincir. Firma secimi IKI Enter ister. Sifre popup'inda ALT+T (Tamam) kullanilir.",
+
+  "// KULLANIM": [
+    "PkfRobot.exe --gorev gorevler\\01-orka-ac-firma-sec.json --sifre Pkf123+ --degisken firmaSifre=pkf03"
+  ],
+
+  "// OLCUM NOTLARI": [
+    "F7 > kod yaz > ENTER (arama onayi) > ENTER (firmaya gir)",
+    "Sonra 'Firma Sifresini Giriniz.' popup'i acilir, icinde Sifre alani ve Tamam butonu var.",
+    "Tamam butonunda T alti cizili => ALT+T kisayolu calisir. Enter'dan daha kesin.",
+    "'Firma' diye ARAMA - cmd penceresinin basliginda da 'firma' geciyor (dosya adi).",
+    "'Giriniz' benzersiz ve Turkce karakter icermiyor."
+  ],
+
+  "Adimlar": [
+    { "Tip": "Log", "Not": "--- ORKA baslatiliyor ---" },
+    { "Tip": "OrkaBaslat" },
+
+    { "Tip": "BeklePencere", "Deger": "Orka SQL", "Not": "Giris ekrani bekleniyor" },
+    { "Tip": "EkranGoruntusu", "Deger": "giris-ekrani" },
+
+    { "Tip": "Log", "Not": "--- 1. SIFRE: ORKA girisi ---" },
+    { "Tip": "Bekle", "Sayi": 1500 },
+
+    { "Tip": "Yaz", "Deger": "{sifre}", "Not": "orka sifresi giriliyor" },
+    { "Tip": "Bekle", "Sayi": 400 },
+    { "Tip": "EkranGoruntusu", "Deger": "sifre-yazildi" },
+    { "Tip": "Tus", "Deger": "ENTER", "Adet": 1 },
+    { "Tip": "Bekle", "Sayi": 2500 },
+    { "Tip": "EkranGoruntusu", "Deger": "giris-sonrasi" },
+
+    { "Tip": "Log", "Not": "--- Firma araniyor (F7) ---" },
+    { "Tip": "Tus", "Deger": "F7", "Adet": 1 },
+    { "Tip": "Bekle", "Sayi": 800 },
+    { "Tip": "TemizleYaz", "Deger": "{firmaKodu}", "Not": "firma kodu yaziliyor" },
+    { "Tip": "Bekle", "Sayi": 1000 },
+    { "Tip": "EkranGoruntusu", "Deger": "firma-arandi" },
+
+    { "Tip": "Log", "Not": "--- 1. ENTER: arama onayi, firma listede belirir ---" },
+    { "Tip": "Tus", "Deger": "ENTER", "Adet": 1 },
+    { "Tip": "Bekle", "Sayi": 1500 },
+    { "Tip": "EkranGoruntusu", "Deger": "firma-listede" },
+
+    { "Tip": "Log", "Not": "--- 2. ENTER: firmaya giris ---" },
+    { "Tip": "Tus", "Deger": "ENTER", "Adet": 1 },
+
+    { "Tip": "Log", "Not": "--- 2. SIFRE: popup bekleniyor ve odaklaniyor ---" },
+    { "Tip": "Bekle", "Sayi": 3000, "Not": "Firma Sifresini Giriniz popup" },
+    { "Tip": "EkranGoruntusu", "Deger": "firma-sifre-ekrani" },
+
+    { "Tip": "Yaz", "Deger": "{firmaSifre}", "Not": "firma sifresi giriliyor" },
+    { "Tip": "Bekle", "Sayi": 500 },
+    { "Tip": "EkranGoruntusu", "Deger": "firma-sifre-yazildi" },
+
+    { "Tip": "Log", "Not": "--- ALT+T = Tamam butonu (T alti cizili) ---" },
+    { "Tip": "Kisayol", "Deger": "ALT+T", "Not": "Tamam butonu" },
+    { "Tip": "Bekle", "Sayi": 3000 },
+    { "Tip": "EkranGoruntusu", "Deger": "firma-sifre-sonrasi" },
+
+    { "Tip": "Log", "Not": "--- Sube secimi (tek sube ise Enter yeter) ---" },
+    { "Tip": "EkranGoruntusu", "Deger": "sube-ekrani" },
+    { "Tip": "Tus", "Deger": "ENTER", "Adet": 1 },
+    { "Tip": "Bekle", "Sayi": 3000 },
+
+    { "Tip": "Log", "Not": "--- Modul ekranina gelindi mi kontrol ---" },
+    { "Tip": "Dogrula", "Deger": "ORKA_0001_2026", "Not": "Baslikta firma kodu var mi" },
+    { "Tip": "EkranGoruntusu", "Deger": "modul-ekrani" },
+
+    { "Tip": "Log", "Not": "BASARILI: Firma acildi, modul ekranindayiz." }
+  ]
+}

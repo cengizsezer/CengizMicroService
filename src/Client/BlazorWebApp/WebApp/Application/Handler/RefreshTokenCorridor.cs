@@ -21,6 +21,11 @@ namespace WebApp.Application.Handler
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
+            // Bu isteğin gerçekten kullandığı token. Kilit sonrası "başkası yeniledi mi?"
+            // karşılaştırması buna göre yapılmalı; session'dan 401 sonrası okunan değer,
+            // istek uçuştayken yenilenmişse zaten taze olur ve gereksiz select-tenant atılır.
+            var tokenBefore = request.Headers.Authorization?.Parameter;
+
             var response = await base.SendAsync(request, ct);
             if (response.StatusCode != HttpStatusCode.Unauthorized) return response;
 
@@ -31,9 +36,6 @@ namespace WebApp.Application.Handler
                 string.IsNullOrWhiteSpace(username) ||
                 string.IsNullOrWhiteSpace(tenantNo))
                 return response;
-
-            // 401 anındaki token; kilidi beklerken başka bir thread yenilemiş olabilir.
-            var tokenBefore = await _session.GetItemAsync<string>("token");
 
             string newToken;
             await _refreshLock.WaitAsync(ct);
@@ -69,6 +71,7 @@ namespace WebApp.Application.Handler
             }
 
             // orijinal isteği 1 kez yeni token ile tekrar et
+            response.Dispose();
             var retry = await CloneAsync(request);
             retry.Headers.Authorization = new AuthenticationHeaderValue("Bearer", newToken);
             return await base.SendAsync(retry, ct);

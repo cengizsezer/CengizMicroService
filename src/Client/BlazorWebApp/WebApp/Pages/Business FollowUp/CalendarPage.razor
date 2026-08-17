@@ -19,6 +19,7 @@
                  SlotSelect="@OnSlotSelect"
                  AppointmentSelect="@OnAppointmentSelect"
                  AppointmentRender="@OnAppointmentRender"
+                 LoadData="@OnLoadData"
                  MonthSelect="@OnMonthSelect"
                  TodayText="Bugün"
                  style="height: 768px;">
@@ -32,9 +33,19 @@
     Month startMonth = Month.January;
     List<AppointmentVm> appointments = new();
 
+    bool canView;
+
+    // Ekranda hangi aralik yuklu. Ayni aralik icin tekrar istek atmamak ve
+    // kayit sonrasi mevcut gorunumu tazelemek icin tutuluyor.
+    DateTime? loadedFrom;
+    DateTime? loadedTo;
+
+    // Oklara hizli basildiginda gec donen cevabin yeni araligi ezmemesi icin.
+    int loadSeq;
+
     protected override async Task OnInitializedAsync()
     {
-        var canView = await PermissionService.HasPermissionAsync("Calendarpage.View");
+        canView = await PermissionService.HasPermissionAsync("Calendarpage.View");
 
         if (!canView)
         {
@@ -42,6 +53,15 @@
             return;
         }
         await LoadMonth(DateTime.Today);
+    }
+
+    // Scheduler goruntulenen donem her degistiginde (ileri/geri ok, Bugun, gorunum
+    // degisimi) burayi cagirir. MonthSelect yalnizca Yil gorunumunde ay basligina
+    // tiklaninca tetiklendigi icin ay navigasyonu tek basina ona birakilamaz.
+    async Task OnLoadData(Radzen.SchedulerLoadDataEventArgs args)
+    {
+        if (!canView) return;
+        await LoadRange(args.Start, args.End);
     }
     // async Task LoadMonth(DateTime anyDayInMonth)
     // {
@@ -80,50 +100,92 @@
     // }
 
 
-    async Task LoadMonth(DateTime anyDayInMonth)
+    Task LoadMonth(DateTime anyDayInMonth)
     {
         var from = new DateTime(anyDayInMonth.Year, anyDayInMonth.Month, 1, 0, 0, 0, DateTimeKind.Local);
         var to = from.AddMonths(1).AddTicks(-1);
+        return LoadRange(from, to, force: true);
+    }
 
-        var auth = await Auth.GetAuthenticationStateAsync();
-        var meId =
-            auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? auth.User.FindFirst("nameid")?.Value
-            ?? auth.User.FindFirst("sub")?.Value
-            ?? auth.User.FindFirst("uid")?.Value;
+    // Kayit/guncelleme sonrasi: ekranda hangi aralik yukluyse onu tazele.
+    // (LoadMonth ile sabit ay yuklersek Yil gorunumundeki liste bozulur.)
+    Task ReloadCurrentAsync(DateTime fallbackDay)
+        => loadedFrom is DateTime f && loadedTo is DateTime t
+            ? LoadRange(f, t, force: true)
+            : LoadMonth(fallbackDay);
 
-        // DEBUG: bir kere bakıp doğrula
-        Console.WriteLine($"[Calendar] meId = {meId ?? "<null>"}");
+    async Task LoadRange(DateTime from, DateTime to, bool force = false)
+    {
+        if (!force && loadedFrom == from && loadedTo == to)
+            return;
 
-        // meId yoksa assignee filtresi göndermeyelim
-        var jobs = string.IsNullOrWhiteSpace(meId)
-            ? await JobsApi.GetRangeAsync(from, to)
-            : await JobsApi.GetRangeAsync(from, to, assigneeId: meId);
+        var seq = ++loadSeq;
 
-        // meId varsa hem user hem Deleted filtresi; yoksa sadece Deleted filtresi
-        appointments = jobs
-            .Where(j => j.Assignments.Any(a =>
-                (string.IsNullOrWhiteSpace(meId) || a.UserId == meId) &&
-                a.Status != JobStatus.Deleted))
-            .Select(j => new AppointmentVm
+        try
+        {
+            var auth = await Auth.GetAuthenticationStateAsync();
+            var meId =
+                auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? auth.User.FindFirst("nameid")?.Value
+                ?? auth.User.FindFirst("sub")?.Value
+                ?? auth.User.FindFirst("uid")?.Value;
+
+            // meId yoksa assignee filtresi göndermeyelim
+            var jobs = string.IsNullOrWhiteSpace(meId)
+                ? await JobsApi.GetRangeAsync(from, to)
+                : await JobsApi.GetRangeAsync(from, to, assigneeId: meId);
+
+            // Bu istek uçuştayken kullanıcı başka aya geçtiyse sonucu yazma.
+            if (seq != loadSeq) return;
+
+            // meId varsa hem user hem Deleted filtresi; yoksa sadece Deleted filtresi
+            appointments = jobs
+                .Where(j => j.Assignments.Any(a =>
+                    (string.IsNullOrWhiteSpace(meId) || a.UserId == meId) &&
+                    a.Status != JobStatus.Deleted))
+                .Select(j => new AppointmentVm
+                {
+                    JobId = j.Id,
+                    Start = j.Start,
+                    End = j.End,
+                    Text = j.Title,
+                    Title = j.Title,
+                    Description = j.Description ?? "",
+                    AssigneeIds = j.Assignments
+                                   .Where(a => a.Status != JobStatus.Deleted)
+                                   .Select(a => a.UserId).ToList(),
+                    AssigneeNames = j.Assignments
+                                     .Where(a => a.Status != JobStatus.Deleted)
+                                     .Select(a => a.UserName).ToList(),
+                    Attachments = j.Attachments ?? new()
+                })
+                .ToList();
+
+            loadedFrom = from;
+            loadedTo = to;
+        }
+        catch (Exception ex)
+        {
+            if (seq != loadSeq) return;
+
+            // Token yenilenemedi / servis hata verdi: sessizce boş takvim gösterme.
+            appointments = new();
+            loadedFrom = null;
+            loadedTo = null;
+
+            Notif.Notify(new NotificationMessage
             {
-                JobId = j.Id,
-                Start = j.Start,
-                End = j.End,
-                Text = j.Title,
-                Title = j.Title,
-                Description = j.Description ?? "",
-                AssigneeIds = j.Assignments
-                               .Where(a => a.Status != JobStatus.Deleted)
-                               .Select(a => a.UserId).ToList(),
-                AssigneeNames = j.Assignments
-                                 .Where(a => a.Status != JobStatus.Deleted)
-                                 .Select(a => a.UserName).ToList(),
-                Attachments = j.Attachments ?? new()
-            })
-            .ToList();
+                Severity = NotificationSeverity.Warning,
+                Summary = "Görevler yüklenemedi",
+                Detail = ex.Message,
+                Duration = 4000
+            });
+        }
 
-        await scheduler?.Reload();
+        // OnInitializedAsync icinde @ref henuz atanmamis olabilir.
+        if (scheduler is not null)
+            await scheduler.Reload();
+
         StateHasChanged();
     }
 
@@ -198,7 +260,7 @@
                 return;
             }
 
-            await LoadMonth(args.Start);                               // ayı tazele
+            await ReloadCurrentAsync(args.Start);                      // görünümü tazele
         }
     }
 
@@ -256,7 +318,7 @@
         // CreateJobRequest’te Id yok; güncellenecek kaydın Id’si mevcut randevudan gelir
         await JobsApi.UpdateAsync(current.JobId, req);
 
-        await LoadMonth(current.Start); // ekranda tazele
+        await ReloadCurrentAsync(current.Start); // ekranda tazele
     }
 
 

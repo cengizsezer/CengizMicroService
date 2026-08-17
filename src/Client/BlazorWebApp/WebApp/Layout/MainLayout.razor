@@ -82,65 +82,84 @@
                  DisplayStyle="@(isCollapsed ? MenuItemDisplayStyle.Icon : MenuItemDisplayStyle.IconAndText)"
                  ShowArrow="false">
 
-                @if (canViewCalendar)
-                {
-                    <RadzenPanelMenuItem Text="Görevler" Icon="home" @bind-Expanded="gorevlerAcik">
-                        <RadzenPanelMenuItem Text="Takvim" Icon="event" Path="/calendarpage" />
-                        <RadzenPanelMenuItem Text="Görevlerim" Icon="event" Path="/AssignedTaskPage" />
-                    </RadzenPanelMenuItem>
-                }
-                @if (canViewVehicleList)
-                {
-                    <RadzenPanelMenuItem Text="Şirket Araçları"
-                                         Icon="motorcycle"
-                                         Path="/vehicles" />
-                }
-
-                @if (canViewBeyannameTakip)
-                {
-                    <RadzenPanelMenuItem Text="Beyanname Takip"
-                                         Icon="receipt_long"
-                                         Path="/beyanname-takip" />
-                }
-
-                <RadzenPanelMenuItem Text="Fatura" Icon="receipt">
-                    @if (canViewFaturaKontrol)
+                <RadzenPanelMenuItem Text="Şirket" Icon="business_center" @bind-Expanded="sirketAcik">
+                    @if (canViewCalendar)
                     {
-                        <RadzenPanelMenuItem Text="Onay Bekleyen"
-                                             Icon="fact_check"
-                                             Path="/faturakontrol" />
+                        <RadzenPanelMenuItem Text="Görevler" Icon="home" @bind-Expanded="gorevlerAcik">
+                            <RadzenPanelMenuItem Text="Takvim" Icon="event" Path="/calendarpage" />
+                            <RadzenPanelMenuItem Text="Görevlerim" Icon="event" Path="/AssignedTaskPage" />
+                        </RadzenPanelMenuItem>
                     }
-                    <RadzenPanelMenuItem Text="Gelen Faturalar"
-                                         Icon="move_to_inbox"
-                                         Path="/fatura/gelen-faturalar" />
+
+                    @if (canViewBeyannameTakip)
+                    {
+                        <RadzenPanelMenuItem Text="Beyanname Takip"
+                                             Icon="receipt_long"
+                                             Path="/beyanname-takip" />
+                    }
+
+                    <RadzenPanelMenuItem Text="Fatura" Icon="receipt">
+                        @if (canViewFaturaKontrol)
+                        {
+                            <RadzenPanelMenuItem Text="Onay Bekleyen"
+                                                 Icon="fact_check"
+                                                 Path="/faturakontrol" />
+                        }
+                        <RadzenPanelMenuItem Text="Gelen Faturalar"
+                                             Icon="move_to_inbox"
+                                             Path="/fatura/gelen-faturalar" />
+                    </RadzenPanelMenuItem>
+
+                    @if (canViewVehicleList)
+                    {
+                        <RadzenPanelMenuItem Text="Şirket Araçları"
+                                             Icon="motorcycle"
+                                             Path="/vehicles" />
+                    }
+
+                    <AuthorizeView Roles="Admin">
+                        <Authorized>
+                            <RadzenPanelMenuItem Text="Şirket Evrakları" Icon="book" Path="/companydocspage" />
+                            <RadzenPanelMenuItem Text="Personel" Icon="group" Path="/personel" />
+                        </Authorized>
+                    </AuthorizeView>
+                </RadzenPanelMenuItem>
+
+                <RadzenPanelMenuItem Text="Beyannameler" Icon="description">
+                    <RadzenPanelMenuItem Text="KDV Beyannamesi"
+                                         Icon="request_quote"
+                                         Path="/kdv-beyanname" />
+
+                    <AuthorizeView Roles="Admin">
+                        <Authorized>
+                            <RadzenPanelMenuItem Text="Beyanname Arşivi" Icon="description" Path="/declarationpage" />
+                        </Authorized>
+                    </AuthorizeView>
+                </RadzenPanelMenuItem>
+
+                <RadzenPanelMenuItem Text="Dersler" Icon="school">
+                    <RadzenPanelMenuItem Text="Mevzuat Notları"
+                                         Icon="menu_book"
+                                         Path="/mevzuat-notlari" />
+                    <RadzenPanelMenuItem Text="SMMM Takip"
+                                         Icon="balance"
+                                         Path="/smmm-takip" />
+
+                    <AuthorizeView Roles="Admin">
+                        <Authorized>
+                            <RadzenPanelMenuItem Text="Ders Arşivi" Icon="book" Path="/study" />
+                            <RadzenPanelMenuItem Text="Eğitim" Icon="chrome_reader_mode" Path="/education" />
+                        </Authorized>
+                    </AuthorizeView>
                 </RadzenPanelMenuItem>
 
                 <RadzenPanelMenuItem Text="Raporlar"
                                      Icon="checklist"
                                      Path="/firmakontrol" />
 
-                <RadzenPanelMenuItem Text="KDV Beyannamesi"
-                                     Icon="request_quote"
-                                     Path="/kdv-beyanname" />
-
-                @if (canViewVergiOdeme)
-                {
-                    <RadzenPanelMenuItem Text="Mükellef Vergi Ödemeleri"
-                                         Icon="receipt_long"
-                                         Path="/taxpayments" />
-                }
-
                 <RadzenPanelMenuItem Text="Ticaret Sicil İşlemleri"
                                      Icon="account_balance_wallet"
                                      Path="/ticaret-sicil" />
-
-                <RadzenPanelMenuItem Text="Mevzuat Notları"
-                                     Icon="menu_book"
-                                     Path="/mevzuat-notlari" />
-
-                <RadzenPanelMenuItem Text="SMMM Takip"
-                                     Icon="balance"
-                                     Path="/smmm-takip" />
 
                 <RadzenPanelMenuItem Text="Muhasebe" Icon="account_tree">
                     <RadzenPanelMenuItem Text="Hesap Planı" Icon="account_tree" Path="/muhasebe/hesap-plani" />
@@ -155,6 +174,12 @@
                     <RadzenPanelMenuItem Text="Firma Gruplama" Icon="category" Path="/finans/firma-gruplama" />
                     <RadzenPanelMenuItem Text="Banka Tanımları" Icon="account_balance" Path="/finans/banka-tanimlari" />
                     <RadzenPanelMenuItem Text="Banka Takibi" Icon="fact_check" Path="/finans/banka-takibi" />
+                    @if (canViewVergiOdeme)
+                    {
+                        <RadzenPanelMenuItem Text="Mükellef Vergi Ödemeleri"
+                                             Icon="receipt_long"
+                                             Path="/taxpayments" />
+                    }
                 </RadzenPanelMenuItem>
 
                 <RadzenPanelMenuItem Text="Yönetim" Icon="admin_panel_settings">
@@ -171,22 +196,18 @@
                 <RadzenPanelMenuItem Text="Görevlerim" Icon="event" Path="/AssignedTaskPage" />
             </RadzenPanelMenuItem> *@
 
-            <RadzenPanelMenuItem Text="E-Masraf" Icon="assignment">
-                <RadzenPanelMenuItem Text="Onay" Icon="check" Path="/approvalpage" />
-                <RadzenPanelMenuItem Text="Osgb" Icon="markunread_mailbox" Path="/Osgb" />
-                <RadzenPanelMenuItem Text="Personel" Icon="group" Path="/personel" />
-            </RadzenPanelMenuItem>
-
-            <RadzenPanelMenuItem Text="E-Fatura" Icon="assignment" Path="/invoices/mock" />
-            <RadzenPanelMenuItem Text="Beyannameler" Icon="description" Path="/declarationpage" />
-            <RadzenPanelMenuItem Text="Şirket Evrakları" Icon="book" Path="/companydocspage" />
-
-            <RadzenPanelMenuItem Text="SMM Dersler" Icon="book">
-                <RadzenPanelMenuItem Text="Finansal Tablolar" Icon="book" Path="/study" />
+            @* Menüden kaldırıldı. Sayfa dosyaları ve route'lar yerinde duruyor; geri getirmek
+               icin asagidaki maddeleri bu yorumdan cikarmak yeterli.
+                <RadzenPanelMenuItem Text="E-Masraf" Icon="assignment">
+                    <RadzenPanelMenuItem Text="Onay" Icon="check" Path="/approvalpage" />
+                    <RadzenPanelMenuItem Text="Osgb" Icon="markunread_mailbox" Path="/Osgb" />
+                </RadzenPanelMenuItem>
+                <RadzenPanelMenuItem Text="E-Fatura" Icon="assignment" Path="/invoices/mock" />
                 <RadzenPanelMenuItem Text="Hesap Planı" Icon="book" Path="/hesap-plani" />
-            </RadzenPanelMenuItem>
+            *@
 
-            <RadzenPanelMenuItem Text="Eğitim" Icon="chrome_reader_mode" Path="/education" />
+            @* Tasindi: /declarationpage -> Beyannameler, /study + /education -> Dersler,
+               /companydocspage + /personel -> Sirket (Admin kontrolu korunarak). *@
 
             <RadzenPanelMenuItem Text="Settings" Icon="settings">
                 <RadzenPanelMenuItem Text="Account" Icon="account_circle" Path="/account" />
@@ -291,15 +312,17 @@
 
     void ToggleSidebar() => isCollapsed = !isCollapsed;
 
-    // "Görevler" grubunun açık/kapalı durumu. Radzen, geçerli rotayla eşleşen alt öğeyi
-    // göstermek için üst grubu kendiliğinden açar; giriş sonrası /calendarpage'e gidildiği
-    // ve o da bu grubun altında olduğu için grup her açılışta açık geliyordu.
+    // "Görevler" ve "Şirket" gruplarının açık/kapalı durumu. Radzen, geçerli rotayla
+    // eşleşen alt öğeyi göstermek için üst grubu kendiliğinden açar; giriş sonrası
+    // /calendarpage'e gidildiği ve o da bu grupların altında olduğu için gruplar her
+    // açılışta açık geliyordu.
     // ("Expanded=false" yazmak işe yaramıyordu: o zaten varsayılan değer.)
     bool gorevlerAcik;
+    bool sirketAcik;
     bool gorevlerBaslangicUygulandi;
 
     /// <summary>
-    /// Başlangıç durumunu bir kez uygular: menü öğesi göründükten sonra grup kapatılır.
+    /// Başlangıç durumunu bir kez uygular: menü öğesi göründükten sonra gruplar kapatılır.
     /// İzin sorgusu asenkron olduğu için öğe ilk render'da henüz basılmamış olabiliyor,
     /// bu yüzden canViewCalendar true olana kadar bekleniyor. Sonrasında kullanıcının
     /// açma/kapama işlemleri ve sayfa gezinmeleri normal Radzen davranışıyla sürer;
@@ -311,6 +334,7 @@
 
         gorevlerBaslangicUygulandi = true;
         gorevlerAcik = false;
+        sirketAcik = false;
         StateHasChanged();
     }
     private bool canViewBeyannameTakip;

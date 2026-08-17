@@ -1,0 +1,62 @@
+{
+  "Ad": "Modul Sec ve Sekme Ac",
+  "Aciklama": "Modul ekraninda 2D navigasyon: SAG x3, ASAGI x1 => TRANSFERLER. Sonra Enter, sonra ilk tile (Veri Transferi) icin Enter.",
+
+  "// KULLANIM": [
+    "PkfRobot.exe --gorev gorevler\\02-modul-ve-sekme.json",
+    "",
+    "Tus sayilarini degistirmek icin:",
+    "  --degisken modulSag=3  --degisken modulAsagi=1",
+    "ORKA acik ve MODUL EKRANINDA olmali (01 gorevinden sonra)."
+  ],
+
+  "// OLCUM NOTLARI": [
+    "Sol/Yukari ile kose normalizasyonu CALISMIYOR - kaldirildi.",
+    "Ctrl+F CALISMIYOR - kaldirildi.",
+    "Modul ekrani acildiginda odak TICARI'de (sol ust) basliyor.",
+    "TICARI -> SAG x3 -> DEMIRBAS -> ASAGI x1 -> TRANSFERLER",
+    "Tile isimleri UIA'ya kapali, okunamiyor. Dogrulama ekran goruntusu ile.",
+    "Transferler icinde VERI TRANSFERI ilk sirada ve zaten secili geliyor."
+  ],
+
+  "Adimlar": [
+    { "Tip": "Log", "Not": "--- Modul ekraninda miyiz kontrol ---" },
+    { "Tip": "Dogrula", "Deger": "ORKA_0001_2026", "Not": "Firma acik mi" },
+    { "Tip": "Bekle", "Sayi": 1000 },
+    { "Tip": "EkranGoruntusu", "Deger": "01-baslangic" },
+
+    { "Tip": "Log", "Not": "--- SAG x3: TICARI -> DEMIRBAS ---" },
+    {
+      "Tip": "Tus",
+      "Deger": "RIGHT",
+      "Adet": 3,
+      "AdetDegisken": "modulSag",
+      "Not": "sag ok"
+    },
+    { "Tip": "Bekle", "Sayi": 600 },
+    { "Tip": "EkranGoruntusu", "Deger": "02-sag-sonrasi" },
+
+    { "Tip": "Log", "Not": "--- ASAGI x1: DEMIRBAS -> TRANSFERLER ---" },
+    {
+      "Tip": "Tus",
+      "Deger": "DOWN",
+      "Adet": 1,
+      "AdetDegisken": "modulAsagi",
+      "Not": "asagi ok"
+    },
+    { "Tip": "Bekle", "Sayi": 800 },
+    { "Tip": "EkranGoruntusu", "Deger": "03-transferler-secili" },
+
+    { "Tip": "Log", "Not": "--- TRANSFERLER acilir ---" },
+    { "Tip": "Tus", "Deger": "ENTER", "Adet": 1 },
+    { "Tip": "Bekle", "Sayi": 3000 },
+    { "Tip": "EkranGoruntusu", "Deger": "04-transferler-acildi" },
+
+    { "Tip": "Log", "Not": "--- VERI TRANSFERI ilk sirada, zaten secili ---" },
+    { "Tip": "Tus", "Deger": "ENTER", "Adet": 1 },
+    { "Tip": "Bekle", "Sayi": 3000 },
+    { "Tip": "EkranGoruntusu", "Deger": "05-veri-transferi-acildi" },
+
+    { "Tip": "Log", "Not": "BITTI: 03 ve 05 ekran goruntulerine bak, dogru yerde miyiz?" }
+  ]
+}

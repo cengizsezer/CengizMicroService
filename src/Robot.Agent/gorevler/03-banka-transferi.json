@@ -1,0 +1,56 @@
+{
+  "Ad": "Banka Ekstre Transferi",
+  "Aciklama": "Tek bir banka dosyasini ORKA'ya aktarir. Modul ekranindan baslar (01 ve 02 calistiktan sonra ya da Veri Transferi acikken).",
+
+  "// KULLANIM": [
+    "PkfRobot.exe --gorev gorevler\\03-banka-transferi.json --sifre XXX",
+    "  --degisken dosyaYolu=\"C:\\RobotGiris\\102-1-1-VAK-01_202607.xlsx\"",
+    "  --degisken hesapKodu=\"102 1 1 VAK-01\"",
+    "",
+    "DryRun true iken KAYDET adimi ATLANIR. Once boyle test et."
+  ],
+
+  "Adimlar": [
+    { "Tip": "Log", "Not": "--- Transfere Basla ---" },
+    { "Tip": "Dogrula", "Deger": "ORKA_", "Not": "ORKA acik mi" },
+    { "Tip": "EkranGoruntusu", "Deger": "baslangic" },
+
+    { "Tip": "Kisayol", "Deger": "ALT+T", "Not": "Transfere Basla kisayolu - DOGRULA! Yoksa TAB+ENTER gerekebilir" },
+    { "Tip": "Bekle", "Sayi": 2000 },
+
+    { "Tip": "Log", "Not": "--- Dosya secim diyalogu (UIA uyumlu, en saglam adim) ---" },
+    { "Tip": "BeklePencere", "Deger": "Excel", "Not": "Dosya secim penceresi" },
+    { "Tip": "EkranGoruntusu", "Deger": "dosya-diyalogu" },
+    { "Tip": "Bekle", "Sayi": 500 },
+
+    { "Tip": "Yaz", "Deger": "{dosyaYolu}", "Not": "Tam yol yaziliyor - klasorde gezinmeye gerek yok" },
+    { "Tip": "Bekle", "Sayi": 500 },
+    { "Tip": "Tus", "Deger": "ENTER", "Adet": 1 },
+    { "Tip": "Bekle", "Sayi": 3000 },
+
+    { "Tip": "Log", "Not": "--- Hesap Plani acilir, odak arama kutusunda, icinde '102' yazili ---" },
+    { "Tip": "EkranGoruntusu", "Deger": "hesap-plani" },
+
+    { "Tip": "TemizleYaz", "Deger": "{hesapKodu}", "Not": "Ctrl+A sonra yaz - yoksa 102102... olur" },
+    { "Tip": "Bekle", "Sayi": 1200 },
+    { "Tip": "EkranGoruntusu", "Deger": "hesap-arandi" },
+
+    { "Tip": "Tus", "Deger": "ENTER", "Adet": 1, "Not": "1. Enter" },
+    { "Tip": "Bekle", "Sayi": 800 },
+    { "Tip": "Tus", "Deger": "ENTER", "Adet": 1, "Not": "2. Enter - hesap secildi" },
+    { "Tip": "Bekle", "Sayi": 3000 },
+
+    { "Tip": "EkranGoruntusu", "Deger": "transfer-hazir" },
+    { "Tip": "Log", "Not": "--- KAYDET NOKTASI ---" },
+
+    {
+      "Tip": "OnayGerekir",
+      "Deger": "ALT+K",
+      "Not": "KAYDET - DryRun'da atlanir. Kisayolu dogrula, yoksa TAB ile git."
+    },
+
+    { "Tip": "Bekle", "Sayi": 3000 },
+    { "Tip": "EkranGoruntusu", "Deger": "sonuc" },
+    { "Tip": "Log", "Not": "Gorev bitti. 'Aktarimi Yapilamayanlar' sayisini kontrol et." }
+  ]
+}

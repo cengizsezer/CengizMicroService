@@ -1,0 +1,36 @@
+{
+  "Ad": "Tikla Kalibrasyon",
+  "Aciklama": "Tek bir Tikla adimini olcmek icin. X/Y oranini bu dosyada Notepad ile degistir, calistir, oncesi/sonrasi ekran goruntusune bak. Derleme gerekmez.",
+
+  "// KULLANIM": [
+    "1. ORKA'yi ac, kalibre edilecek ekrana kadar elle git (Veri Transferi gibi).",
+    "2. PkfRobot.exe --probe  calistir, ekran goruntusunu al.",
+    "3. Goruntude hedefin pikselini olc, EKRAN GENISLIGINE bol -> X orani.",
+    "   Ornek: 1920 genislikte 240. piksel -> 240 / 1920 = 0.125",
+    "4. Asagidaki X/Y degerlerini yaz, calistir:",
+    "     PkfRobot.exe --gorev gorevler\\04-tikla-kalibrasyon.json",
+    "5. tiklama-sonrasi.png dogru yere basildigini gosteriyorsa oranlari",
+    "   asil gorev JSON'una tasi.",
+    "",
+    "DIKKAT: Bu gorev GERCEKTEN tiklar. DryRun tiklamayi engellemez -",
+    "DryRun sadece OnayGerekir (Kaydet) adimlarini atlar. Once test firmasinda dene."
+  ],
+
+  "Adimlar": [
+    { "Tip": "Log", "Not": "--- Tikla kalibrasyonu ---" },
+    { "Tip": "Dogrula", "Deger": "ORKA_", "Not": "ORKA acik mi" },
+    { "Tip": "EkranGoruntusu", "Deger": "tiklama-oncesi" },
+
+    {
+      "Tip": "Tikla",
+      "X": 0.125,
+      "Y": 0.300,
+      "Not": "OLCULECEK NOKTA - bu iki degeri degistir",
+      "// Deger": "Bos birakilirsa config'deki Pencereler.AnaEkran kullanilir. Baska pencereye tiklayacaksan basligi buraya yaz."
+    },
+
+    { "Tip": "Bekle", "Sayi": 1500 },
+    { "Tip": "EkranGoruntusu", "Deger": "tiklama-sonrasi" },
+    { "Tip": "Log", "Not": "Bitti. C:\\RobotLog altindaki iki goruntuyu karsilastir." }
+  ]
+}

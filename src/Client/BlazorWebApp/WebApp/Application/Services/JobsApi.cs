@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Json;
+﻿using System.Globalization;
+using System.Net.Http.Json;
 using WebApp.Application.Services.Interfaces;
 using WebApp.Shared.Dto.Scheduling;
 
@@ -8,6 +9,11 @@ namespace WebApp.Application.Services
     {
         private readonly HttpClient _http;
         private const string BasePath = "/catalog/jobs";
+
+        // Job.Start/End veritabaninda yerel duvar saati olarak duruyor (UTC degil) ve
+        // backend ham karsilastirma yapiyor. ToUniversalTime() ile gonderirsek pencere
+        // TZ farki kadar kayar, ay sinirindaki kayitlar disarida kalir.
+        private const string WallClockFormat = "yyyy-MM-ddTHH:mm:ss.fffffff";
 
         public JobsApi(HttpClient http) => _http = http;
 
@@ -23,8 +29,8 @@ namespace WebApp.Application.Services
         {
             var qs = new List<string>
             {
-                $"from={Uri.EscapeDataString(from.ToUniversalTime().ToString("o"))}",
-                $"to={Uri.EscapeDataString(to.ToUniversalTime().ToString("o"))}"
+                $"from={Uri.EscapeDataString(from.ToString(WallClockFormat, CultureInfo.InvariantCulture))}",
+                $"to={Uri.EscapeDataString(to.ToString(WallClockFormat, CultureInfo.InvariantCulture))}"
             };
             if (!string.IsNullOrWhiteSpace(assigneeId))
                 qs.Add($"assigneeId={Uri.EscapeDataString(assigneeId)}");
