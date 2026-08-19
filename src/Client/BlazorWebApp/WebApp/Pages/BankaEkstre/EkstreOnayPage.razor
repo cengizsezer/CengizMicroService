@@ -1,0 +1,486 @@
+﻿@page "/banka-isleme/onay/{EkstreId:int}"
+
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.BankaEkstre
+
+@implements IDisposable
+
+@inject IBankaEkstreApi Api
+@inject NotificationService Notif
+@inject IJSRuntime JS
+
+@*
+    Onay ekranı — modülün en önemli ekranı. Fare gerektirmez:
+      Enter  → onayla ve bir sonraki satıra atla
+      ↓ / ↑  → satır değiştir
+      Esc    → kod kutusunu temizle
+    Satır onaylanınca listeden düşer ve sayaçlar güncellenir. Her satırda hangi
+    katmanın önerdiği etiket olarak durur; yanılan katman böyle görülür.
+*@
+
+<style>
+    .eo-ust { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+    .eo-sayaclar { display: flex; flex-wrap: wrap; gap: 8px; }
+    .eo-sayac { border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px 12px; background: #fafbfc; min-width: 92px; }
+    .eo-sayac .deger { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .eo-sayac .ad { font-size: 10px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .eo-sayac.iyi .deger { color: #276749; }
+    .eo-sayac.dikkat .deger { color: #975a16; }
+    .eo-sayac.kotu .deger { color: #9b2c2c; }
+
+    .eo-ipucu { font-size: 11px; color: #a0aec0; margin-bottom: 8px; }
+    .eo-ipucu kbd { background: #edf2f7; border-radius: 3px; padding: 0 4px; font-family: ui-monospace, Consolas, monospace; }
+
+    .eo-liste { border: 1px solid #eee; border-radius: 6px; background: #fff; overflow: visible; }
+    .eo-satir { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+    .eo-satir:hover { background: #f8fbff; }
+    .eo-satir.aktif { background: #f0f7ff; }
+
+    .eo-tarih { flex: 0 0 88px; color: #4a5568; font-variant-numeric: tabular-nums; }
+    .eo-tutar { flex: 0 0 120px; text-align: right; font-variant-numeric: tabular-nums; }
+    .eo-tutar.giren { color: #276749; }
+    .eo-tutar.cikan { color: #9b2c2c; }
+    .eo-orta { flex: 1 1 auto; min-width: 0; }
+    .eo-aciklama { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .eo-ham { font-size: 11px; color: #a0aec0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .eo-kod { flex: 0 0 330px; position: relative; }
+    .eo-aksiyon { flex: 0 0 120px; text-align: right; }
+
+    .eo-inp { width: 150px; border: 1px solid #cbd5e0; border-radius: 4px; padding: 5px 8px; font-size: 13px;
+              font-family: ui-monospace, Consolas, monospace; }
+    .eo-inp:focus { outline: 2px solid #90cdf4; border-color: #90cdf4; }
+    .eo-hesapadi { font-size: 12px; color: #2c5282; margin-left: 8px; }
+
+    .eo-etiket { font-size: 10px; padding: 1px 7px; border-radius: 10px; background: #edf2f7; color: #4a5568; margin-left: 6px; }
+    .eo-etiket.cozulemedi { background: #fff5f5; color: #9b2c2c; }
+    .eo-skor { font-size: 10px; color: #718096; margin-left: 4px; font-variant-numeric: tabular-nums; }
+
+    .eo-adaylar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+    .eo-aday { font-size: 11px; border: 1px solid #cbd5e0; border-radius: 10px; padding: 2px 9px; background: #fff; cursor: pointer; }
+    .eo-aday:hover { background: #ebf8ff; border-color: #90cdf4; }
+
+    .eo-oneriler { position: absolute; z-index: 20; top: 34px; left: 0; width: 320px; max-height: 220px; overflow-y: auto;
+                   background: #fff; border: 1px solid #cbd5e0; border-radius: 4px; box-shadow: 0 6px 18px rgba(0,0,0,.10); }
+    .eo-oneri { padding: 4px 9px; font-size: 12px; cursor: pointer; display: flex; gap: 8px; }
+    .eo-oneri:hover { background: #ebf8ff; }
+    .eo-oneri .k { font-family: ui-monospace, Consolas, monospace; flex: 0 0 90px; }
+    .eo-oneri .a { color: #4a5568; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .eo-bos { padding: 30px; text-align: center; color: #a0aec0; }
+    .eo-cozulmus { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+</style>
+
+@if (_yukleme is null)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+}
+else
+{
+    <div class="eo-ust">
+        <div>
+            <h4 style="margin:0">@_yukleme.DosyaAdi</h4>
+            <div style="font-size:12px; color:#718096">@_yukleme.BankaAdi</div>
+        </div>
+
+        <div class="eo-sayaclar">
+            <div class="eo-sayac"><div class="deger">@_satirlar.Count</div><div class="ad">Toplam</div></div>
+            <div class="eo-sayac iyi"><div class="deger">@Sayi(SatirDurum.Otomatik)</div><div class="ad">Otomatik</div></div>
+            <div class="eo-sayac iyi"><div class="deger">@Sayi(SatirDurum.Onaylandi)</div><div class="ad">Onaylandı</div></div>
+            <div class="eo-sayac dikkat"><div class="deger">@Sayi(SatirDurum.OnayBekliyor)</div><div class="ad">Bekliyor</div></div>
+            <div class="eo-sayac kotu"><div class="deger">@Sayi(SatirDurum.Cozulemedi)</div><div class="ad">Çözülemedi</div></div>
+        </div>
+    </div>
+
+    <div style="display:flex; gap:6px; margin-bottom:10px">
+        <RadzenButton Text="@($"Onay bekleyenler ({Bekleyenler.Count})")" Size="ButtonSize.Small"
+                      ButtonStyle="@(_cozulmusSekme ? ButtonStyle.Light : ButtonStyle.Primary)"
+                      Click="@(async () => { _cozulmusSekme = false; await IlkSatiraOdaklanAsync(); })" />
+        <RadzenButton Text="@($"Çözülmüşler ({Cozulmusler.Count})")" Size="ButtonSize.Small"
+                      ButtonStyle="@(_cozulmusSekme ? ButtonStyle.Primary : ButtonStyle.Light)"
+                      Click="@(() => _cozulmusSekme = true)" />
+        <div style="flex:1 1 auto"></div>
+        <RadzenButton Text="ORKA'ya aktar" Icon="download" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
+                      Disabled="@(Bekleyenler.Count > 0)" Click="@DisaAktarAsync" />
+    </div>
+
+    @if (!_cozulmusSekme)
+    {
+        <div class="eo-ipucu">
+            <kbd>Enter</kbd> onayla ve sonraki satır · <kbd>↓</kbd>/<kbd>↑</kbd> satır değiştir · <kbd>Esc</kbd> alanı temizle
+        </div>
+
+        <div class="eo-liste">
+            @if (Bekleyenler.Count == 0)
+            {
+                <div class="eo-bos">Bekleyen satır yok. Ekstre dışa aktarıma hazır.</div>
+            }
+
+            @foreach (var satir in Bekleyenler)
+            {
+                <div class="eo-satir @(_aktifSatirId == satir.Id ? "aktif" : "")">
+                    <span class="eo-tarih">@BankaEkstreEtiket.Tarih(satir.Tarih)</span>
+
+                    <span class="eo-tutar @(satir.Yon == Yon.Giren ? "giren" : "cikan")">
+                        @(satir.Yon == Yon.Giren ? "+" : "−")@BankaEkstreEtiket.Tutar(satir.Tutar)
+                    </span>
+
+                    <span class="eo-orta">
+                        <div class="eo-aciklama" title="@satir.UretilenAciklama">
+                            @(string.IsNullOrWhiteSpace(satir.UretilenAciklama) ? "—" : satir.UretilenAciklama)
+                            @if (satir.Durum == SatirDurum.Cozulemedi)
+                            {
+                                <span class="eo-etiket cozulemedi">çözülemedi</span>
+                            }
+                            else
+                            {
+                                <span class="eo-etiket">@BankaEkstreEtiket.Katman(satir.KaynakKatman)</span>
+                                <span class="eo-skor">@BankaEkstreEtiket.Skor(satir.GuvenSkoru)</span>
+                            }
+                        </div>
+                        <div class="eo-ham" title="@satir.HamAciklama">@satir.IslemTipi · @satir.HamAciklama</div>
+
+                        @if (satir.IkinciAdayKodu is not null)
+                        {
+                            <div class="eo-adaylar">
+                                <span class="eo-aday" @onclick="@(() => AdaySec(satir, satir.OnerilenHesapKodu))">
+                                    @satir.OnerilenHesapKodu — @satir.OnerilenHesapAdi (@BankaEkstreEtiket.Skor(satir.GuvenSkoru))
+                                </span>
+                                <span class="eo-aday" @onclick="@(() => AdaySec(satir, satir.IkinciAdayKodu))">
+                                    @satir.IkinciAdayKodu — @satir.IkinciAdayAdi (@BankaEkstreEtiket.Skor(satir.IkinciAdaySkoru ?? 0m))
+                                </span>
+                            </div>
+                        }
+                    </span>
+
+                    <span class="eo-kod">
+                        <input id="@KutuId(satir.Id)" class="eo-inp" autocomplete="off" placeholder="120 D22"
+                               value="@Kod(satir.Id)"
+                               @onfocus="@(() => _aktifSatirId = satir.Id)"
+                               @oninput="@(e => KodDegistiAsync(satir, e.Value?.ToString()))"
+                               @onkeydown="@(e => TusAsync(e, satir))" />
+
+                        @if (Ad(satir.Id) is string ad)
+                        {
+                            <span class="eo-hesapadi">@ad</span>
+                        }
+
+                        @if (_aktifSatirId == satir.Id && _oneriler.Count > 0)
+                        {
+                            <div class="eo-oneriler">
+                                @foreach (var oneri in _oneriler)
+                                {
+                                    <div class="eo-oneri" @onclick="@(() => AdaySec(satir, oneri.Kod))">
+                                        <span class="k">@oneri.Kod</span>
+                                        <span class="a">@oneri.Ad</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </span>
+
+                    <span class="eo-aksiyon">
+                        <RadzenButton Text="Onayla" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.ExtraSmall"
+                                      Click="@(() => OnaylaAsync(satir))" />
+                        <RadzenButton Icon="call_split" title="Karşı bacağı başka bankada işlendi"
+                                      ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                                      Click="@(() => DigerBankadaAsync(satir))" />
+                    </span>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="eo-liste">
+            @if (Cozulmusler.Count == 0)
+            {
+                <div class="eo-bos">Çözülmüş satır yok.</div>
+            }
+
+            @foreach (var satir in Cozulmusler)
+            {
+                <div class="eo-cozulmus">
+                    <span class="eo-tarih">@BankaEkstreEtiket.Tarih(satir.Tarih)</span>
+                    <span class="eo-tutar @(satir.Yon == Yon.Giren ? "giren" : "cikan")">
+                        @(satir.Yon == Yon.Giren ? "+" : "−")@BankaEkstreEtiket.Tutar(satir.Tutar)
+                    </span>
+                    <span class="eo-orta">
+                        <div class="eo-aciklama">@satir.UretilenAciklama</div>
+                        <div class="eo-ham" title="@satir.HamAciklama">@satir.IslemTipi · @satir.HamAciklama</div>
+                    </span>
+                    <span style="flex:0 0 240px; font-family:ui-monospace, Consolas, monospace">
+                        @(satir.OnaylananHesapKodu ?? satir.OnerilenHesapKodu ?? "—")
+                        <span class="eo-etiket">@BankaEkstreEtiket.Katman(satir.KaynakKatman)</span>
+                    </span>
+                    <span style="flex:0 0 120px; color:#718096; font-size:12px">@BankaEkstreEtiket.Durum(satir.Durum)</span>
+                </div>
+            }
+        </div>
+    }
+
+    @if (_orkaSatirlar is not null)
+    {
+        <h5 style="margin-top:16px">ORKA çıktısı (@_orkaSatirlar.SatirSayisi satır)</h5>
+        @if (_orkaSatirlar.DigerBankadaAtlanan > 0)
+        {
+            <div class="eo-ipucu">@_orkaSatirlar.DigerBankadaAtlanan satır "diğer bankada" işaretli olduğu için aktarılmadı.</div>
+        }
+
+        <div class="eo-liste">
+            @foreach (var s in _orkaSatirlar.Satirlar)
+            {
+                <div class="eo-cozulmus">
+                    <span class="eo-tarih">@BankaEkstreEtiket.Tarih(s.Tarih)</span>
+                    <span class="eo-orta"><div class="eo-aciklama">@s.Aciklama</div></span>
+                    <span style="flex:0 0 120px; font-family:ui-monospace, Consolas, monospace">@s.HesapKodu</span>
+                    <span style="flex:0 0 120px; font-family:ui-monospace, Consolas, monospace">@s.BankaHesapKodu</span>
+                    <span class="eo-tutar @(s.Yon == Yon.Giren ? "giren" : "cikan")">@BankaEkstreEtiket.Tutar(s.Tutar)</span>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int EkstreId { get; set; }
+
+    private EkstreYuklemeDto? _yukleme;
+    private List<EkstreSatirDto> _satirlar = new();
+
+    /// <summary>Satır başına kod kutusunun içeriği; öneriyle doldurulur, kullanıcı üzerine yazar.</summary>
+    private readonly Dictionary<int, string> _kodlar = new();
+
+    /// <summary>Kod kutusundaki koda karşılık gelen hesap adı (seçilince kutunun yanında görünür).</summary>
+    private readonly Dictionary<int, string?> _adlar = new();
+
+    private List<HesapPlaniKaydiDto> _oneriler = new();
+    private int _aktifSatirId;
+    private bool _cozulmusSekme;
+    private bool _ilkOdakVerildi;
+
+    private DisaAktarimSonucDto? _orkaSatirlar;
+
+    /// <summary>Yazdıkça öneri çağrısı yapılır; önceki istek iptal edilir.</summary>
+    private CancellationTokenSource? _oneriIptal;
+
+    /// <summary>Varsayılan filtre: yalnız çözülmemiş satırlar (onay bekleyen + çözülemeyen).</summary>
+    private List<EkstreSatirDto> Bekleyenler =>
+        _satirlar.Where(s => s.Durum is SatirDurum.OnayBekliyor or SatirDurum.Cozulemedi)
+                 .OrderBy(s => s.SiraNo).ToList();
+
+    private List<EkstreSatirDto> Cozulmusler =>
+        _satirlar.Where(s => s.Durum is not (SatirDurum.OnayBekliyor or SatirDurum.Cozulemedi))
+                 .OrderBy(s => s.SiraNo).ToList();
+
+    private int Sayi(SatirDurum durum) => _satirlar.Count(s => s.Durum == durum);
+
+    private static string KutuId(int satirId) => $"eo-kod-{satirId}";
+
+    private string Kod(int satirId) => _kodlar.TryGetValue(satirId, out var k) ? k : string.Empty;
+
+    private string? Ad(int satirId) => _adlar.TryGetValue(satirId, out var a) ? a : null;
+
+    protected override async Task OnParametersSetAsync() => await YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        _yukleme = await Api.GetYuklemeAsync(EkstreId);
+        _satirlar = await Api.GetSatirlarAsync(EkstreId);
+
+        _kodlar.Clear();
+        _adlar.Clear();
+        foreach (var satir in _satirlar)
+        {
+            // Öneri hazır gelir; kullanıcı doğruysa yalnız Enter'a basar.
+            _kodlar[satir.Id] = satir.OnaylananHesapKodu ?? satir.OnerilenHesapKodu ?? string.Empty;
+            _adlar[satir.Id] = satir.OnaylananHesapAdi ?? satir.OnerilenHesapAdi;
+        }
+
+        _ilkOdakVerildi = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Sayfa açılınca odak ilk belirsiz satırın kod kutusunda olmalı.
+        if (_ilkOdakVerildi || _cozulmusSekme || Bekleyenler.Count == 0) return;
+
+        _ilkOdakVerildi = true;
+        await OdaklaAsync(Bekleyenler[0].Id);
+    }
+
+    // ---- Klavye ----
+
+    private async Task TusAsync(KeyboardEventArgs e, EkstreSatirDto satir)
+    {
+        _aktifSatirId = satir.Id;
+
+        switch (e.Key)
+        {
+            case "Enter":
+                await OnaylaAsync(satir);
+                break;
+
+            case "ArrowDown":
+                await KomsuyaGecAsync(satir, +1);
+                break;
+
+            case "ArrowUp":
+                await KomsuyaGecAsync(satir, -1);
+                break;
+
+            case "Escape":
+                _kodlar[satir.Id] = string.Empty;
+                _adlar[satir.Id] = null;
+                _oneriler = new();
+                await JS.InvokeVoidAsync("bankaEkstre.temizle", KutuId(satir.Id));
+                break;
+        }
+    }
+
+    private async Task KomsuyaGecAsync(EkstreSatirDto satir, int adim)
+    {
+        var liste = Bekleyenler;
+        var index = liste.FindIndex(s => s.Id == satir.Id);
+        if (index < 0) return;
+
+        var hedef = index + adim;
+        if (hedef < 0 || hedef >= liste.Count) return;
+
+        _oneriler = new();
+        await OdaklaAsync(liste[hedef].Id);
+    }
+
+    private async Task OdaklaAsync(int satirId)
+    {
+        _aktifSatirId = satirId;
+        await JS.InvokeVoidAsync("bankaEkstre.odakla", KutuId(satirId));
+    }
+
+    private async Task IlkSatiraOdaklanAsync()
+    {
+        var liste = Bekleyenler;
+        if (liste.Count > 0) await OdaklaAsync(liste[0].Id);
+    }
+
+    // ---- Kod kutusu ve öneriler ----
+
+    private async Task KodDegistiAsync(EkstreSatirDto satir, string? deger)
+    {
+        var kod = deger ?? string.Empty;
+        _kodlar[satir.Id] = kod;
+        _aktifSatirId = satir.Id;
+
+        _oneriIptal?.Cancel();
+        _oneriIptal = new CancellationTokenSource();
+        var iptal = _oneriIptal.Token;
+
+        if (kod.Trim().Length < 2)
+        {
+            _oneriler = new();
+            _adlar[satir.Id] = null;
+            return;
+        }
+
+        // Arama yön → ana grupla daraltılır; giren 120, çıkan 329.
+        var anaGrup = satir.Yon == Yon.Giren ? "120" : "329";
+
+        var sonuc = await Api.HesapPlaniAraAsync(kod.Trim(), anaGrup, 12, iptal);
+        if (iptal.IsCancellationRequested) return;
+
+        // Grup içinde bulunamadıysa tüm plana genişlet (istisna satırlar için).
+        if (sonuc.Count == 0)
+        {
+            sonuc = await Api.HesapPlaniAraAsync(kod.Trim(), null, 12, iptal);
+            if (iptal.IsCancellationRequested) return;
+        }
+
+        _oneriler = sonuc;
+        _adlar[satir.Id] = sonuc.FirstOrDefault(o =>
+            string.Equals(o.Kod, kod.Trim(), StringComparison.OrdinalIgnoreCase))?.Ad;
+    }
+
+    private void AdaySec(EkstreSatirDto satir, string? kod)
+    {
+        if (string.IsNullOrWhiteSpace(kod)) return;
+
+        _kodlar[satir.Id] = kod;
+        _adlar[satir.Id] = _oneriler.FirstOrDefault(o => o.Kod == kod)?.Ad
+                           ?? (kod == satir.OnerilenHesapKodu ? satir.OnerilenHesapAdi
+                               : kod == satir.IkinciAdayKodu ? satir.IkinciAdayAdi : null);
+        _oneriler = new();
+    }
+
+    // ---- Onay ----
+
+    private async Task OnaylaAsync(EkstreSatirDto satir)
+    {
+        var kod = Kod(satir.Id).Trim();
+        if (kod.Length == 0)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Kod boş", "Onaylamadan önce bir hesap kodu girin.", 4000);
+            return;
+        }
+
+        // Onaydan sonra odaklanacak satır, bu satır listeden düşmeden belirlenir.
+        var liste = Bekleyenler;
+        var index = liste.FindIndex(s => s.Id == satir.Id);
+        var sonraki = index >= 0 && index + 1 < liste.Count ? liste[index + 1].Id
+                    : index > 0 ? liste[index - 1].Id
+                    : (int?)null;
+
+        var (veri, hata) = await Api.OnaylaAsync(satir.Id, kod);
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Error, "Onaylanamadı", hata, 6000);
+            return;
+        }
+
+        Guncelle(veri);
+        _oneriler = new();
+
+        if (sonraki is int hedefId && Bekleyenler.Any(s => s.Id == hedefId))
+            await OdaklaAsync(hedefId);
+    }
+
+    private async Task DigerBankadaAsync(EkstreSatirDto satir)
+    {
+        var (veri, hata) = await Api.DigerBankadaAsync(satir.Id);
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Error, "İşaretlenemedi", hata, 6000);
+            return;
+        }
+
+        Guncelle(veri);
+        await IlkSatiraOdaklanAsync();
+    }
+
+    /// <summary>Sunucudan dönen satırı listede yerine koyar; sayaçlar bundan türer.</summary>
+    private void Guncelle(EkstreSatirDto? yeni)
+    {
+        if (yeni is null) return;
+
+        var index = _satirlar.FindIndex(s => s.Id == yeni.Id);
+        if (index >= 0) _satirlar[index] = yeni;
+
+        _kodlar[yeni.Id] = yeni.OnaylananHesapKodu ?? yeni.OnerilenHesapKodu ?? string.Empty;
+        _adlar[yeni.Id] = yeni.OnaylananHesapAdi ?? yeni.OnerilenHesapAdi;
+    }
+
+    private async Task DisaAktarAsync()
+    {
+        var (veri, hata) = await Api.DisaAktarAsync(EkstreId);
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Dışa aktarılamadı", hata, 8000);
+            return;
+        }
+
+        _orkaSatirlar = veri;
+        Notif.Notify(NotificationSeverity.Success, "Hazır", $"{veri?.SatirSayisi} satır aktarıma hazır.", 4000);
+    }
+
+    public void Dispose() => _oneriIptal?.Cancel();
+}

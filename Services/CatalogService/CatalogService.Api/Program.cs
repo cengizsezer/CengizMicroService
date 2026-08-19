@@ -133,6 +133,25 @@ builder.Services.AddScoped<CatalogService.Api.Features.Muhasebe.Services.IRaporS
 builder.Services.AddScoped<CatalogService.Api.Features.Muhasebe.Services.IMasrafMerkeziService, CatalogService.Api.Features.Muhasebe.Services.MasrafMerkeziService>();
 // Ortak referans veri, dosyadan bir kez okunup bellekte tutulur.
 builder.Services.AddSingleton<CatalogService.Api.Features.Muhasebe.Services.IBankaKoduService, CatalogService.Api.Features.Muhasebe.Services.BankaKoduService>();
+
+// Banka Ekstresi İşleme modülü.
+// Parser'lar durumsuz → Singleton; yeni banka eklemek için buraya bir IEkstreParser kaydı yeter.
+builder.Services.AddSingleton<CatalogService.Api.Features.BankaEkstre.Services.Parsing.IEkstreParser,
+                              CatalogService.Api.Features.BankaEkstre.Services.Parsing.VakifbankVadesizParser>();
+builder.Services.AddSingleton<CatalogService.Api.Features.BankaEkstre.Services.Parsing.IEkstreParserSecici,
+                              CatalogService.Api.Features.BankaEkstre.Services.Parsing.EkstreParserSecici>();
+builder.Services.AddSingleton<CatalogService.Api.Features.BankaEkstre.Services.IUnvanCikarici,
+                              CatalogService.Api.Features.BankaEkstre.Services.UnvanCikarici>();
+builder.Services.AddSingleton<CatalogService.Api.Features.BankaEkstre.Services.IAciklamaUretici,
+                              CatalogService.Api.Features.BankaEkstre.Services.AciklamaUretici>();
+builder.Services.AddSingleton<CatalogService.Api.Features.BankaEkstre.Services.IHesapEslestirici,
+                              CatalogService.Api.Features.BankaEkstre.Services.HesapEslestirici>();
+builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IBankaHesabiService,
+                           CatalogService.Api.Features.BankaEkstre.Services.BankaHesabiService>();
+builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IEkstreHesapPlaniService,
+                           CatalogService.Api.Features.BankaEkstre.Services.EkstreHesapPlaniService>();
+builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IEkstreService,
+                           CatalogService.Api.Features.BankaEkstre.Services.EkstreService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolMaddeService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolMaddeService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolMizanService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolMizanService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IMizanNotuService, CatalogService.Api.Features.FirmaKontrol.Services.MizanNotuService>();
@@ -487,6 +506,10 @@ IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf')
 
             logger.LogInformation("🧮 SMMM Takip seed uygulanıyor...");
             await CatalogService.Api.Features.SmmmTakip.SmmmTakipSeed.SeedAsync(ctxOnce);
+
+            // Banka ekstresi şablon/desen/kural tabloları: banka bazlı referans, tenant'tan bağımsız.
+            logger.LogInformation("🏦 Banka ekstresi yapılandırması seed uygulanıyor...");
+            await CatalogService.Api.Features.BankaEkstre.BankaEkstreSeed.SeedAsync(ctxOnce);
 
             // Kurumlar vergisi beyanname kalemleri: katalog firmadan bağımsız, bir kez yüklenir.
             logger.LogInformation("🧾 Vergi kalemleri seed uygulanıyor...");

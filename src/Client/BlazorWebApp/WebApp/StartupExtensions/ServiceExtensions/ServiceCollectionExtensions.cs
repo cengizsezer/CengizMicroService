@@ -156,6 +156,9 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             services.AddScoped<IMuhasebeApi>(sp =>
                 new MuhasebeApi(sp.GetRequiredService<HttpClient>()));
 
+            services.AddScoped<IBankaEkstreApi>(sp =>
+                new BankaEkstreApi(sp.GetRequiredService<HttpClient>()));
+
             services.AddScoped<IUserAdminService>(sp =>
                 new UserAdminService(sp.GetRequiredService<HttpClient>()));
 

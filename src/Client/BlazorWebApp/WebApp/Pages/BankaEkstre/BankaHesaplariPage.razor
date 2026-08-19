@@ -1,0 +1,229 @@
+﻿@page "/banka-isleme/hesaplar"
+
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.BankaEkstre
+
+@inject IBankaEkstreApi Api
+@inject NotificationService Notif
+
+@*
+    Ekstresi işlenen banka hesapları. Bu liste aynı zamanda "banka kayıt defteri"dir:
+    bankalar arası hareketlerde karşı taraf buradan bulunur (eşleştirme Katman 3),
+    bu yüzden her banka için ORKA kodu doğru girilmeli.
+*@
+
+<style>
+    .bh-arac { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .bh-tablo { border: 1px solid #eee; border-radius: 6px; background: #fff; overflow: hidden; }
+    .bh-satir { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+    .bh-head { background: #fafafa; border-bottom: 1px solid #eee; font-size: 11px; color: #718096;
+               text-transform: uppercase; letter-spacing: .3px; }
+    .bh-satir:not(.bh-head):hover { background: #f8fbff; }
+    .bh-ad { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bh-kod { flex: 0 0 130px; font-family: ui-monospace, Consolas, monospace; }
+    .bh-iban { flex: 0 0 230px; font-family: ui-monospace, Consolas, monospace; color: #4a5568; }
+    .bh-tip { flex: 0 0 90px; color: #4a5568; }
+    .bh-parser { flex: 0 0 170px; color: #718096; font-size: 12px; }
+    .bh-aksiyon { flex: 0 0 80px; text-align: right; }
+    .bh-pasif .bh-ad, .bh-pasif .bh-kod { color: #a0aec0; text-decoration: line-through; }
+    .bh-bos { padding: 26px; text-align: center; color: #a0aec0; }
+
+    .bh-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .bh-alan { display: flex; flex-direction: column; gap: 3px; }
+    .bh-alan label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .bh-ipucu { font-size: 11px; color: #a0aec0; }
+</style>
+
+<div class="bh-arac">
+    <h4 style="margin:0">Banka Hesapları</h4>
+    <div style="display:flex; gap:6px; align-items:center">
+        <RadzenCheckBox TValue="bool" Value="@_pasifDahil" Name="pasifDahil"
+                        Change="@(async (bool secili) => { _pasifDahil = secili; await YukleAsync(); })" />
+        <label for="pasifDahil" style="font-size:12px; color:#718096">Pasifleri de göster</label>
+        <RadzenButton Text="Yeni hesap" Icon="add" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                      Click="@(() => FormAc(null))" />
+    </div>
+</div>
+
+@if (_yukleniyor)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+}
+else
+{
+    <div class="bh-tablo">
+        <div class="bh-satir bh-head">
+            <span class="bh-ad">Banka</span>
+            <span class="bh-tip">Tip</span>
+            <span class="bh-kod">ORKA kodu</span>
+            <span class="bh-iban">IBAN</span>
+            <span class="bh-parser">Ayrıştırıcı</span>
+            <span class="bh-aksiyon"></span>
+        </div>
+
+        @if (_hesaplar.Count == 0)
+        {
+            <div class="bh-bos">Henüz banka hesabı tanımlanmadı.</div>
+        }
+
+        @foreach (var hesap in _hesaplar)
+        {
+            <div class="bh-satir @(hesap.Aktif ? "" : "bh-pasif")">
+                <span class="bh-ad">@hesap.BankaAdi</span>
+                <span class="bh-tip">@BankaEkstreEtiket.HesapTipi(hesap.HesapTipi) · @hesap.ParaBirimi</span>
+                <span class="bh-kod">@hesap.OrkaHesapKodu</span>
+                <span class="bh-iban">@(string.IsNullOrWhiteSpace(hesap.Iban) ? "—" : hesap.Iban)</span>
+                <span class="bh-parser">@ParserAdi(hesap.ParserTipi)</span>
+                <span class="bh-aksiyon">
+                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                                  Click="@(() => FormAc(hesap))" />
+                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                                  Click="@(() => SilAsync(hesap))" />
+                </span>
+            </div>
+        }
+    </div>
+}
+
+@if (_form is not null)
+{
+    <div style="margin-top:16px; padding:14px; border:1px solid #e2e8f0; border-radius:6px; background:#fff">
+        <h5 style="margin-top:0">@(_duzenlenenId is null ? "Yeni banka hesabı" : "Hesabı düzenle")</h5>
+
+        <div class="bh-form">
+            <div class="bh-alan">
+                <label>Banka adı</label>
+                <RadzenTextBox @bind-Value="_form.BankaAdi" Placeholder="Vakıfbank" />
+                <span class="bh-ipucu">Bankalar arası hareketlerde açıklamada bu ad aranır.</span>
+            </div>
+
+            <div class="bh-alan">
+                <label>ORKA hesap kodu</label>
+                <RadzenTextBox @bind-Value="_form.OrkaHesapKodu" Placeholder="102 1 1 01" />
+                <span class="bh-ipucu">Boşluklu yazın; format değiştirilmez, ORKA tanımaz.</span>
+            </div>
+
+            <div class="bh-alan">
+                <label>Hesap tipi</label>
+                <RadzenDropDown TValue="HesapTipi" @bind-Value="_form.HesapTipi"
+                                Data="@(new[] { HesapTipi.Vadesiz, HesapTipi.Vadeli })"
+                                Style="width:100%" />
+            </div>
+
+            <div class="bh-alan">
+                <label>Para birimi</label>
+                <RadzenTextBox @bind-Value="_form.ParaBirimi" Placeholder="TRY" />
+            </div>
+
+            <div class="bh-alan">
+                <label>IBAN (isteğe bağlı)</label>
+                <RadzenTextBox @bind-Value="_form.Iban" Placeholder="TR..." />
+                <span class="bh-ipucu">Girilirse bankalar arası eşleştirme IBAN'dan kesin çözülür.</span>
+            </div>
+
+            <div class="bh-alan">
+                <label>Ayrıştırıcı</label>
+                <RadzenDropDown TValue="string" @bind-Value="_form.ParserTipi" Data="@_parserler"
+                                TextProperty="Ad" ValueProperty="Tip" Style="width:100%" />
+                <span class="bh-ipucu">Şimdilik yalnız Vakıfbank vadesiz TL destekleniyor.</span>
+            </div>
+
+            <div class="bh-alan">
+                <label>Durum</label>
+                <div style="display:flex; gap:6px; align-items:center">
+                    <RadzenCheckBox @bind-Value="_form.Aktif" Name="aktif" />
+                    <label for="aktif" style="font-size:12px; color:#4a5568; text-transform:none; letter-spacing:0">Aktif</label>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:6px; margin-top:14px">
+            <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                          Disabled="@_kaydediyor" Click="@KaydetAsync" />
+            <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                          Click="@(() => { _form = null; _duzenlenenId = null; })" />
+        </div>
+    </div>
+}
+
+@code {
+    private List<BankaHesabiDto> _hesaplar = new();
+    private List<ParserSecenekDto> _parserler = new();
+
+    private BankaHesabiYazDto? _form;
+    private int? _duzenlenenId;
+
+    private bool _pasifDahil;
+    private bool _yukleniyor = true;
+    private bool _kaydediyor;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _parserler = await Api.GetParserlerAsync();
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        _hesaplar = await Api.GetHesaplarAsync(_pasifDahil);
+        _yukleniyor = false;
+    }
+
+    private string ParserAdi(string tip)
+        => _parserler.FirstOrDefault(p => p.Tip == tip)?.Ad ?? tip;
+
+    private void FormAc(BankaHesabiDto? hesap)
+    {
+        _duzenlenenId = hesap?.Id;
+        _form = hesap is null
+            ? new BankaHesabiYazDto { ParserTipi = _parserler.FirstOrDefault()?.Tip ?? string.Empty }
+            : new BankaHesabiYazDto
+            {
+                BankaAdi = hesap.BankaAdi,
+                HesapTipi = hesap.HesapTipi,
+                ParaBirimi = hesap.ParaBirimi,
+                Iban = hesap.Iban,
+                OrkaHesapKodu = hesap.OrkaHesapKodu,
+                ParserTipi = hesap.ParserTipi,
+                Aktif = hesap.Aktif
+            };
+    }
+
+    private async Task KaydetAsync()
+    {
+        if (_form is null) return;
+
+        _kaydediyor = true;
+        var (veri, hata) = _duzenlenenId is int id
+            ? await Api.UpdateHesapAsync(id, _form)
+            : await Api.CreateHesapAsync(_form);
+        _kaydediyor = false;
+
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Error, "Kaydedilemedi", hata, 6000);
+            return;
+        }
+
+        Notif.Notify(NotificationSeverity.Success, "Kaydedildi", veri?.BankaAdi, 3000);
+        _form = null;
+        _duzenlenenId = null;
+        await YukleAsync();
+    }
+
+    private async Task SilAsync(BankaHesabiDto hesap)
+    {
+        var hata = await Api.DeleteHesapAsync(hesap.Id);
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Silinemedi", hata, 6000);
+            return;
+        }
+
+        Notif.Notify(NotificationSeverity.Success, "Silindi", hesap.BankaAdi, 3000);
+        await YukleAsync();
+    }
+}
