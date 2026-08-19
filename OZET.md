@@ -1,4 +1,4 @@
-# ÖZET — Banka Ekstresi İşleme Modülü
+﻿# ÖZET — Banka Ekstresi İşleme Modülü
 
 Vakıfbank vadesiz TL ekstresi yüklenip her satır için muhasebe açıklaması üretiliyor,
 karşı hesap katmanlı olarak çözülüyor; belirsiz satırlar klavye odaklı onay ekranına
@@ -56,7 +56,7 @@ Tablolar (`catalog` şeması): `EkstreBankaHesaplari`, `EkstreYuklemeler`, `Ekst
 | `Application/Services/BankaEkstreApi.cs` | HTTP istemcisi, `{ field, message }` hata sözleşmesi |
 | `Pages/BankaEkstre/BankaHesaplariPage.razor` | `/banka-isleme/hesaplar` — CRUD |
 | `Pages/BankaEkstre/EkstreYuklePage.razor` | `/banka-isleme/yukle` — hesap planı + ekstre yükleme, sayaçlar |
-| `Pages/BankaEkstre/EkstreOnayPage.razor` | `/banka-isleme/onay/{id}` — klavye odaklı onay |
+| `Pages/BankaEkstre/EkstreOnayPage.razor` | `/banka-isleme/onay/{id}` — klavye odaklı onay (Enter / ↓↑ / Esc / Alt+1..9) |
 | `wwwroot/js/bankaEkstre.js` | Odak yardımcıları (`odakla`, `temizle`) |
 | `wwwroot/index.html` | Script kaydı |
 | `Layout/MainLayout.razor` | "Banka İşleme" menü grubu |
@@ -82,7 +82,7 @@ Tablolar (`catalog` şeması): `EkstreBankaHesaplari`, `EkstreYuklemeler`, `Ekst
 | 6 | Katman sırası doğru, `KaynakKatman` doluyor | ✅ `HesapEslestiriciTests` (katman 1/1b/2/3/4/5 ayrı testler) |
 | 7 | Eşik altı ve yakın adaylı satırlar `OnayBekliyor` | ✅ `Tek_yuksek_aday_otomatik_gecer`, `Yakin_ikinci_aday_varsa_onaya_duser`, `Esik_altindaki_skor_otomatik_gecmez` |
 | 8 | Onay sonrası öğrenme, aynı açıklama Katman 2'den çözülüyor | ✅ `Onay_ogrenme_kaydi_yazar_ve_ikinci_yuklemede_katman2_cozer` |
-| 9 | Onay ekranı tamamen klavyeyle | ⚠️ Kodda var (Enter/↓/↑/Esc + otomatik odak), **otomatik testi yok** — tarayıcıda elle denenmeli |
+| 9 | Onay ekranı tamamen klavyeyle | ✅ Enter/↓/↑/Esc + `Alt+1..9` aday-öneri seçimi + otomatik odak. Kod gözden geçirildi; **otomatik testi yok** (bUnit yok) — tarayıcıda elle denenmeli |
 | 10 | Eksik satır varken dışa aktarım engelleniyor | ✅ `Cozulemeyen_satir_onaya_duser_ve_disa_aktarimi_engeller` |
 
 Test sonucu: **210 test, 0 başarısız** (`CatalogService.UnitTests`), **18 test, 0 başarısız** (`WebApp.UnitTests`).
@@ -118,7 +118,8 @@ Testler yazılırken ortaya çıktı, üçü de sessiz veri bozulması üretiyor
 
 - **Onay ekranının klavye akışı otomatik test edilmedi** (bUnit yok, `WebApp.UnitTests`
   saf xunit). Elle denenmeli: `/banka-isleme/onay/{id}` açılınca odak ilk satırın kod
-  kutusunda mı, Enter onaylayıp bir sonrakine atlıyor mu.
+  kutusunda mı, Enter onaylayıp bir sonrakine atlıyor mu, `Alt+2` ikinci adayı kutuya
+  yazıyor mu.
 - **Gerçek Vakıfbank dosyasıyla denenmedi.** Testler ölçülen yapıyı (veri 8. satırdan,
   kolon indeksleri 2/5/6/8/14/15/16) taklit eden üretilmiş xlsx kullanıyor. Gerçek
   dosyada kolon başlıkları farklı adlanıyorsa parser sabit indekslere düşer ve

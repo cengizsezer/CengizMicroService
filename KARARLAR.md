@@ -1,4 +1,4 @@
-# KARARLAR — Banka Ekstresi İşleme Modülü
+﻿# KARARLAR — Banka Ekstresi İşleme Modülü
 
 Prompt'ta açıkça yazmayan noktalarda alınan kararlar ve gerekçeleri.
 Kural: belirsizse en muhafazakâr seçenek, mimari belirsizse repodaki benzer koda bak.
@@ -155,3 +155,13 @@ yüklenmemişken sistemi tamamen kilitlemek de kullanışsız olurdu.
 **Karar:** "Diğer bankada" işaretlemesi `OgrenmeKaydi` üretmez.
 **Neden:** Bu bir hesap kararı değil, "bu satırı burada işleme" kararı. Öğrenilirse
 aynı gönderici bir daha hiç eşleşmezdi.
+
+## 20. Aday seçimi klavyeden `Alt+rakam`
+
+**Karar:** Onay ekranında yakın adaylar ve yazdıkça çıkan öneri listesi `Alt+1..9`
+ile seçilebilir. Öneri listesi açıksa rakam listeden, kapalıysa yakın aday
+çiftinden seçer (1 = önerilen, 2 = ikinci aday). Odak kod kutusunda kalır.
+**Neden:** Prompt §10 hem "fare gerektirmez" hem "iki aday da tıklanabilir/seçilebilir"
+diyor. Adaylar yalnız `@onclick` ile seçilebiliyordu; klavye kullanıcısı ikinci adayı
+elle yazmak zorunda kalıyordu. `↓`/`↑` satır değiştirmeye ayrılmış olduğundan aday
+gezinmesi için kullanılamazdı, bu yüzden ayrı bir değiştirici tuş seçildi.
