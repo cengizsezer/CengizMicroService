@@ -1,12 +1,30 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using CatalogService.Api.Features.BankaEkstre.Domain;
 
 namespace CatalogService.Api.Features.BankaEkstre.Services
 {
+    /// <summary>
+    /// Unvan çıkarma sonucu. <see cref="HesapSahibiElendi"/>, en az bir desenin hesap
+    /// sahibinin kendi unvanını yakaladığını ve atıldığını söyler; bu durumda unvan
+    /// bulunamamışsa satır <b>işlem tipi anahtarına da düşmemeli</b> — düşerse hesap
+    /// sahibinin adı üzerinden yanlış bir öğrenme kaydı oluşur.
+    /// </summary>
+    public sealed record UnvanSonuc(string? Unvan, bool HesapSahibiElendi)
+    {
+        public static readonly UnvanSonuc Yok = new(null, false);
+    }
+
     public interface IUnvanCikarici
     {
-        /// <summary>Ham açıklamadan karşı tarafın unvanı; hiçbir desen tutmazsa null.</summary>
-        string? Cikar(string? hamAciklama, IReadOnlyList<UnvanDeseni> desenler);
+        /// <summary>
+        /// Ham açıklamadan karşı tarafın unvanı; hiçbir desen tutmazsa <see cref="UnvanSonuc.Unvan"/>
+        /// null döner.
+        /// </summary>
+        /// <param name="hesapSahibiUnvani">
+        /// Hesap sahibinin kendi unvanı. Çekirdeği buna eşit olan yakalamalar atılır ve
+        /// sıradaki desene geçilir; hiçbir desen başka bir unvan vermezse null döner.
+        /// </param>
+        UnvanSonuc Cikar(string? hamAciklama, IReadOnlyList<UnvanDeseni> desenler, string? hesapSahibiUnvani = null);
     }
 
     /// <summary>
@@ -27,9 +45,13 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// <summary>Unvan olarak kabul edilmeyecek kadar kısa yakalamalar elenir.</summary>
         private const int EnAzUzunluk = 3;
 
-        public string? Cikar(string? hamAciklama, IReadOnlyList<UnvanDeseni> desenler)
+        public UnvanSonuc Cikar(string? hamAciklama, IReadOnlyList<UnvanDeseni> desenler, string? hesapSahibiUnvani = null)
         {
-            if (string.IsNullOrWhiteSpace(hamAciklama)) return null;
+            if (string.IsNullOrWhiteSpace(hamAciklama)) return UnvanSonuc.Yok;
+
+            // Hesap sahibinin çekirdeği desen döngüsünden önce bir kez hesaplanır.
+            var sahipCekirdek = Normalizasyon.UnvanCekirdek(hesapSahibiUnvani);
+            var sahipElendi = false;
 
             foreach (var desen in desenler.Where(d => d.Aktif).OrderBy(d => d.Sira))
             {
@@ -53,10 +75,23 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 var ham = eslesme.Groups[desen.GrupNo].Value;
                 var temiz = Temizle(ham);
 
-                if (temiz.Length >= EnAzUzunluk) return temiz;
+                if (temiz.Length < EnAzUzunluk) continue;
+
+                // Hesap sahibinin kendi adı karşı taraf değildir: at, sıradaki deseni dene.
+                // Ölçümde 287 satırın 268'inde açıklamada firmanın kendi unvanı geçiyordu ve
+                // benzer adlı bir cariye ("Bağımsız Denetim Derneği") eşleşiyordu.
+                if (sahipCekirdek.Length > 0 &&
+                    string.Equals(Normalizasyon.UnvanCekirdek(temiz), sahipCekirdek, StringComparison.Ordinal))
+                {
+                    sahipElendi = true;
+                    continue;
+                }
+
+                return new UnvanSonuc(temiz, sahipElendi);
             }
 
-            return null;
+            // Hiçbir desen hesap sahibi dışında unvan vermedi.
+            return new UnvanSonuc(null, sahipElendi);
         }
 
         /// <summary>

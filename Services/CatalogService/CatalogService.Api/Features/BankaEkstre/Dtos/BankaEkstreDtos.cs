@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Domain;
+﻿using CatalogService.Api.Features.BankaEkstre.Domain;
 
 namespace CatalogService.Api.Features.BankaEkstre.Dtos
 {
@@ -14,6 +14,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
 
         /// <summary>Virgülle ayrılmış ayırt edici anahtarlar, ör. "Otomatik Süpürme, Süpürme".</summary>
         public string? EslestirmeAnahtarlari { get; set; }
+
+        /// <summary>
+        /// Hesap sahibinin (firmanın) kendi resmî unvanı. Açıklamada geçtiğinde karşı taraf
+        /// sanılmasın diye kullanılır; firma bazlı, tek kez girilir.
+        /// </summary>
+        public string? HesapSahibiUnvani { get; set; }
 
         public HesapTipi HesapTipi { get; set; }
         public string ParaBirimi { get; set; } = "TRY";
@@ -34,6 +40,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public string BankaAdi { get; set; } = string.Empty;
         public string? HesapAdi { get; set; }
         public string? EslestirmeAnahtarlari { get; set; }
+        public string? HesapSahibiUnvani { get; set; }
         public HesapTipi HesapTipi { get; set; } = HesapTipi.Vadesiz;
         public string ParaBirimi { get; set; } = "TRY";
         public string? Iban { get; set; }

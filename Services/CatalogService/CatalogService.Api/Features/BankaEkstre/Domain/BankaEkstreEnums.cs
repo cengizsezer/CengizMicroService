@@ -1,4 +1,4 @@
-namespace CatalogService.Api.Features.BankaEkstre.Domain
+﻿namespace CatalogService.Api.Features.BankaEkstre.Domain
 {
     /// <summary>Banka hesabının tipi. Şimdilik yalnız vadesiz TL ekstresi ayrıştırılıyor.</summary>
     public enum HesapTipi : byte
@@ -68,6 +68,21 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
         UnvanCekirdek = 1,
         Iban = 2,
         Vkn = 3
+    }
+
+    /// <summary>
+    /// Sabit kuralın deseni hangi metinde aranacak. Varsayılan <see cref="IslemTipi"/>:
+    /// eski kurallar (banka masrafı, HGS) işlem tipi kolonuna bakar.
+    ///
+    /// <see cref="Aciklama"/> kuralları ham banka açıklamasında arar ve <b>öğrenme
+    /// katmanından önce</b> çalışır: "iş avansı", "maaş avansı" gibi ifadeler işlemin
+    /// niteliğini belirler, karşı tarafın kimliğini değil. Bu satırlarda unvan çıkarma
+    /// yapılmaz ve kişi bazlı alt hesap kullanıcı tarafından seçilir.
+    /// </summary>
+    public enum KuralKapsami : byte
+    {
+        IslemTipi = 1,
+        Aciklama = 2
     }
 
     /// <summary>Şablon/desen/kural tablolarında işlem tipinin nasıl eşleşeceği.</summary>

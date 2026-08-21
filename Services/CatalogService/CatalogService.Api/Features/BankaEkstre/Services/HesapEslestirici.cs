@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Domain;
+﻿using CatalogService.Api.Features.BankaEkstre.Domain;
 
 namespace CatalogService.Api.Features.BankaEkstre.Services
 {
@@ -153,6 +153,13 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
     {
         EslestirmeSonuc Coz(SatirBaglami baglam, EslestirmeVerisi veri);
 
+        /// <summary>
+        /// Ham açıklamada aranan sabit kural (Katman 0). Satır kurulumu bunu <b>unvan
+        /// çıkarmadan önce</b> çağırır: kural "unvan çıkarılmasın" diyorsa açıklamadaki isim
+        /// bir cari değil, ödeme yapılan kişidir.
+        /// </summary>
+        SabitKural? AciklamaKuraliBul(SatirBaglami baglam, EslestirmeVerisi veri);
+
         /// <summary>Bankalar arası hareketlerde karşı banka hesabını bulur (açıklama üretimi de kullanır).</summary>
         BankaHesabi? BankaBul(SatirBaglami baglam, EslestirmeVerisi veri);
 
@@ -189,6 +196,14 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         public EslestirmeSonuc Coz(SatirBaglami baglam, EslestirmeVerisi veri)
         {
+            // --- Katman 0: açıklama kapsamlı sabit kural ---
+            // Öğrenme katmanından ÖNCE çalışır. "iş avansı / maaş avansı / masraf ödemesi"
+            // işlemin niteliğini belirler; karşı taraf bir cari değil, personeldir. Geçmiş
+            // onay katmanı önce çalışsaydı bu satırlar işlem tipi anahtarından (ör. "ISLEM:
+            // GÖNDERİLEN HAVALE") ilgisiz bir cariye çözülürdü.
+            var aciklamaKurali = AciklamaKuraliBul(baglam, veri);
+            if (aciklamaKurali is not null) return KuralSonucu(aciklamaKurali);
+
             // --- IBAN (kapalı katman) ---
             // Kullanıcı IBAN verisini düzenli tutmuyor; bayrak açılmadıkça okunmaz.
             if (veri.IbanKatmaniAktif)
@@ -268,19 +283,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 if (kodlular.Count > 1) return BankaOnayaDusur(kodlular);
             }
 
-            // --- Katman 3: Sabit kural tablosu ---
-            var kural = KuralBul(baglam, veri);
-            if (kural is not null)
-            {
-                return new EslestirmeSonuc
-                {
-                    HesapKodu = kural.HesapKodu,
-                    HesapAdi = kural.HesapAdi,
-                    Guven = kural.Guven,
-                    Katman = KaynakKatman.SabitKural,
-                    Durum = SatirDurum.Otomatik
-                };
-            }
+            // --- Katman 3: Sabit kural tablosu (işlem tipi kapsamı) ---
+            var kural = KuralBul(baglam, veri, KuralKapsami.IslemTipi);
+            if (kural is not null) return KuralSonucu(kural);
 
             // --- Katman 4: Unvan benzerliği ---
             return UnvanaGoreCoz(baglam, veri);
@@ -292,6 +297,10 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// </summary>
         public static string AnahtarCekirdek(SatirBaglami baglam)
         {
+            // Hesap sahibinin kendi adı yakalandığında veya kişi bazlı bir sabit kural
+            // tuttuğunda anahtar hiç üretilmez: ne aranır ne de öğrenilir.
+            if (baglam.AnahtarUretilmesin) return string.Empty;
+
             var cekirdek = Normalizasyon.UnvanCekirdek(baglam.Unvan);
             return cekirdek.Length > 0 ? cekirdek : Normalizasyon.IslemAnahtari(baglam.IslemTipi);
         }
@@ -301,24 +310,41 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             => BankaEslesmesiBul(baglam, veri).Temsilci;
 
         /// <summary>
-        /// Bankalar arası hareketlerde karşı banka hesabını bulur. Sıra:
+        /// Kendi hesapları arası hareketlerde karşı banka hesabını bulur.
+        ///
+        /// <b>Katman ne zaman açılır?</b> İki tetikleyici var:
+        /// <list type="bullet">
+        /// <item>Şablon <see cref="AciklamaSablonu.BankalarArasi"/> diyorsa (Virman, Otomatik Süpürme).</item>
+        /// <item><see cref="SatirBaglami.HesapSahibiElendi"/> — karşı taraf olarak hesap
+        /// sahibinin kendi unvanı çıktıysa.</item>
+        /// </list>
+        /// İkincisi eklenmeden katman pratikte hiç çalışmıyordu: gerçek dosyada hesaplar
+        /// arası EFT'lerin işlem tipi "Hesaba giden EFT" / "Gelen EFT Otomatik Yatan" ve bu
+        /// şablonlar <c>BankalarArasi</c> değil — "Hesaplar Arası EFT" şablonu ise açıklamada
+        /// geçen bir ifadeye karşılık geliyor, işlem tipine değil, yani hiç eşleşmiyordu.
+        ///
+        /// <b>Arama sırası</b>
         /// <list type="number">
         /// <item>IBAN — kullanıcının kendi tanımladığı hesap IBAN'ı (öğrenilmiş veri değil).</item>
-        /// <item><see cref="BankaHesabi.EslestirmeAnahtarlari"/> — hesaba özel ayırt edici ifadeler.</item>
-        /// <item><see cref="BankaHesabi.BankaAdi"/> — hiçbir anahtar tutmadıysa son çare.</item>
+        /// <item><b>Başka bankalar</b>: önce <see cref="BankaHesabi.EslestirmeAnahtarlari"/>,
+        /// sonra <see cref="BankaHesabi.BankaAdi"/>; ikisi de metinde aranır.</item>
+        /// <item><b>Ekstrenin kendi bankası</b>: anahtarlar metinde aranır; hiçbiri tutmazsa
+        /// bankayı zaten ekstrenin kendisi belirlediği için aynı bankanın diğer hesapları
+        /// aday olur.</item>
         /// </list>
         ///
-        /// Her iki metin katmanında da <b>en uzun eşleşen</b> kazanır: "Otomatik Süpürme"
-        /// (16 karakter) "Vakıfbank"ı (9) yener, böylece açıklamada ikisi birden geçtiğinde
-        /// süpürme hesabı seçilir.
+        /// Ekstrenin kendi bankası ikinci tura bırakılır: "HESAPLAR ARASI E.F.T.
+        /// VAKIFBANK/DENİZBANK …" satırında "Vakıfbank" biziz, karşı taraf Denizbank.
+        /// Aynı turda yarışsalardı ikisi de 9 karakterle berabere kalır, satır gereksiz
+        /// yere onaya düşerdi.
         ///
-        /// En uzun eşleşmede birden fazla hesap berabere kalırsa (aynı bankanın iki hesabı,
-        /// açıklamada yalnız "Vakıfbank" geçiyor) tahmin edilmez: adaylar döner ve satır
-        /// onaya düşer. Tek hesaplı bankada eskisi gibi doğrudan çözülür.
+        /// Metin katmanlarında <b>en uzun eşleşen</b> kazanır: "Otomatik Süpürme" (16 karakter)
+        /// "Vakıfbank"ı (9) yener. Beraberlikte tahmin edilmez; adaylar döner ve satır onaya düşer.
         /// </summary>
         public BankaEslesmesi BankaEslesmesiBul(SatirBaglami baglam, EslestirmeVerisi veri)
         {
-            if (baglam.Sablon?.BankalarArasi != true) return BankaEslesmesi.Yok;
+            var sablonlaAcildi = baglam.Sablon?.BankalarArasi == true;
+            if (!sablonlaAcildi && !baglam.HesapSahibiElendi) return BankaEslesmesi.Yok;
 
             var adaylar = veri.BankaHesaplari
                 .Where(h => h.Aktif && h.Id != veri.IslenenBankaHesabiId)
@@ -337,6 +363,38 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             var metin = Normalizasyon.MetinNormalize(baglam.HamAciklama + " " + baglam.IslemTipi);
             if (metin.Length == 0) return BankaEslesmesi.Yok;
 
+            var islenenBanka = veri.BankaHesaplari
+                .FirstOrDefault(h => h.Id == veri.IslenenBankaHesabiId)?.BankaAdi;
+
+            // 1. tur: başka bankaların hesapları.
+            var digerler = adaylar.Where(h => !AyniBankaMi(h.BankaAdi, islenenBanka)).ToList();
+            var bulunan = MetinleAra(digerler, metin);
+            if (bulunan is not null) return bulunan;
+
+            // 2. tur: ekstrenin kendi bankasındaki diğer hesaplar.
+            var ayniBanka = adaylar.Where(h => AyniBankaMi(h.BankaAdi, islenenBanka)).ToList();
+            if (ayniBanka.Count == 0) return BankaEslesmesi.Yok;
+
+            var anahtarla = EnUzunEslesenler(ayniBanka, metin,
+                h => EslestirmeAnahtari.NormalizeAnahtarlar(h.EslestirmeAnahtarlari));
+            if (anahtarla.Count > 0) return Eslesme(anahtarla);
+
+            // Hiçbir anahtar tutmadı. "Hesaplararası Virman" satırlarında açıklamada banka
+            // adı hiç geçmiyor — ayrım ekstrenin kendi bankasından geliyor, o yüzden aynı
+            // bankanın tüm hesapları aday olur; birden fazlaysa satır onaya düşer.
+            //
+            // Bu genişletme YALNIZ şablonun hesaplar arası dediği satırlarda yapılır.
+            // Bayrağa dayanan satırlarda yapılsaydı, karşı tarafı gerçek bir cari olan
+            // ("Tös Hesaba Havale / PARDUS PORTFÖY …") satırlar cari eşleştirmesine hiç
+            // gidemeden banka adaylarıyla onaya düşerdi.
+            return sablonlaAcildi ? Eslesme(ayniBanka) : BankaEslesmesi.Yok;
+        }
+
+        /// <summary>Önce anahtarlar, sonra banka adı; ikisi de metinde aranır. Hiçbiri tutmazsa null.</summary>
+        private static BankaEslesmesi? MetinleAra(IReadOnlyList<BankaHesabi> adaylar, string metin)
+        {
+            if (adaylar.Count == 0) return null;
+
             var anahtarla = EnUzunEslesenler(adaylar, metin,
                 h => EslestirmeAnahtari.NormalizeAnahtarlar(h.EslestirmeAnahtarlari));
             if (anahtarla.Count > 0) return Eslesme(anahtarla);
@@ -344,8 +402,17 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             var adla = EnUzunEslesenler(adaylar, metin,
                 h => new[] { Normalizasyon.MetinNormalize(h.BankaAdi) });
 
-            return adla.Count == 0 ? BankaEslesmesi.Yok : Eslesme(adla);
+            return adla.Count == 0 ? null : Eslesme(adla);
         }
+
+        /// <summary>
+        /// İki banka adı aynı bankayı mı gösteriyor? Karşılaştırma normalize edilmiş metin
+        /// üzerinden: "Vakıfbank" ile "VAKIFBANK" aynı bankadır.
+        /// </summary>
+        private static bool AyniBankaMi(string? a, string? b)
+            => !string.IsNullOrWhiteSpace(a) && !string.IsNullOrWhiteSpace(b) &&
+               string.Equals(Normalizasyon.MetinNormalize(a), Normalizasyon.MetinNormalize(b),
+                             StringComparison.Ordinal);
 
         private static BankaEslesmesi Eslesme(List<BankaHesabi> kazananlar)
             => kazananlar.Count == 1
@@ -461,11 +528,37 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                    string.Equals(e.AnahtarCekirdek, cekirdek, StringComparison.Ordinal) &&
                    string.Equals(e.AyirtEdiciEk ?? string.Empty, ek ?? string.Empty, StringComparison.Ordinal));
 
-        private static SabitKural? KuralBul(SatirBaglami baglam, EslestirmeVerisi veri)
-        {
-            var hedef = Normalizasyon.TurkceSadelestir(baglam.IslemTipi).Trim();
+        public SabitKural? AciklamaKuraliBul(SatirBaglami baglam, EslestirmeVerisi veri)
+            => KuralBul(baglam, veri, KuralKapsami.Aciklama);
 
-            foreach (var kural in veri.SabitKurallar.Where(k => k.Aktif).OrderBy(k => k.Sira))
+        private static EslestirmeSonuc KuralSonucu(SabitKural kural) => new()
+        {
+            HesapKodu = kural.HesapKodu,
+            HesapAdi = kural.HesapAdi,
+            // Yalnız ana grubu veren kuralda güven bildirilmez: kod eksik, kullanıcı tamamlayacak.
+            Guven = kural.AltHesapGerekli ? 0m : kural.Guven,
+            Katman = KaynakKatman.SabitKural,
+            // Alt hesap (kişi/muavin) kullanıcıdan gelmek zorundaysa satır otomatik kapanmaz.
+            Durum = kural.AltHesapGerekli ? SatirDurum.OnayBekliyor : SatirDurum.Otomatik
+        };
+
+        /// <summary>
+        /// Verilen kapsamdaki ilk uyan kural. İşlem tipi kapsamında desen işlem tipi
+        /// metninde, açıklama kapsamında ham açıklamada aranır.
+        ///
+        /// Açıklama kapsamında <see cref="EslesmeTuru.Icerir"/> <b>tam kelime</b> arar
+        /// (<see cref="Normalizasyon.IfadeVarMi"/>): düz <c>Contains</c> ile "AVANS" deseni
+        /// "AVANSAS" gibi bir unvanın içinde de tutar ve satırı personel avansı sanardı.
+        /// </summary>
+        private static SabitKural? KuralBul(SatirBaglami baglam, EslestirmeVerisi veri, KuralKapsami kapsam)
+        {
+            var kaynak = kapsam == KuralKapsami.Aciklama ? baglam.HamAciklama : baglam.IslemTipi;
+            if (string.IsNullOrWhiteSpace(kaynak)) return null;
+
+            var hedef = Normalizasyon.TurkceSadelestir(kaynak).Trim();
+            var normalHedef = kapsam == KuralKapsami.Aciklama ? Normalizasyon.MetinNormalize(kaynak) : string.Empty;
+
+            foreach (var kural in veri.SabitKurallar.Where(k => k.Aktif && k.Kapsam == kapsam).OrderBy(k => k.Sira))
             {
                 if (kural.Yon is Yon y && y != baglam.Yon) continue;
 
@@ -475,9 +568,11 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 var uyuyor = kural.EslesmeTuru switch
                 {
                     EslesmeTuru.Tam => string.Equals(hedef, desen, StringComparison.Ordinal),
-                    EslesmeTuru.Icerir => hedef.Contains(desen, StringComparison.Ordinal),
+                    EslesmeTuru.Icerir => kapsam == KuralKapsami.Aciklama
+                        ? Normalizasyon.IfadeVarMi(normalHedef, Normalizasyon.MetinNormalize(kural.IslemTipiDeseni))
+                        : hedef.Contains(desen, StringComparison.Ordinal),
                     EslesmeTuru.Regex => System.Text.RegularExpressions.Regex.IsMatch(
-                        baglam.IslemTipi, kural.IslemTipiDeseni,
+                        kaynak, kural.IslemTipiDeseni,
                         System.Text.RegularExpressions.RegexOptions.IgnoreCase,
                         TimeSpan.FromMilliseconds(250)),
                     _ => false

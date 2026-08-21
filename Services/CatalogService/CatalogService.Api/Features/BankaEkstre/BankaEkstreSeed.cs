@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Domain;
+﻿using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
 using CatalogService.Api.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
@@ -115,6 +115,11 @@ namespace CatalogService.Api.Features.BankaEkstre
             Ekle(@"sorgu no'lu \S+ (.+)$", "Sorgu numarasından sonra kalan metin (32 satır)");
             Ekle(@"nolu ([A-ZÇĞİÖŞÜ][A-ZÇĞİÖŞÜ0-9.\s&]{4,60})", "Büyük harfli unvan (12 satır)");
             Ekle(@"^([A-ZÇĞİÖŞÜ0-9][^/]{4,60}?)\s*/\s*[A-ZÇĞİÖŞÜ]", "Eğik çizgi öncesi unvan (6 satır)");
+            // Giden EFT gövdesi: "… NEZDİNDEKİ <IBAN> NO'LU <KARŞI TARAF> HESABINA YAPILAN …".
+            // Karşı tarafı veren tek desen bu; olmadan parantez öncesi serbest metin
+            // ("DENİZBANK HESABINA", "ZAFER GENÇ") unvan sanılıyordu. Hesap sahibinin kendi
+            // adı buraya düştüğünde satırın kendi hesapları arası olduğu da anlaşılır.
+            Ekle(@"NO'LU ([A-ZÇĞİÖŞÜ][^()]{4,70}?) HESABINA", "Giden EFT karşı tarafı (15 satır)");
             Ekle(@"^(.+?)\s*\(", "Parantez öncesi metin (~30 satır)");
         }
 
@@ -130,26 +135,51 @@ namespace CatalogService.Api.Features.BankaEkstre
             var kayitli = new HashSet<string>(mevcut, StringComparer.OrdinalIgnoreCase);
             var sira = 0;
 
-            void Ekle(string islemTipi, string kod, string ad, EslesmeTuru tur = EslesmeTuru.Tam)
+            void Ekle(
+                string desen, string kod, string ad,
+                EslesmeTuru tur = EslesmeTuru.Tam,
+                KuralKapsami kapsam = KuralKapsami.IslemTipi,
+                bool unvanCikarilsin = true,
+                bool altHesapGerekli = false)
             {
                 sira += 10;
-                if (!kayitli.Add(islemTipi)) return;
+                if (!kayitli.Add(desen)) return;
 
                 db.EkstreSabitKurallar.Add(new SabitKural
                 {
                     ParserTipi = Vakifbank,
-                    IslemTipiDeseni = islemTipi,
+                    IslemTipiDeseni = desen,
+                    Kapsam = kapsam,
                     EslesmeTuru = tur,
                     HesapKodu = kod,
                     HesapAdi = ad,
                     Guven = 0.95m,
+                    UnvanCikarilsin = unvanCikarilsin,
+                    AltHesapGerekli = altHesapGerekli,
                     Sira = sira,
                     Aktif = true
                 });
             }
 
+            // Personel avansı: desen ham açıklamada aranır ve kural öğrenme katmanından
+            // önce çalışır. Karşı taraf bir cari değil, ödeme yapılan kişidir; bu yüzden
+            // unvan çıkarılmaz (çıkarılsaydı unvan benzerliği katmanı kişiyi 329 altında
+            // bir cariye eşlerdi) ve yalnız ana grup verilir — kişi muavinini kullanıcı seçer.
+            void Avans(string desen, string kod, string ad, EslesmeTuru tur = EslesmeTuru.Icerir)
+                => Ekle(desen, kod, ad, tur, KuralKapsami.Aciklama, unvanCikarilsin: false, altHesapGerekli: true);
+
             // Kodlar boşluklu ORKA formatında; ana hesap seviyesinde bırakıldı, muavin
             // kırılımı firmadan firmaya değiştiği için arayüzden düzenlenmeli.
+
+            // Sıra önemli: "Maaş Avansı" tek başına "Avans"tan önce denenmeli, yoksa genel
+            // desen tutar ve 196 yerine ayrıştırılamayan bir grup seçilirdi.
+            Avans("İş Avansı", "195", "İş Avansları");
+            // Gerçek dosyada kısaltılmış hâli de geçiyor ("İş Avans").
+            Avans("İş Avans", "195", "İş Avansları");
+            Avans("Masraf Ödemesi", "195", "İş Avansları");
+            Avans("Maaş Avansı", "196", "Personel Avansları");
+            Avans("Avans", "196", "Personel Avansları");
+
             Ekle("MKK Masrafı", "770", "Genel Yönetim Giderleri");
             Ekle("DIT Yp transfer", "770", "Genel Yönetim Giderleri");
             Ekle("Masraf", "770", "Genel Yönetim Giderleri", EslesmeTuru.Icerir);

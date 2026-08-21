@@ -1,4 +1,4 @@
-@page "/banka-isleme/onay/{EkstreId:int}"
+﻿@page "/banka-isleme/onay/{EkstreId:int}"
 
 @using Radzen
 @using Radzen.Blazor
@@ -130,7 +130,10 @@ else
 
             @foreach (var satir in Bekleyenler)
             {
-                <div class="eo-satir @(_aktifSatirId == satir.Id ? "aktif" : "")">
+                @* @key şart: satır onaylanınca liste kısalıyor ve Blazor input elemanlarını
+                   konuma göre yeniden kullanıyordu — kod kutusundaki değer bir üstteki
+                   satırdan devralınmış gibi görünüyordu. Kimlik satır Id'si olmalı. *@
+                <div class="eo-satir @(_aktifSatirId == satir.Id ? "aktif" : "")" @key="satir.Id">
                     <span class="eo-tarih">@BankaEkstreEtiket.Tarih(satir.Tarih)</span>
 
                     <span class="eo-tutar @(satir.Yon == Yon.Giren ? "giren" : "cikan")">
@@ -177,7 +180,9 @@ else
                     </span>
 
                     <span class="eo-kod">
-                        <input id="@KutuId(satir.Id)" class="eo-inp" autocomplete="off" placeholder="120 D22"
+                        @* Placeholder kasıtlı boş: "120 D22" gibi örnek bir kod, önerisi olmayan
+                           satırların hepsinde aynı gerçek değer varmış gibi okunuyordu. *@
+                        <input id="@KutuId(satir.Id)" class="eo-inp" autocomplete="off"
                                value="@Kod(satir.Id)"
                                @onfocus="@(() => _aktifSatirId = satir.Id)"
                                @oninput="@(e => KodDegistiAsync(satir, e.Value?.ToString()))"

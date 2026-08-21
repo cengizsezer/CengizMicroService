@@ -250,6 +250,10 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("HesapSahibiUnvani")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<byte>("HesapTipi")
                         .HasColumnType("tinyint");
 
@@ -621,6 +625,9 @@ namespace CatalogService.Api.Migrations
                     b.Property<bool>("Aktif")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("AltHesapGerekli")
+                        .HasColumnType("bit");
+
                     b.Property<byte>("EslesmeTuru")
                         .HasColumnType("tinyint");
 
@@ -641,6 +648,9 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<byte>("Kapsam")
+                        .HasColumnType("tinyint");
+
                     b.Property<string>("ParserTipi")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -649,12 +659,15 @@ namespace CatalogService.Api.Migrations
                     b.Property<int>("Sira")
                         .HasColumnType("int");
 
+                    b.Property<bool>("UnvanCikarilsin")
+                        .HasColumnType("bit");
+
                     b.Property<byte?>("Yon")
                         .HasColumnType("tinyint");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ParserTipi", "Sira");
+                    b.HasIndex("ParserTipi", "Kapsam", "Sira");
 
                     b.ToTable("EkstreSabitKurallar", "catalog");
                 });

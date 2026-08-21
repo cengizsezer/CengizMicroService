@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
@@ -109,10 +109,11 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             var veri = await EslestirmeVerisiYukleAsync(hesap, ct);
             var sablonlar = await SablonlariYukleAsync(hesap.ParserTipi, ct);
             var desenler = await DesenleriYukleAsync(hesap.ParserTipi, ct);
+            var hesapSahibi = await HesapSahibiUnvaniBulAsync(hesap, ct);
 
             foreach (var ayrilan in ayristirma.Satirlar)
             {
-                var satir = SatirOlustur(yukleme.Id, ayrilan, sablonlar, desenler, veri);
+                var satir = SatirOlustur(yukleme.Id, ayrilan, sablonlar, desenler, veri, hesapSahibi);
                 _db.EkstreSatirlari.Add(satir);
             }
 
@@ -127,7 +128,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             AyrilanSatir ayrilan,
             IReadOnlyList<AciklamaSablonu> sablonlar,
             IReadOnlyList<UnvanDeseni> desenler,
-            EslestirmeVerisi veri)
+            EslestirmeVerisi veri,
+            string? hesapSahibiUnvani)
         {
             var baglam = new SatirBaglami
             {
@@ -135,9 +137,31 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 HamAciklama = ayrilan.HamAciklama,
                 Yon = ayrilan.Yon,
                 KarsiIban = ayrilan.KarsiIban,
-                KarsiVkn = ayrilan.KarsiVkn,
-                Unvan = _unvanCikarici.Cikar(ayrilan.HamAciklama, desenler)
+                KarsiVkn = ayrilan.KarsiVkn
             };
+
+            // Unvan çıkarmadan önce açıklama kapsamlı sabit kurala bakılır: personel avansı
+            // satırlarında açıklamadaki isim bir cari değil, ödeme yapılan kişidir. Çıkarılsaydı
+            // unvan benzerliği katmanı onu 120/329 altında bir cariye eşlerdi.
+            var aciklamaKurali = _eslestirici.AciklamaKuraliBul(baglam, veri);
+
+            if (aciklamaKurali is { UnvanCikarilsin: false })
+            {
+                baglam.AnahtarUretilmesin = true;
+            }
+            else
+            {
+                var unvan = _unvanCikarici.Cikar(ayrilan.HamAciklama, desenler, hesapSahibiUnvani);
+                baglam.Unvan = unvan.Unvan;
+
+                // Karşı taraf olarak hesap sahibinin kendisi çıktı: satır kendi hesapları
+                // arası bir transfer. Banka kayıt defteri katmanı bu bayrakla da açılır.
+                baglam.HesapSahibiElendi = unvan.HesapSahibiElendi;
+
+                // Yalnız hesap sahibinin kendi adı yakalandıysa karşı taraf bilinmiyor demektir.
+                // İşlem tipi anahtarına düşülmez; satır onaya kalır.
+                baglam.AnahtarUretilmesin = unvan.Unvan is null && unvan.HesapSahibiElendi;
+            }
 
             baglam.Sablon = _aciklamaUretici.SablonBul(ayrilan.IslemTipi, sablonlar);
 
@@ -417,6 +441,22 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             => _db.EkstreSatirlari
                 .Where(s => s.Id == satirId && _db.EkstreYuklemeler.Any(y => y.Id == s.EkstreYuklemeId))
                 .FirstOrDefaultAsync(ct);
+
+        /// <summary>
+        /// Hesap sahibinin unvanı. Firma bazlı ve tek kez girilir: ekstresi işlenen hesapta
+        /// boşsa aynı firmanın dolu olan başka bir hesabından okunur. Böylece kullanıcı her
+        /// banka hesabına ayrı ayrı yazmak zorunda kalmaz.
+        /// </summary>
+        private async Task<string?> HesapSahibiUnvaniBulAsync(BankaHesabi hesap, CancellationToken ct)
+        {
+            if (!string.IsNullOrWhiteSpace(hesap.HesapSahibiUnvani)) return hesap.HesapSahibiUnvani;
+
+            return await _db.EkstreBankaHesaplari.AsNoTracking()
+                .Where(h => h.HesapSahibiUnvani != null && h.HesapSahibiUnvani != string.Empty)
+                .OrderBy(h => h.Id)
+                .Select(h => h.HesapSahibiUnvani)
+                .FirstOrDefaultAsync(ct);
+        }
 
         private async Task<EslestirmeVerisi> EslestirmeVerisiYukleAsync(BankaHesabi hesap, CancellationToken ct)
             => new()

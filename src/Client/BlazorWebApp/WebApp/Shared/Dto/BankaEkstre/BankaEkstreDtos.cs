@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 
 namespace WebApp.Shared.Dto.BankaEkstre
 {
@@ -53,6 +53,12 @@ namespace WebApp.Shared.Dto.BankaEkstre
         /// <summary>Virgülle ayrılmış ayırt edici anahtarlar, ör. "Otomatik Süpürme, Süpürme".</summary>
         public string? EslestirmeAnahtarlari { get; set; }
 
+        /// <summary>
+        /// Hesap sahibinin (firmanın) kendi resmî unvanı. Açıklamada geçtiğinde karşı taraf
+        /// sanılmasın diye kullanılır; firma bazlı, tek kez girilir.
+        /// </summary>
+        public string? HesapSahibiUnvani { get; set; }
+
         public HesapTipi HesapTipi { get; set; }
         public string ParaBirimi { get; set; } = "TRY";
         public string? Iban { get; set; }
@@ -68,6 +74,7 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public string BankaAdi { get; set; } = string.Empty;
         public string? HesapAdi { get; set; }
         public string? EslestirmeAnahtarlari { get; set; }
+        public string? HesapSahibiUnvani { get; set; }
         public HesapTipi HesapTipi { get; set; } = HesapTipi.Vadesiz;
         public string ParaBirimi { get; set; } = "TRY";
         public string? Iban { get; set; }

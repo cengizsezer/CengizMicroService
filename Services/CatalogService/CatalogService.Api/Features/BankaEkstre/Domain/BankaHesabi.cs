@@ -1,4 +1,4 @@
-using CatalogService.Api.Infrastructure.Domain;
+﻿using CatalogService.Api.Infrastructure.Domain;
 
 namespace CatalogService.Api.Features.BankaEkstre.Domain
 {
@@ -32,6 +32,18 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
         /// kolon; elle açılan eski kayıtlarda boş olabilir, bu yüzden nullable.
         /// </summary>
         public string? HesapAdi { get; set; }
+
+        /// <summary>
+        /// Hesap sahibinin (firmanın) kendi resmî unvanı, ör. "PKF ADAY BAĞIMSIZ DENETİM
+        /// ANONİM ŞİRKETİ". Banka açıklamalarında karşı tarafın yanı sıra <b>hesap sahibinin
+        /// kendi adı da</b> geçiyor; unvan çıkarıcı onu karşı taraf sanıp benzer adlı bir
+        /// cariye ("Bağımsız Denetim Derneği") eşleştiriyordu. Çıkarılan unvanın çekirdeği
+        /// buradaki unvanın çekirdeğiyle aynıysa o yakalama atılır.
+        ///
+        /// Firma bazlı ve tek kez girilir: hesapta boşsa aynı firmanın dolu olan başka bir
+        /// hesabından okunur (bkz. <c>EkstreService.HesapSahibiUnvaniBulAsync</c>).
+        /// </summary>
+        public string? HesapSahibiUnvani { get; set; }
 
         public HesapTipi HesapTipi { get; set; } = HesapTipi.Vadesiz;
 

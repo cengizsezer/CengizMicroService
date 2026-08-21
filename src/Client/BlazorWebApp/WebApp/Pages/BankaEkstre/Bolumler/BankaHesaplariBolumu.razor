@@ -1,4 +1,4 @@
-@using Microsoft.AspNetCore.Components.Forms
+﻿@using Microsoft.AspNetCore.Components.Forms
 @using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
@@ -218,6 +218,17 @@ else
                 </span>
             </div>
 
+            <div class="bh-alan" style="grid-column: 1 / -1">
+                <label>Hesap sahibi unvanı</label>
+                <RadzenTextBox @bind-Value="_form.HesapSahibiUnvani"
+                               Placeholder="PKF ADAY BAĞIMSIZ DENETİM ANONİM ŞİRKETİ" Style="width:100%" />
+                <span class="bh-ipucu">
+                    Firmanın kendi resmî unvanı; firma başına bir kez girilir, yeni hesapta hazır gelir.
+                    Banka açıklamalarında hesap sahibinin kendi adı da geçiyor — bu alan doluyken o
+                    yakalama atılır, karşı taraf sanılıp benzer adlı bir cariye eşlenmez.
+                </span>
+            </div>
+
             <div class="bh-alan">
                 <label>ORKA hesap kodu</label>
                 <RadzenTextBox @bind-Value="_form.OrkaHesapKodu" Placeholder="102 1 1 01" />
@@ -353,12 +364,15 @@ else
     {
         _duzenlenenId = hesap?.Id;
         _form = hesap is null
-            ? new BankaHesabiYazDto { ParserTipi = string.Empty }
+            // Hesap sahibi unvanı firma bazlıdır: yeni hesapta mevcut hesaplardan devralınır ki
+            // kullanıcı her banka hesabına aynı unvanı yeniden yazmasın.
+            ? new BankaHesabiYazDto { ParserTipi = string.Empty, HesapSahibiUnvani = FirmaUnvani() }
             : new BankaHesabiYazDto
             {
                 BankaAdi = hesap.BankaAdi,
                 HesapAdi = hesap.HesapAdi,
                 EslestirmeAnahtarlari = hesap.EslestirmeAnahtarlari,
+                HesapSahibiUnvani = hesap.HesapSahibiUnvani ?? FirmaUnvani(),
                 HesapTipi = hesap.HesapTipi,
                 ParaBirimi = hesap.ParaBirimi,
                 Iban = hesap.Iban,
@@ -369,6 +383,11 @@ else
                 VknKatmaniAktif = hesap.VknKatmaniAktif
             };
     }
+
+    /// <summary>Mevcut hesaplarda girilmiş hesap sahibi unvanı (firma başına tek değer).</summary>
+    private string? FirmaUnvani()
+        => _hesaplar.Select(h => h.HesapSahibiUnvani)
+                    .FirstOrDefault(u => !string.IsNullOrWhiteSpace(u));
 
     /// <summary>
     /// Hesap adı değişince anahtar önerisi doldurulur — yalnız alan boşsa: kullanıcının

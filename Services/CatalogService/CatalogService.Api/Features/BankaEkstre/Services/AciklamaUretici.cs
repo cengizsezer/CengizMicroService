@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using CatalogService.Api.Features.BankaEkstre.Domain;
 
 namespace CatalogService.Api.Features.BankaEkstre.Services
@@ -15,11 +15,34 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// <summary>Desenlerden çıkarılan unvan; hiçbir desen tutmadıysa null.</summary>
         public string? Unvan { get; set; }
 
+        /// <summary>
+        /// En az bir desen hesap sahibinin <b>kendi</b> unvanını yakaladı ve atıldı.
+        ///
+        /// Bu, satırın kendi hesapları arası bir transfer olduğunun en güvenilir işareti:
+        /// karşı taraf da firmanın kendisi. Banka kayıt defteri katmanı (Katman 2) bu
+        /// bayrakla da açılır — işlem tipi "Hesaba giden EFT" olduğu için şablon
+        /// <c>BankalarArasi</c> demiyor, ama açıklama "… NO'LU PKF ADAY … HESABINA YAPILAN
+        /// … EFT" diyor. Karşı taraf başkasıysa (ZAFER GENÇ, YURTİÇİ KARGO) bayrak açılmaz.
+        /// </summary>
+        public bool HesapSahibiElendi { get; set; }
+
         /// <summary>Bankalar arası hareketlerde metinde geçen banka adı.</summary>
         public string? BankaAdi { get; set; }
 
         /// <summary>Eşleşen şablon; bankalar arası olup olmadığı buradan okunur.</summary>
         public AciklamaSablonu? Sablon { get; set; }
+
+        /// <summary>
+        /// Bu satır için öğrenme/eşleştirme anahtarı üretilmemeli. İki durumda açılır:
+        /// <list type="bullet">
+        /// <item>Unvan olarak yalnız hesap sahibinin kendi adı yakalandı (karşı taraf bilinmiyor).</item>
+        /// <item>Açıklama kapsamlı bir sabit kural tuttu ve karşı taraf bir cari değil, kişi
+        /// (personel avansı) — anahtar işlem tipine düşerse tüm havaleler aynı kişiye öğrenilir.</item>
+        /// </list>
+        /// Her ikisinde de işlem tipi anahtarına <b>düşülmez</b>: düşülseydi "ISLEM:GÖNDERİLEN
+        /// HAVALE" anahtarı ilk onaydan sonra ilgisiz satırları da çözerdi.
+        /// </summary>
+        public bool AnahtarUretilmesin { get; set; }
     }
 
     public interface IAciklamaUretici

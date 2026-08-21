@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Domain;
+﻿using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -22,6 +22,8 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(x => x.EslestirmeAnahtarlari).HasMaxLength(300);
             // Hesabın ORKA'daki adı; elle açılmış eski kayıtlarda boş olabildiği için nullable.
             builder.Property(x => x.HesapAdi).HasMaxLength(200);
+            // Firmanın kendi unvanı; eski kayıtlarda boş olacağı için nullable.
+            builder.Property(x => x.HesapSahibiUnvani).HasMaxLength(200);
             builder.Property(x => x.ParaBirimi).IsRequired().HasMaxLength(3);
             builder.Property(x => x.Iban).HasMaxLength(34);
             // Boşluklu ORKA kodu; format değiştirilmeden saklanır.
@@ -224,7 +226,13 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(x => x.HesapAdi).HasMaxLength(200);
             builder.Property(x => x.Guven).HasColumnType("decimal(5,4)");
 
-            builder.HasIndex(x => new { x.ParserTipi, x.Sira });
+            // Sütun varsayılanı KASITLI tanımlanmadı: KuralKapsami'nin CLR varsayılanı 0,
+            // UnvanCikarilsin'inki false. HasDefaultValue verilseydi EF bu değerleri "atanmamış"
+            // sayıp veritabanı varsayılanını yazardı ve UnvanCikarilsin=false hiç kaydedilemezdi.
+            // Mevcut satırların geriye dönük doldurulması migration içinde SQL ile yapılır.
+
+            // Katman 0 her satırda kapsam filtresiyle tarandığı için kapsam da indekste.
+            builder.HasIndex(x => new { x.ParserTipi, x.Kapsam, x.Sira });
         }
     }
 }
