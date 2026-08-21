@@ -24,7 +24,9 @@
     .bh-satir:not(.bh-head):hover { background: #f8fbff; }
     .bh-ad { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .bh-kod { flex: 0 0 130px; font-family: ui-monospace, Consolas, monospace; }
-    .bh-iban { flex: 0 0 230px; font-family: ui-monospace, Consolas, monospace; color: #4a5568; }
+    .bh-iban { flex: 0 0 190px; font-family: ui-monospace, Consolas, monospace; color: #4a5568; }
+    .bh-anahtar { flex: 0 0 170px; color: #4a5568; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bh-anahtar.yok, .bh-parser.yok { color: #cbd5e0; }
     .bh-tip { flex: 0 0 90px; color: #4a5568; }
     .bh-parser { flex: 0 0 170px; color: #718096; font-size: 12px; }
     .bh-aksiyon { flex: 0 0 80px; text-align: right; }
@@ -35,6 +37,7 @@
     .bh-alan { display: flex; flex-direction: column; gap: 3px; }
     .bh-alan label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
     .bh-ipucu { font-size: 11px; color: #a0aec0; }
+    .bh-uyari { font-size: 11px; color: #975a16; }
 
     .bh-ice-aktar { margin-top: 14px; padding: 12px 14px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fbfdff; }
     .bh-ice-aktar-baslik { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -66,6 +69,7 @@ else
             <span class="bh-tip">Tip</span>
             <span class="bh-kod">ORKA kodu</span>
             <span class="bh-iban">IBAN</span>
+            <span class="bh-anahtar">Anahtarlar</span>
             <span class="bh-parser">Ayrıştırıcı</span>
             <span class="bh-aksiyon"></span>
         </div>
@@ -88,7 +92,13 @@ else
                 <span class="bh-tip">@BankaEkstreEtiket.HesapTipi(hesap.HesapTipi) · @hesap.ParaBirimi</span>
                 <span class="bh-kod">@hesap.OrkaHesapKodu</span>
                 <span class="bh-iban">@(string.IsNullOrWhiteSpace(hesap.Iban) ? "—" : hesap.Iban)</span>
-                <span class="bh-parser">@ParserAdi(hesap.ParserTipi)</span>
+                <span class="bh-anahtar @(string.IsNullOrWhiteSpace(hesap.EslestirmeAnahtarlari) ? "yok" : "")"
+                      title="@hesap.EslestirmeAnahtarlari">
+                    @(string.IsNullOrWhiteSpace(hesap.EslestirmeAnahtarlari) ? "—" : hesap.EslestirmeAnahtarlari)
+                </span>
+                <span class="bh-parser @(string.IsNullOrWhiteSpace(hesap.ParserTipi) ? "yok" : "")">
+                    @(string.IsNullOrWhiteSpace(hesap.ParserTipi) ? "yok" : ParserAdi(hesap.ParserTipi))
+                </span>
                 <span class="bh-aksiyon">
                     <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
                                   Click="@(() => FormAc(hesap))" />
@@ -110,8 +120,8 @@ else
         <RadzenButton Text="Toplu İçe Aktar" Icon="upload_file" ButtonStyle="ButtonStyle.Secondary"
                       Size="ButtonSize.Small" Disabled="@_iceAktariliyor"
                       Click="@(() => _iceAktarimAcik = !_iceAktarimAcik)" />
-        <RadzenLink Text="Örnek şablon indir" Icon="download" Style="font-size:12px"
-                    Click="@SablonIndirAsync" />
+        <RadzenButton Text="Örnek şablon indir" Icon="download" ButtonStyle="ButtonStyle.Light"
+                      Size="ButtonSize.Small" Click="@SablonIndirAsync" />
         <span class="bh-ipucu">
             xlsx; kolonlar başlık adıyla bulunur, sıraları değişebilir. Anahtar ORKA hesap
             kodu: varsa güncellenir, yoksa eklenir. Dosyada olmayan hesaplara dokunulmaz.
@@ -125,7 +135,8 @@ else
             <InputFile OnChange="IceAktarAsync" accept=".xlsx,.xls" disabled="@_iceAktariliyor" />
             <span class="bh-ipucu">
                 Zorunlu kolonlar: <code>Orka Hesap Kodu</code>, <code>Hesap Adı</code>, <code>Banka Adı</code>,
-                <code>Hesap Tipi</code>, <code>Para Birimi</code>. İsteğe bağlı: <code>Parser Tipi</code>, <code>IBAN</code>.
+                <code>Hesap Tipi</code>, <code>Para Birimi</code>. İsteğe bağlı: <code>Parser Tipi</code>,
+                <code>IBAN</code>, <code>Eşleştirme Anahtarları</code>.
             </span>
         </div>
     }
@@ -175,13 +186,36 @@ else
             <div class="bh-alan">
                 <label>Banka adı</label>
                 <RadzenTextBox @bind-Value="_form.BankaAdi" Placeholder="Vakıfbank" />
-                <span class="bh-ipucu">Bankalar arası hareketlerde açıklamada bu ad aranır.</span>
+                <span class="bh-ipucu">
+                    Yalnız <b>kısa banka adı</b>: Vakıfbank, Ziraat, TEB, Akbank, İş Bankası.
+                    Tam hesap adını yazmayın — o metin hiçbir açıklamada geçmez, eşleşme hiç olmaz.
+                </span>
+                @if (BankaAdiDenetimi.Uyari(_form.BankaAdi) is string bankaUyari)
+                {
+                    <span class="bh-uyari">@bankaUyari</span>
+                }
             </div>
 
             <div class="bh-alan">
                 <label>Hesap adı (isteğe bağlı)</label>
-                <RadzenTextBox @bind-Value="_form.HesapAdi" Placeholder="VAKIFBANK VADESIZ TL" />
+                <RadzenTextBox Value="@_form.HesapAdi" Placeholder="VAKIFBANK VADESIZ TL"
+                               Change="@HesapAdiDegistiAsync" />
                 <span class="bh-ipucu">Hesabın ORKA'daki adı; toplu içe aktarımda zorunlu kolon.</span>
+            </div>
+
+            <div class="bh-alan" style="grid-column: 1 / -1">
+                <label>Eşleştirme anahtarları (isteğe bağlı)</label>
+                <div style="display:flex; gap:6px; align-items:center">
+                    <RadzenTextBox @bind-Value="_form.EslestirmeAnahtarlari"
+                                   Placeholder="Otomatik Süpürme, Süpürme" Style="flex:1 1 auto" />
+                    <RadzenButton Text="Hesap adından öner" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                                  Disabled="@string.IsNullOrWhiteSpace(_form.HesapAdi)" Click="@AnahtarOnerAsync" />
+                </div>
+                <span class="bh-ipucu">
+                    Virgülle ayırın. Bankalar arası hareketlerde açıklamada önce bu ifadeler aranır,
+                    tutmazsa banka adına düşülür; en uzun eşleşen kazanır. Aynı bankada birden fazla
+                    hesap varsa ve hiçbir anahtar tutmazsa satır onaya düşer.
+                </span>
             </div>
 
             <div class="bh-alan">
@@ -209,10 +243,14 @@ else
             </div>
 
             <div class="bh-alan">
-                <label>Ayrıştırıcı</label>
-                <RadzenDropDown TValue="string" @bind-Value="_form.ParserTipi" Data="@_parserler"
+                <label>Ayrıştırıcı (isteğe bağlı)</label>
+                <RadzenDropDown TValue="string" @bind-Value="_form.ParserTipi" Data="@ParserSecenekleri"
                                 TextProperty="Ad" ValueProperty="Tip" Style="width:100%" />
-                <span class="bh-ipucu">Şimdilik yalnız Vakıfbank vadesiz TL destekleniyor.</span>
+                <span class="bh-ipucu">
+                    "Yok" seçilirse hesap İşleme ekranında kart göstermez (ekstre yüklenemez) ama
+                    kayıt defterinde durur ve karşı hesap olarak bulunur — vadeli, süpürme ve blokaj
+                    hesapları böyle tanımlanır. Ekstre yüklenecekse şimdilik yalnız Vakıfbank vadesiz TL var.
+                </span>
             </div>
 
             <div class="bh-alan">
@@ -287,20 +325,40 @@ else
         _yukleniyor = true;
         _hesaplar = await Api.GetHesaplarAsync(_pasifDahil);
         _yukleniyor = false;
+
+        // Firma değişiminde üst sayfa YenileAsync'i çağırıyor; kendi StateHasChanged'i
+        // bu bileşeni yeniden çizdirmiyor (parametresi değişmiyor). Kardeş bölümler de
+        // aynı sebeple burada StateHasChanged çağırıyor.
+        StateHasChanged();
     }
 
     private string ParserAdi(string tip)
         => _parserler.FirstOrDefault(p => p.Tip == tip)?.Ad ?? tip;
 
+    /// <summary>
+    /// Ayrıştırıcı listesi + başta "Yok". Hesapların çoğuna ekstre yüklenmiyor, bu yüzden
+    /// yeni hesabın varsayılanı da "Yok": yanlış bankanın ayrıştırıcısı sessizce atanmasın.
+    /// </summary>
+    private List<ParserSecenekDto> ParserSecenekleri
+    {
+        get
+        {
+            var liste = new List<ParserSecenekDto> { new() { Tip = string.Empty, Ad = "Yok — ekstre yüklenmez" } };
+            liste.AddRange(_parserler);
+            return liste;
+        }
+    }
+
     private void FormAc(BankaHesabiDto? hesap)
     {
         _duzenlenenId = hesap?.Id;
         _form = hesap is null
-            ? new BankaHesabiYazDto { ParserTipi = _parserler.FirstOrDefault()?.Tip ?? string.Empty }
+            ? new BankaHesabiYazDto { ParserTipi = string.Empty }
             : new BankaHesabiYazDto
             {
                 BankaAdi = hesap.BankaAdi,
                 HesapAdi = hesap.HesapAdi,
+                EslestirmeAnahtarlari = hesap.EslestirmeAnahtarlari,
                 HesapTipi = hesap.HesapTipi,
                 ParaBirimi = hesap.ParaBirimi,
                 Iban = hesap.Iban,
@@ -312,9 +370,34 @@ else
             };
     }
 
+    /// <summary>
+    /// Hesap adı değişince anahtar önerisi doldurulur — yalnız alan boşsa: kullanıcının
+    /// yazdığı anahtar ezilmemeli.
+    /// </summary>
+    private async Task HesapAdiDegistiAsync(string? yeniAd)
+    {
+        if (_form is null) return;
+
+        _form.HesapAdi = yeniAd;
+        if (!string.IsNullOrWhiteSpace(_form.EslestirmeAnahtarlari)) return;
+
+        await AnahtarOnerAsync();
+    }
+
+    /// <summary>Hesap adından anahtar önerisi; "Öner" düğmesi mevcut değeri de tazeler.</summary>
+    private async Task AnahtarOnerAsync()
+    {
+        if (_form is null || string.IsNullOrWhiteSpace(_form.HesapAdi)) return;
+
+        _form.EslestirmeAnahtarlari = await Api.AnahtarOnerisiAsync(_form.HesapAdi, _form.BankaAdi);
+    }
+
     private async Task KaydetAsync()
     {
         if (_form is null) return;
+
+        // Banka adı biçimi engellemez, yalnız uyarır: kullanıcı bilerek uzun ad yazmış olabilir.
+        var bankaAdiUyarisi = BankaAdiDenetimi.Uyari(_form.BankaAdi);
 
         _kaydediyor = true;
         var (veri, hata) = _duzenlenenId is int id
@@ -329,6 +412,10 @@ else
         }
 
         Notif.Notify(NotificationSeverity.Success, "Kaydedildi", veri?.BankaAdi, 3000);
+
+        if (bankaAdiUyarisi is not null)
+            Notif.Notify(NotificationSeverity.Warning, "Banka adını gözden geçirin", bankaAdiUyarisi, 9000);
+
         _form = null;
         _duzenlenenId = null;
         await YukleAsync();

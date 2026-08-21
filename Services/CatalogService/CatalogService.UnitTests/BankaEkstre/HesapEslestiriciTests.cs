@@ -232,6 +232,164 @@ namespace CatalogService.UnitTests.BankaEkstre
             Assert.NotEqual(KaynakKatman.BankaKayitDefteri, sonuc.Katman);
         }
 
+        // ---- Katman 2: eşleştirme anahtarları ----
+
+        /// <summary>Aynı bankanın iki hesabı; yalnız süpürme hesabında anahtar var.</summary>
+        private static EslestirmeVerisi VakifbankIkiHesap(string? supurmeAnahtari = "Otomatik Süpürme, Süpürme",
+                                                          string? vadesizAnahtari = null) => new()
+        {
+            BankaHesaplari = new[]
+            {
+                new BankaHesabi
+                {
+                    Id = 1, BankaAdi = "Vakıfbank", HesapAdi = "Vakıfbank, Vadesiz Tl",
+                    OrkaHesapKodu = "102 1 1 01", EslestirmeAnahtarlari = vadesizAnahtari, Aktif = true
+                },
+                new BankaHesabi
+                {
+                    Id = 2, BankaAdi = "Vakıfbank", HesapAdi = "Vakıfbank, Vadeli Tl - Otomatik Süpürme Hesabı",
+                    OrkaHesapKodu = "102 1 1 04", EslestirmeAnahtarlari = supurmeAnahtari, Aktif = true
+                }
+            },
+            IslenenBankaHesabiId = 9
+        };
+
+        [Fact]
+        public void Anahtar_ayni_bankanin_dogru_hesabini_secer()
+        {
+            // Açıklamada banka adı hiç geçmiyor; ayırt eden tek şey anahtar.
+            var sablon = new AciklamaSablonu { BankalarArasi = true, Sablon = "Otomatik Süpürme Pkf Aday" };
+
+            var sonuc = _eslestirici.Coz(
+                Baglam("Otomatik Süpürme İşlemleri Virman", hamAciklama: "Otomatik Süpürme Pkf Aday", sablon: sablon),
+                VakifbankIkiHesap());
+
+            Assert.Equal(KaynakKatman.BankaKayitDefteri, sonuc.Katman);
+            Assert.Equal("102 1 1 04", sonuc.HesapKodu);
+            Assert.Equal(SatirDurum.Otomatik, sonuc.Durum);
+        }
+
+        [Fact]
+        public void Anahtar_tutmayinca_ayni_bankada_iki_hesap_varsa_onaya_duser()
+        {
+            var sablon = new AciklamaSablonu { BankalarArasi = true, Sablon = "Hesaplararası Virman - {HESAP}" };
+
+            var sonuc = _eslestirici.Coz(
+                Baglam("Virman", hamAciklama: "Hesaplar Arası Eft - Vakıfbank", sablon: sablon),
+                VakifbankIkiHesap());
+
+            Assert.Equal(SatirDurum.OnayBekliyor, sonuc.Durum);
+            Assert.Equal(KaynakKatman.BankaKayitDefteri, sonuc.Katman);
+
+            // Kod önerilmez: "ilk bulunanı" seçmek yanlış banka hesabına kayıt atmak olurdu.
+            Assert.Null(sonuc.HesapKodu);
+            Assert.Equal(2, sonuc.Adaylar.Count);
+            Assert.Contains(sonuc.Adaylar, a => a.Kod == "102 1 1 01");
+            Assert.Contains(sonuc.Adaylar, a => a.Kod == "102 1 1 04");
+        }
+
+        [Fact]
+        public void Tek_hesapli_bankada_anahtar_olmadan_banka_adindan_cozulur()
+        {
+            var sablon = new AciklamaSablonu { BankalarArasi = true, Sablon = "Hesaplararası Virman - {HESAP}" };
+            var veri = new EslestirmeVerisi
+            {
+                BankaHesaplari = new[]
+                {
+                    new BankaHesabi { Id = 1, BankaAdi = "Fibabanka", OrkaHesapKodu = "102 1 9 01", Aktif = true },
+                    new BankaHesabi { Id = 2, BankaAdi = "Vakıfbank", OrkaHesapKodu = "102 1 1 01", Aktif = true }
+                },
+                IslenenBankaHesabiId = 9
+            };
+
+            var sonuc = _eslestirici.Coz(
+                Baglam("Virman", hamAciklama: "Hesaplararası Virman - Fibabanka", sablon: sablon), veri);
+
+            Assert.Equal(KaynakKatman.BankaKayitDefteri, sonuc.Katman);
+            Assert.Equal("102 1 9 01", sonuc.HesapKodu);
+            Assert.Equal(SatirDurum.Otomatik, sonuc.Durum);
+        }
+
+        [Fact]
+        public void En_uzun_anahtar_kazanir()
+        {
+            // Açıklamada hem "Vakıfbank" hem "Otomatik Süpürme" geçiyor; uzun olan seçilir.
+            var sablon = new AciklamaSablonu { BankalarArasi = true };
+
+            var sonuc = _eslestirici.Coz(
+                Baglam("Virman", hamAciklama: "Vakıfbank Otomatik Süpürme", sablon: sablon),
+                VakifbankIkiHesap(vadesizAnahtari: "Vakıfbank"));
+
+            Assert.Equal("102 1 1 04", sonuc.HesapKodu);
+            Assert.Equal(SatirDurum.Otomatik, sonuc.Durum);
+        }
+
+        [Fact]
+        public void Anahtar_eslesmesi_turkce_karakter_ve_buyuk_kucuk_harf_duyarsiz()
+        {
+            var sablon = new AciklamaSablonu { BankalarArasi = true };
+
+            var sonuc = _eslestirici.Coz(
+                Baglam("Virman", hamAciklama: "otomatık supurme pkf aday", sablon: sablon),
+                VakifbankIkiHesap());
+
+            Assert.Equal("102 1 1 04", sonuc.HesapKodu);
+        }
+
+        [Fact]
+        public void Anahtar_kelime_ortasinda_eslesmez()
+        {
+            // "TEB" anahtarı "OTEBANK" içinde geçse de eşleşmemeli.
+            var sablon = new AciklamaSablonu { BankalarArasi = true };
+            var veri = new EslestirmeVerisi
+            {
+                BankaHesaplari = new[]
+                {
+                    new BankaHesabi { Id = 1, BankaAdi = "TEB", OrkaHesapKodu = "102 1 32 87", Aktif = true }
+                },
+                IslenenBankaHesabiId = 9
+            };
+
+            var sonuc = _eslestirici.Coz(
+                Baglam("Virman", hamAciklama: "OTEBANK hesabına virman", sablon: sablon), veri);
+
+            Assert.NotEqual(KaynakKatman.BankaKayitDefteri, sonuc.Katman);
+        }
+
+        [Fact]
+        public void Kodu_olmayan_aday_elenince_belirsizlik_kalmaz()
+        {
+            var sablon = new AciklamaSablonu { BankalarArasi = true };
+            var veri = new EslestirmeVerisi
+            {
+                BankaHesaplari = new[]
+                {
+                    new BankaHesabi { Id = 1, BankaAdi = "Vakıfbank", OrkaHesapKodu = "102 1 1 01", Aktif = true },
+                    new BankaHesabi { Id = 2, BankaAdi = "Vakıfbank", OrkaHesapKodu = string.Empty, Aktif = true }
+                },
+                IslenenBankaHesabiId = 9
+            };
+
+            var sonuc = _eslestirici.Coz(
+                Baglam("Virman", hamAciklama: "Vakıfbank hesabına virman", sablon: sablon), veri);
+
+            Assert.Equal("102 1 1 01", sonuc.HesapKodu);
+            Assert.Equal(SatirDurum.Otomatik, sonuc.Durum);
+        }
+
+        [Fact]
+        public void Belirsiz_bankada_aciklama_yine_banka_adini_kullanir()
+        {
+            // Onaya düşen satırda bile açıklama üretilebilmeli: iki adayın da bankası aynı.
+            var sablon = new AciklamaSablonu { BankalarArasi = true };
+
+            var banka = _eslestirici.BankaBul(
+                Baglam("Virman", hamAciklama: "Hesaplar Arası Eft - Vakıfbank", sablon: sablon),
+                VakifbankIkiHesap());
+
+            Assert.Equal("Vakıfbank", banka?.BankaAdi);
+        }
+
         // ---- Katman 3: sabit kural ----
 
         [Fact]

@@ -37,6 +37,15 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
         public ActionResult<List<ParserSecenekDto>> GetParserler()
             => Ok(_service.GetParserSecenekleri());
 
+        /// <summary>
+        /// Hesap adından eşleştirme anahtarı önerisi. Form yeni hesapta alanı bununla
+        /// doldurur; kullanıcı düzenleyebilir, kaydeden değer formdaki değerdir.
+        /// </summary>
+        [HttpGet("anahtar-onerisi")]
+        public ActionResult<AnahtarOnerisiDto> AnahtarOnerisi([FromQuery] string? hesapAdi,
+                                                              [FromQuery] string? bankaAdi)
+            => Ok(new AnahtarOnerisiDto { EslestirmeAnahtarlari = _service.AnahtarOner(hesapAdi, bankaAdi) });
+
         [HttpGet("{id:int}")]
         public async Task<ActionResult<BankaHesabiDto>> GetById(int id, CancellationToken ct)
         {

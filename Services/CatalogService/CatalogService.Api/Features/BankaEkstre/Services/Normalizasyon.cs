@@ -142,6 +142,32 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         }
 
         /// <summary>
+        /// Normalize ifade, normalize metinde <b>tam kelime sınırlarıyla</b> geçiyor mu?
+        /// Düz <c>Contains</c> yetmiyor: "TEB" anahtarı "OTEBANK" içinde de geçer ve
+        /// yanlış hesaba eşlerdi. İki taraf da <see cref="MetinNormalize"/>'dan geçmiş
+        /// olmalı (tek boşluklu, alfanümerik).
+        /// </summary>
+        public static bool IfadeVarMi(string? normalizeMetin, string? normalizeIfade)
+        {
+            if (string.IsNullOrEmpty(normalizeMetin) || string.IsNullOrEmpty(normalizeIfade))
+                return false;
+
+            var bas = 0;
+            while (true)
+            {
+                var i = normalizeMetin.IndexOf(normalizeIfade, bas, StringComparison.Ordinal);
+                if (i < 0) return false;
+
+                var solTemiz = i == 0 || normalizeMetin[i - 1] == ' ';
+                var sag = i + normalizeIfade.Length;
+                var sagTemiz = sag == normalizeMetin.Length || normalizeMetin[sag] == ' ';
+
+                if (solTemiz && sagTemiz) return true;
+                bas = i + 1;
+            }
+        }
+
+        /// <summary>
         /// Açıklama içindeki karşı IBAN. Ölçümde 286 satırın 97'sinde vardı; en değerli anahtar.
         /// Maskeli (yıldızlı) IBAN öğrenme anahtarı olamayacağı için elenir.
         /// </summary>

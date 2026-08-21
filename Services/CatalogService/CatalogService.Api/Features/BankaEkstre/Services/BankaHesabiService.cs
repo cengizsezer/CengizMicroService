@@ -15,6 +15,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         Task<BankaHesabiDto?> UpdateAsync(int id, BankaHesabiYazDto dto, CancellationToken ct = default);
         Task<bool?> DeleteAsync(int id, CancellationToken ct = default);
         List<ParserSecenekDto> GetParserSecenekleri();
+
+        /// <summary>Hesap adından eşleştirme anahtarı önerisi; form yeni hesapta bunu doldurur.</summary>
+        string? AnahtarOner(string? hesapAdi, string? bankaAdi);
     }
 
     /// <summary>
@@ -99,6 +102,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 .Select(p => new ParserSecenekDto { Tip = p.ParserTipi, Ad = p.Ad })
                 .ToList();
 
+        public string? AnahtarOner(string? hesapAdi, string? bankaAdi)
+            => EslestirmeAnahtari.Oner(hesapAdi, bankaAdi);
+
         // ---- Yardımcılar ----
 
         private void Dogrula(BankaHesabiYazDto dto)
@@ -109,9 +115,11 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             if (string.IsNullOrWhiteSpace(dto.OrkaHesapKodu))
                 throw new BankaEkstreKuralException(nameof(dto.OrkaHesapKodu), "ORKA hesap kodu zorunludur.");
 
-            if (_parserSecici.Sec(dto.ParserTipi) is null)
+            // Ayrıştırıcı isteğe bağlı: hesapların çoğuna ekstre yüklenmiyor, yalnız karşı
+            // hesap olarak bulunabilmek için tanımlılar. Girildiyse tanınmalı.
+            if (!string.IsNullOrWhiteSpace(dto.ParserTipi) && _parserSecici.Sec(dto.ParserTipi) is null)
                 throw new BankaEkstreKuralException(nameof(dto.ParserTipi),
-                    $"Tanımsız ayrıştırıcı: '{dto.ParserTipi}'. Seçilebilir tipler: " +
+                    $"Tanımsız ayrıştırıcı: '{dto.ParserTipi}'. Boş bırakılabilir; seçilebilir tipler: " +
                     string.Join(", ", _parserSecici.Hepsi.Select(p => p.ParserTipi)) + ".");
         }
 
@@ -130,12 +138,14 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         {
             hesap.BankaAdi = dto.BankaAdi.Trim();
             hesap.HesapAdi = string.IsNullOrWhiteSpace(dto.HesapAdi) ? null : Normalizasyon.Kirp(dto.HesapAdi, 200);
+            hesap.EslestirmeAnahtarlari = EslestirmeAnahtari.Duzenle(dto.EslestirmeAnahtarlari);
             hesap.HesapTipi = dto.HesapTipi;
             hesap.ParaBirimi = string.IsNullOrWhiteSpace(dto.ParaBirimi) ? "TRY" : dto.ParaBirimi.Trim().ToUpperInvariant();
             hesap.Iban = string.IsNullOrWhiteSpace(dto.Iban) ? null : dto.Iban.Trim().Replace(" ", string.Empty).ToUpperInvariant();
             // Kod boşluklu saklanır; format değiştirilmez, ORKA tanımaz.
             hesap.OrkaHesapKodu = Normalizasyon.HesapKoduNormalize(dto.OrkaHesapKodu);
-            hesap.ParserTipi = dto.ParserTipi.Trim();
+            // Boş ayrıştırıcı "yok" demek; "" ile null aynı anlama gelmesin diye null saklanır.
+            hesap.ParserTipi = string.IsNullOrWhiteSpace(dto.ParserTipi) ? null : dto.ParserTipi.Trim();
             hesap.Aktif = dto.Aktif;
             // Katmanlar varsayılan kapalı; kullanıcı bilerek açar (bkz. BankaHesabi yorumları).
             hesap.IbanKatmaniAktif = dto.IbanKatmaniAktif;
@@ -147,11 +157,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             Id = h.Id,
             BankaAdi = h.BankaAdi,
             HesapAdi = h.HesapAdi,
+            EslestirmeAnahtarlari = h.EslestirmeAnahtarlari,
             HesapTipi = h.HesapTipi,
             ParaBirimi = h.ParaBirimi,
             Iban = h.Iban,
             OrkaHesapKodu = h.OrkaHesapKodu,
-            ParserTipi = h.ParserTipi,
+            ParserTipi = h.ParserTipi ?? string.Empty,
             Aktif = h.Aktif,
             IbanKatmaniAktif = h.IbanKatmaniAktif,
             VknKatmaniAktif = h.VknKatmaniAktif

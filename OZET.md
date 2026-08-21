@@ -20,7 +20,12 @@ Mimari kararlar ve gerekçeleri: **KARARLAR.md**. Plan ve dosya listesi: **PLAN.
    (`DAGI GIYIM`); unvansız satırlarda `ISLEM:<işlem tipi>`. Önce genişletilmiş anahtar
    (çekirdek + ayırt edici kelime), tutmazsa sade çekirdek.
 2. **Banka kayıt defteri** — bankalar arası hareketlerde karşı taraf tanımlı banka
-   hesaplarından bulunur.
+   hesaplarından bulunur. Sıra: IBAN → hesabın **eşleştirme anahtarları** → banka adı.
+   Her iki metin adımında da **en uzun eşleşen kazanır** (`Otomatik Süpürme` >
+   `Vakıfbank`), eşleşme tam kelime sınırıyla aranır (`TEB` anahtarı `OTEBANK` içinde
+   tutmaz). En uzunda beraberlik varsa — aynı bankanın iki hesabı, açıklamada yalnız
+   `Vakıfbank` geçiyor — tahmin edilmez: **kod önerilmez**, adaylar listelenir ve satır
+   onaya düşer. Tek hesaplı bankada (Fibabanka) anahtar olmadan banka adından çözülür.
 3. **Sabit kural** — işlem tipi → hesap kodu (banka masrafı → 770, HGS → 740).
 4. **Unvan benzerliği** — yön → ana grup (giren 120, çıkan 329) daraltmasından sonra
    normalize unvanın **her token'ı sırayla çıpa**: çıpayla başlayan hesapları getirip
@@ -44,6 +49,58 @@ ve **tüm aile** aday olarak listelenir.
 
 ---
 
+## Eşleştirme anahtarları
+
+`102` grubu, cevap anahtarındaki en büyük kalem (Vakıfbank 48, İş Bankası 30, Ziraat 19,
+Akbank 10 satır) ve **aynı bankada birden fazla hesap** var:
+
+```
+102 1 1 01    Vakıfbank, Vadesiz TL
+102 1 1 04    Vakıfbank, Vadeli TL - Otomatik Süpürme Hesabı
+```
+
+Açıklamada yalnız `BankaAdi` ("Vakıfbank") arandığı sürece bu ikisi ayrılamıyordu.
+`BankaHesabi.EslestirmeAnahtarlari` (nullable, virgülle ayrılmış, 300 karakter) hesaba
+özel ayırt edici ifadeleri tutuyor:
+
+| Açıklama | Anahtar | Sonuç |
+|---|---|---|
+| `Otomatik Süpürme Pkf Aday` | `Otomatik Süpürme` (102 1 1 04) | otomatik, `102 1 1 04` |
+| `Hesaplar Arası Eft - Vakıfbank` | yok | **onaya düşer**, iki Vakıfbank hesabı aday |
+| `Hesaplararası Virman - Fibabanka` | yok, tek hesaplı banka | otomatik, banka adından |
+
+Karşılaştırma `Normalizasyon.MetinNormalize` üzerinden (Türkçe sadeleştirme, büyük-küçük
+harf duyarsız, alfanümerik dışı boşluk) ve `IfadeVarMi` ile **tam kelime sınırında**
+yapılıyor. 3 karakterden kısa anahtarlar yok sayılıyor.
+
+**Öneri.** Formda hesap adı yazılınca (anahtar alanı boşsa) `GET
+.../banka-hesaplari/anahtar-onerisi` çağrılıyor: banka adı, genel kelimeler (`Vadesiz`,
+`TL`, `Hesabı`…) ve hesap numaraları atıldıktan sonra kalan ifadeler öneriliyor.
+`"Vakıfbank, Vadeli Tl - Otomatik Süpürme Hesabı"` → `"Otomatik Süpürme"`. Kullanıcı
+düzenleyebiliyor; kaydedilen değer formdaki değer (KARARLAR §38).
+
+**Banka adı alanı.** İpucu netleştirildi: buraya **kısa banka adı** yazılır. 25 karakteri
+aşan veya virgül/tire içeren ad kaydedilir ama yumuşak uyarı gösterilir — engelleme yok
+(KARARLAR §39).
+
+---
+
+## Ayrıştırıcısı olmayan hesap
+
+Hesapların çoğuna ekstre yüklenmiyor; vadeli, süpürme, blokaj ve yatırım hesapları yalnız
+**karşı hesap olarak bulunabilmek** için tanımlı. `BankaHesabi.ParserTipi` bu yüzden
+nullable:
+
+- Formda "Yok — ekstre yüklenmez" seçeneği var ve **yeni hesabın varsayılanı** bu.
+- Ayrıştırıcısız hesap İşleme ekranında **kart göstermiyor** (sekmeler de yalnız ekstre
+  yüklenebilen hesaplardan türüyor); ekranın altında kaç hesabın gizlendiği yazıyor.
+- O hesaba ekstre yüklenmeye çalışılırsa anlaşılır hata dönüyor, yükleme kaydı açılmıyor.
+- Kayıt defterinde ve eşleştirmede eskisi gibi kullanılıyor.
+
+Eski satırlarda "yok" boş metinle saklanıyordu; migration bunları `NULL`'a çeviriyor.
+
+---
+
 ## Banka hesaplarının toplu içe aktarımı
 
 19 hesabı tek tek girmek yerine Tanımlar > Banka hesapları > **Toplu İçe Aktar**. Kalıp
@@ -60,6 +117,7 @@ bazlıdır.
 | `Para Birimi` | evet | TL → `TRY`; USD, EUR |
 | `Parser Tipi` | hayır | Boşsa hesap tanımlanır, ekstresi yüklenemez (uyarı) |
 | `IBAN` | hayır | Boşluklar atılır, büyük harfe çevrilir |
+| `Eşleştirme Anahtarları` | hayır | Virgülle ayrılmış; boş hücre mevcut anahtarı **silmez** |
 
 **Upsert:** anahtar `OrkaHesapKodu` + firma. Varsa güncellenir, yoksa eklenir. Dosyada
 olmayan hesaplara **dokunulmaz** (hesap planının aksine pasife çekilmez — KARARLAR §33).
@@ -104,7 +162,8 @@ kolon açıklamaları ve geçerli ayrıştırıcı listesi var.
 | `Services/Parsing/*` | `IEkstreParser`, `VakifbankVadesizParser`, `EkstreParserSecici` |
 | `Services/UnvanCikarici.cs` | Desenleri sırayla dener, ilk yakalayan kazanır |
 | `Services/AciklamaUretici.cs` | Şablon seçimi + yer tutucu doldurma + 50 karakter sınırı |
-| `Services/HesapEslestirici.cs` | 4 katman + kapalı IBAN/VKN + çoklu token çıpası + aile ayrımı + `HesapPlaniIndeksi` |
+| `Services/EslestirmeAnahtari.cs` | Anahtar listesinin ayrıştırılması/saklanması + hesap adından öneri üretimi |
+| `Services/HesapEslestirici.cs` | 4 katman + kapalı IBAN/VKN + çoklu token çıpası + aile ayrımı + `HesapPlaniIndeksi` + **anahtar/banka adı eşlemesi ve belirsizlikte onaya düşürme** |
 | `Services/HesapEslesmeService.cs` | Öğrenilen eşleşmelerin yazımı, arama, düzeltme, silme |
 | `Services/EkstreService.cs` | Yükle/işle, satır listeleme, onay, dışa aktarım (iki parça) |
 | `Services/BankaHesabiService.cs` | Banka hesapları CRUD |
@@ -125,6 +184,7 @@ Yeni uç noktalar:
 | `GET  .../hesap-plani/ozet` | Kayıt sayısı + son içe aktarım + gün farkı |
 | `POST .../banka-hesaplari/ice-aktar` | **Banka hesaplarının toplu içe aktarımı** (multipart xlsx) |
 | `GET  .../banka-hesaplari/sablon` | **Doğru başlıklara sahip boş şablon** (xlsx dosya) |
+| `GET  .../banka-hesaplari/anahtar-onerisi` | Hesap adından eşleştirme anahtarı önerisi |
 | `POST .../ekstre/{id}/duzeltilmis-ekstre` | Dışa aktarımın 1. parçası (xlsx dosya) |
 | `GET  .../eslesmeler?q=` | Öğrenilen eşleşme araması |
 | `PUT  .../eslesmeler/{id}` | Eşleşmeyi düzelt (kod / yön / ayırt edici ek) |
@@ -152,8 +212,12 @@ Kaldırılanlar: `Pages/BankaEkstre/EkstreYuklePage.razor` (`/banka-isleme/yukle
 `BankaEkstreTestOrtami.cs` (bellek içi context — artık tenant parametreli, xlsx üretici),
 `VakifbankParserTests`, `UnvanCikariciTests`, `NormalizasyonTests`, `AciklamaUreticiTests`,
 `HesapEslestiriciTests`, `EkstreServiceTests`, `EkstreHesapPlaniServiceTests`,
-`BankaHesabiIceAktarimServiceTests` (12 test: upsert, satır bazlı doğrulama, kolon sırası,
-firma izolasyonu, şablon).
+`BankaHesabiIceAktarimServiceTests` (upsert, satır bazlı doğrulama, kolon sırası, firma
+izolasyonu, şablon, **`Eşleştirme Anahtarları` kolonu**), `BankaHesabiServiceTests`
+(ayrıştırıcı isteğe bağlı, anahtarların temizlenerek saklanması, öneri),
+`EslestirmeAnahtariTests` (liste ayrıştırma + öneri üretimi).
+İstemci tarafında `src/Client/BlazorWebApp/WebApp.UnitTests/BankaEkstre/BankaAdiDenetimiTests.cs`
+(banka adı yumuşak uyarısı).
 
 ---
 
@@ -190,8 +254,27 @@ Banka hesabı toplu içe aktarımı (`claude-code-prompt-banka-hesap-ice-aktarim
 | — | İkinci kez aynı dosya → güncelleme | ✅ `Ayni_dosya_ikinci_kez_guncelleme_sayar` (3 güncellendi, 0 eklendi) |
 | — | Dosyada olmayan hesaba dokunulmuyor | ✅ `Dosyada_olmayan_mevcut_hesaba_dokunulmaz` |
 
-Test sonucu: **236 test, 0 başarısız** (`CatalogService.UnitTests`),
-**18 test, 0 başarısız** (`WebApp.UnitTests`).
+Eşleştirme anahtarları + isteğe bağlı ayrıştırıcı (`claude-code-prompt-eslestirme-anahtarlari.md`):
+
+| # | Kabul kriteri | Durum |
+|---|---|---|
+| 1 | Derleme temiz, tüm testler geçiyor | ✅ `dotnet build SmartExpenseSystem.sln` → 0 hata; 267 + 28 test |
+| 2 | Migration üretildi ve uygulandı, `has-pending-model-changes` temiz | ✅ `20260821105315_AddBankaHesabiEslestirmeAnahtarlari`; `database update` uygulandı, "No changes have been made to the model" |
+| 3 | Prompt'taki testlerin hepsi yazıldı | ✅ aşağıdaki satırlar |
+| 4 | Mevcut tekli CRUD ve toplu içe aktarım bozulmadı | ✅ mevcut testler değişmeden geçiyor; tek güncellenen bekleyiş `ParserTipi` boş metin → `NULL` |
+| 5 | Ayrıştırıcısız hesap eşleştirmede kullanılıyor, ekstre kabul etmiyor | ✅ `Ayristiricisiz_hesap_kaydedilebilir` + `Ayristiricisiz_hesaba_ekstre_yuklenemez`; eşleştirme hesapları `ParserTipi`'ne bakmadan tarıyor |
+| — | `"Otomatik Süpürme Pkf Aday"` → `102 1 1 04` (anahtar), `102 1 1 01` değil | ✅ `Anahtar_ayni_bankanin_dogru_hesabini_secer` |
+| — | `"Hesaplar Arası Eft - Vakıfbank"` → onaya düşer, iki aday listelenir | ✅ `Anahtar_tutmayinca_ayni_bankada_iki_hesap_varsa_onaya_duser` (öneri kodu boş, 2 aday) |
+| — | Tek hesaplı banka (Fibabanka) banka adından çözülür | ✅ `Tek_hesapli_bankada_anahtar_olmadan_banka_adindan_cozulur` |
+| — | En uzun anahtar kazanır | ✅ `En_uzun_anahtar_kazanir` (`Vakıfbank` vs `Otomatik Süpürme`) |
+| — | Türkçe karakter / büyük-küçük harf duyarsız | ✅ `Anahtar_eslesmesi_turkce_karakter_ve_buyuk_kucuk_harf_duyarsiz` (`"otomatık supurme"`) |
+| — | Kelime ortasında eşleşme olmuyor | ✅ `Anahtar_kelime_ortasinda_eslesmez` (`TEB` / `OTEBANK`), `Ifade_tam_kelime_siniriyla_aranir` |
+| — | Toplu içe aktarım `Eşleştirme Anahtarları` kolonunu okur | ✅ `Eslestirme_anahtarlari_kolonu_okunur`, `Bos_anahtar_hucresi_mevcut_anahtari_silmez` |
+| — | Hesap adından anahtar önerisi | ✅ `EslestirmeAnahtariTests` (üç gerçek hesap adı), `Anahtar_onerisi_hesap_adindan_uretilir` |
+| — | Banka adı uyarısı engellemiyor | ✅ `BankaAdiDenetimiTests` (WebApp.UnitTests) |
+
+Test sonucu: **267 test, 0 başarısız** (`CatalogService.UnitTests`),
+**28 test, 0 başarısız** (`WebApp.UnitTests`).
 
 Çalıştırılan doğrulama komutları:
 
@@ -199,11 +282,28 @@ Test sonucu: **236 test, 0 başarısız** (`CatalogService.UnitTests`),
 dotnet build SmartExpenseSystem.sln
 dotnet ef migrations add AddBankaEkstreDuzeltmeleri   # Services/CatalogService/CatalogService.Api
 dotnet ef migrations add AddBankaHesabiIceAktarim     # banka hesabı toplu içe aktarımı
+dotnet ef migrations add AddBankaHesabiEslestirmeAnahtarlari   # anahtarlar + ayrıştırıcı nullable
 dotnet ef migrations has-pending-model-changes
 dotnet ef database update
 dotnet test Services/CatalogService/CatalogService.UnitTests/CatalogService.UnitTests.csproj
 dotnet test src/Client/BlazorWebApp/WebApp.UnitTests/WebApp.UnitTests.csproj
 ```
+
+**Uç noktalar çalışırken doğrulandı** (derlemeyle değil, gerçek istekle). CatalogService
+`http://localhost:5004` üzerinde ayağa kaldırılıp elle üretilen bir dev JWT ile çağrıldı:
+
+| İstek | Sonuç |
+|---|---|
+| `GET .../banka-hesaplari/sablon` (tokensiz) | `401` — `[Authorize]` çalışıyor |
+| `GET .../banka-hesaplari/sablon` | `200`, 8046 bayt, `Content-Type: ...spreadsheetml.sheet`, `Content-Disposition: attachment; filename=banka-hesaplari-sablon.xlsx` |
+| indirilen dosyanın başlıkları | `Orka Hesap Kodu │ Hesap Adı │ Banka Adı │ Hesap Tipi │ Para Birimi │ Parser Tipi │ IBAN │ Eşleştirme Anahtarları` + "Açıklama" sayfası |
+| `POST .../banka-hesaplari/ice-aktar` (tek satırlı xlsx) | `200` — `{"okunan":1,"atlanan":1,"hatalar":[{"satirNo":2,"message":"'102 1 1 04' hesap planında yok…"}]}`; multipart bağlama ve satır bazlı doğrulama çalışıyor |
+| `POST .../banka-hesaplari/ice-aktar` (`.txt`) | `415` — "Sadece .xlsx veya .xls dosyaları desteklenir." |
+| `GET .../banka-hesaplari/anahtar-onerisi` | `200` — hesap adından öneri dönüyor |
+
+İstemci tarafında tarayıcıya servis edilen `_framework/WebApp.wasm` indirilip içinde
+`Toplu İçe Aktar`, `banka-hesaplari/ice-aktar`, `banka-hesaplari/sablon` ve
+`Eşleştirme anahtarları` metinlerinin bulunduğu doğrulandı.
 
 ---
 
@@ -226,8 +326,20 @@ dotnet test src/Client/BlazorWebApp/WebApp.UnitTests/WebApp.UnitTests.csproj
   olduğu için uydurulmadı. `EkstreSabitKurallar` tablosundan düzenlenmeli.
   `Vergi Tahsilatı` için kural yok — o satırlar onaya düşer.
 - **Şablon/desen/kural tabloları için yönetim ekranı yok.** Şimdilik seed + SQL.
-- **Banka hesabı içe aktarımı tarayıcıda denenmedi.** Servis ve şablon üretimi birim
-  testli; "Toplu İçe Aktar" düğmesi, dosya seçici ve rapor listesi elle görülecek.
+- **Banka hesabı içe aktarımı tarayıcıda denenmedi** — ama **uç noktalar çalışırken
+  doğrulandı** (aşağıya bakın). Kalan elle kontrol: "Toplu İçe Aktar" düğmesi, dosya
+  seçici ve rapor listesinin ekranda görünmesi.
+- **Eşleştirme anahtarları hiçbir hesapta dolu değil.** Migration alanı ekliyor, doldurmuyor.
+  102 grubu satırların doğru hesaba gitmesi için Tanımlar > Banka hesapları'ndan her
+  hesabın anahtarı girilmeli (form "Hesap adından öner" düğmesiyle taslak üretiyor) veya
+  toplu içe aktarım dosyasına `Eşleştirme Anahtarları` kolonu eklenmeli. **Anahtar
+  girilmeden**, aynı bankada birden fazla hesabı olan satırlar otomatik çözülmek yerine
+  onaya düşer — eskisi gibi yanlış hesaba gitmez ama onay kuyruğu büyür.
+- **Anahtar önerisi gerçek hesap adlarıyla denenmedi.** Kural tabanlı: banka adı, genel
+  kelimeler ve rakamlar atılıyor. `"Teb, Marifetli Tl - Maslak, 129-154401190"` için
+  `"Marifetli, Maslak"` üretiyor (şube adı da geliyor); kullanıcı fazlasını siler.
+- **Ayrıştırıcısız hesabın ekranda gizlenmesi tarayıcıda denenmedi.** Sunucu tarafı testli
+  (yükleme reddi), kart/sekme filtresi Razor tarafında ve otomatik testi yok.
 - **İçe aktarım `Aktif` bayrağını değiştirmiyor.** Dosyada `Aktif` kolonu yok; pasife
   alınmış bir hesap dosyada geçse bile pasif kalır, ekrandan açılır (KARARLAR §34).
 

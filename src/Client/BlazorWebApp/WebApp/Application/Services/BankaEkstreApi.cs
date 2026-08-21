@@ -33,6 +33,14 @@ namespace WebApp.Application.Services
         public async Task<List<ParserSecenekDto>> GetParserlerAsync(CancellationToken ct = default)
             => await GetOrNull<List<ParserSecenekDto>>($"{Hesaplar}/parserler", ct) ?? new();
 
+        public async Task<string?> AnahtarOnerisiAsync(string? hesapAdi, string? bankaAdi, CancellationToken ct = default)
+        {
+            var adres = $"{Hesaplar}/anahtar-onerisi?hesapAdi={Uri.EscapeDataString(hesapAdi ?? string.Empty)}" +
+                        $"&bankaAdi={Uri.EscapeDataString(bankaAdi ?? string.Empty)}";
+
+            return (await GetOrNull<AnahtarOnerisiDto>(adres, ct))?.EslestirmeAnahtarlari;
+        }
+
         public Task<(BankaHesabiDto? Veri, string? Hata)> CreateHesapAsync(BankaHesabiYazDto dto, CancellationToken ct = default)
             => GonderAsync<BankaHesabiDto>(() => _http.PostAsJsonAsync(Hesaplar, dto, ct));
 

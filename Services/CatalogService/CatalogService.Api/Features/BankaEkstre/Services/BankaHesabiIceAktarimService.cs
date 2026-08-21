@@ -49,10 +49,16 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         private static readonly string[] ParaBirimiBasliklari = { "Para Birimi", "ParaBirimi", "Döviz", "Doviz", "Kur" };
         private static readonly string[] ParserBasliklari = { "Parser Tipi", "ParserTipi", "Ayrıştırıcı", "Ayristirici", "Parser" };
         private static readonly string[] IbanBasliklari = { "IBAN", "Iban" };
+        private static readonly string[] AnahtarBasliklari =
+            { "Eşleştirme Anahtarları", "Eslestirme Anahtarlari", "EslestirmeAnahtarlari", "Anahtarlar", "Eşleştirme Anahtarı" };
 
-        /// <summary>Şablonun ve hata mesajlarının kullandığı kanonik başlık sırası.</summary>
+        /// <summary>
+        /// Şablonun ve hata mesajlarının kullandığı kanonik başlık sırası. İlk beşi zorunlu
+        /// (hata mesajı <c>Take(5)</c> ile bu listeden okunuyor), kalanı isteğe bağlı.
+        /// </summary>
         private static readonly string[] SablonBasliklari =
-            { "Orka Hesap Kodu", "Hesap Adı", "Banka Adı", "Hesap Tipi", "Para Birimi", "Parser Tipi", "IBAN" };
+            { "Orka Hesap Kodu", "Hesap Adı", "Banka Adı", "Hesap Tipi", "Para Birimi",
+              "Parser Tipi", "IBAN", "Eşleştirme Anahtarları" };
 
         public async Task<BankaHesabiIceAktarimSonucDto> IceAktarAsync(Stream excel, CancellationToken ct = default)
         {
@@ -96,6 +102,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 var paraHam = Hucre(satir, kolonlar.ParaBirimi);
                 var parserHam = Hucre(satir, kolonlar.Parser);
                 var ibanHam = Hucre(satir, kolonlar.Iban);
+                var anahtarHam = Hucre(satir, kolonlar.Anahtarlar);
 
                 if (kodHam.Length == 0 && hesapAdi.Length == 0 && bankaAdi.Length == 0 &&
                     tipHam.Length == 0 && paraHam.Length == 0) continue;
@@ -170,6 +177,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 Ekle(sonuc.Uyarilar, uyarilar);
 
                 var iban = ibanHam.Replace(" ", string.Empty).ToUpperInvariant();
+                var anahtarlar = EslestirmeAnahtari.Duzenle(anahtarHam);
 
                 if (mevcutlar.TryGetValue(kod, out var mevcut))
                 {
@@ -180,11 +188,14 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                     if (iban.Length > 0) mevcut.Iban = Normalizasyon.Kirp(iban, 34);
                     // Boş parser hücresi çalışan bir tanımı silmesin.
                     if (parserTipi is not null) mevcut.ParserTipi = parserTipi;
+                    // Boş anahtar hücresi de elle girilmiş anahtarları silmesin; kolon
+                    // isteğe bağlı, dosyada olmaması "anahtar kalmasın" demek değil.
+                    if (anahtarlar is not null) mevcut.EslestirmeAnahtarlari = anahtarlar;
                     // Aktif ve katman bayrakları dosyada yok: kullanıcının ekrandaki
                     // kararı korunur, içe aktarım pasif hesabı geri açmaz.
                     sonuc.Guncellenen++;
 
-                    if (mevcut.ParserTipi.Length == 0)
+                    if (string.IsNullOrWhiteSpace(mevcut.ParserTipi))
                         Ekle(sonuc.Uyarilar, new[] { ParsersizUyari(satirNo) });
                 }
                 else
@@ -194,10 +205,11 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                         OrkaHesapKodu = kod,
                         HesapAdi = Normalizasyon.Kirp(hesapAdi, 200),
                         BankaAdi = Normalizasyon.Kirp(bankaAdi, 100),
+                        EslestirmeAnahtarlari = anahtarlar,
                         HesapTipi = tip!.Value,
                         ParaBirimi = paraBirimi!,
                         Iban = iban.Length == 0 ? null : Normalizasyon.Kirp(iban, 34),
-                        ParserTipi = parserTipi ?? string.Empty,
+                        ParserTipi = parserTipi,
                         Aktif = true
                     });
                     sonuc.Eklenen++;
@@ -231,6 +243,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             sayfa.Column(5).Width = 12;
             sayfa.Column(6).Width = 22;
             sayfa.Column(7).Width = 30;
+            sayfa.Column(8).Width = 34;
             sayfa.SheetView.FreezeRows(1);
 
             // İkinci sayfa yalnız açıklama; içe aktarım her zaman ilk sayfayı okur.
@@ -244,6 +257,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 ("Para Birimi", "Zorunlu. TL (TRY), USD, EUR."),
                 ("Parser Tipi", $"İsteğe bağlı. Boşsa hesap tanımlanır ama ekstresi yüklenemez. Geçerli değerler: {ParserListesi()}."),
                 ("IBAN", "İsteğe bağlı."),
+                ("Eşleştirme Anahtarları", "İsteğe bağlı, virgülle ayrılmış. Ekstre açıklamasında aranacak ayırt edici " +
+                                           "ifadeler: \"Otomatik Süpürme, Süpürme\". Aynı bankada birden fazla hesap " +
+                                           "varsa banka adı yetmez; anahtar yoksa satır onaya düşer."),
                 (string.Empty, string.Empty),
                 ("Not", "Kolonlar başlık adıyla bulunur; sıraları değiştirilebilir. Aynı ORKA kodu varsa kayıt güncellenir, yoksa eklenir; dosyada olmayan hesaplara dokunulmaz.")
             };
@@ -316,7 +332,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         }
 
         private record Kolonlar(int BaslikSatiri, int Kod, int HesapAdi, int BankaAdi,
-                                int HesapTipi, int ParaBirimi, int? Parser, int? Iban);
+                                int HesapTipi, int ParaBirimi, int? Parser, int? Iban, int? Anahtarlar);
 
         /// <summary>
         /// Başlık satırını ilk 20 satırda <b>adla</b> arar; kolon sırası önemsizdir.
@@ -345,7 +361,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 if (kod is null || hesapAdi is null || bankaAdi is null || tip is null || para is null) continue;
 
                 return new Kolonlar(satirNo, kod.Value, hesapAdi.Value, bankaAdi.Value, tip.Value, para.Value,
-                                    Ara(harita, ParserBasliklari), Ara(harita, IbanBasliklari));
+                                    Ara(harita, ParserBasliklari), Ara(harita, IbanBasliklari),
+                                    Ara(harita, AnahtarBasliklari));
             }
 
             throw new InvalidDataException(

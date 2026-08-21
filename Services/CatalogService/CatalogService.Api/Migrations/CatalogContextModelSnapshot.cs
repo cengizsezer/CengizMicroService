@@ -242,6 +242,10 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("EslestirmeAnahtarlari")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
                     b.Property<string>("HesapAdi")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -267,7 +271,6 @@ namespace CatalogService.Api.Migrations
                         .HasColumnType("nvarchar(3)");
 
                     b.Property<string>("ParserTipi")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 

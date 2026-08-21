@@ -10,6 +10,31 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         public decimal Skor { get; set; }
     }
 
+    /// <summary>
+    /// Bankalar arası bir satırda bulunan karşı banka hesabı. Aynı bankada birden fazla
+    /// hesap olabildiği için sonuç her zaman tek hesaba inmez: ayırt edilemeyen adaylar
+    /// <see cref="Adaylar"/> içinde döner ve satır onaya düşer.
+    /// </summary>
+    public sealed class BankaEslesmesi
+    {
+        public static readonly BankaEslesmesi Yok = new();
+
+        /// <summary>Tek adaya inildiyse dolu.</summary>
+        public BankaHesabi? Hesap { get; init; }
+
+        /// <summary>Ayırt edilemeyen adaylar; onay ekranı hepsini seçenek olarak gösterir.</summary>
+        public IReadOnlyList<BankaHesabi> Adaylar { get; init; } = Array.Empty<BankaHesabi>();
+
+        /// <summary>Ne anahtar ne banka adı ayırt edebildi.</summary>
+        public bool Belirsiz => Hesap is null && Adaylar.Count > 1;
+
+        /// <summary>
+        /// Açıklama üretiminde kullanılacak hesap. Belirsizlikte de adayların banka adı
+        /// aynı olur (aynı bankanın iki hesabı), açıklama yine doğru yazılır.
+        /// </summary>
+        public BankaHesabi? Temsilci => Hesap ?? Adaylar.FirstOrDefault();
+    }
+
     /// <summary>Bir katmanın ürettiği karşı hesap önerisi.</summary>
     public class EslestirmeSonuc
     {
@@ -128,8 +153,14 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
     {
         EslestirmeSonuc Coz(SatirBaglami baglam, EslestirmeVerisi veri);
 
-        /// <summary>Bankalar arası hareketlerde metinde geçen banka adını bulur (açıklama üretimi de kullanır).</summary>
+        /// <summary>Bankalar arası hareketlerde karşı banka hesabını bulur (açıklama üretimi de kullanır).</summary>
         BankaHesabi? BankaBul(SatirBaglami baglam, EslestirmeVerisi veri);
+
+        /// <summary>
+        /// <see cref="BankaBul"/>'un ayrıntılı hâli: tek hesaba inilemediğinde adayları da
+        /// döner. Eşleştirme bunu kullanır, açıklama üretimi tek hesapla yetinir.
+        /// </summary>
+        BankaEslesmesi BankaEslesmesiBul(SatirBaglami baglam, EslestirmeVerisi veri);
     }
 
     /// <summary>
@@ -221,17 +252,20 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
             // --- Katman 2: Banka kayıt defteri ---
             // Ölçümde en yüksek getirili katman (174 satırın 54'ü), hiç cari eşleştirmesi gerekmeden.
-            var banka = BankaBul(baglam, veri);
-            if (banka is not null && !string.IsNullOrWhiteSpace(banka.OrkaHesapKodu))
+            var bankaEslesmesi = BankaEslesmesiBul(baglam, veri);
+
+            if (bankaEslesmesi.Hesap is { } banka && !string.IsNullOrWhiteSpace(banka.OrkaHesapKodu))
+                return BankaSonucu(banka);
+
+            if (bankaEslesmesi.Belirsiz)
             {
-                return new EslestirmeSonuc
-                {
-                    HesapKodu = banka.OrkaHesapKodu,
-                    HesapAdi = banka.BankaAdi,
-                    Guven = 0.95m,
-                    Katman = KaynakKatman.BankaKayitDefteri,
-                    Durum = SatirDurum.Otomatik
-                };
+                var kodlular = bankaEslesmesi.Adaylar
+                    .Where(h => !string.IsNullOrWhiteSpace(h.OrkaHesapKodu))
+                    .ToList();
+
+                // Kodu girilmemiş hesaplar elenince tek aday kaldıysa belirsizlik de kalmaz.
+                if (kodlular.Count == 1) return BankaSonucu(kodlular[0]);
+                if (kodlular.Count > 1) return BankaOnayaDusur(kodlular);
             }
 
             // --- Katman 3: Sabit kural tablosu ---
@@ -262,40 +296,128 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             return cekirdek.Length > 0 ? cekirdek : Normalizasyon.IslemAnahtari(baglam.IslemTipi);
         }
 
-        /// <summary>
-        /// Bankalar arası hareketlerde karşı bankayı bulur. Önce IBAN (kullanıcının kendi
-        /// tanımladığı hesap IBAN'ı, öğrenilmiş veri değil), sonra metinde geçen banka adı
-        /// (en uzun eşleşme kazanır — "Vakıfbank" ile "Vakıfbank Yatırım" karışmasın).
-        /// </summary>
+        /// <summary>Açıklama üretimi için karşı banka hesabı; belirsizlikte adaylardan biri döner.</summary>
         public BankaHesabi? BankaBul(SatirBaglami baglam, EslestirmeVerisi veri)
+            => BankaEslesmesiBul(baglam, veri).Temsilci;
+
+        /// <summary>
+        /// Bankalar arası hareketlerde karşı banka hesabını bulur. Sıra:
+        /// <list type="number">
+        /// <item>IBAN — kullanıcının kendi tanımladığı hesap IBAN'ı (öğrenilmiş veri değil).</item>
+        /// <item><see cref="BankaHesabi.EslestirmeAnahtarlari"/> — hesaba özel ayırt edici ifadeler.</item>
+        /// <item><see cref="BankaHesabi.BankaAdi"/> — hiçbir anahtar tutmadıysa son çare.</item>
+        /// </list>
+        ///
+        /// Her iki metin katmanında da <b>en uzun eşleşen</b> kazanır: "Otomatik Süpürme"
+        /// (16 karakter) "Vakıfbank"ı (9) yener, böylece açıklamada ikisi birden geçtiğinde
+        /// süpürme hesabı seçilir.
+        ///
+        /// En uzun eşleşmede birden fazla hesap berabere kalırsa (aynı bankanın iki hesabı,
+        /// açıklamada yalnız "Vakıfbank" geçiyor) tahmin edilmez: adaylar döner ve satır
+        /// onaya düşer. Tek hesaplı bankada eskisi gibi doğrudan çözülür.
+        /// </summary>
+        public BankaEslesmesi BankaEslesmesiBul(SatirBaglami baglam, EslestirmeVerisi veri)
         {
-            if (baglam.Sablon?.BankalarArasi != true) return null;
+            if (baglam.Sablon?.BankalarArasi != true) return BankaEslesmesi.Yok;
 
             var adaylar = veri.BankaHesaplari
                 .Where(h => h.Aktif && h.Id != veri.IslenenBankaHesabiId)
                 .ToList();
 
-            if (adaylar.Count == 0) return null;
+            if (adaylar.Count == 0) return BankaEslesmesi.Yok;
 
             var ibanAnahtar = Normalizasyon.IbanAnahtar(baglam.KarsiIban);
             if (ibanAnahtar.Length > 0)
             {
                 var ibanEsi = adaylar.FirstOrDefault(h =>
                     Normalizasyon.IbanAnahtar(h.Iban) == ibanAnahtar);
-                if (ibanEsi is not null) return ibanEsi;
+                if (ibanEsi is not null) return new BankaEslesmesi { Hesap = ibanEsi };
             }
 
-            var metin = Normalizasyon.TurkceSadelestir(baglam.HamAciklama + " " + baglam.IslemTipi);
-            if (metin.Length == 0) return null;
+            var metin = Normalizasyon.MetinNormalize(baglam.HamAciklama + " " + baglam.IslemTipi);
+            if (metin.Length == 0) return BankaEslesmesi.Yok;
 
-            return adaylar
-                .Where(h => !string.IsNullOrWhiteSpace(h.BankaAdi))
-                .Select(h => new { Hesap = h, Ad = Normalizasyon.TurkceSadelestir(h.BankaAdi) })
-                .Where(x => x.Ad.Length >= 3 && metin.Contains(x.Ad, StringComparison.Ordinal))
-                .OrderByDescending(x => x.Ad.Length)
-                .Select(x => x.Hesap)
-                .FirstOrDefault();
+            var anahtarla = EnUzunEslesenler(adaylar, metin,
+                h => EslestirmeAnahtari.NormalizeAnahtarlar(h.EslestirmeAnahtarlari));
+            if (anahtarla.Count > 0) return Eslesme(anahtarla);
+
+            var adla = EnUzunEslesenler(adaylar, metin,
+                h => new[] { Normalizasyon.MetinNormalize(h.BankaAdi) });
+
+            return adla.Count == 0 ? BankaEslesmesi.Yok : Eslesme(adla);
         }
+
+        private static BankaEslesmesi Eslesme(List<BankaHesabi> kazananlar)
+            => kazananlar.Count == 1
+                ? new BankaEslesmesi { Hesap = kazananlar[0] }
+                : new BankaEslesmesi { Adaylar = kazananlar };
+
+        /// <summary>
+        /// Anahtarı metinde <b>en uzun</b> eşleşen hesaplar. Beraberlikte hepsi döner;
+        /// hangisinin kastedildiğine karar vermek çağıranın işi.
+        ///
+        /// Eşleşme tam kelime sınırıyla aranır (<see cref="Normalizasyon.IfadeVarMi"/>):
+        /// düz <c>Contains</c> "TEB" anahtarını "OTEBANK" içinde de bulurdu.
+        /// </summary>
+        private static List<BankaHesabi> EnUzunEslesenler(
+            IReadOnlyList<BankaHesabi> adaylar, string metin,
+            Func<BankaHesabi, IEnumerable<string>> anahtarlar)
+        {
+            var kazananlar = new List<BankaHesabi>();
+            var enUzun = 0;
+
+            foreach (var hesap in adaylar)
+            {
+                var uzunluk = anahtarlar(hesap)
+                    .Where(a => a.Length >= EslestirmeAnahtari.EnKisaAnahtar &&
+                                Normalizasyon.IfadeVarMi(metin, a))
+                    .Select(a => a.Length)
+                    .DefaultIfEmpty(0)
+                    .Max();
+
+                if (uzunluk == 0 || uzunluk < enUzun) continue;
+
+                if (uzunluk > enUzun)
+                {
+                    enUzun = uzunluk;
+                    kazananlar.Clear();
+                }
+
+                kazananlar.Add(hesap);
+            }
+
+            return kazananlar;
+        }
+
+        private static EslestirmeSonuc BankaSonucu(BankaHesabi banka) => new()
+        {
+            HesapKodu = banka.OrkaHesapKodu,
+            HesapAdi = banka.BankaAdi,
+            Guven = 0.95m,
+            Katman = KaynakKatman.BankaKayitDefteri,
+            Durum = SatirDurum.Otomatik
+        };
+
+        /// <summary>
+        /// Aynı bankanın birden fazla hesabı açıklamaya uyuyor. Kod <b>önerilmez</b>:
+        /// "ilk bulunanı" seçmek yanlış banka hesabına kayıt atmak demek. Kullanıcı
+        /// onay ekranında adaylardan birini seçer.
+        /// </summary>
+        private static EslestirmeSonuc BankaOnayaDusur(IReadOnlyList<BankaHesabi> adaylar) => new()
+        {
+            Guven = 0m,
+            Katman = KaynakKatman.BankaKayitDefteri,
+            Adaylar = adaylar
+                .Take(EnFazlaAday)
+                .Select(h => new AdayKayit
+                {
+                    Kod = h.OrkaHesapKodu,
+                    Ad = string.IsNullOrWhiteSpace(h.HesapAdi) ? h.BankaAdi : h.HesapAdi!,
+                    Skor = 0m
+                })
+                .ToList(),
+            Durum = SatirDurum.OnayBekliyor
+        };
 
         private static EslestirmeSonuc Kesin(HesapEslesmesi kayit, KaynakKatman katman) => new()
         {

@@ -18,13 +18,17 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
 
             builder.Property(x => x.TenantNo).IsRequired().HasMaxLength(20);
             builder.Property(x => x.BankaAdi).IsRequired().HasMaxLength(100);
+            // Virgülle ayrılmış anahtar listesi; ayrı tablo açılmadı (bkz. KARARLAR §37).
+            builder.Property(x => x.EslestirmeAnahtarlari).HasMaxLength(300);
             // Hesabın ORKA'daki adı; elle açılmış eski kayıtlarda boş olabildiği için nullable.
             builder.Property(x => x.HesapAdi).HasMaxLength(200);
             builder.Property(x => x.ParaBirimi).IsRequired().HasMaxLength(3);
             builder.Property(x => x.Iban).HasMaxLength(34);
             // Boşluklu ORKA kodu; format değiştirilmeden saklanır.
             builder.Property(x => x.OrkaHesapKodu).IsRequired().HasMaxLength(30);
-            builder.Property(x => x.ParserTipi).IsRequired().HasMaxLength(50);
+            // Ayrıştırıcı isteğe bağlı: ekstresi hiç yüklenmeyen hesaplar da kayıt
+            // defterinde durur, yalnız karşı hesap olarak bulunmak için tanımlıdırlar.
+            builder.Property(x => x.ParserTipi).HasMaxLength(50);
 
             builder.HasIndex(x => new { x.TenantNo, x.BankaAdi });
 

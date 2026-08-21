@@ -77,6 +77,34 @@ namespace CatalogService.UnitTests.BankaEkstre
         };
 
         [Fact]
+        public async Task Ayristiricisiz_hesaba_ekstre_yuklenemez()
+        {
+            var (db, _) = await HazirlaAsync();
+            using var _db = db;
+
+            // Vadeli/süpürme hesabı: kayıt defterinde duruyor ama ekstresi yüklenmiyor.
+            var vadeli = new BankaHesabi
+            {
+                BankaAdi = "Vakıfbank",
+                HesapAdi = "Vakıfbank, Vadeli Tl - Otomatik Süpürme Hesabı",
+                OrkaHesapKodu = "102 1 1 04",
+                ParserTipi = null,
+                Aktif = true
+            };
+            db.EkstreBankaHesaplari.Add(vadeli);
+            await db.SaveChangesAsync();
+
+            using var dosya = BankaEkstreTestOrtami.BasliklıEkstre(
+                new object[] { "15.01.2026", "Gelen EFT Otomatik Yatan", 1000m, "EFT", "", "A", GelenAciklama });
+
+            var hata = await Assert.ThrowsAsync<BankaEkstreKuralException>(
+                () => Servis(db).YukleAsync(vadeli.Id, dosya, "ocak.xlsx"));
+
+            Assert.Contains("ayrıştırıcı", hata.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Empty(db.EkstreYuklemeler.Where(y => y.BankaHesabiId == vadeli.Id));
+        }
+
+        [Fact]
         public async Task Yukleme_satirlari_ayristirir_ve_aciklama_uretir()
         {
             var (db, hesapId) = await HazirlaAsync();

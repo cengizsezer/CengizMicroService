@@ -8,6 +8,9 @@ namespace WebApp.Application.Services.Interfaces
         // Banka hesapları
         Task<List<BankaHesabiDto>> GetHesaplarAsync(bool pasifDahil = false, CancellationToken ct = default);
         Task<List<ParserSecenekDto>> GetParserlerAsync(CancellationToken ct = default);
+
+        /// <summary>Hesap adından eşleştirme anahtarı önerisi (yeni hesap formunu doldurur).</summary>
+        Task<string?> AnahtarOnerisiAsync(string? hesapAdi, string? bankaAdi, CancellationToken ct = default);
         Task<(BankaHesabiDto? Veri, string? Hata)> CreateHesapAsync(BankaHesabiYazDto dto, CancellationToken ct = default);
         Task<(BankaHesabiDto? Veri, string? Hata)> UpdateHesapAsync(int id, BankaHesabiYazDto dto, CancellationToken ct = default);
         Task<string?> DeleteHesapAsync(int id, CancellationToken ct = default);

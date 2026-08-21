@@ -66,6 +66,14 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             var hesap = await _db.EkstreBankaHesaplari.FirstOrDefaultAsync(h => h.Id == bankaHesabiId, ct)
                         ?? throw new BankaEkstreKuralException(nameof(bankaHesabiId), "Banka hesabı bulunamadı.");
 
+            // Ayrıştırıcısı olmayan hesap bilerek tanımlanmış olabilir (vadeli, süpürme,
+            // blokaj): kayıt defterinde durur ve eşleştirmede kullanılır, ama ekstre kabul etmez.
+            if (string.IsNullOrWhiteSpace(hesap.ParserTipi))
+                throw new BankaEkstreKuralException(nameof(hesap.ParserTipi),
+                    $"'{hesap.BankaAdi}' hesabında ayrıştırıcı seçili değil; bu hesaba ekstre " +
+                    "yüklenemez. Hesap yalnız karşı hesap olarak kullanılıyor. Ekstre yüklenecekse " +
+                    "Tanımlar > Banka hesapları'ndan ayrıştırıcı seçin.");
+
             var parser = _parserSecici.Sec(hesap.ParserTipi)
                          ?? throw new BankaEkstreKuralException(nameof(hesap.ParserTipi),
                              $"'{hesap.ParserTipi}' için ayrıştırıcı tanımlı değil.");

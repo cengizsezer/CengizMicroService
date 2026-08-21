@@ -390,3 +390,64 @@ kopyalanmadı.
 kaldığı için istemci tarafında ayrı bir okuma mantığı gerekmedi; `SatirNo` yalnız
 kullanıcının dosyada satırı bulabilmesi için eklendi. Listeler 100 kayıtla sınırlı —
 bozuk bir dosya ekranı doldurmasın.
+
+
+## 37. Eşleştirme anahtarları ayrı tablo değil, virgüllü liste
+
+**Karar:** `BankaHesabi.EslestirmeAnahtarlari` — nullable, virgülle ayrılmış tek metin
+alanı (300 karakter). Ayrı bir `EkstreHesapAnahtarlari` tablosu açılmadı.
+**Neden:** Hesap başına birkaç anahtar var, sorgu ihtiyacı yok (eşleştirme zaten tüm
+hesapları belleğe alıyor — `EslestirmeVerisi.BankaHesaplari`), ekranda tek satırlık bir
+alan olarak düzenleniyor ve toplu içe aktarımda tek hücreye sığıyor. Ayrı tablo, CRUD'a
+ve içe aktarıma birer birleştirme adımı eklemekten başka bir şey getirmezdi.
+
+Eşleşme `Contains` ile değil `Normalizasyon.IfadeVarMi` ile aranıyor: `"TEB"` anahtarı
+`"OTEBANK"` içinde de geçiyordu, tam kelime sınırı şart. Mevcut banka adı eşlemesi de
+aynı yardımcıya taşındı — iki farklı eşleşme kuralı bırakmanın anlamı yok.
+
+## 38. Anahtar önerisi formda üretilir, kaydederken zorlanmaz
+
+**Karar:** Hesap adından anahtar önerisi `GET .../banka-hesaplari/anahtar-onerisi` ile
+alınıp forma yazılıyor. `CreateAsync` alanı boş bulursa **doldurmuyor**.
+**Neden:** Prompt "öneri üret ve forma doldur (kullanıcı düzenleyebilsin)" diyor. Sunucu
+kaydederken de doldursaydı, kullanıcının bilerek boşalttığı alan sessizce geri gelirdi —
+öneri kuralı yanlış anahtar üretebilir ve yanlış anahtar, anahtarsızlıktan kötüdür
+(anahtarsızlık satırı onaya düşürür, yanlış anahtar yanlış hesaba yazdırır).
+
+Öneri mantığı yine de sunucuda (`EslestirmeAnahtari.Oner`): Blazor'a kopyalansaydı iki
+yerde ayrı ayrı bakımı gerekirdi ve birim testi istemci projesine düşerdi.
+
+## 39. Banka adı denetimi uyarır, engellemez
+
+**Karar:** 25 karakterden uzun veya virgül/tire içeren banka adı kaydediliyor, yalnız
+kaydetme sonrası uyarı bildirimi çıkıyor. Denetim istemcide
+(`BankaAdiDenetimi`, `WebApp.Shared.Dto.BankaEkstre`).
+**Neden:** Prompt "engelleme, sadece uyar" diyor. Sunucuya konsaydı ya hata olurdu
+(engelleme) ya da DTO'ya yeni bir "uyarılar" alanı eklemek gerekirdi; alan yalnız formu
+ilgilendiren bir biçim tavsiyesi. `"İş Bankası"` gibi meşru adlar da sınırın altında
+kaldığı için uyarı gürültü yapmıyor.
+
+## 40. Ayrıştırıcı nullable; "yok" tek bir değerle anlatılıyor
+
+**Karar:** `BankaHesabi.ParserTipi` `string?` oldu ve migration eski boş metinleri
+`NULL`'a çevirdi. DTO'da alan `string` (boş metin) olarak kaldı.
+**Neden:** İçe aktarım ayrıştırıcısız hesabı zaten boş metinle yazıyordu, tekli CRUD ise
+zorunlu tutuyordu — aynı durum iki yerde iki farklı biçimde duruyordu. Veritabanında tek
+bir "yok" değeri olsun diye NULL seçildi; DTO'nun boş metni koruması istemci sözleşmesini
+(dropdown `ValueProperty="Tip"`, boş seçenek) değiştirmeden bıraktı.
+
+İşleme ekranı ayrıştırıcısız hesabı hiç göstermiyor: boş kartı sürükle-bırak alanıyla
+göstermek, kullanıcıyı hata ile biteceği belli bir işleme davet ederdi. Hesap kayıt
+defterindeki yerini koruyor.
+
+## 41. Belirsiz banka eşleşmesinde kod önerilmiyor
+
+**Karar:** Aynı bankanın birden fazla hesabı açıklamaya uyuyorsa satır onaya düşüyor ve
+`OnerilenHesapKodu` **boş** bırakılıyor; adaylar `Adaylar` listesinde gidiyor.
+**Neden:** Prompt "Rastgele veya 'ilk bulunan' seçme" diyor. Onay ekranı adayları zaten
+`SecilebilirAdaylar()` ile listeliyor ve `Alt+1..9` ile seçtiriyor, dolayısıyla boş öneri
+kullanıcıyı yavaşlatmıyor. Dolu bir öneri ise Enter'a basmayı davet ederdi — yanlış banka
+hesabına atılan kaydı fark etmek zor.
+
+Aile ayrımındaki (`AileOnayaDusur`) davranış bilerek farklı: orada tüm adaylar öğrenilmiş
+kayıtlardan geliyor ve güven 1.0; burada hangi hesabın kastedildiğine dair hiçbir kanıt yok.

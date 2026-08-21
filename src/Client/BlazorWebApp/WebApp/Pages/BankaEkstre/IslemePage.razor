@@ -97,6 +97,14 @@ else if (_hesaplar.Count == 0)
         Henüz banka hesabı tanımlanmadı. <a href="/banka-isleme/tanimlar">Tanımlar</a> ekranından hesap ekleyin.
     </RadzenAlert>
 }
+else if (YuklenebilirHesaplar.Count == 0)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false">
+        Tanımlı hesapların hiçbirinde ayrıştırıcı seçili değil; hiçbirine ekstre yüklenemez.
+        Ekstresi işlenecek hesabı <a href="/banka-isleme/tanimlar">Tanımlar</a> ekranından açıp
+        ayrıştırıcı seçin. Ayrıştırıcısız hesaplar karşı hesap olarak kullanılmaya devam eder.
+    </RadzenAlert>
+}
 else
 {
     @if (_planSayisi == 0)
@@ -210,7 +218,15 @@ else
 
     @if (AktifHesaplar.Count == 0)
     {
-        <div class="is-bos">Bu bankada tanımlı hesap yok.</div>
+        <div class="is-bos">Bu bankada ekstre yüklenebilen hesap yok.</div>
+    }
+
+    @if (GizliHesapSayisi > 0)
+    {
+        <div style="margin-top:10px; font-size:11px; color:#a0aec0">
+            @GizliHesapSayisi hesap ayrıştırıcısı olmadığı için listelenmiyor (vadeli, süpürme,
+            blokaj…). Kayıt defterinde duruyor ve karşı hesap olarak bulunuyorlar.
+        </div>
     }
 }
 
@@ -244,14 +260,26 @@ else
 
     private IEnumerable<object> _aylar = AyListesi.Select(a => new { a.No, a.Ad }).ToList();
 
+    /// <summary>
+    /// Ekstre yüklenebilen hesaplar. Ayrıştırıcısı olmayan hesap (vadeli, süpürme, blokaj)
+    /// bu ekranda hiç görünmez: dosya kabul etmiyor, boş kartı sürükle-bırak alanıyla
+    /// göstermek kullanıcıyı çalışmayacak bir işleme davet ederdi. Kayıt defterindeki
+    /// yerini koruyor, karşı hesap olarak bulunmaya devam ediyor.
+    /// </summary>
+    private List<BankaHesabiDto> YuklenebilirHesaplar =>
+        _hesaplar.Where(h => !string.IsNullOrWhiteSpace(h.ParserTipi)).ToList();
+
+    /// <summary>Ayrıştırıcısı olmadığı için listelenmeyen hesap sayısı; ekranda dipnot olur.</summary>
+    private int GizliHesapSayisi => _hesaplar.Count - YuklenebilirHesaplar.Count;
+
     /// <summary>Sekmeler tanımlı banka hesaplarından türer; sabit liste yok.</summary>
     private List<string> Bankalar =>
-        _hesaplar.Select(h => h.BankaAdi).Distinct(StringComparer.OrdinalIgnoreCase)
-                 .OrderBy(a => a, StringComparer.CurrentCulture).ToList();
+        YuklenebilirHesaplar.Select(h => h.BankaAdi).Distinct(StringComparer.OrdinalIgnoreCase)
+                            .OrderBy(a => a, StringComparer.CurrentCulture).ToList();
 
     private List<BankaHesabiDto> AktifHesaplar =>
-        _hesaplar.Where(h => string.Equals(h.BankaAdi, _aktifBanka, StringComparison.OrdinalIgnoreCase))
-                 .OrderBy(h => h.HesapTipi).ThenBy(h => h.ParaBirimi).ToList();
+        YuklenebilirHesaplar.Where(h => string.Equals(h.BankaAdi, _aktifBanka, StringComparison.OrdinalIgnoreCase))
+                            .OrderBy(h => h.HesapTipi).ThenBy(h => h.ParaBirimi).ToList();
 
     protected override void OnInitialized() => SessionManager.FirmChanged += OnFirmaDegisti;
 
@@ -299,7 +327,7 @@ else
     }
 
     private int BankaBekleyen(string banka)
-        => _hesaplar.Where(h => string.Equals(h.BankaAdi, banka, StringComparison.OrdinalIgnoreCase))
+        => YuklenebilirHesaplar.Where(h => string.Equals(h.BankaAdi, banka, StringComparison.OrdinalIgnoreCase))
                     .Select(h => SonYukleme(h.Id))
                     .Where(y => y is not null)
                     .Sum(y => y!.Sayaclar.Eksik);

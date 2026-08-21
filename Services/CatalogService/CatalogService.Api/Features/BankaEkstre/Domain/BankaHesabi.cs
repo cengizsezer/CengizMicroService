@@ -10,8 +10,22 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
     {
         public int Id { get; set; }
 
-        /// <summary>Ör. "Vakıfbank". Katman 3 metin eşlemesinde kullanılır.</summary>
+        /// <summary>
+        /// Yalnız <b>kısa</b> banka adı, ör. "Vakıfbank". Bankalar arası eşleştirmede
+        /// açıklama metninde bu ad aranır; tam hesap adı yazılırsa ("Vakıfbank, Vadeli Tl -
+        /// Otomatik Süpürme Hesabı") hiçbir açıklamada geçmediği için eşleşme hiç olmaz.
+        /// Hesabın adı ayrı <see cref="HesapAdi"/> alanında durur.
+        /// </summary>
         public string BankaAdi { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Bankalar arası eşleştirmede açıklamada aranacak ayırt edici anahtarlar,
+        /// virgülle ayrılmış (ör. "Otomatik Süpürme, Süpürme"). Aynı bankada birden fazla
+        /// hesap olduğu için tek başına <see cref="BankaAdi"/> yetmiyor: "Vakıfbank"
+        /// açıklamanın hem vadesiz hem süpürme hesabına uyar. Anahtarlar önce, banka adı
+        /// sonra denenir; en uzun eşleşen anahtar kazanır.
+        /// </summary>
+        public string? EslestirmeAnahtarlari { get; set; }
 
         /// <summary>
         /// Hesabın ORKA'daki adı, ör. "VAKIFBANK VADESIZ TL". Toplu içe aktarımda zorunlu
@@ -29,8 +43,13 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
         /// <summary>ORKA hesap kodu — boşluklu saklanır ve boşluklu yazılır, ör. "102 1 1 01".</summary>
         public string OrkaHesapKodu { get; set; } = string.Empty;
 
-        /// <summary>Hangi parser çalışacak, ör. "VAKIFBANK_VADESIZ".</summary>
-        public string ParserTipi { get; set; } = string.Empty;
+        /// <summary>
+        /// Hangi parser çalışacak, ör. "VAKIFBANK_VADESIZ". <b>İsteğe bağlı:</b> hesapların
+        /// çoğuna ekstre yüklenmiyor (vadeli, süpürme, blokaj, yatırım), yalnız karşı hesap
+        /// olarak bulunabilmek için tanımlılar. Boşsa hesap İşleme ekranında kart göstermez
+        /// ve ekstre kabul etmez, ama banka kayıt defterinde ve eşleştirmede kullanılır.
+        /// </summary>
+        public string? ParserTipi { get; set; }
 
         public bool Aktif { get; set; } = true;
 

@@ -49,6 +49,10 @@ namespace WebApp.Shared.Dto.BankaEkstre
 
         /// <summary>Hesabın ORKA'daki adı, ör. "VAKIFBANK VADESIZ TL".</summary>
         public string? HesapAdi { get; set; }
+
+        /// <summary>Virgülle ayrılmış ayırt edici anahtarlar, ör. "Otomatik Süpürme, Süpürme".</summary>
+        public string? EslestirmeAnahtarlari { get; set; }
+
         public HesapTipi HesapTipi { get; set; }
         public string ParaBirimi { get; set; } = "TRY";
         public string? Iban { get; set; }
@@ -63,6 +67,7 @@ namespace WebApp.Shared.Dto.BankaEkstre
     {
         public string BankaAdi { get; set; } = string.Empty;
         public string? HesapAdi { get; set; }
+        public string? EslestirmeAnahtarlari { get; set; }
         public HesapTipi HesapTipi { get; set; } = HesapTipi.Vadesiz;
         public string ParaBirimi { get; set; } = "TRY";
         public string? Iban { get; set; }
@@ -71,6 +76,42 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public bool Aktif { get; set; } = true;
         public bool IbanKatmaniAktif { get; set; }
         public bool VknKatmaniAktif { get; set; }
+    }
+
+    /// <summary>Hesap adından üretilen eşleştirme anahtarı önerisi.</summary>
+    public class AnahtarOnerisiDto
+    {
+        public string? EslestirmeAnahtarlari { get; set; }
+    }
+
+    /// <summary>
+    /// Banka adı alanının biçim denetimi. <b>Engellemez</b>, yalnız uyarır: kullanıcı
+    /// buraya tam hesap adını yazma eğiliminde ("Vakıfbank, Vadeli Tl - Otomatik Süpürme
+    /// Hesabı") ama o metin hiçbir ekstre açıklamasında geçmediği için eşleşme hiç olmuyor.
+    /// </summary>
+    public static class BankaAdiDenetimi
+    {
+        /// <summary>Bu uzunluğu aşan ad, banka adı değil hesap adı olma ihtimali yüksek.</summary>
+        public const int EnFazlaUzunluk = 25;
+
+        /// <summary>Uyarı metni; sorun yoksa null.</summary>
+        public static string? Uyari(string? bankaAdi)
+        {
+            if (string.IsNullOrWhiteSpace(bankaAdi)) return null;
+
+            var ad = bankaAdi.Trim();
+            var uzun = ad.Length > EnFazlaUzunluk;
+            var ayrac = ad.Contains(',') || ad.Contains('-');
+
+            if (!uzun && !ayrac) return null;
+
+            var sebep = uzun && ayrac ? "uzun ve virgül/tire içeriyor"
+                      : uzun ? $"{EnFazlaUzunluk} karakterden uzun"
+                      : "virgül/tire içeriyor";
+
+            return $"Banka adı {sebep}. Buraya kısa banka adı yazın (Vakıfbank, Ziraat, TEB); " +
+                   "hesabın tam adı Hesap adı alanına, ayırt edici ifadeler Eşleştirme anahtarlarına girilir.";
+        }
     }
 
     /// <summary>

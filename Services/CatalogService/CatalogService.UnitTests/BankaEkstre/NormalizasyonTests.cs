@@ -127,5 +127,15 @@ namespace CatalogService.UnitTests.BankaEkstre
             Assert.Equal("1234567890", Normalizasyon.VknAnahtar("123 456 7890"));
             Assert.Equal(string.Empty, Normalizasyon.VknAnahtar("12345"));
         }
+
+        [Theory]
+        [InlineData("OTOMATIK SUPURME PKF ADAY", "OTOMATIK SUPURME", true)]
+        [InlineData("OTOMATIK SUPURME PKF ADAY", "SUPURME", true)]
+        [InlineData("OTEBANK HESABINA VIRMAN", "TEB", false)]
+        [InlineData("ZIRAAT TEB VIRMAN", "TEB", true)]
+        [InlineData("VAKIFBANKA GONDERILDI", "VAKIFBANK", false)]
+        [InlineData("", "TEB", false)]
+        public void Ifade_tam_kelime_siniriyla_aranir(string metin, string ifade, bool bekleniyor)
+            => Assert.Equal(bekleniyor, Normalizasyon.IfadeVarMi(metin, ifade));
     }
 }

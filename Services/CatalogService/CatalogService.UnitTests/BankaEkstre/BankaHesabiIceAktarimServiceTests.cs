@@ -15,6 +15,10 @@ namespace CatalogService.UnitTests.BankaEkstre
         private static readonly string[] VarsayilanBasliklar =
             { "Orka Hesap Kodu", "Hesap Adı", "Banka Adı", "Hesap Tipi", "Para Birimi", "Parser Tipi", "IBAN" };
 
+        private static readonly string[] AnahtarliBasliklar =
+            { "Orka Hesap Kodu", "Hesap Adı", "Banka Adı", "Hesap Tipi", "Para Birimi", "Parser Tipi", "IBAN",
+              "Eşleştirme Anahtarları" };
+
         private static BankaHesabiIceAktarimService Servis(CatalogContext db)
             => new(db, new EkstreParserSecici(new IEkstreParser[] { new VakifbankVadesizParser() }));
 
@@ -96,8 +100,52 @@ namespace CatalogService.UnitTests.BankaEkstre
             Assert.Equal("TRY", db.EkstreBankaHesaplari.Single(h => h.OrkaHesapKodu == "102 1 32 87").ParaBirimi);
 
             // Parser boş bırakılan hesap tanımlanır ama uyarı verilir: ekstresi yüklenemez.
-            Assert.Equal(string.Empty, db.EkstreBankaHesaplari.Single(h => h.OrkaHesapKodu == "102 1 33 01").ParserTipi);
+            Assert.Null(db.EkstreBankaHesaplari.Single(h => h.OrkaHesapKodu == "102 1 33 01").ParserTipi);
             Assert.Contains(sonuc.Uyarilar, u => u.Field == nameof(BankaHesabi.ParserTipi));
+        }
+
+        [Fact]
+        public async Task Eslestirme_anahtarlari_kolonu_okunur()
+        {
+            using var db = BankaEkstreTestOrtami.YeniContext();
+            await PlanaEkleAsync(db, "102 1 1 01", "102 1 1 04");
+
+            using var dosya = DosyaBasliklarla(AnahtarliBasliklar,
+                new string?[] { "102 1 1 01", "VAKIFBANK VADESIZ TL", "Vakıfbank", "Vadesiz", "TL", "", "", "" },
+                new string?[] { "102 1 1 04", "VAKIFBANK VADELİ TL", "Vakıfbank", "Vadeli", "TL", "", "",
+                                " Otomatik   Süpürme , Süpürme " });
+
+            var sonuc = await Servis(db).IceAktarAsync(dosya);
+
+            Assert.Equal(2, sonuc.Eklenen);
+            Assert.Equal(0, sonuc.Atlanan);
+            Assert.Equal("Otomatik Süpürme, Süpürme",
+                db.EkstreBankaHesaplari.Single(h => h.OrkaHesapKodu == "102 1 1 04").EslestirmeAnahtarlari);
+            Assert.Null(db.EkstreBankaHesaplari.Single(h => h.OrkaHesapKodu == "102 1 1 01").EslestirmeAnahtarlari);
+        }
+
+        [Fact]
+        public async Task Bos_anahtar_hucresi_mevcut_anahtari_silmez()
+        {
+            var veritabani = $"hesap-anahtar-{Guid.NewGuid()}";
+
+            using (var db = BankaEkstreTestOrtami.YeniContext(veritabani))
+            {
+                await PlanaEkleAsync(db, "102 1 1 04");
+                using var ilk = DosyaBasliklarla(AnahtarliBasliklar,
+                    new string?[] { "102 1 1 04", "VAKIFBANK VADELİ TL", "Vakıfbank", "Vadeli", "TL", "", "",
+                                    "Otomatik Süpürme" });
+                await Servis(db).IceAktarAsync(ilk);
+            }
+
+            using (var db = BankaEkstreTestOrtami.YeniContext(veritabani))
+            {
+                // Anahtar kolonu olmayan dosya, elle girilmiş anahtarı silmemeli.
+                using var ikinci = Dosya(Satir("102 1 1 04", hesapAdi: "VAKIFBANK VADELİ TL", tip: "Vadeli", parser: ""));
+                await Servis(db).IceAktarAsync(ikinci);
+
+                Assert.Equal("Otomatik Süpürme", db.EkstreBankaHesaplari.Single().EslestirmeAnahtarlari);
+            }
         }
 
         [Fact]

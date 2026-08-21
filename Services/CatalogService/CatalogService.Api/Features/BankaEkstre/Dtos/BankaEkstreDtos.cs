@@ -11,6 +11,10 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
 
         /// <summary>Hesabın ORKA'daki adı, ör. "VAKIFBANK VADESIZ TL".</summary>
         public string? HesapAdi { get; set; }
+
+        /// <summary>Virgülle ayrılmış ayırt edici anahtarlar, ör. "Otomatik Süpürme, Süpürme".</summary>
+        public string? EslestirmeAnahtarlari { get; set; }
+
         public HesapTipi HesapTipi { get; set; }
         public string ParaBirimi { get; set; } = "TRY";
         public string? Iban { get; set; }
@@ -29,6 +33,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
     {
         public string BankaAdi { get; set; } = string.Empty;
         public string? HesapAdi { get; set; }
+        public string? EslestirmeAnahtarlari { get; set; }
         public HesapTipi HesapTipi { get; set; } = HesapTipi.Vadesiz;
         public string ParaBirimi { get; set; } = "TRY";
         public string? Iban { get; set; }
@@ -66,6 +71,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
 
         /// <summary>Satırı düşürmeyen sorunlar (ör. 102 ile başlamayan kod, boş ayrıştırıcı).</summary>
         public List<IceAktarimSatirSorunuDto> Uyarilar { get; set; } = new();
+    }
+
+    /// <summary>Hesap adından üretilen eşleştirme anahtarı önerisi.</summary>
+    public class AnahtarOnerisiDto
+    {
+        public string? EslestirmeAnahtarlari { get; set; }
     }
 
     /// <summary>Kullanıcıya seçtirilecek ayrıştırıcılar (şimdilik yalnız Vakıfbank vadesiz).</summary>
