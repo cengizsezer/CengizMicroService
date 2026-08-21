@@ -33,15 +33,20 @@
         public decimal Guven { get; set; } = 0.95m;
 
         /// <summary>
-        /// Kural tuttuğunda unvan çıkarma yapılsın mı. Personel avansı gibi satırlarda
-        /// açıklamadaki isim bir cari değil, ödeme yapılan kişidir; çıkarılırsa unvan
-        /// benzerliği katmanı onu 120/329 altında bir cariye eşliyordu.
+        /// Kural tuttuğunda çıkarılan unvan bir <b>cari</b> sayılsın mı. Personel avansı gibi
+        /// satırlarda açıklamadaki isim bir cari değil, ödeme yapılan kişidir: false olduğunda
+        /// satır için öğrenme anahtarı üretilmez ve unvan benzerliği katmanı (120/329)
+        /// çalıştırılmaz — çalışsaydı kişiyi ilgisiz bir cariye eşlerdi.
+        ///
+        /// Unvanın <b>çıkarılması</b> ayrı bir konu: <see cref="AltHesapGerekli"/> true ise
+        /// unvan yine okunur, yalnız kuralın ana grubu içinde alt hesap aramakta kullanılır.
         /// </summary>
         public bool UnvanCikarilsin { get; set; } = true;
 
         /// <summary>
-        /// Kural yalnız <b>ana grubu</b> belirliyorsa true. Alt hesap (kişi/muavin) kullanıcı
-        /// tarafından seçilmek zorunda olduğu için satır otomatik kapanmaz, onaya düşer.
+        /// Kural yalnız <b>ana grubu</b> belirliyorsa true. Alt hesap (kişi/muavin) önce
+        /// çıkarılan unvanla bu grubun içinde aranır; bulunamazsa satır ana grupla onaya
+        /// düşer ve muavini kullanıcı seçer.
         /// </summary>
         public bool AltHesapGerekli { get; set; }
 

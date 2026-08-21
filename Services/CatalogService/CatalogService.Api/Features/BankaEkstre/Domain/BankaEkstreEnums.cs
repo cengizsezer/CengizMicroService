@@ -76,8 +76,8 @@
     ///
     /// <see cref="Aciklama"/> kuralları ham banka açıklamasında arar ve <b>öğrenme
     /// katmanından önce</b> çalışır: "iş avansı", "maaş avansı" gibi ifadeler işlemin
-    /// niteliğini belirler, karşı tarafın kimliğini değil. Bu satırlarda unvan çıkarma
-    /// yapılmaz ve kişi bazlı alt hesap kullanıcı tarafından seçilir.
+    /// niteliğini belirler, karşı tarafın kimliğini değil. Bu satırlarda çıkarılan unvan
+    /// bir cari sayılmaz; yalnız kuralın ana grubu içinde kişi muavini aramakta kullanılır.
     /// </summary>
     public enum KuralKapsami : byte
     {

@@ -202,7 +202,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             // onay katmanı önce çalışsaydı bu satırlar işlem tipi anahtarından (ör. "ISLEM:
             // GÖNDERİLEN HAVALE") ilgisiz bir cariye çözülürdü.
             var aciklamaKurali = AciklamaKuraliBul(baglam, veri);
-            if (aciklamaKurali is not null) return KuralSonucu(aciklamaKurali);
+            if (aciklamaKurali is not null) return KuralSonucu(aciklamaKurali, baglam, veri);
 
             // --- IBAN (kapalı katman) ---
             // Kullanıcı IBAN verisini düzenli tutmuyor; bayrak açılmadıkça okunmaz.
@@ -285,7 +285,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
             // --- Katman 3: Sabit kural tablosu (işlem tipi kapsamı) ---
             var kural = KuralBul(baglam, veri, KuralKapsami.IslemTipi);
-            if (kural is not null) return KuralSonucu(kural);
+            if (kural is not null) return KuralSonucu(kural, baglam, veri);
 
             // --- Katman 4: Unvan benzerliği ---
             return UnvanaGoreCoz(baglam, veri);
@@ -531,16 +531,34 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         public SabitKural? AciklamaKuraliBul(SatirBaglami baglam, EslestirmeVerisi veri)
             => KuralBul(baglam, veri, KuralKapsami.Aciklama);
 
-        private static EslestirmeSonuc KuralSonucu(SabitKural kural) => new()
+        /// <summary>
+        /// Kural sonucunu üretir. Kural yalnız <b>ana grubu</b> veriyorsa
+        /// (<see cref="SabitKural.AltHesapGerekli"/>) alt hesap kullanıcıdan beklenmeden
+        /// önce unvanla aranır: arama uzayı yönün ana grubu (120/329) değil, <b>kuralın</b>
+        /// ana grubudur. "masraf ödemesi … İlyas Ömeroğlu hesabına" satırı böylece 195
+        /// içindeki kişi muavinine iner; bulunamazsa satır eskisi gibi ana grupla onaya düşer.
+        /// </summary>
+        private static EslestirmeSonuc KuralSonucu(SabitKural kural, SatirBaglami baglam, EslestirmeVerisi veri)
         {
-            HesapKodu = kural.HesapKodu,
-            HesapAdi = kural.HesapAdi,
-            // Yalnız ana grubu veren kuralda güven bildirilmez: kod eksik, kullanıcı tamamlayacak.
-            Guven = kural.AltHesapGerekli ? 0m : kural.Guven,
-            Katman = KaynakKatman.SabitKural,
-            // Alt hesap (kişi/muavin) kullanıcıdan gelmek zorundaysa satır otomatik kapanmaz.
-            Durum = kural.AltHesapGerekli ? SatirDurum.OnayBekliyor : SatirDurum.Otomatik
-        };
+            if (kural.AltHesapGerekli)
+            {
+                var altHesap = UnvanaGoreCoz(baglam, veri, Normalizasyon.AnaGrup(kural.HesapKodu),
+                                             KaynakKatman.SabitKural);
+
+                if (altHesap.Durum != SatirDurum.Cozulemedi) return altHesap;
+            }
+
+            return new EslestirmeSonuc
+            {
+                HesapKodu = kural.HesapKodu,
+                HesapAdi = kural.HesapAdi,
+                // Yalnız ana grubu veren kuralda güven bildirilmez: kod eksik, kullanıcı tamamlayacak.
+                Guven = kural.AltHesapGerekli ? 0m : kural.Guven,
+                Katman = KaynakKatman.SabitKural,
+                // Alt hesap (kişi/muavin) kullanıcıdan gelmek zorundaysa satır otomatik kapanmaz.
+                Durum = kural.AltHesapGerekli ? SatirDurum.OnayBekliyor : SatirDurum.Otomatik
+            };
+        }
 
         /// <summary>
         /// Verilen kapsamdaki ilk uyan kural. İşlem tipi kapsamında desen işlem tipi
@@ -600,13 +618,21 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// Hiçbir çıpa sonuç vermezse satır onay kuyruğuna düşer, kod önerilmez.
         /// </summary>
         private static EslestirmeSonuc UnvanaGoreCoz(SatirBaglami baglam, EslestirmeVerisi veri)
+            => UnvanaGoreCoz(baglam, veri, AnaGrupBul(baglam.Yon), KaynakKatman.UnvanBenzerligi);
+
+        /// <summary>
+        /// <see cref="UnvanaGoreCoz(SatirBaglami, EslestirmeVerisi)"/>'ün arama uzayı ve
+        /// katman etiketi dışarıdan verilen hâli. Sabit kural katmanı, kuralın belirlediği
+        /// ana grubun içinde alt hesap ararken bunu kendi etiketiyle kullanır.
+        /// </summary>
+        private static EslestirmeSonuc UnvanaGoreCoz(
+            SatirBaglami baglam, EslestirmeVerisi veri, string anaGrup, KaynakKatman katman)
         {
             var normalUnvan = Normalizasyon.UnvanNormalize(baglam.Unvan);
             if (normalUnvan.Length == 0)
                 return new EslestirmeSonuc { Durum = SatirDurum.Cozulemedi, Katman = KaynakKatman.Yok };
 
-            var anaGrup = AnaGrupBul(baglam.Yon);
-            if (!veri.Indeks.GrupDolu(anaGrup))
+            if (anaGrup.Length == 0 || !veri.Indeks.GrupDolu(anaGrup))
                 return new EslestirmeSonuc { Durum = SatirDurum.Cozulemedi, Katman = KaynakKatman.Yok };
 
             var adaylar = CipalarlaAra(normalUnvan, anaGrup, veri.Indeks);
@@ -622,7 +648,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 HesapKodu = enIyi.Kod,
                 HesapAdi = enIyi.Ad,
                 Guven = enIyi.Skor,
-                Katman = KaynakKatman.UnvanBenzerligi
+                Katman = katman
             };
 
             if (!yakinIkinci)

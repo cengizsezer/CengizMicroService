@@ -35,12 +35,20 @@ namespace CatalogService.UnitTests.BankaEkstre
         {
             Yeni(@"sorgu numaralı (.+?) tarafından", 10),
             Yeni(@"nolu ([A-ZÇĞİÖŞÜ0-9][^/]{4,70}?) hesab", 20),
+            Yeni(GidenKarsiTarafDeseni, 25),
             Yeni(@"sorgu no'lu \S+ (.+)$", 30),
             Yeni(@"nolu ([A-ZÇĞİÖŞÜ][A-ZÇĞİÖŞÜ0-9.\s&]{4,60})", 40),
             Yeni(@"^([A-ZÇĞİÖŞÜ0-9][^/]{4,60}?)\s*/\s*[A-ZÇĞİÖŞÜ]", 50),
             Yeni(@"NO'LU ([A-ZÇĞİÖŞÜ][^()]{4,70}?) HESABINA", 55),
             Yeni(@"^(.+?)\s*\(", 60)
         };
+
+        /// <summary>
+        /// Giden FAST/EFT gövdesinde banka adından sonraki karşı taraf. Üretimdeki seed ile
+        /// birebir aynı metin; kaçışları bozulmasın diye ayrı sabitte durur.
+        /// </summary>
+        public const string GidenKarsiTarafDeseni =
+            @"(?:[Hh]esabından|HESABINDAN)\s+[^()]{0,70}?(?<![A-ZÇĞİÖŞÜa-zçğıöşü])A\.?Ş\.?\s*[-–]?\s*([^()]{3,120}?)\s+(?:[Hh]esabına|HESABINA)";
 
         private static UnvanDeseni Yeni(string desen, int sira) => new()
         {

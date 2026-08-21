@@ -1,4 +1,5 @@
-using CatalogService.Api.Features.BankaEkstre.Domain;
+﻿using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Services;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
 
 namespace CatalogService.UnitTests.BankaEkstre
@@ -129,6 +130,84 @@ namespace CatalogService.UnitTests.BankaEkstre
             var sonuc = Ayristir();
 
             Assert.All(sonuc.Satirlar, s => Assert.Null(s.KarsiVkn));
+        }
+
+        // ---- Giden FAST/EFT karşı tarafı ----
+
+        /// <summary>Ölçülen dosyadaki hesap sahibi unvanı.</summary>
+        private const string HesapSahibi = "PKF ADAY BAĞIMSIZ DENETİM ANONİM ŞİRKETİ";
+
+        private static List<string?> Unvanlar()
+        {
+            var cikarici = new UnvanCikarici();
+            var desenler = BankaEkstreTestOrtami.Desenler();
+
+            return Ayristir().Satirlar
+                .Select(s => cikarici.Cikar(s.HamAciklama, desenler, HesapSahibi).Unvan)
+                .ToList();
+        }
+
+        [Theory]
+        [InlineData("İlyas Ömeroğlu")]
+        [InlineData("Mesut Aktaş")]
+        [InlineData("DİLARA KAYA")]
+        public void Giden_fast_karsi_taraflari_gercek_dosyadan_cikarilir(string beklenen)
+        {
+            // "… hesabından Türkiye Garanti Bankası A.Ş. İlyas Ömeroğlu hesabına giden FAST
+            // ödemesi". Banka adından sonraki desen eklenmeden önce bu satırlarda unvan
+            // olarak açıklamanın kalanı ("ADAY BAĞIMSIZ DENETİM … hesabına giden FAST
+            // ödemesi") çıkıyordu.
+            Assert.Contains(beklenen, Unvanlar());
+        }
+
+        /// <summary>Dosyadaki giden FAST/EFT satırlarının çıkarılan unvanları.</summary>
+        private static List<string?> GidenUnvanlar()
+        {
+            var cikarici = new UnvanCikarici();
+            var desenler = BankaEkstreTestOrtami.Desenler();
+
+            return Ayristir().Satirlar
+                .Where(s => s.HamAciklama.Contains("hesabına giden", StringComparison.Ordinal))
+                .Select(s => cikarici.Cikar(s.HamAciklama, desenler, HesapSahibi).Unvan)
+                .ToList();
+        }
+
+        [Fact]
+        public void Giden_fast_satirlarinin_tamami_karsi_taraf_verir()
+        {
+            // Dosyada "hesabına giden" kalıbında 38 satır var; hepsi karşı taraf vermeli.
+            var unvanlar = GidenUnvanlar();
+
+            Assert.Equal(38, unvanlar.Count);
+            Assert.All(unvanlar, u => Assert.False(string.IsNullOrWhiteSpace(u)));
+        }
+
+        [Fact]
+        public void Giden_fast_satirlarinin_hicbirinde_govde_metni_unvan_sayilmaz()
+        {
+            // Karşı taraf çıkarılamayan satırın imzası: yakalanan metnin içinde gövdenin
+            // kendisi ("hesabından") kalıyor.
+            var bozuk = GidenUnvanlar()
+                .Where(u => u is not null && u.Contains("hesab", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            Assert.Empty(bozuk);
+        }
+
+        [Fact]
+        public void Unvan_yakalamalari_iban_kunyesiyle_baslamaz()
+        {
+            // "… - IBAN MERKEZ SUBE ŞUBESİ NEZDİNDEKİ TR45… NO'LU …" künyesi unvan değil.
+            var kunyeler = Unvanlar()
+                .Where(u => u is not null)
+                .Where(u => Normalizasyon.MetinNormalize(u) is var sade &&
+                            (sade.StartsWith("IBAN", StringComparison.Ordinal) ||
+                             sade.StartsWith("MERKEZ SUBE", StringComparison.Ordinal) ||
+                             sade.StartsWith("NEZDINDEKI", StringComparison.Ordinal) ||
+                             sade.StartsWith("TR", StringComparison.Ordinal) && sade.Length > 4 && char.IsDigit(sade[2])))
+                .ToList();
+
+            Assert.Empty(kunyeler);
         }
 
         [Fact]

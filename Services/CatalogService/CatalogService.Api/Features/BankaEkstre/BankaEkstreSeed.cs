@@ -91,11 +91,9 @@ namespace CatalogService.Api.Features.BankaEkstre
                 .ToListAsync(ct);
 
             var kayitli = new HashSet<string>(mevcut, StringComparer.Ordinal);
-            var sira = 0;
 
-            void Ekle(string desen, string aciklama)
+            void Ekle(string desen, int sira, string aciklama)
             {
-                sira += 10;
                 if (!kayitli.Add(desen)) return;
 
                 db.EkstreUnvanDesenleri.Add(new UnvanDeseni
@@ -109,18 +107,33 @@ namespace CatalogService.Api.Features.BankaEkstre
                 });
             }
 
-            // Sıra ölçülen kapsamaya göre: en çok yakalayan desen önce denenir.
-            Ekle(@"sorgu numaralı (.+?) tarafından", "Gelen EFT gövdesi (ölçümde 120 satır)");
-            Ekle(@"nolu ([A-ZÇĞİÖŞÜ0-9][^/]{4,70}?) hesab", "\"... nolu X hesabına\" kalıbı (72 satır)");
-            Ekle(@"sorgu no'lu \S+ (.+)$", "Sorgu numarasından sonra kalan metin (32 satır)");
-            Ekle(@"nolu ([A-ZÇĞİÖŞÜ][A-ZÇĞİÖŞÜ0-9.\s&]{4,60})", "Büyük harfli unvan (12 satır)");
-            Ekle(@"^([A-ZÇĞİÖŞÜ0-9][^/]{4,60}?)\s*/\s*[A-ZÇĞİÖŞÜ]", "Eğik çizgi öncesi unvan (6 satır)");
-            // Giden EFT gövdesi: "… NEZDİNDEKİ <IBAN> NO'LU <KARŞI TARAF> HESABINA YAPILAN …".
+            // Sıra ölçülen kapsamaya göre: en çok yakalayan desen önce denenir. Sıra numarası
+            // elle verilir — araya desen eklenince mevcut kayıtların sırası değişmemeli
+            // (seed mevcut satırların üzerine yazmaz, yalnız eksikleri ekler).
+            Ekle(@"sorgu numaralı (.+?) tarafından", 10, "Gelen EFT gövdesi (ölçümde 120 satır)");
+            Ekle(@"nolu ([A-ZÇĞİÖŞÜ0-9][^/]{4,70}?) hesab", 20, "\"... nolu X hesabına\" kalıbı (72 satır)");
+            // Giden FAST/EFT gövdesi: "… hesabından <GÖNDEREN BANKA> <KARŞI TARAF> hesabına
+            // giden FAST ödemesi". Karşı taraf gönderen bankanın adından sonra, "hesabına"
+            // kelimesinden önce durur. Banka adı değişken (Türkiye Garanti Bankası A.Ş.,
+            // Akbank T.A.Ş., Denizbank A.Ş. …); ortak tek çıpa "A.Ş." kuyruğu olduğu için
+            // banka adının kendisi serbest bırakılıp yalnız bu kuyruk aranır — tembel
+            // eşleşme ilk "A.Ş."yi (gönderen bankanınkini) tutar, karşı tarafın kendi
+            // "A.Ş." eki unvanın içinde kalır ("Denizbank A.Ş. YURTİÇİ KARGO A.Ş.").
+            //
+            // "sorgu no'lu \S+ (.+)$" deseninden ÖNCE gelmeli: o desen bu satırlarda
+            // açıklamanın kalanını (banka adı + karşı taraf + gövde) tek parça yakalayıp
+            // unvan sanıyordu; gerçek dosyada 38 satır bu yüzden karşı tarafsız kalıyordu.
+            Ekle(@"(?:[Hh]esabından|HESABINDAN)\s+[^()]{0,70}?(?<![A-ZÇĞİÖŞÜa-zçğıöşü])A\.?Ş\.?\s*[-–]?\s*([^()]{3,120}?)\s+(?:[Hh]esabına|HESABINA)",
+                 25, "Giden FAST/EFT: banka adından sonraki karşı taraf (38 satır)");
+            Ekle(@"sorgu no'lu \S+ (.+)$", 30, "Sorgu numarasından sonra kalan metin (32 satır)");
+            Ekle(@"nolu ([A-ZÇĞİÖŞÜ][A-ZÇĞİÖŞÜ0-9.\s&]{4,60})", 40, "Büyük harfli unvan (12 satır)");
+            Ekle(@"^([A-ZÇĞİÖŞÜ0-9][^/]{4,60}?)\s*/\s*[A-ZÇĞİÖŞÜ]", 50, "Eğik çizgi öncesi unvan (6 satır)");
+            // Giden EFT gövdesi: "… NEZDİNDEKİ (IBAN) NO'LU (KARŞI TARAF) HESABINA YAPILAN …".
             // Karşı tarafı veren tek desen bu; olmadan parantez öncesi serbest metin
             // ("DENİZBANK HESABINA", "ZAFER GENÇ") unvan sanılıyordu. Hesap sahibinin kendi
             // adı buraya düştüğünde satırın kendi hesapları arası olduğu da anlaşılır.
-            Ekle(@"NO'LU ([A-ZÇĞİÖŞÜ][^()]{4,70}?) HESABINA", "Giden EFT karşı tarafı (15 satır)");
-            Ekle(@"^(.+?)\s*\(", "Parantez öncesi metin (~30 satır)");
+            Ekle(@"NO'LU ([A-ZÇĞİÖŞÜ][^()]{4,70}?) HESABINA", 55, "Giden EFT karşı tarafı (15 satır)");
+            Ekle(@"^(.+?)\s*\(", 60, "Parantez öncesi metin (~30 satır)");
         }
 
         // ---- Sabit kurallar (Katman 4) ----

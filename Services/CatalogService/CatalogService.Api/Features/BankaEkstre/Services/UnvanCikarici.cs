@@ -45,6 +45,22 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// <summary>Unvan olarak kabul edilmeyecek kadar kısa yakalamalar elenir.</summary>
         private const int EnAzUzunluk = 3;
 
+        /// <summary>
+        /// Yakalamanın unvan değil, karşı hesabın IBAN künyesi olduğunu gösteren önekler.
+        /// Giden EFT gövdesi "… HESABINDAN DENİZBANK A.Ş. - IBAN MERKEZ SUBE ŞUBESİ
+        /// NEZDİNDEKİ TR45… NO'LU (KARŞI TARAF) HESABINA …" diye yazıyor; banka adından
+        /// sonrasını alan desen burada unvan yerine künyeyi yakalar. Elenince sıradaki
+        /// desen (NO'LU … HESABINA) gerçek karşı tarafı verir.
+        /// </summary>
+        private static readonly string[] IbanKunyeOnekleri =
+        {
+            "IBAN", "MERKEZ SUBE", "SUBESI", "NEZDINDEKI"
+        };
+
+        /// <summary>Metnin başındaki TR IBAN'ı yakalar (maskeli/boşluklu yazımlar dahil).</summary>
+        private static readonly Regex IbanBaslangici =
+            new(@"^TR\s*\d{2}", RegexOptions.Compiled | RegexOptions.CultureInvariant, ZamanAsimi);
+
         public UnvanSonuc Cikar(string? hamAciklama, IReadOnlyList<UnvanDeseni> desenler, string? hesapSahibiUnvani = null)
         {
             if (string.IsNullOrWhiteSpace(hamAciklama)) return UnvanSonuc.Yok;
@@ -77,6 +93,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
                 if (temiz.Length < EnAzUzunluk) continue;
 
+                // Karşı taraf değil, IBAN künyesi yakalandı: at, sıradaki deseni dene.
+                if (IbanKunyesiMi(temiz)) continue;
+
                 // Hesap sahibinin kendi adı karşı taraf değildir: at, sıradaki deseni dene.
                 // Ölçümde 287 satırın 268'inde açıklamada firmanın kendi unvanı geçiyordu ve
                 // benzer adlı bir cariye ("Bağımsız Denetim Derneği") eşleşiyordu.
@@ -92,6 +111,30 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
             // Hiçbir desen hesap sahibi dışında unvan vermedi.
             return new UnvanSonuc(null, sahipElendi);
+        }
+
+        /// <summary>
+        /// Yakalama unvan değil, IBAN künyesiyle mi başlıyor? Künye satırdan satıra
+        /// değiştiği için öğrenme anahtarı da olamaz; unvan sayılırsa her satır yeni bir
+        /// anahtar üretir ve karşı taraf hiç bulunmaz.
+        /// </summary>
+        private static bool IbanKunyesiMi(string temiz)
+        {
+            var sade = Normalizasyon.MetinNormalize(temiz);
+            if (sade.Length == 0) return false;
+
+            try
+            {
+                if (IbanBaslangici.IsMatch(sade)) return true;
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                return false;
+            }
+
+            return IbanKunyeOnekleri.Any(onek =>
+                sade.StartsWith(onek, StringComparison.Ordinal) &&
+                (sade.Length == onek.Length || sade[onek.Length] == ' '));
         }
 
         /// <summary>

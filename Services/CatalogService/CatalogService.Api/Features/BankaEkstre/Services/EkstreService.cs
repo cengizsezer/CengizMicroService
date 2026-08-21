@@ -145,11 +145,13 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             // unvan benzerliği katmanı onu 120/329 altında bir cariye eşlerdi.
             var aciklamaKurali = _eslestirici.AciklamaKuraliBul(baglam, veri);
 
-            if (aciklamaKurali is { UnvanCikarilsin: false })
-            {
-                baglam.AnahtarUretilmesin = true;
-            }
-            else
+            // Kural yalnız ana grubu veriyorsa (personel/iş avansı → 195, 196) unvan yine
+            // çıkarılır: kişi bir cari değil ama muavini o grubun içinde bu adla aranır.
+            // Ölçümde giden FAST satırlarının 195'e düşen çoğunluğu ("masraf ödemesi")
+            // aksi hâlde kişi adı hiç okunmadan onay kuyruğuna kalıyordu.
+            var unvanCikarilsin = aciklamaKurali is null or { UnvanCikarilsin: true } or { AltHesapGerekli: true };
+
+            if (unvanCikarilsin)
             {
                 var unvan = _unvanCikarici.Cikar(ayrilan.HamAciklama, desenler, hesapSahibiUnvani);
                 baglam.Unvan = unvan.Unvan;
@@ -162,6 +164,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 // İşlem tipi anahtarına düşülmez; satır onaya kalır.
                 baglam.AnahtarUretilmesin = unvan.Unvan is null && unvan.HesapSahibiElendi;
             }
+
+            // Unvan çıkarılmış olsa da kural "bu bir cari değil" diyorsa öğrenme anahtarı
+            // üretilmez: anahtar kişi adına ya da işlem tipine düşerse ilk onaydan sonra
+            // ilgisiz satırlar da aynı hesaba çözülürdü.
+            if (aciklamaKurali is { UnvanCikarilsin: false })
+                baglam.AnahtarUretilmesin = true;
 
             baglam.Sablon = _aciklamaUretici.SablonBul(ayrilan.IslemTipi, sablonlar);
 
