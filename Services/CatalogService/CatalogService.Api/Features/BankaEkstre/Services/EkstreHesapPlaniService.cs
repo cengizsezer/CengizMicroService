@@ -12,6 +12,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         Task<HesapPlaniKaydiDto?> KodaGoreAsync(string kod, CancellationToken ct = default);
         Task<HesapPlaniIceAktarimSonucDto> IceAktarAsync(Stream excel, CancellationToken ct = default);
         Task<int> SayAsync(CancellationToken ct = default);
+        Task<HesapPlaniOzetDto> OzetAsync(CancellationToken ct = default);
     }
 
     /// <summary>
@@ -63,8 +64,34 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             => _db.EkstreHesapPlani.CountAsync(h => h.Aktif, ct);
 
         /// <summary>
+        /// Tanımlar ekranının hesap planı özeti: kaç kayıt var, en son ne zaman içe aktarıldı.
+        /// Hesap planı yılda birkaç kez değişir; günlük ekranda yükleme formu yok, bunun
+        /// yerine bayatlamışsa hatırlatma gösteriliyor.
+        /// </summary>
+        public async Task<HesapPlaniOzetDto> OzetAsync(CancellationToken ct = default)
+        {
+            var sayi = await _db.EkstreHesapPlani.CountAsync(h => h.Aktif, ct);
+
+            var son = await _db.EkstreHesapPlani
+                .OrderByDescending(h => h.SonGuncelleme)
+                .Select(h => (DateTime?)h.SonGuncelleme)
+                .FirstOrDefaultAsync(ct);
+
+            // Varsayılan DateTime, hiç içe aktarım yapılmamış eski kayıtlarda görülür.
+            if (son == default(DateTime)) son = null;
+
+            return new HesapPlaniOzetDto
+            {
+                Sayi = sayi,
+                SonIceAktarim = son,
+                GunFarki = son is null ? null : (int)(DateTime.Now.Date - son.Value.Date).TotalDays
+            };
+        }
+
+        /// <summary>
         /// xlsx içe aktarımı. Beklenen kolonlar: <c>Hesap Kodu</c>, <c>Hesap Adı</c>.
-        /// Var olan kod güncellenir (ad değişmiş olabilir), yeni kod eklenir; silme yapılmaz.
+        /// Kayıt **silinmez**: yeni kodlar eklenir, değişen adlar güncellenir, ORKA
+        /// dosyasında olmayanlar pasife çekilir (geçmiş satırların kod bağı kopmasın).
         /// </summary>
         public async Task<HesapPlaniIceAktarimSonucDto> IceAktarAsync(Stream excel, CancellationToken ct = default)
         {
@@ -78,6 +105,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
             var mevcutlar = await _db.EkstreHesapPlani.ToDictionaryAsync(h => h.Kod, ct);
             var dosyadaGorulen = new HashSet<string>(StringComparer.Ordinal);
+            var simdi = DateTime.Now;
 
             var sonSatir = sayfa.LastRowUsed()?.RowNumber() ?? 0;
 
@@ -119,6 +147,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                     mevcut.AnaGrup = Normalizasyon.AnaGrup(kod);
                     mevcut.BaslangicHarfi = Normalizasyon.BaslangicHarfi(kod);
                     mevcut.Aktif = true;
+                    mevcut.SonGuncelleme = simdi;
                     sonuc.Guncellenen++;
                 }
                 else
@@ -130,9 +159,23 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                         NormalizeAd = Normalizasyon.Kirp(Normalizasyon.UnvanNormalize(ad), 200),
                         AnaGrup = Normalizasyon.AnaGrup(kod),
                         BaslangicHarfi = Normalizasyon.BaslangicHarfi(kod),
-                        Aktif = true
+                        Aktif = true,
+                        SonGuncelleme = simdi
                     });
                     sonuc.Eklenen++;
+                }
+            }
+
+            // ORKA'da artık olmayan kodlar silinmez, pasife çekilir: geçmiş ekstre
+            // satırlarındaki kodun karşılığı kaybolmasın.
+            if (sonuc.Okunan > 0)
+            {
+                foreach (var (kod, kayit) in mevcutlar)
+                {
+                    if (dosyadaGorulen.Contains(kod) || !kayit.Aktif) continue;
+
+                    kayit.Aktif = false;
+                    sonuc.Pasiflenen++;
                 }
             }
 

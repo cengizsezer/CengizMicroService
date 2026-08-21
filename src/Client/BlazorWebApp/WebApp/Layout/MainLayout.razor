@@ -1,4 +1,4 @@
-﻿@using Blazored.LocalStorage
+@using Blazored.LocalStorage
 @using WebApp.Infrastructure
 @using WebApp.Manager
 @inject IPermissionService PermissionService
@@ -170,9 +170,10 @@
                     <RadzenPanelMenuItem Text="Masraf Merkezleri" Icon="donut_small" Path="/muhasebe/masraf-merkezi" />
                 </RadzenPanelMenuItem>
 
+                @* İşleme günlük ekran (varsayılan), Tanımlar kurulum — nadiren açılır. *@
                 <RadzenPanelMenuItem Text="Banka İşleme" Icon="account_balance_wallet">
-                    <RadzenPanelMenuItem Text="Banka Hesapları" Icon="account_balance" Path="/banka-isleme/hesaplar" />
-                    <RadzenPanelMenuItem Text="Ekstre Yükleme" Icon="upload_file" Path="/banka-isleme/yukle" />
+                    <RadzenPanelMenuItem Text="İşleme" Icon="fact_check" Path="/banka-isleme" />
+                    <RadzenPanelMenuItem Text="Tanımlar" Icon="settings" Path="/banka-isleme/tanimlar" />
                 </RadzenPanelMenuItem>
 
                 <RadzenPanelMenuItem Text="Finans" Icon="account_balance">

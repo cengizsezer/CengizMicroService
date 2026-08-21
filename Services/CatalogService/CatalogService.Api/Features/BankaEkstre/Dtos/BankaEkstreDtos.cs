@@ -14,6 +14,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public string OrkaHesapKodu { get; set; } = string.Empty;
         public string ParserTipi { get; set; } = string.Empty;
         public bool Aktif { get; set; }
+
+        /// <summary>IBAN öğrenme katmanı (varsayılan kapalı).</summary>
+        public bool IbanKatmaniAktif { get; set; }
+
+        /// <summary>VKN öğrenme katmanı (varsayılan kapalı; Vakıfbank'ta VKN hesap sahibinin).</summary>
+        public bool VknKatmaniAktif { get; set; }
     }
 
     public class BankaHesabiYazDto
@@ -25,6 +31,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public string OrkaHesapKodu { get; set; } = string.Empty;
         public string ParserTipi { get; set; } = string.Empty;
         public bool Aktif { get; set; } = true;
+        public bool IbanKatmaniAktif { get; set; }
+        public bool VknKatmaniAktif { get; set; }
     }
 
     /// <summary>Kullanıcıya seçtirilecek ayrıştırıcılar (şimdilik yalnız Vakıfbank vadesiz).</summary>
@@ -62,6 +70,17 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public YuklemeDurum Durum { get; set; }
         public string? Uyarilar { get; set; }
         public EkstreSayaclariDto Sayaclar { get; set; } = new();
+
+        /// <summary>Kaynak dosya saklandı mı — düzeltilmiş ekstre dosyası üretilebilir mi?</summary>
+        public bool KaynakDosyaVar { get; set; }
+    }
+
+    /// <summary>Onay ekranında seçenek olarak listelenen karşı hesap adayı.</summary>
+    public class AdayDto
+    {
+        public string Kod { get; set; } = string.Empty;
+        public string Ad { get; set; } = string.Empty;
+        public decimal Skor { get; set; }
     }
 
     public class EkstreSatirDto
@@ -89,9 +108,22 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public string? IkinciAdayAdi { get; set; }
         public decimal? IkinciAdaySkoru { get; set; }
 
+        /// <summary>Aynı unvan ailesinden tüm adaylar; iki adayla sınırlı değil.</summary>
+        public List<AdayDto> Adaylar { get; set; } = new();
+
         public string? OnaylananHesapKodu { get; set; }
         public string? OnaylananHesapAdi { get; set; }
         public SatirDurum Durum { get; set; }
+
+        /// <summary>Öğrenme anahtarının çekirdeği; onay ekranında hangi anahtarın öğrenileceğini gösterir.</summary>
+        public string? AnahtarCekirdek { get; set; }
+        public string? AyirtEdiciEk { get; set; }
+
+        /// <summary>
+        /// Onay sonrası kullanıcıya gösterilecek uyarı (ör. kod hesap planında yok,
+        /// bu yüzden öğrenme kaydı yazılmadı). Hata değil; işlem tamamlanmıştır.
+        /// </summary>
+        public string? Uyari { get; set; }
     }
 
     public class SatirOnaylaDto
@@ -109,8 +141,11 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public Yon Yon { get; set; }
         public decimal Tutar { get; set; }
 
-        /// <summary>Karşı hesap (cari/gider/banka).</summary>
-        public string HesapKodu { get; set; } = string.Empty;
+        /// <summary>
+        /// Karşı hesap (cari/gider/banka). PkfRobot'un <c>GridDoldur</c> adımı bu listeyi
+        /// tüketiyor: her satır için { SiraNo, Aciklama, KarsiHesapKodu }.
+        /// </summary>
+        public string KarsiHesapKodu { get; set; } = string.Empty;
         public string? HesapAdi { get; set; }
 
         /// <summary>Ekstresi işlenen banka hesabının ORKA kodu (kaydın diğer bacağı).</summary>
@@ -126,7 +161,37 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         /// <summary>Karşı bacağı başka bankada işlendiği için dışarıda bırakılan satır sayısı.</summary>
         public int DigerBankadaAtlanan { get; set; }
 
+        /// <summary>
+        /// Düzeltilmiş ekstre dosyası (birinci parça) indirilebilir mi? Kaynak dosya
+        /// saklanmamışsa (eski yüklemeler) yalnız kod listesi üretilir.
+        /// </summary>
+        public bool DuzeltilmisEkstreHazir { get; set; }
+
         public List<OrkaSatirDto> Satirlar { get; set; } = new();
+    }
+
+    // ---- Öğrenilen eşleşmeler ----
+
+    public class HesapEslesmesiDto
+    {
+        public int Id { get; set; }
+        public string AnahtarCekirdek { get; set; } = string.Empty;
+        public string? AyirtEdiciEk { get; set; }
+        public string TamAnahtar { get; set; } = string.Empty;
+        public AnahtarTipi AnahtarTipi { get; set; }
+        public string HesapKodu { get; set; } = string.Empty;
+        public string? HesapAdi { get; set; }
+        public Yon Yon { get; set; }
+        public int KullanimSayisi { get; set; }
+        public DateTime SonKullanim { get; set; }
+    }
+
+    /// <summary>Öğrenilen eşleşme düzenleme; anahtar değil, gittiği hesap düzeltilir.</summary>
+    public class HesapEslesmesiYazDto
+    {
+        public string HesapKodu { get; set; } = string.Empty;
+        public Yon Yon { get; set; }
+        public string? AyirtEdiciEk { get; set; }
     }
 
     // ---- Hesap planı ----
@@ -146,6 +211,20 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public int Eklenen { get; set; }
         public int Guncellenen { get; set; }
         public int Atlanan { get; set; }
+
+        /// <summary>ORKA dosyasında olmayıp planda duran kayıtlar; silinmez, pasife çekilir.</summary>
+        public int Pasiflenen { get; set; }
+
         public List<string> Uyarilar { get; set; } = new();
+    }
+
+    /// <summary>Tanımlar ekranındaki hesap planı özeti.</summary>
+    public class HesapPlaniOzetDto
+    {
+        public int Sayi { get; set; }
+        public DateTime? SonIceAktarim { get; set; }
+
+        /// <summary>Son içe aktarımın üzerinden geçen gün; 30'u aşarsa ekranda hatırlatma çıkar.</summary>
+        public int? GunFarki { get; set; }
     }
 }

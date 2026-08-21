@@ -1,0 +1,141 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.BankaEkstre
+
+@inject IBankaEkstreApi Api
+@inject NotificationService Notif
+
+@*
+    Tanımlar ekranının "Hesap planı" bölümü. Hesap planı yılda birkaç kez değişir;
+    bu yüzden günlük ekranda değil burada durur. İçe aktarım kayıt silmez: yeni kodlar
+    eklenir, adlar güncellenir, ORKA'da olmayanlar pasife çekilir.
+*@
+
+<style>
+    .hp-satir { display: flex; flex-wrap: wrap; gap: 18px; align-items: baseline; font-size: 13px; color: #4a5568; }
+    .hp-deger { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; color: #2d3748; }
+    .hp-etiket { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .hp-alan { display: flex; flex-direction: column; gap: 3px; margin-top: 12px; max-width: 460px; }
+    .hp-ipucu { font-size: 11px; color: #a0aec0; }
+</style>
+
+<h5 style="margin-top:0">Hesap planı</h5>
+
+@if (_ozet.Sayi == 0)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" AllowClose="false">
+        Hesap planı henüz içe aktarılmadı. Cari eşleştirmesi hesap planı olmadan çalışmaz.
+    </RadzenAlert>
+}
+else
+{
+    <div class="hp-satir">
+        <span>
+            <span class="hp-deger">@_ozet.Sayi</span>
+            <span class="hp-etiket">aktif hesap</span>
+        </span>
+        <span>
+            <span class="hp-etiket">son içe aktarım</span>
+            <strong>@(_ozet.SonIceAktarim is DateTime t ? BankaEkstreEtiket.Tarih(t) : "—")</strong>
+        </span>
+    </div>
+
+    @if (_ozet.GunFarki is int gun && gun > EskiSayilanGun)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false" Style="margin-top:10px">
+            Hesap planı @gun gündür güncellenmedi. ORKA'da yeni cari açıldıysa "Güncelle" ile yeniden aktarın.
+        </RadzenAlert>
+    }
+}
+
+<div class="hp-alan">
+    <label class="hp-etiket">Güncelle (.xlsx)</label>
+    <InputFile OnChange="SecildiAsync" accept=".xlsx,.xls" disabled="@_isleniyor" />
+    <span class="hp-ipucu">
+        Beklenen kolonlar: <code>Hesap Kodu</code>, <code>Hesap Adı</code>.
+        Kayıt silinmez; dosyada olmayan kodlar pasife çekilir.
+    </span>
+</div>
+
+@if (_isleniyor)
+{
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem" Style="margin-top:8px">
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+        <span>İçe aktarılıyor...</span>
+    </RadzenStack>
+}
+
+@if (_sonuc is not null)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Success" ShowIcon="true" AllowClose="false" Style="margin-top:10px">
+        @_sonuc.Okunan satır okundu · @_sonuc.Eklenen eklendi · @_sonuc.Guncellenen güncellendi
+        @if (_sonuc.Pasiflenen > 0)
+        {
+            <span> · @_sonuc.Pasiflenen pasife çekildi</span>
+        }
+        @if (_sonuc.Atlanan > 0)
+        {
+            <span> · @_sonuc.Atlanan atlandı</span>
+        }
+    </RadzenAlert>
+
+    @foreach (var uyari in _sonuc.Uyarilar)
+    {
+        <div class="hp-ipucu">@uyari</div>
+    }
+}
+
+@code {
+    /// <summary>Bu günden eskiyse yumuşak hatırlatma gösterilir.</summary>
+    private const int EskiSayilanGun = 30;
+
+    private const long EnFazlaBayt = 20 * 1024 * 1024;
+
+    private HesapPlaniOzetDto _ozet = new();
+    private HesapPlaniIceAktarimSonucDto? _sonuc;
+    private bool _isleniyor;
+
+    protected override async Task OnInitializedAsync() => await YenileAsync();
+
+    /// <summary>Firma değişince üst sayfa bunu çağırır.</summary>
+    public async Task YenileAsync()
+    {
+        _sonuc = null;
+        _ozet = await Api.HesapPlaniOzetAsync();
+        StateHasChanged();
+    }
+
+    private async Task SecildiAsync(InputFileChangeEventArgs args)
+    {
+        var dosya = args.File;
+        if (dosya is null) return;
+
+        _sonuc = null;
+        _isleniyor = true;
+
+        try
+        {
+            using var bellek = new MemoryStream();
+            await using (var kaynak = dosya.OpenReadStream(EnFazlaBayt))
+                await kaynak.CopyToAsync(bellek);
+            bellek.Position = 0;
+
+            var (veri, hata) = await Api.HesapPlaniIceAktarAsync(bellek, dosya.Name);
+            if (hata is not null)
+            {
+                Notif.Notify(NotificationSeverity.Error, "İçe aktarılamadı", hata, 8000);
+                return;
+            }
+
+            _sonuc = veri;
+            _ozet = await Api.HesapPlaniOzetAsync();
+            Notif.Notify(NotificationSeverity.Success, "Hesap planı güncellendi", null, 3000);
+        }
+        finally
+        {
+            _isleniyor = false;
+        }
+    }
+}

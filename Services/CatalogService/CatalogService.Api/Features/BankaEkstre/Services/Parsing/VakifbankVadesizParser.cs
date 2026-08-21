@@ -48,6 +48,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services.Parsing
                         ?? throw new InvalidDataException("Excel dosyasında sayfa bulunamadı.");
 
             var (kolonlar, ilkVeriSatiri) = KolonlariBul(sayfa, sonuc);
+            sonuc.AciklamaKolonu = kolonlar.Aciklama;
 
             var sonSatir = sayfa.LastRowUsed()?.RowNumber() ?? 0;
 
@@ -73,14 +74,20 @@ namespace CatalogService.Api.Features.BankaEkstre.Services.Parsing
                 var ayrilan = new AyrilanSatir
                 {
                     SiraNo = sonuc.Satirlar.Count + 1,
+                    KaynakSatirNo = satirNo,
                     Tarih = tarih.Date,
                     Tutar = Math.Abs(tutar),
                     Yon = YonBul(tutar, borcAlacak),
                     IslemTipi = Hucre(satir, kolonlar.IslemTipi).Trim(),
                     HamAciklama = aciklama.Trim(),
                     Kanal = Bos(Hucre(satir, kolonlar.Kanal)),
-                    KarsiVkn = Bos(Normalizasyon.VknAnahtar(Hucre(satir, kolonlar.Vkn))),
-                    // IBAN kolonu yok; açıklama metninden çıkarılır — en değerli anahtar.
+                    // VKN kolonu KASITLI okunmuyor: ölçümde 286 satırın hepsinde aynı değer
+                    // vardı (0070511435) — karşı tarafın değil, hesap sahibinin VKN'si.
+                    // Doldurulsaydı ilk onaydan sonra tüm satırlar güven 1.0 ile aynı hesaba
+                    // eşleşir, onaya bile düşmezdi.
+                    KarsiVkn = null,
+                    // IBAN kolonu yok; açıklama metninden çıkarılır. Eşleştirmede kullanılmaz
+                    // (IBAN katmanı kapalı), yalnız bilgi olarak saklanır.
                     KarsiIban = Normalizasyon.IbanBul(aciklama)
                 };
 

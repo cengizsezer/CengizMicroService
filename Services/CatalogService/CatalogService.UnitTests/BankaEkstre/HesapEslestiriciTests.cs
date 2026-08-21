@@ -4,7 +4,7 @@ using CatalogService.Api.Features.BankaEkstre.Services;
 namespace CatalogService.UnitTests.BankaEkstre
 {
     /// <summary>
-    /// Katman sırası, yön → ana grup kuralı ve karar eşikleri. Eşikler gevşetilmez:
+    /// Katman sırası, çoklu token çıpası, aile ayrımı ve karar eşikleri. Eşikler gevşetilmez:
     /// düşük skorda "en yakın kod" otomatik yazılmaz, yakın ikinci aday varsa onaya düşer.
     /// </summary>
     public class HesapEslestiriciTests
@@ -39,74 +39,160 @@ namespace CatalogService.UnitTests.BankaEkstre
                 Sablon = sablon
             };
 
-        // ---- Katman sırası ----
+        private static HesapEslesmesi Eslesme(string cekirdek, string kod, string? ad = null,
+                                              Yon yon = Yon.Giren, string? ek = null,
+                                              AnahtarTipi tip = AnahtarTipi.UnvanCekirdek) => new()
+        {
+            AnahtarTipi = tip,
+            AnahtarCekirdek = cekirdek,
+            AyirtEdiciEk = ek,
+            Yon = yon,
+            HesapKodu = kod,
+            HesapAdi = ad
+        };
+
+        // ---- Kapalı katmanlar ----
 
         [Fact]
-        public void Katman1_iban_gecmis_onaydan_once_gelir()
+        public void Vkn_katmani_varsayilan_kapali()
+        {
+            // Vakıfbank'ta VKN kolonu hesap sahibinin VKN'si; açık kalsaydı ilk onaydan
+            // sonra tüm satırlar güven 1.0 ile aynı hesaba eşleşir, onaya bile düşmezdi.
+            var veri = new EslestirmeVerisi
+            {
+                Eslesmeler = new[] { Eslesme("0070511435", "120 D22", tip: AnahtarTipi.Vkn) }
+            };
+
+            var sonuc = _eslestirici.Coz(Baglam(vkn: "0070511435"), veri);
+
+            Assert.NotEqual(KaynakKatman.Vkn, sonuc.Katman);
+            Assert.Null(sonuc.HesapKodu);
+        }
+
+        [Fact]
+        public void Vkn_katmani_bayrak_acilinca_calisir()
         {
             var veri = new EslestirmeVerisi
             {
-                OgrenmeKayitlari = new[]
+                Eslesmeler = new[] { Eslesme("0070511435", "120 D22", tip: AnahtarTipi.Vkn) },
+                VknKatmaniAktif = true
+            };
+
+            var sonuc = _eslestirici.Coz(Baglam(vkn: "0070511435"), veri);
+
+            Assert.Equal(KaynakKatman.Vkn, sonuc.Katman);
+            Assert.Equal("120 D22", sonuc.HesapKodu);
+        }
+
+        [Fact]
+        public void Iban_katmani_varsayilan_kapali()
+        {
+            var veri = new EslestirmeVerisi
+            {
+                Eslesmeler = new[]
                 {
-                    new OgrenmeKaydi { AnahtarTipi = AnahtarTipi.Iban, Anahtar = "330006200012300006673953",
-                                       Yon = Yon.Giren, HesapKodu = "120 D22", HesapAdi = "Dagi Giyim" },
-                    new OgrenmeKaydi { AnahtarTipi = AnahtarTipi.AciklamaHash,
-                                       Anahtar = Normalizasyon.AciklamaHash("DAGI GIYIM tarafından"),
-                                       Yon = Yon.Giren, HesapKodu = "120 X99", HesapAdi = "Yanlış" }
+                    Eslesme("330006200012300006673953", "120 X99", tip: AnahtarTipi.Iban),
+                    Eslesme("DAGI GIYIM", "120 D22", "Dagi Giyim")
                 }
             };
 
             var sonuc = _eslestirici.Coz(
-                Baglam(hamAciklama: "DAGI GIYIM tarafından", iban: "TR330006200012300006673953"), veri);
+                Baglam(unvan: "DAĞI GİYİM", iban: "TR330006200012300006673953"), veri);
 
-            Assert.Equal(KaynakKatman.Iban, sonuc.Katman);
+            // IBAN kapalı olduğu için geçmiş onay (unvan çekirdeği) kazanır.
+            Assert.Equal(KaynakKatman.GecmisOnay, sonuc.Katman);
             Assert.Equal("120 D22", sonuc.HesapKodu);
-            Assert.Equal(1.0m, sonuc.Guven);
-            Assert.Equal(SatirDurum.Otomatik, sonuc.Durum);
         }
 
+        // ---- Katman 1: geçmiş onay ----
+
         [Fact]
-        public void Katman2_gecmis_onay_hash_ile_cozer()
+        public void Gecmis_onay_unvan_cekirdeginden_cozer()
         {
-            var aciklama = "0000123 sorgu numaralı KEMAL TEKSTIL tarafından";
             var veri = new EslestirmeVerisi
             {
-                OgrenmeKayitlari = new[]
-                {
-                    new OgrenmeKaydi { AnahtarTipi = AnahtarTipi.AciklamaHash,
-                                       Anahtar = Normalizasyon.AciklamaHash(aciklama),
-                                       Yon = Yon.Giren, HesapKodu = "120 K08", HesapAdi = "Kemal Tekstil" }
-                }
+                Eslesmeler = new[] { Eslesme("KEMAL TEKSTIL", "120 K08", "Kemal Tekstil") }
             };
 
-            var sonuc = _eslestirici.Coz(Baglam(hamAciklama: aciklama), veri);
+            // Farklı sorgu numarası, aynı cari: çekirdek aynı kaldığı için eşleşir.
+            var sonuc = _eslestirici.Coz(
+                Baglam(hamAciklama: "0000999 sorgu numaralı", unvan: "KEMAL TEKSTİL SAN. VE TİC. A.Ş."), veri);
 
             Assert.Equal(KaynakKatman.GecmisOnay, sonuc.Katman);
             Assert.Equal("120 K08", sonuc.HesapKodu);
+            Assert.Equal(1.0m, sonuc.Guven);
         }
 
         [Fact]
         public void Ogrenme_kaydi_yon_bazlidir()
         {
-            var aciklama = "KEMAL TEKSTIL tarafından";
             var veri = new EslestirmeVerisi
             {
-                OgrenmeKayitlari = new[]
-                {
-                    new OgrenmeKaydi { AnahtarTipi = AnahtarTipi.AciklamaHash,
-                                       Anahtar = Normalizasyon.AciklamaHash(aciklama),
-                                       Yon = Yon.Giren, HesapKodu = "120 K08" }
-                }
+                Eslesmeler = new[] { Eslesme("KEMAL TEKSTIL", "120 K08") }
             };
 
-            // Aynı anahtar, ters yön: öğrenilmiş kayıt kullanılmaz.
-            var sonuc = _eslestirici.Coz(Baglam(hamAciklama: aciklama, yon: Yon.Cikan), veri);
+            var sonuc = _eslestirici.Coz(Baglam(unvan: "KEMAL TEKSTİL", yon: Yon.Cikan), veri);
 
             Assert.NotEqual(KaynakKatman.GecmisOnay, sonuc.Katman);
         }
 
         [Fact]
-        public void Katman3_banka_kayit_defteri_metinden_bankayi_bulur()
+        public void Genisletilmis_anahtar_sade_cekirdekten_once_denenir()
+        {
+            var veri = new EslestirmeVerisi
+            {
+                Eslesmeler = new[]
+                {
+                    Eslesme("PARK PLAZA", "329 P99", "Park Plaza Genel", Yon.Cikan),
+                    Eslesme("PARK PLAZA", "329 P04", "Park Plaza Aidat", Yon.Cikan, ek: "AIDAT"),
+                    Eslesme("PARK PLAZA", "329 P05", "Park Plaza Elektrik", Yon.Cikan, ek: "ELEKTRIK")
+                }
+            };
+
+            var sonuc = _eslestirici.Coz(
+                Baglam(hamAciklama: "PARK PLAZA AİDAT ÖDEMESİ", unvan: "PARK PLAZA", yon: Yon.Cikan), veri);
+
+            Assert.Equal("329 P04", sonuc.HesapKodu);
+            Assert.Equal("AIDAT", sonuc.AyirtEdiciEk);
+        }
+
+        [Fact]
+        public void Ogrenilmis_ailenin_iki_uyesi_metinde_geciyorsa_onaya_duser()
+        {
+            var veri = new EslestirmeVerisi
+            {
+                Eslesmeler = new[]
+                {
+                    Eslesme("PARK PLAZA", "329 P04", "Park Plaza Aidat", Yon.Cikan, ek: "AIDAT"),
+                    Eslesme("PARK PLAZA", "329 P05", "Park Plaza Elektrik", Yon.Cikan, ek: "ELEKTRIK")
+                }
+            };
+
+            var sonuc = _eslestirici.Coz(
+                Baglam(hamAciklama: "PARK PLAZA AİDAT VE ELEKTRİK", unvan: "PARK PLAZA", yon: Yon.Cikan), veri);
+
+            Assert.Equal(SatirDurum.OnayBekliyor, sonuc.Durum);
+            Assert.Equal(2, sonuc.Adaylar.Count);
+        }
+
+        [Fact]
+        public void Unvansiz_satir_islem_tipi_anahtariyla_cozulur()
+        {
+            var veri = new EslestirmeVerisi
+            {
+                Eslesmeler = new[] { Eslesme("ISLEM:MKK MASRAFI", "770 01", "Banka Gideri", Yon.Cikan) }
+            };
+
+            var sonuc = _eslestirici.Coz(Baglam("MKK Masrafı", hamAciklama: "MKK ücreti", yon: Yon.Cikan), veri);
+
+            Assert.Equal(KaynakKatman.GecmisOnay, sonuc.Katman);
+            Assert.Equal("770 01", sonuc.HesapKodu);
+        }
+
+        // ---- Katman 2: banka kayıt defteri ----
+
+        [Fact]
+        public void Banka_kayit_defteri_metinden_bankayi_bulur()
         {
             var sablon = new AciklamaSablonu { BankalarArasi = true, Sablon = "Hesaplararası Virman - {HESAP}" };
             var veri = new EslestirmeVerisi
@@ -128,7 +214,7 @@ namespace CatalogService.UnitTests.BankaEkstre
         }
 
         [Fact]
-        public void Katman3_islenen_hesabin_kendisini_secmez()
+        public void Banka_kayit_defteri_islenen_hesabin_kendisini_secmez()
         {
             var sablon = new AciklamaSablonu { BankalarArasi = true };
             var veri = new EslestirmeVerisi
@@ -146,8 +232,10 @@ namespace CatalogService.UnitTests.BankaEkstre
             Assert.NotEqual(KaynakKatman.BankaKayitDefteri, sonuc.Katman);
         }
 
+        // ---- Katman 3: sabit kural ----
+
         [Fact]
-        public void Katman4_sabit_kural_islem_tipinden_cozer()
+        public void Sabit_kural_islem_tipinden_cozer()
         {
             var veri = new EslestirmeVerisi
             {
@@ -182,7 +270,101 @@ namespace CatalogService.UnitTests.BankaEkstre
             Assert.Equal("329 D22", cikan.HesapKodu);
         }
 
-        // ---- Karar eşikleri ----
+        // ---- Katman 4: çoklu token çıpası ----
+
+        [Fact]
+        public void Coklu_token_cipasi_banka_ic_kodunu_atlar()
+        {
+            // Banka unvanın önüne kendi iç kodunu ekleyebiliyor; ilk kelime çıpa olarak
+            // hiç aday getirmiyor, ikinci token doğru cariyi buluyor.
+            var veri = new EslestirmeVerisi
+            {
+                HesapPlani = new[]
+                {
+                    Plan("120 N15", "NAOS İSTANBUL KOZMETİK"),
+                    Plan("120 N16", "NAOS PAZARLAMA DANIŞMANLIK")
+                }
+            };
+
+            var sonuc = _eslestirici.Coz(
+                Baglam(unvan: "NAOSKZ NAOS İSTANBUL KOZMETİK SANAYİ VE TİCARET A.Ş."), veri);
+
+            Assert.Equal("120 N15", sonuc.HesapKodu);
+            Assert.Equal(SatirDurum.Otomatik, sonuc.Durum);
+            Assert.Equal(KaynakKatman.UnvanBenzerligi, sonuc.Katman);
+        }
+
+        [Fact]
+        public void Kalabalik_cipa_elenmez_pkf_ailesi_dogru_cariye_gider()
+        {
+            // Gerçek hesap planında "PKF" çıpası 89 hesap getiriyor (grup şirketleri).
+            // Aday sayısına eşik konduğunda bu satırın skoru 0.95'ten 0.48'e düşüp
+            // alakasız bir ana hesaba (373) eşleşiyordu.
+            var veri = new EslestirmeVerisi { HesapPlani = KalabalikPlan() };
+
+            var sonuc = _eslestirici.Coz(Baglam(unvan: "PKF İSTANBUL YEMİNLİ MALİ MÜŞAVİRLİK A.Ş."), veri);
+
+            Assert.Equal("120 P44", sonuc.HesapKodu);
+            Assert.True(sonuc.Guven > 0.90m, $"Skor 0.90 üzerinde olmalı, ölçülen: {sonuc.Guven}");
+            Assert.Equal(KaynakKatman.UnvanBenzerligi, sonuc.Katman);
+        }
+
+        [Fact]
+        public void Kalabalik_cipa_elenmez_istanbul_portfoy_dogru_cariye_gider()
+        {
+            // "ISTANBUL" çıpası 126 hesap getiriyor. Eşik uygulandığında skor 1.00'dan
+            // 0.61'e düşüp alakasız hesaplara (110, 121 1) eşleşiyordu.
+            var veri = new EslestirmeVerisi { HesapPlani = KalabalikPlan() };
+
+            var sonuc = _eslestirici.Coz(Baglam(unvan: "İSTANBUL PORTFÖY YÖNETİMİ A.Ş."), veri);
+
+            Assert.Equal("120 I61", sonuc.HesapKodu);
+            Assert.True(sonuc.Guven > 0.90m, $"Skor 0.90 üzerinde olmalı, ölçülen: {sonuc.Guven}");
+            Assert.Equal(KaynakKatman.UnvanBenzerligi, sonuc.Katman);
+        }
+
+        /// <summary>
+        /// Ölçülen hesap planının kalabalık çıpalarını taklit eder: PKF 89 grup şirketi,
+        /// PARDUS 101 portföy fonu, İSTANBUL 126 hesap. Kalabalık çıpalar gürültü değil,
+        /// meşru cari aileleri — hedef cariler bu kalabalığın içinde duruyor.
+        /// </summary>
+        private static List<HesapPlaniKaydi> KalabalikPlan()
+        {
+            var plan = new List<HesapPlaniKaydi>
+            {
+                Plan("120 P44", "PKF İSTANBUL YEMİNLİ MALİ MÜŞAVİRLİK A.Ş."),
+                Plan("120 I61", "İSTANBUL PORTFÖY YÖNETİMİ A.Ş."),
+                // Eşik uygulandığında satırların kaçtığı alakasız hesaplar.
+                Plan("120 X01", "MÜŞAVİRLİK DANIŞMANLIK"),
+                Plan("120 X02", "YÖNETİM ORGANİZASYON")
+            };
+
+            for (var i = 1; i <= 88; i++)
+                plan.Add(Plan($"120 P{i:00}A", $"PKF GRUP ORTAKLIĞI {i:000}"));
+
+            for (var i = 1; i <= 100; i++)
+                plan.Add(Plan($"120 D{i:000}", $"PARDUS SERBEST FON {i:000}"));
+
+            for (var i = 1; i <= 125; i++)
+                plan.Add(Plan($"120 I{i:000}A", $"İSTANBUL GAYRİMENKUL YATIRIM {i:000}"));
+
+            return plan;
+        }
+
+        [Fact]
+        public void Hicbir_cipa_tutmazsa_kod_onerilmez()
+        {
+            // Eskiden tüm grup taranıp "en yakın" kod öneriliyordu; alakasız hesap
+            // önermektense satır onay kuyruğuna düşsün.
+            var veri = new EslestirmeVerisi { HesapPlani = new[] { Plan("120 M01", "MERT İNŞAAT") } };
+
+            var sonuc = _eslestirici.Coz(Baglam(unvan: "MELTEM ORGANİZASYON REKLAM"), veri);
+
+            Assert.Equal(SatirDurum.Cozulemedi, sonuc.Durum);
+            Assert.Null(sonuc.HesapKodu);
+        }
+
+        // ---- Karar eşikleri ve aile ----
 
         [Fact]
         public void Tek_yuksek_aday_otomatik_gecer()
@@ -198,43 +380,51 @@ namespace CatalogService.UnitTests.BankaEkstre
             Assert.Equal("120 D22", sonuc.HesapKodu);
             Assert.Equal(KaynakKatman.UnvanBenzerligi, sonuc.Katman);
             Assert.Null(sonuc.IkinciAdayKodu);
+            // Tek aday: anahtar sade çekirdek kalır, gereksiz kelime eklenmez.
+            Assert.Null(sonuc.AyirtEdiciEk);
         }
 
         [Fact]
-        public void Yakin_ikinci_aday_varsa_onaya_duser_ve_iki_aday_gosterilir()
+        public void Park_plaza_ailesi_onaya_duser_ve_tum_uyeler_listelenir()
         {
-            // Ölçümdeki iki hatanın tipi: aynı unvan ailesinden birden fazla cari.
             var veri = new EslestirmeVerisi
             {
                 HesapPlani = new[]
                 {
-                    Plan("120 P17", "PKF İSTANBUL YEMİNLİ MALİ MÜŞAVİRLİK BİR"),
-                    Plan("120 P16", "PKF İSTANBUL YEMİNLİ MALİ MÜŞAVİRLİK İKİ")
+                    Plan("329 P04", "PARK PLAZA YÖNETİMİ AİDAT"),
+                    Plan("329 P05", "PARK PLAZA YÖNETİMİ ELEKTRİK"),
+                    Plan("329 P27", "PARK PLAZA YÖNETİMİ 19 KAT")
                 }
             };
 
-            var sonuc = _eslestirici.Coz(Baglam(unvan: "PKF İSTANBUL YEMİNLİ MALİ MÜŞAVİRLİK"), veri);
+            var sonuc = _eslestirici.Coz(
+                Baglam(hamAciklama: "PARK PLAZA ödemesi", unvan: "PARK PLAZA YÖNETİMİ", yon: Yon.Cikan), veri);
 
             Assert.Equal(SatirDurum.OnayBekliyor, sonuc.Durum);
+            Assert.Equal(3, sonuc.Adaylar.Count);
+            Assert.Contains(sonuc.Adaylar, a => a.Kod == "329 P04");
+            Assert.Contains(sonuc.Adaylar, a => a.Kod == "329 P05");
+            Assert.Contains(sonuc.Adaylar, a => a.Kod == "329 P27");
             Assert.NotNull(sonuc.IkinciAdayKodu);
-            Assert.True(sonuc.Guven >= HesapEslestirici.OtomatikEsik);
-            Assert.True(sonuc.Guven - sonuc.IkinciAdaySkoru!.Value < HesapEslestirici.AdayFarki);
         }
 
         [Fact]
-        public void Esik_altindaki_skor_otomatik_gecmez()
+        public void Aile_ayirt_edici_kelime_metinde_geciyorsa_cozulur()
         {
             var veri = new EslestirmeVerisi
             {
-                HesapPlani = new[] { Plan("120 M01", "MERT İNŞAAT") }
+                HesapPlani = new[]
+                {
+                    Plan("329 P04", "PARK PLAZA YÖNETİMİ AİDAT"),
+                    Plan("329 P05", "PARK PLAZA YÖNETİMİ ELEKTRİK")
+                }
             };
 
-            var sonuc = _eslestirici.Coz(Baglam(unvan: "MELTEM ORGANİZASYON REKLAM"), veri);
+            var sonuc = _eslestirici.Coz(
+                Baglam(hamAciklama: "PARK PLAZA ELEKTRİK FATURASI", unvan: "PARK PLAZA YÖNETİMİ", yon: Yon.Cikan), veri);
 
-            Assert.Equal(SatirDurum.OnayBekliyor, sonuc.Durum);
-            Assert.True(sonuc.Guven < HesapEslestirici.OtomatikEsik);
-            // Öneri yine de gösterilir; ama otomatik yazılmaz.
-            Assert.Equal("120 M01", sonuc.HesapKodu);
+            Assert.Equal("329 P05", sonuc.HesapKodu);
+            Assert.Equal("ELEKTRIK", sonuc.AyirtEdiciEk);
         }
 
         [Fact]
@@ -255,18 +445,6 @@ namespace CatalogService.UnitTests.BankaEkstre
             var sonuc = _eslestirici.Coz(Baglam(unvan: "DAĞI GİYİM"), new EslestirmeVerisi());
 
             Assert.Equal(SatirDurum.Cozulemedi, sonuc.Durum);
-        }
-
-        [Fact]
-        public void Ilk_harf_daraltmasi_bos_kalirsa_tum_gruba_genisler()
-        {
-            // Unvan "Z" ile başlıyor ama planda Z ile başlayan kod yok; arama tüm gruba açılır.
-            var veri = new EslestirmeVerisi { HesapPlani = new[] { Plan("120 D22", "ZETA MADENCİLİK") } };
-
-            var sonuc = _eslestirici.Coz(Baglam(unvan: "ZETA MADENCİLİK"), veri);
-
-            Assert.Equal("120 D22", sonuc.HesapKodu);
-            Assert.Equal(SatirDurum.Otomatik, sonuc.Durum);
         }
 
         [Fact]

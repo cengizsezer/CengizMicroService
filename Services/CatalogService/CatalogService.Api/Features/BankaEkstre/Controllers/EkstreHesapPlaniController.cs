@@ -33,6 +33,11 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
         public async Task<ActionResult<int>> Sayi(CancellationToken ct)
             => Ok(await _service.SayAsync(ct));
 
+        /// <summary>Tanımlar ekranı için özet: kayıt sayısı ve son içe aktarım tarihi.</summary>
+        [HttpGet("ozet")]
+        public async Task<ActionResult<HesapPlaniOzetDto>> Ozet(CancellationToken ct)
+            => Ok(await _service.OzetAsync(ct));
+
         [HttpGet("kod/{kod}")]
         public async Task<ActionResult<HesapPlaniKaydiDto>> KodaGore(string kod, CancellationToken ct)
         {
@@ -40,7 +45,10 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
             return dto is null ? NotFound() : Ok(dto);
         }
 
-        /// <summary>xlsx içe aktarımı; beklenen kolonlar: <c>Hesap Kodu</c>, <c>Hesap Adı</c>.</summary>
+        /// <summary>
+        /// xlsx içe aktarımı; beklenen kolonlar: <c>Hesap Kodu</c>, <c>Hesap Adı</c>.
+        /// Kayıt silinmez: yeni kodlar eklenir, adlar güncellenir, dosyada olmayanlar pasife çekilir.
+        /// </summary>
         [HttpPost("ice-aktar")]
         [RequestSizeLimit(EnFazlaDosyaBayt)]
         public async Task<ActionResult<HesapPlaniIceAktarimSonucDto>> IceAktar(IFormFile file, CancellationToken ct = default)

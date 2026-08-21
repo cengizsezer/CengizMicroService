@@ -1,5 +1,3 @@
-﻿@page "/banka-isleme/hesaplar"
-
 @using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
@@ -9,9 +7,10 @@
 @inject NotificationService Notif
 
 @*
-    Ekstresi işlenen banka hesapları. Bu liste aynı zamanda "banka kayıt defteri"dir:
-    bankalar arası hareketlerde karşı taraf buradan bulunur (eşleştirme Katman 3),
-    bu yüzden her banka için ORKA kodu doğru girilmeli.
+    Tanımlar ekranının "Banka hesapları" bölümü. Bu liste aynı zamanda "banka kayıt
+    defteri"dir: bankalar arası hareketlerde karşı taraf buradan bulunur, bu yüzden
+    her banka için ORKA kodu doğru girilmeli. Günlük ekranın banka sekmeleri de
+    buradaki tanımlardan türer.
 *@
 
 <style>
@@ -37,7 +36,7 @@
 </style>
 
 <div class="bh-arac">
-    <h4 style="margin:0">Banka Hesapları</h4>
+    <h5 style="margin:0">Banka hesapları</h5>
     <div style="display:flex; gap:6px; align-items:center">
         <RadzenCheckBox TValue="bool" Value="@_pasifDahil" Name="pasifDahil"
                         Change="@(async (bool secili) => { _pasifDahil = secili; await YukleAsync(); })" />
@@ -131,6 +130,25 @@ else
             </div>
 
             <div class="bh-alan">
+                <label>Kapalı eşleştirme katmanları</label>
+                <div style="display:flex; gap:14px; align-items:center">
+                    <span style="display:flex; gap:5px; align-items:center">
+                        <RadzenCheckBox @bind-Value="_form.IbanKatmaniAktif" Name="ibanKatmani" />
+                        <label for="ibanKatmani" style="font-size:12px; color:#4a5568; text-transform:none; letter-spacing:0">IBAN</label>
+                    </span>
+                    <span style="display:flex; gap:5px; align-items:center">
+                        <RadzenCheckBox @bind-Value="_form.VknKatmaniAktif" Name="vknKatmani" />
+                        <label for="vknKatmani" style="font-size:12px; color:#4a5568; text-transform:none; letter-spacing:0">VKN</label>
+                    </span>
+                </div>
+                <span class="bh-ipucu">
+                    İkisi de varsayılan kapalı. Vakıfbank'ta VKN kolonu karşı tarafın değil hesap
+                    sahibinin VKN'si; IBAN verisi de düzenli tutulmuyor. Yalnız bu alanları
+                    güvenilir veren bir bankada açın.
+                </span>
+            </div>
+
+            <div class="bh-alan">
                 <label>Durum</label>
                 <div style="display:flex; gap:6px; align-items:center">
                     <RadzenCheckBox @bind-Value="_form.Aktif" Name="aktif" />
@@ -159,11 +177,17 @@ else
     private bool _yukleniyor = true;
     private bool _kaydediyor;
 
+    /// <summary>Hesap listesi değişince günlük ekranın sekmeleri de yenilensin.</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         _parserler = await Api.GetParserlerAsync();
         await YukleAsync();
     }
+
+    /// <summary>Firma değişince üst sayfa bunu çağırır.</summary>
+    public Task YenileAsync() => YukleAsync();
 
     private async Task YukleAsync()
     {
@@ -188,7 +212,9 @@ else
                 Iban = hesap.Iban,
                 OrkaHesapKodu = hesap.OrkaHesapKodu,
                 ParserTipi = hesap.ParserTipi,
-                Aktif = hesap.Aktif
+                Aktif = hesap.Aktif,
+                IbanKatmaniAktif = hesap.IbanKatmaniAktif,
+                VknKatmaniAktif = hesap.VknKatmaniAktif
             };
     }
 
@@ -212,6 +238,7 @@ else
         _form = null;
         _duzenlenenId = null;
         await YukleAsync();
+        await Degisti.InvokeAsync();
     }
 
     private async Task SilAsync(BankaHesabiDto hesap)
@@ -225,5 +252,6 @@ else
 
         Notif.Notify(NotificationSeverity.Success, "Silindi", hesap.BankaAdi, 3000);
         await YukleAsync();
+        await Degisti.InvokeAsync();
     }
 }

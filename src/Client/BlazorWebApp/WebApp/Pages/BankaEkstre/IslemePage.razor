@@ -1,0 +1,360 @@
+@page "/banka-isleme"
+
+@using Microsoft.AspNetCore.Components.Forms
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Domain.Models.User
+@using WebApp.Manager
+@using WebApp.Shared.Dto.BankaEkstre
+
+@implements IDisposable
+
+@inject IBankaEkstreApi Api
+@inject IAppSessionManager SessionManager
+@inject NotificationService Notif
+@inject NavigationManager Nav
+
+@*
+    Banka İşleme > İşleme — günlük ana ekran.
+
+    Üstte dönem seçici, altında tanımlı banka hesaplarından türeyen banka sekmeleri
+    (sekme başlığında o bankanın onay bekleyen satır sayısı rozeti), aktif sekmede
+    her hesap için bir kart: ekstre yüklüyse sayaçlar ve onay ekranı düğmesi,
+    yüklü değilse sürükle-bırak alanı.
+
+    Hesap planı yükleme burada YOK: yılda birkaç kez değişen bir şey günlük ekranda
+    durmamalı. Plan hiç yoksa kısa bir uyarı ve Tanımlar'a bağlantı çıkar.
+*@
+
+<style>
+    .is-ust { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+    .is-donem { display: flex; gap: 8px; align-items: flex-end; }
+    .is-alan { display: flex; flex-direction: column; gap: 3px; }
+    .is-alan label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+
+    .is-sekmeler { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid #e2e8f0; margin-bottom: 14px; }
+    .is-sekme { border: 1px solid transparent; border-bottom: none; border-radius: 6px 6px 0 0; padding: 7px 14px;
+                cursor: pointer; font-size: 13px; color: #4a5568; background: transparent; display: flex; gap: 7px; align-items: center; }
+    .is-sekme:hover { background: #f8fbff; }
+    .is-sekme.aktif { background: #fff; border-color: #e2e8f0; color: #2b6cb0; font-weight: 600; margin-bottom: -1px; }
+    .is-rozet { font-size: 10px; border-radius: 10px; padding: 1px 7px; background: #fffaf0; color: #975a16; font-variant-numeric: tabular-nums; }
+    .is-rozet.tamam { background: #f0fff4; color: #276749; }
+
+    .is-kartlar { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+    .is-kart { border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 14px; }
+    .is-kart.bos { border-style: dashed; border-color: #cbd5e0; background: #fcfdfe; }
+    .is-kart.suruklenen { border-color: #90cdf4; background: #ebf8ff; }
+    .is-kart-ust { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .is-kart-ad { font-weight: 600; font-size: 14px; }
+    .is-kart-kod { font-size: 11px; color: #718096; font-family: ui-monospace, Consolas, monospace; }
+    .is-dosya { font-size: 12px; color: #4a5568; margin-top: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .is-sayaclar { display: flex; gap: 14px; margin-top: 10px; }
+    .is-sayac .deger { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .is-sayac .ad { font-size: 10px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .is-sayac.iyi .deger { color: #276749; }
+    .is-sayac.dikkat .deger { color: #975a16; }
+    .is-sayac.kotu .deger { color: #9b2c2c; }
+
+    /* Sürükle-bırak: InputFile alanı kaplasın ki kartın herhangi bir yerine bırakmak çalışsın. */
+    .is-birak-alan { position: relative; margin-top: 6px; }
+    .is-birak-alan input[type=file] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+    .is-birak { text-align: center; padding: 18px 8px; color: #a0aec0; font-size: 12px;
+                border: 1px dashed #cbd5e0; border-radius: 6px; }
+    .is-aksiyon { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+    .is-bos { padding: 30px; text-align: center; color: #a0aec0; }
+</style>
+
+<div class="is-ust">
+    <div>
+        <h4 style="margin:0">Banka İşleme</h4>
+        <div style="font-size:12px; color:#718096">
+            Kurulum için <a href="/banka-isleme/tanimlar">Tanımlar</a>.
+        </div>
+    </div>
+
+    <div class="is-donem">
+        <div class="is-alan">
+            <label>Dönem</label>
+            <RadzenDropDown TValue="int" @bind-Value="_yil" Data="@_yillar" Style="width:100px"
+                            Change="@(_ => StateHasChanged())" />
+        </div>
+        <div class="is-alan">
+            <RadzenDropDown TValue="int" @bind-Value="_ay" Data="@_aylar" TextProperty="Ad" ValueProperty="No"
+                            Style="width:150px" Change="@(_ => StateHasChanged())" />
+        </div>
+    </div>
+</div>
+
+@if (_yukleniyor)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+}
+else if (_hesaplar.Count == 0)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false">
+        Henüz banka hesabı tanımlanmadı. <a href="/banka-isleme/tanimlar">Tanımlar</a> ekranından hesap ekleyin.
+    </RadzenAlert>
+}
+else
+{
+    @if (_planSayisi == 0)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" AllowClose="false" Style="margin-bottom:12px">
+            Hesap planı içe aktarılmadı; cari eşleştirmesi çalışmaz.
+            <a href="/banka-isleme/tanimlar">Tanımlar</a> ekranından yükleyin.
+        </RadzenAlert>
+    }
+    else if (_planGunFarki is int gun && gun > EskiSayilanGun)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false" Style="margin-bottom:12px">
+            Hesap planı @gun gündür güncellenmedi. Yeni cariler eksik olabilir —
+            <a href="/banka-isleme/tanimlar">Tanımlar</a>'dan güncelleyin.
+        </RadzenAlert>
+    }
+
+    <div class="is-sekmeler">
+        @foreach (var banka in Bankalar)
+        {
+            var bekleyen = BankaBekleyen(banka);
+            <div class="is-sekme @(banka == _aktifBanka ? "aktif" : "")" @onclick="@(() => _aktifBanka = banka)">
+                <span>@banka</span>
+                @if (bekleyen > 0)
+                {
+                    <span class="is-rozet">@bekleyen</span>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="is-kartlar">
+        @foreach (var hesap in AktifHesaplar)
+        {
+            var yukleme = SonYukleme(hesap.Id);
+
+            <div class="is-kart @(yukleme is null ? "bos" : "") @(_suruklenenHesapId == hesap.Id ? "suruklenen" : "")"
+                 @ondragenter="@(() => _suruklenenHesapId = hesap.Id)"
+                 @ondragleave="@(() => _suruklenenHesapId = null)"
+                 @ondragover:preventDefault="true">
+
+                <div class="is-kart-ust">
+                    <div>
+                        <div class="is-kart-ad">@hesap.BankaAdi</div>
+                        <div class="is-kart-kod">
+                            @BankaEkstreEtiket.HesapTipi(hesap.HesapTipi) @hesap.ParaBirimi · @hesap.OrkaHesapKodu
+                        </div>
+                    </div>
+
+                    @if (yukleme is not null)
+                    {
+                        <span class="is-rozet @(yukleme.Sayaclar.Eksik == 0 ? "tamam" : "")">
+                            @(yukleme.Sayaclar.Eksik == 0 ? "Tamamlandı" : $"{yukleme.Sayaclar.Eksik} bekliyor")
+                        </span>
+                    }
+                </div>
+
+                @if (yukleme is null)
+                {
+                    <div class="is-birak-alan">
+                        <div class="is-birak">
+                            Bu dönem için ekstre yüklenmedi.<br />
+                            Dosyayı sürükleyip bırakın veya tıklayıp seçin.
+                        </div>
+                        <InputFile OnChange="@(args => YukleAsync(hesap, args))" accept=".xlsx,.xls" disabled="@_isleniyor" />
+                    </div>
+                }
+                else
+                {
+                    <div class="is-dosya" title="@yukleme.DosyaAdi">@yukleme.DosyaAdi · @yukleme.SatirSayisi satır</div>
+
+                    <div class="is-sayaclar">
+                        <div class="is-sayac iyi">
+                            <div class="deger">@(yukleme.Sayaclar.Otomatik + yukleme.Sayaclar.Onaylanan)</div>
+                            <div class="ad">Çözüldü</div>
+                        </div>
+                        <div class="is-sayac dikkat">
+                            <div class="deger">@yukleme.Sayaclar.OnayBekleyen</div>
+                            <div class="ad">Onay bekleyen</div>
+                        </div>
+                        <div class="is-sayac kotu">
+                            <div class="deger">@yukleme.Sayaclar.Cozulemeyen</div>
+                            <div class="ad">Çözülemeyen</div>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(yukleme.Uyarilar))
+                    {
+                        <div style="font-size:11px; color:#975a16; margin-top:8px">@yukleme.Uyarilar</div>
+                    }
+
+                    <div class="is-aksiyon">
+                        <RadzenButton Text="Onay ekranı" Icon="fact_check" ButtonStyle="ButtonStyle.Primary"
+                                      Size="ButtonSize.ExtraSmall"
+                                      Click="@(() => Nav.NavigateTo($"/banka-isleme/onay/{yukleme.Id}"))" />
+
+                        @if (yukleme.Sayaclar.Eksik == 0)
+                        {
+                            <RadzenButton Text="Dışa aktar" Icon="download" ButtonStyle="ButtonStyle.Secondary"
+                                          Size="ButtonSize.ExtraSmall"
+                                          Click="@(() => Nav.NavigateTo($"/banka-isleme/onay/{yukleme.Id}"))" />
+                        }
+
+                        <RadzenButton Icon="delete" title="Yüklemeyi sil" ButtonStyle="ButtonStyle.Light"
+                                      Size="ButtonSize.ExtraSmall" Click="@(() => SilAsync(yukleme))" />
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @if (AktifHesaplar.Count == 0)
+    {
+        <div class="is-bos">Bu bankada tanımlı hesap yok.</div>
+    }
+}
+
+@code {
+    private const long EnFazlaBayt = 20 * 1024 * 1024;
+    private const int EskiSayilanGun = 30;
+
+    private List<BankaHesabiDto> _hesaplar = new();
+    private List<EkstreYuklemeDto> _yuklemeler = new();
+
+    private int _planSayisi;
+    private int? _planGunFarki;
+
+    private string? _aktifBanka;
+    private int? _suruklenenHesapId;
+
+    private bool _yukleniyor = true;
+    private bool _isleniyor;
+
+    private int _yil = DateTime.Today.Year;
+    private int _ay = DateTime.Today.Month;
+
+    private int[] _yillar = Array.Empty<int>();
+
+    private static readonly (int No, string Ad)[] AyListesi =
+    {
+        (0, "Tüm dönemler"), (1, "Ocak"), (2, "Şubat"), (3, "Mart"), (4, "Nisan"),
+        (5, "Mayıs"), (6, "Haziran"), (7, "Temmuz"), (8, "Ağustos"),
+        (9, "Eylül"), (10, "Ekim"), (11, "Kasım"), (12, "Aralık")
+    };
+
+    private IEnumerable<object> _aylar = AyListesi.Select(a => new { a.No, a.Ad }).ToList();
+
+    /// <summary>Sekmeler tanımlı banka hesaplarından türer; sabit liste yok.</summary>
+    private List<string> Bankalar =>
+        _hesaplar.Select(h => h.BankaAdi).Distinct(StringComparer.OrdinalIgnoreCase)
+                 .OrderBy(a => a, StringComparer.CurrentCulture).ToList();
+
+    private List<BankaHesabiDto> AktifHesaplar =>
+        _hesaplar.Where(h => string.Equals(h.BankaAdi, _aktifBanka, StringComparison.OrdinalIgnoreCase))
+                 .OrderBy(h => h.HesapTipi).ThenBy(h => h.ParaBirimi).ToList();
+
+    protected override void OnInitialized() => SessionManager.FirmChanged += OnFirmaDegisti;
+
+    protected override async Task OnInitializedAsync() => await YukleAsync();
+
+    /// <summary>Firma değişince sayfa baştan yüklenir; eski firmanın verisi ekranda kalmasın.</summary>
+    private async void OnFirmaDegisti(FirmaDto _)
+        => await InvokeAsync(async () =>
+        {
+            _aktifBanka = null;
+            await YukleAsync();
+            StateHasChanged();
+        });
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+
+        _hesaplar = await Api.GetHesaplarAsync();
+        _yuklemeler = await Api.GetYuklemelerAsync();
+
+        var ozet = await Api.HesapPlaniOzetAsync();
+        _planSayisi = ozet.Sayi;
+        _planGunFarki = ozet.GunFarki;
+
+        _yillar = Enumerable.Range(DateTime.Today.Year - 3, 5).Reverse().ToArray();
+
+        if (_aktifBanka is null || Bankalar.All(b => !string.Equals(b, _aktifBanka, StringComparison.OrdinalIgnoreCase)))
+            _aktifBanka = Bankalar.FirstOrDefault();
+
+        _yukleniyor = false;
+    }
+
+    /// <summary>Seçili döneme düşen son yükleme; dönem alanı boşsa yükleme tarihine bakılır.</summary>
+    private EkstreYuklemeDto? SonYukleme(int hesapId)
+        => _yuklemeler.Where(y => y.BankaHesabiId == hesapId && DonemeUyuyorMu(y))
+                      .OrderByDescending(y => y.Id)
+                      .FirstOrDefault();
+
+    private bool DonemeUyuyorMu(EkstreYuklemeDto y)
+    {
+        var tarih = y.DonemBaslangic ?? y.YuklemeTarihi;
+        if (tarih.Year != _yil) return false;
+        return _ay == 0 || tarih.Month == _ay;
+    }
+
+    private int BankaBekleyen(string banka)
+        => _hesaplar.Where(h => string.Equals(h.BankaAdi, banka, StringComparison.OrdinalIgnoreCase))
+                    .Select(h => SonYukleme(h.Id))
+                    .Where(y => y is not null)
+                    .Sum(y => y!.Sayaclar.Eksik);
+
+    private async Task YukleAsync(BankaHesabiDto hesap, InputFileChangeEventArgs args)
+    {
+        var dosya = args.File;
+        _suruklenenHesapId = null;
+        if (dosya is null) return;
+
+        _isleniyor = true;
+
+        try
+        {
+            using var bellek = new MemoryStream();
+            await using (var kaynak = dosya.OpenReadStream(EnFazlaBayt))
+                await kaynak.CopyToAsync(bellek);
+            bellek.Position = 0;
+
+            var (veri, hata) = await Api.YukleAsync(hesap.Id, bellek, dosya.Name);
+            if (hata is not null)
+            {
+                Notif.Notify(NotificationSeverity.Error, "Yüklenemedi", hata, 8000);
+                return;
+            }
+
+            _yuklemeler = await Api.GetYuklemelerAsync();
+
+            // Yüklenen ekstrenin dönemi seçili dönemden farklıysa kart görünmez kalırdı.
+            if (veri?.DonemBaslangic is DateTime d)
+            {
+                _yil = d.Year;
+                _ay = d.Month;
+            }
+
+            Notif.Notify(NotificationSeverity.Success, "Ekstre işlendi",
+                         $"{veri?.SatirSayisi} satır · {veri?.Sayaclar.Eksik} satır onay bekliyor", 4000);
+        }
+        finally
+        {
+            _isleniyor = false;
+        }
+    }
+
+    private async Task SilAsync(EkstreYuklemeDto y)
+    {
+        var hata = await Api.SilAsync(y.Id);
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Silinemedi", hata, 6000);
+            return;
+        }
+
+        _yuklemeler = await Api.GetYuklemelerAsync();
+    }
+
+    public void Dispose() => SessionManager.FirmChanged -= OnFirmaDegisti;
+}

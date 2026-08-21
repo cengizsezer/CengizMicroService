@@ -19,7 +19,7 @@ namespace CatalogService.UnitTests.BankaEkstre
         {
             var secici = new EkstreParserSecici(new IEkstreParser[] { new VakifbankVadesizParser() });
             return new EkstreService(db, secici, new UnvanCikarici(), new AciklamaUretici(),
-                                     new HesapEslestirici(), new SabitKullanici());
+                                     new HesapEslestirici(), new HesapEslesmeService(db), new SabitKullanici());
         }
 
         /// <summary>Bir banka hesabı, yapılandırma satırları ve iki cari içeren hazır context.</summary>
@@ -46,6 +46,24 @@ namespace CatalogService.UnitTests.BankaEkstre
 
             await db.SaveChangesAsync();
             return (db, hesap.Id);
+        }
+
+        /// <summary>Tenant izolasyon testi için: verilen context'e kendi planı ve hesabı kurulur.</summary>
+        private static async Task HazirlaTenantAsync(CatalogContext db, string cariAdi, string cariKodu)
+        {
+            db.EkstreAciklamaSablonlari.AddRange(BankaEkstreTestOrtami.Sablonlar());
+            db.EkstreUnvanDesenleri.AddRange(BankaEkstreTestOrtami.Desenler());
+            db.EkstreHesapPlani.Add(Plan(cariKodu, cariAdi));
+
+            db.EkstreBankaHesaplari.Add(new BankaHesabi
+            {
+                BankaAdi = "Vakıfbank",
+                OrkaHesapKodu = "102 1 1 01",
+                ParserTipi = VakifbankVadesizParser.Tip,
+                Aktif = true
+            });
+
+            await db.SaveChangesAsync();
         }
 
         private static HesapPlaniKaydi Plan(string kod, string ad) => new()
@@ -126,10 +144,13 @@ namespace CatalogService.UnitTests.BankaEkstre
             Assert.Equal("120 Z01", onaylanan.OnaylananHesapKodu);
             Assert.Equal("ZETA MADENCİLİK", onaylanan.OnaylananHesapAdi);
 
-            var ogrenilen = db.EkstreOgrenmeKayitlari.Where(o => o.AnahtarTipi == AnahtarTipi.AciklamaHash).ToList();
+            var ogrenilen = db.EkstreHesapEslesmeleri.ToList();
             var kayit = Assert.Single(ogrenilen);
             Assert.Equal("120 Z01", kayit.HesapKodu);
             Assert.Equal(1, kayit.KullanimSayisi);
+
+            // Kimlik kaydi global; firma filtresi yok.
+            Assert.Single(db.EkstreKimlikKayitlari.ToList());
 
             // Aynı açıklama ikinci kez gelince Katman 2 çözer.
             using var ikinciDosya = BankaEkstreTestOrtami.BasliklıEkstre(
@@ -159,7 +180,7 @@ namespace CatalogService.UnitTests.BankaEkstre
             await Servis(db).OnaylaAsync(satir.Id, "120 D22");
             await Servis(db).OnaylaAsync(satir.Id, "120 Z01");
 
-            var kayit = db.EkstreOgrenmeKayitlari.Single(o => o.AnahtarTipi == AnahtarTipi.AciklamaHash);
+            var kayit = db.EkstreHesapEslesmeleri.Single();
 
             // Düzeltme kazanır; sayaç eski koda ait olduğu için sıfırlanır.
             Assert.Equal("120 Z01", kayit.HesapKodu);
@@ -167,7 +188,7 @@ namespace CatalogService.UnitTests.BankaEkstre
         }
 
         [Fact]
-        public async Task Bilinmeyen_kod_onaylanamaz()
+        public async Task Bilinmeyen_kod_kaydedilir_ama_ogrenilmez()
         {
             var (db, hesapId) = await HazirlaAsync();
             using var _ = db;
@@ -178,8 +199,145 @@ namespace CatalogService.UnitTests.BankaEkstre
             var yukleme = await Servis(db).YukleAsync(hesapId, dosya, "ocak.xlsx");
             var satir = (await Servis(db).GetSatirlarAsync(yukleme.Id, null))!.Single();
 
-            await Assert.ThrowsAsync<BankaEkstreKuralException>(
-                () => Servis(db).OnaylaAsync(satir.Id, "999 Q99"));
+            // ORKA'da yeni açılmış bir kod olabilir; kaydetmesine izin verilir...
+            var onaylanan = await Servis(db).OnaylaAsync(satir.Id, "999 Q99");
+
+            Assert.Equal(SatirDurum.Onaylandi, onaylanan!.Durum);
+            Assert.Equal("999 Q99", onaylanan.OnaylananHesapKodu);
+            Assert.Contains("hesap planında yok", onaylanan.Uyari);
+
+            // ...ama doğrulanmamış kod öğrenme tablosuna yazılmaz.
+            Assert.Empty(db.EkstreHesapEslesmeleri.ToList());
+        }
+
+        [Fact]
+        public async Task Gecmis_onaydan_cozulen_satir_duzeltilince_ogrenme_kaydi_guncellenir()
+        {
+            var veritabani = $"ekstre-duzeltme-{Guid.NewGuid()}";
+            var (db, hesapId) = await HazirlaAsync(veritabani);
+            using var _ = db;
+
+            using var ilkDosya = BankaEkstreTestOrtami.BasliklıEkstre(
+                new object[] { "15.01.2026", "Gelen EFT Otomatik Yatan", 1000m, "", "", "A", GelenAciklama });
+
+            var ilk = await Servis(db).YukleAsync(hesapId, ilkDosya, "ocak.xlsx");
+            var ilkSatir = (await Servis(db).GetSatirlarAsync(ilk.Id, null))!.Single();
+            await Servis(db).OnaylaAsync(ilkSatir.Id, "120 D22");
+
+            // İkinci ay: satır geçmiş onaydan çözülüyor ama kullanıcı kodu düzeltiyor.
+            using var ikinciDosya = BankaEkstreTestOrtami.BasliklıEkstre(
+                new object[] { "20.02.2026", "Gelen EFT Otomatik Yatan", 500m, "", "", "A", GelenAciklama });
+
+            var ikinci = await Servis(db).YukleAsync(hesapId, ikinciDosya, "subat.xlsx");
+            var ikinciSatir = (await Servis(db).GetSatirlarAsync(ikinci.Id, null))!.Single();
+            Assert.Equal(KaynakKatman.GecmisOnay, ikinciSatir.KaynakKatman);
+
+            await Servis(db).OnaylaAsync(ikinciSatir.Id, "120 Z01");
+
+            // Sadece satır değil, öğrenme kaydı da düzeldi; aksi hâlde hata gelecek ay geri gelirdi.
+            var kayit = db.EkstreHesapEslesmeleri.Single();
+            Assert.Equal("120 Z01", kayit.HesapKodu);
+        }
+
+        [Fact]
+        public async Task Ayni_cari_farkli_sorgu_numarasiyla_ikinci_kez_gecmis_onaydan_cozulur()
+        {
+            var veritabani = $"ekstre-cekirdek-{Guid.NewGuid()}";
+            var (db, hesapId) = await HazirlaAsync(veritabani);
+            using var _ = db;
+
+            using var ilkDosya = BankaEkstreTestOrtami.BasliklıEkstre(
+                new object[] { "15.01.2026", "Gelen EFT Otomatik Yatan", 1000m, "", "", "A",
+                               "0000123 sorgu numaralı KEMAL TEKSTİL SANAYİ A.Ş. tarafından gönderilmiştir" });
+
+            var ilk = await Servis(db).YukleAsync(hesapId, ilkDosya, "ocak.xlsx");
+            var ilkSatir = (await Servis(db).GetSatirlarAsync(ilk.Id, null))!.Single();
+            await Servis(db).OnaylaAsync(ilkSatir.Id, "120 Z01");
+
+            // İkinci ay: banka farklı sorgu numarası, farklı tarih ve tutar yazıyor.
+            // Ham hash anahtarıyla bu satır ASLA eşleşmezdi; unvan çekirdeğiyle eşleşir.
+            using var ikinciDosya = BankaEkstreTestOrtami.BasliklıEkstre(
+                new object[] { "20.02.2026", "Gelen EFT Otomatik Yatan", 7350.42m, "", "", "A",
+                               "0009987 sorgu numaralı KEMAL TEKSTİL SAN. VE TİC. A.Ş. tarafından gönderilmiştir" });
+
+            var ikinci = await Servis(db).YukleAsync(hesapId, ikinciDosya, "subat.xlsx");
+            var ikinciSatir = (await Servis(db).GetSatirlarAsync(ikinci.Id, null))!.Single();
+
+            Assert.Equal(KaynakKatman.GecmisOnay, ikinciSatir.KaynakKatman);
+            Assert.Equal("120 Z01", ikinciSatir.OnerilenHesapKodu);
+            Assert.Equal(SatirDurum.Otomatik, ikinciSatir.Durum);
+        }
+
+        [Fact]
+        public async Task Iki_firma_birbirinin_hesap_planini_ve_eslesmelerini_gormez()
+        {
+            // Aynı fiziksel veritabanı, iki farklı tenant erişimcisi.
+            var veritabani = $"ekstre-tenant-{Guid.NewGuid()}";
+
+            using var aday = BankaEkstreTestOrtami.YeniContext(veritabani, "201");
+            using var smmm = BankaEkstreTestOrtami.YeniContext(veritabani, "106");
+
+            await HazirlaTenantAsync(aday, "DAĞI GİYİM SANAYİ", "120 D22");
+            await HazirlaTenantAsync(smmm, "DAĞI GİYİM SANAYİ", "120 A07");
+
+            var adayHesap = aday.EkstreBankaHesaplari.Single();
+            var smmmHesap = smmm.EkstreBankaHesaplari.Single();
+
+            using var adayDosya = BankaEkstreTestOrtami.BasliklıEkstre(
+                new object[] { "15.01.2026", "Gelen EFT Otomatik Yatan", 1000m, "", "", "A", GelenAciklama });
+            using var smmmDosya = BankaEkstreTestOrtami.BasliklıEkstre(
+                new object[] { "15.01.2026", "Gelen EFT Otomatik Yatan", 1000m, "", "", "A", GelenAciklama });
+
+            var adayYukleme = await Servis(aday).YukleAsync(adayHesap.Id, adayDosya, "aday.xlsx");
+            var smmmYukleme = await Servis(smmm).YukleAsync(smmmHesap.Id, smmmDosya, "smmm.xlsx");
+
+            var adaySatir = (await Servis(aday).GetSatirlarAsync(adayYukleme.Id, null))!.Single();
+            var smmmSatir = (await Servis(smmm).GetSatirlarAsync(smmmYukleme.Id, null))!.Single();
+
+            // Her firma kendi hesap planını görüyor: aynı unvan farklı koda eşleşiyor.
+            Assert.Equal("120 D22", adaySatir.OnerilenHesapKodu);
+            Assert.Equal("120 A07", smmmSatir.OnerilenHesapKodu);
+
+            await Servis(aday).OnaylaAsync(adaySatir.Id, "120 D22");
+            await Servis(smmm).OnaylaAsync(smmmSatir.Id, "120 A07");
+
+            // Eşleşmeler firma bazlı: her firma yalnız kendi kaydını görür.
+            Assert.Equal("120 D22", aday.EkstreHesapEslesmeleri.Single().HesapKodu);
+            Assert.Equal("120 A07", smmm.EkstreHesapEslesmeleri.Single().HesapKodu);
+
+            // Yüklemeler ve hesap planları da karışmıyor.
+            Assert.Single(aday.EkstreYuklemeler.ToList());
+            Assert.Single(smmm.EkstreYuklemeler.ToList());
+            Assert.Equal("120 D22", aday.EkstreHesapPlani.Single().Kod);
+            Assert.Equal("120 A07", smmm.EkstreHesapPlani.Single().Kod);
+
+            // Kimlik kaydı ise global: aynı unvan tek kayıt, iki firma paylaşıyor.
+            Assert.Single(aday.EkstreKimlikKayitlari.ToList());
+        }
+
+        [Fact]
+        public async Task Duzeltilmis_ekstre_aciklama_kolonunu_degistirir()
+        {
+            var (db, hesapId) = await HazirlaAsync();
+            using var _ = db;
+
+            using var dosya = BankaEkstreTestOrtami.BasliklıEkstre(
+                new object[] { "15.01.2026", "Gelen EFT Otomatik Yatan", 1000m, "", "", "A", GelenAciklama });
+
+            var yukleme = await Servis(db).YukleAsync(hesapId, dosya, "ocak.xlsx");
+            var duzeltilmis = await Servis(db).DuzeltilmisEkstreAsync(yukleme.Id);
+
+            Assert.NotNull(duzeltilmis);
+            Assert.Equal("ocak-duzeltilmis.xlsx", duzeltilmis!.DosyaAdi);
+
+            using var akis = new MemoryStream(duzeltilmis.Icerik);
+            using var kitap = new ClosedXML.Excel.XLWorkbook(akis);
+            var sayfa = kitap.Worksheets.First();
+
+            // Açıklama kolonu (17) ham banka metni yerine bizim ürettiğimizi taşıyor.
+            Assert.Equal("Gelen Eft - Dağı Giyim Sanayi A.Ş.", sayfa.Cell(8, 17).GetString());
+            // Diğer kolonlar dokunulmadan kaldı: dosya orijinal yapıda.
+            Assert.Equal("Gelen EFT Otomatik Yatan", sayfa.Cell(8, 6).GetString());
         }
 
         [Fact]
@@ -205,7 +363,7 @@ namespace CatalogService.UnitTests.BankaEkstre
             Assert.Equal(1, sonuc.DigerBankadaAtlanan);
 
             var orka = Assert.Single(sonuc.Satirlar);
-            Assert.Equal("120 D22", orka.HesapKodu);
+            Assert.Equal("120 D22", orka.KarsiHesapKodu);
             // Kaydın diğer bacağı: ekstresi işlenen banka hesabının ORKA kodu.
             Assert.Equal("102 1 1 01", orka.BankaHesapKodu);
             Assert.Equal("Gelen Eft - Dağı Giyim Sanayi A.Ş.", orka.Aciklama);

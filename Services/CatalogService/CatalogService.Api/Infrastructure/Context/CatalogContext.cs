@@ -1,4 +1,4 @@
-﻿using CatalogService.Api.Features.AccountPlan;
+using CatalogService.Api.Features.AccountPlan;
 using CatalogService.Api.Features.Banka.Domain;
 using CatalogService.Api.Features.Declarations.Entities;
 using CatalogService.Api.Features.Education.Domain;
@@ -116,8 +116,12 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<Features.BankaEkstre.Domain.BankaHesabi> EkstreBankaHesaplari => Set<Features.BankaEkstre.Domain.BankaHesabi>();
         public DbSet<Features.BankaEkstre.Domain.EkstreYukleme> EkstreYuklemeler => Set<Features.BankaEkstre.Domain.EkstreYukleme>();
         public DbSet<Features.BankaEkstre.Domain.EkstreSatiri> EkstreSatirlari => Set<Features.BankaEkstre.Domain.EkstreSatiri>();
-        public DbSet<Features.BankaEkstre.Domain.OgrenmeKaydi> EkstreOgrenmeKayitlari => Set<Features.BankaEkstre.Domain.OgrenmeKaydi>();
+        public DbSet<Features.BankaEkstre.Domain.HesapEslesmesi> EkstreHesapEslesmeleri => Set<Features.BankaEkstre.Domain.HesapEslesmesi>();
         public DbSet<Features.BankaEkstre.Domain.HesapPlaniKaydi> EkstreHesapPlani => Set<Features.BankaEkstre.Domain.HesapPlaniKaydi>();
+
+        // Banka Ekstresi İşleme modülü — global (firma bağımsız) içerik.
+        // Bir unvanın kim olduğu her firmada aynıdır; hangi koda gittiği firmaya özeldir.
+        public DbSet<Features.BankaEkstre.Domain.KimlikKaydi> EkstreKimlikKayitlari => Set<Features.BankaEkstre.Domain.KimlikKaydi>();
 
         // Banka Ekstresi İşleme modülü — banka bazlı yapılandırma (tenant'tan bağımsız referans içerik)
         public DbSet<Features.BankaEkstre.Domain.AciklamaSablonu> EkstreAciklamaSablonlari => Set<Features.BankaEkstre.Domain.AciklamaSablonu>();
@@ -193,7 +197,8 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new BankaHesabiEntityTypeConfiguration());
             builder.ApplyConfiguration(new EkstreYuklemeEntityTypeConfiguration());
             builder.ApplyConfiguration(new EkstreSatiriEntityTypeConfiguration());
-            builder.ApplyConfiguration(new OgrenmeKaydiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new HesapEslesmesiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new KimlikKaydiEntityTypeConfiguration());
             builder.ApplyConfiguration(new HesapPlaniKaydiEntityTypeConfiguration());
             builder.ApplyConfiguration(new AciklamaSablonuEntityTypeConfiguration());
             builder.ApplyConfiguration(new UnvanDeseniEntityTypeConfiguration());
@@ -222,7 +227,7 @@ namespace CatalogService.Api.Infrastructure.Context
             // EkstreSatiri, bağlı olduğu EkstreYukleme üzerinden izole olur (FisSatir ile aynı yaklaşım).
             builder.Entity<Features.BankaEkstre.Domain.BankaHesabi>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
             builder.Entity<Features.BankaEkstre.Domain.EkstreYukleme>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
-            builder.Entity<Features.BankaEkstre.Domain.OgrenmeKaydi>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
+            builder.Entity<Features.BankaEkstre.Domain.HesapEslesmesi>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
             builder.Entity<Features.BankaEkstre.Domain.HesapPlaniKaydi>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
         }
 

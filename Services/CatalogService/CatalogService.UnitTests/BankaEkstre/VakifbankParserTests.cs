@@ -29,8 +29,12 @@ namespace CatalogService.UnitTests.BankaEkstre
             Assert.Equal(Yon.Giren, ilk.Yon);
             Assert.Equal(12500.75m, ilk.Tutar);
             Assert.Equal("Gelen EFT Otomatik Yatan", ilk.IslemTipi);
-            Assert.Equal("1234567890", ilk.KarsiVkn);
+            // VKN kolonu kasıtlı okunmuyor: karşı tarafın değil, hesap sahibinin VKN'si.
+            Assert.Null(ilk.KarsiVkn);
             Assert.Equal("EFT", ilk.Kanal);
+            // Satırın kaynak dosyadaki yeri; düzeltilmiş ekstre bu numarayla yazılıyor.
+            Assert.Equal(8, ilk.KaynakSatirNo);
+            Assert.Equal(17, sonuc.AciklamaKolonu);
 
             var ikinci = sonuc.Satirlar[1];
             Assert.Equal(Yon.Cikan, ikinci.Yon);

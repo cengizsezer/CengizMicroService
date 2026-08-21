@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -87,29 +86,59 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         }
 
         /// <summary>
-        /// Öğrenme anahtarı için ham açıklamanın normalizasyonu. Tutar/tarih gibi satıra
-        /// özgü sayılar korunmaz; aksi hâlde aynı gönderici her seferinde yeni anahtar üretirdi.
+        /// Öğrenme anahtarı: normalize unvan çekirdeği. Ham açıklamanın hash'i **kullanılmaz** —
+        /// banka her satıra farklı sorgu numarası, tarih ve tutar yazdığı için o anahtar asla
+        /// ikinci kez eşleşmiyordu.
+        ///
+        /// "...sorgu numaralı DAGİ GİYİM SANAYİ VE TİCARET ANONİM ŞİRKETİ tarafından..."
+        /// → çıkarılan unvan "DAGİ GİYİM SANAYİ VE TİCARET ANONİM ŞİRKETİ" → çekirdek "DAGI GIYIM".
+        ///
+        /// <see cref="UnvanNormalize"/>'ın üzerine tek harfli token'ları da atar; tek harf
+        /// iki farklı cariyi birbirine yaklaştırmaktan başka bir şey yapmıyor.
         /// </summary>
-        public static string AciklamaNormalize(string? aciklama)
+        public static string UnvanCekirdek(string? unvan)
         {
-            var sade = TurkceSadelestir(aciklama);
+            var normal = UnvanNormalize(unvan);
+            if (normal.Length == 0) return string.Empty;
+
+            var kelimeler = normal.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                                  .Where(k => k.Length > 1)
+                                  .ToArray();
+
+            return kelimeler.Length == 0 ? normal : string.Join(' ', kelimeler);
+        }
+
+        /// <summary>
+        /// Unvan çıkarılamayan satırların (banka masrafı, HGS, vergi…) öğrenme anahtarı:
+        /// işlem tipi + sabit önek. Ham açıklama kullanılsaydı her satır yeni anahtar üretirdi.
+        /// </summary>
+        public static string IslemAnahtari(string? islemTipi)
+        {
+            var sade = TurkceSadelestir(islemTipi);
             if (sade.Length == 0) return string.Empty;
 
             var sb = new StringBuilder(sade.Length);
             foreach (var ch in sade)
-                sb.Append(char.IsLetter(ch) ? ch : ' ');
+                sb.Append(char.IsLetterOrDigit(ch) ? ch : ' ');
 
-            return BosluklarDeseni.Replace(sb.ToString(), " ").Trim();
+            var temiz = BosluklarDeseni.Replace(sb.ToString(), " ").Trim();
+            return temiz.Length == 0 ? string.Empty : "ISLEM:" + temiz;
         }
 
-        /// <summary>Normalize açıklamanın SHA-256 hash'i (öğrenme kaydının anahtarı).</summary>
-        public static string AciklamaHash(string? aciklama)
+        /// <summary>
+        /// Ham banka metninin token aramasına uygun hâli: Türkçe sadeleştirilmiş, alfanümerik
+        /// dışı boşluk. Ayırt edici kelime (Aidat, Elektrik…) bu metinde aranır.
+        /// </summary>
+        public static string MetinNormalize(string? metin)
         {
-            var normal = AciklamaNormalize(aciklama);
-            if (normal.Length == 0) return string.Empty;
+            var sade = TurkceSadelestir(metin);
+            if (sade.Length == 0) return string.Empty;
 
-            var bayt = SHA256.HashData(Encoding.UTF8.GetBytes(normal));
-            return Convert.ToHexString(bayt);
+            var sb = new StringBuilder(sade.Length);
+            foreach (var ch in sade)
+                sb.Append(char.IsLetterOrDigit(ch) ? ch : ' ');
+
+            return BosluklarDeseni.Replace(sb.ToString(), " ").Trim();
         }
 
         /// <summary>

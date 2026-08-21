@@ -1,12 +1,17 @@
+using System.Text.Json;
 using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
 using CatalogService.Api.Infrastructure.Auth;
 using CatalogService.Api.Infrastructure.Context;
+using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 
 namespace CatalogService.Api.Features.BankaEkstre.Services
 {
+    /// <summary>Düzeltilmiş ekstre dosyası (dışa aktarımın birinci parçası).</summary>
+    public record DuzeltilmisEkstre(string DosyaAdi, byte[] Icerik);
+
     public interface IEkstreService
     {
         Task<EkstreYuklemeDto> YukleAsync(int bankaHesabiId, Stream dosya, string dosyaAdi, CancellationToken ct = default);
@@ -16,14 +21,15 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         Task<EkstreSatirDto?> OnaylaAsync(int satirId, string hesapKodu, CancellationToken ct = default);
         Task<EkstreSatirDto?> DigerBankadaAsync(int satirId, CancellationToken ct = default);
         Task<DisaAktarimSonucDto?> DisaAktarAsync(int ekstreId, CancellationToken ct = default);
+        Task<DuzeltilmisEkstre?> DuzeltilmisEkstreAsync(int ekstreId, CancellationToken ct = default);
         Task<bool> SilAsync(int ekstreId, CancellationToken ct = default);
     }
 
     /// <summary>
     /// Ekstre yükleme, satır işleme, onay ve dışa aktarım. Yükleme anında her satır için
     /// açıklama üretilir ve karşı hesap katmanlı olarak çözülür; belirsiz kalan satırlar
-    /// onaya düşer. Onaylar <see cref="OgrenmeKaydi"/> tablosuna yazılır ve bir sonraki
-    /// yüklemede Katman 1/2'den çözülür.
+    /// onaya düşer. Onaylar <see cref="HesapEslesmesi"/> tablosuna yazılır ve bir sonraki
+    /// yüklemede geçmiş onay katmanından çözülür.
     /// </summary>
     public class EkstreService : IEkstreService
     {
@@ -32,6 +38,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         private readonly IUnvanCikarici _unvanCikarici;
         private readonly IAciklamaUretici _aciklamaUretici;
         private readonly IHesapEslestirici _eslestirici;
+        private readonly IHesapEslesmeService _ogrenme;
         private readonly IHttpCurrentUser _kullanici;
 
         public EkstreService(
@@ -40,6 +47,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             IUnvanCikarici unvanCikarici,
             IAciklamaUretici aciklamaUretici,
             IHesapEslestirici eslestirici,
+            IHesapEslesmeService ogrenme,
             IHttpCurrentUser kullanici)
         {
             _db = db;
@@ -47,6 +55,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             _unvanCikarici = unvanCikarici;
             _aciklamaUretici = aciklamaUretici;
             _eslestirici = eslestirici;
+            _ogrenme = ogrenme;
             _kullanici = kullanici;
         }
 
@@ -61,7 +70,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                          ?? throw new BankaEkstreKuralException(nameof(hesap.ParserTipi),
                              $"'{hesap.ParserTipi}' için ayrıştırıcı tanımlı değil.");
 
-            var ayristirma = parser.Ayristir(dosya);
+            // Kaynak dosya saklanır: dışa aktarımın birinci parçası orijinal yapıdaki
+            // dosyanın açıklama kolonunu değiştirerek üretiliyor.
+            var icerik = await BaytlariOkuAsync(dosya, ct);
+
+            using var okumaAkisi = new MemoryStream(icerik, writable: false);
+            var ayristirma = parser.Ayristir(okumaAkisi);
 
             var yukleme = new EkstreYukleme
             {
@@ -72,7 +86,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 DonemBitis = ayristirma.DonemBitis,
                 SatirSayisi = ayristirma.Satirlar.Count,
                 Durum = ayristirma.Satirlar.Count == 0 ? YuklemeDurum.Hatali : YuklemeDurum.Tamamlandi,
-                Uyarilar = ayristirma.Uyarilar.Count == 0 ? null : string.Join(Environment.NewLine, ayristirma.Uyarilar)
+                Uyarilar = ayristirma.Uyarilar.Count == 0 ? null : string.Join(Environment.NewLine, ayristirma.Uyarilar),
+                DosyaIcerik = icerik,
+                AciklamaKolonu = ayristirma.AciklamaKolonu
             };
 
             if (ayristirma.AtlananSatir > 0)
@@ -82,7 +98,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             _db.EkstreYuklemeler.Add(yukleme);
             await _db.SaveChangesAsync(ct);
 
-            var veri = await EslestirmeVerisiYukleAsync(hesap.Id, ct);
+            var veri = await EslestirmeVerisiYukleAsync(hesap, ct);
             var sablonlar = await SablonlariYukleAsync(hesap.ParserTipi, ct);
             var desenler = await DesenleriYukleAsync(hesap.ParserTipi, ct);
 
@@ -123,11 +139,13 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
             var aciklama = _aciklamaUretici.Uret(baglam);
             var eslestirme = _eslestirici.Coz(baglam, veri);
+            var cekirdek = HesapEslestirici.AnahtarCekirdek(baglam);
 
             return new EkstreSatiri
             {
                 EkstreYuklemeId = yuklemeId,
                 SiraNo = ayrilan.SiraNo,
+                KaynakSatirNo = ayrilan.KaynakSatirNo,
                 Tarih = ayrilan.Tarih,
                 Yon = ayrilan.Yon,
                 Tutar = ayrilan.Tutar,
@@ -138,6 +156,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 Kanal = Normalizasyon.Kirp(ayrilan.Kanal, 100) is { Length: > 0 } k ? k : null,
                 UretilenAciklama = aciklama,
                 CikarilanUnvan = baglam.Unvan,
+                AnahtarCekirdek = Normalizasyon.Kirp(cekirdek, 200) is { Length: > 0 } c ? c : null,
+                AyirtEdiciEk = eslestirme.AyirtEdiciEk,
                 OnerilenHesapKodu = eslestirme.HesapKodu,
                 OnerilenHesapAdi = eslestirme.HesapAdi,
                 GuvenSkoru = Math.Round(eslestirme.Guven, 4),
@@ -145,6 +165,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 IkinciAdayKodu = eslestirme.IkinciAdayKodu,
                 IkinciAdayAdi = eslestirme.IkinciAdayAdi,
                 IkinciAdaySkoru = eslestirme.IkinciAdaySkoru is decimal s ? Math.Round(s, 4) : null,
+                Adaylar = AdaylariYaz(eslestirme.Adaylar),
                 Durum = eslestirme.Durum
             };
         }
@@ -156,15 +177,23 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             var yuklemeler = await _db.EkstreYuklemeler.AsNoTracking()
                 .Include(y => y.BankaHesabi)
                 .OrderByDescending(y => y.Id)
+                .Select(y => new
+                {
+                    Yukleme = y,
+                    // Dosya içeriği (megabaytlarca) listeye çekilmesin; yalnız varlığı gerekiyor.
+                    KaynakDosyaVar = y.DosyaIcerik != null
+                })
                 .ToListAsync(ct);
 
             if (yuklemeler.Count == 0) return new();
 
-            var idler = yuklemeler.Select(y => y.Id).ToList();
+            var idler = yuklemeler.Select(y => y.Yukleme.Id).ToList();
             var sayaclar = await SayaclariYukleAsync(idler, ct);
 
             return yuklemeler
-                .Select(y => Esle(y, sayaclar.TryGetValue(y.Id, out var s) ? s : new EkstreSayaclariDto()))
+                .Select(y => Esle(y.Yukleme,
+                                  sayaclar.TryGetValue(y.Yukleme.Id, out var s) ? s : new EkstreSayaclariDto(),
+                                  y.KaynakDosyaVar))
                 .ToList();
         }
 
@@ -172,12 +201,16 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         {
             var yukleme = await _db.EkstreYuklemeler.AsNoTracking()
                 .Include(y => y.BankaHesabi)
-                .FirstOrDefaultAsync(y => y.Id == id, ct);
+                .Where(y => y.Id == id)
+                .Select(y => new { Yukleme = y, KaynakDosyaVar = y.DosyaIcerik != null })
+                .FirstOrDefaultAsync(ct);
 
             if (yukleme is null) return null;
 
             var sayaclar = await SayaclariYukleAsync(new[] { id }, ct);
-            return Esle(yukleme, sayaclar.TryGetValue(id, out var s) ? s : new EkstreSayaclariDto());
+            return Esle(yukleme.Yukleme,
+                        sayaclar.TryGetValue(id, out var s) ? s : new EkstreSayaclariDto(),
+                        yukleme.KaynakDosyaVar);
         }
 
         public async Task<List<EkstreSatirDto>?> GetSatirlarAsync(int ekstreId, SatirDurum? durum, CancellationToken ct = default)
@@ -188,14 +221,18 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             if (durum is SatirDurum d) sorgu = sorgu.Where(s => s.Durum == d);
 
             var satirlar = await sorgu.OrderBy(s => s.SiraNo).ToListAsync(ct);
-            return satirlar.Select(Esle).ToList();
+            return satirlar.Select(s => Esle(s)).ToList();
         }
 
         // ---- Onay ve öğrenme ----
 
         /// <summary>
-        /// Satırı onaylar ve öğrenme kayıtlarını yazar. Kullanıcı önerilenden farklı bir
-        /// kod seçtiyse eski öğrenme kaydı ezilir — düzeltme her zaman kazanır.
+        /// Satırı onaylar ve öğrenme kaydını yazar. Kullanıcı önerilenden farklı bir kod
+        /// seçtiyse öğrenme kaydı da güncellenir — sadece satır değil; aksi hâlde hata
+        /// gelecek ay geri gelirdi.
+        ///
+        /// Hesap planında olmayan kod **kabul edilir** (ORKA'da yeni açılmış olabilir) ama
+        /// öğrenilmez: doğrulanmamış kod kalıcılaşmasın.
         /// </summary>
         public async Task<EkstreSatirDto?> OnaylaAsync(int satirId, string hesapKodu, CancellationToken ct = default)
         {
@@ -207,12 +244,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 throw new BankaEkstreKuralException(nameof(hesapKodu), "Hesap kodu boş olamaz.");
 
             var plan = await _db.EkstreHesapPlani.AsNoTracking().FirstOrDefaultAsync(h => h.Kod == kod, ct);
-
-            // Hesap planı henüz içe aktarılmadıysa onay engellenmez; ad boş kalır.
-            // Ama plan doluysa bilinmeyen kod kabul edilmez — kod uydurulmasın.
-            if (plan is null && await _db.EkstreHesapPlani.AnyAsync(ct))
-                throw new BankaEkstreKuralException(nameof(hesapKodu),
-                    $"'{kod}' hesap planında yok. Kodu kontrol edin veya hesap planını yeniden içe aktarın.");
+            var planDolu = await _db.EkstreHesapPlani.AnyAsync(ct);
+            var bilinmeyenKod = plan is null && planDolu;
 
             satir.OnaylananHesapKodu = kod;
             satir.OnaylananHesapAdi = plan?.Ad;
@@ -221,10 +254,17 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             satir.Durum = SatirDurum.Onaylandi;
             satir.KaynakKatman = KaynakKatman.Kullanici;
 
-            await OgrenAsync(satir, kod, plan?.Ad, ct);
+            if (!bilinmeyenKod)
+                await _ogrenme.OgrenAsync(satir, kod, plan?.Ad, ct);
+
             await _db.SaveChangesAsync(ct);
 
-            return Esle(satir);
+            var dto = Esle(satir);
+            if (bilinmeyenKod)
+                dto.Uyari = $"'{kod}' hesap planında yok — ORKA'da yeni açıldıysa hesap planını güncelleyin. " +
+                            "Kod kaydedildi ama öğrenilmedi.";
+
+            return dto;
         }
 
         /// <summary>
@@ -244,97 +284,84 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             return Esle(satir);
         }
 
-        private async Task OgrenAsync(EkstreSatiri satir, string kod, string? ad, CancellationToken ct)
-        {
-            await AnahtarYazAsync(AnahtarTipi.AciklamaHash, Normalizasyon.AciklamaHash(satir.HamAciklama), satir.Yon, kod, ad, ct);
-            await AnahtarYazAsync(AnahtarTipi.Iban, Normalizasyon.IbanAnahtar(satir.KarsiIban), satir.Yon, kod, ad, ct);
-            await AnahtarYazAsync(AnahtarTipi.Vkn, Normalizasyon.VknAnahtar(satir.KarsiVkn), satir.Yon, kod, ad, ct);
-        }
-
-        private async Task AnahtarYazAsync(AnahtarTipi tip, string anahtar, Yon yon, string kod, string? ad, CancellationToken ct)
-        {
-            if (string.IsNullOrEmpty(anahtar)) return;
-
-            var mevcut = await _db.EkstreOgrenmeKayitlari
-                .FirstOrDefaultAsync(o => o.AnahtarTipi == tip && o.Anahtar == anahtar && o.Yon == yon, ct);
-
-            if (mevcut is null)
-            {
-                _db.EkstreOgrenmeKayitlari.Add(new OgrenmeKaydi
-                {
-                    AnahtarTipi = tip,
-                    Anahtar = anahtar,
-                    Yon = yon,
-                    HesapKodu = kod,
-                    HesapAdi = ad,
-                    KullanimSayisi = 1,
-                    SonKullanim = DateTime.Now
-                });
-                return;
-            }
-
-            // Farklı kod seçildiyse eski kayıt ezilir; sayaç yeniden başlar çünkü
-            // eski koda ait kullanım artık bu anahtarı temsil etmiyor.
-            if (!string.Equals(mevcut.HesapKodu, kod, StringComparison.Ordinal))
-            {
-                mevcut.HesapKodu = kod;
-                mevcut.HesapAdi = ad;
-                mevcut.KullanimSayisi = 1;
-            }
-            else
-            {
-                mevcut.KullanimSayisi++;
-            }
-
-            mevcut.SonKullanim = DateTime.Now;
-        }
-
         // ---- Dışa aktarım ----
 
         /// <summary>
-        /// ORKA çıktısı. Çözülemedi veya onay bekleyen satır varsa üretilmez:
-        /// eksik listeyle ORKA'ya gitmenin anlamı yok.
+        /// Dışa aktarımın ikinci parçası: karşı hesap kodu listesi. Çözülemedi veya onay
+        /// bekleyen satır varsa üretilmez — eksik listeyle ORKA'ya gitmenin anlamı yok.
         /// </summary>
         public async Task<DisaAktarimSonucDto?> DisaAktarAsync(int ekstreId, CancellationToken ct = default)
         {
             var yukleme = await _db.EkstreYuklemeler.AsNoTracking()
                 .Include(y => y.BankaHesabi)
-                .FirstOrDefaultAsync(y => y.Id == ekstreId, ct);
+                .Where(y => y.Id == ekstreId)
+                .Select(y => new { Yukleme = y, KaynakDosyaVar = y.DosyaIcerik != null })
+                .FirstOrDefaultAsync(ct);
 
             if (yukleme is null) return null;
 
-            var satirlar = await _db.EkstreSatirlari.AsNoTracking()
-                .Where(s => s.EkstreYuklemeId == ekstreId)
-                .OrderBy(s => s.SiraNo)
-                .ToListAsync(ct);
-
-            var eksik = satirlar.Count(s => s.Durum is SatirDurum.OnayBekliyor or SatirDurum.Cozulemedi);
-            if (eksik > 0)
-                throw new BankaEkstreKuralException("satirlar",
-                    $"{eksik} satır hâlâ çözülmemiş (onay bekleyen veya çözülemeyen). " +
-                    "Eksik listeyle dışa aktarım yapılmaz; önce onay ekranını tamamlayın.");
-
+            var satirlar = await AktarilacakSatirlarAsync(ekstreId, ct);
             var aktarilacak = satirlar.Where(s => s.Durum != SatirDurum.DigerBankada).ToList();
-            var bankaKodu = yukleme.BankaHesabi?.OrkaHesapKodu ?? string.Empty;
+            var bankaKodu = yukleme.Yukleme.BankaHesabi?.OrkaHesapKodu ?? string.Empty;
 
             return new DisaAktarimSonucDto
             {
                 EkstreId = ekstreId,
-                DosyaAdi = yukleme.DosyaAdi,
+                DosyaAdi = yukleme.Yukleme.DosyaAdi,
                 SatirSayisi = aktarilacak.Count,
                 DigerBankadaAtlanan = satirlar.Count - aktarilacak.Count,
+                DuzeltilmisEkstreHazir = yukleme.KaynakDosyaVar,
                 Satirlar = aktarilacak.Select(s => new OrkaSatirDto
                 {
                     SiraNo = s.SiraNo,
                     Tarih = s.Tarih,
+                    // Robotun satır doğrulaması açıklamaya bakıyor; çıkarılmaz.
                     Aciklama = s.UretilenAciklama ?? string.Empty,
                     Yon = s.Yon,
                     Tutar = s.Tutar,
-                    HesapKodu = s.EtkinHesapKodu ?? string.Empty,
+                    KarsiHesapKodu = s.EtkinHesapKodu ?? string.Empty,
                     HesapAdi = s.OnaylananHesapAdi ?? s.OnerilenHesapAdi,
                     BankaHesapKodu = bankaKodu
                 }).ToList()
             };
+        }
+
+        /// <summary>
+        /// Dışa aktarımın birinci parçası: orijinal ekstre dosyası, açıklama kolonu bizim
+        /// ürettiğimiz metinle değiştirilmiş. Değiştirilmezse ORKA gridinde ham banka metni
+        /// görünür.
+        /// </summary>
+        public async Task<DuzeltilmisEkstre?> DuzeltilmisEkstreAsync(int ekstreId, CancellationToken ct = default)
+        {
+            var yukleme = await _db.EkstreYuklemeler.AsNoTracking().FirstOrDefaultAsync(y => y.Id == ekstreId, ct);
+            if (yukleme is null) return null;
+
+            if (yukleme.DosyaIcerik is null || yukleme.DosyaIcerik.Length == 0)
+                throw new BankaEkstreKuralException("dosya",
+                    "Bu yüklemenin kaynak dosyası saklanmamış; düzeltilmiş ekstre üretilemez. Ekstreyi yeniden yükleyin.");
+
+            if (yukleme.AciklamaKolonu <= 0)
+                throw new BankaEkstreKuralException("dosya",
+                    "Kaynak dosyada açıklama kolonu belirlenemedi; düzeltilmiş ekstre üretilemez.");
+
+            var satirlar = await AktarilacakSatirlarAsync(ekstreId, ct);
+
+            using var kaynak = new MemoryStream(yukleme.DosyaIcerik, writable: false);
+            using var kitap = new XLWorkbook(kaynak);
+            var sayfa = kitap.Worksheets.First();
+
+            foreach (var satir in satirlar)
+            {
+                if (satir.KaynakSatirNo <= 0) continue;
+                sayfa.Cell(satir.KaynakSatirNo, yukleme.AciklamaKolonu).Value =
+                    Normalizasyon.Kirp(satir.UretilenAciklama, AciklamaUretici.EnFazlaUzunluk);
+            }
+
+            using var cikti = new MemoryStream();
+            kitap.SaveAs(cikti);
+
+            var ad = Path.GetFileNameWithoutExtension(yukleme.DosyaAdi);
+            return new DuzeltilmisEkstre($"{ad}-duzeltilmis.xlsx", cikti.ToArray());
         }
 
         public async Task<bool> SilAsync(int ekstreId, CancellationToken ct = default)
@@ -350,20 +377,49 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         // ---- Yardımcılar ----
 
+        /// <summary>Dışa aktarıma girecek satırlar; eksik satır varsa 400'e karşılık gelen kural hatası.</summary>
+        private async Task<List<EkstreSatiri>> AktarilacakSatirlarAsync(int ekstreId, CancellationToken ct)
+        {
+            var satirlar = await _db.EkstreSatirlari.AsNoTracking()
+                .Where(s => s.EkstreYuklemeId == ekstreId)
+                .OrderBy(s => s.SiraNo)
+                .ToListAsync(ct);
+
+            var eksik = satirlar.Count(s => s.Durum is SatirDurum.OnayBekliyor or SatirDurum.Cozulemedi);
+            if (eksik > 0)
+                throw new BankaEkstreKuralException("satirlar",
+                    $"{eksik} satır hâlâ çözülmemiş (onay bekleyen veya çözülemeyen). " +
+                    "Eksik listeyle dışa aktarım yapılmaz; önce onay ekranını tamamlayın.");
+
+            return satirlar;
+        }
+
+        private static async Task<byte[]> BaytlariOkuAsync(Stream dosya, CancellationToken ct)
+        {
+            if (dosya is MemoryStream hazir) return hazir.ToArray();
+
+            using var bellek = new MemoryStream();
+            if (dosya.CanSeek) dosya.Position = 0;
+            await dosya.CopyToAsync(bellek, ct);
+            return bellek.ToArray();
+        }
+
         /// <summary>Satırı, bağlı olduğu yükleme tenant filtresinden geçtiği için güvenle getirir.</summary>
         private Task<EkstreSatiri?> SatirGetirAsync(int satirId, CancellationToken ct)
             => _db.EkstreSatirlari
                 .Where(s => s.Id == satirId && _db.EkstreYuklemeler.Any(y => y.Id == s.EkstreYuklemeId))
                 .FirstOrDefaultAsync(ct);
 
-        private async Task<EslestirmeVerisi> EslestirmeVerisiYukleAsync(int islenenHesapId, CancellationToken ct)
+        private async Task<EslestirmeVerisi> EslestirmeVerisiYukleAsync(BankaHesabi hesap, CancellationToken ct)
             => new()
             {
-                OgrenmeKayitlari = await _db.EkstreOgrenmeKayitlari.AsNoTracking().ToListAsync(ct),
+                Eslesmeler = await _db.EkstreHesapEslesmeleri.AsNoTracking().ToListAsync(ct),
                 BankaHesaplari = await _db.EkstreBankaHesaplari.AsNoTracking().ToListAsync(ct),
                 SabitKurallar = await _db.EkstreSabitKurallar.AsNoTracking().ToListAsync(ct),
                 HesapPlani = await _db.EkstreHesapPlani.AsNoTracking().Where(h => h.Aktif).ToListAsync(ct),
-                IslenenBankaHesabiId = islenenHesapId
+                IslenenBankaHesabiId = hesap.Id,
+                IbanKatmaniAktif = hesap.IbanKatmaniAktif,
+                VknKatmaniAktif = hesap.VknKatmaniAktif
             };
 
         private Task<List<AciklamaSablonu>> SablonlariYukleAsync(string parserTipi, CancellationToken ct)
@@ -406,7 +462,31 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             return sonuc;
         }
 
-        private static EkstreYuklemeDto Esle(EkstreYukleme y, EkstreSayaclariDto sayaclar) => new()
+        // ---- Aday listesi (JSON) ----
+
+        private static readonly JsonSerializerOptions AdaySecenekleri = new(JsonSerializerDefaults.Web);
+
+        private static string? AdaylariYaz(IReadOnlyList<AdayKayit> adaylar)
+            => adaylar.Count <= 1 ? null : JsonSerializer.Serialize(adaylar, AdaySecenekleri);
+
+        private static List<AdayDto> AdaylariOku(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return new();
+
+            try
+            {
+                var kayitlar = JsonSerializer.Deserialize<List<AdayKayit>>(json, AdaySecenekleri);
+                return kayitlar?.Select(a => new AdayDto { Kod = a.Kod, Ad = a.Ad, Skor = Math.Round(a.Skor, 4) }).ToList()
+                       ?? new List<AdayDto>();
+            }
+            catch (JsonException)
+            {
+                // Bozuk kayıt tüm listeyi düşürmesin; onay ekranı iki adayla devam eder.
+                return new();
+            }
+        }
+
+        private static EkstreYuklemeDto Esle(EkstreYukleme y, EkstreSayaclariDto sayaclar, bool kaynakDosyaVar) => new()
         {
             Id = y.Id,
             BankaHesabiId = y.BankaHesabiId,
@@ -418,7 +498,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             SatirSayisi = y.SatirSayisi,
             Durum = y.Durum,
             Uyarilar = y.Uyarilar,
-            Sayaclar = sayaclar
+            Sayaclar = sayaclar,
+            KaynakDosyaVar = kaynakDosyaVar
         };
 
         private static EkstreSatirDto Esle(EkstreSatiri s) => new()
@@ -442,9 +523,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             IkinciAdayKodu = s.IkinciAdayKodu,
             IkinciAdayAdi = s.IkinciAdayAdi,
             IkinciAdaySkoru = s.IkinciAdaySkoru,
+            Adaylar = AdaylariOku(s.Adaylar),
             OnaylananHesapKodu = s.OnaylananHesapKodu,
             OnaylananHesapAdi = s.OnaylananHesapAdi,
-            Durum = s.Durum
+            Durum = s.Durum,
+            AnahtarCekirdek = s.AnahtarCekirdek,
+            AyirtEdiciEk = s.AyirtEdiciEk
         };
     }
 }

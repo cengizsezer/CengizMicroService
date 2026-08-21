@@ -1,4 +1,4 @@
-﻿# KARARLAR — Banka Ekstresi İşleme Modülü
+# KARARLAR — Banka Ekstresi İşleme Modülü
 
 Prompt'ta açıkça yazmayan noktalarda alınan kararlar ve gerekçeleri.
 Kural: belirsizse en muhafazakâr seçenek, mimari belirsizse repodaki benzer koda bak.
@@ -165,3 +165,185 @@ ile seçilebilir. Öneri listesi açıksa rakam listeden, kapalıysa yakın aday
 diyor. Adaylar yalnız `@onclick` ile seçilebiliyordu; klavye kullanıcısı ikinci adayı
 elle yazmak zorunda kalıyordu. `↓`/`↑` satır değiştirmeye ayrılmış olduğundan aday
 gezinmesi için kullanılamazdı, bu yüzden ayrı bir değiştirici tuş seçildi.
+
+---
+
+# Düzeltmeler turu (claude-code-prompt-banka-modulu-duzeltmeler.md)
+
+Aşağıdaki kararlar ilk turun kararlarını **değiştiriyor**; çelişki olduğunda bu bölüm geçerli.
+
+## 21. VKN ve IBAN katmanları silinmedi, banka bazlı bayrakla kapatıldı
+
+**Karar:** `BankaHesabi`'ye `IbanKatmaniAktif` ve `VknKatmaniAktif` alanları eklendi;
+ikisi de varsayılan **kapalı**. Katman kodu `HesapEslestirici` içinde duruyor, yalnız
+bayrak açıksa okunuyor. Öğrenme de aynı kurala tabi: kapalı katman veri biriktirmiyor.
+**Neden:** Prompt §1 "katmanı silme, banka bazlı bir bayrakla kapalı tut" diyor. Kapalı
+katmanın sessizce veri biriktirmesi, sonradan açıldığında doğrulanmamış eşleşmelerin
+güven 1.0 ile geçmesi demekti; bu yüzden yazma da bayrağa bağlandı.
+
+Karar §7 (yeni katman: VKN) bu maddeyle geçersiz kaldı.
+
+## 22. Banka kayıt defterinin IBAN kontrolü kaldı
+
+**Karar:** "IBAN katmanını çıkar" kuralı yalnız **öğrenilmiş** IBAN eşleşmesini kapsıyor.
+Bankalar arası hareketlerde `BankaBul`, kullanıcının Tanımlar'da kendi girdiği hesap
+IBAN'ıyla eşleştirmeye devam ediyor.
+**Neden:** Güvenilmez bulunan şey bankanın ekstredeki IBAN verisi ve ondan öğrenilen
+eşleşme. Kendi hesaplarının IBAN'ı kullanıcının elle girdiği, doğrulanmış bir tanım;
+kaldırmak Katman 2'yi (ölçümde en yüksek getirili katman) zayıflatırdı. Bu alan boş
+bırakılabilir, o zaman yalnız banka adı metin eşlemesi çalışır.
+
+## 23. Öğrenme tablosu ikiye bölündü; eski tablo düşürüldü
+
+**Karar:** `EkstreOgrenmeKayitlari` migration ile **düşürüldü**. Yerine:
+
+| Tablo | Kapsam | Alanlar |
+|---|---|---|
+| `EkstreKimlikKayitlari` | GLOBAL | `Anahtar`, `AnahtarTipi`, `NormalizeUnvan`, `KullanimSayisi`, `SonKullanim` |
+| `EkstreHesapEslesmeleri` | FİRMA | `TenantNo`, `AnahtarCekirdek`, `AyirtEdiciEk`, `AnahtarTipi`, `HesapKodu`, `HesapAdi`, `Yon`, `KullanimSayisi`, `SonKullanim` |
+
+**Neden:** Eski tablonun anahtarı ham açıklamanın hash'iydi; banka her satıra farklı sorgu
+numarası, tarih ve tutar yazdığı için o anahtar **asla ikinci kez eşleşmiyordu**. Taşınacak
+anlamlı veri yoktu, dönüştürmek yerine düşürüldü. Prompt'un alan listesine `AnahtarTipi`
+eklendi ki kapalı IBAN/VKN katmanları açıldığında aynı tabloyu kullanabilsin.
+
+## 24. Öğrenme anahtarı: unvan çekirdeği, gerekiyorsa ayırt edici ekle
+
+**Karar:** `Normalizasyon.UnvanCekirdek` — `UnvanNormalize` + tek harfli token'ları at.
+Unvan çıkarılamayan satırlarda anahtar `ISLEM:<normalize işlem tipi>`.
+Aile tespit edilirse anahtar `çekirdek + AyirtEdiciEk`; aramada önce genişletilmiş
+anahtar, tutmazsa sade çekirdek denenir.
+**Neden:** Prompt §3 ve §5. Anahtarın **her zaman** çok parçalı olması, çoğu satırda
+gereksiz kelime ekleyip anahtarın ikinci ay tutmamasına yol açardı.
+
+## 25. Çıpa algoritması tüm grup taramasının yerini aldı
+
+**Karar:** Unvan benzerliği katmanı artık yön → ana grup daraltmasından sonra normalize
+unvanın **her token'ını sırayla çıpa** olarak deniyor: çıpayla başlayan hesapları getirip
+kalan metinle (çıpa dahil) skorluyor, her hesap için en yüksek skoru tutuyor.
+**Hiçbir çıpa aday getirmezse kod önerilmiyor**, satır `Cozulemedi` olarak onay kuyruğuna
+düşüyor.
+**Neden:** Prompt §4. Eski algoritma ilk harfle daraltıp tüm grubu tarıyordu ve alakasız
+bir hesabı "en yakın" diye öneriyordu. Alakasız öneri, öneri yokluğundan daha kötü:
+kullanıcı Enter'a basıp yanlış kodu öğretebiliyor.
+
+`Cozulemedi` seçildi çünkü Karar §8'deki ayrım korunuyor: aday yoksa "burada hiç fikrim
+yok", aday varsa "şu adayı öneriyorum". İkisi de aynı onay kuyruğunda.
+
+## 25b. Aday sayısı eşiği kaldırıldı (gerçek hesap planıyla ölçüldü)
+
+**Karar:** İlk sürümdeki `CipaAdayEsigi = 25` — "bir çıpa 25'ten fazla aday getiriyorsa
+sonucunu yok say" kuralı — **kaldırıldı**. Çıpanın kaç aday getirdiğine bakılmıyor,
+tüm token'lar deneniyor ve en yüksek skor alınıyor.
+
+**Neden:** Kural, 6.127 kayıtlık gerçek hesap planında ölçüldü ve **zarar verdiği görüldü**.
+Kalabalık çıpalar gürültü değil, meşru cari aileleri:
+
+| Çıpa | Aday | Ne olduğu |
+|---|---|---|
+| `PKF` | 89 | Grup şirketleri |
+| `PARDUS` | 101 | Portföy fonları |
+| `ISTANBUL` | 126 | Aynı önekli gerçek cariler |
+
+Eşik uygulanınca `PKF İstanbul YMM` skoru 0.95 → **0.48**, `İstanbul Portföy Yönetimi`
+1.00 → **0.61** düşüyor ve satırlar alakasız ana hesaplara (`373`, `110`, `121 1`)
+eşleşiyordu. Yani eşik, önlemeye çalıştığı hatanın ta kendisini üretiyordu.
+
+Yanlış eşleşmeye karşı koruma zaten mevcut iki kuralda ve onlar gevşetilmedi:
+**`OtomatikEsik = 0.85`** (düşük skor otomatik geçmez) ve **`AdayFarki = 0.05`**
+(yakın ikinci aday varsa onaya düşer). Kalabalık bir çıpanın ürettiği alakasız aday
+zaten bu iki filtreden geçemiyor; aday sayısına bakmak gereksiz ve zararlı bir üçüncü
+filtreydi.
+
+Regresyon testleri: `Kalabalik_cipa_elenmez_pkf_ailesi_dogru_cariye_gider` (89 PKF hesabı
+arasından `120 P44`) ve `Kalabalik_cipa_elenmez_istanbul_portfoy_dogru_cariye_gider`
+(126 İSTANBUL hesabı arasından `120 I61`), ikisi de 0.90 üzeri skorla.
+
+## 25c. Eşik yerine ön indeks
+
+**Karar:** Aday sayısını kısıtlamak yerine arama hızlandırıldı: `HesapPlaniIndeksi` —
+ana grup başına, normalize hesap adına göre **ordinal sıralı dizi**. Çıpayla başlayan
+hesaplar ikili aramayla (`AltSinir`) bulunan bitişik bir aralık. İndeks
+`EslestirmeVerisi.Indeks` üzerinden **yükleme başına bir kez** kuruluyor.
+**Neden:** Eşiğin tek meşru gerekçesi performanstı; 6.127 kaydı satır × token sayısı kadar
+taramak gereksiz. Sıralı dizi + ikili arama seçildi çünkü token → hesap sözlüğü, çıpanın
+hesap adının ilk kelimesinin **öneki** olduğu durumları (`PKF` → `PKFISTANBUL...`)
+kaçırırdı; sıralı önek aralığı eski `StartsWith` davranışını birebir koruyor. Çıpa tek
+token olduğundan (boşluk içermez) "adın öneki" ile "ilk kelimenin öneki" aynı şeydir.
+
+## 26. Aile ayrımı ham açıklamada aranır
+
+**Karar:** En iyi adayla 0.05 içindeki adaylar "aile" sayılır. Aile üyelerinin **ortak
+olmayan** kelimeleri (Aidat, Elektrik, 19 Kat) ham banka açıklamasında tam token olarak
+aranır. Tam bir üye bulunursa o seçilir ve anahtara ek olarak yazılır; sıfır veya birden
+fazla üye bulunursa satır onaya düşer ve **tüm aile** aday olarak listelenir.
+**Neden:** Prompt §5. "Birden fazla üye bulunursa" durumunda tahmin etmemek, iki adayın
+0.05 içinde olması kadar belirsiz bir durum.
+
+Onay ekranı artık iki adayla sınırlı değil; adaylar `EkstreSatirlari.Adaylar` alanında
+JSON olarak duruyor (en fazla 8), `Alt+1..9` bu listeden seçiyor. `IkinciAday*` alanları
+korundu — dışa aktarım ve mevcut testler onları kullanıyor.
+
+## 27. Bilinmeyen hesap kodu artık reddedilmiyor
+
+**Karar:** Hesap planında olmayan kodla onay **kabul ediliyor**; yanıtta uyarı dönüyor
+("ORKA'da yeni açıldıysa hesap planını güncelleyin") ve **öğrenme kaydı yazılmıyor**.
+**Neden:** Prompt §9. Karar §17 (bilinmeyen kod reddedilir) bununla geçersiz kaldı:
+ORKA'da yeni açılmış bir cari için kullanıcıyı kilitlemek yerine, doğrulanmamış kodun
+kalıcılaşmasını engellemek yetiyor. Öğrenilen eşleşme düzenleme ekranında ise bilinmeyen
+kod hâlâ reddediliyor — orası doğrudan öğrenme tablosuna yazıyor.
+
+## 28. Dışa aktarım iki parça; kaynak dosya saklanıyor
+
+**Karar:**
+1. `POST .../{id}/duzeltilmis-ekstre` → orijinal xlsx, açıklama kolonu `UretilenAciklama`
+   ile değiştirilmiş (dosya indirilir).
+2. `POST .../{id}/disa-aktar` → JSON kod listesi; `OrkaSatirDto.HesapKodu` alanı
+   `KarsiHesapKodu` olarak yeniden adlandırıldı (PkfRobot'un `GridDoldur` sözleşmesi).
+   `Aciklama` alanı robotun satır doğrulaması için duruyor.
+
+Bunun için `EkstreYuklemeler`'e `DosyaIcerik` (varbinary(max)) ve `AciklamaKolonu`,
+`EkstreSatirlari`'na `KaynakSatirNo` eklendi.
+**Neden:** Prompt §10. "Orijinal ekstre yapısında" dosya üretmenin tek güvenilir yolu
+kaynağı saklayıp açıklama hücrelerini üzerine yazmak; parse edilmiş alanlardan yeniden
+üretmek dosyanın yapısını kaybettirirdi. Karar §15 (dosya üretilmez) bununla geçersiz.
+
+Kaynak dosyası olmayan eski yüklemelerde yalnız kod listesi üretilir; ekran düğmeyi
+devre dışı bırakır.
+
+## 29. Hesap planı içe aktarımı pasife çekiyor
+
+**Karar:** Dosyada olmayan mevcut kodlar silinmiyor, `Aktif = false` yapılıyor; sonuç
+DTO'suna `Pasiflenen` sayacı eklendi. Ayrıca `HesapPlaniKaydi.SonGuncelleme` eklendi,
+Tanımlar ekranı "son içe aktarım" bilgisini bunun en büyüğünden okuyor.
+**Neden:** Prompt §8. Silmek geçmiş ekstre satırlarındaki kodun karşılığını kaybettirirdi.
+
+## 30. Firma bağlamı: sayfa içi seçici yok
+
+**Karar:** Yeni ekranlar `IAppSessionManager.FirmChanged` olayına abone oluyor ve firma
+değişince kendilerini yeniliyor. Sayfa içine firma seçici konmadı.
+**Neden:** Prompt §8. Uygulamanın üstündeki FİRMA DEĞİŞTİR bağlamı zaten `SelectTenant`
+ile yeni JWT üretiyor (`tn` claim'i) ve `HttpCurrentTenant` bunu okuyor; ikinci bir
+seçici iki doğruluk kaynağı yaratırdı.
+
+Firma bazlı tablolarda sorgular EF global query filter'dan geçiyor (`TenantNo ==
+CurrentTenantNo`); `EkstreSatiri` bağlı olduğu yüklemeden izole oluyor. `EkstreKimlikKayitlari`
+ile şablon/desen/kural tablolarında filtre **yok** — kasıtlı, içerik global.
+
+## 31. Menü ve sayfa yapısı
+
+**Karar:** `Banka İşleme` → `İşleme` (`/banka-isleme`, günlük ana ekran) + `Tanımlar`
+(`/banka-isleme/tanimlar`). Eski `/banka-isleme/hesaplar` ve `/banka-isleme/yukle`
+rotaları kalktı; hesap CRUD'u Tanımlar'ın bir bölümü oldu (`Bolumler/` altında bileşen).
+**Neden:** Prompt §8.
+
+Kartlardaki "Dışa aktar" düğmesi onay ekranına götürüyor; iki parça da orada indiriliyor.
+Ayrı bir indirme akışı kurmak, kullanıcıyı çıktı listesini görmeden dosya üretmeye
+zorlardı.
+
+## 32. İleri dönük alan
+
+**Karar:** `EkstreSatiri.EslesenKarsiSatirId` (nullable) eklendi, dolduran mantık yok.
+**Neden:** Prompt §11. İki firma da sistemde olduğu için Aday'dan SMMM'ye giden bir
+transferin karşı bacağı diğer firmanın ekstresinde bulunabilir; grup içi çapraz doğrulama
+ileride buradan yürüyecek.

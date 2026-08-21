@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SovosService.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7b2d6760248c407d6af6e562166b40dd63535023")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+71411281bda80077d305f619610cde5effa24d2c")]
 [assembly: System.Reflection.AssemblyProductAttribute("SovosService.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SovosService.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

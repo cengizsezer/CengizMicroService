@@ -249,6 +249,9 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(34)
                         .HasColumnType("nvarchar(34)");
 
+                    b.Property<bool>("IbanKatmaniAktif")
+                        .HasColumnType("bit");
+
                     b.Property<string>("OrkaHesapKodu")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -269,6 +272,9 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<bool>("VknKatmaniAktif")
+                        .HasColumnType("bit");
+
                     b.HasKey("Id");
 
                     b.HasIndex("TenantNo", "BankaAdi");
@@ -284,6 +290,17 @@ namespace CatalogService.Api.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Adaylar")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AnahtarCekirdek")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("AyirtEdiciEk")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
                     b.Property<string>("CikarilanUnvan")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
@@ -292,6 +309,9 @@ namespace CatalogService.Api.Migrations
                         .HasColumnType("tinyint");
 
                     b.Property<int>("EkstreYuklemeId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("EslesenKarsiSatirId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("GuvenSkoru")
@@ -331,6 +351,9 @@ namespace CatalogService.Api.Migrations
 
                     b.Property<byte>("KaynakKatman")
                         .HasColumnType("tinyint");
+
+                    b.Property<int>("KaynakSatirNo")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("OnayTarihi")
                         .HasColumnType("datetime2");
@@ -386,6 +409,9 @@ namespace CatalogService.Api.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("AciklamaKolonu")
+                        .HasColumnType("int");
+
                     b.Property<int>("BankaHesabiId")
                         .HasColumnType("int");
 
@@ -399,6 +425,9 @@ namespace CatalogService.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(260)
                         .HasColumnType("nvarchar(260)");
+
+                    b.Property<byte[]>("DosyaIcerik")
+                        .HasColumnType("varbinary(max)");
 
                     b.Property<byte>("Durum")
                         .HasColumnType("tinyint");
@@ -424,6 +453,64 @@ namespace CatalogService.Api.Migrations
                     b.HasIndex("TenantNo", "BankaHesabiId");
 
                     b.ToTable("EkstreYuklemeler", "catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.BankaEkstre.Domain.HesapEslesmesi", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AnahtarCekirdek")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<byte>("AnahtarTipi")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("AyirtEdiciEk")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("HesapAdi")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("HesapKodu")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("KullanimSayisi")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SonKullanim")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TenantNo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<byte>("Yon")
+                        .HasColumnType("tinyint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantNo", "AnahtarTipi", "AnahtarCekirdek", "Yon")
+                        .IsUnique()
+                        .HasDatabaseName("IX_EkstreHesapEslesmeleri_Cekirdek")
+                        .HasFilter("[AyirtEdiciEk] IS NULL");
+
+                    b.HasIndex("TenantNo", "AnahtarTipi", "AnahtarCekirdek", "AyirtEdiciEk", "Yon")
+                        .IsUnique()
+                        .HasDatabaseName("IX_EkstreHesapEslesmeleri_CekirdekEk")
+                        .HasFilter("[AyirtEdiciEk] IS NOT NULL");
+
+                    b.ToTable("EkstreHesapEslesmeleri", "catalog");
                 });
 
             modelBuilder.Entity("CatalogService.Api.Features.BankaEkstre.Domain.HesapPlaniKaydi", b =>
@@ -461,6 +548,9 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<DateTime>("SonGuncelleme")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("TenantNo")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -476,7 +566,7 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("EkstreHesapPlani", "catalog");
                 });
 
-            modelBuilder.Entity("CatalogService.Api.Features.BankaEkstre.Domain.OgrenmeKaydi", b =>
+            modelBuilder.Entity("CatalogService.Api.Features.BankaEkstre.Domain.KimlikKaydi", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -486,41 +576,28 @@ namespace CatalogService.Api.Migrations
 
                     b.Property<string>("Anahtar")
                         .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<byte>("AnahtarTipi")
                         .HasColumnType("tinyint");
 
-                    b.Property<string>("HesapAdi")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("HesapKodu")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
                     b.Property<int>("KullanimSayisi")
                         .HasColumnType("int");
+
+                    b.Property<string>("NormalizeUnvan")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<DateTime>("SonKullanim")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("TenantNo")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<byte>("Yon")
-                        .HasColumnType("tinyint");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantNo", "AnahtarTipi", "Anahtar", "Yon")
+                    b.HasIndex("AnahtarTipi", "Anahtar")
                         .IsUnique();
 
-                    b.ToTable("EkstreOgrenmeKayitlari", "catalog");
+                    b.ToTable("EkstreKimlikKayitlari", "catalog");
                 });
 
             modelBuilder.Entity("CatalogService.Api.Features.BankaEkstre.Domain.SabitKural", b =>

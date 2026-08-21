@@ -17,6 +17,7 @@ namespace WebApp.Application.Services
         private const string Hesaplar = "/catalog/banka-ekstre/banka-hesaplari";
         private const string Ekstre = "/catalog/banka-ekstre/ekstre";
         private const string HesapPlani = "/catalog/banka-ekstre/hesap-plani";
+        private const string Eslesmeler = "/catalog/banka-ekstre/eslesmeler";
 
         private const string XlsxTuru = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
@@ -87,6 +88,35 @@ namespace WebApp.Application.Services
         public Task<(DisaAktarimSonucDto? Veri, string? Hata)> DisaAktarAsync(int ekstreId, CancellationToken ct = default)
             => GonderAsync<DisaAktarimSonucDto>(() => _http.PostAsync($"{Ekstre}/{ekstreId}/disa-aktar", content: null, ct));
 
+        /// <summary>
+        /// Düzeltilmiş ekstre dosyası. JSON değil ikili içerik döner; hata gövdesi yine
+        /// { field, message } sözleşmesiyle okunur.
+        /// </summary>
+        public async Task<(string? DosyaAdi, byte[]? Icerik, string? Hata)> DuzeltilmisEkstreAsync(
+            int ekstreId, CancellationToken ct = default)
+        {
+            try
+            {
+                using var resp = await _http.PostAsync($"{Ekstre}/{ekstreId}/duzeltilmis-ekstre", content: null, ct);
+
+                if (!resp.IsSuccessStatusCode)
+                {
+                    var govde = await resp.Content.ReadAsStringAsync(ct);
+                    return (null, null, MesajCoz(govde) ?? "Düzeltilmiş ekstre üretilemedi.");
+                }
+
+                var ad = resp.Content.Headers.ContentDisposition?.FileNameStar
+                         ?? resp.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+                         ?? $"ekstre-{ekstreId}-duzeltilmis.xlsx";
+
+                return (ad, await resp.Content.ReadAsByteArrayAsync(ct), null);
+            }
+            catch (Exception)
+            {
+                return (null, null, "Sunucuya ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.");
+            }
+        }
+
         public async Task<string?> SilAsync(int ekstreId, CancellationToken ct = default)
         {
             var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync($"{Ekstre}/{ekstreId}", ct));
@@ -108,6 +138,9 @@ namespace WebApp.Application.Services
         public async Task<int> HesapPlaniSayisiAsync(CancellationToken ct = default)
             => await GetOrNull<int?>($"{HesapPlani}/sayi", ct) ?? 0;
 
+        public async Task<HesapPlaniOzetDto> HesapPlaniOzetAsync(CancellationToken ct = default)
+            => await GetOrNull<HesapPlaniOzetDto>($"{HesapPlani}/ozet", ct) ?? new();
+
         public Task<(HesapPlaniIceAktarimSonucDto? Veri, string? Hata)> HesapPlaniIceAktarAsync(
             Stream icerik, string dosyaAdi, CancellationToken ct = default)
             => GonderAsync<HesapPlaniIceAktarimSonucDto>(() =>
@@ -119,6 +152,27 @@ namespace WebApp.Application.Services
 
                 return _http.PostAsync($"{HesapPlani}/ice-aktar", form, ct);
             });
+
+        // ---- Öğrenilen eşleşmeler ----
+
+        public async Task<List<HesapEslesmesiDto>> EslesmeleriAraAsync(string? q, int enFazla = 100,
+                                                                      CancellationToken ct = default)
+        {
+            var url = $"{Eslesmeler}?enFazla={enFazla}";
+            if (!string.IsNullOrWhiteSpace(q)) url += $"&q={Uri.EscapeDataString(q)}";
+
+            return await GetOrNull<List<HesapEslesmesiDto>>(url, ct) ?? new();
+        }
+
+        public Task<(HesapEslesmesiDto? Veri, string? Hata)> EslesmeGuncelleAsync(int id, HesapEslesmesiYazDto dto,
+                                                                                 CancellationToken ct = default)
+            => GonderAsync<HesapEslesmesiDto>(() => _http.PutAsJsonAsync($"{Eslesmeler}/{id}", dto, ct));
+
+        public async Task<string?> EslesmeSilAsync(int id, CancellationToken ct = default)
+        {
+            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync($"{Eslesmeler}/{id}", ct));
+            return hata;
+        }
 
         // ---- Yardımcılar ----
 

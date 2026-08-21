@@ -20,6 +20,14 @@ namespace WebApp.Shared.Dto.BankaEkstre
         DigerBankada = 5
     }
 
+    /// <summary>Öğrenme anahtarının tipi (sunucudaki enum ile aynı).</summary>
+    public enum AnahtarTipi : byte
+    {
+        UnvanCekirdek = 1,
+        Iban = 2,
+        Vkn = 3
+    }
+
     public enum KaynakKatman : byte
     {
         Yok = 0,
@@ -44,6 +52,8 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public string OrkaHesapKodu { get; set; } = string.Empty;
         public string ParserTipi { get; set; } = string.Empty;
         public bool Aktif { get; set; }
+        public bool IbanKatmaniAktif { get; set; }
+        public bool VknKatmaniAktif { get; set; }
     }
 
     public class BankaHesabiYazDto
@@ -55,6 +65,8 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public string OrkaHesapKodu { get; set; } = string.Empty;
         public string ParserTipi { get; set; } = string.Empty;
         public bool Aktif { get; set; } = true;
+        public bool IbanKatmaniAktif { get; set; }
+        public bool VknKatmaniAktif { get; set; }
     }
 
     public class ParserSecenekDto
@@ -91,6 +103,17 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public YuklemeDurum Durum { get; set; }
         public string? Uyarilar { get; set; }
         public EkstreSayaclariDto Sayaclar { get; set; } = new();
+
+        /// <summary>Kaynak dosya saklandı mı — düzeltilmiş ekstre indirilebilir mi?</summary>
+        public bool KaynakDosyaVar { get; set; }
+    }
+
+    /// <summary>Onay ekranında seçenek olarak listelenen karşı hesap adayı.</summary>
+    public class AdayDto
+    {
+        public string Kod { get; set; } = string.Empty;
+        public string Ad { get; set; } = string.Empty;
+        public decimal Skor { get; set; }
     }
 
     public class EkstreSatirDto
@@ -118,9 +141,36 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public string? IkinciAdayAdi { get; set; }
         public decimal? IkinciAdaySkoru { get; set; }
 
+        /// <summary>Aynı unvan ailesinden tüm adaylar; iki adayla sınırlı değil.</summary>
+        public List<AdayDto> Adaylar { get; set; } = new();
+
         public string? OnaylananHesapKodu { get; set; }
         public string? OnaylananHesapAdi { get; set; }
         public SatirDurum Durum { get; set; }
+
+        public string? AnahtarCekirdek { get; set; }
+        public string? AyirtEdiciEk { get; set; }
+
+        /// <summary>Onay sonrası uyarı (ör. kod planda yok → öğrenilmedi). Hata değil.</summary>
+        public string? Uyari { get; set; }
+
+        /// <summary>
+        /// Onay ekranının göstereceği aday listesi: aile doluysa o, değilse önerilen +
+        /// yakın ikinci aday. Alt+N seçimi bu sırayı kullanır.
+        /// </summary>
+        public List<AdayDto> SecilebilirAdaylar()
+        {
+            if (Adaylar.Count > 0) return Adaylar;
+
+            var liste = new List<AdayDto>();
+            if (!string.IsNullOrWhiteSpace(OnerilenHesapKodu))
+                liste.Add(new AdayDto { Kod = OnerilenHesapKodu, Ad = OnerilenHesapAdi ?? string.Empty, Skor = GuvenSkoru });
+
+            if (!string.IsNullOrWhiteSpace(IkinciAdayKodu))
+                liste.Add(new AdayDto { Kod = IkinciAdayKodu, Ad = IkinciAdayAdi ?? string.Empty, Skor = IkinciAdaySkoru ?? 0m });
+
+            return liste.Count > 1 ? liste : new List<AdayDto>();
+        }
     }
 
     public class SatirOnaylaDto
@@ -135,7 +185,8 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public string Aciklama { get; set; } = string.Empty;
         public Yon Yon { get; set; }
         public decimal Tutar { get; set; }
-        public string HesapKodu { get; set; } = string.Empty;
+        /// <summary>PkfRobot'un GridDoldur adımının tükettiği karşı hesap kodu.</summary>
+        public string KarsiHesapKodu { get; set; } = string.Empty;
         public string? HesapAdi { get; set; }
         public string BankaHesapKodu { get; set; } = string.Empty;
     }
@@ -146,7 +197,34 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public string DosyaAdi { get; set; } = string.Empty;
         public int SatirSayisi { get; set; }
         public int DigerBankadaAtlanan { get; set; }
+
+        /// <summary>Düzeltilmiş ekstre dosyası (birinci parça) indirilebilir mi?</summary>
+        public bool DuzeltilmisEkstreHazir { get; set; }
+
         public List<OrkaSatirDto> Satirlar { get; set; } = new();
+    }
+
+    // ---- Öğrenilen eşleşmeler ----
+
+    public class HesapEslesmesiDto
+    {
+        public int Id { get; set; }
+        public string AnahtarCekirdek { get; set; } = string.Empty;
+        public string? AyirtEdiciEk { get; set; }
+        public string TamAnahtar { get; set; } = string.Empty;
+        public AnahtarTipi AnahtarTipi { get; set; }
+        public string HesapKodu { get; set; } = string.Empty;
+        public string? HesapAdi { get; set; }
+        public Yon Yon { get; set; }
+        public int KullanimSayisi { get; set; }
+        public DateTime SonKullanim { get; set; }
+    }
+
+    public class HesapEslesmesiYazDto
+    {
+        public string HesapKodu { get; set; } = string.Empty;
+        public Yon Yon { get; set; }
+        public string? AyirtEdiciEk { get; set; }
     }
 
     // ---- Hesap planı ----
@@ -166,7 +244,18 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public int Eklenen { get; set; }
         public int Guncellenen { get; set; }
         public int Atlanan { get; set; }
+
+        /// <summary>ORKA dosyasında olmayıp planda duran kayıtlar; silinmez, pasife çekilir.</summary>
+        public int Pasiflenen { get; set; }
+
         public List<string> Uyarilar { get; set; } = new();
+    }
+
+    public class HesapPlaniOzetDto
+    {
+        public int Sayi { get; set; }
+        public DateTime? SonIceAktarim { get; set; }
+        public int? GunFarki { get; set; }
     }
 
     /// <summary>Ekrandaki Türkçe karşılıklar ve ortak biçimlendirme.</summary>
@@ -189,6 +278,7 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public static string Katman(KaynakKatman k) => k switch
         {
             KaynakKatman.Iban => "IBAN",
+            // "geçmiş" = öğrenilmiş eşleşme; yanılırsa Tanımlar > Öğrenilen Eşleşmeler'den düzeltilir.
             KaynakKatman.Vkn => "VKN",
             KaynakKatman.GecmisOnay => "geçmiş",
             KaynakKatman.BankaKayitDefteri => "banka",

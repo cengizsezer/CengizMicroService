@@ -39,6 +39,11 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
     /// <summary>
     /// Karşı hesabı hangi katmanın çözdüğü. Hata ayıklama için kritik: hangi katmanın
     /// yanıldığı bu alandan görülür, onay ekranında etiket olarak gösterilir.
+    ///
+    /// Sayısal değerler sözleşmenin parçası (istemci DTO'su aynı sırayı kullanıyor).
+    /// <see cref="Iban"/> ve <see cref="Vkn"/> katmanları varsayılan olarak kapalıdır
+    /// (<see cref="BankaHesabi.IbanKatmaniAktif"/> / <see cref="BankaHesabi.VknKatmaniAktif"/>);
+    /// enum değerleri korundu ki başka bankada açıldığında etiketler değişmesin.
     /// </summary>
     public enum KaynakKatman : byte
     {
@@ -52,10 +57,15 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
         Kullanici = 7
     }
 
-    /// <summary>Öğrenme kaydının anahtar tipi.</summary>
+    /// <summary>
+    /// Öğrenme anahtarının tipi. Varsayılan <see cref="UnvanCekirdek"/>: ham açıklamanın
+    /// hash'i değil, normalize edilmiş unvan çekirdeği. Ham hash asla ikinci kez eşleşmiyordu
+    /// (banka her satıra farklı sorgu numarası/tarih/tutar yazıyor).
+    /// </summary>
     public enum AnahtarTipi : byte
     {
-        AciklamaHash = 1,
+        /// <summary>Normalize unvan çekirdeği veya unvansız satırlarda "ISLEM:&lt;işlem tipi&gt;".</summary>
+        UnvanCekirdek = 1,
         Iban = 2,
         Vkn = 3
     }

@@ -136,6 +136,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             hesap.OrkaHesapKodu = Normalizasyon.HesapKoduNormalize(dto.OrkaHesapKodu);
             hesap.ParserTipi = dto.ParserTipi.Trim();
             hesap.Aktif = dto.Aktif;
+            // Katmanlar varsayılan kapalı; kullanıcı bilerek açar (bkz. BankaHesabi yorumları).
+            hesap.IbanKatmaniAktif = dto.IbanKatmaniAktif;
+            hesap.VknKatmaniAktif = dto.VknKatmaniAktif;
         }
 
         private static BankaHesabiDto Esle(BankaHesabi h) => new()
@@ -147,7 +150,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             Iban = h.Iban,
             OrkaHesapKodu = h.OrkaHesapKodu,
             ParserTipi = h.ParserTipi,
-            Aktif = h.Aktif
+            Aktif = h.Aktif,
+            IbanKatmaniAktif = h.IbanKatmaniAktif,
+            VknKatmaniAktif = h.VknKatmaniAktif
         };
     }
 }

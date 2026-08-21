@@ -14,6 +14,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
         /// <summary>Dosyadaki sıra (1'den başlar).</summary>
         public int SiraNo { get; set; }
 
+        /// <summary>
+        /// Satırın kaynak dosyadaki Excel satır numarası. Düzeltilmiş ekstre dışa
+        /// aktarımında açıklama hücresi bu numarayla bulunur.
+        /// </summary>
+        public int KaynakSatirNo { get; set; }
+
         // ---- Ham banka verisi ----
 
         public DateTime Tarih { get; set; }
@@ -40,6 +46,16 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
 
         public string? CikarilanUnvan { get; set; }
 
+        /// <summary>
+        /// Öğrenme anahtarının çekirdeği (normalize unvan veya "ISLEM:&lt;işlem tipi&gt;").
+        /// Yükleme anında hesaplanır; onayda öğrenme kaydı bu anahtarla yazılır, böylece
+        /// satırı çözen kayıt ile güncellenen kayıt aynı olur.
+        /// </summary>
+        public string? AnahtarCekirdek { get; set; }
+
+        /// <summary>Aile tespit edildiyse çekirdeğe eklenen ayırt edici kelime.</summary>
+        public string? AyirtEdiciEk { get; set; }
+
         // ---- Eşleştirme ----
 
         public string? OnerilenHesapKodu { get; set; }
@@ -55,12 +71,25 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
         public string? IkinciAdayAdi { get; set; }
         public decimal? IkinciAdaySkoru { get; set; }
 
+        /// <summary>
+        /// Aynı unvan ailesinden tüm adaylar (kod|ad|skor satırları). Park Plaza gibi
+        /// çok üyeli ailelerde onay ekranı iki adayla yetinmesin diye tutulur.
+        /// </summary>
+        public string? Adaylar { get; set; }
+
         public string? OnaylananHesapKodu { get; set; }
         public string? OnaylananHesapAdi { get; set; }
         public DateTime? OnayTarihi { get; set; }
         public string? OnaylayanKullanici { get; set; }
 
         public SatirDurum Durum { get; set; } = SatirDurum.OnayBekliyor;
+
+        /// <summary>
+        /// Grup içi transferin karşı bacağı olan satır (diğer firmanın ekstresinde).
+        /// Şimdilik yalnız alan ayrıldı; dolduran mantık yok — ileride çapraz doğrulama
+        /// (Aday → SMMM transferi) buradan yürüyecek.
+        /// </summary>
+        public int? EslesenKarsiSatirId { get; set; }
 
         public EkstreYukleme? EkstreYukleme { get; set; }
 

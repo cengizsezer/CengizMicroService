@@ -24,6 +24,16 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
         /// <summary>Parser'ın ürettiği uyarılar (kolon adı bulunamadı vb.), satır başına birer satır.</summary>
         public string? Uyarilar { get; set; }
 
+        /// <summary>
+        /// Yüklenen dosyanın ham içeriği. Dışa aktarımın birinci parçası "orijinal ekstre
+        /// yapısında, açıklama kolonu değiştirilmiş dosya" olduğu için kaynak saklanır;
+        /// yeniden üretmek dosya yapısını kaybettirirdi.
+        /// </summary>
+        public byte[]? DosyaIcerik { get; set; }
+
+        /// <summary>Kaynak dosyadaki açıklama kolonunun numarası (1 tabanlı); dışa aktarımda kullanılır.</summary>
+        public int AciklamaKolonu { get; set; }
+
         public BankaHesabi? BankaHesabi { get; set; }
         public ICollection<EkstreSatiri> Satirlar { get; set; } = new List<EkstreSatiri>();
     }

@@ -29,5 +29,11 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
         public string? BaslangicHarfi { get; set; }
 
         public bool Aktif { get; set; } = true;
+
+        /// <summary>
+        /// Kaydın son içe aktarımda görüldüğü an. Tanımlar ekranı "son içe aktarım"
+        /// bilgisini bunun en büyüğünden okur; 30 günü aşarsa yumuşak hatırlatma çıkar.
+        /// </summary>
+        public DateTime SonGuncelleme { get; set; }
     }
 }

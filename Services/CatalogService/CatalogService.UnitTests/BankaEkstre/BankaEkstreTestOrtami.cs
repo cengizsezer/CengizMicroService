@@ -15,13 +15,18 @@ namespace CatalogService.UnitTests.BankaEkstre
         public const string TenantNo = "201";
         public const string ParserTipi = "VAKIFBANK_VADESIZ";
 
-        public static CatalogContext YeniContext(string? veritabaniAdi = null)
+        /// <summary>
+        /// Bellek içi context. Aynı <paramref name="veritabaniAdi"/> ile farklı
+        /// <paramref name="tenantNo"/> vererek iki firmanın aynı veritabanını paylaştığı
+        /// izolasyon senaryosu kurulabilir.
+        /// </summary>
+        public static CatalogContext YeniContext(string? veritabaniAdi = null, string? tenantNo = null)
         {
             var options = new DbContextOptionsBuilder<CatalogContext>()
                 .UseInMemoryDatabase(veritabaniAdi ?? $"banka-ekstre-{Guid.NewGuid()}")
                 .Options;
 
-            return new CatalogContext(options, new FixedTenantAccessor(TenantNo));
+            return new CatalogContext(options, new FixedTenantAccessor(tenantNo ?? TenantNo));
         }
 
         // ---- Yapılandırma satırları (üretimdeki seed ile aynı içerik) ----

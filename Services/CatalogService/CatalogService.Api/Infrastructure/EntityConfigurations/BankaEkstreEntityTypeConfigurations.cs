@@ -41,6 +41,7 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(x => x.DonemBaslangic).HasColumnType("date");
             builder.Property(x => x.DonemBitis).HasColumnType("date");
             // Uyarilar: parser uyarıları, uzunluk sınırsız (nvarchar(max)).
+            // DosyaIcerik: kaynak xlsx (varbinary(max)); düzeltilmiş ekstre bundan üretilir.
 
             builder.HasOne(x => x.BankaHesabi)
                    .WithMany()
@@ -77,6 +78,9 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             // ORKA açıklamayı 50 karakterde kesiyor; sınır veritabanında da duruyor.
             builder.Property(x => x.UretilenAciklama).HasMaxLength(50);
             builder.Property(x => x.CikarilanUnvan).HasMaxLength(150);
+            builder.Property(x => x.AnahtarCekirdek).HasMaxLength(200);
+            builder.Property(x => x.AyirtEdiciEk).HasMaxLength(60);
+            // Adaylar: aile üyelerinin JSON listesi, uzunluk sınırsız (nvarchar(max)).
 
             builder.Property(x => x.OnerilenHesapKodu).HasMaxLength(30);
             builder.Property(x => x.OnerilenHesapAdi).HasMaxLength(200);
@@ -93,21 +97,57 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
         }
     }
 
-    public class OgrenmeKaydiEntityTypeConfiguration : IEntityTypeConfiguration<OgrenmeKaydi>
+    /// <summary>
+    /// Öğrenilen eşleşmeler — firma bazlı. Anahtar ham hash değil, unvan çekirdeği;
+    /// aynı çekirdeği paylaşan cari ailesinde ayırt edici ek anahtarın parçasıdır.
+    /// </summary>
+    public class HesapEslesmesiEntityTypeConfiguration : IEntityTypeConfiguration<HesapEslesmesi>
     {
-        public void Configure(EntityTypeBuilder<OgrenmeKaydi> builder)
+        public void Configure(EntityTypeBuilder<HesapEslesmesi> builder)
         {
-            builder.ToTable("EkstreOgrenmeKayitlari", CatalogContext.DEFAULT_SCHEMA);
+            builder.ToTable("EkstreHesapEslesmeleri", CatalogContext.DEFAULT_SCHEMA);
             builder.HasKey(x => x.Id);
 
             builder.Property(x => x.TenantNo).IsRequired().HasMaxLength(20);
-            builder.Property(x => x.Anahtar).IsRequired().HasMaxLength(128);
+            builder.Property(x => x.AnahtarCekirdek).IsRequired().HasMaxLength(200);
+            builder.Property(x => x.AyirtEdiciEk).HasMaxLength(60);
             builder.Property(x => x.HesapKodu).IsRequired().HasMaxLength(30);
             builder.Property(x => x.HesapAdi).HasMaxLength(200);
             builder.Property(x => x.SonKullanim).HasColumnType("datetime2");
 
-            // Aynı anahtar + tip + yön tek kayıt; kullanıcı farklı kod seçerse üzerine yazılır.
-            builder.HasIndex(x => new { x.TenantNo, x.AnahtarTipi, x.Anahtar, x.Yon }).IsUnique();
+            builder.Ignore(x => x.TamAnahtar);
+
+            // Aynı firma + anahtar (çekirdek + ek) + tip + yön tek kayıt.
+            // AyirtEdiciEk nullable olduğu için unique index filtresiz kurulamaz; SQL Server'da
+            // NULL'lar tekil sayılır, bu yüzden ek dolu ve boş olan iki ayrı index kullanılıyor.
+            builder.HasIndex(x => new { x.TenantNo, x.AnahtarTipi, x.AnahtarCekirdek, x.Yon })
+                   .IsUnique()
+                   .HasFilter("[AyirtEdiciEk] IS NULL")
+                   .HasDatabaseName("IX_EkstreHesapEslesmeleri_Cekirdek");
+
+            builder.HasIndex(x => new { x.TenantNo, x.AnahtarTipi, x.AnahtarCekirdek, x.AyirtEdiciEk, x.Yon })
+                   .IsUnique()
+                   .HasFilter("[AyirtEdiciEk] IS NOT NULL")
+                   .HasDatabaseName("IX_EkstreHesapEslesmeleri_CekirdekEk");
+        }
+    }
+
+    /// <summary>
+    /// Karşı tarafın kimliği — global. Firma filtresi yok: bir unvanın kim olduğu
+    /// her firmada aynıdır, Aday'da öğrenilen SMMM'de hazır gelir.
+    /// </summary>
+    public class KimlikKaydiEntityTypeConfiguration : IEntityTypeConfiguration<KimlikKaydi>
+    {
+        public void Configure(EntityTypeBuilder<KimlikKaydi> builder)
+        {
+            builder.ToTable("EkstreKimlikKayitlari", CatalogContext.DEFAULT_SCHEMA);
+            builder.HasKey(x => x.Id);
+
+            builder.Property(x => x.Anahtar).IsRequired().HasMaxLength(200);
+            builder.Property(x => x.NormalizeUnvan).HasMaxLength(200);
+            builder.Property(x => x.SonKullanim).HasColumnType("datetime2");
+
+            builder.HasIndex(x => new { x.AnahtarTipi, x.Anahtar }).IsUnique();
         }
     }
 
@@ -124,6 +164,7 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(x => x.NormalizeAd).IsRequired().HasMaxLength(200);
             builder.Property(x => x.AnaGrup).IsRequired().HasMaxLength(10);
             builder.Property(x => x.BaslangicHarfi).HasMaxLength(1);
+            builder.Property(x => x.SonGuncelleme).HasColumnType("datetime2");
 
             builder.HasIndex(x => new { x.TenantNo, x.Kod }).IsUnique();
             builder.HasIndex(x => new { x.TenantNo, x.AnaGrup, x.BaslangicHarfi });

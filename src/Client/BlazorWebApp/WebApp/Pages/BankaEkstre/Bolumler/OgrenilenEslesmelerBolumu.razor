@@ -1,0 +1,189 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.BankaEkstre
+
+@inject IBankaEkstreApi Api
+@inject NotificationService Notif
+
+@*
+    Tanımlar ekranının "Öğrenilen eşleşmeler" bölümü. Yanlış onaylanan bir eşleşme bir
+    daha sorulmadan tekrarlanır; bu yüzden liste görülebilir, düzeltilebilir ve
+    silinebilir olmak zorunda.
+
+    Anahtar ham açıklama değil, normalize unvan çekirdeği: banka her satıra farklı sorgu
+    numarası yazdığı için ham metin asla ikinci kez eşleşmiyordu.
+*@
+
+<style>
+    .oe-arac { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .oe-tablo { border: 1px solid #eee; border-radius: 6px; background: #fff; overflow: hidden; }
+    .oe-satir { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+    .oe-head { background: #fafafa; border-bottom: 1px solid #eee; font-size: 11px; color: #718096;
+               text-transform: uppercase; letter-spacing: .3px; }
+    .oe-satir:not(.oe-head):hover { background: #f8fbff; }
+    .oe-anahtar { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                  font-family: ui-monospace, Consolas, monospace; }
+    .oe-kod { flex: 0 0 110px; font-family: ui-monospace, Consolas, monospace; }
+    .oe-ad { flex: 0 0 220px; color: #4a5568; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .oe-yon { flex: 0 0 70px; color: #4a5568; }
+    .oe-sayi { flex: 0 0 70px; text-align: right; font-variant-numeric: tabular-nums; }
+    .oe-tarih { flex: 0 0 95px; color: #718096; font-variant-numeric: tabular-nums; }
+    .oe-aksiyon { flex: 0 0 80px; text-align: right; }
+    .oe-bos { padding: 26px; text-align: center; color: #a0aec0; }
+    .oe-ek { font-size: 11px; color: #2c5282; margin-left: 6px; }
+</style>
+
+<div class="oe-arac">
+    <h5 style="margin:0">Öğrenilen eşleşmeler</h5>
+    <div style="display:flex; gap:6px; align-items:center">
+        <RadzenTextBox @bind-Value="_arama" Placeholder="Unvan veya kod ara" Style="width:220px"
+                       Change="@(async (string _) => await YenileAsync())" />
+        <RadzenButton Icon="search" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@YenileAsync" />
+    </div>
+</div>
+
+<div class="oe-tablo">
+    <div class="oe-satir oe-head">
+        <span class="oe-anahtar">Anahtar</span>
+        <span class="oe-kod">Hesap kodu</span>
+        <span class="oe-ad">Hesap adı</span>
+        <span class="oe-yon">Yön</span>
+        <span class="oe-sayi">Kullanım</span>
+        <span class="oe-tarih">Son</span>
+        <span class="oe-aksiyon"></span>
+    </div>
+
+    @if (_kayitlar.Count == 0)
+    {
+        <div class="oe-bos">Henüz öğrenilmiş eşleşme yok. Onay ekranında verilen her onay buraya düşer.</div>
+    }
+
+    @foreach (var kayit in _kayitlar)
+    {
+        <div class="oe-satir">
+            <span class="oe-anahtar" title="@kayit.TamAnahtar">
+                @kayit.AnahtarCekirdek
+                @if (!string.IsNullOrWhiteSpace(kayit.AyirtEdiciEk))
+                {
+                    <span class="oe-ek">+ @kayit.AyirtEdiciEk</span>
+                }
+            </span>
+            <span class="oe-kod">@kayit.HesapKodu</span>
+            <span class="oe-ad" title="@kayit.HesapAdi">@(kayit.HesapAdi ?? "—")</span>
+            <span class="oe-yon">@BankaEkstreEtiket.Yon(kayit.Yon)</span>
+            <span class="oe-sayi">@kayit.KullanimSayisi</span>
+            <span class="oe-tarih">@BankaEkstreEtiket.Tarih(kayit.SonKullanim)</span>
+            <span class="oe-aksiyon">
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                              Click="@(() => FormAc(kayit))" />
+                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                              Click="@(() => SilAsync(kayit))" />
+            </span>
+        </div>
+    }
+</div>
+
+@if (_duzenlenen is not null && _form is not null)
+{
+    <div style="margin-top:14px; padding:14px; border:1px solid #e2e8f0; border-radius:6px; background:#fff">
+        <h6 style="margin-top:0">
+            Eşleşmeyi düzelt — <code>@_duzenlenen.AnahtarCekirdek</code>
+        </h6>
+        <div style="font-size:11px; color:#a0aec0; margin-bottom:10px">
+            Anahtar değiştirilemez; o karşı tarafın kimliğidir. Yalnız gittiği hesap, yön ve
+            ayırt edici kelime düzenlenir.
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:12px">
+            <div style="display:flex; flex-direction:column; gap:3px">
+                <label style="font-size:11px; color:#718096">ORKA hesap kodu</label>
+                <RadzenTextBox @bind-Value="_form.HesapKodu" Placeholder="120 D22" />
+            </div>
+            <div style="display:flex; flex-direction:column; gap:3px">
+                <label style="font-size:11px; color:#718096">Yön</label>
+                <RadzenDropDown TValue="Yon" @bind-Value="_form.Yon" Data="@(new[] { Yon.Giren, Yon.Cikan })"
+                                Style="width:100%" />
+            </div>
+            <div style="display:flex; flex-direction:column; gap:3px">
+                <label style="font-size:11px; color:#718096">Ayırt edici kelime (isteğe bağlı)</label>
+                <RadzenTextBox @bind-Value="_form.AyirtEdiciEk" Placeholder="Aidat" />
+            </div>
+        </div>
+
+        <div style="display:flex; gap:6px; margin-top:12px">
+            <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                          Disabled="@_kaydediyor" Click="@KaydetAsync" />
+            <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                          Click="@(() => { _duzenlenen = null; _form = null; })" />
+        </div>
+    </div>
+}
+
+@code {
+    private List<HesapEslesmesiDto> _kayitlar = new();
+    private HesapEslesmesiDto? _duzenlenen;
+    private HesapEslesmesiYazDto? _form;
+
+    private string? _arama;
+    private bool _kaydediyor;
+
+    protected override async Task OnInitializedAsync() => await YenileAsync();
+
+    /// <summary>Firma değişince üst sayfa bunu çağırır.</summary>
+    public async Task YenileAsync()
+    {
+        _kayitlar = await Api.EslesmeleriAraAsync(_arama);
+        StateHasChanged();
+    }
+
+    private void FormAc(HesapEslesmesiDto kayit)
+    {
+        _duzenlenen = kayit;
+        _form = new HesapEslesmesiYazDto
+        {
+            HesapKodu = kayit.HesapKodu,
+            Yon = kayit.Yon,
+            AyirtEdiciEk = kayit.AyirtEdiciEk
+        };
+    }
+
+    private async Task KaydetAsync()
+    {
+        if (_duzenlenen is null || _form is null) return;
+
+        _kaydediyor = true;
+        var (_, hata) = await Api.EslesmeGuncelleAsync(_duzenlenen.Id, _form);
+        _kaydediyor = false;
+
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Error, "Kaydedilemedi", hata, 6000);
+            return;
+        }
+
+        Notif.Notify(NotificationSeverity.Success, "Eşleşme güncellendi", null, 3000);
+        _duzenlenen = null;
+        _form = null;
+        await YenileAsync();
+    }
+
+    private async Task SilAsync(HesapEslesmesiDto kayit)
+    {
+        var hata = await Api.EslesmeSilAsync(kayit.Id);
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Silinemedi", hata, 6000);
+            return;
+        }
+
+        if (_duzenlenen?.Id == kayit.Id)
+        {
+            _duzenlenen = null;
+            _form = null;
+        }
+
+        Notif.Notify(NotificationSeverity.Success, "Silindi", kayit.TamAnahtar, 3000);
+        await YenileAsync();
+    }
+}

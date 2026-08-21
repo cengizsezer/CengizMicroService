@@ -53,23 +53,33 @@ namespace CatalogService.UnitTests.BankaEkstre
         }
 
         [Fact]
-        public void Ayni_aciklama_ayni_hashe_duser()
+        public void Unvan_cekirdegi_tek_harfli_tokenlari_atar()
         {
-            var a = Normalizasyon.AciklamaHash("0000123 sorgu numaralı DAĞI GİYİM tarafından");
-            var b = Normalizasyon.AciklamaHash("0000999 sorgu numaralı DAGI GIYIM tarafından");
-
-            // Sayılar atıldığı için aynı gönderici her seferinde aynı anahtara düşer.
-            Assert.Equal(a, b);
-            Assert.NotEmpty(a);
+            // Tek harf iki farklı cariyi birbirine yaklaştırmaktan başka bir şey yapmıyor.
+            Assert.Equal("DAGI GIYIM", Normalizasyon.UnvanCekirdek("DAĞI X GİYİM SANAYİ A.Ş."));
         }
 
         [Fact]
-        public void Farkli_aciklama_farkli_hashe_duser()
+        public void Ayni_cari_farkli_sorgu_numarasiyla_ayni_cekirdege_duser()
         {
-            var a = Normalizasyon.AciklamaHash("DAĞI GİYİM tarafından");
-            var b = Normalizasyon.AciklamaHash("KEMAL TEKSTİL tarafından");
+            // Öğrenme anahtarının bütün meselesi bu: ham hash asla ikinci kez eşleşmiyordu.
+            var a = Normalizasyon.UnvanCekirdek("DAĞI GİYİM SANAYİ VE TİCARET ANONİM ŞİRKETİ");
+            var b = Normalizasyon.UnvanCekirdek("DAGI GIYIM SAN. TIC. A.Ş.");
 
-            Assert.NotEqual(a, b);
+            Assert.Equal("DAGI GIYIM", a);
+            Assert.Equal(a, b);
+        }
+
+        [Fact]
+        public void Farkli_cari_farkli_cekirdege_duser()
+            => Assert.NotEqual(Normalizasyon.UnvanCekirdek("DAĞI GİYİM"),
+                               Normalizasyon.UnvanCekirdek("KEMAL TEKSTİL"));
+
+        [Fact]
+        public void Unvansiz_satir_islem_tipinden_anahtar_alir()
+        {
+            Assert.Equal("ISLEM:MKK MASRAFI", Normalizasyon.IslemAnahtari("MKK Masrafı"));
+            Assert.Equal(string.Empty, Normalizasyon.IslemAnahtari("   "));
         }
 
         [Fact]

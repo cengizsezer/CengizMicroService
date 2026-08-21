@@ -1,4 +1,4 @@
-﻿@page "/banka-isleme/onay/{EkstreId:int}"
+@page "/banka-isleme/onay/{EkstreId:int}"
 
 @using Radzen
 @using Radzen.Blazor
@@ -16,9 +16,11 @@
       Enter    → onayla ve bir sonraki satıra atla
       ↓ / ↑    → satır değiştir
       Esc      → kod kutusunu temizle
-      Alt+1..9 → açık öneri listesinden, liste yoksa yakın adaylardan seç
+      Alt+1..9 → açık öneri listesinden, liste yoksa aday listesinden seç
     Satır onaylanınca listeden düşer ve sayaçlar güncellenir. Her satırda hangi
     katmanın önerdiği etiket olarak durur; yanılan katman böyle görülür.
+    "geçmiş" etiketli bir satırda kod düzeltilirse öğrenme kaydı da güncellenir —
+    hata gelecek ay geri gelmesin.
 *@
 
 <style>
@@ -104,8 +106,13 @@ else
                       ButtonStyle="@(_cozulmusSekme ? ButtonStyle.Primary : ButtonStyle.Light)"
                       Click="@(() => _cozulmusSekme = true)" />
         <div style="flex:1 1 auto"></div>
-        <RadzenButton Text="ORKA'ya aktar" Icon="download" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
+        <RadzenButton Text="Kod listesi" Icon="list_alt" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
+                      title="ORKA gridine yazılacak karşı hesap kodları (PkfRobot bu listeyi tüketir)"
                       Disabled="@(Bekleyenler.Count > 0)" Click="@DisaAktarAsync" />
+        <RadzenButton Text="Düzeltilmiş ekstre" Icon="download" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
+                      title="Orijinal ekstre dosyası, açıklama kolonu üretilen açıklamayla değiştirilmiş"
+                      Disabled="@(Bekleyenler.Count > 0 || _yukleme?.KaynakDosyaVar != true)"
+                      Click="@DuzeltilmisEkstreAsync" />
     </div>
 
     @if (!_cozulmusSekme)
@@ -145,17 +152,26 @@ else
                         </div>
                         <div class="eo-ham" title="@satir.HamAciklama">@satir.IslemTipi · @satir.HamAciklama</div>
 
-                        @if (satir.IkinciAdayKodu is not null)
+                        @{
+                            var adaylar = satir.SecilebilirAdaylar();
+                        }
+                        @if (adaylar.Count > 0)
                         {
+                            @* Aynı unvan ailesinden birden fazla cari olabilir (Park Plaza
+                               Aidat / Elektrik / 19. Kat); hepsi seçenek olarak listelenir. *@
                             <div class="eo-adaylar">
-                                <span class="eo-aday" @onclick="@(() => AdaySec(satir, satir.OnerilenHesapKodu))">
-                                    <kbd>alt+1</kbd>
-                                    @satir.OnerilenHesapKodu — @satir.OnerilenHesapAdi (@BankaEkstreEtiket.Skor(satir.GuvenSkoru))
-                                </span>
-                                <span class="eo-aday" @onclick="@(() => AdaySec(satir, satir.IkinciAdayKodu))">
-                                    <kbd>alt+2</kbd>
-                                    @satir.IkinciAdayKodu — @satir.IkinciAdayAdi (@BankaEkstreEtiket.Skor(satir.IkinciAdaySkoru ?? 0m))
-                                </span>
+                                @for (var i = 0; i < adaylar.Count; i++)
+                                {
+                                    var aday = adaylar[i];
+                                    var sira = i + 1;
+                                    <span class="eo-aday" @onclick="@(() => AdaySec(satir, aday.Kod))">
+                                        @if (sira <= 9)
+                                        {
+                                            <kbd>alt+@sira</kbd>
+                                        }
+                                        @aday.Kod — @aday.Ad (@BankaEkstreEtiket.Skor(aday.Skor))
+                                    </span>
+                                }
                             </div>
                         }
                     </span>
@@ -246,7 +262,7 @@ else
                 <div class="eo-cozulmus">
                     <span class="eo-tarih">@BankaEkstreEtiket.Tarih(s.Tarih)</span>
                     <span class="eo-orta"><div class="eo-aciklama">@s.Aciklama</div></span>
-                    <span style="flex:0 0 120px; font-family:ui-monospace, Consolas, monospace">@s.HesapKodu</span>
+                    <span style="flex:0 0 120px; font-family:ui-monospace, Consolas, monospace">@s.KarsiHesapKodu</span>
                     <span style="flex:0 0 120px; font-family:ui-monospace, Consolas, monospace">@s.BankaHesapKodu</span>
                     <span class="eo-tutar @(s.Yon == Yon.Giren ? "giren" : "cikan")">@BankaEkstreEtiket.Tutar(s.Tutar)</span>
                 </div>
@@ -371,14 +387,9 @@ else
             return;
         }
 
-        if (satir.IkinciAdayKodu is null) return;
-
-        AdaySec(satir, sira switch
-        {
-            1 => satir.OnerilenHesapKodu,
-            2 => satir.IkinciAdayKodu,
-            _ => null
-        });
+        // Aile üyeleri iki adayla sınırlı değil; listedeki sıra ekranda yazan sıradır.
+        var adaylar = satir.SecilebilirAdaylar();
+        if (sira <= adaylar.Count) AdaySec(satir, adaylar[sira - 1].Kod);
     }
 
     private async Task KomsuyaGecAsync(EkstreSatirDto satir, int adim)
@@ -449,8 +460,8 @@ else
 
         _kodlar[satir.Id] = kod;
         _adlar[satir.Id] = _oneriler.FirstOrDefault(o => o.Kod == kod)?.Ad
-                           ?? (kod == satir.OnerilenHesapKodu ? satir.OnerilenHesapAdi
-                               : kod == satir.IkinciAdayKodu ? satir.IkinciAdayAdi : null);
+                           ?? satir.SecilebilirAdaylar().FirstOrDefault(a => a.Kod == kod)?.Ad
+                           ?? (kod == satir.OnerilenHesapKodu ? satir.OnerilenHesapAdi : null);
         _oneriler = new();
     }
 
@@ -482,6 +493,10 @@ else
         Guncelle(veri);
         _oneriler = new();
 
+        // Bilinmeyen kod kabul edilir ama öğrenilmez; kullanıcı bunu bilmeli.
+        if (!string.IsNullOrWhiteSpace(veri?.Uyari))
+            Notif.Notify(NotificationSeverity.Warning, "Kod hesap planında yok", veri!.Uyari, 8000);
+
         if (sonraki is int hedefId && Bekleyenler.Any(s => s.Id == hedefId))
             await OdaklaAsync(hedefId);
     }
@@ -511,6 +526,10 @@ else
         _adlar[yeni.Id] = yeni.OnaylananHesapAdi ?? yeni.OnerilenHesapAdi;
     }
 
+    /// <summary>
+    /// Dışa aktarımın ikinci parçası: karşı hesap kodu listesi. PkfRobot'un GridDoldur
+    /// adımı { SiraNo, Aciklama, KarsiHesapKodu } üçlüsünü tüketir.
+    /// </summary>
     private async Task DisaAktarAsync()
     {
         var (veri, hata) = await Api.DisaAktarAsync(EkstreId);
@@ -522,6 +541,23 @@ else
 
         _orkaSatirlar = veri;
         Notif.Notify(NotificationSeverity.Success, "Hazır", $"{veri?.SatirSayisi} satır aktarıma hazır.", 4000);
+    }
+
+    /// <summary>
+    /// Dışa aktarımın birinci parçası: orijinal ekstre dosyası, açıklama kolonu bizim
+    /// ürettiğimizle değiştirilmiş. Değiştirilmezse ORKA gridinde ham banka metni görünür.
+    /// </summary>
+    private async Task DuzeltilmisEkstreAsync()
+    {
+        var (dosyaAdi, icerik, hata) = await Api.DuzeltilmisEkstreAsync(EkstreId);
+        if (hata is not null || icerik is null)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Dosya üretilemedi",
+                         hata ?? "Düzeltilmiş ekstre üretilemedi.", 8000);
+            return;
+        }
+
+        await JS.InvokeVoidAsync("downloadFileFromBytes", dosyaAdi, icerik);
     }
 
     public void Dispose() => _oneriIptal?.Cancel();

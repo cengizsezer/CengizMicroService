@@ -27,5 +27,21 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
         public string ParserTipi { get; set; } = string.Empty;
 
         public bool Aktif { get; set; } = true;
+
+        /// <summary>
+        /// IBAN öğrenme katmanı bu hesapta çalışsın mı? Varsayılan kapalı: kullanıcı IBAN
+        /// verisini düzenli tutmuyor ve güvenilir bulmuyor. Katman kod tarafında duruyor,
+        /// yalnız bayrakla kapalı — düzenli IBAN gelen bir bankada açılabilsin.
+        /// </summary>
+        public bool IbanKatmaniAktif { get; set; }
+
+        /// <summary>
+        /// VKN öğrenme katmanı bu hesapta çalışsın mı? Varsayılan kapalı: Vakıfbank
+        /// ekstresindeki VKN kolonu karşı tarafın değil hesap sahibinin VKN'si (286 satırın
+        /// hepsinde aynı değer). Açık kalsaydı ilk onaydan sonra tüm satırlar güven 1.0 ile
+        /// aynı hesaba eşleşir, onaya bile düşmezdi. Başka bankada karşı tarafın VKN'si
+        /// gerçekten gelebileceği için katman silinmedi.
+        /// </summary>
+        public bool VknKatmaniAktif { get; set; }
     }
 }

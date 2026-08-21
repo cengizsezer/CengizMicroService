@@ -106,7 +106,10 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
             return satir is null ? NotFound() : Ok(satir);
         }
 
-        /// <summary>ORKA çıktısı. Çözülemeyen veya onay bekleyen satır varsa 400 döner.</summary>
+        /// <summary>
+        /// Dışa aktarımın ikinci parçası: ORKA gridine yazılacak karşı hesap kodu listesi.
+        /// Çözülemeyen veya onay bekleyen satır varsa 400 döner.
+        /// </summary>
         [HttpPost("{id:int}/disa-aktar")]
         public async Task<ActionResult<DisaAktarimSonucDto>> DisaAktar(int id, CancellationToken ct)
         {
@@ -114,6 +117,29 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
             {
                 var sonuc = await _service.DisaAktarAsync(id, ct);
                 return sonuc is null ? NotFound() : Ok(sonuc);
+            }
+            catch (BankaEkstreKuralException ex)
+            {
+                return BadRequest(new { field = ex.Field, message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Dışa aktarımın birinci parçası: orijinal ekstre yapısında, açıklama kolonu
+        /// üretilen açıklamayla değiştirilmiş dosya. Değiştirilmezse ORKA gridinde ham
+        /// banka metni görünür.
+        /// </summary>
+        [HttpPost("{id:int}/duzeltilmis-ekstre")]
+        public async Task<IActionResult> DuzeltilmisEkstre(int id, CancellationToken ct)
+        {
+            try
+            {
+                var dosya = await _service.DuzeltilmisEkstreAsync(id, ct);
+                if (dosya is null) return NotFound();
+
+                return File(dosya.Icerik,
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            dosya.DosyaAdi);
             }
             catch (BankaEkstreKuralException ex)
             {
