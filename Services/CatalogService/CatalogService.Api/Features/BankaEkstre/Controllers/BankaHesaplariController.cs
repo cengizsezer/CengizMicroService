@@ -15,9 +15,17 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
     [Authorize]
     public class BankaHesaplariController : ControllerBase
     {
-        private readonly IBankaHesabiService _service;
+        private const long EnFazlaDosyaBayt = 20 * 1024 * 1024;
+        private const string XlsxTuru = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-        public BankaHesaplariController(IBankaHesabiService service) => _service = service;
+        private readonly IBankaHesabiService _service;
+        private readonly IBankaHesabiIceAktarimService _iceAktarim;
+
+        public BankaHesaplariController(IBankaHesabiService service, IBankaHesabiIceAktarimService iceAktarim)
+        {
+            _service = service;
+            _iceAktarim = iceAktarim;
+        }
 
         [HttpGet]
         public async Task<ActionResult<List<BankaHesabiDto>>> GetHepsi([FromQuery] bool pasifDahil = false,
@@ -71,6 +79,51 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
                 return BadRequest(new { field = ex.Field, message = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Toplu içe aktarım (xlsx). Anahtar ORKA hesap kodu + firma: varsa güncellenir,
+        /// yoksa eklenir. Dosyada olmayan hesaplara dokunulmaz. Doğrulama satır bazlıdır;
+        /// hatalı satır atlanır, dosyanın kalanı işlenir.
+        /// </summary>
+        [HttpPost("ice-aktar")]
+        [RequestSizeLimit(EnFazlaDosyaBayt)]
+        public async Task<ActionResult<BankaHesabiIceAktarimSonucDto>> IceAktar(IFormFile file, CancellationToken ct = default)
+        {
+            if (file is null || file.Length == 0)
+                return BadRequest(new { message = "Boş dosya." });
+
+            if (file.Length > EnFazlaDosyaBayt)
+                return StatusCode(StatusCodes.Status413PayloadTooLarge, new { message = "Dosya boyutu 20 MB sınırını aşıyor." });
+
+            var uzanti = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (uzanti != ".xlsx" && uzanti != ".xls")
+                return StatusCode(StatusCodes.Status415UnsupportedMediaType,
+                    new { message = "Sadece .xlsx veya .xls dosyaları desteklenir." });
+
+            try
+            {
+                using var bellek = new MemoryStream();
+                await using (var kaynak = file.OpenReadStream())
+                    await kaynak.CopyToAsync(bellek, ct);
+                bellek.Position = 0;
+
+                return Ok(await _iceAktarim.IceAktarAsync(bellek, ct));
+            }
+            catch (InvalidDataException ex)
+            {
+                return BadRequest(new { field = "file", message = ex.Message });
+            }
+            catch (Exception ex) when (ex.GetType().FullName?.Contains("ClosedXML", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return StatusCode(StatusCodes.Status415UnsupportedMediaType,
+                    new { field = "file", message = $"Excel dosyası okunamadı: {ex.Message}" });
+            }
+        }
+
+        /// <summary>Doğru başlıklara sahip boş şablon; kullanıcı kolon adlarını tahmin etmesin.</summary>
+        [HttpGet("sablon")]
+        public IActionResult Sablon()
+            => File(_iceAktarim.SablonUret(), XlsxTuru, "banka-hesaplari-sablon.xlsx");
 
         /// <summary>Ekstresi olan hesap silinemez; kullanılmayacaksa pasife alınır.</summary>
         [HttpDelete("{id:int}")]

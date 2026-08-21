@@ -44,6 +44,45 @@ ve **tüm aile** aday olarak listelenir.
 
 ---
 
+## Banka hesaplarının toplu içe aktarımı
+
+19 hesabı tek tek girmek yerine Tanımlar > Banka hesapları > **Toplu İçe Aktar**. Kalıp
+hesap planı içe aktarımıyla birebir aynı: tek sayfa xlsx, kolonlar **başlık adıyla**
+bulunur (sıra önemsiz, büyük-küçük harf ve Türkçe karakter toleranslı), doğrulama satır
+bazlıdır.
+
+| Kolon | Zorunlu | Not |
+|---|---|---|
+| `Orka Hesap Kodu` | evet | Boşluklu saklanır (`102 1 32 87`); hesap planında kayıtlı olmalı |
+| `Hesap Adı` | evet | Yeni alan: `BankaHesabi.HesapAdi` |
+| `Banka Adı` | evet | Katman 3 metin eşlemesinde kullanılan ad |
+| `Hesap Tipi` | evet | `Vadesiz` \| `Vadeli` |
+| `Para Birimi` | evet | TL → `TRY`; USD, EUR |
+| `Parser Tipi` | hayır | Boşsa hesap tanımlanır, ekstresi yüklenemez (uyarı) |
+| `IBAN` | hayır | Boşluklar atılır, büyük harfe çevrilir |
+
+**Upsert:** anahtar `OrkaHesapKodu` + firma. Varsa güncellenir, yoksa eklenir. Dosyada
+olmayan hesaplara **dokunulmaz** (hesap planının aksine pasife çekilmez — KARARLAR §33).
+
+**Satır bazlı doğrulama** — hata satırı düşürür, uyarı düşürmez:
+
+| Durum | Sonuç |
+|---|---|
+| Kod hesap planında yok / pasif | hata, satır atlanır |
+| Kod `102` ile başlamıyor | uyarı, satır yine eklenir |
+| `Hesap Tipi` tanınmıyor | hata |
+| `Parser Tipi` kayıtlı ayrıştırıcı değil | hata (geçerli tipler mesajda) |
+| Aynı kod dosyada iki kez | hata, ilk satır korunur |
+| Kod / hesap adı / banka adı / para birimi boş | hata |
+| Zorunlu kolon başlığı yok | **dosyanın tamamı** reddedilir (400) |
+
+Rapor: okunan / eklenen / güncellenen / atlanan sayıları + her sorun için satır numarası
+ve sebep. Sorunlar mevcut `{ field, message }` sözleşmesini kullanıyor (`SatirNo` eklendi).
+"Örnek şablon indir" bağlantısı doğru başlıklara sahip boş bir xlsx üretir; ikinci sayfada
+kolon açıklamaları ve geçerli ayrıştırıcı listesi var.
+
+---
+
 ## Ne yapıldı
 
 ### Sunucu — `Services/CatalogService/CatalogService.Api/Features/BankaEkstre`
@@ -70,6 +109,7 @@ ve **tüm aile** aday olarak listelenir.
 | `Services/EkstreService.cs` | Yükle/işle, satır listeleme, onay, dışa aktarım (iki parça) |
 | `Services/BankaHesabiService.cs` | Banka hesapları CRUD |
 | `Services/EkstreHesapPlaniService.cs` | Hesap planı xlsx içe aktarımı (pasife çekmeli), arama, özet |
+| `Services/BankaHesabiIceAktarimService.cs` | **Banka hesaplarının toplu xlsx içe aktarımı** + örnek şablon üretimi |
 | `Controllers/*.cs` | 4 controller, hepsi `api/catalog/banka-ekstre/...` |
 | `BankaEkstreSeed.cs` | Vakıfbank şablon / desen / sabit kural satırları (idempotent) |
 
@@ -83,6 +123,8 @@ Yeni uç noktalar:
 | Uç nokta | İş |
 |---|---|
 | `GET  .../hesap-plani/ozet` | Kayıt sayısı + son içe aktarım + gün farkı |
+| `POST .../banka-hesaplari/ice-aktar` | **Banka hesaplarının toplu içe aktarımı** (multipart xlsx) |
+| `GET  .../banka-hesaplari/sablon` | **Doğru başlıklara sahip boş şablon** (xlsx dosya) |
 | `POST .../ekstre/{id}/duzeltilmis-ekstre` | Dışa aktarımın 1. parçası (xlsx dosya) |
 | `GET  .../eslesmeler?q=` | Öğrenilen eşleşme araması |
 | `PUT  .../eslesmeler/{id}` | Eşleşmeyi düzelt (kod / yön / ayırt edici ek) |
@@ -95,7 +137,7 @@ Yeni uç noktalar:
 | `Pages/BankaEkstre/IslemePage.razor` | **`/banka-isleme`** — günlük ana ekran: dönem seçici, banka sekmeleri (onay bekleyen rozetiyle), hesap kartları, sürükle-bırak yükleme |
 | `Pages/BankaEkstre/TanimlarPage.razor` | **`/banka-isleme/tanimlar`** — üç bölümü barındırır |
 | `Pages/BankaEkstre/Bolumler/HesapPlaniBolumu.razor` | Son içe aktarım + sayı + "Güncelle" |
-| `Pages/BankaEkstre/Bolumler/BankaHesaplariBolumu.razor` | Hesap CRUD + kapalı katman bayrakları |
+| `Pages/BankaEkstre/Bolumler/BankaHesaplariBolumu.razor` | Hesap CRUD + kapalı katman bayrakları + **Toplu İçe Aktar / örnek şablon indir + satır bazlı sonuç raporu** |
 | `Pages/BankaEkstre/Bolumler/OgrenilenEslesmelerBolumu.razor` | Öğrenilen eşleşmeler: arama, düzenleme, silme |
 | `Pages/BankaEkstre/EkstreOnayPage.razor` | `/banka-isleme/onay/{id}` — klavye odaklı onay, **çok üyeli aday listesi**, iki parça dışa aktarım |
 | `Shared/Dto/BankaEkstre/BankaEkstreDtos.cs` | DTO'lar + `BankaEkstreEtiket` (Türkçe etiketler, tr-TR biçim) |
@@ -109,7 +151,9 @@ Kaldırılanlar: `Pages/BankaEkstre/EkstreYuklePage.razor` (`/banka-isleme/yukle
 
 `BankaEkstreTestOrtami.cs` (bellek içi context — artık tenant parametreli, xlsx üretici),
 `VakifbankParserTests`, `UnvanCikariciTests`, `NormalizasyonTests`, `AciklamaUreticiTests`,
-`HesapEslestiriciTests`, `EkstreServiceTests`, `EkstreHesapPlaniServiceTests`.
+`HesapEslestiriciTests`, `EkstreServiceTests`, `EkstreHesapPlaniServiceTests`,
+`BankaHesabiIceAktarimServiceTests` (12 test: upsert, satır bazlı doğrulama, kolon sırası,
+firma izolasyonu, şablon).
 
 ---
 
@@ -132,7 +176,21 @@ Kaldırılanlar: `Pages/BankaEkstre/EkstreYuklePage.razor` (`/banka-isleme/yukle
 | — | Bilinmeyen kod kaydediliyor ama öğrenilmiyor | ✅ `Bilinmeyen_kod_kaydedilir_ama_ogrenilmez` |
 | — | Geçmiş onaydan çözülen satır düzeltilince öğrenme de düzeliyor | ✅ `Gecmis_onaydan_cozulen_satir_duzeltilince_ogrenme_kaydi_guncellenir` |
 
-Test sonucu: **224 test, 0 başarısız** (`CatalogService.UnitTests`),
+Banka hesabı toplu içe aktarımı (`claude-code-prompt-banka-hesap-ice-aktarim.md`):
+
+| # | Kabul kriteri | Durum |
+|---|---|---|
+| 1 | Derleme temiz, testler geçiyor | ✅ CatalogService.Api + WebApp 0 hata; 236 + 18 test |
+| 2 | Migration üretildi ve uygulandı | ✅ `20260821082234_AddBankaHesabiIceAktarim` (`HesapAdi` + benzersiz index); `database update` uygulandı, `has-pending-model-changes` temiz |
+| 3 | Şablon indirme çalışıyor | ✅ `GET .../banka-hesaplari/sablon`; `Sablon_dogru_basliklarla_uretilir` üretilen dosyayı geri okuyor |
+| 4 | Hatalı satır tüm içe aktarımı düşürmüyor | ✅ `Gecersiz_hesap_tipi_satiri_atlanir_digerleri_islenir`, `Hesap_planinda_olmayan_kod_atlanir_ve_raporlanir`, `Ayni_kod_dosyada_iki_kez_gecerse_ikincisi_hata` |
+| 5 | Tekli CRUD bozulmadı | ✅ `BankaHesabiService` yalnız `HesapAdi` eşlemesiyle genişledi; içe aktarım ayrı serviste, controller'daki mevcut uç noktalar aynı |
+| — | Kolon sırası değişse de okunuyor | ✅ `Kolon_sirasi_degisse_de_okunur` (ters sıra + Türkçe karaktersiz başlıklar) |
+| — | Farklı firmada aynı kod ayrı kayıt | ✅ `Farkli_firmada_ayni_kod_ayri_kayit_olur` (aynı veritabanı, iki tenant) |
+| — | İkinci kez aynı dosya → güncelleme | ✅ `Ayni_dosya_ikinci_kez_guncelleme_sayar` (3 güncellendi, 0 eklendi) |
+| — | Dosyada olmayan hesaba dokunulmuyor | ✅ `Dosyada_olmayan_mevcut_hesaba_dokunulmaz` |
+
+Test sonucu: **236 test, 0 başarısız** (`CatalogService.UnitTests`),
 **18 test, 0 başarısız** (`WebApp.UnitTests`).
 
 Çalıştırılan doğrulama komutları:
@@ -140,6 +198,7 @@ Test sonucu: **224 test, 0 başarısız** (`CatalogService.UnitTests`),
 ```
 dotnet build SmartExpenseSystem.sln
 dotnet ef migrations add AddBankaEkstreDuzeltmeleri   # Services/CatalogService/CatalogService.Api
+dotnet ef migrations add AddBankaHesabiIceAktarim     # banka hesabı toplu içe aktarımı
 dotnet ef migrations has-pending-model-changes
 dotnet ef database update
 dotnet test Services/CatalogService/CatalogService.UnitTests/CatalogService.UnitTests.csproj
@@ -167,6 +226,10 @@ dotnet test src/Client/BlazorWebApp/WebApp.UnitTests/WebApp.UnitTests.csproj
   olduğu için uydurulmadı. `EkstreSabitKurallar` tablosundan düzenlenmeli.
   `Vergi Tahsilatı` için kural yok — o satırlar onaya düşer.
 - **Şablon/desen/kural tabloları için yönetim ekranı yok.** Şimdilik seed + SQL.
+- **Banka hesabı içe aktarımı tarayıcıda denenmedi.** Servis ve şablon üretimi birim
+  testli; "Toplu İçe Aktar" düğmesi, dosya seçici ve rapor listesi elle görülecek.
+- **İçe aktarım `Aktif` bayrağını değiştirmiyor.** Dosyada `Aktif` kolonu yok; pasife
+  alınmış bir hesap dosyada geçse bile pasif kalır, ekrandan açılır (KARARLAR §34).
 
 ---
 

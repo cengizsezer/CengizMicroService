@@ -13,6 +13,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
         /// <summary>Ör. "Vakıfbank". Katman 3 metin eşlemesinde kullanılır.</summary>
         public string BankaAdi { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Hesabın ORKA'daki adı, ör. "VAKIFBANK VADESIZ TL". Toplu içe aktarımda zorunlu
+        /// kolon; elle açılan eski kayıtlarda boş olabilir, bu yüzden nullable.
+        /// </summary>
+        public string? HesapAdi { get; set; }
+
         public HesapTipi HesapTipi { get; set; } = HesapTipi.Vadesiz;
 
         /// <summary>ISO kodu, ör. "TRY".</summary>

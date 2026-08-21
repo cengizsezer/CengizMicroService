@@ -129,6 +129,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         private static void Uygula(BankaHesabi hesap, BankaHesabiYazDto dto)
         {
             hesap.BankaAdi = dto.BankaAdi.Trim();
+            hesap.HesapAdi = string.IsNullOrWhiteSpace(dto.HesapAdi) ? null : Normalizasyon.Kirp(dto.HesapAdi, 200);
             hesap.HesapTipi = dto.HesapTipi;
             hesap.ParaBirimi = string.IsNullOrWhiteSpace(dto.ParaBirimi) ? "TRY" : dto.ParaBirimi.Trim().ToUpperInvariant();
             hesap.Iban = string.IsNullOrWhiteSpace(dto.Iban) ? null : dto.Iban.Trim().Replace(" ", string.Empty).ToUpperInvariant();
@@ -145,6 +146,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         {
             Id = h.Id,
             BankaAdi = h.BankaAdi,
+            HesapAdi = h.HesapAdi,
             HesapTipi = h.HesapTipi,
             ParaBirimi = h.ParaBirimi,
             Iban = h.Iban,

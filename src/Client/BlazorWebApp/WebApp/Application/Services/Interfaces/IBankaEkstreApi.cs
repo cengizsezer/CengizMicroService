@@ -12,6 +12,12 @@ namespace WebApp.Application.Services.Interfaces
         Task<(BankaHesabiDto? Veri, string? Hata)> UpdateHesapAsync(int id, BankaHesabiYazDto dto, CancellationToken ct = default);
         Task<string?> DeleteHesapAsync(int id, CancellationToken ct = default);
 
+        /// <summary>Toplu içe aktarım (xlsx); anahtar ORKA hesap kodu + firma.</summary>
+        Task<(BankaHesabiIceAktarimSonucDto? Veri, string? Hata)> HesaplariIceAktarAsync(Stream icerik, string dosyaAdi, CancellationToken ct = default);
+
+        /// <summary>Doğru başlıklara sahip boş şablon.</summary>
+        Task<(string? DosyaAdi, byte[]? Icerik, string? Hata)> HesapSablonuAsync(CancellationToken ct = default);
+
         // Ekstre
         Task<List<EkstreYuklemeDto>> GetYuklemelerAsync(CancellationToken ct = default);
         Task<EkstreYuklemeDto?> GetYuklemeAsync(int id, CancellationToken ct = default);

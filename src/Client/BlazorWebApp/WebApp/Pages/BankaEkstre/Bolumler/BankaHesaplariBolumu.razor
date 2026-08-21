@@ -1,3 +1,4 @@
+@using Microsoft.AspNetCore.Components.Forms
 @using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
@@ -5,6 +6,7 @@
 
 @inject IBankaEkstreApi Api
 @inject NotificationService Notif
+@inject IJSRuntime JS
 
 @*
     Tanımlar ekranının "Banka hesapları" bölümü. Bu liste aynı zamanda "banka kayıt
@@ -33,6 +35,12 @@
     .bh-alan { display: flex; flex-direction: column; gap: 3px; }
     .bh-alan label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
     .bh-ipucu { font-size: 11px; color: #a0aec0; }
+
+    .bh-ice-aktar { margin-top: 14px; padding: 12px 14px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fbfdff; }
+    .bh-ice-aktar-baslik { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .bh-sorun { font-size: 12px; color: #4a5568; padding: 2px 0; }
+    .bh-sorun-hata { color: #c53030; }
+    .bh-sorun-no { display: inline-block; min-width: 62px; color: #718096; font-variant-numeric: tabular-nums; }
 </style>
 
 <div class="bh-arac">
@@ -54,7 +62,7 @@ else
 {
     <div class="bh-tablo">
         <div class="bh-satir bh-head">
-            <span class="bh-ad">Banka</span>
+            <span class="bh-ad">Banka / hesap adı</span>
             <span class="bh-tip">Tip</span>
             <span class="bh-kod">ORKA kodu</span>
             <span class="bh-iban">IBAN</span>
@@ -70,7 +78,13 @@ else
         @foreach (var hesap in _hesaplar)
         {
             <div class="bh-satir @(hesap.Aktif ? "" : "bh-pasif")">
-                <span class="bh-ad">@hesap.BankaAdi</span>
+                <span class="bh-ad">
+                    @hesap.BankaAdi
+                    @if (!string.IsNullOrWhiteSpace(hesap.HesapAdi))
+                    {
+                        <span style="color:#a0aec0"> · @hesap.HesapAdi</span>
+                    }
+                </span>
                 <span class="bh-tip">@BankaEkstreEtiket.HesapTipi(hesap.HesapTipi) · @hesap.ParaBirimi</span>
                 <span class="bh-kod">@hesap.OrkaHesapKodu</span>
                 <span class="bh-iban">@(string.IsNullOrWhiteSpace(hesap.Iban) ? "—" : hesap.Iban)</span>
@@ -86,6 +100,72 @@ else
     </div>
 }
 
+@*
+    Toplu içe aktarım. Hesap planı bölümüyle aynı kalıp: xlsx yüklenir, kolonlar başlık
+    adıyla bulunur, sonuç raporu satır bazlı gösterilir. Tekli CRUD yerinde duruyor;
+    19 hesabı tek tek girmek yerine bu kullanılır.
+*@
+<div class="bh-ice-aktar">
+    <div class="bh-ice-aktar-baslik">
+        <RadzenButton Text="Toplu İçe Aktar" Icon="upload_file" ButtonStyle="ButtonStyle.Secondary"
+                      Size="ButtonSize.Small" Disabled="@_iceAktariliyor"
+                      Click="@(() => _iceAktarimAcik = !_iceAktarimAcik)" />
+        <RadzenLink Text="Örnek şablon indir" Icon="download" Style="font-size:12px"
+                    Click="@SablonIndirAsync" />
+        <span class="bh-ipucu">
+            xlsx; kolonlar başlık adıyla bulunur, sıraları değişebilir. Anahtar ORKA hesap
+            kodu: varsa güncellenir, yoksa eklenir. Dosyada olmayan hesaplara dokunulmaz.
+        </span>
+    </div>
+
+    @if (_iceAktarimAcik)
+    {
+        <div class="bh-alan" style="margin-top:10px; max-width:460px">
+            <label>Dosya seç (.xlsx)</label>
+            <InputFile OnChange="IceAktarAsync" accept=".xlsx,.xls" disabled="@_iceAktariliyor" />
+            <span class="bh-ipucu">
+                Zorunlu kolonlar: <code>Orka Hesap Kodu</code>, <code>Hesap Adı</code>, <code>Banka Adı</code>,
+                <code>Hesap Tipi</code>, <code>Para Birimi</code>. İsteğe bağlı: <code>Parser Tipi</code>, <code>IBAN</code>.
+            </span>
+        </div>
+    }
+
+    @if (_iceAktariliyor)
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem" Style="margin-top:8px">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+            <span>İçe aktarılıyor...</span>
+        </RadzenStack>
+    }
+
+    @if (_iceAktarimSonucu is not null)
+    {
+        <RadzenAlert AlertStyle="@(_iceAktarimSonucu.Hatalar.Count > 0 ? AlertStyle.Warning : AlertStyle.Success)"
+                     ShowIcon="true" AllowClose="false" Style="margin-top:10px">
+            @_iceAktarimSonucu.Okunan satır okundu · @_iceAktarimSonucu.Eklenen eklendi ·
+            @_iceAktarimSonucu.Guncellenen güncellendi
+            @if (_iceAktarimSonucu.Atlanan > 0)
+            {
+                <span> · @_iceAktarimSonucu.Atlanan atlandı</span>
+            }
+        </RadzenAlert>
+
+        @foreach (var hata in _iceAktarimSonucu.Hatalar)
+        {
+            <div class="bh-sorun bh-sorun-hata">
+                <span class="bh-sorun-no">Satır @hata.SatirNo</span> @hata.Message
+            </div>
+        }
+
+        @foreach (var uyari in _iceAktarimSonucu.Uyarilar)
+        {
+            <div class="bh-sorun">
+                <span class="bh-sorun-no">Satır @uyari.SatirNo</span> @uyari.Message
+            </div>
+        }
+    }
+</div>
+
 @if (_form is not null)
 {
     <div style="margin-top:16px; padding:14px; border:1px solid #e2e8f0; border-radius:6px; background:#fff">
@@ -96,6 +176,12 @@ else
                 <label>Banka adı</label>
                 <RadzenTextBox @bind-Value="_form.BankaAdi" Placeholder="Vakıfbank" />
                 <span class="bh-ipucu">Bankalar arası hareketlerde açıklamada bu ad aranır.</span>
+            </div>
+
+            <div class="bh-alan">
+                <label>Hesap adı (isteğe bağlı)</label>
+                <RadzenTextBox @bind-Value="_form.HesapAdi" Placeholder="VAKIFBANK VADESIZ TL" />
+                <span class="bh-ipucu">Hesabın ORKA'daki adı; toplu içe aktarımda zorunlu kolon.</span>
             </div>
 
             <div class="bh-alan">
@@ -177,6 +263,13 @@ else
     private bool _yukleniyor = true;
     private bool _kaydediyor;
 
+    private bool _iceAktarimAcik;
+    private bool _iceAktariliyor;
+    private BankaHesabiIceAktarimSonucDto? _iceAktarimSonucu;
+
+    /// <summary>Sunucudaki sınırla aynı; büyük dosya isteği boşuna gitmesin.</summary>
+    private const long EnFazlaBayt = 20 * 1024 * 1024;
+
     /// <summary>Hesap listesi değişince günlük ekranın sekmeleri de yenilensin.</summary>
     [Parameter] public EventCallback Degisti { get; set; }
 
@@ -207,6 +300,7 @@ else
             : new BankaHesabiYazDto
             {
                 BankaAdi = hesap.BankaAdi,
+                HesapAdi = hesap.HesapAdi,
                 HesapTipi = hesap.HesapTipi,
                 ParaBirimi = hesap.ParaBirimi,
                 Iban = hesap.Iban,
@@ -239,6 +333,61 @@ else
         _duzenlenenId = null;
         await YukleAsync();
         await Degisti.InvokeAsync();
+    }
+
+    /// <summary>
+    /// Toplu içe aktarım. Hatalı satır dosyanın tamamını düşürmez; sonuç raporu
+    /// (eklenen/güncellenen/atlanan + satır bazlı sebepler) ekranda kalır.
+    /// </summary>
+    private async Task IceAktarAsync(InputFileChangeEventArgs args)
+    {
+        var dosya = args.File;
+        if (dosya is null) return;
+
+        _iceAktarimSonucu = null;
+        _iceAktariliyor = true;
+
+        try
+        {
+            using var bellek = new MemoryStream();
+            await using (var kaynak = dosya.OpenReadStream(EnFazlaBayt))
+                await kaynak.CopyToAsync(bellek);
+            bellek.Position = 0;
+
+            var (veri, hata) = await Api.HesaplariIceAktarAsync(bellek, dosya.Name);
+            if (hata is not null)
+            {
+                Notif.Notify(NotificationSeverity.Error, "İçe aktarılamadı", hata, 8000);
+                return;
+            }
+
+            _iceAktarimSonucu = veri;
+            await YukleAsync();
+            await Degisti.InvokeAsync();
+
+            var ozet = $"{veri?.Eklenen} eklendi, {veri?.Guncellenen} güncellendi";
+            if (veri is { Atlanan: > 0 })
+                Notif.Notify(NotificationSeverity.Warning, "İçe aktarım tamamlandı",
+                             $"{ozet}, {veri.Atlanan} satır atlandı. Sebepler aşağıda.", 8000);
+            else
+                Notif.Notify(NotificationSeverity.Success, "İçe aktarım tamamlandı", ozet, 4000);
+        }
+        finally
+        {
+            _iceAktariliyor = false;
+        }
+    }
+
+    private async Task SablonIndirAsync()
+    {
+        var (dosyaAdi, icerik, hata) = await Api.HesapSablonuAsync();
+        if (hata is not null || icerik is null)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Şablon indirilemedi", hata, 6000);
+            return;
+        }
+
+        await JS.InvokeVoidAsync("downloadFileFromBytes", dosyaAdi, icerik);
     }
 
     private async Task SilAsync(BankaHesabiDto hesap)

@@ -8,6 +8,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
     {
         public int Id { get; set; }
         public string BankaAdi { get; set; } = string.Empty;
+
+        /// <summary>Hesabın ORKA'daki adı, ör. "VAKIFBANK VADESIZ TL".</summary>
+        public string? HesapAdi { get; set; }
         public HesapTipi HesapTipi { get; set; }
         public string ParaBirimi { get; set; } = "TRY";
         public string? Iban { get; set; }
@@ -25,6 +28,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
     public class BankaHesabiYazDto
     {
         public string BankaAdi { get; set; } = string.Empty;
+        public string? HesapAdi { get; set; }
         public HesapTipi HesapTipi { get; set; } = HesapTipi.Vadesiz;
         public string ParaBirimi { get; set; } = "TRY";
         public string? Iban { get; set; }
@@ -33,6 +37,35 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public bool Aktif { get; set; } = true;
         public bool IbanKatmaniAktif { get; set; }
         public bool VknKatmaniAktif { get; set; }
+    }
+
+    /// <summary>
+    /// Toplu banka hesabı içe aktarımının satır bazlı sonucu. Hata bir satırı düşürür,
+    /// dosyanın tamamını değil; uyarı satırı düşürmez, yalnız kullanıcıyı uyarır.
+    /// Alan adları mevcut <c>{ field, message }</c> hata sözleşmesiyle aynıdır.
+    /// </summary>
+    public class IceAktarimSatirSorunuDto
+    {
+        /// <summary>Excel'deki 1 tabanlı satır numarası; kullanıcı dosyada bulabilsin.</summary>
+        public int SatirNo { get; set; }
+
+        public string Field { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+    }
+
+    public class BankaHesabiIceAktarimSonucDto
+    {
+        public int Okunan { get; set; }
+        public int Eklenen { get; set; }
+        public int Guncellenen { get; set; }
+
+        /// <summary>Hatalı olduğu için işlenmeyen satır sayısı.</summary>
+        public int Atlanan { get; set; }
+
+        public List<IceAktarimSatirSorunuDto> Hatalar { get; set; } = new();
+
+        /// <summary>Satırı düşürmeyen sorunlar (ör. 102 ile başlamayan kod, boş ayrıştırıcı).</summary>
+        public List<IceAktarimSatirSorunuDto> Uyarilar { get; set; } = new();
     }
 
     /// <summary>Kullanıcıya seçtirilecek ayrıştırıcılar (şimdilik yalnız Vakıfbank vadesiz).</summary>

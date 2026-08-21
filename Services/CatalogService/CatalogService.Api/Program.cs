@@ -148,6 +148,8 @@ builder.Services.AddSingleton<CatalogService.Api.Features.BankaEkstre.Services.I
                               CatalogService.Api.Features.BankaEkstre.Services.HesapEslestirici>();
 builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IBankaHesabiService,
                            CatalogService.Api.Features.BankaEkstre.Services.BankaHesabiService>();
+builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IBankaHesabiIceAktarimService,
+                           CatalogService.Api.Features.BankaEkstre.Services.BankaHesabiIceAktarimService>();
 builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IEkstreHesapPlaniService,
                            CatalogService.Api.Features.BankaEkstre.Services.EkstreHesapPlaniService>();
 builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IHesapEslesmeService,

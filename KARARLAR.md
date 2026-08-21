@@ -347,3 +347,46 @@ zorlardı.
 **Neden:** Prompt §11. İki firma da sistemde olduğu için Aday'dan SMMM'ye giden bir
 transferin karşı bacağı diğer firmanın ekstresinde bulunabilir; grup içi çapraz doğrulama
 ileride buradan yürüyecek.
+
+## 33. Banka hesabı içe aktarımı dosyada olmayanı pasife çekmiyor
+
+**Karar:** Hesap planı içe aktarımı dosyada olmayan kodları pasife çekiyor (§29); banka
+hesabı içe aktarımı **çekmiyor**, dosyada olmayan hesaba hiç dokunmuyor.
+**Neden:** Hesap planı dosyası ORKA'nın tam listesidir — orada olmayan kod gerçekten
+kapanmıştır. Banka hesabı dosyası ise kullanıcının elle hazırladığı bir liste; bir
+bankayı bilerek dışarıda bırakmış olabilir. Pasife çekmek, o hesabın günlük ekrandaki
+sekmesini ve ekstre yüklemesini sessizce kaybettirirdi.
+
+## 34. İçe aktarım `Aktif` ve katman bayraklarına dokunmuyor
+
+**Karar:** Mevcut hesap güncellenirken `Aktif`, `IbanKatmaniAktif`, `VknKatmaniAktif`
+korunuyor; yalnız yeni kayıtta `Aktif = true` ile açılıyor. Boş `Parser Tipi` hücresi de
+mevcut ayrıştırıcıyı **silmiyor**.
+**Neden:** Bu alanların hiçbiri dosya formatında yok (prompt'taki kolon listesi). Dosyada
+karşılığı olmayan bir alanı içe aktarımın varsayılana döndürmesi, ekranda bilerek
+kapatılmış bir hesabı veya çalışan bir ayrıştırıcı tanımını sessizce geri açardı.
+
+## 35. `Hesap Adı` için yeni alan
+
+**Karar:** `BankaHesabi.HesapAdi` (nullable, 200) eklendi; migration
+`20260821082234_AddBankaHesabiIceAktarim`. Tekli CRUD formunda da isteğe bağlı alan olarak
+duruyor, liste banka adının yanında gösteriyor.
+**Neden:** Dosya formatında `Hesap Adı` zorunlu kolon ama entity'de karşılığı yoktu —
+`BankaAdi` bankanın adı ("Vakıfbank"), hesabın ORKA'daki adı değil ("VAKIFBANK VADESIZ
+TL"). Kolonu okuyup atmak, kullanıcının dosyaya yazdığı bilgiyi kaybetmek olurdu. Eski
+kayıtlarda karşılığı olmadığı için nullable; tekli CRUD zorunlu tutmuyor.
+
+Aynı migration `(TenantNo, OrkaHesapKodu)` benzersiz index'ini de ekliyor: içe aktarımın
+upsert anahtarı bu ikili ve tekillik şimdiye kadar yalnız servis katmanında kontrol
+ediliyordu.
+
+## 36. Rapor sözleşmesi: `{ field, message }` + satır numarası
+
+**Karar:** İçe aktarım sonucu iki liste taşıyor (`Hatalar`, `Uyarilar`), her ikisi de
+`{ SatirNo, Field, Message }`. Hesap planındaki düz `List<string> Uyarilar` kalıbı
+kopyalanmadı.
+**Neden:** Prompt "her hatalı satır için satır numarası + sebep" ve "mevcut
+`{ field, message }` sözleşmesine uy" diyor. Alan adları CRUD'un hata gövdesiyle aynı
+kaldığı için istemci tarafında ayrı bir okuma mantığı gerekmedi; `SatirNo` yalnız
+kullanıcının dosyada satırı bulabilmesi için eklendi. Listeler 100 kayıtla sınırlı —
+bozuk bir dosya ekranı doldurmasın.

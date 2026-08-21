@@ -242,6 +242,10 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("HesapAdi")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<byte>("HesapTipi")
                         .HasColumnType("tinyint");
 
@@ -278,6 +282,9 @@ namespace CatalogService.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("TenantNo", "BankaAdi");
+
+                    b.HasIndex("TenantNo", "OrkaHesapKodu")
+                        .IsUnique();
 
                     b.ToTable("EkstreBankaHesaplari", "catalog");
                 });

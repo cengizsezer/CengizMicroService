@@ -45,6 +45,22 @@ namespace WebApp.Application.Services
             return hata;
         }
 
+        public Task<(BankaHesabiIceAktarimSonucDto? Veri, string? Hata)> HesaplariIceAktarAsync(
+            Stream icerik, string dosyaAdi, CancellationToken ct = default)
+            => GonderAsync<BankaHesabiIceAktarimSonucDto>(() =>
+            {
+                var form = new MultipartFormDataContent();
+                var dosya = new StreamContent(icerik);
+                dosya.Headers.ContentType = new MediaTypeHeaderValue(XlsxTuru);
+                form.Add(dosya, "file", dosyaAdi);
+
+                return _http.PostAsync($"{Hesaplar}/ice-aktar", form, ct);
+            });
+
+        public Task<(string? DosyaAdi, byte[]? Icerik, string? Hata)> HesapSablonuAsync(CancellationToken ct = default)
+            => DosyaIndirAsync(() => _http.GetAsync($"{Hesaplar}/sablon", ct), "banka-hesaplari-sablon.xlsx",
+                               "Şablon indirilemedi.", ct);
+
         // ---- Ekstre ----
 
         public async Task<List<EkstreYuklemeDto>> GetYuklemelerAsync(CancellationToken ct = default)
@@ -92,30 +108,10 @@ namespace WebApp.Application.Services
         /// Düzeltilmiş ekstre dosyası. JSON değil ikili içerik döner; hata gövdesi yine
         /// { field, message } sözleşmesiyle okunur.
         /// </summary>
-        public async Task<(string? DosyaAdi, byte[]? Icerik, string? Hata)> DuzeltilmisEkstreAsync(
+        public Task<(string? DosyaAdi, byte[]? Icerik, string? Hata)> DuzeltilmisEkstreAsync(
             int ekstreId, CancellationToken ct = default)
-        {
-            try
-            {
-                using var resp = await _http.PostAsync($"{Ekstre}/{ekstreId}/duzeltilmis-ekstre", content: null, ct);
-
-                if (!resp.IsSuccessStatusCode)
-                {
-                    var govde = await resp.Content.ReadAsStringAsync(ct);
-                    return (null, null, MesajCoz(govde) ?? "Düzeltilmiş ekstre üretilemedi.");
-                }
-
-                var ad = resp.Content.Headers.ContentDisposition?.FileNameStar
-                         ?? resp.Content.Headers.ContentDisposition?.FileName?.Trim('"')
-                         ?? $"ekstre-{ekstreId}-duzeltilmis.xlsx";
-
-                return (ad, await resp.Content.ReadAsByteArrayAsync(ct), null);
-            }
-            catch (Exception)
-            {
-                return (null, null, "Sunucuya ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.");
-            }
-        }
+            => DosyaIndirAsync(() => _http.PostAsync($"{Ekstre}/{ekstreId}/duzeltilmis-ekstre", content: null, ct),
+                               $"ekstre-{ekstreId}-duzeltilmis.xlsx", "Düzeltilmiş ekstre üretilemedi.", ct);
 
         public async Task<string?> SilAsync(int ekstreId, CancellationToken ct = default)
         {
@@ -175,6 +171,35 @@ namespace WebApp.Application.Services
         }
 
         // ---- Yardımcılar ----
+
+        /// <summary>
+        /// İkili içerik indirir (JSON değil). Hata gövdesi yine { field, message }
+        /// sözleşmesiyle okunur; dosya adı Content-Disposition'dan, yoksa varsayılandan gelir.
+        /// </summary>
+        private static async Task<(string? DosyaAdi, byte[]? Icerik, string? Hata)> DosyaIndirAsync(
+            Func<Task<HttpResponseMessage>> istek, string varsayilanAd, string hataMesaji, CancellationToken ct)
+        {
+            try
+            {
+                using var resp = await istek();
+
+                if (!resp.IsSuccessStatusCode)
+                {
+                    var govde = await resp.Content.ReadAsStringAsync(ct);
+                    return (null, null, MesajCoz(govde) ?? hataMesaji);
+                }
+
+                var ad = resp.Content.Headers.ContentDisposition?.FileNameStar
+                         ?? resp.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+                         ?? varsayilanAd;
+
+                return (ad, await resp.Content.ReadAsByteArrayAsync(ct), null);
+            }
+            catch (Exception)
+            {
+                return (null, null, "Sunucuya ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.");
+            }
+        }
 
         private async Task<T?> GetOrNull<T>(string url, CancellationToken ct)
         {

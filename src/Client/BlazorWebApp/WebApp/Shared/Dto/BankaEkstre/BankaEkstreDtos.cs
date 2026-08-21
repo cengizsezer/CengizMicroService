@@ -46,6 +46,9 @@ namespace WebApp.Shared.Dto.BankaEkstre
     {
         public int Id { get; set; }
         public string BankaAdi { get; set; } = string.Empty;
+
+        /// <summary>Hesabın ORKA'daki adı, ör. "VAKIFBANK VADESIZ TL".</summary>
+        public string? HesapAdi { get; set; }
         public HesapTipi HesapTipi { get; set; }
         public string ParaBirimi { get; set; } = "TRY";
         public string? Iban { get; set; }
@@ -59,6 +62,7 @@ namespace WebApp.Shared.Dto.BankaEkstre
     public class BankaHesabiYazDto
     {
         public string BankaAdi { get; set; } = string.Empty;
+        public string? HesapAdi { get; set; }
         public HesapTipi HesapTipi { get; set; } = HesapTipi.Vadesiz;
         public string ParaBirimi { get; set; } = "TRY";
         public string? Iban { get; set; }
@@ -67,6 +71,27 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public bool Aktif { get; set; } = true;
         public bool IbanKatmaniAktif { get; set; }
         public bool VknKatmaniAktif { get; set; }
+    }
+
+    /// <summary>
+    /// Toplu banka hesabı içe aktarımında bir satırın sorunu. Hata satırı düşürür,
+    /// uyarı düşürmez. Alan adları sunucunun <c>{ field, message }</c> sözleşmesiyle aynı.
+    /// </summary>
+    public class IceAktarimSatirSorunuDto
+    {
+        public int SatirNo { get; set; }
+        public string Field { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+    }
+
+    public class BankaHesabiIceAktarimSonucDto
+    {
+        public int Okunan { get; set; }
+        public int Eklenen { get; set; }
+        public int Guncellenen { get; set; }
+        public int Atlanan { get; set; }
+        public List<IceAktarimSatirSorunuDto> Hatalar { get; set; } = new();
+        public List<IceAktarimSatirSorunuDto> Uyarilar { get; set; } = new();
     }
 
     public class ParserSecenekDto
