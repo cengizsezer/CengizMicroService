@@ -24,6 +24,8 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(x => x.HesapAdi).HasMaxLength(200);
             // Firmanın kendi unvanı; eski kayıtlarda boş olacağı için nullable.
             builder.Property(x => x.HesapSahibiUnvani).HasMaxLength(200);
+            // Diğer yazımlar satır satır tek alanda; gerçek dosyada altı yazım sayıldı.
+            builder.Property(x => x.HesapSahibiTakmaAdlari).HasMaxLength(1000);
             builder.Property(x => x.ParaBirimi).IsRequired().HasMaxLength(3);
             builder.Property(x => x.Iban).HasMaxLength(34);
             // Boşluklu ORKA kodu; format değiştirilmeden saklanır.
@@ -98,6 +100,9 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(x => x.OnerilenHesapAdi).HasMaxLength(200);
             builder.Property(x => x.IkinciAdayKodu).HasMaxLength(30);
             builder.Property(x => x.IkinciAdayAdi).HasMaxLength(200);
+            builder.Property(x => x.BelirsizlikAnahtari).HasMaxLength(200);
+            builder.Property(x => x.AdayKumesiOzeti).HasMaxLength(64);
+
             builder.Property(x => x.OnaylananHesapKodu).HasMaxLength(30);
             builder.Property(x => x.OnaylananHesapAdi).HasMaxLength(200);
             builder.Property(x => x.OnaylayanKullanici).HasMaxLength(100);
@@ -125,6 +130,7 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(x => x.AyirtEdiciEk).HasMaxLength(60);
             builder.Property(x => x.HesapKodu).IsRequired().HasMaxLength(30);
             builder.Property(x => x.HesapAdi).HasMaxLength(200);
+            builder.Property(x => x.AdayKumesiOzeti).HasMaxLength(64);
             builder.Property(x => x.SonKullanim).HasColumnType("datetime2");
 
             builder.Ignore(x => x.TamAnahtar);
@@ -210,6 +216,26 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(x => x.Aciklama).HasMaxLength(200);
 
             builder.HasIndex(x => new { x.ParserTipi, x.Sira });
+        }
+    }
+
+    /// <summary>
+    /// Vergi kodu eşlemesi — <b>global</b>. Vergi kodları (0040 = damga, 0033 = kurum
+    /// geçici) firmadan firmaya değişmez; <see cref="SabitKural"/> ile aynı yaklaşım.
+    /// </summary>
+    public class VergiKoduEslemesiEntityTypeConfiguration : IEntityTypeConfiguration<VergiKoduEslemesi>
+    {
+        public void Configure(EntityTypeBuilder<VergiKoduEslemesi> builder)
+        {
+            builder.ToTable("EkstreVergiKodlari", CatalogContext.DEFAULT_SCHEMA);
+            builder.HasKey(x => x.Id);
+
+            builder.Property(x => x.VergiKodu).HasMaxLength(10);
+            builder.Property(x => x.AnahtarKelime).HasMaxLength(100);
+            builder.Property(x => x.HesapKodu).IsRequired().HasMaxLength(30);
+            builder.Property(x => x.HesapAdi).HasMaxLength(200);
+
+            builder.HasIndex(x => x.Sira);
         }
     }
 

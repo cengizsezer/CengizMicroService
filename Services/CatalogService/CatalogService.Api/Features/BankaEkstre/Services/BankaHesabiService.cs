@@ -18,6 +18,13 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         /// <summary>Hesap adından eşleştirme anahtarı önerisi; form yeni hesapta bunu doldurur.</summary>
         string? AnahtarOner(string? hesapAdi, string? bankaAdi);
+
+        /// <summary>
+        /// Hesap sahibinin henüz eklenmemiş yazımları. Yüklenmiş ekstrelerin açıklamalarında
+        /// unvan desenleriyle yakalanan metinler taranır; tanımlı yazımlarla en az iki ardışık
+        /// kelime paylaşan ama kapsama kontrolüne takılmayanlar aday olarak döner.
+        /// </summary>
+        Task<List<HesapSahibiOnerisiDto>> HesapSahibiOnerileriAsync(int hesapId, CancellationToken ct = default);
     }
 
     /// <summary>
@@ -142,6 +149,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             hesap.HesapSahibiUnvani = string.IsNullOrWhiteSpace(dto.HesapSahibiUnvani)
                 ? null
                 : Normalizasyon.Kirp(dto.HesapSahibiUnvani, 200);
+            // Takma adlar satır satır saklanır; Kirp boşlukları teke indirdiği için satır
+            // sonları korunacak biçimde tek tek temizlenir.
+            hesap.HesapSahibiTakmaAdlari = TakmaAdlariDuzenle(dto.HesapSahibiTakmaAdlari);
             hesap.HesapTipi = dto.HesapTipi;
             hesap.ParaBirimi = string.IsNullOrWhiteSpace(dto.ParaBirimi) ? "TRY" : dto.ParaBirimi.Trim().ToUpperInvariant();
             hesap.Iban = string.IsNullOrWhiteSpace(dto.Iban) ? null : dto.Iban.Trim().Replace(" ", string.Empty).ToUpperInvariant();
@@ -155,6 +165,80 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             hesap.VknKatmaniAktif = dto.VknKatmaniAktif;
         }
 
+        /// <summary>
+        /// Takma adları satır satır normalleştirir: boş satırlar atılır, tekrarlar tek kez
+        /// kalır, her satır 200 karaktere kırpılır.
+        /// </summary>
+        private static string? TakmaAdlariDuzenle(string? ham)
+        {
+            var satirlar = HesapSahibiKimligi.Ayikla(ham)
+                .Select(y => Normalizasyon.Kirp(y, 200))
+                .Where(y => y.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (satirlar.Count == 0) return null;
+
+            var birlesik = string.Join(Environment.NewLine, satirlar);
+            return birlesik.Length <= 1000 ? birlesik : birlesik[..1000];
+        }
+
+        public async Task<List<HesapSahibiOnerisiDto>> HesapSahibiOnerileriAsync(int hesapId, CancellationToken ct = default)
+        {
+            var hesap = await _db.EkstreBankaHesaplari.AsNoTracking().FirstOrDefaultAsync(h => h.Id == hesapId, ct);
+            if (hesap is null) return new List<HesapSahibiOnerisiDto>();
+
+            var kimlik = HesapSahibiKimligi.Kur(hesap.HesapSahibiUnvani, hesap.HesapSahibiTakmaAdlari);
+            if (kimlik.Bos) return new List<HesapSahibiOnerisiDto>();
+
+            // Kaynak: yüklenmiş ekstrelerde desenlerin çıkardığı unvanlar. Ham açıklamayı
+            // baştan taramak yerine çıkarılmış unvanlar kullanılır — bankanın firmayı nasıl
+            // yazdığı zaten orada duruyor.
+            var unvanlar = await _db.EkstreSatirlari.AsNoTracking()
+                .Where(s => s.CikarilanUnvan != null && s.CikarilanUnvan != string.Empty)
+                .Select(s => s.CikarilanUnvan!)
+                .ToListAsync(ct);
+
+            var sayaclar = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var unvan in unvanlar)
+            {
+                // Zaten elenen yazımlar öneri değildir.
+                if (kimlik.Kendisi(unvan)) continue;
+                if (!AyniFirmaOlabilir(kimlik, unvan)) continue;
+
+                sayaclar[unvan] = sayaclar.TryGetValue(unvan, out var adet) ? adet + 1 : 1;
+            }
+
+            return sayaclar
+                .OrderByDescending(p => p.Value)
+                .ThenBy(p => p.Key, StringComparer.OrdinalIgnoreCase)
+                .Take(20)
+                .Select(p => new HesapSahibiOnerisiDto { Yazim = p.Key, Adet = p.Value })
+                .ToList();
+        }
+
+        /// <summary>
+        /// Yazım hesap sahibinin bir varyantı olabilir mi? Ölçüt: tanımlı çekirdeklerden
+        /// biriyle <b>en az iki ardışık kelime</b> paylaşması. "ADAY BAĞIMSIZ DENETİM VE
+        /// SMMM A.Ş." bu yolla bulunur (paylaşılan dizi "ADAY BAGIMSIZ DENETIM"); rastgele
+        /// bir cari ise tek kelime bile paylaşmaz.
+        /// </summary>
+        private static bool AyniFirmaOlabilir(HesapSahibiKimligi kimlik, string unvan)
+        {
+            var tokenlar = Normalizasyon.UnvanCekirdek(unvan)
+                                        .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (tokenlar.Length < 2) return false;
+
+            for (var i = 0; i + 2 <= tokenlar.Length; i++)
+            {
+                var ikili = tokenlar[i] + " " + tokenlar[i + 1];
+                if (kimlik.Cekirdekler.Any(c => Normalizasyon.IfadeVarMi(c, ikili))) return true;
+            }
+
+            return false;
+        }
+
         private static BankaHesabiDto Esle(BankaHesabi h) => new()
         {
             Id = h.Id,
@@ -162,6 +246,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             HesapAdi = h.HesapAdi,
             EslestirmeAnahtarlari = h.EslestirmeAnahtarlari,
             HesapSahibiUnvani = h.HesapSahibiUnvani,
+            HesapSahibiTakmaAdlari = h.HesapSahibiTakmaAdlari,
             HesapTipi = h.HesapTipi,
             ParaBirimi = h.ParaBirimi,
             Iban = h.Iban,

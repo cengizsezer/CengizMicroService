@@ -1,0 +1,202 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.BankaEkstre
+
+@inject IBankaEkstreApi Api
+@inject NotificationService Notif
+
+@*
+    Tanımlar ekranının "Vergi kodları" bölümü. Vergi tahsilatı satırlarında karşı hesap
+    metnin içeriğine göre değişiyor — ölçülen dosyadaki 5 vergi satırı dört farklı hesaba
+    gitmiş — bu yüzden tek kural yetmiyor ve eşleme koda gömülmüyor.
+
+    Tablo firma bağımsızdır: vergi kodları (0040 = damga, 0033 = kurum geçici) her firmada
+    aynıdır. Bir satır kod veya anahtar kelimeden herhangi biri tuttuğunda aday üretir;
+    tek aday kalırsa satır otomatik çözülür, birden fazla veya hiç yoksa onaya düşer.
+*@
+
+<style>
+    .vk-arac { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .vk-tablo { border: 1px solid #eee; border-radius: 6px; background: #fff; overflow: hidden; }
+    .vk-satir { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+    .vk-head { background: #fafafa; border-bottom: 1px solid #eee; font-size: 11px; color: #718096;
+               text-transform: uppercase; letter-spacing: .3px; }
+    .vk-satir:not(.vk-head):hover { background: #f8fbff; }
+    .vk-kod { flex: 0 0 90px; font-family: ui-monospace, Consolas, monospace; }
+    .vk-kelime { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .vk-hesap { flex: 0 0 120px; font-family: ui-monospace, Consolas, monospace; }
+    .vk-ad { flex: 0 0 240px; color: #4a5568; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .vk-aksiyon { flex: 0 0 80px; text-align: right; }
+    .vk-bos { padding: 26px; text-align: center; color: #a0aec0; }
+    .vk-pasif .vk-kod, .vk-pasif .vk-kelime, .vk-pasif .vk-hesap { color: #a0aec0; text-decoration: line-through; }
+    .vk-alan { display: flex; flex-direction: column; gap: 3px; }
+    .vk-alan label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .vk-ipucu { font-size: 11px; color: #a0aec0; }
+</style>
+
+<div class="vk-arac">
+    <h5 style="margin:0">Vergi kodları</h5>
+    <RadzenButton Text="Yeni eşleme" Icon="add" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                  Click="@(() => FormAc(null))" />
+</div>
+
+<div style="font-size:12px; color:#718096; margin-bottom:10px">
+    Vergi tahsilatı satırlarında karşı hesabı belirler. Ayrıca metinde plaka geçiyorsa
+    (<code>Plaka:34MRP081</code>) o plakayı adında taşıyan hesaplar da aday olur; plaka tek
+    başına karar vermez, adayları daraltır.
+</div>
+
+<div class="vk-tablo">
+    <div class="vk-satir vk-head">
+        <span class="vk-kod">Vergi kodu</span>
+        <span class="vk-kelime">Anahtar kelime</span>
+        <span class="vk-hesap">Hesap kodu</span>
+        <span class="vk-ad">Hesap adı</span>
+        <span class="vk-aksiyon"></span>
+    </div>
+
+    @if (_kayitlar.Count == 0)
+    {
+        <div class="vk-bos">Henüz eşleme yok. Vergi satırları eşleme bulunamadığında onaya düşer.</div>
+    }
+
+    @foreach (var kayit in _kayitlar)
+    {
+        <div class="vk-satir @(kayit.Aktif ? "" : "vk-pasif")">
+            <span class="vk-kod">@(string.IsNullOrWhiteSpace(kayit.VergiKodu) ? "—" : kayit.VergiKodu)</span>
+            <span class="vk-kelime">@(string.IsNullOrWhiteSpace(kayit.AnahtarKelime) ? "—" : kayit.AnahtarKelime)</span>
+            <span class="vk-hesap">@kayit.HesapKodu</span>
+            <span class="vk-ad" title="@kayit.HesapAdi">@(kayit.HesapAdi ?? "—")</span>
+            <span class="vk-aksiyon">
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                              Click="@(() => FormAc(kayit))" />
+                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                              Click="@(() => SilAsync(kayit))" />
+            </span>
+        </div>
+    }
+</div>
+
+@if (_form is not null)
+{
+    <div style="margin-top:14px; padding:14px; border:1px solid #e2e8f0; border-radius:6px; background:#fff">
+        <h6 style="margin-top:0">@(_duzenlenenId is null ? "Yeni eşleme" : "Eşlemeyi düzenle")</h6>
+
+        <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px">
+            <div class="vk-alan">
+                <label>Vergi kodu</label>
+                <RadzenTextBox @bind-Value="_form.VergiKodu" Placeholder="9085" />
+                <span class="vk-ipucu">Metnin başındaki dört haneli kod, ör. <code>0040/S.DAMGA V.</code></span>
+            </div>
+            <div class="vk-alan">
+                <label>Anahtar kelime</label>
+                <RadzenTextBox @bind-Value="_form.AnahtarKelime" Placeholder="TRAFİK CEZ" />
+                <span class="vk-ipucu">Kod veya kelimeden <b>herhangi biri</b> tutması yeter; ikisi de boş olamaz.</span>
+            </div>
+            <div class="vk-alan">
+                <label>ORKA hesap kodu</label>
+                <RadzenTextBox @bind-Value="_form.HesapKodu" Placeholder="689 9 1" />
+                <span class="vk-ipucu">Boşluklu yazın; format değiştirilmez, ORKA tanımaz.</span>
+            </div>
+            <div class="vk-alan">
+                <label>Hesap adı</label>
+                <RadzenTextBox @bind-Value="_form.HesapAdi" Placeholder="Kanunen Kabul Edilmeyen Giderler" />
+            </div>
+            <div class="vk-alan">
+                <label>Sıra</label>
+                <RadzenNumeric TValue="int" @bind-Value="_form.Sira" Min="0" />
+            </div>
+            <div class="vk-alan">
+                <label>Durum</label>
+                <div style="display:flex; gap:6px; align-items:center">
+                    <RadzenCheckBox TValue="bool" @bind-Value="_form.Aktif" Name="vkAktif" />
+                    <label for="vkAktif" style="font-size:12px; color:#4a5568; text-transform:none">Aktif</label>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:6px; margin-top:12px">
+            <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                          Disabled="@_kaydediyor" Click="@KaydetAsync" />
+            <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                          Click="@(() => { _form = null; _duzenlenenId = null; })" />
+        </div>
+    </div>
+}
+
+@code {
+    private List<VergiKoduEslemesiDto> _kayitlar = new();
+    private VergiKoduEslemesiYazDto? _form;
+    private int? _duzenlenenId;
+    private bool _kaydediyor;
+
+    protected override async Task OnInitializedAsync() => await YenileAsync();
+
+    /// <summary>
+    /// Firma değişince üst sayfa bunu çağırır. Tablo firma bağımsız olsa da bölümler
+    /// birlikte yenilenir: ekranın tamamı tutarlı kalsın.
+    /// </summary>
+    public async Task YenileAsync()
+    {
+        _kayitlar = await Api.VergiKodlariAsync();
+        StateHasChanged();
+    }
+
+    private void FormAc(VergiKoduEslemesiDto? kayit)
+    {
+        _duzenlenenId = kayit?.Id;
+        _form = kayit is null
+            ? new VergiKoduEslemesiYazDto { Sira = (_kayitlar.Count + 1) * 10 }
+            : new VergiKoduEslemesiYazDto
+            {
+                VergiKodu = kayit.VergiKodu,
+                AnahtarKelime = kayit.AnahtarKelime,
+                HesapKodu = kayit.HesapKodu,
+                HesapAdi = kayit.HesapAdi,
+                Sira = kayit.Sira,
+                Aktif = kayit.Aktif
+            };
+    }
+
+    private async Task KaydetAsync()
+    {
+        if (_form is null) return;
+
+        _kaydediyor = true;
+        var (_, hata) = _duzenlenenId is int id
+            ? await Api.VergiKoduGuncelleAsync(id, _form)
+            : await Api.VergiKoduEkleAsync(_form);
+        _kaydediyor = false;
+
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Error, "Kaydedilemedi", hata, 6000);
+            return;
+        }
+
+        Notif.Notify(NotificationSeverity.Success, "Kaydedildi", null, 3000);
+        _form = null;
+        _duzenlenenId = null;
+        await YenileAsync();
+    }
+
+    private async Task SilAsync(VergiKoduEslemesiDto kayit)
+    {
+        var hata = await Api.VergiKoduSilAsync(kayit.Id);
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Silinemedi", hata, 6000);
+            return;
+        }
+
+        if (_duzenlenenId == kayit.Id)
+        {
+            _form = null;
+            _duzenlenenId = null;
+        }
+
+        Notif.Notify(NotificationSeverity.Success, "Silindi", kayit.HesapKodu, 3000);
+        await YenileAsync();
+    }
+}

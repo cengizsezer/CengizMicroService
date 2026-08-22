@@ -11,8 +11,8 @@
 @inject IAppSessionManager SessionManager
 
 @*
-    Banka İşleme > Tanımlar — kurulum ekranı, nadiren açılır. Üç bölüm:
-    hesap planı, banka hesapları, öğrenilen eşleşmeler.
+    Banka İşleme > Tanımlar — kurulum ekranı, nadiren açılır. Dört bölüm:
+    hesap planı, banka hesapları, vergi kodları, öğrenilen eşleşmeler.
 
     Günlük ekranda (İşleme) hesap planı yükleme yok: hesap planı yılda birkaç kez
     değişiyor, her gün açılan ekranda durmasının anlamı yok.
@@ -38,12 +38,17 @@
 </div>
 
 <div class="tn-kart">
+    <VergiKodlariBolumu @ref="_vergiKodlari" />
+</div>
+
+<div class="tn-kart">
     <OgrenilenEslesmelerBolumu @ref="_eslesmeler" />
 </div>
 
 @code {
     private HesapPlaniBolumu? _hesapPlani;
     private BankaHesaplariBolumu? _bankaHesaplari;
+    private VergiKodlariBolumu? _vergiKodlari;
     private OgrenilenEslesmelerBolumu? _eslesmeler;
 
     protected override void OnInitialized() => SessionManager.FirmChanged += OnFirmaDegisti;
@@ -57,6 +62,7 @@
         {
             if (_hesapPlani is not null) await _hesapPlani.YenileAsync();
             if (_bankaHesaplari is not null) await _bankaHesaplari.YenileAsync();
+            if (_vergiKodlari is not null) await _vergiKodlari.YenileAsync();
             if (_eslesmeler is not null) await _eslesmeler.YenileAsync();
             StateHasChanged();
         });

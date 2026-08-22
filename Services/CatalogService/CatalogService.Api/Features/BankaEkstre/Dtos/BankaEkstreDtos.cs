@@ -21,6 +21,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         /// </summary>
         public string? HesapSahibiUnvani { get; set; }
 
+        /// <summary>Hesap sahibinin diğer yazımları, satır satır.</summary>
+        public string? HesapSahibiTakmaAdlari { get; set; }
+
         public HesapTipi HesapTipi { get; set; }
         public string ParaBirimi { get; set; } = "TRY";
         public string? Iban { get; set; }
@@ -41,6 +44,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public string? HesapAdi { get; set; }
         public string? EslestirmeAnahtarlari { get; set; }
         public string? HesapSahibiUnvani { get; set; }
+        public string? HesapSahibiTakmaAdlari { get; set; }
         public HesapTipi HesapTipi { get; set; } = HesapTipi.Vadesiz;
         public string ParaBirimi { get; set; } = "TRY";
         public string? Iban { get; set; }
@@ -84,6 +88,19 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
     public class AnahtarOnerisiDto
     {
         public string? EslestirmeAnahtarlari { get; set; }
+    }
+
+    /// <summary>
+    /// Yüklenmiş ekstrelerin açıklamalarında geçen, hesap sahibinin tanımlı yazımlarına
+    /// benzeyen ama henüz eklenmemiş yazımlar. "ADAY BAĞIMSIZ DENETİM VE SMMM A.Ş." gibi
+    /// yazımlar ancak böyle bulunur; kullanıcı tek tıkla takma adlara ekler.
+    /// </summary>
+    public class HesapSahibiOnerisiDto
+    {
+        public string Yazim { get; set; } = string.Empty;
+
+        /// <summary>Yüklenmiş ekstrelerde kaç satırda geçtiği; sık geçen yazım önce gelir.</summary>
+        public int Adet { get; set; }
     }
 
     /// <summary>Kullanıcıya seçtirilecek ayrıştırıcılar (şimdilik yalnız Vakıfbank vadesiz).</summary>
@@ -171,6 +188,13 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public string? AyirtEdiciEk { get; set; }
 
         /// <summary>
+        /// Satır çoklu adayla onaya düştüyse belirsizliği üreten n-gram. Onay ekranı
+        /// "bu seçim öğrenilecek, aynı belirsizlik bir daha sorulmayacak" bilgisini
+        /// buradan gösterir.
+        /// </summary>
+        public string? BelirsizlikAnahtari { get; set; }
+
+        /// <summary>
         /// Onay sonrası kullanıcıya gösterilecek uyarı (ör. kod hesap planında yok,
         /// bu yüzden öğrenme kaydı yazılmadı). Hata değil; işlem tamamlanmıştır.
         /// </summary>
@@ -233,6 +257,10 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public string HesapKodu { get; set; } = string.Empty;
         public string? HesapAdi { get; set; }
         public Yon Yon { get; set; }
+
+        /// <summary>Belirsizlik kayıtlarında aday kümesinin özeti; küme değişirse karar uygulanmaz.</summary>
+        public string? AdayKumesiOzeti { get; set; }
+
         public int KullanimSayisi { get; set; }
         public DateTime SonKullanim { get; set; }
     }
@@ -267,6 +295,29 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public int Pasiflenen { get; set; }
 
         public List<string> Uyarilar { get; set; } = new();
+    }
+
+    // ---- Vergi kodu eşlemeleri ----
+
+    public class VergiKoduEslemesiDto
+    {
+        public int Id { get; set; }
+        public string? VergiKodu { get; set; }
+        public string? AnahtarKelime { get; set; }
+        public string HesapKodu { get; set; } = string.Empty;
+        public string? HesapAdi { get; set; }
+        public int Sira { get; set; }
+        public bool Aktif { get; set; }
+    }
+
+    public class VergiKoduEslemesiYazDto
+    {
+        public string? VergiKodu { get; set; }
+        public string? AnahtarKelime { get; set; }
+        public string HesapKodu { get; set; } = string.Empty;
+        public string? HesapAdi { get; set; }
+        public int Sira { get; set; }
+        public bool Aktif { get; set; } = true;
     }
 
     /// <summary>Tanımlar ekranındaki hesap planı özeti.</summary>

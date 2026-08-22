@@ -22,6 +22,33 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             "SANAYI", "TICARET", "TIC", "SAN", "VE", "ITH", "IHR", "HIZMETLERI"
         };
 
+        /// <summary>
+        /// Bankacılık dolgu kelimeleri. Unvan ekleri anlam taşımadığı için atılıyordu
+        /// (<see cref="GurultuKelimeleri"/>); bunlar ise banka açıklamasının kendi
+        /// gövdesi: "… NO'LU … HESABINDAN … TARAFINDAN … GELEN EFT". Benzersiz önek
+        /// katmanı açıklamanın token dizilerini gezdiği için bu kelimeler temizlenmezse
+        /// gerçek unvanın n-gram'ları hiç oluşmaz ("HESABINDAN DENIZBANK YURTICI KARGO"
+        /// gibi diziler üretilir ve hiçbir cariyle eşleşmez).
+        /// </summary>
+        private static readonly HashSet<string> DolguKelimeleri = new(StringComparer.Ordinal)
+        {
+            "NOLU", "SORGU", "NUMARALI", "TARAFINDAN", "TARAFINA", "HESABINDAN", "HESABINA",
+            "TARIHLI", "GELEN", "GIDEN", "EFT", "FAST", "HAVALE", "TRANSFER", "CARI", "HESAP",
+            "ODEME", "ODEMESI", "FATURA", "SUBESI", "MERKEZ", "IBAN", "NEZDINDEKI", "VADESIZ",
+            "MAHSUBEN"
+        };
+
+        /// <summary>
+        /// Cari adında geçtiğinde kaydı banka yapan kelimeler. Açıklamalarda gönderen/alıcı
+        /// bankanın adı da geçiyor; benzersiz önek indeksinde banka isimli cariler kalırsa
+        /// "ZİRAAT BANKASI" metni <c>320 1 10011 ZİRAAT BANK</c> carisine eşleşir ve
+        /// ölçümde 16 satırı yanlış çözüyordu. Bankalar zaten banka kayıt defteri katmanının işi.
+        /// </summary>
+        private static readonly HashSet<string> BankaKelimeleri = new(StringComparer.Ordinal)
+        {
+            "BANKASI", "BANKA", "BANK", "FINANS", "KATILIM"
+        };
+
         /// <summary>Karşı IBAN deseni: açıklama içinde maskeli (yıldızlı) de geçebiliyor.</summary>
         private static readonly Regex IbanDeseni =
             new(@"TR\d{2}[\s\d\*]{16,30}", RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexZamanAsimi);
@@ -278,6 +305,99 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             foreach (var ch in normalizeUnvan)
                 if (char.IsLetter(ch)) return ch.ToString();
             return null;
+        }
+
+        /// <summary>
+        /// Kısaltmaları koruyan normalize: nokta <b>silinir</b>, kalan alfanümerik dışı
+        /// karakterler boşluğa çevrilir. "E.F.T." → "EFT", "A.Ş." → "AS".
+        ///
+        /// Açıklama şablonu eşleştirmesi bunu kullanır: aynı ifade dosyada hem
+        /// "HESAPLAR ARASI EFT" hem "HESAPLAR ARASI E.F.T." diye yazılıyor ve
+        /// <see cref="MetinNormalize"/> ikincisini "E F T" yapıp eşleşmeyi kaçırıyordu.
+        /// </summary>
+        public static string KisaltmaNormalize(string? metin)
+        {
+            var sade = TurkceSadelestir(metin);
+            if (sade.Length == 0) return string.Empty;
+
+            var sb = new StringBuilder(sade.Length);
+            foreach (var ch in sade)
+            {
+                if (ch == '.') continue;
+                sb.Append(char.IsLetterOrDigit(ch) ? ch : ' ');
+            }
+
+            return BosluklarDeseni.Replace(sb.ToString(), " ").Trim();
+        }
+
+        /// <summary>
+        /// Benzersiz önek katmanının ortak token üretimi. <b>Açıklama ve hesap adı aynı
+        /// boru hattından geçer</b>; geçmezse iki tarafın token dizileri hizalanmaz ve
+        /// önek eşleşmesi hiç tutmaz.
+        ///
+        /// Sırasıyla: Türkçe sadeleştirme + alfanümerik dışını boşluk, unvan eki gürültüsü,
+        /// bankacılık dolgusu, salt sayısal token'lar ve tek harfli token'lar atılır.
+        /// Tamamı elenirse gürültüsüz hâline düşülür — boş dizi döndürmek "hiç bilgi yok"
+        /// demek olurdu.
+        /// </summary>
+        public static List<string> CekirdekTokenlari(string? metin)
+        {
+            var normal = MetinNormalize(metin);
+            if (normal.Length == 0) return new List<string>();
+
+            var hepsi = normal.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+            var temiz = hepsi
+                .Where(t => t.Length > 1)
+                .Where(t => !t.All(char.IsDigit))
+                .Where(t => !GurultuKelimeleri.Contains(t) && !DolguKelimeleri.Contains(t))
+                .ToList();
+
+            return temiz.Count > 0 ? temiz : hepsi.Where(t => t.Length > 1).ToList();
+        }
+
+        /// <summary>
+        /// <see cref="CekirdekTokenlari"/>'nın tek boşlukla birleştirilmiş hâli. Hesap adı
+        /// çekirdeği ve açıklama n-gram'ları bu biçimde karşılaştırılır.
+        /// </summary>
+        public static string Cekirdek(string? metin) => string.Join(' ', CekirdekTokenlari(metin));
+
+        /// <summary>
+        /// Ad bir bankayı mı gösteriyor? Karşılaştırma <b>tam token</b> üzerinden yapılır:
+        /// düz <c>Contains</c> "BANK" kelimesini "OTEBANK" içinde de bulur ve alakasız bir
+        /// cariyi indeksten düşürürdü.
+        /// </summary>
+        public static bool BankaAdliMi(string? ad)
+            => CekirdekTokenlari(ad).Any(BankaKelimeleri.Contains);
+
+        /// <summary>
+        /// İki çekirdekten biri diğerini kapsıyor mu (tam kelime sınırlarıyla)?
+        ///
+        /// Çekirdek <b>eşitliği</b> yetmiyor: hesap sahibi "PKF ADAY BAGIMSIZ DENETIM" ile
+        /// bankanın yazdığı "ADAY BAGIMSIZ DENETIM" eşit değil ama aynı firma. Kapsama
+        /// kontrolü ikisini de aynı kimliğe bağlar.
+        /// </summary>
+        public static bool CekirdekKapsiyorMu(string? a, string? b)
+        {
+            if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return false;
+            return IfadeVarMi(a, b) || IfadeVarMi(b, a);
+        }
+
+        /// <summary>
+        /// Plaka karşılaştırma anahtarı: harf/rakam dışı her şey atılır. Hesap planında
+        /// plakalar boşluklu ("34 Mrp 081"), banka metninde bitişik ("34MRP081") yazılıyor;
+        /// boşluk temizlenmeden iki taraf hiç eşleşmez.
+        /// </summary>
+        public static string PlakaAnahtar(string? plaka)
+        {
+            var sade = TurkceSadelestir(plaka);
+            if (sade.Length == 0) return string.Empty;
+
+            var sb = new StringBuilder(sade.Length);
+            foreach (var ch in sade)
+                if (char.IsLetterOrDigit(ch)) sb.Append(ch);
+
+            return sb.ToString();
         }
 
         /// <summary>50 karakteri aşan açıklamayı keser (ORKA sınırı).</summary>

@@ -77,6 +77,15 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
         /// </summary>
         public string? Adaylar { get; set; }
 
+        /// <summary>
+        /// Satır çoklu adayla onaya düştüyse belirsizliği üreten n-gram. Kullanıcı adaylardan
+        /// birini seçtiğinde karar bu anahtarla öğrenilir ve aynı belirsizlik bir daha sorulmaz.
+        /// </summary>
+        public string? BelirsizlikAnahtari { get; set; }
+
+        /// <summary>Belirsizliğin aday kümesi özeti; öğrenilen karar bununla doğrulanır.</summary>
+        public string? AdayKumesiOzeti { get; set; }
+
         public string? OnaylananHesapKodu { get; set; }
         public string? OnaylananHesapAdi { get; set; }
         public DateTime? OnayTarihi { get; set; }

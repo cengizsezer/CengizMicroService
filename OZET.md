@@ -371,3 +371,163 @@ Mimari buna hazır; **kod değişikliği tek dosya**:
 
 Değişmeyecek yerler: `EkstreService`, `HesapEslestirici`, `HesapEslesmeService`,
 `AciklamaUretici`, `UnvanCikarici`, controller'lar, Blazor sayfaları, Ocelot yapılandırması.
+
+---
+
+# Tur 2 — gerçek veri düzeltmeleri (birleşik)
+
+Yedi madde de uygulandı. Ayrıntılı gerekçeler `KARARLAR.md` §42–56'da.
+
+## Ne değişti
+
+| # | Madde | Nerede |
+|---|---|---|
+| 1 | Benzersiz önek katmanı (ters yönde eşleştirme) | `Services/CariOnekIndeksi.cs` (yeni), `HesapEslestirici.OnekleCoz` |
+| 2 | Yön kuralı sahte belirsizliği çözüyor | `CariOnekIndeksi.YonleCoz` |
+| 3 | Belirsizlik çözümü öğreniliyor (aday kümesi özetiyle) | `AnahtarTipi.Belirsizlik`, `HesapEslesmeService.BelirsizlikYazAsync` |
+| 4 | Hesap sahibi unvanı çoklu + kapsama + öneri | `Services/HesapSahibiKimligi.cs` (yeni), `BankaHesabi.HesapSahibiTakmaAdlari` |
+| 5 | Açıklamanın sonundaki satıcı adı deseni | `BankaEkstreSeed.TahsilatDeseni`, `UnvanCikarici.UnvanAlanindanMi` |
+| 6 | 0.40 altındaki öneri hiç gösterilmiyor | `HesapEslestirici.EnAzOneriEsigi` |
+| 7 | Vergi kodu tablosu + plaka anahtarı | `Services/VergiPlakaCozucu.cs` (yeni), `Domain/VergiKoduEslemesi.cs` (yeni) |
+
+**Yeni katman sırası:** geçmiş onay → banka kayıt defteri → **vergi/plaka** → sabit kural
+→ **benzersiz önek** → desen tabanlı unvan benzerliği.
+
+## Veritabanı
+
+Migration: `20260822082201_AddBankaEkstreTur2` — **üretildi ve uygulandı**.
+
+- `EkstreVergiKodlari` (yeni tablo, global): `VergiKodu`, `AnahtarKelime`, `HesapKodu`,
+  `HesapAdi`, `Sira`, `Aktif`.
+- `EkstreBankaHesaplari.HesapSahibiTakmaAdlari` (nvarchar(1000), null).
+- `EkstreHesapEslesmeleri.AdayKumesiOzeti` (nvarchar(64), null).
+- `EkstreSatirlari.BelirsizlikAnahtari` (nvarchar(200), null),
+  `EkstreSatirlari.AdayKumesiOzeti` (nvarchar(64), null).
+
+Seed üç vergi kodu satırı ekliyor (`9085`, `0040`, `0033`) ve `TahsilatDeseni`'ni sıra 5'e
+yazıyor. Seed satır bazında idempotent; mevcut kayıtların üzerine yazmıyor.
+
+## Arayüz
+
+- **Tanımlar** ekranına dördüncü bölüm: **Vergi kodları** (CRUD).
+- **Banka hesapları** formuna "Hesap sahibinin diğer yazımları" (çok satırlı) +
+  "Yüklenmiş ekstrelerde ara" düğmesi; bulunan yazımlar tek tıkla ekleniyor.
+- **Öğrenilen eşleşmeler** listesine "Tür" sütunu; belirsizlik kayıtları sarı rozetle
+  ayrılıyor ve ipucu aday kümesi kuralını anlatıyor.
+- **Onay ekranı**: çoklu adaylı satırda "Seçiminiz öğrenilecek — `<n-gram>` belirsizliği
+  bir daha sorulmayacak" notu. Eşik altı satırlarda kod kutusu boş geliyor (sunucu kod
+  önermiyor).
+
+## Test
+
+`Services/CatalogService/CatalogService.UnitTests/BankaEkstre/Tur2GercekVeriTests.cs` —
+**gerçek Vakıfbank ekstresinin (287 satır) kendi açıklama metinleriyle**, 15 kabul
+kriterinin tamamı. Satırlar sıra numarasıyla değil açıklamada geçen ifadeyle bulunuyor.
+
+Hesap planı fikstürü: `GercekHesapPlani.cs` — 81 kayıt; gerçek planın ölçülen özellikleri
+korundu (50 karakterde kesik adlar, banka isimli cariler, firmanın kendi adını taşıyan
+gider hesapları, 159+329 kopyaları, Park Plaza / Pardus / Cms Jant aileleri, plakalı araç
+hesapları).
+
+**Durum:** çözüm derleniyor, 395 testin tamamı geçiyor (CatalogService 363, WebApp 31,
+Sovos 1).
+
+## Gerçek dosyayla ölçüm — ve neden Tur 1 sayılarıyla karşılaştırılamıyor
+
+Tur 1 sayıları (**128 otomatik / 123 onay bekliyor / 36 çözülemedi**) kullanıcının
+**gerçek 6.128 kayıtlık ORKA hesap planıyla** ölçülmüştü. O plan depoda yok; testler
+81 kayıtlık bir fikstürle çalışıyor. Fikstür planıyla aynı dosya:
+
+```
+47 otomatik / 110 onay bekliyor / 130 çözülemedi
+katman dağılımı: benzersiz önek 104, banka kayıt defteri 22, sabit kural 26, vergi/plaka 5
+```
+
+Bu sayılar **Tur 1 ile karşılaştırılabilir değil**: 130 "çözülemedi"nin büyük kısmı,
+karşı tarafın fikstür planında hiç bulunmamasından geliyor (gerçek planda o cariler var).
+Karşılaştırma ancak gerçek hesap planı yüklenip ekstre yeniden işlenerek yapılabilir —
+**bu adım ofiste, gerçek planla yapılmalı.**
+
+Fikstürle ölçülen ve anlamlı olan şey, **otomatik çözülen satırlarda yanlış kayıt
+olmaması**: 47 otomatik satırın tamamı elle doğrulandı. Tur 2 boyunca yakalanıp
+düzeltilen yanlış otomatik eşleşmeler:
+
+| Satır | Yanlış eşleşme | Sebep | Düzeltme |
+|---|---|---|---|
+| 13 Pardus satırı | `PARDUS PORTFÖY MARMARA …` → `120 F07 Para Piyasası` | aile ayrımı kırpılmış 8 aday üzerinden karar veriyordu | KARARLAR §50 |
+| `SAĞLAMOĞLU YETKİLİ MÜESSESE …` | → `120 H30 Hakan Yetkili Müessese` | alt metin yedeği adın ortasına oturuyordu | KARARLAR §51 |
+| `CMS JANT VE MAKİNA …` | → `120 C11 Cms Jant Makina` (onaya düşmeliydi) | `Cms Jant`'ın ayırt edici kelimesi yok, ayrım taraflıydı | KARARLAR §50 |
+| `ZİRAAT BANKASI` geçen 16 satır | → `320 1 10011 Ziraat Bank` | banka isimli cariler indeksteydi | KARARLAR §42 |
+| `Superonline` / `Turknet` | → `329 A33 Adobe`, `329 N21 Novatek` (0.20 skor) | eşik yoktu | KARARLAR §48 |
+
+## Kalan eksikler (Tur 2 sonrası)
+
+- **Gerçek hesap planıyla ölçüm yapılmadı.** Yukarıdaki sayılar fikstür planına ait.
+  Ofiste: gerçek planı Tanımlar > Hesap planı'ndan içe aktarın, aynı ekstreyi yükleyin,
+  otomatik / onay bekleyen / çözülemeyen sayılarını Tur 1'in 128/123/36'sıyla
+  karşılaştırın.
+- **Hesap sahibi takma adları boş geliyor.** Migration alanı ekliyor, doldurmuyor.
+  Ölçülen dosyada `ADAY BAĞIMSIZ DENETİM VE SMMM A.Ş.` yazımı **takma ad olarak
+  eklenmeden elenmiyor**. Tanımlar > Banka hesapları > (hesabı düzenle) >
+  "Yüklenmiş ekstrelerde ara" düğmesi bunu bulup öneriyor.
+- **Vergi eşleme tablosu üç satırla geliyor.** Ölçülen dosyadaki `0010/KURUMLAR V.`
+  eşlemesi yok, o satır onaya düşüyor. Kullanıcı Tanımlar > Vergi kodları'ndan ekler.
+- **Plaka hesapları firmaya özel.** Fikstürde `34 Mrp 081` var; gerçek planda hangi
+  plakaların hesabı olduğu bilinmiyor. Plaka katmanı yalnız planda karşılığı olan
+  plakalarda devreye giriyor, yoksa satır eskisi gibi çözülüyor.
+- ~~Bilinen iki yanlış otomatik eşleşme (MARBAŞ, DEMET DÖVİZ)~~ — **düzeltildi**,
+  aşağıdaki "Banka katmanı tetikleyicisi" bölümüne bakın.
+- **Tarayıcıda denenmedi:** vergi kodları bölümü, takma ad öneri düğmesi, onay ekranındaki
+  belirsizlik notu. Sunucu tarafı testli; Razor tarafının otomatik testi yok.
+
+---
+
+## Banka katmanı tetikleyicisi (Tur 2 eki)
+
+Banka kayıt defteri katmanı fazla erken devreye giriyordu: tetikleyici pratikte
+"açıklamada banka adı geçiyor"a iniyordu, ama müşteri ödemelerinde de **gönderenin
+bankası** yazıyor. Ölçüm: 87 cari satırının **59'unda** açıklamada banka adı geçiyor.
+
+Katman artık yalnız şu iki koşuldan **en az biri** sağlanınca çalışıyor (KARARLAR §57):
+
+- **(a)** Metinde bankalar arası ifadesi var: `hesaplar arası`, `hesaplararası`,
+  `virman`, `süpürme` — ham açıklamada veya işlem tipinde.
+- **(b)** Çıkarılan karşı taraf hesap sahibinin kendisi (ya hiç unvan çıkmamış, ya da
+  kalan yakalama bir banka adı).
+
+İkisi de tutmazsa katman atlanıyor; satır cari katmanlarına düşüyor, orada da çözülemezse
+onaya gidiyor.
+
+**Ölçüm (fikstür planı, gerçek dosya):**
+
+| | Önce | Sonra |
+|---|---|---|
+| Otomatik | 47 | **49** |
+| Onay bekliyor | 110 | 110 |
+| Çözülemedi | 130 | **128** |
+| Banka kayıt defterinden çözülen | 22 | **20** |
+
+Kaybedilen 2 satır ikisi de yanlıştı; kazanılan 2 satır doğru cariye gitti:
+
+| Satır | Önce | Sonra |
+|---|---|---|
+| `MARBAŞ MENKUL DEĞERLER ÖDEME (… Akbank T.A.Ş. MARBAŞ … hesabından …)` | `102 1 4 01 Akbank` | `120 M40 Marbaş Menkul Değerler` |
+| `PKF BAĞIMSIZ DENETİM FİRMASI ÖDEMESİ (… Türkiye İş Bankası A.Ş. DEMET DÖVİZ … )` | `102 1 5 01 İş Bankası` | `120 D50 Demet Döviz Yetkili Müessese` |
+
+Bankalar arası satırların hiçbiri kaybedilmedi: 16'sı (a), 4'ü (b) ile çözülüyor.
+`HESAPLAR ARASI E.F.T. VAKIFBANK/DENİZBANK` → `102 1 3 02` ve
+`HESAPLAR ARASI EFT VAKIFBANK/TÜRKİYE İŞ BANKASI` → `102 1 5 01` eskisi gibi.
+İfadesiz self-transferler (`İŞ BANKASI  (…)`, `DENİZBANK HESABINA (…)`) (b) ile
+yakalanıyor.
+
+**Testler** (`Tur2GercekVeriTests`, hepsi gerçek dosyanın kendi metinleriyle):
+`Aciklamada_banka_adi_gecmesi_tek_basina_banka_katmanini_actirmaz`,
+`Gonderenin_bankasi_yazan_musteri_odemesi_cari_katmanina_ulasir` (MARBAŞ + DEMET DÖVİZ),
+`Ifadesiz_kendi_hesaplari_arasi_transfer_b_kosuluyla_yakalanir`,
+`Banka_katmani_yalniz_iki_kosuldan_biri_tutunca_calisir` (tüm satırlar üzerinde tarama).
+
+Fikstür planına iki cari eklendi: `120 M40 Marbaş Menkul Değerler Anonim Şti`,
+`120 D50 Demet Döviz Yetkili Müessese Anonim Şirketi`.
+
+**Durum:** çözüm derleniyor, 402 testin tamamı geçiyor (CatalogService 370, WebApp 31,
+Sovos 1).

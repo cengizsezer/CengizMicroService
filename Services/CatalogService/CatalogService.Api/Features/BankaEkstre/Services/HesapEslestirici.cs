@@ -57,6 +57,15 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// </summary>
         public string? AyirtEdiciEk { get; set; }
 
+        /// <summary>
+        /// Satır çoklu adayla onaya düştüyse belirsizliği üreten n-gram. Kullanıcı seçim
+        /// yaptığında karar bu anahtarla öğrenilir (bkz. <see cref="AnahtarTipi.Belirsizlik"/>).
+        /// </summary>
+        public string? BelirsizlikAnahtari { get; set; }
+
+        /// <summary>Belirsizliğin aday kümesi özeti; öğrenilen karar bununla doğrulanır.</summary>
+        public string? AdayKumesiOzeti { get; set; }
+
         /// <summary>Satırın alacağı durum: Otomatik / OnayBekliyor / Cozulemedi.</summary>
         public SatirDurum Durum { get; set; } = SatirDurum.Cozulemedi;
     }
@@ -140,7 +149,24 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// <summary>Ekstresi işlenen hesapta VKN öğrenme katmanı açık mı (varsayılan kapalı).</summary>
         public bool VknKatmaniAktif { get; init; }
 
+        /// <summary>
+        /// Hesap sahibinin tüm yazımları. Hem unvan çıkarmada (karşı taraf sanılmasın) hem de
+        /// benzersiz önek indeksinde (firmanın kendi cari kayıtları indekse girmesin) kullanılır.
+        /// </summary>
+        public HesapSahibiKimligi HesapSahibi { get; init; } = HesapSahibiKimligi.Yok;
+
+        /// <summary>Vergi kodu / anahtar kelime → hesap eşleme tablosu (global).</summary>
+        public IReadOnlyList<VergiKoduEslemesi> VergiKodlari { get; init; } = Array.Empty<VergiKoduEslemesi>();
+
         private HesapPlaniIndeksi? _indeks;
+        private CariOnekIndeksi? _onekIndeksi;
+
+        /// <summary>
+        /// Benzersiz önek katmanının cari indeksi; ilk kullanımda kurulur ve yükleme boyunca
+        /// tekrar kullanılır. Satır başına kurulsaydı 6.000+ kayıt her satırda yeniden
+        /// süzülür ve sıralanırdı.
+        /// </summary>
+        public CariOnekIndeksi OnekIndeksi => _onekIndeksi ??= CariOnekIndeksi.Kur(HesapPlani, HesapSahibi);
 
         /// <summary>
         /// Hesap planının çıpa indeksi; ilk kullanımda kurulur ve yükleme boyunca tekrar
@@ -186,6 +212,21 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         /// <summary>İkinci adayla bu farktan yakınsa satır onaya düşer (ölçümde iki hatanın da sebebi).</summary>
         public const decimal AdayFarki = 0.05m;
+
+        /// <summary>
+        /// Bu skorun altındaki unvan benzerliği <b>öneri olarak bile gösterilmez</b>; satır
+        /// "Çözülemedi" olur ve kod kutusu boş kalır.
+        ///
+        /// Ölçümde "Superonline Tahsilatı" satırına 0.20 skorla <c>329 A33 Adobe Systems
+        /// Ireland</c>, "Turknet Tahsilatı" satırına 0.21 ile <c>329 N21 Novatek</c>
+        /// öneriliyordu. Alakasız öneri boş kutudan kötüdür: kullanıcı yanlışlıkla onaylar
+        /// ve sistem onu öğrenir.
+        /// </summary>
+        public const decimal EnAzOneriEsigi = 0.40m;
+
+        /// <summary>Benzersiz önek katmanının güveni (önek eşleşmesi / alt metin yedeği).</summary>
+        private const decimal OnekGuveni = 0.95m;
+        private const decimal AltMetinGuveni = 0.90m;
 
         /// <summary>Yön → ana grup. Ölçüm: giren 141/142 → 120, çıkan 33/35 → 329.</summary>
         public const string GirenAnaGrup = "120";
@@ -283,11 +324,26 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 if (kodlular.Count > 1) return BankaOnayaDusur(kodlular);
             }
 
-            // --- Katman 3: Sabit kural tablosu (işlem tipi kapsamı) ---
+            // --- Katman 3: Vergi tahsilatı (kod + anahtar kelime + plaka) ---
+            // Sabit kuraldan önce: vergi satırlarında karşı hesap metnin içeriğine göre
+            // değişiyor (gerçek dosyada 5 vergi satırı dört farklı hesaba gitmiş), tek
+            // kural yetmiyor. Unvan benzerliğine hiç düşmemeli — açıklamadaki
+            // "Soyadi/Unvani :PKF ADAY …" hesap sahibinin kendi unvanı.
+            var vergi = VergiyleCoz(baglam, veri);
+            if (vergi is not null) return vergi;
+
+            // --- Katman 4: Sabit kural tablosu (işlem tipi kapsamı) ---
             var kural = KuralBul(baglam, veri, KuralKapsami.IslemTipi);
             if (kural is not null) return KuralSonucu(kural, baglam, veri);
 
-            // --- Katman 4: Unvan benzerliği ---
+            // --- Katman 5: Benzersiz önek ---
+            // Ters yönde çalışır: açıklamadan unvan çıkarıp benzerlik aramak yerine, hesap
+            // adı çekirdeği açıklamanın bir token dizisiyle başlayan cariyi bulur. Ölçümde
+            // isabeti %98 (unvan benzerliğinde %87); desen tabanlı katmandan önce denenir.
+            var onek = OnekleCoz(baglam, veri);
+            if (onek is not null) return onek;
+
+            // --- Katman 6: Unvan benzerliği ---
             return UnvanaGoreCoz(baglam, veri);
         }
 
@@ -312,16 +368,26 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// <summary>
         /// Kendi hesapları arası hareketlerde karşı banka hesabını bulur.
         ///
-        /// <b>Katman ne zaman açılır?</b> İki tetikleyici var:
+        /// <b>Katman ne zaman açılır?</b> En az biri sağlanmalı:
         /// <list type="bullet">
-        /// <item>Şablon <see cref="AciklamaSablonu.BankalarArasi"/> diyorsa (Virman, Otomatik Süpürme).</item>
-        /// <item><see cref="SatirBaglami.HesapSahibiElendi"/> — karşı taraf olarak hesap
-        /// sahibinin kendi unvanı çıktıysa.</item>
+        /// <item><b>(a)</b> Metinde bankalar arası ifadesi var: <i>hesaplar arası</i>,
+        /// <i>hesaplararası</i>, <i>virman</i>, <i>süpürme</i>. Ölçüm: gerçek 48 bankalar
+        /// arası satırın 42'sinde bu ifade geçiyor.</item>
+        /// <item><b>(b)</b> Çıkarılan karşı taraf hesap sahibinin kendisi. Gerçek bir kendi
+        /// hesapları arası transferde gönderen de alıcı da aynı firmadır ("… PKF ADAY
+        /// BAĞIMSIZ DENETİM ANONİM ŞİRKETİ tarafından PKF ADAY BAĞIMSIZ DENETİM ANONİM
+        /// ŞİRKETİ tarafına …"). Kalan 6 bankalar arası satır bu koşulla yakalanıyor.</item>
         /// </list>
-        /// İkincisi eklenmeden katman pratikte hiç çalışmıyordu: gerçek dosyada hesaplar
-        /// arası EFT'lerin işlem tipi "Hesaba giden EFT" / "Gelen EFT Otomatik Yatan" ve bu
-        /// şablonlar <c>BankalarArasi</c> değil — "Hesaplar Arası EFT" şablonu ise açıklamada
-        /// geçen bir ifadeye karşılık geliyor, işlem tipine değil, yani hiç eşleşmiyordu.
+        ///
+        /// <b>Neden bu kadar dar?</b> Katman önceden yalnız "açıklamada banka adı geçiyor"
+        /// diye tetikleniyordu; ama müşteri ödemelerinde de <b>gönderenin bankası</b> yazıyor.
+        /// Ölçüm: 87 cari satırının <b>59'unda</b> açıklamada banka adı geçiyor
+        /// ("BAYCAN A.Ş. CARİ HESAP ÖDEME/TÜRKİYE CUMHURİYETİ ZİRAAT BANKASI …",
+        /// "NAOSKZ NAOS İSTANBUL KOZMETİK…/TÜRKİYE GARANTİ BANKASI …", tüm personel masraf
+        /// ödemeleri). Bunların hepsi cari katmanlarına gitmeli.
+        ///
+        /// İkisi de tutmazsa katman atlanır ve satır cari katmanlarına düşer; orada da
+        /// çözülemezse onaya gider — yanlış çözmektense sorar.
         ///
         /// <b>Arama sırası</b>
         /// <list type="number">
@@ -343,8 +409,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// </summary>
         public BankaEslesmesi BankaEslesmesiBul(SatirBaglami baglam, EslestirmeVerisi veri)
         {
-            var sablonlaAcildi = baglam.Sablon?.BankalarArasi == true;
-            if (!sablonlaAcildi && !baglam.HesapSahibiElendi) return BankaEslesmesi.Yok;
+            var bankalarArasi = BankalarArasiIfadeVarMi(baglam);
+            if (!bankalarArasi && !KarsiTarafHesapSahibiMi(baglam, veri)) return BankaEslesmesi.Yok;
 
             var adaylar = veri.BankaHesaplari
                 .Where(h => h.Aktif && h.Id != veri.IslenenBankaHesabiId)
@@ -383,11 +449,81 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             // adı hiç geçmiyor — ayrım ekstrenin kendi bankasından geliyor, o yüzden aynı
             // bankanın tüm hesapları aday olur; birden fazlaysa satır onaya düşer.
             //
-            // Bu genişletme YALNIZ şablonun hesaplar arası dediği satırlarda yapılır.
-            // Bayrağa dayanan satırlarda yapılsaydı, karşı tarafı gerçek bir cari olan
-            // ("Tös Hesaba Havale / PARDUS PORTFÖY …") satırlar cari eşleştirmesine hiç
-            // gidemeden banka adaylarıyla onaya düşerdi.
-            return sablonlaAcildi ? Eslesme(ayniBanka) : BankaEslesmesi.Yok;
+            // Bu genişletme YALNIZ (a) koşuluyla açılan satırlarda yapılır. (b) ile açılan
+            // satırlarda yapılsaydı, karşı tarafı gerçek bir cari olan satırlar cari
+            // eşleştirmesine hiç gidemeden banka adaylarıyla onaya düşerdi.
+            return bankalarArasi ? Eslesme(ayniBanka) : BankaEslesmesi.Yok;
+        }
+
+        /// <summary>
+        /// (a) Bankalar arası ifadeleri. Ham açıklama <b>ve</b> işlem tipi taranır: aynı
+        /// bilgi bazen açıklamada ("HESAPLAR ARASI E.F.T. VAKIFBANK/DENİZBANK …"), bazen
+        /// işlem tipinde ("Virman", "Otomatik Süpürme İşlemleri Virman") duruyor.
+        ///
+        /// Karşılaştırma <see cref="Normalizasyon.KisaltmaNormalize"/> üzerinden ve tam
+        /// kelime sınırıyla; "HESAPLARARASI" bitişik yazımı ayrı bir ifade olarak aranıyor.
+        /// </summary>
+        private static readonly string[] BankalarArasiIfadeleri =
+        {
+            "HESAPLAR ARASI", "HESAPLARARASI", "VIRMAN", "SUPURME"
+        };
+
+        private static bool BankalarArasiIfadeVarMi(SatirBaglami baglam)
+        {
+            var metin = Normalizasyon.KisaltmaNormalize(baglam.HamAciklama + " " + baglam.IslemTipi);
+            if (metin.Length == 0) return false;
+
+            return BankalarArasiIfadeleri.Any(ifade => Normalizasyon.IfadeVarMi(metin, ifade));
+        }
+
+        /// <summary>
+        /// (b) Karşı taraf, hesap sahibinin kendisi mi?
+        ///
+        /// En az bir desen hesap sahibinin unvanını karşı taraf olarak yakalamış olmalı
+        /// (<see cref="SatirBaglami.HesapSahibiElendi"/>) <b>ve</b> geriye gerçek bir firma
+        /// kalmamalı. "Gerçek firma kalmamış" iki biçimde olur:
+        /// <list type="bullet">
+        /// <item>Hiçbir desen başka unvan vermedi.</item>
+        /// <item>Kalan yakalama bir <b>banka adı</b>: "İŞ BANKASI  (PKF ADAY … VADESİZ
+        /// HESABINDAN … NO(apostrof)LU PKF ADAY … HESABINA …)" satırında parantez öncesi
+        /// serbest metin unvan sanılıyor. Banka adı karşı taraf değil, transferin gittiği
+        /// bankadır.</item>
+        /// </list>
+        ///
+        /// Karşı taraf <b>başka</b> bir firmaysa bu bir müşteri/tedarikçi hareketidir ve
+        /// katman çalışmamalıdır (MARBAŞ MENKUL DEĞERLER, DEMET DÖVİZ satırları).
+        /// </summary>
+        private static bool KarsiTarafHesapSahibiMi(SatirBaglami baglam, EslestirmeVerisi veri)
+        {
+            if (!baglam.HesapSahibiElendi) return false;
+            if (string.IsNullOrWhiteSpace(baglam.Unvan)) return true;
+
+            return BankaAdiMiUnvan(baglam.Unvan, veri.BankaHesaplari);
+        }
+
+        /// <summary>
+        /// Çıkarılan unvan bir bankayı mı gösteriyor? Önce genel banka kelimeleri
+        /// ("… BANKASI", "… BANK"), sonra <b>kayıt defterindeki</b> banka adları ve
+        /// eşleştirme anahtarları — "DENİZBANK HESABINA" gibi yazımlarda genel kelime yok,
+        /// ayırt eden şey bankanın kayıt defterinde tanımlı olması.
+        /// </summary>
+        private static bool BankaAdiMiUnvan(string unvan, IReadOnlyList<BankaHesabi> bankaHesaplari)
+        {
+            if (Normalizasyon.BankaAdliMi(unvan)) return true;
+
+            var metin = Normalizasyon.MetinNormalize(unvan);
+            if (metin.Length == 0) return false;
+
+            foreach (var hesap in bankaHesaplari)
+            {
+                if (Normalizasyon.IfadeVarMi(metin, Normalizasyon.MetinNormalize(hesap.BankaAdi))) return true;
+
+                foreach (var anahtar in EslestirmeAnahtari.NormalizeAnahtarlar(hesap.EslestirmeAnahtarlari))
+                    if (anahtar.Length >= EslestirmeAnahtari.EnKisaAnahtar && Normalizasyon.IfadeVarMi(metin, anahtar))
+                        return true;
+            }
+
+            return false;
         }
 
         /// <summary>Önce anahtarlar, sonra banka adı; ikisi de metinde aranır. Hiçbiri tutmazsa null.</summary>
@@ -548,6 +684,31 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 if (altHesap.Durum != SatirDurum.Cozulemedi) return altHesap;
             }
 
+            // Plaka anahtarı: HGS ve otoyol yükleme satırlarında metindeki plakayı adında
+            // taşıyan hesaplar varsa öne çıkarılır. Plaka tek başına karar vermez — aynı
+            // plakanın birden fazla hesabı olabiliyor ("34 Mrp 081 Araç Kira Bedeli" /
+            // "… Araç Otopark Yakıt Vb.") — adayları daraltır ve satır onaya düşer.
+            // Alt hesabı kullanıcıdan beklenen kurallarda (personel/iş avansı) plaka aranmaz:
+            // orada aday kümesi kişi muavinidir, araç hesabı değil.
+            var plakalilar = kural.AltHesapGerekli
+                ? new List<HesapPlaniKaydi>()
+                : VergiPlakaCozucu.PlakaAdaylari(baglam.HamAciklama, veri.HesapPlani);
+
+            if (plakalilar.Count > 0)
+            {
+                var adaylar = new List<AdayKayit>();
+                foreach (var hesap in plakalilar) AdayEkle(adaylar, hesap.Kod, hesap.Ad);
+                AdayEkle(adaylar, kural.HesapKodu, kural.HesapAdi);
+
+                return new EslestirmeSonuc
+                {
+                    Guven = 0m,
+                    Katman = KaynakKatman.VergiPlaka,
+                    Adaylar = adaylar.Take(EnFazlaAday).ToList(),
+                    Durum = SatirDurum.OnayBekliyor
+                };
+            }
+
             return new EslestirmeSonuc
             {
                 HesapKodu = kural.HesapKodu,
@@ -602,6 +763,211 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             return null;
         }
 
+        // ---- Katman 5: Benzersiz önek ----
+
+        /// <summary>
+        /// Benzersiz önek katmanı. Açıklamanın token dizileri n=4'ten n=2'ye inerek
+        /// dolaşılır; hesap adı çekirdeği o diziyle <b>başlayan</b> cariler aranır.
+        ///
+        /// Tek hesaba inilirse otomatik. Birden fazlaysa önce yön kuralı denenir (aynı
+        /// carinin 159/329 kopyası sahte belirsizliktir), sonra öğrenilmiş belirsizlik
+        /// kararı; ikisi de çözmezse satır <b>tüm adaylarla</b> onaya düşer. Rastgele ya da
+        /// "ilki" seçilmez.
+        ///
+        /// Hiç eşleşme yoksa null döner ve sıradaki katman (unvan benzerliği) devam eder.
+        /// </summary>
+        private static EslestirmeSonuc? OnekleCoz(SatirBaglami baglam, EslestirmeVerisi veri)
+        {
+            var indeks = veri.OnekIndeksi;
+            if (indeks.Sayi == 0) return null;
+
+            var sonuc = OnekAramasi(baglam, veri, indeks);
+            if (sonuc is null) return null;
+
+            if (!sonuc.Belirsiz) return OnekSonucu(sonuc.Hesaplar[0], sonuc);
+
+            // Yön kuralı: adların çekirdeği aynı ve fark yalnız ana gruptaysa belirsizlik sahte.
+            var yonle = CariOnekIndeksi.YonleCoz(sonuc.Hesaplar, baglam.Yon);
+            if (yonle is not null) return OnekSonucu(yonle, sonuc);
+
+            var tumAdaylar = sonuc.Hesaplar
+                .Select(h => new AdayKayit { Kod = h.Kod, Ad = h.Ad, Skor = 0m })
+                .ToList();
+
+            var adaylar = tumAdaylar.Take(EnFazlaAday).ToList();
+
+            // Aile ayrımı: adaylar ortak bir çekirdeği paylaşıyor ve ayırt edici kelimelerden
+            // tam olarak biri metinde geçiyorsa (Park Plaza Yönetimi "Aidat" / "Elektrik")
+            // belirsizlik gerçek değil. Birden fazla üye geçiyorsa tahmin edilmez.
+            //
+            // Kırpılmamış küme verilir: ekranda gösterilen ilk 8 üzerinden karar verilseydi
+            // 37 üyeli Pardus ailesinde 8'in dışındaki üyeler görünmez olur ve ayrım
+            // "tek üye uydu" sanılıp yanlış fona otomatik kayıt atılırdı.
+            var secilen = AileyiAyikla(tumAdaylar, baglam.HamAciklama, out var ayirtEdici);
+            if (secilen is not null)
+            {
+                var aileSonucu = OnekSonucu(
+                    sonuc.Hesaplar.First(h => string.Equals(h.Kod, secilen.Kod, StringComparison.Ordinal)), sonuc);
+                aileSonucu.AyirtEdiciEk = ayirtEdici;
+                return aileSonucu;
+            }
+
+            var ozet = CariOnekIndeksi.AdayOzeti(sonuc.Hesaplar.Select(h => h.Kod));
+            var anahtar = Normalizasyon.Kirp(sonuc.Anahtar, 200);
+
+            // Kullanıcı bu belirsizliği daha önce çözdüyse bir daha sorulmaz — aday kümesi
+            // aynı kaldığı sürece. Küme değiştiyse (yeni bir Park Plaza hesabı açılmış)
+            // eski karar sessizce uygulanmaz.
+            var karar = veri.Eslesmeler.FirstOrDefault(e =>
+                e.AnahtarTipi == AnahtarTipi.Belirsizlik &&
+                e.Yon == baglam.Yon &&
+                string.Equals(e.AnahtarCekirdek, anahtar, StringComparison.Ordinal) &&
+                string.Equals(e.AdayKumesiOzeti ?? string.Empty, ozet, StringComparison.Ordinal));
+
+            if (karar is not null)
+            {
+                var ogrenilen = Kesin(karar, KaynakKatman.GecmisOnay);
+                ogrenilen.BelirsizlikAnahtari = anahtar;
+                ogrenilen.AdayKumesiOzeti = ozet;
+                return ogrenilen;
+            }
+
+            return new EslestirmeSonuc
+            {
+                Guven = 0m,
+                Katman = KaynakKatman.BenzersizOnek,
+                Adaylar = adaylar,
+                // Onay ekranı aday listesini kullanır; ikinci aday alanları eski
+                // sözleşmeyi (iki adaylı gösterim) bozmamak için yine doldurulur.
+                IkinciAdayKodu = adaylar[1].Kod,
+                IkinciAdayAdi = adaylar[1].Ad,
+                IkinciAdaySkoru = adaylar[1].Skor,
+                BelirsizlikAnahtari = anahtar,
+                AdayKumesiOzeti = ozet,
+                Durum = SatirDurum.OnayBekliyor
+            };
+        }
+
+        /// <summary>
+        /// Önek aramasının iki kaynağı, sırayla:
+        /// <list type="number">
+        /// <item><b>Desenle çıkarılan unvan</b> — gürültüsüz olduğu için tek kelimelik
+        /// diziler de aranır (n≥1). "Belbim", "Superonline", "Turknet" gibi tek kelimelik
+        /// satıcılar ancak böyle bulunur; ham açıklamada tek kelime aramak gürültü üretirdi.</item>
+        /// <item><b>Ham açıklamanın token dizileri</b> (n≥2), hesap sahibinin kendi adı
+        /// çıkarılmış hâlde. Ölçülen 287 satırın 268'inde firmanın kendi unvanı geçiyor;
+        /// çıkarılmazsa "BAGIMSIZ DENETIM" dizisi <c>120 B58 Bağımsız Denetim Derneği</c>
+        /// gibi <b>başka</b> bir cariye eşleşir.</item>
+        /// </list>
+        /// </summary>
+        private static OnekSonuc? OnekAramasi(SatirBaglami baglam, EslestirmeVerisi veri, CariOnekIndeksi indeks)
+        {
+            var tekKelime = TekKelimelikUnvan(baglam, veri);
+            if (tekKelime is not null)
+            {
+                var unvanSonucu = indeks.Ara(new[] { tekKelime }, enKisaNgram: 1,
+                                             altMetinIlkKelimeSarti: false);
+
+                // Yalnız <b>tek</b> sonuç kabul edilir. Çoklu sonuçta ham açıklamaya
+                // düşülür: orada satırın kalanı da tarandığı için aday kümesi daha eksiksiz
+                // olur ve satır doğru adaylarla onaya düşer.
+                if (unvanSonucu.Hesaplar.Count == 1) return unvanSonucu;
+            }
+
+            var parcalar = veri.HesapSahibi.Parcala(Normalizasyon.CekirdekTokenlari(baglam.HamAciklama));
+            var metinSonucu = indeks.Ara(parcalar);
+
+            return metinSonucu.Bulundu ? metinSonucu : null;
+        }
+
+        /// <summary>
+        /// Tek kelimeden ibaret çıkarılmış unvan ("Belbim", "Superonline", "Turknet") — ham
+        /// açıklamada n≥2 dizi aranması bu satırları hiç çözemez. Desen yakaladığı için bu
+        /// kelime gürültü değil; tek kelimelik arama yalnız burada açılır.
+        ///
+        /// Çok kelimeli unvanlarda ham açıklama kullanılır: satırın kalanında geçen diğer
+        /// cariler de aday olsun ("KEMAL GÜLMAN VK POLAT GÜLMAN PARK PLAZA 19.KAT" satırında
+        /// desen yalnız "POLAT GÜLMAN"ı veriyor, ama karşı taraf üç adaydan biri).
+        /// </summary>
+        private static string[]? TekKelimelikUnvan(SatirBaglami baglam, EslestirmeVerisi veri)
+        {
+            if (string.IsNullOrWhiteSpace(baglam.Unvan)) return null;
+            if (veri.HesapSahibi.Kendisi(baglam.Unvan)) return null;
+
+            var tokenlar = Normalizasyon.CekirdekTokenlari(baglam.Unvan);
+            if (tokenlar.Count != 1 || tokenlar[0].Length < EnKisaTekKelime) return null;
+
+            return new[] { tokenlar[0] };
+        }
+
+        /// <summary>Tek kelimelik unvan aramasının alt sınırı; kısa kelime her şeye eşleşir.</summary>
+        private const int EnKisaTekKelime = 4;
+
+        private static EslestirmeSonuc OnekSonucu(HesapPlaniKaydi hesap, OnekSonuc sonuc) => new()
+        {
+            HesapKodu = hesap.Kod,
+            HesapAdi = hesap.Ad,
+            Guven = sonuc.AltMetinYedegi ? AltMetinGuveni : OnekGuveni,
+            Katman = KaynakKatman.BenzersizOnek,
+            Durum = SatirDurum.Otomatik
+        };
+
+        // ---- Katman 3: Vergi tahsilatı ve plaka ----
+
+        /// <summary>
+        /// Vergi tahsilatı satırının karşı hesabı. Vergi kodu (9085, 0040, 0033) ve anahtar
+        /// kelimeler (TRAFİK CEZ, DAMGA, BEYANNAME) yönetilebilir tablodan; metinde plaka
+        /// geçiyorsa o plakayı adında taşıyan hesaplar da aday olur.
+        ///
+        /// Tek aday varsa otomatik; birden fazla veya hiç yoksa satır onaya düşer. Plaka tek
+        /// başına karar vermez — aynı plakanın birden fazla hesabı olabiliyor
+        /// ("34 Mrp 081 Araç Kira Bedeli" / "… Araç Otopark Yakıt Vb.").
+        ///
+        /// Vergi satırı değilse null döner ve sıradaki katman devam eder.
+        /// </summary>
+        private static EslestirmeSonuc? VergiyleCoz(SatirBaglami baglam, EslestirmeVerisi veri)
+        {
+            if (!VergiPlakaCozucu.VergiSatiriMi(baglam.IslemTipi)) return null;
+
+            var adaylar = new List<AdayKayit>();
+
+            foreach (var eslesme in VergiPlakaCozucu.VergiAdaylari(baglam.HamAciklama, veri.VergiKodlari))
+                AdayEkle(adaylar, eslesme.HesapKodu, eslesme.HesapAdi);
+
+            foreach (var hesap in VergiPlakaCozucu.PlakaAdaylari(baglam.HamAciklama, veri.HesapPlani))
+                AdayEkle(adaylar, hesap.Kod, hesap.Ad);
+
+            if (adaylar.Count == 1)
+                return new EslestirmeSonuc
+                {
+                    HesapKodu = adaylar[0].Kod,
+                    HesapAdi = adaylar[0].Ad,
+                    Guven = 0.95m,
+                    Katman = KaynakKatman.VergiPlaka,
+                    Durum = SatirDurum.Otomatik
+                };
+
+            // Hiç aday yoksa da onaya düşer: eşleme tablosunda karşılığı olmayan bir vergi
+            // kodu (ölçümde "0010/KURUMLAR V.") kullanıcıya sorulmalı, tahmin edilmemeli.
+            return new EslestirmeSonuc
+            {
+                Guven = 0m,
+                Katman = KaynakKatman.VergiPlaka,
+                Adaylar = adaylar.Take(EnFazlaAday).ToList(),
+                Durum = SatirDurum.OnayBekliyor
+            };
+        }
+
+        /// <summary>Aynı kod iki kaynaktan (vergi tablosu + plaka) gelirse tek kez listelenir.</summary>
+        private static void AdayEkle(List<AdayKayit> adaylar, string? kod, string? ad)
+        {
+            var normal = Normalizasyon.HesapKoduNormalize(kod);
+            if (normal.Length == 0) return;
+            if (adaylar.Any(a => string.Equals(a.Kod, normal, StringComparison.Ordinal))) return;
+
+            adaylar.Add(new AdayKayit { Kod = normal, Ad = ad ?? string.Empty, Skor = 0m });
+        }
+
         /// <summary>
         /// Unvan benzerliği katmanı. Arama uzayı yön → ana grup ile daraltılır; ardından
         /// normalize unvanın **her token'ı sırayla çıpa olarak** denenir. Banka unvanın önüne
@@ -640,6 +1006,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 return new EslestirmeSonuc { Durum = SatirDurum.Cozulemedi, Katman = KaynakKatman.Yok };
 
             var enIyi = adaylar[0];
+
+            // Alakasız öneri boş kutudan kötüdür: kullanıcı yanlışlıkla onaylayabilir ve
+            // sistem onu öğrenir. Eşik altındaki aday hiç gösterilmez.
+            if (enIyi.Skor < EnAzOneriEsigi)
+                return new EslestirmeSonuc { Durum = SatirDurum.Cozulemedi, Katman = KaynakKatman.Yok };
+
             var ikinci = adaylar.Count > 1 ? adaylar[1] : null;
             var yakinIkinci = ikinci is not null && enIyi.Skor - ikinci.Skor < AdayFarki;
 
@@ -745,6 +1117,11 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
             AdayKayit? kazanan = null;
             string? kazananKelime = null;
+
+            // Bir üyenin ayırt edici kelimesi hiç yoksa (adı diğerlerinin ortak çekirdeğinden
+            // ibaret: "Cms Jant" / "Cms Jant Makina") o üye hiçbir zaman kazanamaz. Böyle bir
+            // ailede ayrım taraflı olur; karar kullanıcıya bırakılır.
+            if (tokenSetleri.Any(k => k.All(ortak.Contains))) return null;
 
             for (var i = 0; i < aile.Count; i++)
             {

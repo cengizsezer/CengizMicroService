@@ -144,7 +144,10 @@ namespace CatalogService.UnitTests.BankaEkstre
                 Baglam("0000123 sorgu numaralı AVANSAS TEKSTİL A.Ş. tarafından", unvan: "AVANSAS TEKSTİL"), veri);
 
             Assert.Equal("329 A11", sonuc.HesapKodu);
-            Assert.Equal(KaynakKatman.UnvanBenzerligi, sonuc.Katman);
+            // Cari katmanlarından biri çözmeli; avans kuralı (SabitKural) tutmamalı.
+            // Hangi cari katmanının çözdüğü değişebilir: benzersiz önek, unvan
+            // benzerliğinden önce denenir ve "AVANSAS TEKSTIL" dizisini doğrudan bulur.
+            Assert.Equal(KaynakKatman.BenzersizOnek, sonuc.Katman);
         }
 
         [Fact]

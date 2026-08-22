@@ -250,6 +250,10 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("HesapSahibiTakmaAdlari")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<string>("HesapSahibiUnvani")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -304,6 +308,10 @@ namespace CatalogService.Api.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AdayKumesiOzeti")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.Property<string>("Adaylar")
                         .HasColumnType("nvarchar(max)");
 
@@ -314,6 +322,10 @@ namespace CatalogService.Api.Migrations
                     b.Property<string>("AyirtEdiciEk")
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("BelirsizlikAnahtari")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("CikarilanUnvan")
                         .HasMaxLength(150)
@@ -476,6 +488,10 @@ namespace CatalogService.Api.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AdayKumesiOzeti")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<string>("AnahtarCekirdek")
                         .IsRequired()
@@ -708,6 +724,44 @@ namespace CatalogService.Api.Migrations
                     b.HasIndex("ParserTipi", "Sira");
 
                     b.ToTable("EkstreUnvanDesenleri", "catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.BankaEkstre.Domain.VergiKoduEslemesi", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Aktif")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("AnahtarKelime")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("HesapAdi")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("HesapKodu")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("Sira")
+                        .HasColumnType("int");
+
+                    b.Property<string>("VergiKodu")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Sira");
+
+                    b.ToTable("EkstreVergiKodlari", "catalog");
                 });
 
             modelBuilder.Entity("CatalogService.Api.Features.Declarations.Entities.CustomerCompany", b =>

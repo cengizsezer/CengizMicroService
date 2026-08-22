@@ -35,6 +35,14 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
         /// <summary>Kaydın öğrenildiği yön; aynı anahtar iki yönde farklı hesaba gidebilir.</summary>
         public Yon Yon { get; set; }
 
+        /// <summary>
+        /// <see cref="AnahtarTipi.Belirsizlik"/> kayıtlarında aday kümesinin özeti
+        /// (kod listesinin hash'i). Yeni bir cari açılıp küme değişirse eski karar
+        /// <b>uygulanmaz</b>, satır tekrar onaya düşer — aksi hâlde yeni açılan bir
+        /// Park Plaza hesabı hiç görünmez olurdu.
+        /// </summary>
+        public string? AdayKumesiOzeti { get; set; }
+
         public int KullanimSayisi { get; set; } = 1;
 
         public DateTime SonKullanim { get; set; }

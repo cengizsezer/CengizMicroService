@@ -25,7 +25,10 @@ namespace WebApp.Shared.Dto.BankaEkstre
     {
         UnvanCekirdek = 1,
         Iban = 2,
-        Vkn = 3
+        Vkn = 3,
+
+        /// <summary>Kullanıcının çözdüğü belirsizlik; anahtar, belirsizliği üreten n-gram.</summary>
+        Belirsizlik = 4
     }
 
     public enum KaynakKatman : byte
@@ -37,7 +40,13 @@ namespace WebApp.Shared.Dto.BankaEkstre
         BankaKayitDefteri = 4,
         SabitKural = 5,
         UnvanBenzerligi = 6,
-        Kullanici = 7
+        Kullanici = 7,
+
+        /// <summary>Benzersiz önek: hesap adı açıklamanın bir token dizisiyle başlayan tek cari.</summary>
+        BenzersizOnek = 8,
+
+        /// <summary>Vergi kodu / anahtar kelime eşleme tablosu veya plaka anahtarı.</summary>
+        VergiPlaka = 9
     }
 
     // ---- Banka hesabı ----
@@ -59,6 +68,12 @@ namespace WebApp.Shared.Dto.BankaEkstre
         /// </summary>
         public string? HesapSahibiUnvani { get; set; }
 
+        /// <summary>
+        /// Hesap sahibinin diğer yazımları, satır satır. Bankalar aynı firmayı çok farklı
+        /// yazıyor; tek alan yetmediği için kalan yazımlar elenmiyor ve karşı taraf sanılıyordu.
+        /// </summary>
+        public string? HesapSahibiTakmaAdlari { get; set; }
+
         public HesapTipi HesapTipi { get; set; }
         public string ParaBirimi { get; set; } = "TRY";
         public string? Iban { get; set; }
@@ -75,6 +90,7 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public string? HesapAdi { get; set; }
         public string? EslestirmeAnahtarlari { get; set; }
         public string? HesapSahibiUnvani { get; set; }
+        public string? HesapSahibiTakmaAdlari { get; set; }
         public HesapTipi HesapTipi { get; set; } = HesapTipi.Vadesiz;
         public string ParaBirimi { get; set; } = "TRY";
         public string? Iban { get; set; }
@@ -83,6 +99,16 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public bool Aktif { get; set; } = true;
         public bool IbanKatmaniAktif { get; set; }
         public bool VknKatmaniAktif { get; set; }
+    }
+
+    /// <summary>
+    /// Yüklenmiş ekstrelerde geçen, hesap sahibinin tanımlı yazımlarına benzeyen ama henüz
+    /// eklenmemiş bir yazım. Tek tıkla takma adlara eklenir.
+    /// </summary>
+    public class HesapSahibiOnerisiDto
+    {
+        public string Yazim { get; set; } = string.Empty;
+        public int Adet { get; set; }
     }
 
     /// <summary>Hesap adından üretilen eşleştirme anahtarı önerisi.</summary>
@@ -224,6 +250,12 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public string? AnahtarCekirdek { get; set; }
         public string? AyirtEdiciEk { get; set; }
 
+        /// <summary>
+        /// Satır çoklu adayla onaya düştüyse belirsizliği üreten n-gram. Doluysa onay
+        /// ekranı "bu seçim öğrenilecek, aynı belirsizlik bir daha sorulmayacak" der.
+        /// </summary>
+        public string? BelirsizlikAnahtari { get; set; }
+
         /// <summary>Onay sonrası uyarı (ör. kod planda yok → öğrenilmedi). Hata değil.</summary>
         public string? Uyari { get; set; }
 
@@ -289,6 +321,10 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public string HesapKodu { get; set; } = string.Empty;
         public string? HesapAdi { get; set; }
         public Yon Yon { get; set; }
+
+        /// <summary>Belirsizlik kayıtlarında aday kümesinin özeti; küme değişirse karar uygulanmaz.</summary>
+        public string? AdayKumesiOzeti { get; set; }
+
         public int KullanimSayisi { get; set; }
         public DateTime SonKullanim { get; set; }
     }
@@ -324,6 +360,29 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public List<string> Uyarilar { get; set; } = new();
     }
 
+    // ---- Vergi kodu eşlemeleri ----
+
+    public class VergiKoduEslemesiDto
+    {
+        public int Id { get; set; }
+        public string? VergiKodu { get; set; }
+        public string? AnahtarKelime { get; set; }
+        public string HesapKodu { get; set; } = string.Empty;
+        public string? HesapAdi { get; set; }
+        public int Sira { get; set; }
+        public bool Aktif { get; set; }
+    }
+
+    public class VergiKoduEslemesiYazDto
+    {
+        public string? VergiKodu { get; set; }
+        public string? AnahtarKelime { get; set; }
+        public string HesapKodu { get; set; } = string.Empty;
+        public string? HesapAdi { get; set; }
+        public int Sira { get; set; }
+        public bool Aktif { get; set; } = true;
+    }
+
     public class HesapPlaniOzetDto
     {
         public int Sayi { get; set; }
@@ -357,6 +416,8 @@ namespace WebApp.Shared.Dto.BankaEkstre
             KaynakKatman.BankaKayitDefteri => "banka",
             KaynakKatman.SabitKural => "kural",
             KaynakKatman.UnvanBenzerligi => "benzerlik",
+            KaynakKatman.BenzersizOnek => "önek",
+            KaynakKatman.VergiPlaka => "vergi/plaka",
             KaynakKatman.Kullanici => "kullanıcı",
             _ => "—"
         };

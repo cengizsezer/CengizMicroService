@@ -35,6 +35,9 @@
 
     .eo-ipucu { font-size: 11px; color: #a0aec0; margin-bottom: 8px; }
     .eo-ipucu kbd { background: #edf2f7; border-radius: 3px; padding: 0 4px; font-family: ui-monospace, Consolas, monospace; }
+    .eo-belirsizlik { font-size: 11px; color: #744210; background: #fffff0; border: 1px solid #faf089;
+                      border-radius: 4px; padding: 2px 6px; margin-top: 4px; display: inline-block; }
+    .eo-belirsizlik code { font-family: ui-monospace, Consolas, monospace; }
     .eo-aday kbd, .eo-oneri kbd { background: #edf2f7; color: #718096; border-radius: 3px; padding: 0 3px; margin-right: 4px;
                                   font-size: 9px; font-family: ui-monospace, Consolas, monospace; }
 
@@ -176,6 +179,17 @@ else
                                     </span>
                                 }
                             </div>
+
+                            @if (!string.IsNullOrWhiteSpace(satir.BelirsizlikAnahtari))
+                            {
+                                @* Seçim öğrenilir: aynı belirsizlik (aynı n-gram + aynı aday
+                                   kümesi) bir daha sorulmaz. Yeni bir cari açılıp küme
+                                   değişirse satır tekrar buraya düşer. *@
+                                <div class="eo-belirsizlik" title="Öğrenme anahtarı: @satir.BelirsizlikAnahtari">
+                                    Seçiminiz öğrenilecek — <code>@satir.BelirsizlikAnahtari</code>
+                                    belirsizliği bir daha sorulmayacak.
+                                </div>
+                            }
                         }
                     </span>
 

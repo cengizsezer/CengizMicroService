@@ -46,6 +46,15 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
                                                               [FromQuery] string? bankaAdi)
             => Ok(new AnahtarOnerisiDto { EslestirmeAnahtarlari = _service.AnahtarOner(hesapAdi, bankaAdi) });
 
+        /// <summary>
+        /// Hesap sahibinin henüz eklenmemiş yazımları. Bankalar aynı firmayı çok farklı
+        /// yazıyor; "ADAY BAĞIMSIZ DENETİM VE SMMM A.Ş." gibi yazımlar ancak yüklenmiş
+        /// ekstreler taranarak bulunur. Kullanıcı tek tıkla takma adlara ekler.
+        /// </summary>
+        [HttpGet("{id:int}/hesap-sahibi-onerileri")]
+        public async Task<ActionResult<List<HesapSahibiOnerisiDto>>> HesapSahibiOnerileri(int id, CancellationToken ct)
+            => Ok(await _service.HesapSahibiOnerileriAsync(id, ct));
+
         [HttpGet("{id:int}")]
         public async Task<ActionResult<BankaHesabiDto>> GetById(int id, CancellationToken ct)
         {

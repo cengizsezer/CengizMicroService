@@ -112,12 +112,29 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         public async Task OgrenAsync(EkstreSatiri satir, string kod, string? ad, CancellationToken ct = default)
         {
+            // Belirsizlik kararı: kullanıcı çoklu adaydan birini seçti. Anahtar belirsizliği
+            // üreten n-gram, değer seçilen kod; aday kümesinin özeti de saklanır ki küme
+            // değişince (yeni bir Park Plaza hesabı açılınca) eski karar sessizce uygulanmasın.
+            //
+            // Unvan çekirdeği anahtarından bağımsız yazılır: benzersiz önek katmanının
+            // çözdüğü satırlarda unvan hiç çıkarılmamış olabilir.
+            var belirsizlikten = !string.IsNullOrWhiteSpace(satir.BelirsizlikAnahtari);
+            if (belirsizlikten) await BelirsizlikYazAsync(satir, kod, ad, ct);
+
             var cekirdek = satir.AnahtarCekirdek;
             if (string.IsNullOrWhiteSpace(cekirdek)) return;
 
             var ek = string.IsNullOrWhiteSpace(satir.AyirtEdiciEk) ? null : satir.AyirtEdiciEk;
 
-            await EslesmeYazAsync(AnahtarTipi.UnvanCekirdek, cekirdek, ek, satir.Yon, kod, ad, ct);
+            // Belirsizlikten gelen karar için sade unvan çekirdeği anahtarı YAZILMAZ. Yazılsaydı
+            // o kayıt (aday kümesi denetimi olmayan geçmiş onay katmanı) belirsizlik kaydından
+            // önce çalışır ve güvenlik kaydını devre dışı bırakırdı: yeni bir aile üyesi
+            // açıldığında satır tekrar sorulmaz, yeni hesap hiç görünmez olurdu.
+            if (!belirsizlikten)
+                await EslesmeYazAsync(AnahtarTipi.UnvanCekirdek, cekirdek, ek, satir.Yon, kod, ad, ct);
+
+            // Kimlik kaydı (global) her hâlükârda yazılır: bir unvanın kim olduğu bilgisi
+            // belirsizlikten bağımsız ve firmadan firmaya değişmez.
             await KimlikYazAsync(AnahtarTipi.UnvanCekirdek, cekirdek, satir.CikarilanUnvan, ct);
 
             // IBAN/VKN katmanları kapalı olduğu için o anahtarlar yazılmaz. Bir banka hesabında
@@ -126,6 +143,54 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         }
 
         // ---- Yardımcılar ----
+
+        /// <summary>
+        /// Belirsizlik kararını yazar/günceller. Aday kümesi özeti de saklanır; kayıt yalnız
+        /// aynı küme tekrar geldiğinde uygulanır.
+        /// </summary>
+        private async Task BelirsizlikYazAsync(EkstreSatiri satir, string kod, string? ad, CancellationToken ct)
+        {
+            var anahtar = satir.BelirsizlikAnahtari!;
+
+            var mevcut = await _db.EkstreHesapEslesmeleri.FirstOrDefaultAsync(e =>
+                e.AnahtarTipi == AnahtarTipi.Belirsizlik &&
+                e.AnahtarCekirdek == anahtar &&
+                e.Yon == satir.Yon, ct);
+
+            if (mevcut is null)
+            {
+                _db.EkstreHesapEslesmeleri.Add(new HesapEslesmesi
+                {
+                    AnahtarTipi = AnahtarTipi.Belirsizlik,
+                    AnahtarCekirdek = anahtar,
+                    AdayKumesiOzeti = satir.AdayKumesiOzeti,
+                    Yon = satir.Yon,
+                    HesapKodu = kod,
+                    HesapAdi = ad,
+                    KullanimSayisi = 1,
+                    SonKullanim = DateTime.Now
+                });
+                return;
+            }
+
+            // Kod veya aday kümesi değiştiyse sayaç sıfırlanır: eski kullanım artık bu
+            // kararı temsil etmiyor.
+            if (!string.Equals(mevcut.HesapKodu, kod, StringComparison.Ordinal) ||
+                !string.Equals(mevcut.AdayKumesiOzeti ?? string.Empty, satir.AdayKumesiOzeti ?? string.Empty, StringComparison.Ordinal))
+            {
+                mevcut.HesapKodu = kod;
+                mevcut.HesapAdi = ad;
+                mevcut.AdayKumesiOzeti = satir.AdayKumesiOzeti;
+                mevcut.KullanimSayisi = 1;
+            }
+            else
+            {
+                mevcut.KullanimSayisi++;
+                if (!string.IsNullOrWhiteSpace(ad)) mevcut.HesapAdi = ad;
+            }
+
+            mevcut.SonKullanim = DateTime.Now;
+        }
 
         private async Task EslesmeYazAsync(
             AnahtarTipi tip, string cekirdek, string? ek, Yon yon, string kod, string? ad, CancellationToken ct)
@@ -206,6 +271,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             HesapKodu = e.HesapKodu,
             HesapAdi = e.HesapAdi,
             Yon = e.Yon,
+            AdayKumesiOzeti = e.AdayKumesiOzeti,
             KullanimSayisi = e.KullanimSayisi,
             SonKullanim = e.SonKullanim
         };

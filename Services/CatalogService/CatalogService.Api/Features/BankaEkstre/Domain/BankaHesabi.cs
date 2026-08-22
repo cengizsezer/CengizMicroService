@@ -45,6 +45,17 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
         /// </summary>
         public string? HesapSahibiUnvani { get; set; }
 
+        /// <summary>
+        /// Hesap sahibinin <b>diğer yazımları</b>, satır satır. Bankalar aynı firmayı çok
+        /// farklı yazıyor; gerçek dosyada altı ayrı yazım sayıldı ("ADAY BAĞIMSIZ DENETİM",
+        /// "PKF ADAY", "ADAY BAĞIMSIZ DENETİM VE SMMM A.Ş." …). Tek alan yetmediği için
+        /// kalanlar elenmiyor ve karşı taraf sanılıyordu.
+        ///
+        /// Eleme <see cref="HesapSahibiUnvani"/> ile bu listenin <b>herhangi birinin</b>
+        /// çekirdeğine kapsama kontrolüyle yapılır (bkz. <c>HesapSahibiKimligi</c>).
+        /// </summary>
+        public string? HesapSahibiTakmaAdlari { get; set; }
+
         public HesapTipi HesapTipi { get; set; } = HesapTipi.Vadesiz;
 
         /// <summary>ISO kodu, ör. "TRY".</summary>

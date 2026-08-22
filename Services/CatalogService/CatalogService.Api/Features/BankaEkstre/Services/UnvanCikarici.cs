@@ -20,11 +20,13 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// Ham açıklamadan karşı tarafın unvanı; hiçbir desen tutmazsa <see cref="UnvanSonuc.Unvan"/>
         /// null döner.
         /// </summary>
-        /// <param name="hesapSahibiUnvani">
-        /// Hesap sahibinin kendi unvanı. Çekirdeği buna eşit olan yakalamalar atılır ve
-        /// sıradaki desene geçilir; hiçbir desen başka bir unvan vermezse null döner.
+        /// <param name="hesapSahibi">
+        /// Hesap sahibinin <b>tüm</b> yazımları. Çekirdeği bunlardan birini kapsayan (veya
+        /// biri tarafından kapsanan) yakalamalar atılır ve sıradaki desene geçilir; hiçbir
+        /// desen başka bir unvan vermezse null döner. Tek metin de verilebilir — örtük
+        /// dönüşüm <see cref="HesapSahibiKimligi"/> kurar.
         /// </param>
-        UnvanSonuc Cikar(string? hamAciklama, IReadOnlyList<UnvanDeseni> desenler, string? hesapSahibiUnvani = null);
+        UnvanSonuc Cikar(string? hamAciklama, IReadOnlyList<UnvanDeseni> desenler, HesapSahibiKimligi? hesapSahibi = null);
     }
 
     /// <summary>
@@ -57,16 +59,30 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             "IBAN", "MERKEZ SUBE", "SUBESI", "NEZDINDEKI"
         };
 
+        /// <summary>
+        /// Karşı taraf <b>olmayan</b> alan etiketleri. Bu etiketlerden hemen sonra gelen
+        /// metin hesap sahibinin kendi unvanıdır — bazen maskeli
+        /// ("Ad Soyad/Unvan:PK* AD** BA****** DE*****"), bazen boş ("Adı/Ünvanı:,").
+        /// Maskeli yazım hesap sahibi elemesine takılmadığı için etiketin kendisi engellenir:
+        /// bu alanlar unvan kaynağı olarak <b>hiç</b> kullanılmaz.
+        /// </summary>
+        private static readonly string[] UnvanAlaniEtiketleri =
+        {
+            "AD SOYAD UNVAN", "ADI UNVANI", "SOYADI UNVANI", "AD SOYAD UNVANI", "ADI UNVAN"
+        };
+
+        /// <summary>Etiket araması için yakalamanın önünde taranacak karakter sayısı.</summary>
+        private const int EtiketPenceresi = 40;
+
         /// <summary>Metnin başındaki TR IBAN'ı yakalar (maskeli/boşluklu yazımlar dahil).</summary>
         private static readonly Regex IbanBaslangici =
             new(@"^TR\s*\d{2}", RegexOptions.Compiled | RegexOptions.CultureInvariant, ZamanAsimi);
 
-        public UnvanSonuc Cikar(string? hamAciklama, IReadOnlyList<UnvanDeseni> desenler, string? hesapSahibiUnvani = null)
+        public UnvanSonuc Cikar(string? hamAciklama, IReadOnlyList<UnvanDeseni> desenler, HesapSahibiKimligi? hesapSahibi = null)
         {
             if (string.IsNullOrWhiteSpace(hamAciklama)) return UnvanSonuc.Yok;
 
-            // Hesap sahibinin çekirdeği desen döngüsünden önce bir kez hesaplanır.
-            var sahipCekirdek = Normalizasyon.UnvanCekirdek(hesapSahibiUnvani);
+            var sahip = hesapSahibi ?? HesapSahibiKimligi.Yok;
             var sahipElendi = false;
 
             foreach (var desen in desenler.Where(d => d.Aktif).OrderBy(d => d.Sira))
@@ -93,14 +109,16 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
                 if (temiz.Length < EnAzUzunluk) continue;
 
+                // "Ad Soyad/Unvan:" ve kardeşleri hesap sahibinin alanı; karşı taraf değil.
+                if (UnvanAlanindanMi(hamAciklama, eslesme.Groups[desen.GrupNo].Index)) continue;
+
                 // Karşı taraf değil, IBAN künyesi yakalandı: at, sıradaki deseni dene.
                 if (IbanKunyesiMi(temiz)) continue;
 
                 // Hesap sahibinin kendi adı karşı taraf değildir: at, sıradaki deseni dene.
                 // Ölçümde 287 satırın 268'inde açıklamada firmanın kendi unvanı geçiyordu ve
                 // benzer adlı bir cariye ("Bağımsız Denetim Derneği") eşleşiyordu.
-                if (sahipCekirdek.Length > 0 &&
-                    string.Equals(Normalizasyon.UnvanCekirdek(temiz), sahipCekirdek, StringComparison.Ordinal))
+                if (sahip.Kendisi(temiz))
                 {
                     sahipElendi = true;
                     continue;
@@ -111,6 +129,22 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
             // Hiçbir desen hesap sahibi dışında unvan vermedi.
             return new UnvanSonuc(null, sahipElendi);
+        }
+
+        /// <summary>
+        /// Yakalama bir "Ad Soyad/Unvan:" alanının hemen ardından mı başlıyor? Karşılaştırma
+        /// normalize metinde yapılır: iki nokta, eğik çizgi ve Türkçe karakterler
+        /// sadeleşince "Adı/Ünvanı:" ile "Ad Soyad/Unvan:" aynı biçime iner.
+        /// </summary>
+        private static bool UnvanAlanindanMi(string hamAciklama, int yakalamaBaslangici)
+        {
+            if (yakalamaBaslangici <= 0) return false;
+
+            var bas = Math.Max(0, yakalamaBaslangici - EtiketPenceresi);
+            var onceki = Normalizasyon.MetinNormalize(hamAciklama[bas..yakalamaBaslangici]);
+            if (onceki.Length == 0) return false;
+
+            return UnvanAlaniEtiketleri.Any(e => onceki.EndsWith(e, StringComparison.Ordinal));
         }
 
         /// <summary>

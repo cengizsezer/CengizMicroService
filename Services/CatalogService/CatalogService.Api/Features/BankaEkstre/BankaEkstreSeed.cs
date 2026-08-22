@@ -18,11 +18,19 @@ namespace CatalogService.Api.Features.BankaEkstre
     {
         private const string Vakifbank = VakifbankVadesizParser.Tip;
 
+        /// <summary>
+        /// Açıklamanın sonundaki "… Tahsilatı" ifadesinden satıcı adı. Kaçışları bozulmasın
+        /// diye ayrı sabitte durur (test ortamı da aynı sabiti kullanır).
+        /// </summary>
+        public const string TahsilatDeseni =
+            @"([A-ZÇĞİÖŞÜ][A-Za-zÇĞİÖŞÜçğıöşü/\s]*?)\s*(?:Temsilci|Bayi|Abone|Fatura|Ses/Data/ICT)?\s*Tahsilat[ıi]\s*$";
+
         public static async Task SeedAsync(CatalogContext db, CancellationToken ct = default)
         {
             await SablonlariSeedAsync(db, ct);
             await DesenleriSeedAsync(db, ct);
             await KurallariSeedAsync(db, ct);
+            await VergiKodlariSeedAsync(db, ct);
             await db.SaveChangesAsync(ct);
         }
 
@@ -110,6 +118,18 @@ namespace CatalogService.Api.Features.BankaEkstre
             // Sıra ölçülen kapsamaya göre: en çok yakalayan desen önce denenir. Sıra numarası
             // elle verilir — araya desen eklenince mevcut kayıtların sırası değişmemeli
             // (seed mevcut satırların üzerine yazmaz, yalnız eksikleri ekler).
+            // Açıklamanın SONUNDAKİ satıcı adı. Diğer desenlerden ÖNCE denenmeli: aynı
+            // metinde "Ad Soyad/Unvan:" alanı da var ve mevcut desenler oraya takılıyordu.
+            //
+            // Yakalama, rakam ve iki nokta içermeyen bir ifadedir; kuyruğundaki genel ekler
+            // (Temsilci, Bayi, Abone, Ses/Data/ICT) yakalamanın dışında bırakılır:
+            //   "…,Belbim Temsilci Tahsilatı"                    → Belbim        (329 B43)
+            //   "…Tutar:2.764,90  SuperonlineTahsilatı"          → Superonline   (329 T06)
+            //   "…Tarihi:19.08.2026 Türk Telekom Ses/Data/ICT …" → Türk Telekom  (329 T01)
+            //   "…Son Ödeme Tarihi:23.07.2026 Turknet Tahsilatı" → Turknet       (329 T61)
+            // Rakam ve iki nokta dışlandığı için "Abone No:22912623" ve "Fatura No:…"
+            // alanları yakalamaya giremez.
+            Ekle(TahsilatDeseni, 5, "Açıklama sonundaki satıcı adı: \"… Tahsilatı\" (5 satır)");
             Ekle(@"sorgu numaralı (.+?) tarafından", 10, "Gelen EFT gövdesi (ölçümde 120 satır)");
             Ekle(@"nolu ([A-ZÇĞİÖŞÜ0-9][^/]{4,70}?) hesab", 20, "\"... nolu X hesabına\" kalıbı (72 satır)");
             // Giden FAST/EFT gövdesi: "… hesabından <GÖNDEREN BANKA> <KARŞI TARAF> hesabına
@@ -201,6 +221,47 @@ namespace CatalogService.Api.Features.BankaEkstre
             Ekle("Kambiyo", "770", "Genel Yönetim Giderleri", EslesmeTuru.Icerir);
             Ekle("HGS Bakiye Yükle", "740", "Hizmet Üretim Maliyeti");
             Ekle("Otoyolu Bakiye Yükle", "740", "Hizmet Üretim Maliyeti", EslesmeTuru.Icerir);
+        }
+
+        // ---- Vergi kodu eşlemeleri ----
+
+        /// <summary>
+        /// Vergi tahsilatı satırlarında karşı hesap metnin içeriğine göre değişiyor: gerçek
+        /// dosyadaki 5 vergi satırı dört farklı hesaba gitmiş. Ölçülen kodlar tohumlanır,
+        /// kalanı kullanıcı Tanımlar ekranından ekler.
+        ///
+        /// Eşleşmeyen bir kod (ölçümde "0010/KURUMLAR V.") satırı onaya düşürür; tahmin edilmez.
+        /// </summary>
+        private static async Task VergiKodlariSeedAsync(CatalogContext db, CancellationToken ct)
+        {
+            var mevcut = await db.EkstreVergiKodlari
+                .Select(v => (v.VergiKodu ?? string.Empty) + "|" + (v.AnahtarKelime ?? string.Empty))
+                .ToListAsync(ct);
+
+            var kayitli = new HashSet<string>(mevcut, StringComparer.OrdinalIgnoreCase);
+            var sira = 0;
+
+            void Ekle(string? kod, string? kelime, string hesapKodu, string hesapAdi)
+            {
+                sira += 10;
+                if (!kayitli.Add((kod ?? string.Empty) + "|" + (kelime ?? string.Empty))) return;
+
+                db.EkstreVergiKodlari.Add(new VergiKoduEslemesi
+                {
+                    VergiKodu = kod,
+                    AnahtarKelime = kelime,
+                    HesapKodu = hesapKodu,
+                    HesapAdi = hesapAdi,
+                    Sira = sira,
+                    Aktif = true
+                });
+            }
+
+            // Trafik cezası kanunen kabul edilmeyen giderdir; plaka anahtarı bu satırlarda
+            // ayrıca araç hesabını da aday olarak öne çıkarır.
+            Ekle("9085", "TRAFİK CEZ", "689 9 1", "Kanunen Kabul Edilmeyen Giderler");
+            Ekle("0040", "DAMGA", "360 01 004", "Ödenecek Damga Vergisi");
+            Ekle("0033", "BEYANNAME", "770 04 001", "Vergi Resim Ve Harçlar");
         }
     }
 }

@@ -32,6 +32,10 @@
     .oe-aksiyon { flex: 0 0 80px; text-align: right; }
     .oe-bos { padding: 26px; text-align: center; color: #a0aec0; }
     .oe-ek { font-size: 11px; color: #2c5282; margin-left: 6px; }
+    .oe-tip { flex: 0 0 95px; font-size: 11px; color: #718096; }
+    .oe-rozet { display: inline-block; padding: 1px 6px; border-radius: 9px; font-size: 10px;
+                background: #edf2f7; color: #4a5568; }
+    .oe-rozet.belirsizlik { background: #fefcbf; color: #744210; }
 </style>
 
 <div class="oe-arac">
@@ -46,6 +50,7 @@
 <div class="oe-tablo">
     <div class="oe-satir oe-head">
         <span class="oe-anahtar">Anahtar</span>
+        <span class="oe-tip">Tür</span>
         <span class="oe-kod">Hesap kodu</span>
         <span class="oe-ad">Hesap adı</span>
         <span class="oe-yon">Yön</span>
@@ -68,6 +73,12 @@
                 {
                     <span class="oe-ek">+ @kayit.AyirtEdiciEk</span>
                 }
+            </span>
+            <span class="oe-tip">
+                <span class="oe-rozet @(kayit.AnahtarTipi == AnahtarTipi.Belirsizlik ? "belirsizlik" : "")"
+                      title="@AnahtarTipiIpucu(kayit)">
+                    @AnahtarTipiAdi(kayit.AnahtarTipi)
+                </span>
             </span>
             <span class="oe-kod">@kayit.HesapKodu</span>
             <span class="oe-ad" title="@kayit.HesapAdi">@(kayit.HesapAdi ?? "—")</span>
@@ -127,6 +138,26 @@
 
     private string? _arama;
     private bool _kaydediyor;
+
+    private static string AnahtarTipiAdi(AnahtarTipi tip) => tip switch
+    {
+        AnahtarTipi.Belirsizlik => "belirsizlik",
+        AnahtarTipi.Iban => "IBAN",
+        AnahtarTipi.Vkn => "VKN",
+        _ => "unvan"
+    };
+
+    /// <summary>
+    /// Belirsizlik kayıtlarında aday kümesi özeti de saklanır: küme değişirse (yeni bir
+    /// cari açılırsa) karar uygulanmaz, satır tekrar onaya düşer. Kullanıcı bunu bilmeli.
+    /// </summary>
+    private static string AnahtarTipiIpucu(HesapEslesmesiDto kayit) => kayit.AnahtarTipi switch
+    {
+        AnahtarTipi.Belirsizlik =>
+            "Çoklu adaydan yapılan seçim. Aynı belirsizlik bir daha sorulmaz — " +
+            "aday kümesi değişmediği sürece (yeni cari açılırsa yeniden sorulur).",
+        _ => "Onaydan öğrenilen unvan çekirdeği."
+    };
 
     protected override async Task OnInitializedAsync() => await YenileAsync();
 

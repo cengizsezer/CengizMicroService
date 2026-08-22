@@ -18,6 +18,7 @@ namespace WebApp.Application.Services
         private const string Ekstre = "/catalog/banka-ekstre/ekstre";
         private const string HesapPlani = "/catalog/banka-ekstre/hesap-plani";
         private const string Eslesmeler = "/catalog/banka-ekstre/eslesmeler";
+        private const string VergiKodlari = "/catalog/banka-ekstre/vergi-kodlari";
 
         private const string XlsxTuru = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
@@ -40,6 +41,9 @@ namespace WebApp.Application.Services
 
             return (await GetOrNull<AnahtarOnerisiDto>(adres, ct))?.EslestirmeAnahtarlari;
         }
+
+        public async Task<List<HesapSahibiOnerisiDto>> HesapSahibiOnerileriAsync(int hesapId, CancellationToken ct = default)
+            => await GetOrNull<List<HesapSahibiOnerisiDto>>($"{Hesaplar}/{hesapId}/hesap-sahibi-onerileri", ct) ?? new();
 
         public Task<(BankaHesabiDto? Veri, string? Hata)> CreateHesapAsync(BankaHesabiYazDto dto, CancellationToken ct = default)
             => GonderAsync<BankaHesabiDto>(() => _http.PostAsJsonAsync(Hesaplar, dto, ct));
@@ -175,6 +179,25 @@ namespace WebApp.Application.Services
         public async Task<string?> EslesmeSilAsync(int id, CancellationToken ct = default)
         {
             var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync($"{Eslesmeler}/{id}", ct));
+            return hata;
+        }
+
+        // ---- Vergi kodları ----
+
+        public async Task<List<VergiKoduEslemesiDto>> VergiKodlariAsync(CancellationToken ct = default)
+            => await GetOrNull<List<VergiKoduEslemesiDto>>(VergiKodlari, ct) ?? new();
+
+        public Task<(VergiKoduEslemesiDto? Veri, string? Hata)> VergiKoduEkleAsync(VergiKoduEslemesiYazDto dto,
+                                                                                  CancellationToken ct = default)
+            => GonderAsync<VergiKoduEslemesiDto>(() => _http.PostAsJsonAsync(VergiKodlari, dto, ct));
+
+        public Task<(VergiKoduEslemesiDto? Veri, string? Hata)> VergiKoduGuncelleAsync(int id, VergiKoduEslemesiYazDto dto,
+                                                                                      CancellationToken ct = default)
+            => GonderAsync<VergiKoduEslemesiDto>(() => _http.PutAsJsonAsync($"{VergiKodlari}/{id}", dto, ct));
+
+        public async Task<string?> VergiKoduSilAsync(int id, CancellationToken ct = default)
+        {
+            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync($"{VergiKodlari}/{id}", ct));
             return hata;
         }
 

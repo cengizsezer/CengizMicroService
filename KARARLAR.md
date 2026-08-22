@@ -451,3 +451,294 @@ hesabına atılan kaydı fark etmek zor.
 
 Aile ayrımındaki (`AileOnayaDusur`) davranış bilerek farklı: orada tüm adaylar öğrenilmiş
 kayıtlardan geliyor ve güven 1.0; burada hangi hesabın kastedildiğine dair hiçbir kanıt yok.
+
+---
+
+# Tur 2 — gerçek veri düzeltmeleri
+
+## 42. Benzersiz önek katmanı: "başlıyor", "içeriyor" değil
+
+**Karar:** Yeni bir katman (`CariOnekIndeksi`, `KaynakKatman.BenzersizOnek`) desen tabanlı
+unvan benzerliğinden **önce** çalışıyor. Açıklamanın token dizileri n=4'ten n=2'ye
+dolaşılıyor ve hesap adı çekirdeği o diziyle **başlayan** cariler aranıyor.
+
+**Neden "başlıyor":** ORKA hesap adlarını 50 karakterde kesiyor — 6.128 kaydın 914'ü
+48–50 karakter ve son kelimesi ortasından kopmuş
+(`120 B62 "Baycan Elektrik Müteahhitlik Sanayi Ve Ticaret Ano"`). Açıklamada
+"… MÜTEAHHİTLİK SANAYİ VE TİCARET ANONİM" yazdığı için bitişik alt metin eşleşmesi
+tutmuyor; önek eşleşmesi kesilmeden etkilenmiyor.
+
+**Ölçüm (gerçek dosya, 87 cari satırı):**
+
+| Yöntem | Otomatik çözülen | Doğru | Yanlış | İsabet |
+|---|---|---|---|---|
+| Bitişik alt metin + en uzun | 69 | 60 | 9 | %87 |
+| **Benzersiz önek (+ alt metin yedeği)** | **57** | **56** | **1** | **%98** |
+
+Daha az satır çözüyor ama neredeyse hiç yanlış yapmıyor. **Bu değiş tokuş bilinçli** —
+muhasebede yanlış kayıt, onaya düşen satırdan pahalıdır. Kapsamı artırmak için
+gevşetilmemeli.
+
+**İndeks kuralları** (`CariOnekIndeksi.Kur`):
+- Yalnız cari grupları: `120, 329, 136, 159, 195, 196, 320, 331, 336`. Gider hesapları
+  girmiyor — planda `622 0 03 00 PKF ADAY BAĞIMSIZ DENETİM`, `740 0 BAĞIMSIZ DENETİM`
+  gibi firmanın kendi adını taşıyan kayıtlar var, girseler her satır onlara eşleşirdi.
+- Adında `BANKASI / BANKA / BANK / FİNANS / KATILIM` geçen cariler çıkarılıyor:
+  "ZİRAAT BANKASI" metni `320 1 10011 ZİRAAT BANK` carisiyle eşleşip **16 satırı yanlış
+  çözüyordu**. Bankalar banka kayıt defteri katmanının işi.
+  *Yan etki:* "Pardus Portföy … Katılım … Fonu" gibi meşru cariler de indekse girmiyor.
+  Bilinçli kabul: eleme yalnız aday **çıkarır**, yanlış aday **eklemez**; o satırlar
+  benzerlik katmanına düşüyor.
+- Hesap sahibinin tüm yazımlarını taşıyan cariler çıkarılıyor (§45).
+- Çekirdeği 6 karakterden kısa hesaplar girmiyor. (8 de olur; **12 yapılırsa isabet
+  çöküyor — kullanılmamalı.**)
+- İndeks firma bazlı ve **yükleme başına bir kez** kuruluyor
+  (`EslestirmeVerisi.OnekIndeksi`, tembel), satır başına değil.
+
+**Katman sırası:** geçmiş onay → banka kayıt defteri → vergi/plaka → sabit kural →
+**benzersiz önek** → desen tabanlı unvan benzerliği.
+
+## 43. Adaylar tüm n seviyelerinden birleştiriliyor
+
+**Karar:** Bir n seviyesinde durulmuyor; n=4'ten n=2'ye tüm n-gram'ların sonuçları tek
+kümede toplanıyor, uzun n-gram'dan gelen liste başına yazılıyor. Küme tek hesaba inerse
+otomatik, inmezse satır **tüm adaylarla** onaya düşüyor.
+
+**Neden:** `"KEMAL GÜLMAN VK POLAT GÜLMAN PARK PLAZA 19.KAT D43 (…)"` satırında n=3'teki
+`PARK PLAZA KAT` tek sonuç veriyor (`329 P27`), ama n=2'deki `KEMAL GULMAN` ve
+`POLAT GULMAN` de birer sonuç veriyor. Uzun n-gram'ın tek sonucunu kabul etmek, karşı
+tarafı üç adaydan biri olan satırı yanlış cariye otomatik yazmak olurdu.
+
+## 44. Tek kelimelik unvanda n=1, yalnız desen çıktısında
+
+**Karar:** Ham açıklamada n≥2 aranıyor. **Desenle çıkarılmış unvan tek kelimeden
+ibaretse** (`Belbim`, `Superonline`, `Turknet`) ve en az 4 karakterse, o kelimeyle n=1
+araması yapılıyor — ve yalnız **tek** sonuç kabul ediliyor.
+
+**Neden:** Ham açıklamada tek kelime aramak gürültü üretir (`FATURA`, `ABONE`, `TAKAS`
+her şeye eşleşir). Desenin çıkardığı kelime gürültü değil: bir desen onu karşı tarafın
+adı olarak yakalamış. Bu satırlar başka türlü hiç çözülemiyordu — benzerlik katmanında
+`"BELBIM"` ↔ `"BELBIM ELEKTRONIK PARA ODEME"` skoru 0.21, yani §48'in eşiğinin altında.
+
+Çok kelimeli unvanda **ham açıklama** kullanılıyor: satırın kalanında geçen diğer cariler
+de aday olsun (§43'teki Kemal/Polat/Park Plaza satırı).
+
+## 45. Hesap sahibi çoklu yazım + kapsama kontrolü
+
+**Karar:** `BankaHesabi.HesapSahibiTakmaAdlari` (satır satır, 1000 karakter) eklendi.
+Eleme, ana unvan ve takma adların **herhangi birinin** çekirdeğine **kapsama** kontrolüyle
+yapılıyor (`HesapSahibiKimligi`) — çekirdek eşitliğiyle değil.
+
+**Neden:** Bankalar aynı firmayı çok farklı yazıyor; gerçek dosyada altı yazım sayıldı.
+Beşi kapsama kontrolüne takılıyor (`ADAY BAĞIMSIZ DENETİM` ⊂ `PKF ADAY BAĞIMSIZ DENETİM`),
+biri takılmıyor: `ADAY BAĞIMSIZ DENETİM VE SMMM A.Ş.` → çekirdek
+`ADAY BAGIMSIZ DENETIM SMMM`. O yüzden hem kapsama hem takma ad listesi gerekli.
+
+Kapsamaya girecek en kısa çekirdek 6 karakter: `"ADAY"` gibi kısa bir yazım tüm carileri
+elerdi.
+
+**Öneri üretimi:** `GET .../banka-hesaplari/{id}/hesap-sahibi-onerileri` yüklenmiş
+ekstrelerin **çıkarılan unvanlarını** tarıyor, tanımlı çekirdeklerden biriyle en az iki
+ardışık kelime paylaşan ama kapsamaya takılmayanları döndürüyor. Ham açıklamayı baştan
+taramak yerine çıkarılan unvanlar kullanılıyor: bankanın firmayı nasıl yazdığı zaten orada.
+
+## 46. Hesap sahibinin adı token dizisinden çıkarılıyor
+
+**Karar:** Benzersiz önek katmanı, ham açıklamanın token dizisinden hesap sahibinin adına
+denk gelen bölümleri **çıkarıyor** ve kalan parçaları ayrı ayrı geziyor
+(`HesapSahibiKimligi.Parcala`). n-gram'lar parça sınırını aşmıyor.
+
+**Neden:** Ölçülen 287 satırın 268'inde açıklamada firmanın kendi unvanı geçiyor.
+Çıkarılmazsa `BAGIMSIZ DENETIM` dizisi `120 B58 Bağımsız Denetim Derneği` gibi **başka**
+bir cariye eşleşiyor. Parçaların birleştirilmemesi de şart: çıkarılan adın iki yanındaki
+kelimeler yan yana gelirse gerçekte açıklamada olmayan bir dizi üretilir.
+
+## 47. Yön kuralı yalnız adlar birebir aynıyken çalışır
+
+**Karar:** Aday listesindeki hesapların **hesap adı çekirdeği aynı** ve fark yalnız ana
+gruptaysa yön karar veriyor: çıkan → `329`/`320`, giren → `120`/`159`
+(`CariOnekIndeksi.YonleCoz`). Adlar farklıysa yön hiçbir şey yapmıyor.
+
+**Neden:** Onaya düşen satırların büyük kısmı gerçek belirsizlik değil, aynı carinin iki
+grup altındaki kopyası: Zafer Genç, Burak Günel, Yurtiçi Kargo, Aras Kargo, Ufuk Çolak —
+hepsi `159` + `329` çifti, adlar birebir aynı. Gerçek belirsizlik adların **farklı**
+olduğu durumdur (Park Plaza Aidat/Elektrik/19. Kat, Pardus fonları, Cms Jant / Cms Jant
+Makina) ve onaya düşmeye devam ediyor.
+
+## 48. 0.40 altındaki benzerlik önerisi hiç gösterilmiyor
+
+**Karar:** `HesapEslestirici.EnAzOneriEsigi = 0.40m`. Unvan benzerliği katmanında en iyi
+aday bunun altındaysa satır `Çözülemedi` oluyor, kod kutusu boş kalıyor, aday listesi de
+üretilmiyor.
+
+**Neden:** Ölçümde `Superonline Tahsilatı` satırına **0.20 skorla**
+`329 A33 Adobe Systems Ireland`, `Turknet Tahsilatı` satırına 0.21 ile `329 N21 Novatek`
+öneriliyordu. Alakasız öneri boş kutudan **kötüdür**: kullanıcı yanlışlıkla onaylar ve
+sistem onu öğrenir.
+
+## 49. Belirsizlik kararı öğreniliyor — aday kümesi özetiyle birlikte
+
+**Karar:** Yeni anahtar tipi `AnahtarTipi.Belirsizlik`. Anahtar belirsizliği üreten
+n-gram(lar), değer seçilen hesap kodu. `HesapEslesmesi.AdayKumesiOzeti` aday kod
+listesinin SHA-256 özetini tutuyor; kayıt yalnız **aynı küme** tekrar geldiğinde
+uygulanıyor.
+
+**Neden:** Aksi hâlde yeni açılan bir Park Plaza hesabı hiç görünmez olurdu — eski karar
+sessizce uygulanır ve satır bir daha sorulmazdı.
+
+**Belirsizlikten gelen onay, sade unvan çekirdeği anahtarı yazmıyor.** Yazsaydı o kayıt
+(aday kümesi denetimi olmayan geçmiş onay katmanı) belirsizlik kaydından **önce** çalışır
+ve güvenlik kaydını devre dışı bırakırdı. Global kimlik kaydı (`KimlikKaydi`) yine
+yazılıyor: bir unvanın kim olduğu belirsizlikten bağımsız.
+
+Kayıtlar Tanımlar > Öğrenilen Eşleşmeler ekranında "belirsizlik" rozetiyle görünüyor,
+düzenlenebiliyor ve silinebiliyor.
+
+## 50. Aile ayrımı: tam küme üzerinden ve taraflıysa hiç yapılmıyor
+
+**Karar:** `AileyiAyikla` iki noktada sıkılaştırıldı:
+1. Karar **kırpılmamış** aday kümesiyle veriliyor (ekranda ilk 8 gösteriliyor).
+2. Bir üyenin ayırt edici kelimesi hiç yoksa (adı diğerlerinin ortak çekirdeğinden ibaret)
+   ayrım **hiç yapılmıyor**.
+
+**Neden (1):** 37 üyeli Pardus ailesinde ilk 8 üzerinden karar verilince "tek üye uydu"
+sanılıyor ve `PARDUS PORTFÖY MARMARA HİSSE SENEDİ SERBEST FON` satırı
+`120 F07 Pardus Portföy Para Piyasası` fonuna otomatik yazılıyordu — ölçümde 13 satır.
+**Neden (2):** `Cms Jant` / `Cms Jant Makina` ailesinde `Cms Jant`'ın ayırt edici kelimesi
+yok, yani hiçbir zaman kazanamaz; `MAKINA` kelimesine bakıp karar vermek taraflı olur.
+
+## 51. Alt metin yedeğinde hesabın ilk kelimesi de metinde geçmeli
+
+**Karar:** Önek hiç tutmadığında devreye giren bitişik alt metin yedeğinde, eşleşen
+hesabın **ilk kelimesi** de metinde geçmiş olmalı (`IcerenlerGuvenli`). İstisna: tek
+kelimelik unvan aramasında (§44) bu şart aranmıyor — orada metin zaten o tek kelimeden
+ibaret ve `"Superonline"` ile `329 T06 Turkcell Superonlıne` başka türlü eşleşemez.
+
+**Neden:** Yedek katman, açıklamanın unvanın **önüne** bir şey eklediği durum için var
+(`"NAOSKZ NAOS İSTANBUL KOZMETİK"` → `Naos İstanbul Kozmetik`). Tersi geçerli değil:
+`"… SAĞLAMOĞLU YETKİLİ MÜESSESE ANONİM ŞİRKETİ hesabından …"` metni
+`120 H30 Hakan Yetkili Müessese` adının ortasına oturuyor ve satırı yanlış cariye
+çözüyordu.
+
+## 52. Açıklamanın sonundaki satıcı adı ayrı bir desen
+
+**Karar:** Yeni unvan deseni **sıra 5**'te (diğerlerinden önce), sabiti
+`BankaEkstreSeed.TahsilatDeseni`. Yakalama rakam ve iki nokta içermiyor, bu yüzden
+`Abone No:22912623` / `Fatura No:…` alanlarına giremiyor; kuyruktaki genel ekler
+(`Temsilci`, `Bayi`, `Abone`, `Fatura`, `Ses/Data/ICT`) yakalamanın dışında bırakılıyor.
+
+| Açıklama kuyruğu | Çıkan unvan | Hesap |
+|---|---|---|
+| `…,Belbim Temsilci Tahsilatı` | Belbim | `329 B43` |
+| `…Tutar:2.764,90  SuperonlineTahsilatı` | Superonline | `329 T06` |
+| `…Tarihi:19.08.2026 Türk Telekom Ses/Data/ICT Tahsilatı` | Türk Telekom | `329 T01` |
+| `…Son Ödeme Tarihi:23.07.2026 Turknet Tahsilatı` | Turknet | `329 T61` |
+
+**Neden önce:** Aynı metinde `Ad Soyad/Unvan:` alanı da var ve mevcut desenler oraya
+takılıyordu.
+
+## 53. "Ad Soyad/Unvan:" alanları hiç unvan kaynağı değil
+
+**Karar:** Yakalama bu etiketlerden birinin hemen ardından başlıyorsa desen atlanıyor
+(`UnvanCikarici.UnvanAlanindanMi`): `AD SOYAD UNVAN`, `ADI UNVANI`, `SOYADI UNVANI`.
+Karşılaştırma normalize metinde, yakalamanın önündeki 40 karakter içinde.
+
+**Neden:** O alan hesap sahibinin kendi unvanı, karşı taraf değil — ve bazen maskeli
+(`PK* AD** BA****** DE*****`), yani hesap sahibi elemesine (§45) takılmıyor. Etiketin
+kendisini engellemek maskelemeden bağımsız çalışıyor.
+
+## 54. Vergi tahsilatı: yönetilebilir eşleme tablosu + plaka anahtarı
+
+**Karar:** Yeni **global** tablo `EkstreVergiKodlari` (`VergiKoduEslemesi`): vergi kodu
+ve/veya anahtar kelime → ORKA hesap kodu. Yeni katman (`KaynakKatman.VergiPlaka`) sabit
+kuraldan önce çalışıyor. Bu satırlarda **unvan hiç çıkarılmıyor**.
+
+**Neden tablo:** Karşı hesap metnin içeriğine göre değişiyor; gerçek dosyadaki 5 vergi
+satırı **dört farklı hesaba** gitmiş. Tek kural yetmiyor.
+
+**Neden global:** Vergi kodları (`0040` damga, `0033` kurum geçici) firmadan firmaya
+değişmez — `SabitKural` ile aynı yaklaşım. Firmaya özel kırılım gerekiyorsa satır
+Tanımlar ekranından düzenlenir.
+
+**Neden unvan çıkarılmıyor:** Açıklamadaki `Soyadi/Unvani :PKF ADAY …` hesap sahibinin
+kendi unvanı. Çıkarılsaydı satır cari katmanlarına düşerdi.
+
+Tohumlanan satırlar: `9085 / TRAFİK CEZ → 689 9 1`, `0040 / DAMGA → 360 01 004`,
+`0033 / BEYANNAME → 770 04 001`. Eşlemesi olmayan kod (ölçümde `0010/KURUMLAR V.`)
+onaya düşüyor — tahmin edilmiyor.
+
+**Plaka anahtarı:** Metindeki plaka (`Plaka:34MRP081`, `34MRP471 Nolu plakanın`) hesap
+planında adında o plakayı taşıyan hesapları aday yapıyor; karşılaştırmada boşluklar
+temizleniyor (planda `740 99 01 01 09 — 34 Mrp 081 …`, metinde `34MRP081`). Plaka **tek
+başına karar vermiyor**: aynı plakanın birden fazla hesabı olabildiği için adayları
+daraltıyor ve satır onaya düşüyor. Aynı mantık HGS/otoyol yükleme satırlarında da
+geçerli; alt hesabı kullanıcıdan beklenen kurallarda (personel/iş avansı) plaka aranmıyor.
+
+## 55. Açıklama şablonu önce ham açıklamada aranıyor
+
+**Karar:** `AciklamaUretici.SablonBul` önce ham açıklamayı tarıyor (yalnız `Icerir` /
+`Regex` şablonları), sonra işlem tipini. Karşılaştırma `Normalizasyon.KisaltmaNormalize`
+üzerinden: nokta siliniyor, `E.F.T.` ile `EFT` aynı biçime iniyor.
+
+**Neden:** `"HESAPLAR ARASI E.F.T. VAKIFBANK/DENİZBANK …"` satırının işlem tipi
+`"Gelen EFT Otomatik Yatan"`; genel şablona düşüyor ve üretilen açıklama karşı bankayı
+hiç yazmıyordu. Açıklamada geçen ifade işlem tipinden daha belirleyici.
+
+## 56. Onay ekranında en fazla 8 aday gösteriliyor
+
+**Karar:** Aday listesi ekranda 8 ile sınırlı (`EnFazlaAday`), ama **karar ve aday kümesi
+özeti tam küme üzerinden** hesaplanıyor.
+
+**Neden:** 37 üyeli Pardus ailesini tek satırda listelemek ekranı kullanılmaz yapardı;
+kullanıcı listede yoksa kodu doğrudan kutuya yazıyor. Kararın tam küme üzerinden
+verilmesi §50'nin şartı; özetin tam küme üzerinden alınması §49'un.
+
+## 57. Banka kayıt defteri katmanı iki koşuldan biriyle açılır
+
+**Karar:** Katman artık "açıklamada banka adı geçiyor" diye tetiklenmiyor. En az biri
+sağlanmalı:
+
+- **(a)** Metinde (ham açıklama **veya** işlem tipi) bankalar arası ifadesi var:
+  `hesaplar arası`, `hesaplararası`, `virman`, `süpürme`.
+- **(b)** Çıkarılan karşı taraf hesap sahibinin kendisi: en az bir desen sahibin unvanını
+  yakalamış **ve** geriye gerçek bir firma kalmamış (hiç unvan yok, ya da kalan yakalama
+  bir banka adı).
+
+İkisi de tutmazsa katman atlanıyor, satır cari katmanlarına düşüyor; orada da çözülemezse
+onaya gidiyor — yanlış çözmektense soruyor.
+
+**Neden:** Eski tetikleyici (`Sablon.BankalarArasi || HesapSahibiElendi`) müşteri
+ödemelerinde de çalışıyordu, çünkü o satırlarda **gönderenin bankası** yazıyor. Ölçüm:
+87 cari satırının **59'unda** açıklamada banka adı geçiyor —
+`BAYCAN A.Ş. CARİ HESAP ÖDEME/TÜRKİYE CUMHURİYETİ ZİRAAT BANKASI …`,
+`NAOSKZ NAOS İSTANBUL KOZMETİK…/TÜRKİYE GARANTİ BANKASI …`, tüm personel masraf
+ödemeleri. Bunların hepsi cari katmanlarına gitmeli.
+
+Ölçülen iki yanlış otomatik eşleşme bu yolla düzeldi:
+
+| Satır | Eskiden | Şimdi |
+|---|---|---|
+| `MARBAŞ MENKUL DEĞERLER ÖDEME (… Akbank T.A.Ş. MARBAŞ MENKUL DEĞERLER ANONİM ŞTİ. hesabından …)` | `102 1 4 01 Akbank` | `120 M40 Marbaş Menkul Değerler` |
+| `PKF BAĞIMSIZ DENETİM FİRMASI ÖDEMESİ (… Türkiye İş Bankası A.Ş. DEMET DÖVİZ … hesabından …)` | `102 1 5 01 İş Bankası` | `120 D50 Demet Döviz Yetkili Müessese` |
+
+**(a) neden hem açıklamada hem işlem tipinde aranıyor:** Aynı bilgi bazen açıklamada
+(`HESAPLAR ARASI E.F.T. VAKIFBANK/DENİZBANK …`), bazen yalnız işlem tipinde
+(`Virman`, `Otomatik Süpürme İşlemleri Virman`) duruyor. Karşılaştırma
+`Normalizasyon.KisaltmaNormalize` ile, tam kelime sınırıyla; `HESAPLARARASI` bitişik
+yazımı ayrı ifade olarak aranıyor.
+
+**(b)'de "kalan yakalama banka adıysa" istisnası neden var:** Bankalar arası ifadesi
+taşımayan gerçek self-transferlerde parantez öncesi serbest metin unvan sanılıyor —
+`"İŞ BANKASI  (PKF ADAY … VADESİZ HESABINDAN … NO'LU PKF ADAY … HESABINA …)"`,
+`"DENİZBANK HESABINA (…)"`. Bunlar karşı taraf değil, transferin gittiği bankadır.
+Tespit iki aşamalı: önce genel banka kelimeleri (`… BANKASI`, `… BANK`), sonra **kayıt
+defterinde tanımlı** banka adları ve eşleştirme anahtarları — `DENİZBANK HESABINA`
+yazımında genel kelime yok, ayırt eden şey bankanın kayıt defterinde bulunması.
+
+Ölçüm: 48 bankalar arası satırın 42'si (a) ile, kalan 6'sı (b) ile yakalanıyor. Fikstür
+planıyla katmanın çözdüğü satır sayısı 22'den 20'ye indi; ikisi de yanlış eşleşmeydi.
+
+**Genişletme kuralı da daraldı:** "Aynı bankanın tüm hesapları aday olsun" genişletmesi
+(açıklamada hiç banka adı geçmeyen `Hesaplararası Virman` satırları için) yalnız **(a)**
+ile açılan satırlarda yapılıyor. (b) ile açılanlarda yapılsaydı karşı tarafı gerçek bir
+cari olan satırlar cari eşleştirmesine hiç gidemeden banka adaylarıyla onaya düşerdi.

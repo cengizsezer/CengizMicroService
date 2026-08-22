@@ -54,7 +54,17 @@
         BankaKayitDefteri = 4,
         SabitKural = 5,
         UnvanBenzerligi = 6,
-        Kullanici = 7
+        Kullanici = 7,
+
+        /// <summary>
+        /// Benzersiz önek: hesap adı çekirdeği açıklamanın bir token dizisiyle başlayan
+        /// tek cari (bkz. <see cref="Services.CariOnekIndeksi"/>). Desen tabanlı unvan
+        /// benzerliğinden <b>önce</b> denenir; ölçümde isabeti %98.
+        /// </summary>
+        BenzersizOnek = 8,
+
+        /// <summary>Vergi kodu / anahtar kelime eşleme tablosu veya plaka anahtarı.</summary>
+        VergiPlaka = 9
     }
 
     /// <summary>
@@ -67,7 +77,17 @@
         /// <summary>Normalize unvan çekirdeği veya unvansız satırlarda "ISLEM:&lt;işlem tipi&gt;".</summary>
         UnvanCekirdek = 1,
         Iban = 2,
-        Vkn = 3
+        Vkn = 3,
+
+        /// <summary>
+        /// Kullanıcının çözdüğü <b>belirsizlik</b>. Anahtar, belirsizliği üreten n-gram
+        /// ("PARK PLAZA YONETIMI", "PARDUS PORTFOY YONETIMI"); değer seçilen hesap kodu.
+        /// Aynı belirsizlik bir daha sorulmaz — kullanıcı değiştirene kadar.
+        ///
+        /// Kayıt aday kümesinin özetiyle birlikte saklanır: yeni bir cari açılıp küme
+        /// değişirse karar sessizce uygulanmaz, satır tekrar onaya düşer.
+        /// </summary>
+        Belirsizlik = 4
     }
 
     /// <summary>

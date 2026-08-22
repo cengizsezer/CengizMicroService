@@ -124,8 +124,10 @@ namespace CatalogService.UnitTests.BankaEkstre
             Assert.Equal("Gelen Eft - Dağı Giyim Sanayi A.Ş.", satir.UretilenAciklama);
             Assert.True(satir.UretilenAciklama!.Length <= 50);
 
-            // Cari eşleşmesi Katman 5'ten geldi ve tek yüksek aday olduğu için otomatik.
-            Assert.Equal(KaynakKatman.UnvanBenzerligi, satir.KaynakKatman);
+            // Cari eşleşmesi benzersiz önek katmanından geldi: hesap adı çekirdeği
+            // ("DAGI GIYIM") açıklamanın token dizisiyle başlıyor ve tek sonuç veriyor.
+            // Bu katman desen tabanlı unvan benzerliğinden önce denenir.
+            Assert.Equal(KaynakKatman.BenzersizOnek, satir.KaynakKatman);
             Assert.Equal("120 D22", satir.OnerilenHesapKodu);
             Assert.Equal(SatirDurum.Otomatik, satir.Durum);
         }

@@ -128,6 +128,9 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<Features.BankaEkstre.Domain.UnvanDeseni> EkstreUnvanDesenleri => Set<Features.BankaEkstre.Domain.UnvanDeseni>();
         public DbSet<Features.BankaEkstre.Domain.SabitKural> EkstreSabitKurallar => Set<Features.BankaEkstre.Domain.SabitKural>();
 
+        /// <summary>Vergi kodu / anahtar kelime → hesap eşlemesi; vergi kodları firmadan firmaya değişmez.</summary>
+        public DbSet<Features.BankaEkstre.Domain.VergiKoduEslemesi> EkstreVergiKodlari => Set<Features.BankaEkstre.Domain.VergiKoduEslemesi>();
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -203,6 +206,7 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new AciklamaSablonuEntityTypeConfiguration());
             builder.ApplyConfiguration(new UnvanDeseniEntityTypeConfiguration());
             builder.ApplyConfiguration(new SabitKuralEntityTypeConfiguration());
+            builder.ApplyConfiguration(new VergiKoduEslemesiEntityTypeConfiguration());
 
 
             SetBuilderPKFConfiguration(builder);

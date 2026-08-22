@@ -106,14 +106,16 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             _db.EkstreYuklemeler.Add(yukleme);
             await _db.SaveChangesAsync(ct);
 
-            var veri = await EslestirmeVerisiYukleAsync(hesap, ct);
+            // Hesap sahibinin tüm yazımları eşleştirme verisinin parçası: unvan çıkarma da,
+            // benzersiz önek indeksinin süzülmesi de aynı kimliği kullanır.
+            var hesapSahibi = await HesapSahibiKimligiBulAsync(hesap, ct);
+            var veri = await EslestirmeVerisiYukleAsync(hesap, hesapSahibi, ct);
             var sablonlar = await SablonlariYukleAsync(hesap.ParserTipi, ct);
             var desenler = await DesenleriYukleAsync(hesap.ParserTipi, ct);
-            var hesapSahibi = await HesapSahibiUnvaniBulAsync(hesap, ct);
 
             foreach (var ayrilan in ayristirma.Satirlar)
             {
-                var satir = SatirOlustur(yukleme.Id, ayrilan, sablonlar, desenler, veri, hesapSahibi);
+                var satir = SatirOlustur(yukleme.Id, ayrilan, sablonlar, desenler, veri);
                 _db.EkstreSatirlari.Add(satir);
             }
 
@@ -128,8 +130,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             AyrilanSatir ayrilan,
             IReadOnlyList<AciklamaSablonu> sablonlar,
             IReadOnlyList<UnvanDeseni> desenler,
-            EslestirmeVerisi veri,
-            string? hesapSahibiUnvani)
+            EslestirmeVerisi veri)
         {
             var baglam = new SatirBaglami
             {
@@ -149,11 +150,17 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             // çıkarılır: kişi bir cari değil ama muavini o grubun içinde bu adla aranır.
             // Ölçümde giden FAST satırlarının 195'e düşen çoğunluğu ("masraf ödemesi")
             // aksi hâlde kişi adı hiç okunmadan onay kuyruğuna kalıyordu.
-            var unvanCikarilsin = aciklamaKurali is null or { UnvanCikarilsin: true } or { AltHesapGerekli: true };
+            // Vergi tahsilatı satırlarında unvan hiç çıkarılmaz: açıklamadaki
+            // "Soyadi/Unvani :PKF ADAY …" hesap sahibinin kendi unvanı, karşı taraf değil.
+            // Karşı hesabı vergi kodu / anahtar kelime / plaka belirler.
+            var vergiSatiri = VergiPlakaCozucu.VergiSatiriMi(ayrilan.IslemTipi);
+
+            var unvanCikarilsin = !vergiSatiri &&
+                                  aciklamaKurali is null or { UnvanCikarilsin: true } or { AltHesapGerekli: true };
 
             if (unvanCikarilsin)
             {
-                var unvan = _unvanCikarici.Cikar(ayrilan.HamAciklama, desenler, hesapSahibiUnvani);
+                var unvan = _unvanCikarici.Cikar(ayrilan.HamAciklama, desenler, veri.HesapSahibi);
                 baglam.Unvan = unvan.Unvan;
 
                 // Karşı taraf olarak hesap sahibinin kendisi çıktı: satır kendi hesapları
@@ -168,10 +175,10 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             // Unvan çıkarılmış olsa da kural "bu bir cari değil" diyorsa öğrenme anahtarı
             // üretilmez: anahtar kişi adına ya da işlem tipine düşerse ilk onaydan sonra
             // ilgisiz satırlar da aynı hesaba çözülürdü.
-            if (aciklamaKurali is { UnvanCikarilsin: false })
+            if (aciklamaKurali is { UnvanCikarilsin: false } || vergiSatiri)
                 baglam.AnahtarUretilmesin = true;
 
-            baglam.Sablon = _aciklamaUretici.SablonBul(ayrilan.IslemTipi, sablonlar);
+            baglam.Sablon = _aciklamaUretici.SablonBul(ayrilan.IslemTipi, sablonlar, ayrilan.HamAciklama);
 
             // Bankalar arası hareketlerde açıklamada unvan yerine banka adı geçer;
             // bu yüzden banka, açıklama üretiminden önce bulunur.
@@ -206,6 +213,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 IkinciAdayAdi = eslestirme.IkinciAdayAdi,
                 IkinciAdaySkoru = eslestirme.IkinciAdaySkoru is decimal s ? Math.Round(s, 4) : null,
                 Adaylar = AdaylariYaz(eslestirme.Adaylar),
+                BelirsizlikAnahtari = eslestirme.BelirsizlikAnahtari,
+                AdayKumesiOzeti = eslestirme.AdayKumesiOzeti,
                 Durum = eslestirme.Durum
             };
         }
@@ -451,31 +460,42 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 .FirstOrDefaultAsync(ct);
 
         /// <summary>
-        /// Hesap sahibinin unvanı. Firma bazlı ve tek kez girilir: ekstresi işlenen hesapta
-        /// boşsa aynı firmanın dolu olan başka bir hesabından okunur. Böylece kullanıcı her
-        /// banka hesabına ayrı ayrı yazmak zorunda kalmaz.
+        /// Hesap sahibinin kimliği: ana unvan + takma adlar. Firma bazlı ve tek kez girilir:
+        /// ekstresi işlenen hesapta boşsa aynı firmanın dolu olan başka bir hesabından okunur.
+        /// Böylece kullanıcı her banka hesabına ayrı ayrı yazmak zorunda kalmaz.
         /// </summary>
-        private async Task<string?> HesapSahibiUnvaniBulAsync(BankaHesabi hesap, CancellationToken ct)
+        private async Task<HesapSahibiKimligi> HesapSahibiKimligiBulAsync(BankaHesabi hesap, CancellationToken ct)
         {
-            if (!string.IsNullOrWhiteSpace(hesap.HesapSahibiUnvani)) return hesap.HesapSahibiUnvani;
+            if (!string.IsNullOrWhiteSpace(hesap.HesapSahibiUnvani))
+                return HesapSahibiKimligi.Kur(hesap.HesapSahibiUnvani, hesap.HesapSahibiTakmaAdlari);
 
-            return await _db.EkstreBankaHesaplari.AsNoTracking()
+            var digeri = await _db.EkstreBankaHesaplari.AsNoTracking()
                 .Where(h => h.HesapSahibiUnvani != null && h.HesapSahibiUnvani != string.Empty)
                 .OrderBy(h => h.Id)
-                .Select(h => h.HesapSahibiUnvani)
+                .Select(h => new { h.HesapSahibiUnvani, h.HesapSahibiTakmaAdlari })
                 .FirstOrDefaultAsync(ct);
+
+            // Takma adlar ekstresi işlenen hesapta da tanımlı olabilir; ikisi birleştirilir.
+            return HesapSahibiKimligi.Kur(
+                HesapSahibiKimligi.Ayikla(digeri?.HesapSahibiUnvani)
+                    .Concat(HesapSahibiKimligi.Ayikla(digeri?.HesapSahibiTakmaAdlari))
+                    .Concat(HesapSahibiKimligi.Ayikla(hesap.HesapSahibiTakmaAdlari)));
         }
 
-        private async Task<EslestirmeVerisi> EslestirmeVerisiYukleAsync(BankaHesabi hesap, CancellationToken ct)
+        private async Task<EslestirmeVerisi> EslestirmeVerisiYukleAsync(
+            BankaHesabi hesap, HesapSahibiKimligi hesapSahibi, CancellationToken ct)
             => new()
             {
                 Eslesmeler = await _db.EkstreHesapEslesmeleri.AsNoTracking().ToListAsync(ct),
                 BankaHesaplari = await _db.EkstreBankaHesaplari.AsNoTracking().ToListAsync(ct),
                 SabitKurallar = await _db.EkstreSabitKurallar.AsNoTracking().ToListAsync(ct),
                 HesapPlani = await _db.EkstreHesapPlani.AsNoTracking().Where(h => h.Aktif).ToListAsync(ct),
+                VergiKodlari = await _db.EkstreVergiKodlari.AsNoTracking().Where(v => v.Aktif)
+                                        .OrderBy(v => v.Sira).ToListAsync(ct),
                 IslenenBankaHesabiId = hesap.Id,
                 IbanKatmaniAktif = hesap.IbanKatmaniAktif,
-                VknKatmaniAktif = hesap.VknKatmaniAktif
+                VknKatmaniAktif = hesap.VknKatmaniAktif,
+                HesapSahibi = hesapSahibi
             };
 
         private Task<List<AciklamaSablonu>> SablonlariYukleAsync(string parserTipi, CancellationToken ct)
@@ -584,7 +604,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             OnaylananHesapAdi = s.OnaylananHesapAdi,
             Durum = s.Durum,
             AnahtarCekirdek = s.AnahtarCekirdek,
-            AyirtEdiciEk = s.AyirtEdiciEk
+            AyirtEdiciEk = s.AyirtEdiciEk,
+            BelirsizlikAnahtari = s.BelirsizlikAnahtari
         };
     }
 }

@@ -11,6 +11,13 @@ namespace WebApp.Application.Services.Interfaces
 
         /// <summary>Hesap adından eşleştirme anahtarı önerisi (yeni hesap formunu doldurur).</summary>
         Task<string?> AnahtarOnerisiAsync(string? hesapAdi, string? bankaAdi, CancellationToken ct = default);
+
+        /// <summary>
+        /// Hesap sahibinin henüz eklenmemiş yazımları; yüklenmiş ekstrelerden çıkarılır.
+        /// "ADAY BAĞIMSIZ DENETİM VE SMMM A.Ş." gibi yazımlar ancak böyle bulunur.
+        /// </summary>
+        Task<List<HesapSahibiOnerisiDto>> HesapSahibiOnerileriAsync(int hesapId, CancellationToken ct = default);
+
         Task<(BankaHesabiDto? Veri, string? Hata)> CreateHesapAsync(BankaHesabiYazDto dto, CancellationToken ct = default);
         Task<(BankaHesabiDto? Veri, string? Hata)> UpdateHesapAsync(int id, BankaHesabiYazDto dto, CancellationToken ct = default);
         Task<string?> DeleteHesapAsync(int id, CancellationToken ct = default);
@@ -45,5 +52,11 @@ namespace WebApp.Application.Services.Interfaces
         Task<List<HesapEslesmesiDto>> EslesmeleriAraAsync(string? q, int enFazla = 100, CancellationToken ct = default);
         Task<(HesapEslesmesiDto? Veri, string? Hata)> EslesmeGuncelleAsync(int id, HesapEslesmesiYazDto dto, CancellationToken ct = default);
         Task<string?> EslesmeSilAsync(int id, CancellationToken ct = default);
+
+        // Vergi kodu eşlemeleri
+        Task<List<VergiKoduEslemesiDto>> VergiKodlariAsync(CancellationToken ct = default);
+        Task<(VergiKoduEslemesiDto? Veri, string? Hata)> VergiKoduEkleAsync(VergiKoduEslemesiYazDto dto, CancellationToken ct = default);
+        Task<(VergiKoduEslemesiDto? Veri, string? Hata)> VergiKoduGuncelleAsync(int id, VergiKoduEslemesiYazDto dto, CancellationToken ct = default);
+        Task<string?> VergiKoduSilAsync(int id, CancellationToken ct = default);
     }
 }

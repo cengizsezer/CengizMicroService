@@ -33,6 +33,8 @@ namespace CatalogService.UnitTests.BankaEkstre
 
         public static List<UnvanDeseni> Desenler() => new()
         {
+            // Üretim seed'iyle aynı sabit; açıklamanın sonundaki "… Tahsilatı" satıcı adı.
+            Yeni(CatalogService.Api.Features.BankaEkstre.BankaEkstreSeed.TahsilatDeseni, 5),
             Yeni(@"sorgu numaralı (.+?) tarafından", 10),
             Yeni(@"nolu ([A-ZÇĞİÖŞÜ0-9][^/]{4,70}?) hesab", 20),
             Yeni(GidenKarsiTarafDeseni, 25),
@@ -65,6 +67,9 @@ namespace CatalogService.UnitTests.BankaEkstre
             new() { ParserTipi = ParserTipi, IslemTipiDeseni = "Gönderilen havale", Sablon = "Giden Eft - {UNVAN}", Sira = 20, Aktif = true },
             new() { ParserTipi = ParserTipi, IslemTipiDeseni = "Otomatik Süpürme İşlemleri Virman", Sablon = "Otomatik Süpürme Pkf Aday", BankalarArasi = true, Sira = 30, Aktif = true },
             new() { ParserTipi = ParserTipi, IslemTipiDeseni = "Virman", Sablon = "Hesaplararası Virman - {HESAP}", BankalarArasi = true, Sira = 40, Aktif = true },
+            // Açıklamada geçen ifadeye karşılık gelir, işlem tipine değil: "HESAPLAR ARASI
+            // E.F.T. VAKIFBANK/DENİZBANK …" satırının işlem tipi "Gelen EFT Otomatik Yatan".
+            new() { ParserTipi = ParserTipi, IslemTipiDeseni = "Hesaplar Arası EFT", Sablon = "Hesaplar Arası Eft - {BANKA}", BankalarArasi = true, EslesmeTuru = EslesmeTuru.Icerir, Sira = 45, Aktif = true },
             new() { ParserTipi = ParserTipi, IslemTipiDeseni = "HGS Bakiye Yükle", Sablon = "Hgs Bakiye Yüklemesi - {PLAKA}", Sira = 50, Aktif = true },
             new() { ParserTipi = ParserTipi, IslemTipiDeseni = "MKK Masrafı", Sablon = "Banka Gideri", Sira = 60, Aktif = true },
             new() { ParserTipi = ParserTipi, IslemTipiDeseni = "Vergi Tahsilatı", Sablon = "Vergi Ödemesi - {VERGI}", Sira = 70, Aktif = true }

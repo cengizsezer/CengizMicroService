@@ -229,6 +229,43 @@ else
                 </span>
             </div>
 
+            <div class="bh-alan" style="grid-column: 1 / -1">
+                <label>Hesap sahibinin diğer yazımları</label>
+                <RadzenTextArea @bind-Value="_form.HesapSahibiTakmaAdlari" Rows="3" Style="width:100%"
+                                Placeholder="Her satıra bir yazım:&#10;ADAY BAĞIMSIZ DENETİM VE SMMM A.Ş.&#10;PKF ADAY" />
+                <span class="bh-ipucu">
+                    Her satıra bir yazım. Bankalar aynı firmayı çok farklı yazıyor; ölçülen dosyada
+                    altı ayrı yazım geçiyordu. Yukarıdaki unvanı <b>kapsayan</b> veya onun tarafından
+                    kapsanan yazımlar zaten eleniyor ("ADAY BAĞIMSIZ DENETİM" gibi); buraya yalnız
+                    kapsama dışında kalanlar yazılır.
+                </span>
+
+                @if (_duzenlenenId is int hid)
+                {
+                    <div style="margin-top:6px">
+                        <RadzenButton Text="@(_onerilerYukleniyor ? "Taranıyor…" : "Yüklenmiş ekstrelerde ara")"
+                                      ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                                      Disabled="_onerilerYukleniyor" Click="@(() => OnerileriYukleAsync(hid))" />
+
+                        @if (_oneriler.Count > 0)
+                        {
+                            <div style="margin-top:6px; display:flex; flex-wrap:wrap; gap:6px">
+                                @foreach (var oneri in _oneriler)
+                                {
+                                    <RadzenButton Text="@($"+ {oneri.Yazim} ({oneri.Adet})")"
+                                                  ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
+                                                  Click="@(() => TakmaAdEkle(oneri.Yazim))" />
+                                }
+                            </div>
+                        }
+                        else if (_onerilerArandi)
+                        {
+                            <span class="bh-ipucu">Yüklenmiş ekstrelerde eklenmemiş başka yazım bulunamadı.</span>
+                        }
+                    </div>
+                }
+            </div>
+
             <div class="bh-alan">
                 <label>ORKA hesap kodu</label>
                 <RadzenTextBox @bind-Value="_form.OrkaHesapKodu" Placeholder="102 1 1 01" />
@@ -362,6 +399,10 @@ else
 
     private void FormAc(BankaHesabiDto? hesap)
     {
+        // Öneriler hesap bazlı; form değişince eski hesabın listesi ekranda kalmamalı.
+        _oneriler = new();
+        _onerilerArandi = false;
+
         _duzenlenenId = hesap?.Id;
         _form = hesap is null
             // Hesap sahibi unvanı firma bazlıdır: yeni hesapta mevcut hesaplardan devralınır ki
@@ -373,6 +414,7 @@ else
                 HesapAdi = hesap.HesapAdi,
                 EslestirmeAnahtarlari = hesap.EslestirmeAnahtarlari,
                 HesapSahibiUnvani = hesap.HesapSahibiUnvani ?? FirmaUnvani(),
+                HesapSahibiTakmaAdlari = hesap.HesapSahibiTakmaAdlari,
                 HesapTipi = hesap.HesapTipi,
                 ParaBirimi = hesap.ParaBirimi,
                 Iban = hesap.Iban,
@@ -382,6 +424,46 @@ else
                 IbanKatmaniAktif = hesap.IbanKatmaniAktif,
                 VknKatmaniAktif = hesap.VknKatmaniAktif
             };
+    }
+
+    private List<HesapSahibiOnerisiDto> _oneriler = new();
+    private bool _onerilerYukleniyor;
+    private bool _onerilerArandi;
+
+    /// <summary>
+    /// Yüklenmiş ekstrelerde geçen, henüz eklenmemiş yazımları tarar. "ADAY BAĞIMSIZ DENETİM
+    /// VE SMMM A.Ş." gibi yazımlar ancak böyle bulunur — kullanıcı akıldan hatırlayamaz.
+    /// </summary>
+    private async Task OnerileriYukleAsync(int hesapId)
+    {
+        _onerilerYukleniyor = true;
+        try
+        {
+            _oneriler = await Api.HesapSahibiOnerileriAsync(hesapId);
+            _onerilerArandi = true;
+        }
+        finally
+        {
+            _onerilerYukleniyor = false;
+        }
+    }
+
+    /// <summary>Öneriyi takma adlara ekler (zaten varsa tekrar eklenmez).</summary>
+    private void TakmaAdEkle(string yazim)
+    {
+        if (_form is null) return;
+
+        var mevcut = (_form.HesapSahibiTakmaAdlari ?? string.Empty)
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(y => y.Trim())
+            .Where(y => y.Length > 0)
+            .ToList();
+
+        if (mevcut.Any(y => string.Equals(y, yazim, StringComparison.OrdinalIgnoreCase))) return;
+
+        mevcut.Add(yazim);
+        _form.HesapSahibiTakmaAdlari = string.Join(Environment.NewLine, mevcut);
+        _oneriler = _oneriler.Where(o => o.Yazim != yazim).ToList();
     }
 
     /// <summary>Mevcut hesaplarda girilmiş hesap sahibi unvanı (firma başına tek değer).</summary>

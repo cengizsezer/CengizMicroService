@@ -47,8 +47,16 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
     public interface IAciklamaUretici
     {
-        /// <summary>İşlem tipine uyan şablonu bulur (yoksa null).</summary>
-        AciklamaSablonu? SablonBul(string islemTipi, IReadOnlyList<AciklamaSablonu> sablonlar);
+        /// <summary>
+        /// Satıra uyan şablonu bulur (yoksa null).
+        ///
+        /// Önce <b>ham açıklama</b> taranır, sonra işlem tipi. Sıra böyle: "HESAPLAR ARASI
+        /// E.F.T. VAKIFBANK/DENİZBANK …" satırının işlem tipi "Gelen EFT Otomatik Yatan"
+        /// olduğu için genel şablona düşüyor ve açıklama karşı bankayı hiç yazmıyordu;
+        /// açıklamada geçen ifade işlem tipinden daha belirleyici.
+        /// </summary>
+        AciklamaSablonu? SablonBul(string islemTipi, IReadOnlyList<AciklamaSablonu> sablonlar,
+                                   string? hamAciklama = null);
 
         /// <summary>Şablonu doldurup 50 karakterle sınırlı, Title Case açıklama üretir.</summary>
         string Uret(SatirBaglami baglam);
@@ -78,9 +86,13 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             "DAMGA", "OTV", "ÖTV", "MTV", "SGK", "BAGKUR", "BAĞKUR", "STOPAJ"
         };
 
-        public AciklamaSablonu? SablonBul(string islemTipi, IReadOnlyList<AciklamaSablonu> sablonlar)
+        public AciklamaSablonu? SablonBul(string islemTipi, IReadOnlyList<AciklamaSablonu> sablonlar,
+                                          string? hamAciklama = null)
         {
             if (sablonlar.Count == 0) return null;
+
+            var aciklamaSablonu = AciklamadaAra(hamAciklama, sablonlar);
+            if (aciklamaSablonu is not null) return aciklamaSablonu;
 
             var hedef = Normalizasyon.TurkceSadelestir(islemTipi).Trim();
 
@@ -93,6 +105,38 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                     EslesmeTuru.Tam => string.Equals(hedef, desen, StringComparison.Ordinal),
                     EslesmeTuru.Icerir => desen.Length > 0 && hedef.Contains(desen, StringComparison.Ordinal),
                     EslesmeTuru.Regex => RegexUyuyorMu(sablon.IslemTipiDeseni, islemTipi),
+                    _ => false
+                };
+
+                if (uyuyor) return sablon;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Ham açıklamada geçen ifadeye karşılık gelen şablon. Yalnız <see cref="EslesmeTuru.Icerir"/>
+        /// ve <see cref="EslesmeTuru.Regex"/> şablonları aranır: <see cref="EslesmeTuru.Tam"/>
+        /// şablonu işlem tipinin tamamına eşitlik demek, açıklamada karşılığı yok.
+        ///
+        /// Karşılaştırma <see cref="Normalizasyon.KisaltmaNormalize"/> üzerinden ve tam kelime
+        /// sınırıyla: aynı ifade dosyada hem "HESAPLAR ARASI EFT" hem "HESAPLAR ARASI E.F.T."
+        /// diye yazılıyor.
+        /// </summary>
+        private static AciklamaSablonu? AciklamadaAra(string? hamAciklama, IReadOnlyList<AciklamaSablonu> sablonlar)
+        {
+            if (string.IsNullOrWhiteSpace(hamAciklama)) return null;
+
+            var metin = Normalizasyon.KisaltmaNormalize(hamAciklama);
+            if (metin.Length == 0) return null;
+
+            foreach (var sablon in sablonlar.Where(s => s.Aktif).OrderBy(s => s.Sira))
+            {
+                var uyuyor = sablon.EslesmeTuru switch
+                {
+                    EslesmeTuru.Icerir => Normalizasyon.IfadeVarMi(
+                        metin, Normalizasyon.KisaltmaNormalize(sablon.IslemTipiDeseni)),
+                    EslesmeTuru.Regex => RegexUyuyorMu(sablon.IslemTipiDeseni, hamAciklama),
                     _ => false
                 };
 

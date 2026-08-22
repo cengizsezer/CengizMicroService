@@ -156,6 +156,8 @@ builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IHes
                            CatalogService.Api.Features.BankaEkstre.Services.HesapEslesmeService>();
 builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IEkstreService,
                            CatalogService.Api.Features.BankaEkstre.Services.EkstreService>();
+builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IVergiKoduService,
+                           CatalogService.Api.Features.BankaEkstre.Services.VergiKoduService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolMaddeService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolMaddeService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolMizanService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolMizanService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IMizanNotuService, CatalogService.Api.Features.FirmaKontrol.Services.MizanNotuService>();
