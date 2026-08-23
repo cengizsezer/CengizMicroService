@@ -9,10 +9,16 @@
 @inject IJSRuntime JS
 
 @*
-    Tanımlar ekranının "Banka hesapları" bölümü. Bu liste aynı zamanda "banka kayıt
+    Banka kapsülünün "Bu bankanın hesapları" bölümü. Liste aynı zamanda "banka kayıt
     defteri"dir: bankalar arası hareketlerde karşı taraf buradan bulunur, bu yüzden
-    her banka için ORKA kodu doğru girilmeli. Günlük ekranın banka sekmeleri de
+    her banka için ORKA kodu doğru girilmeli. İşleme ekranının banka sekmeleri de
     buradaki tanımlardan türer.
+
+    BankaFiltresi doluyken yalnız o bankanın hesapları listelenir ve yeni hesap formu
+    banka adını hazır getirir. Boşken tüm hesaplar görünür (kapsül dışı kullanım).
+
+    Hesap sahibi unvanı burada DÜZENLENMEZ: firma bazlı bir değer, Firma Tanımları
+    ekranına taşındı. Form değeri yine de taşır (kaydederken silinmesin diye).
 *@
 
 <style>
@@ -47,7 +53,7 @@
 </style>
 
 <div class="bh-arac">
-    <h5 style="margin:0">Banka hesapları</h5>
+    <h5 style="margin:0">@(BankaFiltresi is null ? "Banka hesapları" : $"{BankaFiltresi} hesapları")</h5>
     <div style="display:flex; gap:6px; align-items:center">
         <RadzenCheckBox TValue="bool" Value="@_pasifDahil" Name="pasifDahil"
                         Change="@(async (bool secili) => { _pasifDahil = secili; await YukleAsync(); })" />
@@ -74,12 +80,16 @@ else
             <span class="bh-aksiyon"></span>
         </div>
 
-        @if (_hesaplar.Count == 0)
+        @if (Gorunen.Count == 0)
         {
-            <div class="bh-bos">Henüz banka hesabı tanımlanmadı.</div>
+            <div class="bh-bos">
+                @(BankaFiltresi is null
+                    ? "Henüz banka hesabı tanımlanmadı."
+                    : $"{BankaFiltresi} için tanımlı hesap yok.")
+            </div>
         }
 
-        @foreach (var hesap in _hesaplar)
+        @foreach (var hesap in Gorunen)
         {
             <div class="bh-satir @(hesap.Aktif ? "" : "bh-pasif")">
                 <span class="bh-ad">
@@ -125,6 +135,8 @@ else
         <span class="bh-ipucu">
             xlsx; kolonlar başlık adıyla bulunur, sıraları değişebilir. Anahtar ORKA hesap
             kodu: varsa güncellenir, yoksa eklenir. Dosyada olmayan hesaplara dokunulmaz.
+            <b>Tüm bankaları kapsar</b> — her satır dosyadaki kendi bankasına yazılır,
+            bu sekmedeki bankaya değil.
         </span>
     </div>
 
@@ -216,54 +228,6 @@ else
                     tutmazsa banka adına düşülür; en uzun eşleşen kazanır. Aynı bankada birden fazla
                     hesap varsa ve hiçbir anahtar tutmazsa satır onaya düşer.
                 </span>
-            </div>
-
-            <div class="bh-alan" style="grid-column: 1 / -1">
-                <label>Hesap sahibi unvanı</label>
-                <RadzenTextBox @bind-Value="_form.HesapSahibiUnvani"
-                               Placeholder="PKF ADAY BAĞIMSIZ DENETİM ANONİM ŞİRKETİ" Style="width:100%" />
-                <span class="bh-ipucu">
-                    Firmanın kendi resmî unvanı; firma başına bir kez girilir, yeni hesapta hazır gelir.
-                    Banka açıklamalarında hesap sahibinin kendi adı da geçiyor — bu alan doluyken o
-                    yakalama atılır, karşı taraf sanılıp benzer adlı bir cariye eşlenmez.
-                </span>
-            </div>
-
-            <div class="bh-alan" style="grid-column: 1 / -1">
-                <label>Hesap sahibinin diğer yazımları</label>
-                <RadzenTextArea @bind-Value="_form.HesapSahibiTakmaAdlari" Rows="3" Style="width:100%"
-                                Placeholder="Her satıra bir yazım:&#10;ADAY BAĞIMSIZ DENETİM VE SMMM A.Ş.&#10;PKF ADAY" />
-                <span class="bh-ipucu">
-                    Her satıra bir yazım. Bankalar aynı firmayı çok farklı yazıyor; ölçülen dosyada
-                    altı ayrı yazım geçiyordu. Yukarıdaki unvanı <b>kapsayan</b> veya onun tarafından
-                    kapsanan yazımlar zaten eleniyor ("ADAY BAĞIMSIZ DENETİM" gibi); buraya yalnız
-                    kapsama dışında kalanlar yazılır.
-                </span>
-
-                @if (_duzenlenenId is int hid)
-                {
-                    <div style="margin-top:6px">
-                        <RadzenButton Text="@(_onerilerYukleniyor ? "Taranıyor…" : "Yüklenmiş ekstrelerde ara")"
-                                      ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
-                                      Disabled="_onerilerYukleniyor" Click="@(() => OnerileriYukleAsync(hid))" />
-
-                        @if (_oneriler.Count > 0)
-                        {
-                            <div style="margin-top:6px; display:flex; flex-wrap:wrap; gap:6px">
-                                @foreach (var oneri in _oneriler)
-                                {
-                                    <RadzenButton Text="@($"+ {oneri.Yazim} ({oneri.Adet})")"
-                                                  ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
-                                                  Click="@(() => TakmaAdEkle(oneri.Yazim))" />
-                                }
-                            </div>
-                        }
-                        else if (_onerilerArandi)
-                        {
-                            <span class="bh-ipucu">Yüklenmiş ekstrelerde eklenmemiş başka yazım bulunamadı.</span>
-                        }
-                    </div>
-                }
             </div>
 
             <div class="bh-alan">
@@ -359,6 +323,16 @@ else
     /// <summary>Hesap listesi değişince günlük ekranın sekmeleri de yenilensin.</summary>
     [Parameter] public EventCallback Degisti { get; set; }
 
+    /// <summary>
+    /// Doluysa yalnız bu bankanın hesapları listelenir ve yeni hesap formu banka adını
+    /// hazır getirir. Banka kapsülü bu parametreyi verir; boşken tüm hesaplar görünür.
+    /// </summary>
+    [Parameter] public string? BankaFiltresi { get; set; }
+
+    private List<BankaHesabiDto> Gorunen => BankaFiltresi is null
+        ? _hesaplar
+        : _hesaplar.Where(h => string.Equals(h.BankaAdi, BankaFiltresi, StringComparison.OrdinalIgnoreCase)).ToList();
+
     protected override async Task OnInitializedAsync()
     {
         _parserler = await Api.GetParserlerAsync();
@@ -397,17 +371,32 @@ else
         }
     }
 
+    /// <summary>
+    /// Kapsül dışarıdan yeni hesap formunu açar: banka sekmesindeki "Yeni hesap" ve tab
+    /// şeridindeki "Banka ekle" düğmeleri buraya gelir. <paramref name="bankaAdi"/> boşsa
+    /// yeni bir banka giriliyordur, alan boş bırakılır.
+    /// </summary>
+    public void YeniHesapAc(string? bankaAdi)
+    {
+        FormAc(null);
+        if (_form is not null) _form.BankaAdi = bankaAdi ?? string.Empty;
+        StateHasChanged();
+    }
+
     private void FormAc(BankaHesabiDto? hesap)
     {
-        // Öneriler hesap bazlı; form değişince eski hesabın listesi ekranda kalmamalı.
-        _oneriler = new();
-        _onerilerArandi = false;
-
         _duzenlenenId = hesap?.Id;
         _form = hesap is null
-            // Hesap sahibi unvanı firma bazlıdır: yeni hesapta mevcut hesaplardan devralınır ki
-            // kullanıcı her banka hesabına aynı unvanı yeniden yazmasın.
-            ? new BankaHesabiYazDto { ParserTipi = string.Empty, HesapSahibiUnvani = FirmaUnvani() }
+            // Hesap sahibi unvanı ve takma adlar burada DÜZENLENMEZ (Firma Tanımları'na
+            // taşındı) ama forma yüklenir: kaydederken alanlar boş gitseydi firma kimliği
+            // silinir, banka açıklamalarındaki kendi unvanımız karşı taraf sanılırdı.
+            ? new BankaHesabiYazDto
+            {
+                ParserTipi = string.Empty,
+                BankaAdi = BankaFiltresi ?? string.Empty,
+                HesapSahibiUnvani = FirmaUnvani(),
+                HesapSahibiTakmaAdlari = FirmaTakmaAdlari()
+            }
             : new BankaHesabiYazDto
             {
                 BankaAdi = hesap.BankaAdi,
@@ -426,50 +415,15 @@ else
             };
     }
 
-    private List<HesapSahibiOnerisiDto> _oneriler = new();
-    private bool _onerilerYukleniyor;
-    private bool _onerilerArandi;
-
-    /// <summary>
-    /// Yüklenmiş ekstrelerde geçen, henüz eklenmemiş yazımları tarar. "ADAY BAĞIMSIZ DENETİM
-    /// VE SMMM A.Ş." gibi yazımlar ancak böyle bulunur — kullanıcı akıldan hatırlayamaz.
-    /// </summary>
-    private async Task OnerileriYukleAsync(int hesapId)
-    {
-        _onerilerYukleniyor = true;
-        try
-        {
-            _oneriler = await Api.HesapSahibiOnerileriAsync(hesapId);
-            _onerilerArandi = true;
-        }
-        finally
-        {
-            _onerilerYukleniyor = false;
-        }
-    }
-
-    /// <summary>Öneriyi takma adlara ekler (zaten varsa tekrar eklenmez).</summary>
-    private void TakmaAdEkle(string yazim)
-    {
-        if (_form is null) return;
-
-        var mevcut = (_form.HesapSahibiTakmaAdlari ?? string.Empty)
-            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(y => y.Trim())
-            .Where(y => y.Length > 0)
-            .ToList();
-
-        if (mevcut.Any(y => string.Equals(y, yazim, StringComparison.OrdinalIgnoreCase))) return;
-
-        mevcut.Add(yazim);
-        _form.HesapSahibiTakmaAdlari = string.Join(Environment.NewLine, mevcut);
-        _oneriler = _oneriler.Where(o => o.Yazim != yazim).ToList();
-    }
-
     /// <summary>Mevcut hesaplarda girilmiş hesap sahibi unvanı (firma başına tek değer).</summary>
     private string? FirmaUnvani()
         => _hesaplar.Select(h => h.HesapSahibiUnvani)
                     .FirstOrDefault(u => !string.IsNullOrWhiteSpace(u));
+
+    /// <summary>Aynı şekilde takma adlar: yeni hesap firmanın kimliğini devralır.</summary>
+    private string? FirmaTakmaAdlari()
+        => _hesaplar.Select(h => h.HesapSahibiTakmaAdlari)
+                    .FirstOrDefault(t => !string.IsNullOrWhiteSpace(t));
 
     /// <summary>
     /// Hesap adı değişince anahtar önerisi doldurulur — yalnız alan boşsa: kullanıcının

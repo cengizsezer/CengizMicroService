@@ -170,10 +170,14 @@
                     <RadzenPanelMenuItem Text="Masraf Merkezleri" Icon="donut_small" Path="/muhasebe/masraf-merkezi" />
                 </RadzenPanelMenuItem>
 
-                @* İşleme günlük ekran (varsayılan), Tanımlar kurulum — nadiren açılır. *@
+                @*
+                    İşleme günlük ekran (varsayılan) ve aynı zamanda banka kapsülü: her
+                    bankanın kuralları kendi sekmesindedir. Firma Tanımları yalnız bankadan
+                    bağımsız olanları toplar — nadiren açılır.
+                *@
                 <RadzenPanelMenuItem Text="Banka İşleme" Icon="account_balance_wallet">
                     <RadzenPanelMenuItem Text="İşleme" Icon="fact_check" Path="/banka-isleme" />
-                    <RadzenPanelMenuItem Text="Tanımlar" Icon="settings" Path="/banka-isleme/tanimlar" />
+                    <RadzenPanelMenuItem Text="Firma Tanımları" Icon="settings" Path="/banka-isleme/firma-tanimlari" />
                 </RadzenPanelMenuItem>
 
                 <RadzenPanelMenuItem Text="Finans" Icon="account_balance">

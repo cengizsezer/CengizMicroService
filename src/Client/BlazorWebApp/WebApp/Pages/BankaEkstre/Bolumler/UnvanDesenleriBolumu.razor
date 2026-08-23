@@ -1,0 +1,396 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.BankaEkstre
+
+@inject IBankaEkstreApi Api
+@inject NotificationService Notif
+
+@*
+    Tanımlar ekranının "Unvan çıkarma desenleri" bölümü. Desenler ham banka açıklamasından
+    karşı tarafın unvanını çıkarır; sırayla denenir, ilk yakalayan kazanır.
+
+    AYRIŞTIRICI boşsa desen tüm bankalarda, doluysa yalnız o bankada geçerlidir: Vakıfbank'ın
+    "sorgu numaralı … tarafından" kalıbı başka bankanın ekstresinde bambaşka bir yeri
+    yakalayabilir.
+
+    Deneme kutusu sunucudaki çıkarıcıyı çalıştırır — ekranda görülen sonuç, gerçek işlemede
+    olacak sonucun aynısıdır. Geçersiz regex kaydedilmez.
+*@
+
+<style>
+    .ud-arac { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .ud-kaydir { overflow-x: auto; }
+    .ud-tablo { border: 1px solid #eee; border-radius: 6px; background: #fff; overflow: hidden; min-width: 900px; }
+    .ud-satir { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+    .ud-head { background: #fafafa; border-bottom: 1px solid #eee; font-size: 11px; color: #718096;
+               text-transform: uppercase; letter-spacing: .3px; }
+    .ud-satir:not(.ud-head):hover { background: #f8fbff; }
+    .ud-parser { flex: 0 0 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ud-desen { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+    .ud-aciklama { flex: 0 0 300px; color: #4a5568; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ud-sira { flex: 0 0 50px; text-align: right; }
+    .ud-durum { flex: 0 0 55px; }
+    .ud-aksiyon { flex: 0 0 80px; text-align: right; }
+    .ud-bos { padding: 26px; text-align: center; color: #a0aec0; }
+    .ud-pasif .ud-desen, .ud-pasif .ud-aciklama { color: #a0aec0; text-decoration: line-through; }
+    .ud-rozet { display: inline-block; padding: 0 5px; border-radius: 3px; background: #fffaf0; color: #975a16;
+                font-size: 10px; text-transform: uppercase; letter-spacing: .3px; vertical-align: middle; }
+    .ud-alan { display: flex; flex-direction: column; gap: 3px; }
+    .ud-alan label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .ud-ipucu { font-size: 11px; color: #a0aec0; }
+    .ud-onay { display: flex; gap: 6px; align-items: center; }
+    .ud-onay label { font-size: 12px; color: #4a5568; text-transform: none; letter-spacing: 0; }
+    .ud-deneme { margin-top: 14px; padding: 12px; border: 1px dashed #cbd5e0; border-radius: 6px; background: #fbfdff; }
+    .ud-sonuc { margin-top: 10px; font-size: 12px; }
+    .ud-sonuc div { margin-bottom: 3px; }
+    .ud-sonuc .yakalama { font-family: ui-monospace, Consolas, monospace; background: #edf2f7; padding: 1px 5px; border-radius: 3px; }
+    .ud-hata { color: #c53030; }
+    .ud-iyi { color: #276749; }
+    .ud-not { color: #975a16; }
+</style>
+
+<div class="ud-arac">
+    <h5 style="margin:0">Unvan çıkarma desenleri</h5>
+    <RadzenButton Text="Yeni desen" Icon="add" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                  Click="@(() => FormAc(null))" />
+</div>
+
+<div style="font-size:12px; color:#718096; margin-bottom:10px">
+    Ham açıklamadan karşı tarafın unvanını çıkarır. Sıra küçükten büyüğe denenir,
+    <b>ilk yakalayan kazanır</b>; en çok satır yakalayan desen önce gelmeli. Desenler
+    büyük/küçük harf <b>duyarlı</b> çalışır — <code>[A-ZÇĞİÖŞÜ]</code> gibi sınıflar buna dayanıyor.
+</div>
+
+<div class="ud-kaydir">
+    <div class="ud-tablo">
+        <div class="ud-satir ud-head">
+            <span class="ud-parser">Ayrıştırıcı</span>
+            <span class="ud-desen">Regex deseni</span>
+            <span class="ud-aciklama">Açıklama</span>
+            <span class="ud-sira">Sıra</span>
+            <span class="ud-durum">Durum</span>
+            <span class="ud-aksiyon"></span>
+        </div>
+
+        @if (Gorunen.Count == 0)
+        {
+            <div class="ud-bos">Henüz desen yok. Desensiz satırlarda karşı taraf unvanı okunamaz.</div>
+        }
+
+        @foreach (var kayit in Gorunen)
+        {
+            <div class="ud-satir @(kayit.Aktif ? "" : "ud-pasif")">
+                <span class="ud-parser" title="@kayit.ParserAdi">
+                    @if (kayit.ParserTipi.Length == 0)
+                    {
+                        <span class="ud-rozet">Tüm bankalar</span>
+                    }
+                    else
+                    {
+                        @kayit.ParserAdi
+                    }
+                </span>
+                <span class="ud-desen" title="@kayit.Desen">@kayit.Desen</span>
+                <span class="ud-aciklama" title="@kayit.Aciklama">@(kayit.Aciklama ?? "—")</span>
+                <span class="ud-sira">@kayit.Sira</span>
+                <span class="ud-durum">@(kayit.Aktif ? "Aktif" : "Pasif")</span>
+                <span class="ud-aksiyon">
+                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                                  Click="@(() => FormAc(kayit))" />
+                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                                  Click="@(() => SilAsync(kayit))" />
+                </span>
+            </div>
+        }
+    </div>
+</div>
+
+@if (_form is not null)
+{
+    <div style="margin-top:14px; padding:14px; border:1px solid #e2e8f0; border-radius:6px; background:#fff">
+        <h6 style="margin-top:0">@(_duzenlenenId is null ? "Yeni desen" : "Deseni düzenle")</h6>
+
+        <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px">
+            <div class="ud-alan">
+                <label>Ayrıştırıcı</label>
+                <RadzenDropDown TValue="string" @bind-Value="_parserSecimi" Data="@ParserSecenekleri"
+                                TextProperty="Ad" ValueProperty="Tip" Placeholder="Tüm bankalar"
+                                AllowClear="false" Style="width:100%" />
+                <span class="ud-ipucu">Boş bırakılırsa (<b>Tüm bankalar</b>) desen her bankada denenir.</span>
+            </div>
+            <div class="ud-alan">
+                <label>Yakalama grubu</label>
+                <RadzenNumeric TValue="int" @bind-Value="_form.GrupNo" Min="0" />
+                <span class="ud-ipucu">Unvanın alınacağı parantez grubu. 0 = eşleşmenin tamamı.</span>
+            </div>
+            <div class="ud-alan" style="grid-column: 1 / -1">
+                <label>Regex deseni</label>
+                <RadzenTextArea @bind-Value="_form.Desen" Rows="2" Style="width:100%; font-family: ui-monospace, Consolas, monospace"
+                                Placeholder="sorgu numaralı (.+?) tarafından" />
+                <span class="ud-ipucu">Derlenmeyen desen kaydedilmez. Aşağıdaki kutuda deneyin.</span>
+            </div>
+            <div class="ud-alan" style="grid-column: 1 / -1">
+                <label>Açıklama</label>
+                <RadzenTextBox @bind-Value="_form.Aciklama" Style="width:100%"
+                               Placeholder="Gelen EFT gövdesi (ölçümde 120 satır)" />
+                <span class="ud-ipucu">Desenin ne yakaladığı; sonradan bakan kişi için.</span>
+            </div>
+            <div class="ud-alan">
+                <label>Sıra</label>
+                <RadzenNumeric TValue="int" @bind-Value="_form.Sira" Min="0" />
+                <span class="ud-ipucu">Küçük sıra önce denenir.</span>
+            </div>
+            <div class="ud-alan">
+                <label>Durum</label>
+                <div class="ud-onay">
+                    <RadzenCheckBox TValue="bool" @bind-Value="_form.Aktif" Name="udAktif" />
+                    <label for="udAktif">Aktif</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="ud-deneme">
+            <div style="font-size:12px; color:#4a5568; margin-bottom:6px">
+                <b>Deneme</b> — bir ekstre açıklaması yapıştırın, desenin ne yakaladığını görün.
+                Kaydetmeye gerek yok.
+            </div>
+
+            <RadzenTextArea @bind-Value="_ornekMetin" Rows="3" Style="width:100%"
+                            Placeholder="ADAY BAĞIMSIZ DENETİM A.Ş. hesabından ... 1234 sorgu numaralı YURTİÇİ KARGO A.Ş. tarafından ..." />
+
+            <div style="display:flex; gap:6px; margin-top:8px">
+                <RadzenButton Text="Dene" Icon="play_arrow" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
+                              Disabled="@_deniyor" Click="@DeneAsync" />
+                <RadzenButton Text="Temizle" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                              Click="@(() => { _ornekMetin = string.Empty; _deneme = null; })" />
+            </div>
+
+            @if (_deneme is not null)
+            {
+                <div class="ud-sonuc">
+                    @if (!_deneme.Gecerli)
+                    {
+                        <div class="ud-hata">@(_deneme.Hata ?? "Desen geçersiz.")</div>
+                    }
+                    else
+                    {
+                        @if (_deneme.Hata is not null)
+                        {
+                            <div class="ud-hata">@_deneme.Hata</div>
+                        }
+
+                        <div class="@(_deneme.Eslesti ? "ud-iyi" : "ud-not")">
+                            @(_deneme.Eslesti ? "Desen tuttu." : "Desen tutmadı.")
+                        </div>
+
+                        @if (_deneme.HamYakalanan is not null)
+                        {
+                            <div>Ham yakalama: <span class="yakalama">@_deneme.HamYakalanan</span></div>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(_deneme.Unvan))
+                        {
+                            <div class="ud-iyi">Çıkarılan unvan: <span class="yakalama">@_deneme.Unvan</span></div>
+                        }
+
+                        @if (_deneme.Not is not null)
+                        {
+                            <div class="ud-not">@_deneme.Not</div>
+                        }
+                    }
+                </div>
+            }
+        </div>
+
+        <div style="display:flex; gap:6px; margin-top:12px">
+            <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                          Disabled="@_kaydediyor" Click="@KaydetAsync" />
+            <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                          Click="@FormKapat" />
+        </div>
+    </div>
+}
+
+@code {
+    private List<UnvanDeseniDto> _kayitlar = new();
+    private UnvanDeseniYazDto? _form;
+    private int? _duzenlenenId;
+    private bool _kaydediyor;
+
+    private List<ParserSecenekDto> _parserler = new();
+    private string _parserSecimi = string.Empty;
+    /// <summary>
+    /// Banka kapsülünün ayrıştırıcısı. <c>null</c> = süzme yok (tüm kayıtlar).
+    /// Doluysa liste bu bankanın kayıtlarıyla <b>tüm bankalar</b> kayıtlarını gösterir;
+    /// boş metin, ayrıştırıcısı seçilmemiş bir banka demektir — yalnız genel kayıtlar görünür.
+    /// </summary>
+    [Parameter] public string? BankaParserTipi { get; set; }
+
+    /// <summary>Ekrandaki metinlerde geçen banka adı; yalnız sunum içindir.</summary>
+    [Parameter] public string? BankaAdi { get; set; }
+
+    /// <summary>Kapsam değişince (banka sekmesi) liste yeniden süzülür ve açık form kapanır.</summary>
+    private string? _yuklenenKapsam;
+    private bool _yuklendi;
+
+    /// <summary>
+    /// Kapsam içindeki kayıtlar: bankaya özel olanlar + tüm bankalarda geçerli olanlar.
+    /// Süzme istemcide yapılır; liste kurulum verisi, birkaç düzine satır.
+    /// </summary>
+    private List<UnvanDeseniDto> Gorunen => BankaParserTipi is null
+        ? _kayitlar
+        : _kayitlar.Where(k => k.ParserTipi.Length == 0 || k.ParserTipi == BankaParserTipi).ToList();
+
+    /// <summary>
+    /// Seçilebilir ayrıştırıcılar. Kapsül içindeyken yalnız o bankanınki sunulur:
+    /// buradan başka bir bankaya kayıt yazmak, kaydın kapsülde görünmemesi demekti.
+    /// </summary>
+    private List<ParserSecenek> ParserSecenekleri
+    {
+        get
+        {
+            var liste = new List<ParserSecenek> { new(string.Empty, "Tüm bankalar") };
+            liste.AddRange(_parserler
+                .Where(p => BankaParserTipi is null || p.Tip == BankaParserTipi)
+                .Select(p => new ParserSecenek(p.Tip, p.Ad)));
+            return liste;
+        }
+    }
+
+
+    private string _ornekMetin = string.Empty;
+    private DesenDenemeSonucDto? _deneme;
+    private bool _deniyor;
+
+    private record ParserSecenek(string Tip, string Ad);
+
+    protected override async Task OnInitializedAsync() => _parserler = await Api.GetParserlerAsync();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_yuklendi && _yuklenenKapsam == BankaParserTipi) return;
+
+        _yuklenenKapsam = BankaParserTipi;
+        _yuklendi = true;
+        FormKapat();
+
+        await YenileAsync();
+    }
+
+    /// <summary>Firma değişince üst sayfa çağırır; tablo firma bağımsız, ekran bütün olarak yenilenir.</summary>
+    public async Task YenileAsync()
+    {
+        _kayitlar = await Api.UnvanDesenleriAsync();
+        StateHasChanged();
+    }
+
+    private void FormAc(UnvanDeseniDto? kayit)
+    {
+        _duzenlenenId = kayit?.Id;
+        _parserSecimi = kayit?.ParserTipi ?? VarsayilanParser();
+        _deneme = null;
+
+        _form = kayit is null
+            ? new UnvanDeseniYazDto { Sira = SonrakiSira() }
+            : new UnvanDeseniYazDto
+            {
+                ParserTipi = kayit.ParserTipi,
+                Desen = kayit.Desen,
+                GrupNo = kayit.GrupNo,
+                Aciklama = kayit.Aciklama,
+                Sira = kayit.Sira,
+                Aktif = kayit.Aktif
+            };
+    }
+
+    private int SonrakiSira() => _kayitlar.Count == 0 ? 10 : _kayitlar.Max(d => d.Sira) + 10;
+
+    /// <summary>Kapsül içinde yeni kaydın ayrıştırıcısı bankaya sabitlenir.</summary>
+    private string VarsayilanParser() => BankaParserTipi ?? string.Empty;
+
+    private void FormKapat()
+    {
+        _form = null;
+        _duzenlenenId = null;
+        _deneme = null;
+    }
+
+    private async Task DeneAsync()
+    {
+        if (_form is null) return;
+
+        _deniyor = true;
+        _deneme = await Api.UnvanDeseniDeneAsync(new DesenDenemeIstegiDto
+        {
+            Desen = _form.Desen,
+            GrupNo = _form.GrupNo,
+            OrnekMetin = _ornekMetin
+        });
+        _deniyor = false;
+
+        if (_deneme is null)
+            Notif.Notify(NotificationSeverity.Warning, "Denenemedi", "Sunucuya ulaşılamadı.", 5000);
+    }
+
+    /// <summary>
+    /// Kaydetmeden önce desen sunucuda derlenir: kullanıcı hatayı kaydet düğmesinin
+    /// yanında değil, deneme kutusunda görür. Sunucu tarafında da aynı denetim var —
+    /// bu yalnız erken geri bildirim.
+    /// </summary>
+    private async Task KaydetAsync()
+    {
+        if (_form is null) return;
+
+        _form.ParserTipi = _parserSecimi;
+
+        _kaydediyor = true;
+
+        var deneme = await Api.UnvanDeseniDeneAsync(new DesenDenemeIstegiDto
+        {
+            Desen = _form.Desen,
+            GrupNo = _form.GrupNo,
+            OrnekMetin = _ornekMetin
+        });
+
+        if (deneme is not null && !deneme.Gecerli)
+        {
+            _deneme = deneme;
+            _kaydediyor = false;
+            Notif.Notify(NotificationSeverity.Error, "Kaydedilemedi",
+                         deneme.Hata ?? "Desen geçersiz.", 6000);
+            return;
+        }
+
+        var (_, hata) = _duzenlenenId is int id
+            ? await Api.UnvanDeseniGuncelleAsync(id, _form)
+            : await Api.UnvanDeseniEkleAsync(_form);
+        _kaydediyor = false;
+
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Error, "Kaydedilemedi", hata, 6000);
+            return;
+        }
+
+        Notif.Notify(NotificationSeverity.Success, "Kaydedildi", null, 3000);
+        FormKapat();
+        await YenileAsync();
+    }
+
+    private async Task SilAsync(UnvanDeseniDto kayit)
+    {
+        var hata = await Api.UnvanDeseniSilAsync(kayit.Id);
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Silinemedi", hata, 6000);
+            return;
+        }
+
+        if (_duzenlenenId == kayit.Id) FormKapat();
+
+        Notif.Notify(NotificationSeverity.Success, "Silindi", kayit.Aciklama ?? kayit.Desen, 3000);
+        await YenileAsync();
+    }
+}

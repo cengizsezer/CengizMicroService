@@ -1,0 +1,218 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.BankaEkstre
+
+@inject IBankaEkstreApi Api
+@inject NotificationService Notif
+
+@*
+    Banka kapsülünün "Bu bankanın kuralları" alt sekmesi. İşleme sekmesi günlük iş,
+    burası o bankanın kurulumu: ayrıştırıcı ayarları, unvan desenleri, açıklama
+    şablonları, sabit kurallar ve bankanın hesapları.
+
+    KAPSAM: kural/şablon/desen tabloları ayrıştırıcıya göre süzülür, bankaya göre değil —
+    bir bankanın yazım kalıbı ayrıştırıcısında tanımlıdır. Bankanın ayrıştırıcısı
+    hesaplarından türer; hiçbir hesabında seçili değilse yalnız "tüm bankalar" kayıtları
+    görünür ve yeni kayıt da ancak genel olarak yazılabilir.
+
+    Firma geneli tanımlar (hesap planı, kişi yönlendirmeleri, vergi kodları, öğrenilen
+    eşleşmeler, hesap sahibi unvanları) burada DEĞİL, Firma Tanımları ekranındadır.
+*@
+
+<style>
+    .bk-kart { border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; padding: 16px; margin-bottom: 16px; }
+    .bk-ayar-satir { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-bottom: 1px solid #f5f5f5;
+                     font-size: 13px; flex-wrap: wrap; }
+    .bk-ayar-satir:last-child { border-bottom: none; }
+    .bk-ayar-ad { flex: 1 1 220px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bk-ayar-kod { font-size: 11px; color: #718096; font-family: ui-monospace, Consolas, monospace; }
+    .bk-ayar-alan { display: flex; gap: 6px; align-items: center; }
+    .bk-ayar-alan label { font-size: 12px; color: #4a5568; }
+    .bk-tablo { border: 1px solid #eee; border-radius: 6px; background: #fff; overflow: hidden; }
+    .bk-ipucu { font-size: 12px; color: #718096; margin-bottom: 10px; }
+    .bk-bos { padding: 22px; text-align: center; color: #a0aec0; }
+</style>
+
+<div class="bk-kart">
+    <h5 style="margin:0 0 4px">Ayrıştırıcı ayarları</h5>
+    <div class="bk-ipucu">
+        Ekstre dosyasını hangi ayrıştırıcının okuyacağı ve varsayılan kapalı eşleştirme
+        katmanları. Ayrıştırıcısı olmayan hesaba ekstre yüklenmez; kayıt defterinde durur
+        ve karşı hesap olarak bulunmaya devam eder.
+    </div>
+
+    <div class="bk-tablo">
+        @if (_hesaplar.Count == 0)
+        {
+            <div class="bk-bos">@BankaAdi için tanımlı hesap yok.</div>
+        }
+
+        @foreach (var hesap in _hesaplar)
+        {
+            <div class="bk-ayar-satir">
+                <div class="bk-ayar-ad">
+                    <div>@(string.IsNullOrWhiteSpace(hesap.HesapAdi) ? hesap.BankaAdi : hesap.HesapAdi)</div>
+                    <div class="bk-ayar-kod">
+                        @BankaEkstreEtiket.HesapTipi(hesap.HesapTipi) @hesap.ParaBirimi · @hesap.OrkaHesapKodu
+                    </div>
+                </div>
+
+                <div class="bk-ayar-alan">
+                    <RadzenDropDown TValue="string" Value="@(hesap.ParserTipi ?? string.Empty)"
+                                    Data="@ParserSecenekleri" TextProperty="Ad" ValueProperty="Tip"
+                                    AllowClear="false" Style="width:230px"
+                                    Change="@(deger => ParserDegistiAsync(hesap, deger as string))" />
+                </div>
+
+                <div class="bk-ayar-alan" title="Vakıfbank'ta VKN kolonu karşı tarafın değil hesap sahibinin; ikisi de varsayılan kapalı">
+                    <RadzenCheckBox TValue="bool" Value="@hesap.IbanKatmaniAktif" Name="@($"iban{hesap.Id}")"
+                                    Change="@(async (bool s) => await KatmanDegistiAsync(hesap, iban: s, vkn: hesap.VknKatmaniAktif))" />
+                    <label for="@($"iban{hesap.Id}")">IBAN katmanı</label>
+
+                    <RadzenCheckBox TValue="bool" Value="@hesap.VknKatmaniAktif" Name="@($"vkn{hesap.Id}")"
+                                    Change="@(async (bool s) => await KatmanDegistiAsync(hesap, iban: hesap.IbanKatmaniAktif, vkn: s))" />
+                    <label for="@($"vkn{hesap.Id}")">VKN katmanı</label>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (ParserTipi.Length == 0 && _hesaplar.Count > 0)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false" Style="margin-top:10px">
+            @BankaAdi hesaplarının hiçbirinde ayrıştırıcı seçili değil. Aşağıdaki bölümlerde
+            yalnız <b>tüm bankalarda</b> geçerli kayıtlar görünür; bu bankaya özel kural
+            yazabilmek için önce bir ayrıştırıcı seçin.
+        </RadzenAlert>
+    }
+</div>
+
+<div class="bk-kart">
+    <UnvanDesenleriBolumu @ref="_desenler" BankaParserTipi="@ParserTipi" BankaAdi="@BankaAdi" />
+</div>
+
+<div class="bk-kart">
+    <AciklamaSablonlariBolumu @ref="_sablonlar" BankaParserTipi="@ParserTipi" BankaAdi="@BankaAdi" />
+</div>
+
+<div class="bk-kart">
+    <SabitKurallarBolumu @ref="_kurallar" BankaParserTipi="@ParserTipi" BankaAdi="@BankaAdi" />
+</div>
+
+<div class="bk-kart">
+    <BankaHesaplariBolumu @ref="_hesapBolumu" BankaFiltresi="@BankaAdi" Degisti="@HesaplarDegistiAsync" />
+</div>
+
+@code {
+    /// <summary>Kapsülün bankası; hesap listesi ve başlıklar buna göre süzülür.</summary>
+    [Parameter, EditorRequired] public string BankaAdi { get; set; } = string.Empty;
+
+    /// <summary>Bu bankanın hesapları (üst sayfadan gelir; ayrı istek atılmaz).</summary>
+    [Parameter] public List<BankaHesabiDto> Hesaplar { get; set; } = new();
+
+    /// <summary>Hesaplar değişince üst sayfa sekmeleri ve sayaçları yenilesin.</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    private UnvanDesenleriBolumu? _desenler;
+    private AciklamaSablonlariBolumu? _sablonlar;
+    private SabitKurallarBolumu? _kurallar;
+    private BankaHesaplariBolumu? _hesapBolumu;
+
+    private List<ParserSecenekDto> _parserler = new();
+
+    private List<BankaHesabiDto> _hesaplar = new();
+
+    /// <summary>
+    /// Bankanın ayrıştırıcısı: hesaplarında seçili olan ilk tip. Aynı bankanın iki hesabı
+    /// farklı ayrıştırıcı kullanamaz (aynı bankanın ekstre formatı tektir), bu yüzden ilk
+    /// dolu değer bankanın tipidir. Hiçbirinde yoksa boş metin = yalnız genel kayıtlar.
+    /// </summary>
+    private string ParserTipi =>
+        _hesaplar.Select(h => h.ParserTipi)
+                 .FirstOrDefault(p => !string.IsNullOrWhiteSpace(p)) ?? string.Empty;
+
+    /// <summary>"Yok" + kayıtlı ayrıştırıcılar; hesap satırındaki açılır listeyi besler.</summary>
+    private List<ParserSecenekDto> ParserSecenekleri
+    {
+        get
+        {
+            var liste = new List<ParserSecenekDto> { new() { Tip = string.Empty, Ad = "Yok — ekstre yüklenmez" } };
+            liste.AddRange(_parserler);
+            return liste;
+        }
+    }
+
+    protected override async Task OnInitializedAsync() => _parserler = await Api.GetParserlerAsync();
+
+    protected override void OnParametersSet() => _hesaplar = Hesaplar;
+
+    /// <summary>Firma değişince üst sayfa çağırır; alt bölümler kendi listelerini tazeler.</summary>
+    public async Task YenileAsync()
+    {
+        if (_desenler is not null) await _desenler.YenileAsync();
+        if (_sablonlar is not null) await _sablonlar.YenileAsync();
+        if (_kurallar is not null) await _kurallar.YenileAsync();
+        if (_hesapBolumu is not null) await _hesapBolumu.YenileAsync();
+        StateHasChanged();
+    }
+
+    /// <summary>Tab şeridindeki "Banka ekle" ve bu sekmedeki yeni hesap girişleri buraya gelir.</summary>
+    public void YeniHesapAc(string? bankaAdi) => _hesapBolumu?.YeniHesapAc(bankaAdi);
+
+    private Task ParserDegistiAsync(BankaHesabiDto hesap, string? yeniTip)
+        => KaydetAsync(hesap, yeniTip, hesap.IbanKatmaniAktif, hesap.VknKatmaniAktif);
+
+    private Task KatmanDegistiAsync(BankaHesabiDto hesap, bool iban, bool vkn)
+        => KaydetAsync(hesap, hesap.ParserTipi, iban, vkn);
+
+    /// <summary>
+    /// Hızlı ayar kaydı. Hesabın diğer alanları (unvan, anahtarlar, hesap sahibi kimliği)
+    /// olduğu gibi geri gönderilir: yalnız ayrıştırıcı/katman değişsin, gerisi silinmesin.
+    /// </summary>
+    private async Task KaydetAsync(BankaHesabiDto hesap, string? parserTipi, bool iban, bool vkn)
+    {
+        var dto = new BankaHesabiYazDto
+        {
+            BankaAdi = hesap.BankaAdi,
+            HesapAdi = hesap.HesapAdi,
+            EslestirmeAnahtarlari = hesap.EslestirmeAnahtarlari,
+            HesapSahibiUnvani = hesap.HesapSahibiUnvani,
+            HesapSahibiTakmaAdlari = hesap.HesapSahibiTakmaAdlari,
+            HesapTipi = hesap.HesapTipi,
+            ParaBirimi = hesap.ParaBirimi,
+            Iban = hesap.Iban,
+            OrkaHesapKodu = hesap.OrkaHesapKodu,
+            ParserTipi = parserTipi,
+            Aktif = hesap.Aktif,
+            IbanKatmaniAktif = iban,
+            VknKatmaniAktif = vkn
+        };
+
+        var (veri, hata) = await Api.UpdateHesapAsync(hesap.Id, dto);
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Error, "Kaydedilemedi", hata, 6000);
+            return;
+        }
+
+        // Yerel kopya güncellenir ki kapsam (ParserTipi) anında yeni değere göre süzsün.
+        if (veri is not null)
+        {
+            hesap.ParserTipi = veri.ParserTipi;
+            hesap.IbanKatmaniAktif = veri.IbanKatmaniAktif;
+            hesap.VknKatmaniAktif = veri.VknKatmaniAktif;
+        }
+
+        Notif.Notify(NotificationSeverity.Success, "Ayar kaydedildi", hesap.HesapAdi ?? hesap.BankaAdi, 2500);
+
+        await Degisti.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private async Task HesaplarDegistiAsync()
+    {
+        await Degisti.InvokeAsync();
+        StateHasChanged();
+    }
+}

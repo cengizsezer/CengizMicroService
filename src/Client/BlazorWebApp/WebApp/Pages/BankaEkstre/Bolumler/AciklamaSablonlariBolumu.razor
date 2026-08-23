@@ -1,0 +1,340 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.BankaEkstre
+
+@inject IBankaEkstreApi Api
+@inject NotificationService Notif
+
+@*
+    Tanımlar ekranının "Açıklama şablonları" bölümü. Şablon, ORKA'ya yazılacak muhasebe
+    açıklamasını üretir: "Gelen EFT Otomatik Yatan" işlem tipi → "Gelen Eft - {UNVAN}".
+
+    Tablo veritabanındadır ki yeni banka eklerken kod değişmesin. AYRIŞTIRICI boşsa şablon
+    tüm bankalarda, doluysa yalnız o bankada geçerlidir.
+
+    Yer tutucu listesi sunucudan gelir (AciklamaUretici ile aynı kaynak): orada doldurulan
+    bir yer tutucu burada da görünür, tanınmayan bir yer tutucu kaydedilmez.
+*@
+
+<style>
+    .as-arac { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .as-kaydir { overflow-x: auto; }
+    .as-tablo { border: 1px solid #eee; border-radius: 6px; background: #fff; overflow: hidden; min-width: 900px; }
+    .as-satir { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+    .as-head { background: #fafafa; border-bottom: 1px solid #eee; font-size: 11px; color: #718096;
+               text-transform: uppercase; letter-spacing: .3px; }
+    .as-satir:not(.as-head):hover { background: #f8fbff; }
+    .as-parser { flex: 0 0 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .as-tip { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .as-sablon { flex: 0 0 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                 font-family: ui-monospace, Consolas, monospace; }
+    .as-sira { flex: 0 0 50px; text-align: right; }
+    .as-durum { flex: 0 0 55px; }
+    .as-aksiyon { flex: 0 0 80px; text-align: right; }
+    .as-bos { padding: 26px; text-align: center; color: #a0aec0; }
+    .as-pasif .as-tip, .as-pasif .as-sablon { color: #a0aec0; text-decoration: line-through; }
+    .as-rozet { display: inline-block; margin-left: 6px; padding: 0 5px; border-radius: 3px; background: #edf2f7;
+                color: #4a5568; font-size: 10px; text-transform: uppercase; letter-spacing: .3px; vertical-align: middle; }
+    .as-genel { background: #fffaf0; color: #975a16; margin-left: 0; }
+    .as-arasi { background: #ebf8ff; color: #2b6cb0; }
+    .as-alan { display: flex; flex-direction: column; gap: 3px; }
+    .as-alan label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .as-ipucu { font-size: 11px; color: #a0aec0; }
+    .as-onay { display: flex; gap: 6px; align-items: center; }
+    .as-onay label { font-size: 12px; color: #4a5568; text-transform: none; letter-spacing: 0; }
+    .as-yt { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+    .as-yt button { border: 1px solid #cbd5e0; border-radius: 12px; background: #fff; cursor: pointer;
+                    padding: 2px 9px; font-size: 11px; font-family: ui-monospace, Consolas, monospace; color: #2d3748; }
+    .as-yt button:hover { background: #ebf8ff; border-color: #90cdf4; }
+</style>
+
+<div class="as-arac">
+    <h5 style="margin:0">Açıklama şablonları</h5>
+    <RadzenButton Text="Yeni şablon" Icon="add" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                  Click="@(() => FormAc(null))" />
+</div>
+
+<div style="font-size:12px; color:#718096; margin-bottom:10px">
+    ORKA'ya yazılacak açıklamayı üretir. Önce ham açıklama, sonra işlem tipi taranır; sıra
+    küçükten büyüğe denenir ve <b>ilk tutan kazanır</b>. Şablon tutmayan satır işlem tipiyle
+    (varsa unvanla) yazılır. Üretilen metin 50 karakterde kesilir — ORKA sınırı.
+</div>
+
+<div class="as-kaydir">
+    <div class="as-tablo">
+        <div class="as-satir as-head">
+            <span class="as-parser">Ayrıştırıcı</span>
+            <span class="as-tip">Eşleşen işlem tipi</span>
+            <span class="as-sablon">Şablon metni</span>
+            <span class="as-sira">Sıra</span>
+            <span class="as-durum">Durum</span>
+            <span class="as-aksiyon"></span>
+        </div>
+
+        @if (Gorunen.Count == 0)
+        {
+            <div class="as-bos">Henüz şablon yok. Şablonsuz satırlar bankanın kendi işlem tipiyle yazılır.</div>
+        }
+
+        @foreach (var kayit in Gorunen)
+        {
+            <div class="as-satir @(kayit.Aktif ? "" : "as-pasif")">
+                <span class="as-parser" title="@kayit.ParserAdi">
+                    @if (kayit.ParserTipi.Length == 0)
+                    {
+                        <span class="as-rozet as-genel">Tüm bankalar</span>
+                    }
+                    else
+                    {
+                        @kayit.ParserAdi
+                    }
+                </span>
+                <span class="as-tip" title="@kayit.IslemTipiDeseni">
+                    @kayit.IslemTipiDeseni
+                    <span class="as-rozet">@BankaEkstreEtiket.Eslesme(kayit.EslesmeTuru)</span>
+                    @if (kayit.BankalarArasi)
+                    {
+                        <span class="as-rozet as-arasi" title="Karşı taraf yerine banka adı kullanılır">Bankalar arası</span>
+                    }
+                </span>
+                <span class="as-sablon" title="@kayit.Sablon">@kayit.Sablon</span>
+                <span class="as-sira">@kayit.Sira</span>
+                <span class="as-durum">@(kayit.Aktif ? "Aktif" : "Pasif")</span>
+                <span class="as-aksiyon">
+                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                                  Click="@(() => FormAc(kayit))" />
+                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                                  Click="@(() => SilAsync(kayit))" />
+                </span>
+            </div>
+        }
+    </div>
+</div>
+
+@if (_form is not null)
+{
+    <div style="margin-top:14px; padding:14px; border:1px solid #e2e8f0; border-radius:6px; background:#fff">
+        <h6 style="margin-top:0">@(_duzenlenenId is null ? "Yeni şablon" : "Şablonu düzenle")</h6>
+
+        <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px">
+            <div class="as-alan">
+                <label>Ayrıştırıcı</label>
+                <RadzenDropDown TValue="string" @bind-Value="_parserSecimi" Data="@ParserSecenekleri"
+                                TextProperty="Ad" ValueProperty="Tip" Placeholder="Tüm bankalar"
+                                AllowClear="false" Style="width:100%" />
+                <span class="as-ipucu">Boş bırakılırsa (<b>Tüm bankalar</b>) şablon her bankada çalışır.</span>
+            </div>
+            <div class="as-alan">
+                <label>Eşleşme türü</label>
+                <RadzenDropDown TValue="EslesmeTuru" @bind-Value="_form.EslesmeTuru" Data="@Turler"
+                                TextProperty="Ad" ValueProperty="Deger" Style="width:100%" />
+                <span class="as-ipucu">"Tam" yalnız işlem tipinde; "İçerir" ve "Regex" ham açıklamada da aranır.</span>
+            </div>
+            <div class="as-alan">
+                <label>Eşleşen işlem tipi</label>
+                <RadzenTextBox @bind-Value="_form.IslemTipiDeseni" Placeholder="Gelen EFT Otomatik Yatan" />
+                <span class="as-ipucu">Bankanın ekstredeki işlem tipi yazımı; regex seçilirse bozuk desen kaydedilmez.</span>
+            </div>
+            <div class="as-alan">
+                <label>Bankalar arası mı</label>
+                <div class="as-onay">
+                    <RadzenCheckBox TValue="bool" @bind-Value="_form.BankalarArasi" Name="asArasi" />
+                    <label for="asArasi">Virman / süpürme / hesaplar arası EFT</label>
+                </div>
+                <span class="as-ipucu">İşaretliyse karşı hesap banka kayıt defterinden aranır, unvan yerine banka adı kullanılır.</span>
+            </div>
+            <div class="as-alan" style="grid-column: 1 / -1">
+                <label>Şablon metni</label>
+                <RadzenTextBox @bind-Value="_form.Sablon" Placeholder="Gelen Eft - {UNVAN}" Style="width:100%" />
+                <span class="as-ipucu">
+                    Değeri boş kalan yer tutucu, bağlı ayracıyla ("- {UNVAN}") birlikte düşer.
+                    Eklemek için tıklayın:
+                </span>
+                <div class="as-yt">
+                    @foreach (var yt in _yerTutucular)
+                    {
+                        <button type="button" title="@yt.Aciklama" @onclick="@(() => YerTutucuEkle(yt.Ad))">@yt.Ad</button>
+                    }
+                </div>
+            </div>
+            <div class="as-alan">
+                <label>Sıra</label>
+                <RadzenNumeric TValue="int" @bind-Value="_form.Sira" Min="0" />
+                <span class="as-ipucu">Küçük sıra önce denenir.</span>
+            </div>
+            <div class="as-alan">
+                <label>Durum</label>
+                <div class="as-onay">
+                    <RadzenCheckBox TValue="bool" @bind-Value="_form.Aktif" Name="asAktif" />
+                    <label for="asAktif">Aktif</label>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:6px; margin-top:12px">
+            <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                          Disabled="@_kaydediyor" Click="@KaydetAsync" />
+            <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                          Click="@FormKapat" />
+        </div>
+    </div>
+}
+
+@code {
+    private List<AciklamaSablonuDto> _kayitlar = new();
+    private List<YerTutucuDto> _yerTutucular = new();
+    private AciklamaSablonuYazDto? _form;
+    private int? _duzenlenenId;
+    private bool _kaydediyor;
+
+    private List<ParserSecenekDto> _parserler = new();
+    private string _parserSecimi = string.Empty;
+    /// <summary>
+    /// Banka kapsülünün ayrıştırıcısı. <c>null</c> = süzme yok (tüm kayıtlar).
+    /// Doluysa liste bu bankanın kayıtlarıyla <b>tüm bankalar</b> kayıtlarını gösterir;
+    /// boş metin, ayrıştırıcısı seçilmemiş bir banka demektir — yalnız genel kayıtlar görünür.
+    /// </summary>
+    [Parameter] public string? BankaParserTipi { get; set; }
+
+    /// <summary>Ekrandaki metinlerde geçen banka adı; yalnız sunum içindir.</summary>
+    [Parameter] public string? BankaAdi { get; set; }
+
+    /// <summary>Kapsam değişince (banka sekmesi) liste yeniden süzülür ve açık form kapanır.</summary>
+    private string? _yuklenenKapsam;
+    private bool _yuklendi;
+
+    /// <summary>
+    /// Kapsam içindeki kayıtlar: bankaya özel olanlar + tüm bankalarda geçerli olanlar.
+    /// Süzme istemcide yapılır; liste kurulum verisi, birkaç düzine satır.
+    /// </summary>
+    private List<AciklamaSablonuDto> Gorunen => BankaParserTipi is null
+        ? _kayitlar
+        : _kayitlar.Where(k => k.ParserTipi.Length == 0 || k.ParserTipi == BankaParserTipi).ToList();
+
+    /// <summary>
+    /// Seçilebilir ayrıştırıcılar. Kapsül içindeyken yalnız o bankanınki sunulur:
+    /// buradan başka bir bankaya kayıt yazmak, kaydın kapsülde görünmemesi demekti.
+    /// </summary>
+    private List<ParserSecenek> ParserSecenekleri
+    {
+        get
+        {
+            var liste = new List<ParserSecenek> { new(string.Empty, "Tüm bankalar") };
+            liste.AddRange(_parserler
+                .Where(p => BankaParserTipi is null || p.Tip == BankaParserTipi)
+                .Select(p => new ParserSecenek(p.Tip, p.Ad)));
+            return liste;
+        }
+    }
+
+
+    private record ParserSecenek(string Tip, string Ad);
+    private record TurSecenek(EslesmeTuru Deger, string Ad);
+
+    private static readonly TurSecenek[] Turler =
+    {
+        new(EslesmeTuru.Tam, "Tam"),
+        new(EslesmeTuru.Icerir, "İçerir"),
+        new(EslesmeTuru.Regex, "Regex")
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _parserler = await Api.GetParserlerAsync();
+        _yerTutucular = await Api.YerTutucularAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_yuklendi && _yuklenenKapsam == BankaParserTipi) return;
+
+        _yuklenenKapsam = BankaParserTipi;
+        _yuklendi = true;
+        FormKapat();
+
+        await YenileAsync();
+    }
+
+    /// <summary>Firma değişince üst sayfa çağırır; tablo firma bağımsız, ekran bütün olarak yenilenir.</summary>
+    public async Task YenileAsync()
+    {
+        _kayitlar = await Api.AciklamaSablonlariAsync();
+        StateHasChanged();
+    }
+
+    private void FormAc(AciklamaSablonuDto? kayit)
+    {
+        _duzenlenenId = kayit?.Id;
+        _parserSecimi = kayit?.ParserTipi ?? VarsayilanParser();
+
+        _form = kayit is null
+            ? new AciklamaSablonuYazDto { Sira = SonrakiSira() }
+            : new AciklamaSablonuYazDto
+            {
+                ParserTipi = kayit.ParserTipi,
+                IslemTipiDeseni = kayit.IslemTipiDeseni,
+                EslesmeTuru = kayit.EslesmeTuru,
+                Sablon = kayit.Sablon,
+                BankalarArasi = kayit.BankalarArasi,
+                Sira = kayit.Sira,
+                Aktif = kayit.Aktif
+            };
+    }
+
+    private int SonrakiSira() => _kayitlar.Count == 0 ? 10 : _kayitlar.Max(s => s.Sira) + 10;
+
+    /// <summary>Kapsül içinde yeni kaydın ayrıştırıcısı bankaya sabitlenir.</summary>
+    private string VarsayilanParser() => BankaParserTipi ?? string.Empty;
+
+    private void FormKapat()
+    {
+        _form = null;
+        _duzenlenenId = null;
+    }
+
+    private void YerTutucuEkle(string ad)
+    {
+        if (_form is null) return;
+
+        _form.Sablon = string.IsNullOrWhiteSpace(_form.Sablon) ? ad : _form.Sablon + ad;
+    }
+
+    private async Task KaydetAsync()
+    {
+        if (_form is null) return;
+
+        _form.ParserTipi = _parserSecimi;
+
+        _kaydediyor = true;
+        var (_, hata) = _duzenlenenId is int id
+            ? await Api.AciklamaSablonuGuncelleAsync(id, _form)
+            : await Api.AciklamaSablonuEkleAsync(_form);
+        _kaydediyor = false;
+
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Error, "Kaydedilemedi", hata, 6000);
+            return;
+        }
+
+        Notif.Notify(NotificationSeverity.Success, "Kaydedildi", null, 3000);
+        FormKapat();
+        await YenileAsync();
+    }
+
+    private async Task SilAsync(AciklamaSablonuDto kayit)
+    {
+        var hata = await Api.AciklamaSablonuSilAsync(kayit.Id);
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Silinemedi", hata, 6000);
+            return;
+        }
+
+        if (_duzenlenenId == kayit.Id) FormKapat();
+
+        Notif.Notify(NotificationSeverity.Success, "Silindi", kayit.IslemTipiDeseni, 3000);
+        await YenileAsync();
+    }
+}

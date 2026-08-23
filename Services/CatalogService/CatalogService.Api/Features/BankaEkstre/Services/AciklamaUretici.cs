@@ -69,6 +69,31 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
     /// </summary>
     public class AciklamaUretici : IAciklamaUretici
     {
+        /// <summary>Şablonda kullanılabilecek bir yer tutucu ve ne doldurduğu.</summary>
+        public sealed record YerTutucu(string Ad, string Aciklama);
+
+        public const string UnvanYt = "{UNVAN}";
+        public const string BankaYt = "{BANKA}";
+        public const string HesapYt = "{HESAP}";
+        public const string PlakaYt = "{PLAKA}";
+        public const string VergiYt = "{VERGI}";
+
+        /// <summary>
+        /// Şablon ekranının listelediği yer tutucular ve <see cref="Uret"/>'in doldurduğu
+        /// yer tutucular <b>aynı</b> listeden gelir: yenisi eklendiğinde ekranda da görünür,
+        /// eskisi kaldırıldığında şablon denetimi de kabul etmez.
+        ///
+        /// Değeri boş kalan yer tutucu, kendisine bağlı ayraçla ("- {UNVAN}") birlikte düşer.
+        /// </summary>
+        public static readonly IReadOnlyList<YerTutucu> YerTutucular = new[]
+        {
+            new YerTutucu(UnvanYt, "Açıklamadan çıkarılan karşı taraf unvanı"),
+            new YerTutucu(BankaYt, "Bankalar arası hareketlerde metinde geçen banka adı"),
+            new YerTutucu(HesapYt, "Karşı hesabın adı: unvan varsa o, yoksa banka adı"),
+            new YerTutucu(PlakaYt, "HGS/otoyol yüklemelerinde açıklamadaki plaka"),
+            new YerTutucu(VergiYt, "Vergi tahsilatlarında beyanname türü (KDV, Muhtasar, Damga …)")
+        };
+
         /// <summary>ORKA muhasebe açıklamasını 50 karakterde kesiyor.</summary>
         public const int EnFazlaUzunluk = 50;
 
@@ -162,11 +187,11 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             }
 
             var metin = sablon;
-            metin = YerTutucuDoldur(metin, "{UNVAN}", baglam.Unvan);
-            metin = YerTutucuDoldur(metin, "{BANKA}", baglam.BankaAdi);
-            metin = YerTutucuDoldur(metin, "{HESAP}", HesapAdi(baglam));
-            metin = YerTutucuDoldur(metin, "{PLAKA}", PlakaBul(baglam.HamAciklama));
-            metin = YerTutucuDoldur(metin, "{VERGI}", VergiTuruBul(baglam.HamAciklama));
+            metin = YerTutucuDoldur(metin, UnvanYt, baglam.Unvan);
+            metin = YerTutucuDoldur(metin, BankaYt, baglam.BankaAdi);
+            metin = YerTutucuDoldur(metin, HesapYt, HesapAdi(baglam));
+            metin = YerTutucuDoldur(metin, PlakaYt, PlakaBul(baglam.HamAciklama));
+            metin = YerTutucuDoldur(metin, VergiYt, VergiTuruBul(baglam.HamAciklama));
 
             return Normalizasyon.Kirp(Normalizasyon.BaslikBicimi(metin), EnFazlaUzunluk);
         }

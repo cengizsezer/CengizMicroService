@@ -60,6 +60,24 @@ namespace WebApp.Shared.Dto.BankaEkstre
         Farketmez = 3
     }
 
+    /// <summary>
+    /// Sabit kuralın deseni hangi metinde aranacak (sunucudaki enum ile aynı).
+    /// Açıklama kapsamı ham banka açıklamasında arar ve öğrenme katmanından önce çalışır.
+    /// </summary>
+    public enum KuralKapsami : byte
+    {
+        IslemTipi = 1,
+        Aciklama = 2
+    }
+
+    /// <summary>Şablon/desen/kural tablolarında desenin nasıl eşleşeceği (sunucudaki enum ile aynı).</summary>
+    public enum EslesmeTuru : byte
+    {
+        Tam = 1,
+        Icerir = 2,
+        Regex = 3
+    }
+
     // ---- Banka hesabı ----
 
     public class BankaHesabiDto
@@ -177,6 +195,25 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public int Atlanan { get; set; }
         public List<IceAktarimSatirSorunuDto> Hatalar { get; set; } = new();
         public List<IceAktarimSatirSorunuDto> Uyarilar { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Hesap sahibinin (firmanın) kimliği. Değer hesap satırlarında durur ama firma
+    /// bazlıdır; Firma Tanımları ekranı tek kayıt olarak yönetir ve tüm hesaplara yazar.
+    /// </summary>
+    public class HesapSahibiKimlikDto
+    {
+        public string? Unvan { get; set; }
+        public string? TakmaAdlar { get; set; }
+
+        /// <summary>Değerin yazılacağı hesap sayısı; ekranda gösterilir.</summary>
+        public int HesapSayisi { get; set; }
+    }
+
+    public class HesapSahibiKimlikYazDto
+    {
+        public string? Unvan { get; set; }
+        public string? TakmaAdlar { get; set; }
     }
 
     public class ParserSecenekDto
@@ -434,6 +471,131 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public bool Aktif { get; set; } = true;
     }
 
+    // ---- Sabit kurallar ----
+
+    /// <summary>
+    /// Üç yapılandırma tablosunun (kural / şablon / desen) ortak alanı: boş
+    /// <see cref="ParserTipi"/> "tüm bankalar" demektir, dolusu yalnız o bankada geçerli.
+    /// </summary>
+    public class SabitKuralDto
+    {
+        public int Id { get; set; }
+        public string ParserTipi { get; set; } = string.Empty;
+
+        /// <summary>Listede gösterilen ad; boş ParserTipi için "Tüm bankalar".</summary>
+        public string ParserAdi { get; set; } = string.Empty;
+
+        public string IslemTipiDeseni { get; set; } = string.Empty;
+        public KuralKapsami Kapsam { get; set; }
+        public EslesmeTuru EslesmeTuru { get; set; }
+
+        /// <summary>Dolu ise kural yalnız bu yöndeki satırlara uygulanır.</summary>
+        public Yon? Yon { get; set; }
+
+        public string HesapKodu { get; set; } = string.Empty;
+        public string? HesapAdi { get; set; }
+        public bool UnvanCikarilsin { get; set; }
+        public bool AltHesapGerekli { get; set; }
+        public int Sira { get; set; }
+        public bool Aktif { get; set; }
+    }
+
+    public class SabitKuralYazDto
+    {
+        public string? ParserTipi { get; set; }
+        public string IslemTipiDeseni { get; set; } = string.Empty;
+        public KuralKapsami Kapsam { get; set; } = KuralKapsami.IslemTipi;
+        public EslesmeTuru EslesmeTuru { get; set; } = EslesmeTuru.Tam;
+        public Yon? Yon { get; set; }
+        public string HesapKodu { get; set; } = string.Empty;
+        public string? HesapAdi { get; set; }
+        public bool UnvanCikarilsin { get; set; } = true;
+        public bool AltHesapGerekli { get; set; }
+        public int Sira { get; set; }
+        public bool Aktif { get; set; } = true;
+    }
+
+    // ---- Açıklama şablonları ----
+
+    public class AciklamaSablonuDto
+    {
+        public int Id { get; set; }
+        public string ParserTipi { get; set; } = string.Empty;
+        public string ParserAdi { get; set; } = string.Empty;
+        public string IslemTipiDeseni { get; set; } = string.Empty;
+        public EslesmeTuru EslesmeTuru { get; set; }
+        public string Sablon { get; set; } = string.Empty;
+
+        /// <summary>Bankalar arası hareket mi; karşı taraf yerine banka adı kullanılır.</summary>
+        public bool BankalarArasi { get; set; }
+
+        public int Sira { get; set; }
+        public bool Aktif { get; set; }
+    }
+
+    public class AciklamaSablonuYazDto
+    {
+        public string? ParserTipi { get; set; }
+        public string IslemTipiDeseni { get; set; } = string.Empty;
+        public EslesmeTuru EslesmeTuru { get; set; } = EslesmeTuru.Tam;
+        public string Sablon { get; set; } = string.Empty;
+        public bool BankalarArasi { get; set; }
+        public int Sira { get; set; }
+        public bool Aktif { get; set; } = true;
+    }
+
+    /// <summary>Şablonda kullanılabilecek yer tutucu; liste sunucudan gelir.</summary>
+    public class YerTutucuDto
+    {
+        public string Ad { get; set; } = string.Empty;
+        public string Aciklama { get; set; } = string.Empty;
+    }
+
+    // ---- Unvan çıkarma desenleri ----
+
+    public class UnvanDeseniDto
+    {
+        public int Id { get; set; }
+        public string ParserTipi { get; set; } = string.Empty;
+        public string ParserAdi { get; set; } = string.Empty;
+        public string Desen { get; set; } = string.Empty;
+        public int GrupNo { get; set; }
+        public string? Aciklama { get; set; }
+        public int Sira { get; set; }
+        public bool Aktif { get; set; }
+    }
+
+    public class UnvanDeseniYazDto
+    {
+        public string? ParserTipi { get; set; }
+        public string Desen { get; set; } = string.Empty;
+        public int GrupNo { get; set; } = 1;
+        public string? Aciklama { get; set; }
+        public int Sira { get; set; }
+        public bool Aktif { get; set; } = true;
+    }
+
+    public class DesenDenemeIstegiDto
+    {
+        public string Desen { get; set; } = string.Empty;
+        public int GrupNo { get; set; } = 1;
+        public string OrnekMetin { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Deneme sonucu. Ham yakalama ile <see cref="Unvan"/> ayrı: desen tutsa bile
+    /// çıkarıcı yakalamayı eleyebilir (çok kısa, IBAN künyesi, hesap sahibinin kendi alanı).
+    /// </summary>
+    public class DesenDenemeSonucDto
+    {
+        public bool Gecerli { get; set; }
+        public string? Hata { get; set; }
+        public bool Eslesti { get; set; }
+        public string? HamYakalanan { get; set; }
+        public string? Unvan { get; set; }
+        public string? Not { get; set; }
+    }
+
     public static class BankaEkstreEtiket
     {
         public static readonly CultureInfo Kultur = new("tr-TR");
@@ -474,6 +636,20 @@ namespace WebApp.Shared.Dto.BankaEkstre
             Dto.BankaEkstre.YonlendirmeYonu.Cikan => "Çıkan",
             _ => "Farketmez"
         };
+
+        /// <summary>Sabit kuralın deseni nerede aradığı.</summary>
+        public static string Kapsam(KuralKapsami k)
+            => k == KuralKapsami.Aciklama ? "Açıklama" : "İşlem tipi";
+
+        public static string Eslesme(EslesmeTuru e) => e switch
+        {
+            EslesmeTuru.Icerir => "İçerir",
+            EslesmeTuru.Regex => "Regex",
+            _ => "Tam"
+        };
+
+        /// <summary>Kuralın yön kısıtı; boş bırakılmışsa her iki yönde de geçerli.</summary>
+        public static string KuralYonu(Yon? y) => y is null ? "Farketmez" : Yon(y.Value);
 
         public static string HesapTipi(HesapTipi t) => t == Dto.BankaEkstre.HesapTipi.Vadesiz ? "Vadesiz" : "Vadeli";
 

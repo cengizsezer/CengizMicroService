@@ -36,12 +36,6 @@
     .ky-alan { display: flex; flex-direction: column; gap: 3px; position: relative; }
     .ky-alan label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
     .ky-ipucu { font-size: 11px; color: #a0aec0; }
-    .ky-oneriler { position: absolute; z-index: 20; top: 56px; left: 0; width: 320px; max-height: 200px; overflow-y: auto;
-                   background: #fff; border: 1px solid #cbd5e0; border-radius: 4px; box-shadow: 0 6px 18px rgba(0,0,0,.10); }
-    .ky-oneri { padding: 4px 9px; font-size: 12px; cursor: pointer; display: flex; gap: 8px; }
-    .ky-oneri:hover { background: #ebf8ff; }
-    .ky-oneri .k { font-family: ui-monospace, Consolas, monospace; flex: 0 0 90px; }
-    .ky-oneri .a { color: #4a5568; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 
 <div class="ky-arac">
@@ -112,22 +106,9 @@
             </div>
             <div class="ky-alan">
                 <label>ORKA hesap kodu</label>
-                <RadzenTextBox Value="@_form.HesapKodu" Placeholder="331 02"
-                               ValueChanged="@(async v => await KodDegistiAsync(v))" />
+                <HesapKoduKutusu @ref="_kodKutusu" Value="@_form.HesapKodu" Placeholder="331 02"
+                                 ValueChanged="@(v => _form.HesapKodu = v)" />
                 <span class="ky-ipucu">Hesap planında olmayan kod kaydedilmez.</span>
-
-                @if (_oneriler.Count > 0)
-                {
-                    <div class="ky-oneriler">
-                        @foreach (var oneri in _oneriler)
-                        {
-                            <div class="ky-oneri" @onclick="@(() => OneriSec(oneri))">
-                                <span class="k">@oneri.Kod</span>
-                                <span class="a">@oneri.Ad</span>
-                            </div>
-                        }
-                    </div>
-                }
             </div>
             <div class="ky-alan">
                 <label>Açıklama</label>
@@ -146,7 +127,7 @@
             <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
                           Disabled="@_kaydediyor" Click="@KaydetAsync" />
             <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
-                          Click="@(() => { _form = null; _duzenlenenId = null; _oneriler = new(); })" />
+                          Click="@FormKapat" />
         </div>
     </div>
 }
@@ -157,11 +138,8 @@
     private int? _duzenlenenId;
     private bool _kaydediyor;
 
-    /// <summary>Hesap kodu kutusunun altındaki plan önerileri.</summary>
-    private List<HesapPlaniKaydiDto> _oneriler = new();
-
-    /// <summary>Yazdıkça öneri çağrısı yapılır; önceki istek iptal edilir.</summary>
-    private CancellationTokenSource? _oneriIptal;
+    /// <summary>Kod kutusu (plan önerilerini kendi getirir); form kapanınca listesi kapatılır.</summary>
+    private HesapKoduKutusu? _kodKutusu;
 
     private record YonSecenek(YonlendirmeYonu Deger, string Ad);
 
@@ -181,9 +159,15 @@
         StateHasChanged();
     }
 
+    private void FormKapat()
+    {
+        _form = null;
+        _duzenlenenId = null;
+        _kodKutusu?.Kapat();
+    }
+
     private void FormAc(KisiYonlendirmeDto? kayit)
     {
-        _oneriler = new();
         _duzenlenenId = kayit?.Id;
         _form = kayit is null
             ? new KisiYonlendirmeYazDto()
@@ -195,40 +179,6 @@
                 Aciklama = kayit.Aciklama,
                 Aktif = kayit.Aktif
             };
-    }
-
-    /// <summary>
-    /// Kod yazıldıkça hesap planından öneri getirir. Arama grup filtresiz: yönlendirmenin
-    /// amacı zaten kuralın grubundan çıkmak (195 yerine 331).
-    /// </summary>
-    private async Task KodDegistiAsync(string? deger)
-    {
-        if (_form is null) return;
-
-        _form.HesapKodu = deger ?? string.Empty;
-
-        _oneriIptal?.Cancel();
-        _oneriIptal = new CancellationTokenSource();
-        var iptal = _oneriIptal.Token;
-
-        if (_form.HesapKodu.Trim().Length < 2)
-        {
-            _oneriler = new();
-            return;
-        }
-
-        var sonuc = await Api.HesapPlaniAraAsync(_form.HesapKodu.Trim(), null, 12, iptal);
-        if (iptal.IsCancellationRequested) return;
-
-        _oneriler = sonuc;
-    }
-
-    private void OneriSec(HesapPlaniKaydiDto oneri)
-    {
-        if (_form is null) return;
-
-        _form.HesapKodu = oneri.Kod;
-        _oneriler = new();
     }
 
     private async Task KaydetAsync()
@@ -248,9 +198,7 @@
         }
 
         Notif.Notify(NotificationSeverity.Success, "Kaydedildi", null, 3000);
-        _form = null;
-        _duzenlenenId = null;
-        _oneriler = new();
+        FormKapat();
         await YenileAsync();
     }
 
@@ -263,11 +211,7 @@
             return;
         }
 
-        if (_duzenlenenId == kayit.Id)
-        {
-            _form = null;
-            _duzenlenenId = null;
-        }
+        if (_duzenlenenId == kayit.Id) FormKapat();
 
         Notif.Notify(NotificationSeverity.Success, "Silindi", kayit.Isim, 3000);
         await YenileAsync();

@@ -20,11 +20,26 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         string? AnahtarOner(string? hesapAdi, string? bankaAdi);
 
         /// <summary>
+        /// Firmanın hesap sahibi kimliği (unvan + diğer yazımlar). Alan hesap satırlarında
+        /// durur ama firma bazlıdır; okurken dolu olan ilk hesaptan alınır, takma adlar
+        /// tüm hesaplardan birleştirilir.
+        /// </summary>
+        Task<HesapSahibiKimlikDto> HesapSahibiGetAsync(CancellationToken ct = default);
+
+        /// <summary>
+        /// Kimliği firmanın <b>tüm</b> hesaplarına yazar. Tek bir hesaba yazılsaydı ekstresi
+        /// başka bir hesaptan işlenen banka firmanın adını tanımaz, kendi unvanını karşı
+        /// taraf sanardı.
+        /// </summary>
+        Task<HesapSahibiKimlikDto> HesapSahibiKaydetAsync(HesapSahibiKimlikYazDto dto, CancellationToken ct = default);
+
+        /// <summary>
         /// Hesap sahibinin henüz eklenmemiş yazımları. Yüklenmiş ekstrelerin açıklamalarında
         /// unvan desenleriyle yakalanan metinler taranır; tanımlı yazımlarla en az iki ardışık
         /// kelime paylaşan ama kapsama kontrolüne takılmayanlar aday olarak döner.
+        /// Kimlik firma bazlı okunur; hangi hesabın ekstresinden geldiği fark etmez.
         /// </summary>
-        Task<List<HesapSahibiOnerisiDto>> HesapSahibiOnerileriAsync(int hesapId, CancellationToken ct = default);
+        Task<List<HesapSahibiOnerisiDto>> HesapSahibiOnerileriAsync(CancellationToken ct = default);
     }
 
     /// <summary>
@@ -183,12 +198,57 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             return birlesik.Length <= 1000 ? birlesik : birlesik[..1000];
         }
 
-        public async Task<List<HesapSahibiOnerisiDto>> HesapSahibiOnerileriAsync(int hesapId, CancellationToken ct = default)
+        public async Task<HesapSahibiKimlikDto> HesapSahibiGetAsync(CancellationToken ct = default)
         {
-            var hesap = await _db.EkstreBankaHesaplari.AsNoTracking().FirstOrDefaultAsync(h => h.Id == hesapId, ct);
-            if (hesap is null) return new List<HesapSahibiOnerisiDto>();
+            var hesaplar = await _db.EkstreBankaHesaplari.AsNoTracking()
+                .OrderBy(h => h.Id)
+                .Select(h => new { h.HesapSahibiUnvani, h.HesapSahibiTakmaAdlari })
+                .ToListAsync(ct);
 
-            var kimlik = HesapSahibiKimligi.Kur(hesap.HesapSahibiUnvani, hesap.HesapSahibiTakmaAdlari);
+            // Unvan: dolu olan ilk hesap. Takma adlar birleştirilir — eski kurulumda farklı
+            // hesaplara farklı yazımlar girilmiş olabilir, hiçbiri kaybolmasın.
+            var takmaAdlar = hesaplar
+                .SelectMany(h => HesapSahibiKimligi.Ayikla(h.HesapSahibiTakmaAdlari))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            return new HesapSahibiKimlikDto
+            {
+                Unvan = hesaplar.Select(h => h.HesapSahibiUnvani)
+                                .FirstOrDefault(u => !string.IsNullOrWhiteSpace(u)),
+                TakmaAdlar = takmaAdlar.Count == 0 ? null : string.Join(Environment.NewLine, takmaAdlar),
+                HesapSayisi = hesaplar.Count
+            };
+        }
+
+        public async Task<HesapSahibiKimlikDto> HesapSahibiKaydetAsync(HesapSahibiKimlikYazDto dto,
+                                                                      CancellationToken ct = default)
+        {
+            var unvan = string.IsNullOrWhiteSpace(dto.Unvan) ? null : Normalizasyon.Kirp(dto.Unvan, 200);
+            var takmaAdlar = TakmaAdlariDuzenle(dto.TakmaAdlar);
+
+            var hesaplar = await _db.EkstreBankaHesaplari.ToListAsync(ct);
+            foreach (var hesap in hesaplar)
+            {
+                hesap.HesapSahibiUnvani = unvan;
+                hesap.HesapSahibiTakmaAdlari = takmaAdlar;
+            }
+
+            await _db.SaveChangesAsync(ct);
+
+            return new HesapSahibiKimlikDto
+            {
+                Unvan = unvan,
+                TakmaAdlar = takmaAdlar,
+                HesapSayisi = hesaplar.Count
+            };
+        }
+
+        public async Task<List<HesapSahibiOnerisiDto>> HesapSahibiOnerileriAsync(CancellationToken ct = default)
+        {
+            var mevcut = await HesapSahibiGetAsync(ct);
+
+            var kimlik = HesapSahibiKimligi.Kur(mevcut.Unvan, mevcut.TakmaAdlar);
             if (kimlik.Bos) return new List<HesapSahibiOnerisiDto>();
 
             // Kaynak: yüklenmiş ekstrelerde desenlerin çıkardığı unvanlar. Ham açıklamayı

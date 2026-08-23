@@ -36,9 +36,11 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         public async Task<VergiKoduEslemesiDto> CreateAsync(VergiKoduEslemesiYazDto dto, CancellationToken ct = default)
         {
             Dogrula(dto);
+            var plandaki = await YapilandirmaDogrulama.HesapKoduDogrulaAsync(
+                _db, dto.HesapKodu, nameof(dto.HesapKodu), ct);
 
             var kayit = new VergiKoduEslemesi();
-            Uygula(kayit, dto);
+            Uygula(kayit, dto, plandaki?.Ad);
 
             _db.EkstreVergiKodlari.Add(kayit);
             await _db.SaveChangesAsync(ct);
@@ -49,11 +51,13 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         public async Task<VergiKoduEslemesiDto?> UpdateAsync(int id, VergiKoduEslemesiYazDto dto, CancellationToken ct = default)
         {
             Dogrula(dto);
+            var plandaki = await YapilandirmaDogrulama.HesapKoduDogrulaAsync(
+                _db, dto.HesapKodu, nameof(dto.HesapKodu), ct);
 
             var kayit = await _db.EkstreVergiKodlari.FirstOrDefaultAsync(v => v.Id == id, ct);
             if (kayit is null) return null;
 
-            Uygula(kayit, dto);
+            Uygula(kayit, dto, plandaki?.Ad);
             await _db.SaveChangesAsync(ct);
 
             return Esle(kayit);
@@ -83,13 +87,18 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 throw new BankaEkstreKuralException(nameof(dto.HesapKodu), "Hesap kodu boş olamaz.");
         }
 
-        private static void Uygula(VergiKoduEslemesi kayit, VergiKoduEslemesiYazDto dto)
+        // Kodun hesap planında olup olmadığı YapilandirmaDogrulama'da denetlenir; vergi
+        // eşlemesi de bir daha sorulmadan uygulanıyor, yanlış yazılmış kod her ay sessizce
+        // yanlış hesaba yazardı.
+
+        private static void Uygula(VergiKoduEslemesi kayit, VergiKoduEslemesiYazDto dto, string? plandakiAd)
         {
             kayit.VergiKodu = string.IsNullOrWhiteSpace(dto.VergiKodu) ? null : dto.VergiKodu.Trim();
             kayit.AnahtarKelime = string.IsNullOrWhiteSpace(dto.AnahtarKelime) ? null : Normalizasyon.Kirp(dto.AnahtarKelime, 100);
             // Kod boşluklu saklanır; format değiştirilmez, ORKA tanımaz.
             kayit.HesapKodu = Normalizasyon.HesapKoduNormalize(dto.HesapKodu);
-            kayit.HesapAdi = string.IsNullOrWhiteSpace(dto.HesapAdi) ? null : Normalizasyon.Kirp(dto.HesapAdi, 200);
+            // Ad boş bırakıldıysa plandan doldurulur; listede kodun ne olduğu görünsün.
+            kayit.HesapAdi = string.IsNullOrWhiteSpace(dto.HesapAdi) ? plandakiAd : Normalizasyon.Kirp(dto.HesapAdi, 200);
             kayit.Sira = dto.Sira;
             kayit.Aktif = dto.Aktif;
         }

@@ -96,12 +96,14 @@
             </div>
             <div class="vk-alan">
                 <label>ORKA hesap kodu</label>
-                <RadzenTextBox @bind-Value="_form.HesapKodu" Placeholder="689 9 1" />
-                <span class="vk-ipucu">Boşluklu yazın; format değiştirilmez, ORKA tanımaz.</span>
+                <HesapKoduKutusu @ref="_kodKutusu" Value="@_form.HesapKodu" Placeholder="689 9 1"
+                                 ValueChanged="@(v => _form.HesapKodu = v)" Secildi="@KodSecildi" />
+                <span class="vk-ipucu">Boşluklu yazın; format değiştirilmez, ORKA tanımaz. Planda olmayan kod kaydedilmez.</span>
             </div>
             <div class="vk-alan">
                 <label>Hesap adı</label>
                 <RadzenTextBox @bind-Value="_form.HesapAdi" Placeholder="Kanunen Kabul Edilmeyen Giderler" />
+                <span class="vk-ipucu">Boş bırakılırsa hesap planındaki addan doldurulur.</span>
             </div>
             <div class="vk-alan">
                 <label>Sıra</label>
@@ -120,7 +122,7 @@
             <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
                           Disabled="@_kaydediyor" Click="@KaydetAsync" />
             <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
-                          Click="@(() => { _form = null; _duzenlenenId = null; })" />
+                          Click="@FormKapat" />
         </div>
     </div>
 }
@@ -130,6 +132,8 @@
     private VergiKoduEslemesiYazDto? _form;
     private int? _duzenlenenId;
     private bool _kaydediyor;
+
+    private HesapKoduKutusu? _kodKutusu;
 
     protected override async Task OnInitializedAsync() => await YenileAsync();
 
@@ -141,6 +145,19 @@
     {
         _kayitlar = await Api.VergiKodlariAsync();
         StateHasChanged();
+    }
+
+    private void FormKapat()
+    {
+        _form = null;
+        _duzenlenenId = null;
+        _kodKutusu?.Kapat();
+    }
+
+    /// <summary>Ad yalnız boşsa doldurulur: kullanıcı bilerek başka bir ad yazmış olabilir.</summary>
+    private void KodSecildi(HesapPlaniKaydiDto oneri)
+    {
+        if (_form is not null && string.IsNullOrWhiteSpace(_form.HesapAdi)) _form.HesapAdi = oneri.Ad;
     }
 
     private void FormAc(VergiKoduEslemesiDto? kayit)
@@ -176,8 +193,7 @@
         }
 
         Notif.Notify(NotificationSeverity.Success, "Kaydedildi", null, 3000);
-        _form = null;
-        _duzenlenenId = null;
+        FormKapat();
         await YenileAsync();
     }
 
@@ -190,11 +206,7 @@
             return;
         }
 
-        if (_duzenlenenId == kayit.Id)
-        {
-            _form = null;
-            _duzenlenenId = null;
-        }
+        if (_duzenlenenId == kayit.Id) FormKapat();
 
         Notif.Notify(NotificationSeverity.Success, "Silindi", kayit.HesapKodu, 3000);
         await YenileAsync();

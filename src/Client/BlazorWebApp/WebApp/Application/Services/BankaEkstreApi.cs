@@ -20,6 +20,9 @@ namespace WebApp.Application.Services
         private const string Eslesmeler = "/catalog/banka-ekstre/eslesmeler";
         private const string VergiKodlari = "/catalog/banka-ekstre/vergi-kodlari";
         private const string KisiYonlendirmeleri = "/catalog/banka-ekstre/kisi-yonlendirmeleri";
+        private const string SabitKurallar = "/catalog/banka-ekstre/sabit-kurallar";
+        private const string AciklamaSablonlari = "/catalog/banka-ekstre/aciklama-sablonlari";
+        private const string UnvanDesenleri = "/catalog/banka-ekstre/unvan-desenleri";
 
         private const string XlsxTuru = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
@@ -43,8 +46,15 @@ namespace WebApp.Application.Services
             return (await GetOrNull<AnahtarOnerisiDto>(adres, ct))?.EslestirmeAnahtarlari;
         }
 
-        public async Task<List<HesapSahibiOnerisiDto>> HesapSahibiOnerileriAsync(int hesapId, CancellationToken ct = default)
-            => await GetOrNull<List<HesapSahibiOnerisiDto>>($"{Hesaplar}/{hesapId}/hesap-sahibi-onerileri", ct) ?? new();
+        public async Task<HesapSahibiKimlikDto> HesapSahibiAsync(CancellationToken ct = default)
+            => await GetOrNull<HesapSahibiKimlikDto>($"{Hesaplar}/hesap-sahibi", ct) ?? new();
+
+        public Task<(HesapSahibiKimlikDto? Veri, string? Hata)> HesapSahibiKaydetAsync(HesapSahibiKimlikYazDto dto,
+                                                                                       CancellationToken ct = default)
+            => GonderAsync<HesapSahibiKimlikDto>(() => _http.PutAsJsonAsync($"{Hesaplar}/hesap-sahibi", dto, ct));
+
+        public async Task<List<HesapSahibiOnerisiDto>> HesapSahibiOnerileriAsync(CancellationToken ct = default)
+            => await GetOrNull<List<HesapSahibiOnerisiDto>>($"{Hesaplar}/hesap-sahibi-onerileri", ct) ?? new();
 
         public Task<(BankaHesabiDto? Veri, string? Hata)> CreateHesapAsync(BankaHesabiYazDto dto, CancellationToken ct = default)
             => GonderAsync<BankaHesabiDto>(() => _http.PostAsJsonAsync(Hesaplar, dto, ct));
@@ -229,6 +239,79 @@ namespace WebApp.Application.Services
         public async Task<string?> KisiYonlendirmeSilAsync(int id, CancellationToken ct = default)
         {
             var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync($"{KisiYonlendirmeleri}/{id}", ct));
+            return hata;
+        }
+
+        // ---- Sabit kurallar ----
+
+        public async Task<List<SabitKuralDto>> SabitKurallarAsync(CancellationToken ct = default)
+            => await GetOrNull<List<SabitKuralDto>>(SabitKurallar, ct) ?? new();
+
+        public Task<(SabitKuralDto? Veri, string? Hata)> SabitKuralEkleAsync(SabitKuralYazDto dto,
+                                                                            CancellationToken ct = default)
+            => GonderAsync<SabitKuralDto>(() => _http.PostAsJsonAsync(SabitKurallar, dto, ct));
+
+        public Task<(SabitKuralDto? Veri, string? Hata)> SabitKuralGuncelleAsync(int id, SabitKuralYazDto dto,
+                                                                                CancellationToken ct = default)
+            => GonderAsync<SabitKuralDto>(() => _http.PutAsJsonAsync($"{SabitKurallar}/{id}", dto, ct));
+
+        public async Task<string?> SabitKuralSilAsync(int id, CancellationToken ct = default)
+        {
+            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync($"{SabitKurallar}/{id}", ct));
+            return hata;
+        }
+
+        // ---- Açıklama şablonları ----
+
+        public async Task<List<AciklamaSablonuDto>> AciklamaSablonlariAsync(CancellationToken ct = default)
+            => await GetOrNull<List<AciklamaSablonuDto>>(AciklamaSablonlari, ct) ?? new();
+
+        public async Task<List<YerTutucuDto>> YerTutucularAsync(CancellationToken ct = default)
+            => await GetOrNull<List<YerTutucuDto>>($"{AciklamaSablonlari}/yer-tutucular", ct) ?? new();
+
+        public Task<(AciklamaSablonuDto? Veri, string? Hata)> AciklamaSablonuEkleAsync(AciklamaSablonuYazDto dto,
+                                                                                      CancellationToken ct = default)
+            => GonderAsync<AciklamaSablonuDto>(() => _http.PostAsJsonAsync(AciklamaSablonlari, dto, ct));
+
+        public Task<(AciklamaSablonuDto? Veri, string? Hata)> AciklamaSablonuGuncelleAsync(int id, AciklamaSablonuYazDto dto,
+                                                                                          CancellationToken ct = default)
+            => GonderAsync<AciklamaSablonuDto>(() => _http.PutAsJsonAsync($"{AciklamaSablonlari}/{id}", dto, ct));
+
+        public async Task<string?> AciklamaSablonuSilAsync(int id, CancellationToken ct = default)
+        {
+            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync($"{AciklamaSablonlari}/{id}", ct));
+            return hata;
+        }
+
+        // ---- Unvan çıkarma desenleri ----
+
+        public async Task<List<UnvanDeseniDto>> UnvanDesenleriAsync(CancellationToken ct = default)
+            => await GetOrNull<List<UnvanDeseniDto>>(UnvanDesenleri, ct) ?? new();
+
+        /// <summary>
+        /// Deneme geçersiz regex'te de 200 döner (sonucun içinde bildirilir); yalnız ağ/yetki
+        /// hatasında null döner ve ekran sessiz kalır.
+        /// </summary>
+        public async Task<DesenDenemeSonucDto?> UnvanDeseniDeneAsync(DesenDenemeIstegiDto istek,
+                                                                     CancellationToken ct = default)
+        {
+            var (veri, _) = await GonderAsync<DesenDenemeSonucDto>(
+                () => _http.PostAsJsonAsync($"{UnvanDesenleri}/dene", istek, ct));
+
+            return veri;
+        }
+
+        public Task<(UnvanDeseniDto? Veri, string? Hata)> UnvanDeseniEkleAsync(UnvanDeseniYazDto dto,
+                                                                               CancellationToken ct = default)
+            => GonderAsync<UnvanDeseniDto>(() => _http.PostAsJsonAsync(UnvanDesenleri, dto, ct));
+
+        public Task<(UnvanDeseniDto? Veri, string? Hata)> UnvanDeseniGuncelleAsync(int id, UnvanDeseniYazDto dto,
+                                                                                   CancellationToken ct = default)
+            => GonderAsync<UnvanDeseniDto>(() => _http.PutAsJsonAsync($"{UnvanDesenleri}/{id}", dto, ct));
+
+        public async Task<string?> UnvanDeseniSilAsync(int id, CancellationToken ct = default)
+        {
+            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync($"{UnvanDesenleri}/{id}", ct));
             return hata;
         }
 

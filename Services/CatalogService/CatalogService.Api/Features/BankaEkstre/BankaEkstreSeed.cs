@@ -213,12 +213,19 @@ namespace CatalogService.Api.Features.BankaEkstre
             Avans("Maaş Avansı", "196", "Personel Avansları");
             Avans("Avans", "196", "Personel Avansları");
 
-            Ekle("MKK Masrafı", "770", "Genel Yönetim Giderleri");
+            // MKK masrafı ve kambiyo muamele vergisi ana grupta değil, banka komisyonu
+            // muavininde toplanır. Kalanlar 770'te bırakıldı: hangi muavine gittikleri
+            // firmadan firmaya değişiyor, kullanıcı Tanımlar > Sabit Kurallar'dan daraltır.
+            //
+            // Bu satırlar zaten 770 ile kurulmuş bir veritabanında GÜNCELLENMEZ — seed
+            // mevcut kayda dokunmaz (kullanıcı düzenlemesini ezmemek için). Eski kurulumda
+            // kod arayüzden düzeltilir.
+            Ekle("MKK Masrafı", "770 03 005", "Banka Komisyonu");
+            Ekle("Kambiyo", "770 03 005", "Banka Komisyonu", EslesmeTuru.Icerir);
             Ekle("DIT Yp transfer", "770", "Genel Yönetim Giderleri");
             Ekle("Masraf", "770", "Genel Yönetim Giderleri", EslesmeTuru.Icerir);
             Ekle("Komisyon", "770", "Genel Yönetim Giderleri", EslesmeTuru.Icerir);
             Ekle("BSMV", "770", "Genel Yönetim Giderleri", EslesmeTuru.Icerir);
-            Ekle("Kambiyo", "770", "Genel Yönetim Giderleri", EslesmeTuru.Icerir);
             Ekle("HGS Bakiye Yükle", "740", "Hizmet Üretim Maliyeti");
             Ekle("Otoyolu Bakiye Yükle", "740", "Hizmet Üretim Maliyeti", EslesmeTuru.Icerir);
         }

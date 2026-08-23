@@ -612,7 +612,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             {
                 Eslesmeler = await _db.EkstreHesapEslesmeleri.AsNoTracking().ToListAsync(ct),
                 BankaHesaplari = await _db.EkstreBankaHesaplari.AsNoTracking().ToListAsync(ct),
-                SabitKurallar = await _db.EkstreSabitKurallar.AsNoTracking().ToListAsync(ct),
+                SabitKurallar = await SabitKurallariYukleAsync(hesap.ParserTipi, ct),
                 HesapPlani = await _db.EkstreHesapPlani.AsNoTracking().Where(h => h.Aktif).ToListAsync(ct),
                 VergiKodlari = await _db.EkstreVergiKodlari.AsNoTracking().Where(v => v.Aktif)
                                         .OrderBy(v => v.Sira).ToListAsync(ct),
@@ -624,17 +624,40 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 HesapSahibi = hesapSahibi
             };
 
+        // Üç yapılandırma tablosu da aynı ayrıştırıcı sözleşmesini kullanır: ParserTipi
+        // BOŞ ise kayıt tüm bankalarda geçerlidir, doluysa yalnız o bankada. Vakıfbank'a
+        // özel bir desen Ziraat ekstresinde çalışmamalı; ortak kurallar ise (banka
+        // masrafı, komisyon) her bankada tek satırla tanımlanabilmeli.
+        //
+        // Sıra eşitse BANKAYA ÖZEL kayıt önce denenir: aynı sıradaki genel kural, o banka
+        // için özellikle yazılmış kaydı gölgelememeli. Tüketiciler listeyi Sira'ya göre
+        // yeniden sıralarken LINQ OrderBy kararlı olduğu için bu ikincil sıra korunur.
         private Task<List<AciklamaSablonu>> SablonlariYukleAsync(string parserTipi, CancellationToken ct)
             => _db.EkstreAciklamaSablonlari.AsNoTracking()
-                .Where(s => s.ParserTipi == parserTipi && s.Aktif)
-                .OrderBy(s => s.Sira)
+                .Where(s => (s.ParserTipi == "" || s.ParserTipi == parserTipi) && s.Aktif)
+                .OrderBy(s => s.Sira).ThenBy(s => s.ParserTipi == "" ? 1 : 0).ThenBy(s => s.Id)
                 .ToListAsync(ct);
 
         private Task<List<UnvanDeseni>> DesenleriYukleAsync(string parserTipi, CancellationToken ct)
             => _db.EkstreUnvanDesenleri.AsNoTracking()
-                .Where(d => d.ParserTipi == parserTipi && d.Aktif)
-                .OrderBy(d => d.Sira)
+                .Where(d => (d.ParserTipi == "" || d.ParserTipi == parserTipi) && d.Aktif)
+                .OrderBy(d => d.Sira).ThenBy(d => d.ParserTipi == "" ? 1 : 0).ThenBy(d => d.Id)
                 .ToListAsync(ct);
+
+        /// <summary>
+        /// Sabit kurallar da bankaya göre süzülür. Eskiden tablonun tamamı yükleniyordu:
+        /// tek banka varken farkı yoktu, ikinci banka eklendiğinde Vakıfbank'ın kuralları
+        /// diğer bankanın ekstresinde de çalışırdı.
+        /// </summary>
+        private Task<List<SabitKural>> SabitKurallariYukleAsync(string? parserTipi, CancellationToken ct)
+        {
+            var tip = parserTipi ?? string.Empty;
+
+            return _db.EkstreSabitKurallar.AsNoTracking()
+                .Where(k => k.ParserTipi == "" || k.ParserTipi == tip)
+                .OrderBy(k => k.Sira).ThenBy(k => k.ParserTipi == "" ? 1 : 0).ThenBy(k => k.Id)
+                .ToListAsync(ct);
+        }
 
         private async Task<Dictionary<int, EkstreSayaclariDto>> SayaclariYukleAsync(IReadOnlyCollection<int> ekstreIdler, CancellationToken ct)
         {

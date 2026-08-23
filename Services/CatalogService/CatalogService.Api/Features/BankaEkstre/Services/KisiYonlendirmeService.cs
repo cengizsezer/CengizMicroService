@@ -19,9 +19,10 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
     ///
     /// İki denetim var:
     /// <list type="bullet">
-    /// <item><b>Hesap kodu planda olmalı.</b> Yönlendirme kaydı bir daha sorulmadan
-    /// uygulanacak; yanlış yazılmış bir kod her ay sessizce yanlış hesaba yazardı. Hesap
-    /// planı hiç yüklenmemişse denetim atlanır (kurulum sırası bozulmasın).</item>
+    /// <item><b>Hesap kodu planda olmalı</b> — ortak denetim
+    /// <see cref="YapilandirmaDogrulama.HesapKoduDogrulaAsync"/>. Yönlendirme kaydı bir daha
+    /// sorulmadan uygulanacak; yanlış yazılmış bir kod her ay sessizce yanlış hesaba yazardı.
+    /// Plan hiç yüklenmemişse denetim atlanır (kurulum sırası bozulmasın).</item>
     /// <item><b>Aynı isim + aynı yön tek kayıt.</b> İki kayıt olsaydı hangisinin
     /// uygulandığı kayıt sırasına kalırdı.</item>
     /// </list>
@@ -44,7 +45,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         public async Task<KisiYonlendirmeDto> CreateAsync(KisiYonlendirmeYazDto dto, CancellationToken ct = default)
         {
             var cekirdek = Dogrula(dto);
-            await KodDogrulaAsync(dto.HesapKodu, ct);
+            await YapilandirmaDogrulama.HesapKoduDogrulaAsync(_db, dto.HesapKodu, nameof(dto.HesapKodu), ct);
             await TekilligiDogrulaAsync(cekirdek, dto.Yon, null, ct);
 
             var kayit = new KisiYonlendirme();
@@ -59,7 +60,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         public async Task<KisiYonlendirmeDto?> UpdateAsync(int id, KisiYonlendirmeYazDto dto, CancellationToken ct = default)
         {
             var cekirdek = Dogrula(dto);
-            await KodDogrulaAsync(dto.HesapKodu, ct);
+            await YapilandirmaDogrulama.HesapKoduDogrulaAsync(_db, dto.HesapKodu, nameof(dto.HesapKodu), ct);
             await TekilligiDogrulaAsync(cekirdek, dto.Yon, id, ct);
 
             var kayit = await _db.EkstreKisiYonlendirmeleri.FirstOrDefaultAsync(k => k.Id == id, ct);
@@ -99,21 +100,6 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                     "İsimden eşleştirilebilir bir çekirdek çıkmadı; ad ve soyadı yazın.");
 
             return Normalizasyon.Kirp(cekirdek, 200);
-        }
-
-        /// <summary>
-        /// Kod hesap planında var mı? Yönlendirme bir daha sorulmadan uygulandığı için
-        /// geçersiz kod kaydedilmez. Plan hiç yüklenmemişse denetim yapılmaz.
-        /// </summary>
-        private async Task KodDogrulaAsync(string hesapKodu, CancellationToken ct)
-        {
-            var kod = Normalizasyon.HesapKoduNormalize(hesapKodu);
-
-            if (!await _db.EkstreHesapPlani.AnyAsync(ct)) return;
-
-            if (!await _db.EkstreHesapPlani.AnyAsync(h => h.Kod == kod && h.Aktif, ct))
-                throw new BankaEkstreKuralException(nameof(hesapKodu),
-                    $"'{kod}' hesap planında yok. Kodu hesap planından seçin veya önce planı güncelleyin.");
         }
 
         private async Task TekilligiDogrulaAsync(string cekirdek, YonlendirmeYonu yon, int? haricId, CancellationToken ct)

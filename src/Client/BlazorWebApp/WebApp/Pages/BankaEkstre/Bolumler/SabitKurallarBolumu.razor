@@ -1,0 +1,398 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.BankaEkstre
+
+@inject IBankaEkstreApi Api
+@inject NotificationService Notif
+
+@*
+    Tanımlar ekranının "Sabit kurallar" bölümü (Katman 4). Kural, işlem tipi veya ham
+    açıklamadaki bir ifadeyi doğrudan bir hesap koduna bağlar: banka masrafı → 770 03 005,
+    HGS → 740, iş avansı → 195.
+
+    Tablo kasıtlı olarak veritabanındadır: mimari hedef "yeni banka = yeni parser + yeni
+    kural satırları". Kod değişmeden yeni kural eklenebilmeli.
+
+    AYRIŞTIRICI boş bırakılırsa kural tüm bankalarda geçerlidir; doldurulursa yalnız o
+    bankanın ekstresinde çalışır. Tablo firma bağımsızdır: kurallar bankanın yazım
+    kalıbına bağlıdır, firmaya değil.
+*@
+
+<style>
+    .sk-arac { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .sk-kaydir { overflow-x: auto; }
+    .sk-tablo { border: 1px solid #eee; border-radius: 6px; background: #fff; overflow: hidden; min-width: 1080px; }
+    .sk-satir { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+    .sk-head { background: #fafafa; border-bottom: 1px solid #eee; font-size: 11px; color: #718096;
+               text-transform: uppercase; letter-spacing: .3px; }
+    .sk-satir:not(.sk-head):hover { background: #f8fbff; }
+    .sk-ifade { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sk-kapsam { flex: 0 0 90px; }
+    .sk-parser { flex: 0 0 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sk-kod { flex: 0 0 110px; font-family: ui-monospace, Consolas, monospace; }
+    .sk-ad { flex: 0 0 190px; color: #4a5568; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sk-yon { flex: 0 0 80px; }
+    .sk-bayrak { flex: 0 0 70px; text-align: center; }
+    .sk-sira { flex: 0 0 50px; text-align: right; }
+    .sk-durum { flex: 0 0 55px; }
+    .sk-aksiyon { flex: 0 0 80px; text-align: right; }
+    .sk-bos { padding: 26px; text-align: center; color: #a0aec0; }
+    .sk-pasif .sk-ifade, .sk-pasif .sk-kod, .sk-pasif .sk-ad { color: #a0aec0; text-decoration: line-through; }
+    .sk-rozet { display: inline-block; margin-left: 6px; padding: 0 5px; border-radius: 3px; background: #edf2f7;
+                color: #4a5568; font-size: 10px; text-transform: uppercase; letter-spacing: .3px; vertical-align: middle; }
+    .sk-genel { background: #fffaf0; color: #975a16; }
+    .sk-alan { display: flex; flex-direction: column; gap: 3px; }
+    .sk-alan label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .sk-ipucu { font-size: 11px; color: #a0aec0; }
+    .sk-onay { display: flex; gap: 6px; align-items: center; }
+    .sk-onay label { font-size: 12px; color: #4a5568; text-transform: none; letter-spacing: 0; }
+</style>
+
+<div class="sk-arac">
+    <h5 style="margin:0">Sabit kurallar</h5>
+    <RadzenButton Text="Yeni kural" Icon="add" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                  Click="@(() => FormAc(null))" />
+</div>
+
+<div style="font-size:12px; color:#718096; margin-bottom:10px">
+    İşlem tipi veya açıklamadaki bir ifade doğrudan bir hesaba bağlanır. Sıra küçükten büyüğe
+    denenir, <b>ilk tutan kazanır</b> — dar ifade ("Maaş Avansı") genel ifadeden ("Avans") önce
+    gelmeli. Ayrıştırıcı boşsa kural tüm bankalarda, doluysa yalnız o bankada geçerlidir.
+</div>
+
+<div class="sk-kaydir">
+    <div class="sk-tablo">
+        <div class="sk-satir sk-head">
+            <span class="sk-ifade">Eşleşme ifadesi</span>
+            <span class="sk-kapsam">Kapsam</span>
+            <span class="sk-parser">Ayrıştırıcı</span>
+            <span class="sk-kod">Hesap kodu</span>
+            <span class="sk-ad">Hesap adı</span>
+            <span class="sk-yon">Yön</span>
+            <span class="sk-bayrak">Unvan</span>
+            <span class="sk-bayrak">Alt hesap</span>
+            <span class="sk-sira">Sıra</span>
+            <span class="sk-durum">Durum</span>
+            <span class="sk-aksiyon"></span>
+        </div>
+
+        @if (Gorunen.Count == 0)
+        {
+            <div class="sk-bos">Henüz kural yok. Kural tutmayan satırlar diğer katmanlara düşer.</div>
+        }
+
+        @foreach (var kayit in Gorunen)
+        {
+            <div class="sk-satir @(kayit.Aktif ? "" : "sk-pasif")">
+                <span class="sk-ifade" title="@kayit.IslemTipiDeseni">
+                    @kayit.IslemTipiDeseni
+                    <span class="sk-rozet">@BankaEkstreEtiket.Eslesme(kayit.EslesmeTuru)</span>
+                </span>
+                <span class="sk-kapsam">@BankaEkstreEtiket.Kapsam(kayit.Kapsam)</span>
+                <span class="sk-parser" title="@kayit.ParserAdi">
+                    @if (kayit.ParserTipi.Length == 0)
+                    {
+                        <span class="sk-rozet sk-genel" style="margin-left:0">Tüm bankalar</span>
+                    }
+                    else
+                    {
+                        @kayit.ParserAdi
+                    }
+                </span>
+                <span class="sk-kod">@kayit.HesapKodu</span>
+                <span class="sk-ad" title="@kayit.HesapAdi">@(kayit.HesapAdi ?? "—")</span>
+                <span class="sk-yon">@BankaEkstreEtiket.KuralYonu(kayit.Yon)</span>
+                <span class="sk-bayrak" title="Kural tuttuğunda çıkarılan unvan cari sayılsın mı">
+                    @(kayit.UnvanCikarilsin ? "✓" : "—")
+                </span>
+                <span class="sk-bayrak" title="Kural yalnız ana grubu veriyor, muavini kullanıcı seçecek">
+                    @(kayit.AltHesapGerekli ? "✓" : "—")
+                </span>
+                <span class="sk-sira">@kayit.Sira</span>
+                <span class="sk-durum">@(kayit.Aktif ? "Aktif" : "Pasif")</span>
+                <span class="sk-aksiyon">
+                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                                  Click="@(() => FormAc(kayit))" />
+                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                                  Click="@(() => SilAsync(kayit))" />
+                </span>
+            </div>
+        }
+    </div>
+</div>
+
+@if (_form is not null)
+{
+    <div style="margin-top:14px; padding:14px; border:1px solid #e2e8f0; border-radius:6px; background:#fff">
+        <h6 style="margin-top:0">@(_duzenlenenId is null ? "Yeni kural" : "Kuralı düzenle")</h6>
+
+        <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px">
+            <div class="sk-alan">
+                <label>Ayrıştırıcı</label>
+                <RadzenDropDown TValue="string" @bind-Value="_parserSecimi" Data="@ParserSecenekleri"
+                                TextProperty="Ad" ValueProperty="Tip" Placeholder="Tüm bankalar"
+                                AllowClear="false" Style="width:100%" />
+                <span class="sk-ipucu">Boş bırakılırsa (<b>Tüm bankalar</b>) kural her bankada çalışır.</span>
+            </div>
+            <div class="sk-alan">
+                <label>Kapsam</label>
+                <RadzenDropDown TValue="KuralKapsami" @bind-Value="_form.Kapsam" Data="@Kapsamlar"
+                                TextProperty="Ad" ValueProperty="Deger" Style="width:100%" />
+                <span class="sk-ipucu">İfade <b>işlem tipi</b> kolonunda mı, ham <b>açıklama</b> metninde mi aransın.</span>
+            </div>
+            <div class="sk-alan">
+                <label>Eşleşme ifadesi</label>
+                <RadzenTextBox @bind-Value="_form.IslemTipiDeseni" Placeholder="MKK Masrafı" />
+                <span class="sk-ipucu">Kapsam açıklama ise "İçerir" tam kelime arar; "AVANS" ifadesi "AVANSAS" içinde tutmaz.</span>
+            </div>
+            <div class="sk-alan">
+                <label>Eşleşme türü</label>
+                <RadzenDropDown TValue="EslesmeTuru" @bind-Value="_form.EslesmeTuru" Data="@Turler"
+                                TextProperty="Ad" ValueProperty="Deger" Style="width:100%" />
+                <span class="sk-ipucu">Regex seçilirse desen kaydedilmeden önce derlenir; bozuksa kaydedilmez.</span>
+            </div>
+            <div class="sk-alan">
+                <label>ORKA hesap kodu</label>
+                <HesapKoduKutusu @ref="_kodKutusu" Value="@_form.HesapKodu" Placeholder="770 03 005"
+                                 ValueChanged="@(v => _form.HesapKodu = v)" Secildi="@KodSecildi" />
+                <span class="sk-ipucu">Boşluklu yazın. Hesap planında olmayan kod kaydedilmez.</span>
+            </div>
+            <div class="sk-alan">
+                <label>Hesap adı</label>
+                <RadzenTextBox @bind-Value="_form.HesapAdi" Placeholder="Banka Komisyonu" />
+                <span class="sk-ipucu">Boş bırakılırsa hesap planındaki addan doldurulur.</span>
+            </div>
+            <div class="sk-alan">
+                <label>Yön</label>
+                <RadzenDropDown TValue="int" @bind-Value="_yonSecimi" Data="@Yonler"
+                                TextProperty="Ad" ValueProperty="Deger" Style="width:100%" />
+                <span class="sk-ipucu">Farketmez ise kural iki yönde de uygulanır.</span>
+            </div>
+            <div class="sk-alan">
+                <label>Sıra</label>
+                <RadzenNumeric TValue="int" @bind-Value="_form.Sira" Min="0" />
+                <span class="sk-ipucu">Küçük sıra önce denenir. Dar ifadeyi genel ifadeden önce koyun.</span>
+            </div>
+            <div class="sk-alan">
+                <label>Unvan çıkarılsın mı</label>
+                <div class="sk-onay">
+                    <RadzenCheckBox TValue="bool" @bind-Value="_form.UnvanCikarilsin" Name="skUnvan" />
+                    <label for="skUnvan">Çıkarılan unvan bir cari sayılsın</label>
+                </div>
+                <span class="sk-ipucu">
+                    Personel avansı gibi satırlarda <b>kapatın</b>: açıklamadaki isim cari değil, ödeme
+                    yapılan kişidir; açık kalırsa satır ilgisiz bir cariye öğrenilir.
+                </span>
+            </div>
+            <div class="sk-alan">
+                <label>Alt hesap gerekli mi</label>
+                <div class="sk-onay">
+                    <RadzenCheckBox TValue="bool" @bind-Value="_form.AltHesapGerekli" Name="skAlt" />
+                    <label for="skAlt">Kural yalnız ana grubu belirliyor</label>
+                </div>
+                <span class="sk-ipucu">Muavin bu grubun içinde aranır; bulunamazsa satır onaya düşer.</span>
+            </div>
+            <div class="sk-alan">
+                <label>Durum</label>
+                <div class="sk-onay">
+                    <RadzenCheckBox TValue="bool" @bind-Value="_form.Aktif" Name="skAktif" />
+                    <label for="skAktif">Aktif</label>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:6px; margin-top:12px">
+            <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                          Disabled="@_kaydediyor" Click="@KaydetAsync" />
+            <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                          Click="@FormKapat" />
+        </div>
+    </div>
+}
+
+@code {
+    private List<SabitKuralDto> _kayitlar = new();
+    private SabitKuralYazDto? _form;
+    private int? _duzenlenenId;
+    private bool _kaydediyor;
+
+    private HesapKoduKutusu? _kodKutusu;
+
+    /// <summary>Ayrıştırıcı listesi; başında boş seçenek ("Tüm bankalar") durur.</summary>
+    private List<ParserSecenekDto> _parserler = new();
+    private string _parserSecimi = string.Empty;
+    /// <summary>
+    /// Banka kapsülünün ayrıştırıcısı. <c>null</c> = süzme yok (tüm kayıtlar).
+    /// Doluysa liste bu bankanın kayıtlarıyla <b>tüm bankalar</b> kayıtlarını gösterir;
+    /// boş metin, ayrıştırıcısı seçilmemiş bir banka demektir — yalnız genel kayıtlar görünür.
+    /// </summary>
+    [Parameter] public string? BankaParserTipi { get; set; }
+
+    /// <summary>Ekrandaki metinlerde geçen banka adı; yalnız sunum içindir.</summary>
+    [Parameter] public string? BankaAdi { get; set; }
+
+    /// <summary>Kapsam değişince (banka sekmesi) liste yeniden süzülür ve açık form kapanır.</summary>
+    private string? _yuklenenKapsam;
+    private bool _yuklendi;
+
+    /// <summary>
+    /// Kapsam içindeki kayıtlar: bankaya özel olanlar + tüm bankalarda geçerli olanlar.
+    /// Süzme istemcide yapılır; liste kurulum verisi, birkaç düzine satır.
+    /// </summary>
+    private List<SabitKuralDto> Gorunen => BankaParserTipi is null
+        ? _kayitlar
+        : _kayitlar.Where(k => k.ParserTipi.Length == 0 || k.ParserTipi == BankaParserTipi).ToList();
+
+    /// <summary>
+    /// Seçilebilir ayrıştırıcılar. Kapsül içindeyken yalnız o bankanınki sunulur:
+    /// buradan başka bir bankaya kayıt yazmak, kaydın kapsülde görünmemesi demekti.
+    /// </summary>
+    private List<ParserSecenek> ParserSecenekleri
+    {
+        get
+        {
+            var liste = new List<ParserSecenek> { new(string.Empty, "Tüm bankalar") };
+            liste.AddRange(_parserler
+                .Where(p => BankaParserTipi is null || p.Tip == BankaParserTipi)
+                .Select(p => new ParserSecenek(p.Tip, p.Ad)));
+            return liste;
+        }
+    }
+
+
+    /// <summary>
+    /// Yön nullable olduğu için dropdown'a doğrudan bağlanmaz: 0 = farketmez.
+    /// Enum'un sayısal değerleri sözleşmenin parçası (Giren = 1, Çıkan = 2).
+    /// </summary>
+    private int _yonSecimi;
+
+    private record ParserSecenek(string Tip, string Ad);
+    private record KapsamSecenek(KuralKapsami Deger, string Ad);
+    private record TurSecenek(EslesmeTuru Deger, string Ad);
+    private record YonSecenek(int Deger, string Ad);
+
+    private static readonly KapsamSecenek[] Kapsamlar =
+    {
+        new(KuralKapsami.IslemTipi, "İşlem tipi"),
+        new(KuralKapsami.Aciklama, "Açıklama")
+    };
+
+    private static readonly TurSecenek[] Turler =
+    {
+        new(EslesmeTuru.Tam, "Tam"),
+        new(EslesmeTuru.Icerir, "İçerir"),
+        new(EslesmeTuru.Regex, "Regex")
+    };
+
+    private static readonly YonSecenek[] Yonler =
+    {
+        new(0, "Farketmez"),
+        new((int)Yon.Giren, "Giren"),
+        new((int)Yon.Cikan, "Çıkan")
+    };
+
+    protected override async Task OnInitializedAsync() => _parserler = await Api.GetParserlerAsync();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_yuklendi && _yuklenenKapsam == BankaParserTipi) return;
+
+        _yuklenenKapsam = BankaParserTipi;
+        _yuklendi = true;
+        FormKapat();
+
+        await YenileAsync();
+    }
+
+    /// <summary>Firma değişince üst sayfa çağırır. Tablo firma bağımsız; ekran bütün olarak yenilenir.</summary>
+    public async Task YenileAsync()
+    {
+        _kayitlar = await Api.SabitKurallarAsync();
+        StateHasChanged();
+    }
+
+    private void FormAc(SabitKuralDto? kayit)
+    {
+        _duzenlenenId = kayit?.Id;
+        _parserSecimi = kayit?.ParserTipi ?? VarsayilanParser();
+        _yonSecimi = kayit?.Yon is Yon y ? (int)y : 0;
+
+        _form = kayit is null
+            ? new SabitKuralYazDto { Sira = SonrakiSira() }
+            : new SabitKuralYazDto
+            {
+                ParserTipi = kayit.ParserTipi,
+                IslemTipiDeseni = kayit.IslemTipiDeseni,
+                Kapsam = kayit.Kapsam,
+                EslesmeTuru = kayit.EslesmeTuru,
+                Yon = kayit.Yon,
+                HesapKodu = kayit.HesapKodu,
+                HesapAdi = kayit.HesapAdi,
+                UnvanCikarilsin = kayit.UnvanCikarilsin,
+                AltHesapGerekli = kayit.AltHesapGerekli,
+                Sira = kayit.Sira,
+                Aktif = kayit.Aktif
+            };
+    }
+
+    /// <summary>Yeni kural listenin sonuna gider; araya girmek isteyen sırayı elle düşürür.</summary>
+    private int SonrakiSira() => _kayitlar.Count == 0 ? 10 : _kayitlar.Max(k => k.Sira) + 10;
+
+    /// <summary>Kapsül içinde yeni kaydın ayrıştırıcısı bankaya sabitlenir.</summary>
+    private string VarsayilanParser() => BankaParserTipi ?? string.Empty;
+
+    private void FormKapat()
+    {
+        _form = null;
+        _duzenlenenId = null;
+        _kodKutusu?.Kapat();
+    }
+
+    private void KodSecildi(HesapPlaniKaydiDto oneri)
+    {
+        if (_form is null) return;
+
+        // Ad yalnız boşsa doldurulur: kullanıcı bilerek başka bir ad yazmış olabilir.
+        if (string.IsNullOrWhiteSpace(_form.HesapAdi)) _form.HesapAdi = oneri.Ad;
+    }
+
+    private async Task KaydetAsync()
+    {
+        if (_form is null) return;
+
+        _form.ParserTipi = _parserSecimi;
+        _form.Yon = _yonSecimi == 0 ? null : (Yon)_yonSecimi;
+
+        _kaydediyor = true;
+        var (_, hata) = _duzenlenenId is int id
+            ? await Api.SabitKuralGuncelleAsync(id, _form)
+            : await Api.SabitKuralEkleAsync(_form);
+        _kaydediyor = false;
+
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Error, "Kaydedilemedi", hata, 6000);
+            return;
+        }
+
+        Notif.Notify(NotificationSeverity.Success, "Kaydedildi", null, 3000);
+        FormKapat();
+        await YenileAsync();
+    }
+
+    private async Task SilAsync(SabitKuralDto kayit)
+    {
+        var hata = await Api.SabitKuralSilAsync(kayit.Id);
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Silinemedi", hata, 6000);
+            return;
+        }
+
+        if (_duzenlenenId == kayit.Id) FormKapat();
+
+        Notif.Notify(NotificationSeverity.Success, "Silindi", kayit.IslemTipiDeseni, 3000);
+        await YenileAsync();
+    }
+}

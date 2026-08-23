@@ -6,6 +6,7 @@
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Domain.Models.User
 @using WebApp.Manager
+@using WebApp.Pages.BankaEkstre.Bolumler
 @using WebApp.Shared.Dto.BankaEkstre
 
 @implements IDisposable
@@ -16,15 +17,23 @@
 @inject NavigationManager Nav
 
 @*
-    Banka İşleme > İşleme — günlük ana ekran.
+    Banka İşleme — banka kapsülü.
 
-    Üstte dönem seçici, altında tanımlı banka hesaplarından türeyen banka sekmeleri
-    (sekme başlığında o bankanın onay bekleyen satır sayısı rozeti), aktif sekmede
-    her hesap için bir kart: ekstre yüklüyse sayaçlar ve onay ekranı düğmesi,
-    yüklü değilse sürükle-bırak alanı.
+    Üstte tanımlı hesaplardan türeyen banka sekmeleri (rozet: o bankanın onay bekleyen
+    satır sayısı). Seçili bankanın içinde iki alt sekme:
 
-    Hesap planı yükleme burada YOK: yılda birkaç kez değişen bir şey günlük ekranda
-    durmamalı. Plan hiç yoksa kısa bir uyarı ve Tanımlar'a bağlantı çıkar.
+      İşleme            — o bankanın hesap kartları, ekstre yükleme, onay ekranına giriş
+      Bu bankanın kuralları — ayrıştırıcı ayarları, unvan desenleri, açıklama şablonları,
+                          sabit kurallar, o bankanın hesapları
+
+    Kapsülün dışında kalan her şey (hesap planı, öğrenilen eşleşmeler, kişi yönlendirmeleri,
+    vergi kodları, hesap sahibi unvanları) bankadan bağımsızdır ve Firma Tanımları
+    ekranındadır. Ayrım şu soruya göre: kayıt bankanın YAZIM KALIBINA mı bağlı, yoksa
+    FİRMANIN muhasebesine mi?
+
+    Sekmeler ekstresi işlenmeyen bankaları da gösterir (vadeli, süpürme, karşı hesap
+    defteri): kuralları ve hesapları ancak kendi kapsülünden yönetilebilir. O sekmelerde
+    İşleme boş kalır, sekme başlığı soluk yazılır.
 *@
 
 <style>
@@ -33,13 +42,23 @@
     .is-alan { display: flex; flex-direction: column; gap: 3px; }
     .is-alan label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
 
-    .is-sekmeler { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid #e2e8f0; margin-bottom: 14px; }
+    .is-sekmeler { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid #e2e8f0; margin-bottom: 14px; align-items: flex-end; }
     .is-sekme { border: 1px solid transparent; border-bottom: none; border-radius: 6px 6px 0 0; padding: 7px 14px;
                 cursor: pointer; font-size: 13px; color: #4a5568; background: transparent; display: flex; gap: 7px; align-items: center; }
     .is-sekme:hover { background: #f8fbff; }
     .is-sekme.aktif { background: #fff; border-color: #e2e8f0; color: #2b6cb0; font-weight: 600; margin-bottom: -1px; }
+    .is-sekme.defter { color: #a0aec0; }
+    .is-sekme.defter.aktif { color: #4a5568; }
+    .is-sekme-ekle { margin-left: auto; align-self: center; }
     .is-rozet { font-size: 10px; border-radius: 10px; padding: 1px 7px; background: #fffaf0; color: #975a16; font-variant-numeric: tabular-nums; }
     .is-rozet.tamam { background: #f0fff4; color: #276749; }
+
+    /* Alt sekmeler: banka kapsülünün içi. Üst şeritten ayrışsın diye hap biçiminde. */
+    .is-alt { display: flex; gap: 6px; margin-bottom: 14px; }
+    .is-alt-sekme { border: 1px solid #e2e8f0; border-radius: 999px; padding: 5px 14px; cursor: pointer;
+                    font-size: 12px; color: #4a5568; background: #fff; }
+    .is-alt-sekme:hover { background: #f8fbff; }
+    .is-alt-sekme.aktif { background: #2b6cb0; border-color: #2b6cb0; color: #fff; font-weight: 600; }
 
     .is-kartlar { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
     .is-kart { border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 14px; }
@@ -64,27 +83,31 @@
                 border: 1px dashed #cbd5e0; border-radius: 6px; }
     .is-aksiyon { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
     .is-bos { padding: 30px; text-align: center; color: #a0aec0; }
+    .is-kart-cerceve { border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; padding: 16px; }
 </style>
 
 <div class="is-ust">
     <div>
         <h4 style="margin:0">Banka İşleme</h4>
         <div style="font-size:12px; color:#718096">
-            Kurulum için <a href="/banka-isleme/tanimlar">Tanımlar</a>.
+            Bankadan bağımsız tanımlar için <a href="/banka-isleme/firma-tanimlari">Firma Tanımları</a>.
         </div>
     </div>
 
-    <div class="is-donem">
-        <div class="is-alan">
-            <label>Dönem</label>
-            <RadzenDropDown TValue="int" @bind-Value="_yil" Data="@_yillar" Style="width:100px"
-                            Change="@(_ => StateHasChanged())" />
+    @if (_altSekme == AltSekme.Isleme)
+    {
+        <div class="is-donem">
+            <div class="is-alan">
+                <label>Dönem</label>
+                <RadzenDropDown TValue="int" @bind-Value="_yil" Data="@_yillar" Style="width:100px"
+                                Change="@(_ => StateHasChanged())" />
+            </div>
+            <div class="is-alan">
+                <RadzenDropDown TValue="int" @bind-Value="_ay" Data="@_aylar" TextProperty="Ad" ValueProperty="No"
+                                Style="width:150px" Change="@(_ => StateHasChanged())" />
+            </div>
         </div>
-        <div class="is-alan">
-            <RadzenDropDown TValue="int" @bind-Value="_ay" Data="@_aylar" TextProperty="Ad" ValueProperty="No"
-                            Style="width:150px" Change="@(_ => StateHasChanged())" />
-        </div>
-    </div>
+    }
 </div>
 
 @if (_yukleniyor)
@@ -93,40 +116,30 @@
 }
 else if (_hesaplar.Count == 0)
 {
-    <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false">
-        Henüz banka hesabı tanımlanmadı. <a href="/banka-isleme/tanimlar">Tanımlar</a> ekranından hesap ekleyin.
+    @*
+        Hiç hesap yokken banka sekmesi de yok, dolayısıyla kapsül de yok. İlk hesap
+        buradan girilir; kaydedilince sekmeler oluşur ve ekran normal akışına döner.
+    *@
+    <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false" Style="margin-bottom:14px">
+        Henüz banka hesabı tanımlanmadı. İlk hesabı ekleyin; her banka kendi sekmesinde
+        kuralları ve hesaplarıyla birlikte görünecek.
     </RadzenAlert>
-}
-else if (YuklenebilirHesaplar.Count == 0)
-{
-    <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false">
-        Tanımlı hesapların hiçbirinde ayrıştırıcı seçili değil; hiçbirine ekstre yüklenemez.
-        Ekstresi işlenecek hesabı <a href="/banka-isleme/tanimlar">Tanımlar</a> ekranından açıp
-        ayrıştırıcı seçin. Ayrıştırıcısız hesaplar karşı hesap olarak kullanılmaya devam eder.
-    </RadzenAlert>
+
+    <div class="is-kart-cerceve">
+        <BankaHesaplariBolumu Degisti="@YukleAsync" />
+    </div>
 }
 else
 {
-    @if (_planSayisi == 0)
-    {
-        <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" AllowClose="false" Style="margin-bottom:12px">
-            Hesap planı içe aktarılmadı; cari eşleştirmesi çalışmaz.
-            <a href="/banka-isleme/tanimlar">Tanımlar</a> ekranından yükleyin.
-        </RadzenAlert>
-    }
-    else if (_planGunFarki is int gun && gun > EskiSayilanGun)
-    {
-        <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false" Style="margin-bottom:12px">
-            Hesap planı @gun gündür güncellenmedi. Yeni cariler eksik olabilir —
-            <a href="/banka-isleme/tanimlar">Tanımlar</a>'dan güncelleyin.
-        </RadzenAlert>
-    }
-
     <div class="is-sekmeler">
         @foreach (var banka in Bankalar)
         {
             var bekleyen = BankaBekleyen(banka);
-            <div class="is-sekme @(banka == _aktifBanka ? "aktif" : "")" @onclick="@(() => _aktifBanka = banka)">
+            var islenen = IslenenBankaMi(banka);
+
+            <div class="is-sekme @(banka == _aktifBanka ? "aktif" : "") @(islenen ? "" : "defter")"
+                 title="@(islenen ? null : "Ekstresi işlenmiyor; kayıt defterinde duruyor ve karşı hesap olarak bulunuyor.")"
+                 @onclick="@(() => BankaSec(banka))">
                 <span>@banka</span>
                 @if (bekleyen > 0)
                 {
@@ -134,105 +147,150 @@ else
                 }
             </div>
         }
+
+        <div class="is-sekme-ekle">
+            <RadzenButton Text="Banka ekle" Icon="add" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                          Click="@YeniBanka" />
+        </div>
     </div>
 
-    <div class="is-kartlar">
-        @foreach (var hesap in AktifHesaplar)
+    <div class="is-alt">
+        <div class="is-alt-sekme @(_altSekme == AltSekme.Isleme ? "aktif" : "")"
+             @onclick="@(() => _altSekme = AltSekme.Isleme)">İşleme</div>
+        <div class="is-alt-sekme @(_altSekme == AltSekme.Kurallar ? "aktif" : "")"
+             @onclick="@(() => _altSekme = AltSekme.Kurallar)">Bu bankanın kuralları</div>
+    </div>
+
+    @if (_altSekme == AltSekme.Isleme)
+    {
+        @if (_planSayisi == 0)
         {
-            var yukleme = SonYukleme(hesap.Id);
+            <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" AllowClose="false" Style="margin-bottom:12px">
+                Hesap planı içe aktarılmadı; cari eşleştirmesi çalışmaz.
+                <a href="/banka-isleme/firma-tanimlari">Firma Tanımları</a> ekranından yükleyin.
+            </RadzenAlert>
+        }
+        else if (_planGunFarki is int gun && gun > EskiSayilanGun)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false" Style="margin-bottom:12px">
+                Hesap planı @gun gündür güncellenmedi. Yeni cariler eksik olabilir —
+                <a href="/banka-isleme/firma-tanimlari">Firma Tanımları</a>'ndan güncelleyin.
+            </RadzenAlert>
+        }
 
-            <div class="is-kart @(yukleme is null ? "bos" : "") @(_suruklenenHesapId == hesap.Id ? "suruklenen" : "")"
-                 @ondragenter="@(() => _suruklenenHesapId = hesap.Id)"
-                 @ondragleave="@(() => _suruklenenHesapId = null)"
-                 @ondragover:preventDefault="true">
-
-                <div class="is-kart-ust">
-                    <div>
-                        <div class="is-kart-ad">@hesap.BankaAdi</div>
-                        <div class="is-kart-kod">
-                            @BankaEkstreEtiket.HesapTipi(hesap.HesapTipi) @hesap.ParaBirimi · @hesap.OrkaHesapKodu
-                        </div>
-                    </div>
-
-                    @if (yukleme is not null)
-                    {
-                        <span class="is-rozet @(yukleme.Sayaclar.Eksik == 0 ? "tamam" : "")">
-                            @(yukleme.Sayaclar.Eksik == 0 ? "Tamamlandı" : $"{yukleme.Sayaclar.Eksik} bekliyor")
-                        </span>
-                    }
+        @if (AktifHesaplar.Count == 0)
+        {
+            <div class="is-bos">
+                @_aktifBanka için ekstre yüklenebilen hesap yok.
+                <div style="margin-top:6px; font-size:12px">
+                    Ekstresi işlenecekse <b>Bu bankanın kuralları</b> sekmesinden hesabın
+                    ayrıştırıcısını seçin.
                 </div>
-
-                @if (yukleme is null)
+            </div>
+        }
+        else
+        {
+            <div class="is-kartlar">
+                @foreach (var hesap in AktifHesaplar)
                 {
-                    <div class="is-birak-alan">
-                        <div class="is-birak">
-                            Bu dönem için ekstre yüklenmedi.<br />
-                            Dosyayı sürükleyip bırakın veya tıklayıp seçin.
-                        </div>
-                        <InputFile OnChange="@(args => YukleAsync(hesap, args))" accept=".xlsx,.xls" disabled="@_isleniyor" />
-                    </div>
-                }
-                else
-                {
-                    <div class="is-dosya" title="@yukleme.DosyaAdi">@yukleme.DosyaAdi · @yukleme.SatirSayisi satır</div>
+                    var yukleme = SonYukleme(hesap.Id);
 
-                    <div class="is-sayaclar">
-                        <div class="is-sayac iyi">
-                            <div class="deger">@(yukleme.Sayaclar.Otomatik + yukleme.Sayaclar.Onaylanan)</div>
-                            <div class="ad">Çözüldü</div>
-                        </div>
-                        <div class="is-sayac dikkat">
-                            <div class="deger">@yukleme.Sayaclar.OnayBekleyen</div>
-                            <div class="ad">Onay bekleyen</div>
-                        </div>
-                        <div class="is-sayac kotu">
-                            <div class="deger">@yukleme.Sayaclar.Cozulemeyen</div>
-                            <div class="ad">Çözülemeyen</div>
-                        </div>
-                    </div>
+                    <div class="is-kart @(yukleme is null ? "bos" : "") @(_suruklenenHesapId == hesap.Id ? "suruklenen" : "")"
+                         @ondragenter="@(() => _suruklenenHesapId = hesap.Id)"
+                         @ondragleave="@(() => _suruklenenHesapId = null)"
+                         @ondragover:preventDefault="true">
 
-                    @if (!string.IsNullOrWhiteSpace(yukleme.Uyarilar))
-                    {
-                        <div style="font-size:11px; color:#975a16; margin-top:8px">@yukleme.Uyarilar</div>
-                    }
+                        <div class="is-kart-ust">
+                            <div>
+                                <div class="is-kart-ad">@hesap.BankaAdi</div>
+                                <div class="is-kart-kod">
+                                    @BankaEkstreEtiket.HesapTipi(hesap.HesapTipi) @hesap.ParaBirimi · @hesap.OrkaHesapKodu
+                                </div>
+                            </div>
 
-                    <div class="is-aksiyon">
-                        <RadzenButton Text="Onay ekranı" Icon="fact_check" ButtonStyle="ButtonStyle.Primary"
-                                      Size="ButtonSize.ExtraSmall"
-                                      Click="@(() => Nav.NavigateTo($"/banka-isleme/onay/{yukleme.Id}"))" />
+                            @if (yukleme is not null)
+                            {
+                                <span class="is-rozet @(yukleme.Sayaclar.Eksik == 0 ? "tamam" : "")">
+                                    @(yukleme.Sayaclar.Eksik == 0 ? "Tamamlandı" : $"{yukleme.Sayaclar.Eksik} bekliyor")
+                                </span>
+                            }
+                        </div>
 
-                        @if (yukleme.Sayaclar.Eksik == 0)
+                        @if (yukleme is null)
                         {
-                            <RadzenButton Text="Dışa aktar" Icon="download" ButtonStyle="ButtonStyle.Secondary"
-                                          Size="ButtonSize.ExtraSmall"
-                                          Click="@(() => Nav.NavigateTo($"/banka-isleme/onay/{yukleme.Id}"))" />
+                            <div class="is-birak-alan">
+                                <div class="is-birak">
+                                    Bu dönem için ekstre yüklenmedi.<br />
+                                    Dosyayı sürükleyip bırakın veya tıklayıp seçin.
+                                </div>
+                                <InputFile OnChange="@(args => EkstreYukleAsync(hesap, args))" accept=".xlsx,.xls" disabled="@_isleniyor" />
+                            </div>
                         }
+                        else
+                        {
+                            <div class="is-dosya" title="@yukleme.DosyaAdi">@yukleme.DosyaAdi · @yukleme.SatirSayisi satır</div>
 
-                        <RadzenButton Icon="delete" title="Yüklemeyi sil" ButtonStyle="ButtonStyle.Light"
-                                      Size="ButtonSize.ExtraSmall" Click="@(() => SilAsync(yukleme))" />
+                            <div class="is-sayaclar">
+                                <div class="is-sayac iyi">
+                                    <div class="deger">@(yukleme.Sayaclar.Otomatik + yukleme.Sayaclar.Onaylanan)</div>
+                                    <div class="ad">Çözüldü</div>
+                                </div>
+                                <div class="is-sayac dikkat">
+                                    <div class="deger">@yukleme.Sayaclar.OnayBekleyen</div>
+                                    <div class="ad">Onay bekleyen</div>
+                                </div>
+                                <div class="is-sayac kotu">
+                                    <div class="deger">@yukleme.Sayaclar.Cozulemeyen</div>
+                                    <div class="ad">Çözülemeyen</div>
+                                </div>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(yukleme.Uyarilar))
+                            {
+                                <div style="font-size:11px; color:#975a16; margin-top:8px">@yukleme.Uyarilar</div>
+                            }
+
+                            <div class="is-aksiyon">
+                                <RadzenButton Text="Onay ekranı" Icon="fact_check" ButtonStyle="ButtonStyle.Primary"
+                                              Size="ButtonSize.ExtraSmall"
+                                              Click="@(() => Nav.NavigateTo($"/banka-isleme/onay/{yukleme.Id}"))" />
+
+                                @if (yukleme.Sayaclar.Eksik == 0)
+                                {
+                                    <RadzenButton Text="Dışa aktar" Icon="download" ButtonStyle="ButtonStyle.Secondary"
+                                                  Size="ButtonSize.ExtraSmall"
+                                                  Click="@(() => Nav.NavigateTo($"/banka-isleme/onay/{yukleme.Id}"))" />
+                                }
+
+                                <RadzenButton Icon="delete" title="Yüklemeyi sil" ButtonStyle="ButtonStyle.Light"
+                                              Size="ButtonSize.ExtraSmall" Click="@(() => SilAsync(yukleme))" />
+                            </div>
+                        }
                     </div>
                 }
             </div>
         }
-    </div>
 
-    @if (AktifHesaplar.Count == 0)
-    {
-        <div class="is-bos">Bu bankada ekstre yüklenebilen hesap yok.</div>
+        @if (GizliHesapSayisi > 0)
+        {
+            <div style="margin-top:10px; font-size:11px; color:#a0aec0">
+                @_aktifBanka altında @GizliHesapSayisi hesap ayrıştırıcısı olmadığı için kart göstermiyor
+                (vadeli, süpürme, blokaj…). Kayıt defterinde duruyor ve karşı hesap olarak bulunuyorlar.
+            </div>
+        }
     }
-
-    @if (GizliHesapSayisi > 0)
+    else
     {
-        <div style="margin-top:10px; font-size:11px; color:#a0aec0">
-            @GizliHesapSayisi hesap ayrıştırıcısı olmadığı için listelenmiyor (vadeli, süpürme,
-            blokaj…). Kayıt defterinde duruyor ve karşı hesap olarak bulunuyorlar.
-        </div>
+        <BankaKurallariBolumu @ref="_kurallar" BankaAdi="@(_aktifBanka ?? string.Empty)"
+                              Hesaplar="@AktifBankaHesaplari" Degisti="@YukleAsync" />
     }
 }
 
 @code {
     private const long EnFazlaBayt = 20 * 1024 * 1024;
     private const int EskiSayilanGun = 30;
+
+    private enum AltSekme { Isleme, Kurallar }
 
     private List<BankaHesabiDto> _hesaplar = new();
     private List<EkstreYuklemeDto> _yuklemeler = new();
@@ -241,7 +299,13 @@ else
     private int? _planGunFarki;
 
     private string? _aktifBanka;
+    private AltSekme _altSekme = AltSekme.Isleme;
     private int? _suruklenenHesapId;
+
+    private BankaKurallariBolumu? _kurallar;
+
+    /// <summary>"Banka ekle" tıklandı, kapsül çizilince hesap formu açılacak.</summary>
+    private bool _yeniBankaBekliyor;
 
     private bool _yukleniyor = true;
     private bool _isleniyor;
@@ -261,25 +325,44 @@ else
     private IEnumerable<object> _aylar = AyListesi.Select(a => new { a.No, a.Ad }).ToList();
 
     /// <summary>
-    /// Ekstre yüklenebilen hesaplar. Ayrıştırıcısı olmayan hesap (vadeli, süpürme, blokaj)
-    /// bu ekranda hiç görünmez: dosya kabul etmiyor, boş kartı sürükle-bırak alanıyla
-    /// göstermek kullanıcıyı çalışmayacak bir işleme davet ederdi. Kayıt defterindeki
-    /// yerini koruyor, karşı hesap olarak bulunmaya devam ediyor.
+    /// Sekmeler TÜM tanımlı hesaplardan türer — ayrıştırıcısı olmayan bankalar dahil.
+    /// Kapsül yapısında hesaplar ve kurallar bankanın kendi sekmesinde yönetiliyor;
+    /// ayrıştırıcısız banka gizlenseydi hesaplarına hiçbir yerden ulaşılamazdı.
+    ///
+    /// Sıra: ekstresi işlenen bankalar önce (günlük iş orada), kayıt defteri bankaları sonra.
     /// </summary>
-    private List<BankaHesabiDto> YuklenebilirHesaplar =>
-        _hesaplar.Where(h => !string.IsNullOrWhiteSpace(h.ParserTipi)).ToList();
-
-    /// <summary>Ayrıştırıcısı olmadığı için listelenmeyen hesap sayısı; ekranda dipnot olur.</summary>
-    private int GizliHesapSayisi => _hesaplar.Count - YuklenebilirHesaplar.Count;
-
-    /// <summary>Sekmeler tanımlı banka hesaplarından türer; sabit liste yok.</summary>
     private List<string> Bankalar =>
-        YuklenebilirHesaplar.Select(h => h.BankaAdi).Distinct(StringComparer.OrdinalIgnoreCase)
-                            .OrderBy(a => a, StringComparer.CurrentCulture).ToList();
+        _hesaplar.Select(h => h.BankaAdi)
+                 .Where(a => !string.IsNullOrWhiteSpace(a))
+                 .Distinct(StringComparer.OrdinalIgnoreCase)
+                 .OrderByDescending(IslenenBankaMi)
+                 .ThenBy(a => a, StringComparer.CurrentCulture)
+                 .ToList();
 
+    /// <summary>Bankanın en az bir aktif hesabına ekstre yüklenebiliyor mu?</summary>
+    private bool IslenenBankaMi(string banka)
+        => _hesaplar.Any(h => string.Equals(h.BankaAdi, banka, StringComparison.OrdinalIgnoreCase)
+                              && h.Aktif && !string.IsNullOrWhiteSpace(h.ParserTipi));
+
+    /// <summary>Aktif bankanın tüm hesapları; kapsül bunları kullanır.</summary>
+    private List<BankaHesabiDto> AktifBankaHesaplari =>
+        _hesaplar.Where(h => string.Equals(h.BankaAdi, _aktifBanka, StringComparison.OrdinalIgnoreCase))
+                 .OrderBy(h => h.HesapTipi).ThenBy(h => h.ParaBirimi).ToList();
+
+    /// <summary>
+    /// İşleme sekmesinde kart gösterilen hesaplar. İki eleme var:
+    /// <list type="bullet">
+    /// <item><b>Ayrıştırıcısı olmayan</b> hesap dosya kabul etmiyor; boş kartı sürükle-bırak
+    /// alanıyla göstermek kullanıcıyı çalışmayacak bir işleme davet ederdi.</item>
+    /// <item><b>Pasif</b> hesaba ekstre yüklenmez. Sekme şeridi pasifleri de kapsıyor
+    /// (kapsülünden yönetilebilsinler diye), kart listesi kapsamıyor.</item>
+    /// </list>
+    /// </summary>
     private List<BankaHesabiDto> AktifHesaplar =>
-        YuklenebilirHesaplar.Where(h => string.Equals(h.BankaAdi, _aktifBanka, StringComparison.OrdinalIgnoreCase))
-                            .OrderBy(h => h.HesapTipi).ThenBy(h => h.ParaBirimi).ToList();
+        AktifBankaHesaplari.Where(h => h.Aktif && !string.IsNullOrWhiteSpace(h.ParserTipi)).ToList();
+
+    /// <summary>Aktif bankada kart göstermeyen hesap sayısı (ayrıştırıcısız veya pasif).</summary>
+    private int GizliHesapSayisi => AktifBankaHesaplari.Count - AktifHesaplar.Count;
 
     protected override void OnInitialized() => SessionManager.FirmChanged += OnFirmaDegisti;
 
@@ -291,6 +374,11 @@ else
         {
             _aktifBanka = null;
             await YukleAsync();
+
+            // Kapsül alt bölümleri kendi listelerini tazelesin (kural tabloları firma
+            // bağımsız olsa da hesaplar ve sayaçlar değişti).
+            if (_kurallar is not null) await _kurallar.YenileAsync();
+
             StateHasChanged();
         });
 
@@ -298,7 +386,8 @@ else
     {
         _yukleniyor = true;
 
-        _hesaplar = await Api.GetHesaplarAsync();
+        // Pasif hesaplar da gelir: kapsül onların da yönetildiği yer, sekmesi kaybolmamalı.
+        _hesaplar = await Api.GetHesaplarAsync(pasifDahil: true);
         _yuklemeler = await Api.GetYuklemelerAsync();
 
         var ozet = await Api.HesapPlaniOzetAsync();
@@ -311,6 +400,35 @@ else
             _aktifBanka = Bankalar.FirstOrDefault();
 
         _yukleniyor = false;
+        StateHasChanged();
+    }
+
+    /// <summary>Banka değişince alt sekme İşleme'ye döner: günlük iş varsayılan giriştir.</summary>
+    private void BankaSec(string banka)
+    {
+        _aktifBanka = banka;
+        _altSekme = AltSekme.Isleme;
+    }
+
+    /// <summary>
+    /// Yeni banka: kurallar sekmesine geçilir ve oradaki hesap formu banka adı <b>boş</b>
+    /// açılır. Kaydedilince sekme şeridi yeni bankayla birlikte yeniden kurulur.
+    ///
+    /// Form doğrudan burada açılamaz: kapsül o an henüz çizilmemişse <c>@@ref</c> null olur.
+    /// Bayrak bırakılır, ilk render'dan sonra açılır.
+    /// </summary>
+    private void YeniBanka()
+    {
+        _altSekme = AltSekme.Kurallar;
+        _yeniBankaBekliyor = true;
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!_yeniBankaBekliyor || _kurallar is null) return;
+
+        _yeniBankaBekliyor = false;
+        _kurallar.YeniHesapAc(null);
     }
 
     /// <summary>Seçili döneme düşen son yükleme; dönem alanı boşsa yükleme tarihine bakılır.</summary>
@@ -327,12 +445,13 @@ else
     }
 
     private int BankaBekleyen(string banka)
-        => YuklenebilirHesaplar.Where(h => string.Equals(h.BankaAdi, banka, StringComparison.OrdinalIgnoreCase))
+        => _hesaplar.Where(h => string.Equals(h.BankaAdi, banka, StringComparison.OrdinalIgnoreCase)
+                                && h.Aktif && !string.IsNullOrWhiteSpace(h.ParserTipi))
                     .Select(h => SonYukleme(h.Id))
                     .Where(y => y is not null)
                     .Sum(y => y!.Sayaclar.Eksik);
 
-    private async Task YukleAsync(BankaHesabiDto hesap, InputFileChangeEventArgs args)
+    private async Task EkstreYukleAsync(BankaHesabiDto hesap, InputFileChangeEventArgs args)
     {
         var dosya = args.File;
         _suruklenenHesapId = null;

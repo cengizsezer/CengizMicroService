@@ -12,11 +12,17 @@ namespace WebApp.Application.Services.Interfaces
         /// <summary>Hesap adından eşleştirme anahtarı önerisi (yeni hesap formunu doldurur).</summary>
         Task<string?> AnahtarOnerisiAsync(string? hesapAdi, string? bankaAdi, CancellationToken ct = default);
 
+        /// <summary>Firmanın hesap sahibi kimliği (unvan + diğer yazımlar).</summary>
+        Task<HesapSahibiKimlikDto> HesapSahibiAsync(CancellationToken ct = default);
+
+        /// <summary>Kimliği firmanın tüm banka hesaplarına yazar.</summary>
+        Task<(HesapSahibiKimlikDto? Veri, string? Hata)> HesapSahibiKaydetAsync(HesapSahibiKimlikYazDto dto, CancellationToken ct = default);
+
         /// <summary>
         /// Hesap sahibinin henüz eklenmemiş yazımları; yüklenmiş ekstrelerden çıkarılır.
         /// "ADAY BAĞIMSIZ DENETİM VE SMMM A.Ş." gibi yazımlar ancak böyle bulunur.
         /// </summary>
-        Task<List<HesapSahibiOnerisiDto>> HesapSahibiOnerileriAsync(int hesapId, CancellationToken ct = default);
+        Task<List<HesapSahibiOnerisiDto>> HesapSahibiOnerileriAsync(CancellationToken ct = default);
 
         Task<(BankaHesabiDto? Veri, string? Hata)> CreateHesapAsync(BankaHesabiYazDto dto, CancellationToken ct = default);
         Task<(BankaHesabiDto? Veri, string? Hata)> UpdateHesapAsync(int id, BankaHesabiYazDto dto, CancellationToken ct = default);
@@ -69,6 +75,32 @@ namespace WebApp.Application.Services.Interfaces
         Task<(VergiKoduEslemesiDto? Veri, string? Hata)> VergiKoduEkleAsync(VergiKoduEslemesiYazDto dto, CancellationToken ct = default);
         Task<(VergiKoduEslemesiDto? Veri, string? Hata)> VergiKoduGuncelleAsync(int id, VergiKoduEslemesiYazDto dto, CancellationToken ct = default);
         Task<string?> VergiKoduSilAsync(int id, CancellationToken ct = default);
+
+        // Sabit kurallar (işlem tipi / açıklama → hesap kodu)
+        Task<List<SabitKuralDto>> SabitKurallarAsync(CancellationToken ct = default);
+        Task<(SabitKuralDto? Veri, string? Hata)> SabitKuralEkleAsync(SabitKuralYazDto dto, CancellationToken ct = default);
+        Task<(SabitKuralDto? Veri, string? Hata)> SabitKuralGuncelleAsync(int id, SabitKuralYazDto dto, CancellationToken ct = default);
+        Task<string?> SabitKuralSilAsync(int id, CancellationToken ct = default);
+
+        // Açıklama şablonları
+        Task<List<AciklamaSablonuDto>> AciklamaSablonlariAsync(CancellationToken ct = default);
+
+        /// <summary>Şablonda kullanılabilecek yer tutucular; ekranda liste olarak gösterilir.</summary>
+        Task<List<YerTutucuDto>> YerTutucularAsync(CancellationToken ct = default);
+
+        Task<(AciklamaSablonuDto? Veri, string? Hata)> AciklamaSablonuEkleAsync(AciklamaSablonuYazDto dto, CancellationToken ct = default);
+        Task<(AciklamaSablonuDto? Veri, string? Hata)> AciklamaSablonuGuncelleAsync(int id, AciklamaSablonuYazDto dto, CancellationToken ct = default);
+        Task<string?> AciklamaSablonuSilAsync(int id, CancellationToken ct = default);
+
+        // Unvan çıkarma desenleri
+        Task<List<UnvanDeseniDto>> UnvanDesenleriAsync(CancellationToken ct = default);
+
+        /// <summary>Deseni kaydetmeden dener: verilen metinde ne yakalıyor?</summary>
+        Task<DesenDenemeSonucDto?> UnvanDeseniDeneAsync(DesenDenemeIstegiDto istek, CancellationToken ct = default);
+
+        Task<(UnvanDeseniDto? Veri, string? Hata)> UnvanDeseniEkleAsync(UnvanDeseniYazDto dto, CancellationToken ct = default);
+        Task<(UnvanDeseniDto? Veri, string? Hata)> UnvanDeseniGuncelleAsync(int id, UnvanDeseniYazDto dto, CancellationToken ct = default);
+        Task<string?> UnvanDeseniSilAsync(int id, CancellationToken ct = default);
 
         // Kişi yönlendirmeleri
         Task<List<KisiYonlendirmeDto>> KisiYonlendirmeleriAsync(CancellationToken ct = default);

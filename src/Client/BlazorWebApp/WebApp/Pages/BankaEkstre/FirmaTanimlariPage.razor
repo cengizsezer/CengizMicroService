@@ -1,0 +1,92 @@
+@page "/banka-isleme/firma-tanimlari"
+@page "/banka-isleme/tanimlar"
+
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Domain.Models.User
+@using WebApp.Manager
+@using WebApp.Pages.BankaEkstre.Bolumler
+
+@implements IDisposable
+
+@inject IAppSessionManager SessionManager
+
+@*
+    Banka İşleme > Firma Tanımları — bankadan BAĞIMSIZ kurulum.
+
+    Buradaki beş bölümün ortak yanı: hiçbiri bir bankanın yazım kalıbına bağlı değil,
+    hepsi firmanın muhasebesine ait. Bankaya bağlı olanlar (ayrıştırıcı ayarları, unvan
+    desenleri, açıklama şablonları, sabit kurallar, banka hesapları) her bankanın kendi
+    kapsülünde: İşleme ekranı > banka sekmesi > "Bu bankanın kuralları".
+
+    Eski /banka-isleme/tanimlar adresi ikinci route olarak korundu; kayıtlı bağlantılar
+    ve tarayıcı yer imleri kırılmasın.
+
+    Nadiren açılır: hesap planı yılda birkaç kez değişir, kişi yönlendirmesi ayda bir eklenir.
+*@
+
+<style>
+    .ft-kart { border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; padding: 16px; margin-bottom: 16px; }
+    .ft-not { border: 1px solid #bee3f8; background: #ebf8ff; color: #2c5282; border-radius: 6px;
+              padding: 10px 14px; font-size: 13px; margin-bottom: 16px; }
+</style>
+
+<h4 style="margin:0 0 4px">Banka İşleme — Firma Tanımları</h4>
+<div style="font-size:12px; color:#718096; margin-bottom:14px">
+    Günlük çalışma için <a href="/banka-isleme">İşleme</a> ekranını kullanın.
+</div>
+
+<div class="ft-not">
+    <b>Bu tanımlar tüm bankalarda ortaktır.</b> Tek bir bankaya özel ayar aramıyorsanız
+    doğru yerdesiniz; ayrıştırıcı ayarları, unvan desenleri, açıklama şablonları, sabit
+    kurallar ve banka hesapları her bankanın kendi sekmesinde
+    (<a href="/banka-isleme">İşleme</a> → banka → <i>Bu bankanın kuralları</i>).
+</div>
+
+<div class="ft-kart">
+    <HesapPlaniBolumu @ref="_hesapPlani" />
+</div>
+
+<div class="ft-kart">
+    <OgrenilenEslesmelerBolumu @ref="_eslesmeler" />
+</div>
+
+<div class="ft-kart">
+    <KisiYonlendirmeleriBolumu @ref="_kisiYonlendirmeleri" />
+</div>
+
+<div class="ft-kart">
+    <VergiKodlariBolumu @ref="_vergiKodlari" />
+</div>
+
+<div class="ft-kart">
+    <HesapSahibiUnvanlariBolumu @ref="_hesapSahibi" />
+</div>
+
+@code {
+    private HesapPlaniBolumu? _hesapPlani;
+    private OgrenilenEslesmelerBolumu? _eslesmeler;
+    private KisiYonlendirmeleriBolumu? _kisiYonlendirmeleri;
+    private VergiKodlariBolumu? _vergiKodlari;
+    private HesapSahibiUnvanlariBolumu? _hesapSahibi;
+
+    protected override void OnInitialized() => SessionManager.FirmChanged += OnFirmaDegisti;
+
+    /// <summary>
+    /// Firma değişince tüm bölümler yenilenir. Hesap planı, öğrenilen eşleşmeler, kişi
+    /// yönlendirmeleri ve hesap sahibi kimliği firma bazlıdır; eski firmanın verisi
+    /// ekranda kalmamalı. Vergi kodları global olsa da ekran bütün olarak tazelenir.
+    /// </summary>
+    private async void OnFirmaDegisti(FirmaDto _)
+        => await InvokeAsync(async () =>
+        {
+            if (_hesapPlani is not null) await _hesapPlani.YenileAsync();
+            if (_eslesmeler is not null) await _eslesmeler.YenileAsync();
+            if (_kisiYonlendirmeleri is not null) await _kisiYonlendirmeleri.YenileAsync();
+            if (_vergiKodlari is not null) await _vergiKodlari.YenileAsync();
+            if (_hesapSahibi is not null) await _hesapSahibi.YenileAsync();
+            StateHasChanged();
+        });
+
+    public void Dispose() => SessionManager.FirmChanged -= OnFirmaDegisti;
+}

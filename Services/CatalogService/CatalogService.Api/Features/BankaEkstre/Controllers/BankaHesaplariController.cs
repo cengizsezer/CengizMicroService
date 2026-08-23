@@ -47,13 +47,27 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
             => Ok(new AnahtarOnerisiDto { EslestirmeAnahtarlari = _service.AnahtarOner(hesapAdi, bankaAdi) });
 
         /// <summary>
+        /// Firmanın hesap sahibi kimliği. Banka kapsülünün değil, Firma Tanımları ekranının
+        /// alanı: değer hesap satırlarında dursa da firma bazlıdır.
+        /// </summary>
+        [HttpGet("hesap-sahibi")]
+        public async Task<ActionResult<HesapSahibiKimlikDto>> HesapSahibi(CancellationToken ct)
+            => Ok(await _service.HesapSahibiGetAsync(ct));
+
+        /// <summary>Kimliği firmanın tüm hesaplarına yazar.</summary>
+        [HttpPut("hesap-sahibi")]
+        public async Task<ActionResult<HesapSahibiKimlikDto>> HesapSahibiKaydet([FromBody] HesapSahibiKimlikYazDto dto,
+                                                                               CancellationToken ct)
+            => Ok(await _service.HesapSahibiKaydetAsync(dto, ct));
+
+        /// <summary>
         /// Hesap sahibinin henüz eklenmemiş yazımları. Bankalar aynı firmayı çok farklı
         /// yazıyor; "ADAY BAĞIMSIZ DENETİM VE SMMM A.Ş." gibi yazımlar ancak yüklenmiş
         /// ekstreler taranarak bulunur. Kullanıcı tek tıkla takma adlara ekler.
         /// </summary>
-        [HttpGet("{id:int}/hesap-sahibi-onerileri")]
-        public async Task<ActionResult<List<HesapSahibiOnerisiDto>>> HesapSahibiOnerileri(int id, CancellationToken ct)
-            => Ok(await _service.HesapSahibiOnerileriAsync(id, ct));
+        [HttpGet("hesap-sahibi-onerileri")]
+        public async Task<ActionResult<List<HesapSahibiOnerisiDto>>> HesapSahibiOnerileri(CancellationToken ct)
+            => Ok(await _service.HesapSahibiOnerileriAsync(ct));
 
         [HttpGet("{id:int}")]
         public async Task<ActionResult<BankaHesabiDto>> GetById(int id, CancellationToken ct)

@@ -1,0 +1,107 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.BankaEkstre
+
+@inject IBankaEkstreApi Api
+
+@*
+    Hesap kodu kutusu: yazdıkça hesap planından öneri gösterir.
+
+    Ayrı bileşen çünkü kod dört ayrı formda giriliyor (sabit kural, vergi kodu, kişi
+    yönlendirmesi, açıklama şablonu tarafındaki hesap alanları) ve her birinde aynı iki
+    kural geçerli: öneri gösterilir, geçersiz kod sunucuda reddedilir. Kopyalansaydı
+    biri güncellenip diğerleri unutulurdu.
+*@
+
+<style>
+    .hk-sar { position: relative; }
+    .hk-oneriler { position: absolute; z-index: 30; top: 100%; left: 0; width: 340px; max-height: 220px; overflow-y: auto;
+                   background: #fff; border: 1px solid #cbd5e0; border-radius: 4px; box-shadow: 0 6px 18px rgba(0,0,0,.10); }
+    .hk-oneri { padding: 4px 9px; font-size: 12px; cursor: pointer; display: flex; gap: 8px; }
+    .hk-oneri:hover { background: #ebf8ff; }
+    .hk-oneri .k { font-family: ui-monospace, Consolas, monospace; flex: 0 0 100px; }
+    .hk-oneri .a { color: #4a5568; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hk-bos { padding: 6px 9px; font-size: 12px; color: #a0aec0; }
+</style>
+
+<div class="hk-sar">
+    <RadzenTextBox Value="@Value" Placeholder="@Placeholder" Style="width:100%"
+                   ValueChanged="@(async v => await DegistiAsync(v))" />
+
+    @if (_acik)
+    {
+        <div class="hk-oneriler">
+            @if (_oneriler.Count == 0)
+            {
+                <div class="hk-bos">Bu koda uyan hesap yok.</div>
+            }
+            @foreach (var oneri in _oneriler)
+            {
+                <div class="hk-oneri" @onclick="@(() => Sec(oneri))">
+                    <span class="k">@oneri.Kod</span>
+                    <span class="a">@oneri.Ad</span>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>Listeden bir hesap seçildi; form hesap adını da doldurabilsin.</summary>
+    [Parameter] public EventCallback<HesapPlaniKaydiDto> Secildi { get; set; }
+
+    [Parameter] public string Placeholder { get; set; } = "770 03 005";
+
+    private List<HesapPlaniKaydiDto> _oneriler = new();
+    private bool _acik;
+
+    /// <summary>Yazdıkça istek atılır; önceki istek iptal edilir ki geç dönen yanıt listeyi bozmasın.</summary>
+    private CancellationTokenSource? _iptal;
+
+    private async Task DegistiAsync(string? deger)
+    {
+        var yeni = deger ?? string.Empty;
+        Value = yeni;
+        await ValueChanged.InvokeAsync(yeni);
+
+        _iptal?.Cancel();
+        _iptal = new CancellationTokenSource();
+        var iptal = _iptal.Token;
+
+        // İki karakterin altında arama yapılmaz: "1" tüm 1xx hesapları getirirdi.
+        if (yeni.Trim().Length < 2)
+        {
+            _oneriler = new();
+            _acik = false;
+            return;
+        }
+
+        var sonuc = await Api.HesapPlaniAraAsync(yeni.Trim(), null, 12, iptal);
+        if (iptal.IsCancellationRequested) return;
+
+        _oneriler = sonuc;
+        _acik = true;
+    }
+
+    private async Task Sec(HesapPlaniKaydiDto oneri)
+    {
+        Value = oneri.Kod;
+        _acik = false;
+        _oneriler = new();
+
+        await ValueChanged.InvokeAsync(oneri.Kod);
+        await Secildi.InvokeAsync(oneri);
+    }
+
+    /// <summary>Form kapanınca/kaydedilince açık kalan listeyi kapatmak için.</summary>
+    public void Kapat()
+    {
+        _acik = false;
+        _oneriler = new();
+        StateHasChanged();
+    }
+}

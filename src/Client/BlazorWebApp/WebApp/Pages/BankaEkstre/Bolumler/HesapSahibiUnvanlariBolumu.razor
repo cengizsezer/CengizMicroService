@@ -1,0 +1,187 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.BankaEkstre
+
+@inject IBankaEkstreApi Api
+@inject NotificationService Notif
+
+@*
+    Firma Tanımları'nın "Hesap sahibi unvanları" bölümü.
+
+    Banka açıklamalarında firmanın KENDİ adı da geçiyor; bu alan doluyken o yakalama
+    atılır ve karşı taraf sanılıp benzer adlı bir cariye eşlenmez. Ölçülen dosyada
+    287 satırın 268'inde firmanın kendi unvanı geçiyordu.
+
+    Bankadan bağımsızdır: değer banka hesabı satırlarında saklansa da firmanın kimliği
+    bankaya göre değişmez. Kaydetmek değeri firmanın TÜM hesaplarına yazar — tek hesaba
+    yazılsaydı ekstresi başka hesaptan işlenen banka firmayı tanımazdı.
+*@
+
+<style>
+    .hs-alan { display: flex; flex-direction: column; gap: 3px; }
+    .hs-alan label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .hs-ipucu { font-size: 11px; color: #a0aec0; }
+    .hs-oneriler { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+</style>
+
+<h5 style="margin:0 0 4px">Hesap sahibi unvanları</h5>
+
+<div style="font-size:12px; color:#718096; margin-bottom:12px">
+    Firmanın kendi resmî unvanı ve bankaların kullandığı diğer yazımları. Açıklamada bu
+    yazımlardan biri yakalandığında karşı taraf sayılmaz, atılır.
+    @if (_kimlik.HesapSayisi > 0)
+    {
+        <span>Kaydedilince firmanın <b>@_kimlik.HesapSayisi</b> banka hesabına birden yazılır.</span>
+    }
+</div>
+
+@if (_yukleniyor)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+}
+else if (_kimlik.HesapSayisi == 0)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false">
+        Henüz banka hesabı tanımlanmadı; unvan yazılacak bir kayıt yok. Önce
+        <a href="/banka-isleme">İşleme</a> ekranından bir banka hesabı ekleyin.
+    </RadzenAlert>
+}
+else
+{
+    <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px">
+        <div class="hs-alan" style="grid-column: 1 / -1">
+            <label>Resmî unvan</label>
+            <RadzenTextBox @bind-Value="_form.Unvan" Style="width:100%"
+                           Placeholder="PKF ADAY BAĞIMSIZ DENETİM ANONİM ŞİRKETİ" />
+            <span class="hs-ipucu">Ticaret sicilindeki tam unvan; firma başına bir kez girilir.</span>
+        </div>
+
+        <div class="hs-alan" style="grid-column: 1 / -1">
+            <label>Diğer yazımlar</label>
+            <RadzenTextArea @bind-Value="_form.TakmaAdlar" Rows="4" Style="width:100%"
+                            Placeholder="Her satıra bir yazım:&#10;ADAY BAĞIMSIZ DENETİM VE SMMM A.Ş.&#10;PKF ADAY" />
+            <span class="hs-ipucu">
+                Her satıra bir yazım. Yukarıdaki unvanı <b>kapsayan</b> veya onun tarafından
+                kapsanan yazımlar ("ADAY BAĞIMSIZ DENETİM" gibi) zaten eleniyor; buraya yalnız
+                kapsama dışında kalanlar yazılır.
+            </span>
+
+            <div>
+                <RadzenButton Text="@(_taraniyor ? "Taranıyor…" : "Yüklenmiş ekstrelerde ara")"
+                              Icon="search" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                              Disabled="@_taraniyor" Click="@OnerileriYukleAsync" />
+
+                @if (_oneriler.Count > 0)
+                {
+                    <div class="hs-oneriler">
+                        @foreach (var oneri in _oneriler)
+                        {
+                            <RadzenButton Text="@($"+ {oneri.Yazim} ({oneri.Adet})")"
+                                          ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
+                                          Click="@(() => TakmaAdEkle(oneri.Yazim))" />
+                        }
+                    </div>
+                }
+                else if (_arandi)
+                {
+                    <div class="hs-ipucu" style="margin-top:6px">
+                        Yüklenmiş ekstrelerde eklenmemiş başka yazım bulunamadı.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div style="display:flex; gap:6px; margin-top:12px">
+        <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                      Disabled="@_kaydediyor" Click="@KaydetAsync" />
+        <RadzenButton Text="Geri al" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                      Disabled="@_kaydediyor" Click="@YenileAsync" />
+    </div>
+}
+
+@code {
+    private HesapSahibiKimlikDto _kimlik = new();
+    private HesapSahibiKimlikYazDto _form = new();
+
+    private List<HesapSahibiOnerisiDto> _oneriler = new();
+    private bool _arandi;
+    private bool _taraniyor;
+
+    private bool _yukleniyor = true;
+    private bool _kaydediyor;
+
+    protected override async Task OnInitializedAsync() => await YenileAsync();
+
+    /// <summary>Firma değişince üst sayfa çağırır; kimlik firma bazlıdır, mutlaka yenilenmeli.</summary>
+    public async Task YenileAsync()
+    {
+        _yukleniyor = true;
+        _oneriler = new();
+        _arandi = false;
+
+        _kimlik = await Api.HesapSahibiAsync();
+        _form = new HesapSahibiKimlikYazDto { Unvan = _kimlik.Unvan, TakmaAdlar = _kimlik.TakmaAdlar };
+
+        _yukleniyor = false;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Yüklenmiş ekstrelerde geçen, henüz eklenmemiş yazımları tarar. "ADAY BAĞIMSIZ DENETİM
+    /// VE SMMM A.Ş." gibi yazımlar ancak böyle bulunur — kullanıcı akıldan hatırlayamaz.
+    /// Tarama <b>kayıtlı</b> kimliğe göre yapılır; formdaki değişiklik önce kaydedilmeli.
+    /// </summary>
+    private async Task OnerileriYukleAsync()
+    {
+        _taraniyor = true;
+        try
+        {
+            _oneriler = await Api.HesapSahibiOnerileriAsync();
+            _arandi = true;
+        }
+        finally
+        {
+            _taraniyor = false;
+        }
+    }
+
+    /// <summary>Öneriyi diğer yazımlara ekler (zaten varsa tekrar eklenmez).</summary>
+    private void TakmaAdEkle(string yazim)
+    {
+        var mevcut = (_form.TakmaAdlar ?? string.Empty)
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(y => y.Trim())
+            .Where(y => y.Length > 0)
+            .ToList();
+
+        if (mevcut.Any(y => string.Equals(y, yazim, StringComparison.OrdinalIgnoreCase))) return;
+
+        mevcut.Add(yazim);
+        _form.TakmaAdlar = string.Join(Environment.NewLine, mevcut);
+        _oneriler = _oneriler.Where(o => o.Yazim != yazim).ToList();
+    }
+
+    private async Task KaydetAsync()
+    {
+        _kaydediyor = true;
+        var (veri, hata) = await Api.HesapSahibiKaydetAsync(_form);
+        _kaydediyor = false;
+
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Error, "Kaydedilemedi", hata, 6000);
+            return;
+        }
+
+        if (veri is not null)
+        {
+            _kimlik = veri;
+            _form = new HesapSahibiKimlikYazDto { Unvan = veri.Unvan, TakmaAdlar = veri.TakmaAdlar };
+        }
+
+        Notif.Notify(NotificationSeverity.Success, "Kaydedildi",
+                     $"{_kimlik.HesapSayisi} banka hesabına yazıldı", 3000);
+    }
+}
