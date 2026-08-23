@@ -158,6 +158,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// <summary>Vergi kodu / anahtar kelime → hesap eşleme tablosu (global).</summary>
         public IReadOnlyList<VergiKoduEslemesi> VergiKodlari { get; init; } = Array.Empty<VergiKoduEslemesi>();
 
+        /// <summary>
+        /// Kullanıcının tanımladığı kişi → hesap yönlendirmeleri (firma bazlı). Tüm
+        /// katmanlardan önce denenir; bkz. <see cref="HesapEslestirici.KisiyleCoz"/>.
+        /// </summary>
+        public IReadOnlyList<KisiYonlendirme> KisiYonlendirmeleri { get; init; } = Array.Empty<KisiYonlendirme>();
+
         private HesapPlaniIndeksi? _indeks;
         private CariOnekIndeksi? _onekIndeksi;
 
@@ -237,6 +243,13 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         public EslestirmeSonuc Coz(SatirBaglami baglam, EslestirmeVerisi veri)
         {
+            // --- Katman -1: kişi yönlendirme (kullanıcı tanımı) ---
+            // Sabit kuraldan da önce. "Masraf ödemesi" ifadesi işlemin niteliğini söylüyor
+            // ama kişinin ne olduğunu bilmiyor: ortak/yönetici ödemeleri 195'e değil 331'e
+            // gitmeli. Kullanıcı tabloyu elle doldurduğu için güven en yüksektir.
+            var kisi = KisiyleCoz(baglam, veri);
+            if (kisi is not null) return kisi;
+
             // --- Katman 0: açıklama kapsamlı sabit kural ---
             // Öğrenme katmanından ÖNCE çalışır. "iş avansı / maaş avansı / masraf ödemesi"
             // işlemin niteliğini belirler; karşı taraf bir cari değil, personeldir. Geçmiş
@@ -673,15 +686,16 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// önce unvanla aranır: arama uzayı yönün ana grubu (120/329) değil, <b>kuralın</b>
         /// ana grubudur. "masraf ödemesi … İlyas Ömeroğlu hesabına" satırı böylece 195
         /// içindeki kişi muavinine iner; bulunamazsa satır eskisi gibi ana grupla onaya düşer.
+        ///
+        /// Arama <b>benzersiz önek</b> yöntemiyle yapılır, benzerlik skoruyla değil
+        /// (bkz. <see cref="KisiAltHesabiCoz"/>).
         /// </summary>
         private static EslestirmeSonuc KuralSonucu(SabitKural kural, SatirBaglami baglam, EslestirmeVerisi veri)
         {
             if (kural.AltHesapGerekli)
             {
-                var altHesap = UnvanaGoreCoz(baglam, veri, Normalizasyon.AnaGrup(kural.HesapKodu),
-                                             KaynakKatman.SabitKural);
-
-                if (altHesap.Durum != SatirDurum.Cozulemedi) return altHesap;
+                var altHesap = KisiAltHesabiCoz(baglam, veri, kural);
+                if (altHesap is not null) return altHesap;
             }
 
             // Plaka anahtarı: HGS ve otoyol yükleme satırlarında metindeki plakayı adında
@@ -762,6 +776,177 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
             return null;
         }
+
+        // ---- Katman -1: Kişi yönlendirme ----
+
+        /// <summary>
+        /// Kullanıcının tanımladığı kişi yönlendirmesi. Tabloda adı geçen kişinin ödemesi
+        /// doğrudan tanımlı hesaba gider; sabit kural (masraf ödemesi → 195) bu satırı
+        /// bir daha göremez.
+        ///
+        /// <b>İsim nerede aranır?</b> Önce çıkarılan unvanın çekirdeğiyle tam eşitlik,
+        /// tutmazsa ham açıklamanın çekirdeğinde <b>tam kelime dizisi</b> olarak
+        /// (<see cref="Normalizasyon.IfadeVarMi"/>). İkincisi şart: ölçülen dosyada aynı
+        /// kişi bazen desenin yakaladığı yerde ("… A.Ş. ABDULKADİR SAYICI hesabına …"),
+        /// bazen açıklamanın başında ("ABDULKADİR SAYICI Masraf Ödemesi Arta Tekmer")
+        /// geçiyor. Benzerlik <b>hiç</b> kullanılmaz — yakın isimli başka kişi tutmasın.
+        ///
+        /// <b>Yön</b> ayırt edicidir: aynı kişi için giden ödeme 331, gelen tahsilat başka
+        /// bir hesap olabilir. Yönü belirtilmiş kayıt, <see cref="YonlendirmeYonu.Farketmez"/>
+        /// kaydını yener; iki kayıt da tutarsa uzun isim kazanır.
+        /// </summary>
+        private static EslestirmeSonuc? KisiyleCoz(SatirBaglami baglam, EslestirmeVerisi veri)
+        {
+            if (veri.KisiYonlendirmeleri.Count == 0) return null;
+
+            var unvanCekirdegi = Normalizasyon.Cekirdek(baglam.Unvan);
+            var metinCekirdegi = Normalizasyon.Cekirdek(baglam.HamAciklama);
+            if (unvanCekirdegi.Length == 0 && metinCekirdegi.Length == 0) return null;
+
+            var kayit = veri.KisiYonlendirmeleri
+                .Where(k => k.Aktif && k.IsimCekirdegi.Length > 0 && YoneUyuyorMu(k.Yon, baglam.Yon))
+                .Where(k => string.Equals(unvanCekirdegi, k.IsimCekirdegi, StringComparison.Ordinal) ||
+                            Normalizasyon.IfadeVarMi(metinCekirdegi, k.IsimCekirdegi))
+                .OrderBy(k => k.Yon == YonlendirmeYonu.Farketmez ? 1 : 0)
+                .ThenByDescending(k => k.IsimCekirdegi.Length)
+                .ThenBy(k => k.Id)
+                .FirstOrDefault();
+
+            if (kayit is null) return null;
+
+            return new EslestirmeSonuc
+            {
+                HesapKodu = kayit.HesapKodu,
+                HesapAdi = kayit.HesapAdi,
+                // Kullanıcı elle tanımladı; öğrenilmiş bir onaydan farkı yok.
+                Guven = 1.0m,
+                Katman = KaynakKatman.KisiYonlendirme,
+                Durum = SatirDurum.Otomatik
+            };
+        }
+
+        private static bool YoneUyuyorMu(YonlendirmeYonu yonlendirme, Yon satirYonu)
+            => yonlendirme == YonlendirmeYonu.Farketmez ||
+               (yonlendirme == YonlendirmeYonu.Giren && satirYonu == Yon.Giren) ||
+               (yonlendirme == YonlendirmeYonu.Cikan && satirYonu == Yon.Cikan);
+
+        // ---- Kural grubu içindeki kişi muavini ----
+
+        /// <summary>
+        /// Kuralın ana grubu (195/196) içinde kişi muavini araması. Yöntem <b>benzersiz
+        /// önek</b>: çıkarılan isim, hesap adının token sınırında biten öneki olmalı.
+        ///
+        /// <b>Neden benzerlik değil?</b> Ölçümde difflib benzerliği grup içinde yanlış kişiyi
+        /// seçiyordu: <c>ABDULKADİR SAYICI Masraf Ödemesi</c> → <c>195 01 A20 Abdülkadir
+        /// Yılmaz</c> (0.65), <c>dilara sager masraf ödemesi</c> → <c>195 01 D06 Dilara
+        /// Kaya</c> (0.67). Satır onay kuyruğunda olduğu için kayıt bozulmuyor ama kullanıcı
+        /// ONAYLA'ya basarken yanlış kişi kolayca gözden kaçıyor. Yakın isimli başka kişi
+        /// <b>asla</b> önerilmez.
+        ///
+        /// <b>Kural ana grubu tek başına kilitlemez.</b> Aynı isim başka bir grupta
+        /// <b>birebir</b> varsa (ABDULKADİR SAYICI planda gerçekten var, ama <c>331 02</c>
+        /// ortaklar altında) o da aday olur ve satır onaya düşer. Kural grubundaki adaylar
+        /// listenin başında durur.
+        ///
+        /// Karar:
+        /// <list type="bullet">
+        /// <item>Ad + soyad (≥2 kelime) verilmiş, grup içinde <b>tek</b> eşleşme var ve başka
+        /// grupta karşılığı yok → otomatik.</item>
+        /// <item>Birden fazla eşleşme, ya da başka grupta da karşılık var → satır onaya düşer,
+        /// hepsi aday listelenir.</item>
+        /// <item>Tek kelimelik isim (<c>İlyas</c>) → hiçbir zaman otomatik değil; planda
+        /// <c>İlyas Ömeroğlu</c> ve <c>İlyas Yücel</c> birlikte olabiliyor.</item>
+        /// <item>Hiç eşleşme yok → <c>null</c>; çağıran satırı ana grupla (195) onaya düşürür,
+        /// alt hesap boş kalır.</item>
+        /// </list>
+        /// </summary>
+        private static EslestirmeSonuc? KisiAltHesabiCoz(SatirBaglami baglam, EslestirmeVerisi veri, SabitKural kural)
+        {
+            var isim = Normalizasyon.UnvanNormalize(baglam.Unvan);
+            if (isim.Length == 0) return null;
+
+            var kelimeSayisi = isim.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+            var anaGrup = Normalizasyon.AnaGrup(kural.HesapKodu);
+            if (anaGrup.Length == 0) return null;
+
+            var grupIci = OnekleBaslayanlar(veri.Indeks, anaGrup, isim);
+            var digerGruplar = DigerGruplardakiTamEslesmeler(veri.Indeks, anaGrup, isim);
+
+            if (grupIci.Count == 0 && digerGruplar.Count == 0) return null;
+
+            // Tek belirgin kişi: ad + soyad verilmiş, grup içinde tek eşleşme, başka grupta
+            // karşılığı yok. "Mesut Aktaş", "Eda Budak", "İlyas Ömeroğlu" böyle çözülür.
+            if (kelimeSayisi >= 2 && grupIci.Count == 1 && digerGruplar.Count == 0)
+                return new EslestirmeSonuc
+                {
+                    HesapKodu = grupIci[0].Kod,
+                    HesapAdi = grupIci[0].Ad,
+                    Guven = OnekGuveni,
+                    Katman = KaynakKatman.SabitKural,
+                    Durum = SatirDurum.Otomatik
+                };
+
+            var adaylar = new List<AdayKayit>();
+            foreach (var hesap in grupIci) AdayEkle(adaylar, hesap.Kod, hesap.Ad);
+            foreach (var hesap in digerGruplar) AdayEkle(adaylar, hesap.Kod, hesap.Ad);
+            adaylar = adaylar.Take(EnFazlaAday).ToList();
+
+            return new EslestirmeSonuc
+            {
+                // Kod önerilmez: kutuda kuralın ana grubu kalır, kişiyi kullanıcı seçer.
+                // Yanlış kişiyi önermektense alt hesabı boş bırakmak yeğdir.
+                HesapKodu = kural.HesapKodu,
+                HesapAdi = kural.HesapAdi,
+                Guven = 0m,
+                Katman = KaynakKatman.SabitKural,
+                Adaylar = adaylar,
+                IkinciAdayKodu = adaylar.Count > 1 ? adaylar[1].Kod : null,
+                IkinciAdayAdi = adaylar.Count > 1 ? adaylar[1].Ad : null,
+                IkinciAdaySkoru = adaylar.Count > 1 ? adaylar[1].Skor : null,
+                Durum = SatirDurum.OnayBekliyor
+            };
+        }
+
+        /// <summary>
+        /// Normalize adı <paramref name="isim"/> ile <b>başlayan</b> hesaplar (token
+        /// sınırında). Ön indeks ilk kelimeyle daraltır; 6.000+ kayıt her satırda taranmaz.
+        /// </summary>
+        private static List<HesapPlaniKaydi> OnekleBaslayanlar(HesapPlaniIndeksi indeks, string anaGrup, string isim)
+        {
+            var ilkKelime = isim.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+
+            return indeks.CipaylaBaslayanlar(anaGrup, ilkKelime)
+                         .Where(h => AdOnekiMi(h.NormalizeAd, isim))
+                         .ToList();
+        }
+
+        /// <summary>
+        /// Aynı ismin <b>başka</b> cari gruplarındaki birebir karşılıkları. Önek değil tam
+        /// eşitlik aranır: kural grubu dışına çıkmak ancak isim <b>aynen</b> tutuyorsa
+        /// meşrudur, yoksa her avans satırına ilgisiz cariler eklenirdi.
+        /// </summary>
+        private static List<HesapPlaniKaydi> DigerGruplardakiTamEslesmeler(
+            HesapPlaniIndeksi indeks, string anaGrup, string isim)
+        {
+            var ilkKelime = isim.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+            var sonuc = new List<HesapPlaniKaydi>();
+
+            foreach (var grup in CariOnekIndeksi.CariGruplari)
+            {
+                if (string.Equals(grup, anaGrup, StringComparison.Ordinal)) continue;
+
+                foreach (var hesap in indeks.CipaylaBaslayanlar(grup, ilkKelime))
+                    if (string.Equals(hesap.NormalizeAd, isim, StringComparison.Ordinal))
+                        sonuc.Add(hesap);
+            }
+
+            return sonuc;
+        }
+
+        /// <summary>Normalize ad, verilen isimle token sınırında biterek başlıyor mu?</summary>
+        private static bool AdOnekiMi(string normalizeAd, string isim)
+            => normalizeAd.StartsWith(isim, StringComparison.Ordinal) &&
+               (normalizeAd.Length == isim.Length || normalizeAd[isim.Length] == ' ');
 
         // ---- Katman 5: Benzersiz önek ----
 

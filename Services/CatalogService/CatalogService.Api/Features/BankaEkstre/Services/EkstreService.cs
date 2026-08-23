@@ -9,8 +9,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CatalogService.Api.Features.BankaEkstre.Services
 {
-    /// <summary>Düzeltilmiş ekstre dosyası (dışa aktarımın birinci parçası).</summary>
-    public record DuzeltilmisEkstre(string DosyaAdi, byte[] Icerik);
+    /// <summary>Üretilen xlsx dosyası (düzeltilmiş ekstre veya analiz dökümü).</summary>
+    public record EkstreDosyasi(string DosyaAdi, byte[] Icerik);
 
     public interface IEkstreService
     {
@@ -18,10 +18,22 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         Task<List<EkstreYuklemeDto>> GetYuklemelerAsync(CancellationToken ct = default);
         Task<EkstreYuklemeDto?> GetYuklemeAsync(int id, CancellationToken ct = default);
         Task<List<EkstreSatirDto>?> GetSatirlarAsync(int ekstreId, SatirDurum? durum, CancellationToken ct = default);
-        Task<EkstreSatirDto?> OnaylaAsync(int satirId, string hesapKodu, CancellationToken ct = default);
+        /// <summary>
+        /// Satırı onaylar. <paramref name="kisiYonlendir"/> true ise satırdaki kişi için
+        /// kalıcı bir <see cref="KisiYonlendirme"/> kaydı da oluşturulur (onay ekranındaki
+        /// "bu kişiyi hep bu hesaba yönlendir" kısayolu).
+        /// </summary>
+        Task<EkstreSatirDto?> OnaylaAsync(int satirId, string hesapKodu, bool kisiYonlendir = false,
+                                          CancellationToken ct = default);
         Task<EkstreSatirDto?> DigerBankadaAsync(int satirId, CancellationToken ct = default);
         Task<DisaAktarimSonucDto?> DisaAktarAsync(int ekstreId, CancellationToken ct = default);
-        Task<DuzeltilmisEkstre?> DuzeltilmisEkstreAsync(int ekstreId, CancellationToken ct = default);
+        Task<EkstreDosyasi?> DuzeltilmisEkstreAsync(int ekstreId, CancellationToken ct = default);
+
+        /// <summary>
+        /// Analiz dökümü: satırların <b>tamamı</b>, durumu ne olursa olsun. Sistemin ne
+        /// önerdiğini onaydan önce incelemek için; ORKA'ya yüklenmez.
+        /// </summary>
+        Task<EkstreDosyasi?> AnalizDokumuAsync(int ekstreId, CancellationToken ct = default);
         Task<bool> SilAsync(int ekstreId, CancellationToken ct = default);
     }
 
@@ -283,7 +295,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// Hesap planında olmayan kod **kabul edilir** (ORKA'da yeni açılmış olabilir) ama
         /// öğrenilmez: doğrulanmamış kod kalıcılaşmasın.
         /// </summary>
-        public async Task<EkstreSatirDto?> OnaylaAsync(int satirId, string hesapKodu, CancellationToken ct = default)
+        public async Task<EkstreSatirDto?> OnaylaAsync(int satirId, string hesapKodu, bool kisiYonlendir = false,
+                                                      CancellationToken ct = default)
         {
             var satir = await SatirGetirAsync(satirId, ct);
             if (satir is null) return null;
@@ -306,6 +319,10 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             if (!bilinmeyenKod)
                 await _ogrenme.OgrenAsync(satir, kod, plan?.Ad, ct);
 
+            var yonlendirmeUyarisi = kisiYonlendir
+                ? await KisiYonlendirmesiYazAsync(satir, kod, plan?.Ad, ct)
+                : null;
+
             await _db.SaveChangesAsync(ct);
 
             var dto = Esle(satir);
@@ -313,7 +330,48 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 dto.Uyari = $"'{kod}' hesap planında yok — ORKA'da yeni açıldıysa hesap planını güncelleyin. " +
                             "Kod kaydedildi ama öğrenilmedi.";
 
+            if (yonlendirmeUyarisi is not null)
+                dto.Uyari = dto.Uyari is null ? yonlendirmeUyarisi : dto.Uyari + " " + yonlendirmeUyarisi;
+
             return dto;
+        }
+
+        /// <summary>
+        /// Onay ekranındaki "bu kişiyi hep bu hesaba yönlendir" kısayolu. Kullanıcının
+        /// Tanımlar ekranına gidip aynı ismi elle yazmasına gerek kalmasın diye kayıt
+        /// buradan oluşturulur; yön, onaylanan satırın yönünden gelir.
+        ///
+        /// İsim satırın <b>çıkarılan unvanından</b> alınır: satırda kişi adı okunamamışsa
+        /// yönlendirme yazılamaz (uyarı döner). Aynı isim + yön için kayıt zaten varsa
+        /// üzerine yazılır — kullanıcı fikrini değiştirmiş demektir.
+        ///
+        /// Kaydetmez; çağıran <c>SaveChangesAsync</c> ile birlikte yazar.
+        /// </summary>
+        private async Task<string?> KisiYonlendirmesiYazAsync(EkstreSatiri satir, string kod, string? ad, CancellationToken ct)
+        {
+            var cekirdek = Normalizasyon.Cekirdek(satir.CikarilanUnvan);
+            if (cekirdek.Length == 0)
+                return "Bu satırda kişi adı okunamadığı için yönlendirme oluşturulmadı; " +
+                       "Tanımlar > Kişi yönlendirmeleri'nden elle ekleyebilirsiniz.";
+
+            cekirdek = Normalizasyon.Kirp(cekirdek, 200);
+            var yon = satir.Yon == Yon.Giren ? YonlendirmeYonu.Giren : YonlendirmeYonu.Cikan;
+
+            var mevcut = await _db.EkstreKisiYonlendirmeleri
+                .FirstOrDefaultAsync(k => k.IsimCekirdegi == cekirdek && k.Yon == yon, ct);
+
+            if (mevcut is null)
+            {
+                mevcut = new KisiYonlendirme { IsimCekirdegi = cekirdek, Yon = yon };
+                _db.EkstreKisiYonlendirmeleri.Add(mevcut);
+            }
+
+            mevcut.Isim = Normalizasyon.Kirp(satir.CikarilanUnvan, 200);
+            mevcut.HesapKodu = kod;
+            mevcut.HesapAdi = ad;
+            mevcut.Aktif = true;
+
+            return null;
         }
 
         /// <summary>
@@ -380,7 +438,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// ürettiğimiz metinle değiştirilmiş. Değiştirilmezse ORKA gridinde ham banka metni
         /// görünür.
         /// </summary>
-        public async Task<DuzeltilmisEkstre?> DuzeltilmisEkstreAsync(int ekstreId, CancellationToken ct = default)
+        public async Task<EkstreDosyasi?> DuzeltilmisEkstreAsync(int ekstreId, CancellationToken ct = default)
         {
             var yukleme = await _db.EkstreYuklemeler.AsNoTracking().FirstOrDefaultAsync(y => y.Id == ekstreId, ct);
             if (yukleme is null) return null;
@@ -410,7 +468,73 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             kitap.SaveAs(cikti);
 
             var ad = Path.GetFileNameWithoutExtension(yukleme.DosyaAdi);
-            return new DuzeltilmisEkstre($"{ad}-duzeltilmis.xlsx", cikti.ToArray());
+            return new EkstreDosyasi($"{ad}-duzeltilmis.xlsx", cikti.ToArray());
+        }
+
+        /// <summary>
+        /// Analiz dökümü (yeni). "Kod listesi" ve "Düzeltilmiş ekstre" onay bekleyen veya
+        /// çözülemeyen satır varken üretilmiyor — doğru kural, korunuyor. Ama sistemin ne
+        /// önerdiğini <b>onaydan önce</b> görebilmek gerekiyor: bu döküm durumdan bağımsız
+        /// olarak tüm satırları verir.
+        ///
+        /// Dosya ORKA'ya yüklenmez; kolonları da onun için değil, inceleme için seçildi
+        /// (hangi katman ne önerdi, kaç aday vardı, satır hangi durumda kaldı).
+        /// </summary>
+        public async Task<EkstreDosyasi?> AnalizDokumuAsync(int ekstreId, CancellationToken ct = default)
+        {
+            var yukleme = await _db.EkstreYuklemeler.AsNoTracking()
+                .FirstOrDefaultAsync(y => y.Id == ekstreId, ct);
+
+            if (yukleme is null) return null;
+
+            var satirlar = await _db.EkstreSatirlari.AsNoTracking()
+                .Where(s => s.EkstreYuklemeId == ekstreId)
+                .OrderBy(s => s.SiraNo)
+                .ToListAsync(ct);
+
+            using var kitap = new XLWorkbook();
+            var sayfa = kitap.Worksheets.Add("Analiz");
+
+            var basliklar = new[]
+            {
+                "SiraNo", "Tarih", "Yon", "Tutar", "HamAciklama", "UretilenAciklama",
+                "OnerilenHesapKodu", "OnerilenHesapAdi", "GuvenSkoru", "KaynakKatman",
+                "Durum", "AdaySayisi"
+            };
+
+            for (var i = 0; i < basliklar.Length; i++)
+            {
+                sayfa.Cell(1, i + 1).Value = basliklar[i];
+                sayfa.Cell(1, i + 1).Style.Font.Bold = true;
+            }
+
+            var satirNo = 2;
+            foreach (var satir in satirlar)
+            {
+                // Onaylanan kod varsa dışa aktarıma giden odur; analiz de onu göstermeli.
+                sayfa.Cell(satirNo, 1).Value = satir.SiraNo;
+                sayfa.Cell(satirNo, 2).Value = satir.Tarih;
+                sayfa.Cell(satirNo, 2).Style.DateFormat.Format = "dd.MM.yyyy";
+                sayfa.Cell(satirNo, 3).Value = satir.Yon == Yon.Giren ? "Giren" : "Çıkan";
+                sayfa.Cell(satirNo, 4).Value = satir.Tutar;
+                sayfa.Cell(satirNo, 5).Value = satir.HamAciklama;
+                sayfa.Cell(satirNo, 6).Value = satir.UretilenAciklama ?? string.Empty;
+                sayfa.Cell(satirNo, 7).Value = satir.EtkinHesapKodu ?? string.Empty;
+                sayfa.Cell(satirNo, 8).Value = satir.OnaylananHesapAdi ?? satir.OnerilenHesapAdi ?? string.Empty;
+                sayfa.Cell(satirNo, 9).Value = satir.GuvenSkoru;
+                sayfa.Cell(satirNo, 10).Value = satir.KaynakKatman.ToString();
+                sayfa.Cell(satirNo, 11).Value = satir.Durum.ToString();
+                sayfa.Cell(satirNo, 12).Value = AdaylariOku(satir.Adaylar).Count;
+                satirNo++;
+            }
+
+            sayfa.ColumnsUsed().AdjustToContents(1, 60);
+
+            using var cikti = new MemoryStream();
+            kitap.SaveAs(cikti);
+
+            var dosyaAdi = Path.GetFileNameWithoutExtension(yukleme.DosyaAdi);
+            return new EkstreDosyasi($"{dosyaAdi}-analiz.xlsx", cikti.ToArray());
         }
 
         public async Task<bool> SilAsync(int ekstreId, CancellationToken ct = default)
@@ -492,6 +616,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 HesapPlani = await _db.EkstreHesapPlani.AsNoTracking().Where(h => h.Aktif).ToListAsync(ct),
                 VergiKodlari = await _db.EkstreVergiKodlari.AsNoTracking().Where(v => v.Aktif)
                                         .OrderBy(v => v.Sira).ToListAsync(ct),
+                KisiYonlendirmeleri = await _db.EkstreKisiYonlendirmeleri.AsNoTracking()
+                                        .Where(k => k.Aktif).ToListAsync(ct),
                 IslenenBankaHesabiId = hesap.Id,
                 IbanKatmaniAktif = hesap.IbanKatmaniAktif,
                 VknKatmaniAktif = hesap.VknKatmaniAktif,
@@ -542,8 +668,14 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         private static readonly JsonSerializerOptions AdaySecenekleri = new(JsonSerializerDefaults.Web);
 
+        /// <summary>
+        /// Aday listesi JSON'u. Eskiden yalnız <b>birden fazla</b> aday saklanıyordu; tek
+        /// aday kaybolduğu için "kural grubu dışında birebir bulunan tek kişi"
+        /// (<c>331 02 Abdulkadir Sayıcı</c>) onay ekranında hiç görünmüyordu. Artık tek
+        /// aday da yazılır; boş liste yine null.
+        /// </summary>
         private static string? AdaylariYaz(IReadOnlyList<AdayKayit> adaylar)
-            => adaylar.Count <= 1 ? null : JsonSerializer.Serialize(adaylar, AdaySecenekleri);
+            => adaylar.Count == 0 ? null : JsonSerializer.Serialize(adaylar, AdaySecenekleri);
 
         private static List<AdayDto> AdaylariOku(string? json)
         {

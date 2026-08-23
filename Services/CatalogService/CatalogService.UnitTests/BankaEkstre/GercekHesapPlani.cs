@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Domain;
+﻿using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Services;
 
 namespace CatalogService.UnitTests.BankaEkstre
@@ -119,6 +119,21 @@ namespace CatalogService.UnitTests.BankaEkstre
                 // --- Plaka anahtarı (madde 7): aynı plakanın iki hesabı ---
                 Kayit("740 99 01 01 08", "34 Mrp 081 Araç Kira Bedeli"),
                 Kayit("740 99 01 01 09", "34 Mrp 081 Araç Otopark Yakıt Vb."),
+
+                // --- Kural grubu içindeki kişi muavinleri (Tur 3, madde 1) ---
+                // Adlar ölçülen dosyadaki gerçek kişiler; kodlar gerçek plandaki biçimde.
+                // "Abdülkadir Yılmaz" ile "Abdulkadir Sayıcı" difflib benzerliğinde 0.65
+                // ile birbirine karışıyordu; önek yöntemi ikisini ayırır.
+                Kayit("195 01 A20", "Abdülkadir Yılmaz"),
+                Kayit("195 01 D06", "Dilara Kaya"),
+                Kayit("195 01 H13", "İlyas Ömeroğlu"),
+                Kayit("195 01 I02", "İlyas Yücel"),
+                Kayit("195 01 M05", "Mesut Aktaş"),
+                Kayit("195 01 E03", "Eda Budak"),
+
+                // Kişi planda var ama kuralın grubunda değil: ortaklar altında.
+                // Kural 195'e kilitlerse bu kayıt hiç bulunamaz (Tur 3, madde 1).
+                Kayit("331 02", "Abdulkadir Sayıcı"),
 
                 // --- Vergi eşlemesinin hedefleri ---
                 Kayit("689 9 1", "Kanunen Kabul Edilmeyen Giderler"),

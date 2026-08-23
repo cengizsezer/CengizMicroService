@@ -1,4 +1,4 @@
-using WebApp.Shared.Dto.BankaEkstre;
+﻿using WebApp.Shared.Dto.BankaEkstre;
 
 namespace WebApp.Application.Services.Interfaces
 {
@@ -33,12 +33,23 @@ namespace WebApp.Application.Services.Interfaces
         Task<EkstreYuklemeDto?> GetYuklemeAsync(int id, CancellationToken ct = default);
         Task<(EkstreYuklemeDto? Veri, string? Hata)> YukleAsync(int bankaHesabiId, Stream icerik, string dosyaAdi, CancellationToken ct = default);
         Task<List<EkstreSatirDto>> GetSatirlarAsync(int ekstreId, SatirDurum? durum = null, CancellationToken ct = default);
-        Task<(EkstreSatirDto? Veri, string? Hata)> OnaylaAsync(int satirId, string hesapKodu, CancellationToken ct = default);
+        /// <summary>
+        /// Satırı onaylar. <paramref name="kisiYonlendir"/> true ise satırdaki kişi için
+        /// kalıcı bir yönlendirme kaydı da oluşturulur.
+        /// </summary>
+        Task<(EkstreSatirDto? Veri, string? Hata)> OnaylaAsync(int satirId, string hesapKodu,
+                                                               bool kisiYonlendir = false, CancellationToken ct = default);
         Task<(EkstreSatirDto? Veri, string? Hata)> DigerBankadaAsync(int satirId, CancellationToken ct = default);
         Task<(DisaAktarimSonucDto? Veri, string? Hata)> DisaAktarAsync(int ekstreId, CancellationToken ct = default);
 
         /// <summary>Dışa aktarımın birinci parçası: açıklama kolonu değiştirilmiş orijinal dosya.</summary>
         Task<(string? DosyaAdi, byte[]? Icerik, string? Hata)> DuzeltilmisEkstreAsync(int ekstreId, CancellationToken ct = default);
+
+        /// <summary>
+        /// Analiz dökümü: tüm satırlar, durumu ne olursa olsun. ORKA'ya yüklenmez; sistemin
+        /// ne önerdiğini onaydan önce incelemek için.
+        /// </summary>
+        Task<(string? DosyaAdi, byte[]? Icerik, string? Hata)> AnalizDokumuAsync(int ekstreId, CancellationToken ct = default);
 
         Task<string?> SilAsync(int ekstreId, CancellationToken ct = default);
 
@@ -58,5 +69,11 @@ namespace WebApp.Application.Services.Interfaces
         Task<(VergiKoduEslemesiDto? Veri, string? Hata)> VergiKoduEkleAsync(VergiKoduEslemesiYazDto dto, CancellationToken ct = default);
         Task<(VergiKoduEslemesiDto? Veri, string? Hata)> VergiKoduGuncelleAsync(int id, VergiKoduEslemesiYazDto dto, CancellationToken ct = default);
         Task<string?> VergiKoduSilAsync(int id, CancellationToken ct = default);
+
+        // Kişi yönlendirmeleri
+        Task<List<KisiYonlendirmeDto>> KisiYonlendirmeleriAsync(CancellationToken ct = default);
+        Task<(KisiYonlendirmeDto? Veri, string? Hata)> KisiYonlendirmeEkleAsync(KisiYonlendirmeYazDto dto, CancellationToken ct = default);
+        Task<(KisiYonlendirmeDto? Veri, string? Hata)> KisiYonlendirmeGuncelleAsync(int id, KisiYonlendirmeYazDto dto, CancellationToken ct = default);
+        Task<string?> KisiYonlendirmeSilAsync(int id, CancellationToken ct = default);
     }
 }

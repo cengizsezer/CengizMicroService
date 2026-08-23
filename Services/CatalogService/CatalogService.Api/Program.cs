@@ -1,4 +1,4 @@
-using CatalogService.Api.Extensions;
+﻿using CatalogService.Api.Extensions;
 using CatalogService.Api.Features.AccountPlan;
 using CatalogService.Api.Features.Banka.Services;
 using CatalogService.Api.Features.Declarations.Services;
@@ -158,6 +158,8 @@ builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IEks
                            CatalogService.Api.Features.BankaEkstre.Services.EkstreService>();
 builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IVergiKoduService,
                            CatalogService.Api.Features.BankaEkstre.Services.VergiKoduService>();
+builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IKisiYonlendirmeService,
+                           CatalogService.Api.Features.BankaEkstre.Services.KisiYonlendirmeService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolMaddeService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolMaddeService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolMizanService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolMizanService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IMizanNotuService, CatalogService.Api.Features.FirmaKontrol.Services.MizanNotuService>();

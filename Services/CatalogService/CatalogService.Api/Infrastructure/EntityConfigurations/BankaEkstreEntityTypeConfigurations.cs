@@ -239,6 +239,31 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
         }
     }
 
+    /// <summary>
+    /// Kişi yönlendirmeleri — <b>firma bazlı</b>. Vergi kodlarının aksine kimin ortak,
+    /// kimin personel olduğu firmaya özeldir; tablo tenant filtresine girer.
+    /// </summary>
+    public class KisiYonlendirmeEntityTypeConfiguration : IEntityTypeConfiguration<KisiYonlendirme>
+    {
+        public void Configure(EntityTypeBuilder<KisiYonlendirme> builder)
+        {
+            builder.ToTable("EkstreKisiYonlendirmeleri", CatalogContext.DEFAULT_SCHEMA);
+            builder.HasKey(x => x.Id);
+
+            builder.Property(x => x.TenantNo).IsRequired().HasMaxLength(20);
+            builder.Property(x => x.IsimCekirdegi).IsRequired().HasMaxLength(200);
+            builder.Property(x => x.Isim).IsRequired().HasMaxLength(200);
+            builder.Property(x => x.HesapKodu).IsRequired().HasMaxLength(30);
+            builder.Property(x => x.HesapAdi).HasMaxLength(200);
+            builder.Property(x => x.Aciklama).HasMaxLength(300);
+
+            // Aynı firmada aynı isim + aynı yön tek kayıt. Yön nullable olmadığı için
+            // (Farketmez ayrı bir enum değeri) filtre gerekmiyor; tekillik servis
+            // katmanında da kontrol ediliyor, index yarış durumunda son savunma.
+            builder.HasIndex(x => new { x.TenantNo, x.IsimCekirdegi, x.Yon }).IsUnique();
+        }
+    }
+
     public class SabitKuralEntityTypeConfiguration : IEntityTypeConfiguration<SabitKural>
     {
         public void Configure(EntityTypeBuilder<SabitKural> builder)

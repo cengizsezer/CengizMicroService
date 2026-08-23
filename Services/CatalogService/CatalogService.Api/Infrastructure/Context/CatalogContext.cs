@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.AccountPlan;
+﻿using CatalogService.Api.Features.AccountPlan;
 using CatalogService.Api.Features.Banka.Domain;
 using CatalogService.Api.Features.Declarations.Entities;
 using CatalogService.Api.Features.Education.Domain;
@@ -119,6 +119,9 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<Features.BankaEkstre.Domain.HesapEslesmesi> EkstreHesapEslesmeleri => Set<Features.BankaEkstre.Domain.HesapEslesmesi>();
         public DbSet<Features.BankaEkstre.Domain.HesapPlaniKaydi> EkstreHesapPlani => Set<Features.BankaEkstre.Domain.HesapPlaniKaydi>();
 
+        /// <summary>Kişi → hesap yönlendirmeleri; kimin ortak, kimin personel olduğu firmaya özeldir.</summary>
+        public DbSet<Features.BankaEkstre.Domain.KisiYonlendirme> EkstreKisiYonlendirmeleri => Set<Features.BankaEkstre.Domain.KisiYonlendirme>();
+
         // Banka Ekstresi İşleme modülü — global (firma bağımsız) içerik.
         // Bir unvanın kim olduğu her firmada aynıdır; hangi koda gittiği firmaya özeldir.
         public DbSet<Features.BankaEkstre.Domain.KimlikKaydi> EkstreKimlikKayitlari => Set<Features.BankaEkstre.Domain.KimlikKaydi>();
@@ -207,6 +210,7 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new UnvanDeseniEntityTypeConfiguration());
             builder.ApplyConfiguration(new SabitKuralEntityTypeConfiguration());
             builder.ApplyConfiguration(new VergiKoduEslemesiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new KisiYonlendirmeEntityTypeConfiguration());
 
 
             SetBuilderPKFConfiguration(builder);
@@ -233,6 +237,7 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.Entity<Features.BankaEkstre.Domain.EkstreYukleme>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
             builder.Entity<Features.BankaEkstre.Domain.HesapEslesmesi>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
             builder.Entity<Features.BankaEkstre.Domain.HesapPlaniKaydi>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
+            builder.Entity<Features.BankaEkstre.Domain.KisiYonlendirme>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
         }
 
 

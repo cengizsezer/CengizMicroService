@@ -1,0 +1,275 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.BankaEkstre
+
+@inject IBankaEkstreApi Api
+@inject NotificationService Notif
+
+@*
+    Tanımlar ekranının "Kişi yönlendirmeleri" bölümü. Sabit kural grubu kişinin ne
+    olduğunu bilmiyor: "masraf ödemesi" geçen her satırı personel avansına (195)
+    yolluyor. Ortak ve yöneticiler için aynı ifade 331'e (ortaklara borçlar) gitmeli.
+
+    Katman sabit kuraldan ÖNCE çalışır: kullanıcı elle tanımladığı için güven en
+    yüksektir ve satır otomatik çözülür.
+
+    Tablo FİRMA bazlıdır (vergi kodlarının aksine): kimin ortak, kimin personel olduğu
+    firmadan firmaya değişir.
+*@
+
+<style>
+    .ky-arac { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .ky-tablo { border: 1px solid #eee; border-radius: 6px; background: #fff; overflow: hidden; }
+    .ky-satir { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+    .ky-head { background: #fafafa; border-bottom: 1px solid #eee; font-size: 11px; color: #718096;
+               text-transform: uppercase; letter-spacing: .3px; }
+    .ky-satir:not(.ky-head):hover { background: #f8fbff; }
+    .ky-isim { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ky-yon { flex: 0 0 90px; }
+    .ky-kod { flex: 0 0 120px; font-family: ui-monospace, Consolas, monospace; }
+    .ky-ad { flex: 0 0 220px; color: #4a5568; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ky-not { flex: 0 0 160px; color: #a0aec0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ky-aksiyon { flex: 0 0 80px; text-align: right; }
+    .ky-bos { padding: 26px; text-align: center; color: #a0aec0; }
+    .ky-pasif .ky-isim, .ky-pasif .ky-kod, .ky-pasif .ky-yon { color: #a0aec0; text-decoration: line-through; }
+    .ky-alan { display: flex; flex-direction: column; gap: 3px; position: relative; }
+    .ky-alan label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .ky-ipucu { font-size: 11px; color: #a0aec0; }
+    .ky-oneriler { position: absolute; z-index: 20; top: 56px; left: 0; width: 320px; max-height: 200px; overflow-y: auto;
+                   background: #fff; border: 1px solid #cbd5e0; border-radius: 4px; box-shadow: 0 6px 18px rgba(0,0,0,.10); }
+    .ky-oneri { padding: 4px 9px; font-size: 12px; cursor: pointer; display: flex; gap: 8px; }
+    .ky-oneri:hover { background: #ebf8ff; }
+    .ky-oneri .k { font-family: ui-monospace, Consolas, monospace; flex: 0 0 90px; }
+    .ky-oneri .a { color: #4a5568; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+
+<div class="ky-arac">
+    <h5 style="margin:0">Kişi yönlendirmeleri</h5>
+    <RadzenButton Text="Yeni yönlendirme" Icon="add" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                  Click="@(() => FormAc(null))" />
+</div>
+
+<div style="font-size:12px; color:#718096; margin-bottom:10px">
+    Adı geçen kişinin ödemesi kural grubuna değil, burada yazan hesaba gider.
+    <b>Sabit kuraldan önce</b> çalışır: "masraf ödemesi" ifadesi geçse bile kişi tabloda
+    tanımlıysa oraya gider. Yön önemlidir — aynı kişinin giden ödemesi <code>331</code>,
+    gelen tahsilatı başka bir hesap olabilir.
+</div>
+
+<div class="ky-tablo">
+    <div class="ky-satir ky-head">
+        <span class="ky-isim">İsim</span>
+        <span class="ky-yon">Yön</span>
+        <span class="ky-kod">Hesap kodu</span>
+        <span class="ky-ad">Hesap adı</span>
+        <span class="ky-not">Açıklama</span>
+        <span class="ky-aksiyon"></span>
+    </div>
+
+    @if (_kayitlar.Count == 0)
+    {
+        <div class="ky-bos">
+            Henüz yönlendirme yok. Onay ekranında bir satırı onaylarken
+            "bu kişiyi hep bu hesaba yönlendir" seçeneğiyle de oluşturabilirsiniz.
+        </div>
+    }
+
+    @foreach (var kayit in _kayitlar)
+    {
+        <div class="ky-satir @(kayit.Aktif ? "" : "ky-pasif")">
+            <span class="ky-isim" title="@($"Eşleştirme çekirdeği: {kayit.IsimCekirdegi}")">@kayit.Isim</span>
+            <span class="ky-yon">@BankaEkstreEtiket.YonlendirmeYonu(kayit.Yon)</span>
+            <span class="ky-kod">@kayit.HesapKodu</span>
+            <span class="ky-ad" title="@kayit.HesapAdi">@(kayit.HesapAdi ?? "—")</span>
+            <span class="ky-not" title="@kayit.Aciklama">@(kayit.Aciklama ?? "—")</span>
+            <span class="ky-aksiyon">
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                              Click="@(() => FormAc(kayit))" />
+                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                              Click="@(() => SilAsync(kayit))" />
+            </span>
+        </div>
+    }
+</div>
+
+@if (_form is not null)
+{
+    <div style="margin-top:14px; padding:14px; border:1px solid #e2e8f0; border-radius:6px; background:#fff">
+        <h6 style="margin-top:0">@(_duzenlenenId is null ? "Yeni yönlendirme" : "Yönlendirmeyi düzenle")</h6>
+
+        <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px">
+            <div class="ky-alan">
+                <label>İsim</label>
+                <RadzenTextBox @bind-Value="_form.Isim" Placeholder="Abdulkadir Sayıcı" />
+                <span class="ky-ipucu">Ad ve soyadı yazın; eşleştirme normalize çekirdek üzerinden tam eşleşmedir.</span>
+            </div>
+            <div class="ky-alan">
+                <label>Yön</label>
+                <RadzenDropDown TValue="YonlendirmeYonu" @bind-Value="_form.Yon" Data="@Yonler"
+                                TextProperty="Ad" ValueProperty="Deger" Style="width:100%" />
+                <span class="ky-ipucu">Para <b>çıkıyorsa</b> Çıkan, geliyorsa Giren. İkisi de aynıysa Farketmez.</span>
+            </div>
+            <div class="ky-alan">
+                <label>ORKA hesap kodu</label>
+                <RadzenTextBox Value="@_form.HesapKodu" Placeholder="331 02"
+                               ValueChanged="@(async v => await KodDegistiAsync(v))" />
+                <span class="ky-ipucu">Hesap planında olmayan kod kaydedilmez.</span>
+
+                @if (_oneriler.Count > 0)
+                {
+                    <div class="ky-oneriler">
+                        @foreach (var oneri in _oneriler)
+                        {
+                            <div class="ky-oneri" @onclick="@(() => OneriSec(oneri))">
+                                <span class="k">@oneri.Kod</span>
+                                <span class="a">@oneri.Ad</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="ky-alan">
+                <label>Açıklama</label>
+                <RadzenTextBox @bind-Value="_form.Aciklama" Placeholder="Ortak" />
+            </div>
+            <div class="ky-alan">
+                <label>Durum</label>
+                <div style="display:flex; gap:6px; align-items:center">
+                    <RadzenCheckBox TValue="bool" @bind-Value="_form.Aktif" Name="kyAktif" />
+                    <label for="kyAktif" style="font-size:12px; color:#4a5568; text-transform:none">Aktif</label>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:6px; margin-top:12px">
+            <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                          Disabled="@_kaydediyor" Click="@KaydetAsync" />
+            <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                          Click="@(() => { _form = null; _duzenlenenId = null; _oneriler = new(); })" />
+        </div>
+    </div>
+}
+
+@code {
+    private List<KisiYonlendirmeDto> _kayitlar = new();
+    private KisiYonlendirmeYazDto? _form;
+    private int? _duzenlenenId;
+    private bool _kaydediyor;
+
+    /// <summary>Hesap kodu kutusunun altındaki plan önerileri.</summary>
+    private List<HesapPlaniKaydiDto> _oneriler = new();
+
+    /// <summary>Yazdıkça öneri çağrısı yapılır; önceki istek iptal edilir.</summary>
+    private CancellationTokenSource? _oneriIptal;
+
+    private record YonSecenek(YonlendirmeYonu Deger, string Ad);
+
+    private static readonly YonSecenek[] Yonler =
+    {
+        new(YonlendirmeYonu.Cikan, "Çıkan"),
+        new(YonlendirmeYonu.Giren, "Giren"),
+        new(YonlendirmeYonu.Farketmez, "Farketmez")
+    };
+
+    protected override async Task OnInitializedAsync() => await YenileAsync();
+
+    /// <summary>Firma değişince üst sayfa çağırır; tablo firma bazlıdır.</summary>
+    public async Task YenileAsync()
+    {
+        _kayitlar = await Api.KisiYonlendirmeleriAsync();
+        StateHasChanged();
+    }
+
+    private void FormAc(KisiYonlendirmeDto? kayit)
+    {
+        _oneriler = new();
+        _duzenlenenId = kayit?.Id;
+        _form = kayit is null
+            ? new KisiYonlendirmeYazDto()
+            : new KisiYonlendirmeYazDto
+            {
+                Isim = kayit.Isim,
+                Yon = kayit.Yon,
+                HesapKodu = kayit.HesapKodu,
+                Aciklama = kayit.Aciklama,
+                Aktif = kayit.Aktif
+            };
+    }
+
+    /// <summary>
+    /// Kod yazıldıkça hesap planından öneri getirir. Arama grup filtresiz: yönlendirmenin
+    /// amacı zaten kuralın grubundan çıkmak (195 yerine 331).
+    /// </summary>
+    private async Task KodDegistiAsync(string? deger)
+    {
+        if (_form is null) return;
+
+        _form.HesapKodu = deger ?? string.Empty;
+
+        _oneriIptal?.Cancel();
+        _oneriIptal = new CancellationTokenSource();
+        var iptal = _oneriIptal.Token;
+
+        if (_form.HesapKodu.Trim().Length < 2)
+        {
+            _oneriler = new();
+            return;
+        }
+
+        var sonuc = await Api.HesapPlaniAraAsync(_form.HesapKodu.Trim(), null, 12, iptal);
+        if (iptal.IsCancellationRequested) return;
+
+        _oneriler = sonuc;
+    }
+
+    private void OneriSec(HesapPlaniKaydiDto oneri)
+    {
+        if (_form is null) return;
+
+        _form.HesapKodu = oneri.Kod;
+        _oneriler = new();
+    }
+
+    private async Task KaydetAsync()
+    {
+        if (_form is null) return;
+
+        _kaydediyor = true;
+        var (_, hata) = _duzenlenenId is int id
+            ? await Api.KisiYonlendirmeGuncelleAsync(id, _form)
+            : await Api.KisiYonlendirmeEkleAsync(_form);
+        _kaydediyor = false;
+
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Error, "Kaydedilemedi", hata, 6000);
+            return;
+        }
+
+        Notif.Notify(NotificationSeverity.Success, "Kaydedildi", null, 3000);
+        _form = null;
+        _duzenlenenId = null;
+        _oneriler = new();
+        await YenileAsync();
+    }
+
+    private async Task SilAsync(KisiYonlendirmeDto kayit)
+    {
+        var hata = await Api.KisiYonlendirmeSilAsync(kayit.Id);
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Silinemedi", hata, 6000);
+            return;
+        }
+
+        if (_duzenlenenId == kayit.Id)
+        {
+            _form = null;
+            _duzenlenenId = null;
+        }
+
+        Notif.Notify(NotificationSeverity.Success, "Silindi", kayit.Isim, 3000);
+        await YenileAsync();
+    }
+}

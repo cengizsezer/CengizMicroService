@@ -14,6 +14,19 @@
         Cikan = 2
     }
 
+    /// <summary>
+    /// Kişi yönlendirmesinin geçerli olduğu para yönü. <see cref="Yon"/>'den ayrı bir enum:
+    /// yönlendirme "iki yönde de aynı hesap" diyebilmeli (<see cref="Farketmez"/>), ekstre
+    /// satırının yönü ise her zaman kesindir. Sayısal değerler <see cref="Yon"/> ile
+    /// hizalı tutuldu (Giren = 1, Cikan = 2), istemci DTO'su da aynı sırayı kullanıyor.
+    /// </summary>
+    public enum YonlendirmeYonu : byte
+    {
+        Giren = 1,
+        Cikan = 2,
+        Farketmez = 3
+    }
+
     /// <summary>Ekstre yüklemesinin durumu.</summary>
     public enum YuklemeDurum : byte
     {
@@ -64,7 +77,15 @@
         BenzersizOnek = 8,
 
         /// <summary>Vergi kodu / anahtar kelime eşleme tablosu veya plaka anahtarı.</summary>
-        VergiPlaka = 9
+        VergiPlaka = 9,
+
+        /// <summary>
+        /// Kullanıcının elle tanımladığı kişi yönlendirmesi (bkz.
+        /// <see cref="Services.KisiYonlendirmeEslestirici"/>). Tüm katmanlardan
+        /// <b>önce</b> çalışır: kullanıcı "bu kişinin ödemesi şu hesaba gitsin" dediyse
+        /// sabit kural da (masraf ödemesi → 195) onu geçemez.
+        /// </summary>
+        KisiYonlendirme = 10
     }
 
     /// <summary>

@@ -65,6 +65,9 @@
     .eo-etiket.cozulemedi { background: #fff5f5; color: #9b2c2c; }
     .eo-skor { font-size: 10px; color: #718096; margin-left: 4px; font-variant-numeric: tabular-nums; }
 
+    .eo-yonlendir { display: flex; align-items: center; gap: 5px; margin-top: 5px; font-size: 11px; color: #4a5568; }
+    .eo-yonlendir input { margin: 0; }
+
     .eo-adaylar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
     .eo-aday { font-size: 11px; border: 1px solid #cbd5e0; border-radius: 10px; padding: 2px 9px; background: #fff; cursor: pointer; }
     .eo-aday:hover { background: #ebf8ff; border-color: #90cdf4; }
@@ -116,6 +119,18 @@ else
                       title="Orijinal ekstre dosyası, açıklama kolonu üretilen açıklamayla değiştirilmiş"
                       Disabled="@(Bekleyenler.Count > 0 || _yukleme?.KaynakDosyaVar != true)"
                       Click="@DuzeltilmisEkstreAsync" />
+        @* Diğer iki düğmenin aksine hiçbir zaman kilitlenmez: amacı zaten çözülmemiş
+           satırların ne önerildiğini onaydan önce görmek. *@
+        <RadzenButton Text="Analiz için dışa aktar" Icon="analytics" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                      title="Tüm satırlar (çözülmemişler dahil) — yalnız inceleme içindir, ORKA'ya yüklenmez"
+                      Click="@AnalizDokumuAsync" />
+    </div>
+
+    <div class="eo-ipucu" style="margin-top:-4px">
+        <b>Analiz için dışa aktar</b>: sistemin her satırda ne önerdiğini, hangi katmanın
+        çözdüğünü ve kaç aday bulduğunu içeren döküm. Durumu ne olursa olsun tüm satırları
+        verir; <b>ORKA'ya yüklenmez</b>, yalnız incelemek içindir. ORKA'ya gidecek dosyalar
+        "Kod listesi" ve "Düzeltilmiş ekstre"dir; onlar bekleyen satır varken üretilmez.
     </div>
 
     @if (!_cozulmusSekme)
@@ -157,6 +172,18 @@ else
                             }
                         </div>
                         <div class="eo-ham" title="@satir.HamAciklama">@satir.IslemTipi · @satir.HamAciklama</div>
+
+                        @if (!string.IsNullOrWhiteSpace(satir.CikarilanUnvan))
+                        {
+                            @* Kısayol: kullanıcı Tanımlar ekranına gidip aynı ismi elle
+                               yazmak zorunda kalmasın. Yön, bu satırın yönünden gelir. *@
+                            <label class="eo-yonlendir"
+                                   title="@($"Kişi: {satir.CikarilanUnvan} · Yön: {BankaEkstreEtiket.Yon(satir.Yon)}")">
+                                <input type="checkbox" checked="@Yonlendir(satir.Id)"
+                                       @onchange="@(e => YonlendirDegisti(satir, e.Value))" />
+                                <span>Bu kişiyi (<b>@satir.CikarilanUnvan</b>) hep bu hesaba yönlendir</span>
+                            </label>
+                        }
 
                         @{
                             var adaylar = satir.SecilebilirAdaylar();
@@ -302,6 +329,9 @@ else
     /// <summary>Kod kutusundaki koda karşılık gelen hesap adı (seçilince kutunun yanında görünür).</summary>
     private readonly Dictionary<int, string?> _adlar = new();
 
+    /// <summary>Satır başına "bu kişiyi hep bu hesaba yönlendir" kutusu.</summary>
+    private readonly Dictionary<int, bool> _yonlendir = new();
+
     private List<HesapPlaniKaydiDto> _oneriler = new();
     private int _aktifSatirId;
     private bool _cozulmusSekme;
@@ -329,6 +359,11 @@ else
 
     private string? Ad(int satirId) => _adlar.TryGetValue(satirId, out var a) ? a : null;
 
+    private bool Yonlendir(int satirId) => _yonlendir.TryGetValue(satirId, out var y) && y;
+
+    private void YonlendirDegisti(EkstreSatirDto satir, object? deger)
+        => _yonlendir[satir.Id] = deger is bool b && b;
+
     protected override async Task OnParametersSetAsync() => await YukleAsync();
 
     private async Task YukleAsync()
@@ -338,6 +373,7 @@ else
 
         _kodlar.Clear();
         _adlar.Clear();
+        _yonlendir.Clear();
         foreach (var satir in _satirlar)
         {
             // Öneri hazır gelir; kullanıcı doğruysa yalnız Enter'a basar.
@@ -502,7 +538,7 @@ else
                     : index > 0 ? liste[index - 1].Id
                     : (int?)null;
 
-        var (veri, hata) = await Api.OnaylaAsync(satir.Id, kod);
+        var (veri, hata) = await Api.OnaylaAsync(satir.Id, kod, Yonlendir(satir.Id));
         if (hata is not null)
         {
             Notif.Notify(NotificationSeverity.Error, "Onaylanamadı", hata, 6000);
@@ -573,6 +609,23 @@ else
         {
             Notif.Notify(NotificationSeverity.Warning, "Dosya üretilemedi",
                          hata ?? "Düzeltilmiş ekstre üretilemedi.", 8000);
+            return;
+        }
+
+        await JS.InvokeVoidAsync("downloadFileFromBytes", dosyaAdi, icerik);
+    }
+
+    /// <summary>
+    /// Analiz dökümü. "Kod listesi" / "Düzeltilmiş ekstre" eksik satır varken 400 dönerken
+    /// bu döküm her zaman üretilir; dosya ORKA'ya yüklenmez, yalnız inceleme içindir.
+    /// </summary>
+    private async Task AnalizDokumuAsync()
+    {
+        var (dosyaAdi, icerik, hata) = await Api.AnalizDokumuAsync(EkstreId);
+        if (hata is not null || icerik is null)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Döküm üretilemedi",
+                         hata ?? "Analiz dökümü üretilemedi.", 8000);
             return;
         }
 

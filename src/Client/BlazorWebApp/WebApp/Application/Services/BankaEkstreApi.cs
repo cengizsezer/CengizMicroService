@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -19,6 +19,7 @@ namespace WebApp.Application.Services
         private const string HesapPlani = "/catalog/banka-ekstre/hesap-plani";
         private const string Eslesmeler = "/catalog/banka-ekstre/eslesmeler";
         private const string VergiKodlari = "/catalog/banka-ekstre/vergi-kodlari";
+        private const string KisiYonlendirmeleri = "/catalog/banka-ekstre/kisi-yonlendirmeleri";
 
         private const string XlsxTuru = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
@@ -105,9 +106,11 @@ namespace WebApp.Application.Services
             return await GetOrNull<List<EkstreSatirDto>>(url, ct) ?? new();
         }
 
-        public Task<(EkstreSatirDto? Veri, string? Hata)> OnaylaAsync(int satirId, string hesapKodu, CancellationToken ct = default)
+        public Task<(EkstreSatirDto? Veri, string? Hata)> OnaylaAsync(int satirId, string hesapKodu,
+                                                                      bool kisiYonlendir = false, CancellationToken ct = default)
             => GonderAsync<EkstreSatirDto>(() =>
-                _http.PutAsJsonAsync($"{Ekstre}/satir/{satirId}/onayla", new SatirOnaylaDto { HesapKodu = hesapKodu }, ct));
+                _http.PutAsJsonAsync($"{Ekstre}/satir/{satirId}/onayla",
+                                     new SatirOnaylaDto { HesapKodu = hesapKodu, KisiYonlendir = kisiYonlendir }, ct));
 
         public Task<(EkstreSatirDto? Veri, string? Hata)> DigerBankadaAsync(int satirId, CancellationToken ct = default)
             => GonderAsync<EkstreSatirDto>(() =>
@@ -124,6 +127,15 @@ namespace WebApp.Application.Services
             int ekstreId, CancellationToken ct = default)
             => DosyaIndirAsync(() => _http.PostAsync($"{Ekstre}/{ekstreId}/duzeltilmis-ekstre", content: null, ct),
                                $"ekstre-{ekstreId}-duzeltilmis.xlsx", "Düzeltilmiş ekstre üretilemedi.", ct);
+
+        /// <summary>
+        /// Analiz dökümü. "Kod listesi" ve "Düzeltilmiş ekstre"nin aksine eksik satır varken
+        /// de üretilir; dosya ORKA'ya yüklenmez, yalnız inceleme içindir.
+        /// </summary>
+        public Task<(string? DosyaAdi, byte[]? Icerik, string? Hata)> AnalizDokumuAsync(
+            int ekstreId, CancellationToken ct = default)
+            => DosyaIndirAsync(() => _http.PostAsync($"{Ekstre}/{ekstreId}/analiz-dokumu", content: null, ct),
+                               $"ekstre-{ekstreId}-analiz.xlsx", "Analiz dökümü üretilemedi.", ct);
 
         public async Task<string?> SilAsync(int ekstreId, CancellationToken ct = default)
         {
@@ -198,6 +210,25 @@ namespace WebApp.Application.Services
         public async Task<string?> VergiKoduSilAsync(int id, CancellationToken ct = default)
         {
             var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync($"{VergiKodlari}/{id}", ct));
+            return hata;
+        }
+
+        // ---- Kişi yönlendirmeleri ----
+
+        public async Task<List<KisiYonlendirmeDto>> KisiYonlendirmeleriAsync(CancellationToken ct = default)
+            => await GetOrNull<List<KisiYonlendirmeDto>>(KisiYonlendirmeleri, ct) ?? new();
+
+        public Task<(KisiYonlendirmeDto? Veri, string? Hata)> KisiYonlendirmeEkleAsync(KisiYonlendirmeYazDto dto,
+                                                                                       CancellationToken ct = default)
+            => GonderAsync<KisiYonlendirmeDto>(() => _http.PostAsJsonAsync(KisiYonlendirmeleri, dto, ct));
+
+        public Task<(KisiYonlendirmeDto? Veri, string? Hata)> KisiYonlendirmeGuncelleAsync(int id, KisiYonlendirmeYazDto dto,
+                                                                                           CancellationToken ct = default)
+            => GonderAsync<KisiYonlendirmeDto>(() => _http.PutAsJsonAsync($"{KisiYonlendirmeleri}/{id}", dto, ct));
+
+        public async Task<string?> KisiYonlendirmeSilAsync(int id, CancellationToken ct = default)
+        {
+            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync($"{KisiYonlendirmeleri}/{id}", ct));
             return hata;
         }
 

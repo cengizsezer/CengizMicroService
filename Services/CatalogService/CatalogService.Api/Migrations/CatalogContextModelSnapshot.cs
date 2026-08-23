@@ -630,6 +630,56 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("EkstreKimlikKayitlari", "catalog");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.BankaEkstre.Domain.KisiYonlendirme", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<bool>("Aktif")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("HesapAdi")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("HesapKodu")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("Isim")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("IsimCekirdegi")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("TenantNo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<byte>("Yon")
+                        .HasColumnType("tinyint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantNo", "IsimCekirdegi", "Yon")
+                        .IsUnique();
+
+                    b.ToTable("EkstreKisiYonlendirmeleri", "catalog");
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.BankaEkstre.Domain.SabitKural", b =>
                 {
                     b.Property<int>("Id")

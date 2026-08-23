@@ -1,4 +1,4 @@
-# KARARLAR — Banka Ekstresi İşleme Modülü
+﻿# KARARLAR — Banka Ekstresi İşleme Modülü
 
 Prompt'ta açıkça yazmayan noktalarda alınan kararlar ve gerekçeleri.
 Kural: belirsizse en muhafazakâr seçenek, mimari belirsizse repodaki benzer koda bak.
@@ -742,3 +742,124 @@ planıyla katmanın çözdüğü satır sayısı 22'den 20'ye indi; ikisi de yan
 (açıklamada hiç banka adı geçmeyen `Hesaplararası Virman` satırları için) yalnız **(a)**
 ile açılan satırlarda yapılıyor. (b) ile açılanlarda yapılsaydı karşı tarafı gerçek bir
 cari olan satırlar cari eşleştirmesine hiç gidemeden banka adaylarıyla onaya düşerdi.
+
+---
+
+# Tur 3 — kişi eşleştirmesi
+
+## 58. Kural grubu içindeki alt hesap araması: benzersiz önek, benzerlik değil
+
+**Karar:** Sabit kural yalnız ana grubu veriyorsa (`AltHesapGerekli`) grup içindeki kişi
+muavini artık **önek eşleşmesiyle** aranıyor: çıkarılan isim, hesap adının **token
+sınırında biten öneki** olmalı. Benzerlik skoru (`Benzerlik.Oran`) bu aramada hiç
+kullanılmıyor.
+
+Karar tablosu:
+
+| Durum | Sonuç |
+|---|---|
+| Ad + soyad (≥2 kelime), grup içinde tek eşleşme, başka grupta karşılık yok | **Otomatik** (güven 0.95) |
+| Birden fazla eşleşme | Onaya düşer, **hepsi** aday listelenir |
+| Tek kelimelik isim (`İlyas`) | **Hiçbir zaman otomatik değil** |
+| Hiç eşleşme yok | Alt hesap **boş**; yalnız ana grup (`195`) önerilir |
+
+**Neden:** Kural ana grubu doğru belirliyordu ama grup içi arama difflib benzerliğiyle
+yapılıyor ve **yanlış kişiyi** seçiyordu. Gerçek dosyadan ölçülen üç satır:
+
+```
+"ABDULKADİR SAYICI Masraf Ödemesi Arta Tekmer"
+   önce → 195 01 A20  Abdülkadir Yılmaz  (0.65)
+"dilara sager masraf ödemesi"
+   önce → 195 01 D06  Dilara Kaya        (0.67)
+"… Akbank T.A.Ş. İlyas hesabına giden FAST ödemesi"   (soyad yok)
+   önce → 195 01 I02  İlyas Yücel        (0.45)   — planda İlyas Ömeroğlu da var
+```
+
+Satırlar onay kuyruğunda olduğu için kayıt bozulmuyordu; **tehlike onay anında**: kutuda
+hazır duran yanlış kişi ONAYLA'ya basarken kolayca gözden kaçıyor. "Yakın isimli başka
+kişi" önerisi boş kutudan kötüdür — bu, §48'in (0.40 eşiği) kişi muavinlerindeki karşılığı.
+
+**Tek kelimelik isim neden hiç otomatik değil:** Tek başına `ABDULKADIR` planda yalnız
+`Abdülkadir Yılmaz`'ı tutsa bile o kişi olduğunu göstermez; ölçülen dosyada aynı adın iki
+sahibi var (`İlyas Ömeroğlu`, `İlyas Yücel`). Bir eşleşme çıksa da satır onaya düşer.
+
+**Arama neden ön indeksten geçiyor:** Gerçek plan 6.000+ kayıt. `HesapPlaniIndeksi`
+ilk kelimeyle ikili arama yapıp bitişik bloğu veriyor; her avans satırında tüm plan
+taranmıyor (§25c ile aynı gerekçe).
+
+## 59. Kural ana grubu tek başına kilitlemiyor
+
+**Karar:** Kural bir ana grup önerdiğinde, aynı ismin **başka cari gruplarındaki birebir
+eşleşmeleri** de aday olarak gösteriliyor ve satır onaya düşüyor. Kural grubundaki adaylar
+listenin başında duruyor; kod kutusunda kuralın ana grubu (`195`) kalıyor.
+
+**Neden:** `ABDULKADİR SAYICI` hesap planında **gerçekten var** — ama `331 02` (ortaklara
+borçlar) altında. Kural `195`'e kilitlediği için kişi hiç bulunamıyordu ve kullanıcı kodu
+elle aramak zorundaydı.
+
+**Neden önek değil, tam eşitlik:** Kural grubunun dışına çıkmak ancak isim **aynen**
+tutuyorsa meşru. Önek yeterli sayılsaydı her avans satırına ilgisiz cariler eklenirdi
+(`ALİ` → `Ali Rıza Tekstil A.Ş.`). Arama uzayı `CariOnekIndeksi.CariGruplari`
+(120/329/136/159/195/196/320/331/336) ile sınırlı: gider hesapları aday olmamalı.
+
+**Yan etki — aday listesi artık tek elemanlıyken de saklanıyor.** `AdaylariYaz` eskiden
+yalnız birden fazla adayı JSON'a yazıyordu; tek aday (`331 02`) kayboluyor ve onay ekranında
+hiç görünmüyordu. Eşik `Count == 0` oldu.
+
+## 60. Kişi yönlendirme tablosu: sabit kuraldan önce çalışan yeni katman
+
+**Karar:** `EkstreKisiYonlendirmeleri` (firma bazlı) tablosu eklendi:
+`IsimCekirdegi`, `Isim`, `Yon` (Giren/Çıkan/Farketmez), `HesapKodu`, `HesapAdi`,
+`Aciklama`, `Aktif`. Katman **tüm katmanlardan önce** — sabit kuraldan da önce — çalışıyor
+ve tutarsa satır güven 1.0 ile otomatik çözülüyor (`KaynakKatman.KisiYonlendirme = 10`).
+
+**Neden koda gömülmedi:** Sabit kural işlemin **niteliğini** biliyor ("masraf ödemesi"),
+kişinin **ne olduğunu** bilmiyor. Ortak ve yöneticiler için aynı ifade `331`'e gitmeli,
+personel avansına değil. Kimin ortak olduğu firmaya özel ve zamanla değişir; kullanıcı
+kendi tanımlamalı.
+
+**Neden sabit kuraldan önce:** Sonra çalışsaydı hiç sıra gelmezdi — kural açıklama
+kapsamlı ve Katman 0'da her `masraf ödemesi` satırını kapıyor.
+
+**Neden firma bazlı (vergi kodlarının aksine):** Vergi kodu (`0040` = damga) her firmada
+aynıdır; kimin ortak olduğu değildir. `TenantNo` + query filter, `BankaHesabi` ile aynı
+kalıp. Prompt'taki `FirmaId` alanı bu depoda `TenantNo` karşılığıyla uygulandı — modülün
+tamamı öyle ölçekleniyor.
+
+**Yön neden ayrı bir enum (`YonlendirmeYonu`):** Yönlendirme "iki yönde de aynı hesap"
+diyebilmeli; ekstre satırının yönü ise her zaman kesin. Aynı kişi için giden ödeme `331`,
+gelen tahsilat başka bir hesap olabilir. Yönü belirtilmiş kayıt `Farketmez` kaydını yener.
+
+**İsim iki yerde aranıyor:** önce çıkarılan unvanın çekirdeğiyle **tam eşitlik**, tutmazsa
+ham açıklamanın çekirdeğinde **tam kelime dizisi** olarak (`Normalizasyon.IfadeVarMi`).
+İkincisi şart: ölçülen dosyada aynı kişi bir satırda desenin yakaladığı yerde
+(`… A.Ş. ABDULKADİR SAYICI hesabına …`), başka bir satırda açıklamanın başında
+(`ABDULKADİR SAYICI Masraf Ödemesi Arta Tekmer`) geçiyor. Benzerlik **hiç** kullanılmıyor —
+`Abdülkadir Şahin` tanımlıyken `Abdulkadir Sayıcı` satırı tutmamalı.
+
+**Denetimler:** hesap kodu planda yoksa kaydedilmiyor (yönlendirme bir daha sorulmadan
+uygulanacak; yanlış kod her ay sessizce yanlış hesaba yazardı), aynı isim + yön için ikinci
+kayıt reddediliyor (hangisinin uygulandığı kayıt sırasına kalmasın). Plan hiç yüklenmemişse
+kod denetimi atlanıyor, kurulum sırası bozulmasın.
+
+**Onay ekranından kısayol:** Satır onaylanırken "bu kişiyi hep bu hesaba yönlendir"
+seçilirse kayıt otomatik oluşuyor; yön o satırın yönünden geliyor, isim satırın çıkarılan
+unvanından. Unvan okunamamışsa kayıt yazılmıyor ve uyarı dönüyor — sessizce boş isimli bir
+yönlendirme oluşturmaktansa kullanıcıya söylemek gerek.
+
+## 61. Analiz dökümü ayrı bir dışa aktarım; ORKA kısıtı korundu
+
+**Karar:** Yeni uç nokta `POST …/ekstre/{id}/analiz-dokumu` ve "Analiz için dışa aktar"
+düğmesi. Durumu ne olursa olsun **tüm satırları** xlsx olarak veriyor:
+`SiraNo | Tarih | Yon | Tutar | HamAciklama | UretilenAciklama | OnerilenHesapKodu |
+OnerilenHesapAdi | GuvenSkoru | KaynakKatman | Durum | AdaySayisi`.
+
+"Kod listesi" ve "Düzeltilmiş ekstre" onay bekleyen/çözülemeyen satır varken **400 dönmeye
+devam ediyor** — eksik listeyle ORKA'ya gitmenin anlamı yok (§28).
+
+**Neden ayrı uç nokta:** İki dosyanın amacı farklı. ORKA'ya giden çıktı eksiksiz olmalı;
+analiz dökümü ise tam olarak **eksik satırları incelemek** için var. Aynı uç noktaya
+"zorla" bayrağı eklenseydi kısıt kazara atlanabilirdi.
+
+Düğme adı ve yanındaki açıklama dosyanın ORKA'ya yüklenmediğini açıkça söylüyor; dosya adı
+da `…-analiz.xlsx` (ORKA'ya giden `…-duzeltilmis.xlsx`).

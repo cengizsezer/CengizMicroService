@@ -1,4 +1,4 @@
-# ÖZET — Banka Ekstresi İşleme Modülü
+﻿# ÖZET — Banka Ekstresi İşleme Modülü
 
 Banka ekstresi yüklenip her satır için muhasebe açıklaması üretiliyor, karşı hesap katmanlı
 olarak çözülüyor; belirsiz satırlar klavye odaklı onay ekranına düşüyor, onaylar öğreniliyor.
@@ -531,3 +531,129 @@ Fikstür planına iki cari eklendi: `120 M40 Marbaş Menkul Değerler Anonim Şt
 
 **Durum:** çözüm derleniyor, 402 testin tamamı geçiyor (CatalogService 370, WebApp 31,
 Sovos 1).
+
+---
+
+# Tur 3 — kişi eşleştirmesi, kişi yönlendirme tablosu, analiz dökümü
+
+Gerçek Vakıfbank ekstresinin (287 satır) gerçek hesap planıyla çalıştırılmasından çıkan üç
+sorun. Ofis ölçümü: **139 otomatik / 136 onay bekliyor / 12 çözülemedi**; gözle kontrol
+edilen 48 çözülmüş satırın 48'i de doğru. Bu turun konusu doğru/yanlış **sayısı** değil,
+onay kuyruğunda **hazır bekleyen yanlış öneri**.
+
+## 1. Kural grubu içinde yanlış kişi seçiliyordu
+
+Sabit kural (`İş Avansı`, `Masraf Ödemesi`, `Maaş Avansı` → `195`/`196`) ana grubu doğru
+belirliyordu, ama grup içi alt hesap araması difflib benzerliğiyle yapılıyor ve yanlış
+kişiyi öneriyordu. Arama artık **benzersiz önek** yöntemiyle (KARARLAR §58):
+
+- Çıkarılan isim, hesap adının **token sınırında biten öneki** olmalı.
+- Ad + soyad verilmiş ve grup içinde **tek** eşleşme varsa otomatik.
+- Birden fazla eşleşmede satır onaya düşer, **hepsi** aday listelenir.
+- Hiç eşleşme yoksa alt hesap boş kalır, yalnız ana grup önerilir. **Yakın isimli başka
+  kişi asla önerilmez.**
+- Tek kelimelik isim (`İlyas`) hiçbir zaman otomatik çözülmez.
+
+Ayrıca kural ana grubu artık tek başına kilitlemiyor (KARARLAR §59): aynı ismin **başka
+gruplardaki birebir eşleşmeleri** de aday oluyor ve satır onaya düşüyor.
+
+## 2. Kişi yönlendirme tablosu (yeni)
+
+`EkstreKisiYonlendirmeleri` — firma bazlı: `IsimCekirdegi`, `Isim`, `Yon`
+(Giren/Çıkan/Farketmez), `HesapKodu`, `HesapAdi`, `Aciklama`, `Aktif`.
+
+Katman **tüm katmanlardan önce** çalışıyor — sabit kuraldan da önce (KARARLAR §60): kişi
+tabloda tanımlıysa "masraf ödemesi" ifadesi geçse bile satır oraya gidiyor, güven 1.0 ile
+otomatik çözülüyor. Etiket: `kişi` (`KaynakKatman.KisiYonlendirme = 10`).
+
+Yön ayırt edici: aynı kişinin giden ödemesi `331 02`, gelen tahsilatı başka bir hesap
+olabilir. Eşleşme normalize isim çekirdeği üzerinden **tam eşleşme**; benzerlik hiç
+kullanılmıyor.
+
+## 3. Analiz dökümü (yeni)
+
+`POST …/ekstre/{id}/analiz-dokumu` + "Analiz için dışa aktar" düğmesi. Durumu ne olursa
+olsun tüm satırları veriyor:
+`SiraNo | Tarih | Yon | Tutar | HamAciklama | UretilenAciklama | OnerilenHesapKodu |
+OnerilenHesapAdi | GuvenSkoru | KaynakKatman | Durum | AdaySayisi`
+
+Dosya **ORKA'ya yüklenmez**, yalnız inceleme içindir. "Kod listesi" ve "Düzeltilmiş
+ekstre" eksik satır varken 400 dönmeye devam ediyor (KARARLAR §61).
+
+## Veritabanı
+
+- `EkstreKisiYonlendirmeleri` (yeni tablo, firma bazlı): `Id`, `TenantNo`,
+  `IsimCekirdegi`, `Isim`, `Yon`, `HesapKodu`, `HesapAdi`, `Aciklama`, `Aktif`.
+  Unique index: `(TenantNo, IsimCekirdegi, Yon)`.
+- Migration: `20260823103138_AddEkstreKisiYonlendirme` — **üretildi ve uygulandı**,
+  `has-pending-model-changes` temiz.
+- Seed yok: tablo kullanıcının kendi tanımlarıyla dolar.
+
+## Arayüz
+
+- **Tanımlar** ekranına beşinci bölüm: **Kişi yönlendirmeleri** (CRUD). Hesap kodu
+  yazılırken hesap planından öneri açılıyor; planda olmayan kod kaydedilmiyor.
+- **Onay ekranı**: kişi adı okunabilen satırlarda "Bu kişiyi (<ad>) hep bu hesaba
+  yönlendir" kutusu. İşaretlenip onaylanırsa yönlendirme kaydı otomatik oluşuyor; yön o
+  satırın yönünden geliyor.
+- **Onay ekranı**: "Analiz için dışa aktar" düğmesi — hiçbir zaman kilitlenmiyor, yanındaki
+  açıklama dosyanın ORKA'ya yüklenmediğini söylüyor.
+
+## Test
+
+`Services/CatalogService/CatalogService.UnitTests/BankaEkstre/KisiEslestirmeTests.cs` —
+20 test, çoğu **gerçek dosyanın kendi açıklama metinleriyle**. Hesap planı fikstürüne
+ölçülen gerçek kişiler eklendi: `195 01 A20 Abdülkadir Yılmaz`, `195 01 D06 Dilara Kaya`,
+`195 01 H13 İlyas Ömeroğlu`, `195 01 I02 İlyas Yücel`, `195 01 M05 Mesut Aktaş`,
+`195 01 E03 Eda Budak`, `331 02 Abdulkadir Sayıcı`.
+
+**Durum:** çözüm derleniyor, 422 testin tamamı geçiyor (CatalogService 390, WebApp 31,
+Sovos 1).
+
+## Gerçek dosyayla ölçüm
+
+Fikstür planıyla, aynı gerçek dosya, önce/sonra:
+
+```
+Otomatik      58 → 58
+Onay bekliyor 102 → 102
+Çözülemedi    127 → 127
+```
+
+**Sayılar bilerek değişmedi.** Bu turun düzelttiği satırlar zaten onay kuyruğundaydı;
+değişen, kutuda hazır bekleyen **öneri**. Satır satır fark tam olarak dört satır — ölçümde
+bildirilen dört satırın kendisi, başka hiçbir satır etkilenmedi:
+
+| Satır | Önce | Sonra |
+|---|---|---|
+| `… Akbank T.A.Ş. İlyas hesabına giden FAST` (2 satır) | `195 01 I02 İlyas Yücel` önerili | Öneri yok; **iki aday** (`195 01 H13`, `195 01 I02`) listeleniyor |
+| `dilara sager masraf ödemesi` | `195 01 D06 Dilara Kaya` önerili | Alt hesap boş; yalnız `195` |
+| `ABDULKADİR SAYICI Masraf Ödemesi Arta Tekmer` | `195 01 A20 Abdülkadir Yılmaz` önerili | Öneri yok; **aday** `331 02 Abdulkadir Sayıcı` |
+
+Kişi yönlendirmesi (`ABDULKADİR SAYICI / Çıkan / 331 02`) tanımlandığında son satır
+onay kuyruğundan çıkıp otomatik `331 02`'ye gidiyor (`KisiEslestirmeTests.Kisi06`).
+
+Regresyon: ad + soyadı tam geçen satırlar eskisi gibi otomatik çözülüyor —
+`Mesut Aktaş` (3 satır) → `195 01 M05`, `İlyas Ömeroğlu` (2 satır) → `195 01 H13`,
+`Eda Budak` → `195 01 E03`, `Dilara Kaya` (2 satır) → `195 01 D06`. Fikstüre eklenen
+`331 02` sayesinde `ABDULKADİR SAYICI  (… HESABINA YAPILAN … EFT)` satırı da benzersiz
+önek katmanından otomatik çözülüyor.
+
+**Ofis ölçümüyle karşılaştırma (139 / 136 / 12) yapılmadı:** gerçek 6.128 kayıtlık ORKA
+planı depoda yok, testler 88 kayıtlık fikstürle çalışıyor. Yukarıdaki dört satır farkı
+gerçek planda da aynı davranışı verir (mekanizma plandan bağımsız), ama **toplam sayılar
+ofiste ölçülmeli**: gerçek planı içe aktarın, aynı ekstreyi yükleyin, otomatik / onay
+bekleyen / çözülemeyen sayılarını 139 / 136 / 12 ile karşılaştırın. Beklenti: otomatik
+sayısı **aynı kalır ya da artar** (kişi yönlendirmeleri tanımlandıkça artar); asıl kazanç
+onay kuyruğunda yanlış önerinin kalmaması.
+
+## Kalan eksikler (Tur 3 sonrası)
+
+- **Gerçek planla ölçüm yapılmadı** (yukarıya bakın).
+- **Kişi yönlendirme tablosu boş geliyor.** Migration tabloyu açıyor, doldurmuyor. Ortak ve
+  yöneticiler Tanımlar > Kişi yönlendirmeleri'nden ya da onay ekranındaki kısayoldan
+  eklenir.
+- **Tarayıcıda denenmedi:** kişi yönlendirmeleri bölümü, onay ekranındaki yönlendirme
+  kutusu, analiz düğmesi. Sunucu tarafı testli; Razor tarafının otomatik testi yok.
+- **Yönlendirme yalnız kişi adı okunabilen satırlarda kısayoldan oluşturulabiliyor.** Adı
+  hiç çıkarılamayan satırda uyarı dönüyor; kayıt Tanımlar'dan elle eklenmeli.

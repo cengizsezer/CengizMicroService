@@ -46,7 +46,18 @@ namespace WebApp.Shared.Dto.BankaEkstre
         BenzersizOnek = 8,
 
         /// <summary>Vergi kodu / anahtar kelime eşleme tablosu veya plaka anahtarı.</summary>
-        VergiPlaka = 9
+        VergiPlaka = 9,
+
+        /// <summary>Kullanıcının tanımladığı kişi yönlendirmesi; tüm katmanlardan önce çalışır.</summary>
+        KisiYonlendirme = 10
+    }
+
+    /// <summary>Kişi yönlendirmesinin geçerli olduğu para yönü (sunucudaki enum ile aynı).</summary>
+    public enum YonlendirmeYonu : byte
+    {
+        Giren = 1,
+        Cikan = 2,
+        Farketmez = 3
     }
 
     // ---- Banka hesabı ----
@@ -281,6 +292,12 @@ namespace WebApp.Shared.Dto.BankaEkstre
     public class SatirOnaylaDto
     {
         public string HesapKodu { get; set; } = string.Empty;
+
+        /// <summary>
+        /// "Bu kişiyi hep bu hesaba yönlendir": işaretlenirse satırdaki kişi için kalıcı
+        /// bir yönlendirme kaydı oluşur ve aynı kişi bir daha sorulmaz.
+        /// </summary>
+        public bool KisiYonlendir { get; set; }
     }
 
     public class OrkaSatirDto
@@ -391,6 +408,32 @@ namespace WebApp.Shared.Dto.BankaEkstre
     }
 
     /// <summary>Ekrandaki Türkçe karşılıklar ve ortak biçimlendirme.</summary>
+    // ---- Kişi yönlendirmeleri ----
+
+    public class KisiYonlendirmeDto
+    {
+        public int Id { get; set; }
+        public string Isim { get; set; } = string.Empty;
+
+        /// <summary>Eşleştirmenin kullandığı normalize çekirdek; ekranda ipucu olarak gösterilir.</summary>
+        public string IsimCekirdegi { get; set; } = string.Empty;
+
+        public YonlendirmeYonu Yon { get; set; }
+        public string HesapKodu { get; set; } = string.Empty;
+        public string? HesapAdi { get; set; }
+        public string? Aciklama { get; set; }
+        public bool Aktif { get; set; }
+    }
+
+    public class KisiYonlendirmeYazDto
+    {
+        public string Isim { get; set; } = string.Empty;
+        public YonlendirmeYonu Yon { get; set; } = YonlendirmeYonu.Farketmez;
+        public string HesapKodu { get; set; } = string.Empty;
+        public string? Aciklama { get; set; }
+        public bool Aktif { get; set; } = true;
+    }
+
     public static class BankaEkstreEtiket
     {
         public static readonly CultureInfo Kultur = new("tr-TR");
@@ -418,11 +461,19 @@ namespace WebApp.Shared.Dto.BankaEkstre
             KaynakKatman.UnvanBenzerligi => "benzerlik",
             KaynakKatman.BenzersizOnek => "önek",
             KaynakKatman.VergiPlaka => "vergi/plaka",
+            KaynakKatman.KisiYonlendirme => "kişi",
             KaynakKatman.Kullanici => "kullanıcı",
             _ => "—"
         };
 
         public static string Yon(Yon y) => y == Dto.BankaEkstre.Yon.Giren ? "Giren" : "Çıkan";
+
+        public static string YonlendirmeYonu(YonlendirmeYonu y) => y switch
+        {
+            Dto.BankaEkstre.YonlendirmeYonu.Giren => "Giren",
+            Dto.BankaEkstre.YonlendirmeYonu.Cikan => "Çıkan",
+            _ => "Farketmez"
+        };
 
         public static string HesapTipi(HesapTipi t) => t == Dto.BankaEkstre.HesapTipi.Vadesiz ? "Vadesiz" : "Vadeli";
 

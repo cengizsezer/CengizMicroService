@@ -205,6 +205,13 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
     {
         /// <summary>Boşluklu ORKA kodu, ör. "120 D22".</summary>
         public string HesapKodu { get; set; } = string.Empty;
+
+        /// <summary>
+        /// "Bu kişiyi hep bu hesaba yönlendir" kısayolu. İşaretlenirse satırdaki kişi için
+        /// kalıcı bir kişi yönlendirmesi oluşturulur; yön, satırın yönünden gelir.
+        /// Kişi adı okunamamış satırlarda kayıt yazılmaz, uyarı döner.
+        /// </summary>
+        public bool KisiYonlendir { get; set; }
     }
 
     /// <summary>ORKA'ya aktarılacak tek satır.</summary>
@@ -317,6 +324,34 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public string HesapKodu { get; set; } = string.Empty;
         public string? HesapAdi { get; set; }
         public int Sira { get; set; }
+        public bool Aktif { get; set; } = true;
+    }
+
+    // ---- Kişi yönlendirmeleri ----
+
+    public class KisiYonlendirmeDto
+    {
+        public int Id { get; set; }
+
+        /// <summary>Kullanıcının girdiği yazım.</summary>
+        public string Isim { get; set; } = string.Empty;
+
+        /// <summary>Eşleştirmenin kullandığı normalize çekirdek; ekranda ipucu olarak gösterilir.</summary>
+        public string IsimCekirdegi { get; set; } = string.Empty;
+
+        public YonlendirmeYonu Yon { get; set; }
+        public string HesapKodu { get; set; } = string.Empty;
+        public string? HesapAdi { get; set; }
+        public string? Aciklama { get; set; }
+        public bool Aktif { get; set; }
+    }
+
+    public class KisiYonlendirmeYazDto
+    {
+        public string Isim { get; set; } = string.Empty;
+        public YonlendirmeYonu Yon { get; set; } = YonlendirmeYonu.Farketmez;
+        public string HesapKodu { get; set; } = string.Empty;
+        public string? Aciklama { get; set; }
         public bool Aktif { get; set; } = true;
     }
 

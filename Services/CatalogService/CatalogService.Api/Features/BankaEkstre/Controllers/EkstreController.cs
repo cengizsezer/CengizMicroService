@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Domain;
+﻿using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -89,7 +89,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
         {
             try
             {
-                var satir = await _service.OnaylaAsync(satirId, dto.HesapKodu, ct);
+                var satir = await _service.OnaylaAsync(satirId, dto.HesapKodu, dto.KisiYonlendir, ct);
                 return satir is null ? NotFound() : Ok(satir);
             }
             catch (BankaEkstreKuralException ex)
@@ -145,6 +145,22 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
             {
                 return BadRequest(new { field = ex.Field, message = ex.Message });
             }
+        }
+
+        /// <summary>
+        /// Analiz dökümü: satırların tamamı, durumu ne olursa olsun. "Kod listesi" ve
+        /// "Düzeltilmiş ekstre" eksik satır varken 400 dönmeye devam eder — bu döküm ise
+        /// sistemin ne önerdiğini onaydan önce incelemek için, ORKA'ya yüklenmez.
+        /// </summary>
+        [HttpPost("{id:int}/analiz-dokumu")]
+        public async Task<IActionResult> AnalizDokumu(int id, CancellationToken ct)
+        {
+            var dosya = await _service.AnalizDokumuAsync(id, ct);
+            if (dosya is null) return NotFound();
+
+            return File(dosya.Icerik,
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        dosya.DosyaAdi);
         }
 
         [HttpDelete("{id:int}")]
