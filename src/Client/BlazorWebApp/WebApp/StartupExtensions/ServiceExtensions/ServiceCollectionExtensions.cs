@@ -125,6 +125,12 @@ namespace WebApp.StartupExtensions.ServiceExtensions
         {
             services.AddScoped<AppStateManager>();
             services.AddScoped<IAppSessionManager, AppSessionManager>();
+
+            // Banka Otomasyon'un firma bağlamı. WASM'de scoped = uygulama ömrü, bu yüzden
+            // seçim sekme değişimlerinde korunur; sayfa yenilemesinde oturum deposundan
+            // geri gelir.
+            services.AddScoped<IBankaOtomasyonDeposu, SessionStorageBankaOtomasyonDeposu>();
+            services.AddScoped<IBankaOtomasyonOturumu, BankaOtomasyonOturumu>();
             services.AddTransient<IIdentityService, IdentityService>();
             //services.AddScoped<LanguageService>();
 

@@ -23,12 +23,28 @@ namespace WebApp.Application.Services
         private const string SabitKurallar = "/catalog/banka-ekstre/sabit-kurallar";
         private const string AciklamaSablonlari = "/catalog/banka-ekstre/aciklama-sablonlari";
         private const string UnvanDesenleri = "/catalog/banka-ekstre/unvan-desenleri";
+        private const string Firmalar = "/catalog/banka-ekstre/firmalar";
 
         private const string XlsxTuru = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
         private readonly HttpClient _http;
 
         public BankaEkstreApi(HttpClient http) => _http = http;
+
+        // ---- Firma seçim ekranı ----
+
+        public async Task<List<FirmaBankaOzetiDto>> FirmaOzetleriAsync(IEnumerable<string> tenantlar,
+                                                                       CancellationToken ct = default)
+        {
+            var liste = (tenantlar ?? Enumerable.Empty<string>())
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .ToList();
+
+            if (liste.Count == 0) return new List<FirmaBankaOzetiDto>();
+
+            var sorgu = string.Join("&", liste.Select(t => $"tenantlar={Uri.EscapeDataString(t)}"));
+            return await GetOrNull<List<FirmaBankaOzetiDto>>($"{Firmalar}/ozet?{sorgu}", ct) ?? new();
+        }
 
         // ---- Banka hesapları ----
 

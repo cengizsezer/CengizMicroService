@@ -1,0 +1,86 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+
+@implements IDisposable
+
+@inject IBankaOtomasyonOturumu Oturum
+@inject NotificationService Notif
+
+@*
+    Banka Otomasyon'un firma içi başlığı: hangi firmada olunduğu ve iki sekme.
+
+    İki işi var:
+      1. Firma adı ekranın üstünde SÜREKLİ görünür ve firma listesine dönüş bağlantısı
+         her zaman elinin altındadır. Yanlış firmaya veri girmeye karşı ilk savunma.
+      2. Modül ekranı açıkken firma bağlamının sahibi olduğunu işaretler (Oturum.Aktif);
+         üstteki genel FİRMA DEĞİŞTİR ile çelişki çıkarsa sayfadaki seçim kazanır ve
+         kullanıcı bildirimle uyarılır.
+*@
+
+<style>
+    .bo-ust { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+              flex-wrap: wrap; padding: 8px 12px; margin-bottom: 14px;
+              border: 1px solid #e2e8f0; border-radius: 6px; background: #f8fbff; }
+    .bo-firma { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-width: 0; }
+    .bo-firma-ad { font-weight: 600; font-size: 15px; color: #2b6cb0; }
+    .bo-firma-vkn { font-size: 11px; color: #718096; font-family: ui-monospace, Consolas, monospace; }
+    .bo-geri { font-size: 12px; }
+    .bo-sekmeler { display: flex; gap: 6px; }
+    .bo-sekme { border: 1px solid #e2e8f0; border-radius: 999px; padding: 5px 16px; font-size: 13px;
+                color: #4a5568; background: #fff; text-decoration: none; }
+    .bo-sekme:hover { background: #edf5ff; }
+    .bo-sekme.aktif { background: #2b6cb0; border-color: #2b6cb0; color: #fff; font-weight: 600; }
+</style>
+
+<div class="bo-ust">
+    <div class="bo-firma">
+        <RadzenIcon Icon="business" Style="font-size:18px; color:#2b6cb0" />
+        <span class="bo-firma-ad">@(Oturum.SeciliFirma?.Ad ?? "Firma seçilmedi")</span>
+        @if (!string.IsNullOrWhiteSpace(Oturum.SeciliFirma?.Vkn))
+        {
+            <span class="bo-firma-vkn">VKN @Oturum.SeciliFirma!.Vkn</span>
+        }
+        <a class="bo-geri" href="/banka-otomasyon">← Firma listesi</a>
+    </div>
+
+    <div class="bo-sekmeler">
+        <a class="bo-sekme @(Sekme == BankaOtomasyonSekmesi.Aktar ? "aktif" : "")"
+           href="/banka-otomasyon/aktar">Aktar</a>
+        <a class="bo-sekme @(Sekme == BankaOtomasyonSekmesi.Tanimlar ? "aktif" : "")"
+           href="/banka-otomasyon/tanimlar">Tanımlar</a>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public BankaOtomasyonSekmesi Sekme { get; set; }
+
+    protected override void OnInitialized()
+    {
+        // Modül ekranı açık: bağlamın sahibi bu modül.
+        Oturum.Aktif = true;
+
+        Oturum.Degisti += OturumDegisti;
+        Oturum.Uyari += UyariGeldi;
+    }
+
+    private async void OturumDegisti() => await InvokeAsync(StateHasChanged);
+
+    private async void UyariGeldi(string mesaj)
+        => await InvokeAsync(() =>
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Firma değişikliği uygulanmadı", mesaj, 10000);
+            StateHasChanged();
+        });
+
+    /// <summary>
+    /// Aktif bayrağı burada KAPATILMAZ: sekme değişiminde bu bileşen önce yok edilir,
+    /// yenisi sonra kurulur; arada kapatılsaydı modül bir an bağlamı bırakırdı.
+    /// Bayrağı yalnız firma seçim ekranı kapatır (modülden gerçekten çıkış).
+    /// </summary>
+    public void Dispose()
+    {
+        Oturum.Degisti -= OturumDegisti;
+        Oturum.Uyari -= UyariGeldi;
+    }
+}

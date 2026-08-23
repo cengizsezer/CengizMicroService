@@ -1,0 +1,195 @@
+@page "/banka-otomasyon"
+
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Domain.Models.User
+@using WebApp.Manager
+@using WebApp.Shared.Dto.BankaEkstre
+
+@inject IBankaEkstreApi Api
+@inject IAppSessionManager SessionManager
+@inject IBankaOtomasyonOturumu Oturum
+@inject NavigationManager Nav
+
+@*
+    Banka Otomasyon — firma seçim ekranı, modülün girişi.
+
+    Kalıp Raporlar (/firmakontrol) ekranıyla birebir aynıdır: firmalar tabloda listelenir,
+    her satırın sağında GİRİŞ düğmesi vardır, satıra tıklamak da girer. Kendi tasarımı
+    üretilmedi; iki ekran aynı işi yaptığı için aynı görünmeleri kasıtlı.
+
+    Buradaki GİRİŞ, Raporlar'dakinden bir adım fazlasını yapar: firmayı seçmekle kalmaz,
+    TENANT BAĞLAMINI da değiştirir (bkz. BankaOtomasyonOturumu). Ekranın "PKF Aday"
+    yazarken isteğin SMMM tenant'ıyla gitmesi bu yüzden mümkün değil.
+
+    Sayaçlar tek istekte gelir (/catalog/banka-ekstre/firmalar/ozet): girilmemiş firmaların
+    sayıları da gösterilebilsin diye sunucu tarafında tenant filtresi baypas edilir.
+*@
+
+<style>
+    .fs-kurulum { font-size: 11px; color: #975a16; }
+    .fs-yok { color: #cbd5e0; }
+</style>
+
+<RadzenStack Orientation="Orientation.Vertical" Gap="1.5rem" AlignItems="AlignItems.Stretch">
+
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+        <RadzenIcon Icon="account_balance_wallet" Style="font-size:2rem; color: var(--rz-primary);" />
+        <RadzenText TextStyle="TextStyle.H4" class="rz-m-0">Banka Otomasyon</RadzenText>
+    </RadzenStack>
+
+    <RadzenText TextStyle="TextStyle.Body1" class="rz-color-secondary">
+        Ekstre aktaracağınız firmayı seçin. Seçtiğiniz firma, modül boyunca yapılan tüm
+        yükleme ve içe aktarımların yazılacağı firmadır.
+    </RadzenText>
+
+    @if (_firmalar is null)
+    {
+        <RadzenCard class="rz-p-4">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+                <span>Yükleniyor...</span>
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else if (_firmalar.Count == 0)
+    {
+        <RadzenCard class="rz-p-4">
+            <em>Erişebildiğiniz firma bulunamadı.</em>
+        </RadzenCard>
+    }
+    else
+    {
+        <RadzenDataGrid TItem="FirmaDto"
+                        Data="@_firmalar"
+                        AllowPaging="true" PageSize="20"
+                        AllowSorting="true"
+                        AllowFiltering="false"
+                        RowSelect="@GirAsync"
+                        Style="cursor:pointer;">
+            <Columns>
+                <RadzenDataGridColumn TItem="FirmaDto" Property="Ad" Title="Firma">
+                    <Template Context="f">
+                        @f.Ad
+                        @if (Ozet(f).HesapPlaniSayisi == 0)
+                        {
+                            <div class="fs-kurulum">kurulum gerekli — hesap planı yüklenmedi</div>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="FirmaDto" Property="FirmaNo" Title="VKN" Width="150px">
+                    <Template Context="f">
+                        @(string.IsNullOrWhiteSpace(f.Vkn) ? "—" : f.Vkn)
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="FirmaDto" Title="Hesap planı" Width="150px" Sortable="false" TextAlign="TextAlign.Center">
+                    <Template Context="f">
+                        @{ var sayi = Ozet(f).HesapPlaniSayisi; }
+                        @if (sayi > 0)
+                        {
+                            @sayi
+                        }
+                        else
+                        {
+                            <span class="fs-yok">yüklenmedi</span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="FirmaDto" Title="Banka hesabı" Width="140px" Sortable="false" TextAlign="TextAlign.Center">
+                    <Template Context="f">
+                        @Ozet(f).BankaHesabiSayisi
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="FirmaDto" Title="Onay bekleyen" Width="150px" Sortable="false" TextAlign="TextAlign.Center">
+                    <Template Context="f">
+                        @{ var bekleyen = Ozet(f).OnayBekleyen; }
+                        @if (bekleyen > 0)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="@bekleyen.ToString()" IsPill="true" />
+                        }
+                        else
+                        {
+                            <span class="rz-text-muted">—</span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="FirmaDto" Title="" Width="120px" Sortable="false" TextAlign="TextAlign.Center">
+                    <Template Context="f">
+                        <span @onclick:stopPropagation @onkeydown:stopPropagation>
+                            <RadzenButton Text="GİRİŞ"
+                                          Icon="login"
+                                          ButtonStyle="ButtonStyle.Primary"
+                                          Size="ButtonSize.Small"
+                                          Disabled="@_giriliyor"
+                                          Click="@(() => GirAsync(f))" />
+                        </span>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+
+        <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary">
+            Hesap planı yüklenmemiş firmaya da girilebilir; kurulum Tanımlar sekmesinden yapılır.
+            "Onay bekleyen" tüm bankaların ve tüm dönemlerin toplamıdır.
+        </RadzenText>
+    }
+</RadzenStack>
+
+@code {
+    private List<FirmaDto>? _firmalar;
+    private Dictionary<string, FirmaBankaOzetiDto> _ozetler = new(StringComparer.Ordinal);
+    private bool _giriliyor;
+
+    private static readonly FirmaBankaOzetiDto Bos = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Firma listesine dönüldü: modülün firma bağlamı bırakılır, üstteki genel seçime
+        // artık karışılmaz. Aksi halde kullanıcı listeye dönüp FİRMA DEĞİŞTİR'e bastığında
+        // modül hâlâ eski firmayı geri uygulardı.
+        Oturum.Aktif = false;
+
+        // Kullanıcının erişebildiği firmalar login yanıtından gelir; modül kendi listesini
+        // uydurmaz, tenant'ı olmayan bir firma buraya hiç düşmez.
+        _firmalar = SessionManager.Firms
+            .Where(f => f is not null && !string.IsNullOrWhiteSpace(f.FirmaNo))
+            .OrderBy(f => f.Ad, StringComparer.CurrentCulture)
+            .ToList();
+
+        if (_firmalar.Count == 0) return;
+
+        var ozetler = await Api.FirmaOzetleriAsync(_firmalar.Select(f => f.FirmaNo));
+        _ozetler = ozetler.GroupBy(o => o.TenantNo, StringComparer.Ordinal)
+                          .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+    }
+
+    private FirmaBankaOzetiDto Ozet(FirmaDto firma)
+        => _ozetler.TryGetValue(firma.FirmaNo ?? string.Empty, out var o) ? o : Bos;
+
+    /// <summary>
+    /// Firmaya giriş. Önce tenant bağlamı değişir, sonra Aktar sekmesine gidilir —
+    /// sırası önemli: ekran açılırken atılan ilk istek de doğru firmaya gitmeli.
+    /// </summary>
+    private async Task GirAsync(FirmaDto firma)
+    {
+        if (_giriliyor || firma is null) return;
+
+        _giriliyor = true;
+        try
+        {
+            await Oturum.GirAsync(firma);
+        }
+        finally
+        {
+            _giriliyor = false;
+        }
+
+        Nav.NavigateTo("/banka-otomasyon/aktar");
+    }
+}

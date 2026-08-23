@@ -194,18 +194,20 @@ Yeni uç noktalar:
 
 | Dosya | İş |
 |---|---|
-| `Pages/BankaEkstre/IslemePage.razor` | **`/banka-isleme`** — günlük ana ekran: dönem seçici, banka sekmeleri (onay bekleyen rozetiyle), hesap kartları, sürükle-bırak yükleme |
-| `Pages/BankaEkstre/TanimlarPage.razor` | **`/banka-isleme/tanimlar`** — üç bölümü barındırır |
+| `Pages/BankaEkstre/AktarPage.razor` | **`/banka-otomasyon/aktar`** — günlük ana ekran: dönem seçici, banka sekmeleri (onay bekleyen rozetiyle), hesap kartları, sürükle-bırak yükleme |
+| `Pages/BankaEkstre/TanimlarPage.razor` | **`/banka-otomasyon/tanimlar`** — firmanın kurulumu: hesap planı, **banka hesapları (tam CRUD)**, öğrenilen eşleşmeler, kişi yönlendirmeleri, vergi kodları, hesap sahibi unvanları |
 | `Pages/BankaEkstre/Bolumler/HesapPlaniBolumu.razor` | Son içe aktarım + sayı + "Güncelle" |
 | `Pages/BankaEkstre/Bolumler/BankaHesaplariBolumu.razor` | Hesap CRUD + kapalı katman bayrakları + **Toplu İçe Aktar / örnek şablon indir + satır bazlı sonuç raporu** |
 | `Pages/BankaEkstre/Bolumler/OgrenilenEslesmelerBolumu.razor` | Öğrenilen eşleşmeler: arama, düzenleme, silme |
-| `Pages/BankaEkstre/EkstreOnayPage.razor` | `/banka-isleme/onay/{id}` — klavye odaklı onay, **çok üyeli aday listesi**, iki parça dışa aktarım |
+| `Pages/BankaEkstre/EkstreOnayPage.razor` | `/banka-otomasyon/onay/{id}` — klavye odaklı onay, **çok üyeli aday listesi**, iki parça dışa aktarım |
 | `Shared/Dto/BankaEkstre/BankaEkstreDtos.cs` | DTO'lar + `BankaEkstreEtiket` (Türkçe etiketler, tr-TR biçim) |
 | `Application/Services/BankaEkstreApi.cs` | HTTP istemcisi, `{ field, message }` hata sözleşmesi, dosya indirme |
-| `Layout/MainLayout.razor` | "Banka İşleme" → İşleme / Tanımlar |
+| `Layout/MainLayout.razor` | "Banka Otomasyon" (→ firma listesi) → Aktar / Tanımlar |
 
 Kaldırılanlar: `Pages/BankaEkstre/EkstreYuklePage.razor` (`/banka-isleme/yukle`),
 `/banka-isleme/hesaplar` rotası (bileşen olarak Tanımlar'a taşındı).
+
+> Rotalar sonradan `/banka-otomasyon/...` oldu; eski adresler yönlendiriyor. Bkz. son bölüm.
 
 ### Testler — `Services/CatalogService/CatalogService.UnitTests/BankaEkstre`
 
@@ -310,8 +312,8 @@ dotnet test src/Client/BlazorWebApp/WebApp.UnitTests/WebApp.UnitTests.csproj
 ## Ne eksik kaldı
 
 - **Ekranlar tarayıcıda denenmedi.** `WebApp.UnitTests` saf xunit (bUnit yok), Razor
-  tarafının otomatik testi yok. Elle bakılacaklar: `/banka-isleme` banka sekmeleri ve
-  rozetler, boş karta dosya sürükleme, Tanımlar'daki üç bölüm, onay ekranında `Alt+1..9`
+  tarafının otomatik testi yok. Elle bakılacaklar: `/banka-otomasyon/aktar` banka sekmeleri ve
+  rozetler, boş karta dosya sürükleme, Tanımlar'daki bölümler, onay ekranında `Alt+1..9`
   ile üç üyeli aileden seçim, "Düzeltilmiş ekstre" indirmesi, firma değiştirince
   sayfaların yenilenmesi.
 - **Gerçek Vakıfbank dosyasıyla denenmedi.** Testler ölçülen yapıyı taklit eden üretilmiş
@@ -657,3 +659,146 @@ onay kuyruğunda yanlış önerinin kalmaması.
   kutusu, analiz düğmesi. Sunucu tarafı testli; Razor tarafının otomatik testi yok.
 - **Yönlendirme yalnız kişi adı okunabilen satırlarda kısayoldan oluşturulabiliyor.** Adı
   hiç çıkarılamayan satırda uyarı dönüyor; kayıt Tanımlar'dan elle eklenmeli.
+
+---
+
+# Banka Otomasyon — firma seçim ekranı + banka hesapları CRUD
+
+Modülün adı `Banka İşleme` → **`Banka Otomasyon`**, günlük ekranın adı `İşleme` → **`Aktar`**.
+Modüle girince önce **firma listesi** geliyor; seçilen firma tenant bağlamını gerçekten
+değiştiriyor. Banka hesaplarının tam CRUD'u kapsülden **Tanımlar**'a döndü.
+
+**Eşleştirme mantığına dokunulmadı** — katman sırası, eşikler, benzersiz önek algoritması,
+desenler ve kurallar aynen duruyor. Mevcut testlerin tamamı değişmeden geçiyor.
+
+## Gezinme
+
+```
+Banka Otomasyon              /banka-otomasyon            ← firma listesi (modülün girişi)
+  └ GİRİŞ → firma içi
+      Aktar                  /banka-otomasyon/aktar      ← günlük iş + banka kapsülü
+      Tanımlar               /banka-otomasyon/tanimlar   ← firmanın kurulumu
+      (onay ekranı)          /banka-otomasyon/onay/{id}
+```
+
+Eski adresler `EskiRotaYonlendirme.razor` ile yönlendiriliyor (`replace: true`):
+
+| Eski | Yeni |
+|---|---|
+| `/banka-isleme` | `/banka-otomasyon` (firma listesi) |
+| `/banka-isleme/firma-tanimlari`, `/banka-isleme/tanimlar` | `/banka-otomasyon/tanimlar` |
+| `/banka-isleme/onay/{id}` | `/banka-otomasyon/onay/{id}` |
+
+## Firma seçim ekranı
+
+Kalıp `Raporlar` (`/firmakontrol`) ile birebir aynı: tablo + sağda `GİRİŞ`, satıra tıklamak
+da giriyor.
+
+| Kolon | İçerik |
+|---|---|
+| Firma | Unvan; hesap planı yoksa altında "kurulum gerekli" |
+| VKN | Vergi numarası |
+| Hesap planı | Kayıt sayısı, yoksa "yüklenmedi" |
+| Banka hesabı | Tanımlı aktif hesap sayısı |
+| Onay bekleyen | Tüm bankalar + tüm dönemler toplamı |
+| — | `GİRİŞ` |
+
+Hesap planı yüklenmemiş firmaya da girilebiliyor; kurulum Tanımlar'dan yapılıyor.
+
+## Tenant bağlamı
+
+`GİRİŞ` → `IAppSessionManager.SelectFirmAsync` → yeni access token, `tn` claim'i o firmaya
+geçiyor. Sunucuda tenant önce JWT claim'inden okunduğu için (`HttpCurrentTenant`) istemciden
+tenant'ı değiştirmenin tek gerçek yolu bu.
+
+Firma içi her ekran açılışta `BaglamiHazirlaAsync()` çağırıp **ancak sonra** veri çekiyor;
+ekranın ilk isteği bile doğru firmaya gidiyor. Seçim yoksa firma listesine yönlendiriliyor.
+
+Üstteki genel `FİRMA DEĞİŞTİR` ile çelişki çıkarsa **sayfadaki seçim kazanıyor**: modül
+kendi firmasını geri uyguluyor ve bildirimle uyarıyor. Bu üstünlük yalnız modül ekranı
+açıkken geçerli. Seçim oturum boyunca hatırlanıyor (scoped servis + `sessionStorage`),
+sekme değişiminde tekrar sorulmuyor.
+
+## Sunucu
+
+| Uç nokta | İş |
+|---|---|
+| `GET .../banka-ekstre/firmalar/ozet?tenantlar=201&tenantlar=106` | Firma seçim ekranının sayaçları; istenen her tenant için bir satır |
+
+`FirmaOzetService` global query filter'ı `IgnoreQueryFilters()` ile atlıyor — ekran firmaya
+girilmeden açıldığı için başka çare yok. Baypas **tek dosyada** ve yalnız adet üretiminde;
+kayıt içeriği hiç dönmüyor, modülün geri kalanı izolasyonunu koruyor.
+
+**Migration yok** — yeni varlık/alan eklenmedi, `has-pending-model-changes` temiz.
+
+## Banka hesapları CRUD'u
+
+Tam CRUD (`Yeni hesap`, `Toplu İçe Aktar`, `Örnek şablon indir`, düzenle, sil) Tanımlar'da,
+hesap planının hemen altında. Gerekçe: banka hesabı tanımı bankaya değil **firmaya** ait bir
+kayıt, ayrıca yeni banka eklenirken o bankanın sekmesi henüz yok.
+
+Kapsüldeki "Bu bankanın kuralları → Ayrıştırıcı ayarları" kaldı ama yalnız ayrıştırıcı ve
+katman bayraklarını düzenliyor; her satırda **Tam düzenleme →** bağlantısı var
+(`/banka-otomasyon/tanimlar?hesap={id}`). Aktar'daki "Banka ekle" düğmeleri
+`?yeniHesap=1` ile forma gidiyor.
+
+## Banka adı tutarsızlığı
+
+`BankaAdi` alanı artık otomatik tamamlamalı (`RadzenAutoComplete`, verisi mevcut hesapların
+banka adları). Listede olmayan yazım uyarı üretiyor: *"… mevcut hiçbir hesapla eşleşmiyor,
+yeni bir banka sekmesi açılacak."*
+
+Karşılaştırma **sekme şeridiyle birebir aynı** (`OrdinalIgnoreCase` + kırpma), yani uyarı
+tam olarak "yeni bir sekme açılacak mı?" sorusunu yanıtlıyor. `ZIRAAT` ≡ `Ziraat`, ama
+`İŞ BANKASI` ≠ `İş Bankası` — ordinal karşılaştırma `ı` ile `I`'yı eşlemiyor ve sekme
+şeridi de tam bu yüzden ikiye bölünüyor. Eşleştirme mantığı değiştirilmedi; kullanıcı
+tutarsızlığı görüp düzeltiyor.
+
+## Yanlış firmaya veri girmeye karşı
+
+- Firma adı Aktar, Tanımlar ve onay ekranının üstünde **sürekli** görünüyor, yanında firma
+  listesine dönüş bağlantısı var.
+- Ekstre yükleme, hesap planı içe aktarımı, banka hesabı toplu içe aktarımı ve hesap silme
+  **firma adıyla** onaylanıyor.
+- Sonuç bildirimleri firma adıyla başlıyor: `PKF Aday · 287 satır okundu · …`.
+
+## Değişen / eklenen dosyalar
+
+| Dosya | İş |
+|---|---|
+| `Features/BankaEkstre/Services/FirmaOzetService.cs` | **Yeni** — firma sayaçları, tenant filtresi baypası |
+| `Features/BankaEkstre/Controllers/FirmaOzetController.cs` | **Yeni** — `.../firmalar/ozet` |
+| `Application/Services/BankaOtomasyonOturumu.cs` | **Yeni** — modülün firma bağlamı + çakışma çözümü + oturum deposu |
+| `Application/Services/Interfaces/IBankaOtomasyonOturumu.cs` | **Yeni** — arayüzler |
+| `Pages/BankaEkstre/FirmaSecimPage.razor` | **Yeni** — `/banka-otomasyon` firma listesi |
+| `Pages/BankaEkstre/EskiRotaYonlendirme.razor` | **Yeni** — eski adreslerin yönlendirmesi |
+| `Pages/BankaEkstre/Bolumler/FirmaBasligi.razor` | **Yeni** — firma adı + Aktar/Tanımlar sekmeleri |
+| `Pages/BankaEkstre/AktarPage.razor` | `IslemePage.razor`'dan yeniden adlandırıldı; bağlam koruması, yükleme onayı, hesap CRUD'u çıkarıldı |
+| `Pages/BankaEkstre/TanimlarPage.razor` | `FirmaTanimlariPage.razor`'dan yeniden adlandırıldı; banka hesapları bölümü eklendi, sorgu parametreleri |
+| `Pages/BankaEkstre/Bolumler/BankaHesaplariBolumu.razor` | Otomatik tamamlama + yeni yazım uyarısı, firma adlı onaylar, `BankaFiltresi` kaldırıldı |
+| `Pages/BankaEkstre/Bolumler/BankaKurallariBolumu.razor` | Hesap CRUD'u çıkarıldı, satır başına "Tam düzenleme" bağlantısı |
+| `Pages/BankaEkstre/Bolumler/HesapPlaniBolumu.razor` | Firma adlı içe aktarım onayı |
+| `Layout/MainLayout.razor` | Menü: `Banka Otomasyon` → `Aktar` / `Tanımlar` |
+
+## Testler
+
+| Test | Ne doğruluyor |
+|---|---|
+| `CatalogService.UnitTests/BankaEkstre/FirmaTenantIzolasyonuTests` | **Aday seçiliyken yapılan hesap planı içe aktarımı Aday'ın kayıtlarına yazılıyor**, SMMM'ninkiler bozulmuyor (iki firma aynı veritabanını paylaşıyor); firma özeti her firmanın kendi sayaçlarını dönüyor |
+| `WebApp.UnitTests/BankaEkstre/BankaOtomasyonOturumuTests` | Giriş tenant'ı çeviriyor, sekme değişiminde tekrar sorulmuyor, sayfa yenilemesinde seçim geri geliyor, çakışmada sayfadaki seçim kazanıyor + uyarı çıkıyor, modül kapalıyken karışılmıyor |
+| `WebApp.UnitTests/BankaEkstre/BankaAdiDenetimiTests` | Yeni yazım uyarısı; Türkçe `ı`/`I` farkının ayrı sekme açtığı ve uyarının sekme şeridiyle aynı şeyi söylediği |
+
+Sayılar: `CatalogService.UnitTests` 416 → **418**, `WebApp.UnitTests` 31 → **46**.
+Tamamı geçiyor, mevcut testlerin hiçbiri değişmedi.
+
+## Ne eksik kaldı
+
+- **Ekranlar tarayıcıda denenmedi** (bUnit yok). Elle bakılacaklar: firma listesindeki
+  sayaçlar, `GİRİŞ` sonrası doğru firmanın verisinin geldiği, sekme değişiminde firmanın
+  korunduğu, üstteki `FİRMA DEĞİŞTİR` ile çakışma uyarısı, otomatik tamamlama açılır
+  listesi, `?hesap={id}` bağlantısının doğru formu açtığı.
+- **Onay diyaloğunda satır sayısı yok.** Dosya sunucuda ayrıştırılmadan bilinemiyor; onayda
+  firma adı + dosya adı, sonuç bildiriminde firma adı + okunan satır sayısı var.
+- **Firma özeti uç noktası, istenen tenant listesini doğrulayamıyor.** Token'da tek `tn`
+  claim'i var. Yalnız adet döndüğü için etki sınırlı; gerçek çözüm, kullanıcının
+  firmalarını da claim'e koymak (IdentityService değişikliği, kapsam dışı).

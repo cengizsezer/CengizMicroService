@@ -5,6 +5,13 @@ namespace WebApp.Application.Services.Interfaces
     /// <summary>Banka ekstresi işleme modülü istemcisi.</summary>
     public interface IBankaEkstreApi
     {
+        /// <summary>
+        /// Firma seçim ekranının sayaçları. Tenant başına bir satır döner; istek seçili
+        /// firmanın token'ıyla gitse de <b>tüm</b> istenen firmaların sayıları gelir
+        /// (ekran firmaya girilmeden önce açılıyor).
+        /// </summary>
+        Task<List<FirmaBankaOzetiDto>> FirmaOzetleriAsync(IEnumerable<string> tenantlar, CancellationToken ct = default);
+
         // Banka hesapları
         Task<List<BankaHesabiDto>> GetHesaplarAsync(bool pasifDahil = false, CancellationToken ct = default);
         Task<List<ParserSecenekDto>> GetParserlerAsync(CancellationToken ct = default);

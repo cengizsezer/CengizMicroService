@@ -863,3 +863,135 @@ analiz dökümü ise tam olarak **eksik satırları incelemek** için var. Aynı
 
 Düğme adı ve yanındaki açıklama dosyanın ORKA'ya yüklenmediğini açıkça söylüyor; dosya adı
 da `…-analiz.xlsx` (ORKA'ya giden `…-duzeltilmis.xlsx`).
+
+## 62. Modül "Banka Otomasyon"; girişi firma seçim ekranı
+
+**Karar:** Menüde `Banka İşleme` → **`Banka Otomasyon`**, alt menüde `İşleme` → **`Aktar`**.
+Rotalar `/banka-otomasyon/...`. Modülün girişi artık firma listesi (`/banka-otomasyon`),
+firma içi yapı iki sekme: **Aktar** (günlük iş + banka kapsülü) ve **Tanımlar** (firmanın
+kurulumu).
+
+| Eski | Yeni |
+|---|---|
+| `/banka-isleme` | `/banka-otomasyon` (firma listesi) |
+| `/banka-isleme/firma-tanimlari`, `/banka-isleme/tanimlar` | `/banka-otomasyon/tanimlar` |
+| `/banka-isleme/onay/{id}` | `/banka-otomasyon/onay/{id}` |
+
+Eski rotalar `EskiRotaYonlendirme.razor` içinde duruyor ve `replace: true` ile yenisine
+yönlendiriyor — kayıtlı bağlantılar ve yer imleri kırılmıyor, geri düğmesi de sonsuz
+yönlendirmeye girmiyor.
+
+**`/banka-isleme` kökü neden Aktar'a değil firma listesine gidiyor:** Yer imini açan
+kullanıcının hangi firmada olduğu belirsiz. Sessizce bir firmanın Aktar ekranını açmak,
+modülün baştan aşağı önlemeye çalıştığı riskin ta kendisi olurdu.
+
+**Ekran kalıbı Raporlar'dan kopyalandı** (`/firmakontrol`): tablo + sağda `GİRİŞ` düğmesi,
+satıra tıklamak da giriyor. Kendi tasarımı üretilmedi; iki ekran aynı işi yapıyor.
+
+## 63. Seçilen firma gerçekten tenant bağlamını değiştiriyor
+
+**Karar:** `GİRİŞ`, `IAppSessionManager.SelectFirmAsync` çağırıyor — yani yeni access token
+üretiliyor ve `tn` claim'i o firmaya geçiyor. Bağlamın sahibi yeni bir scoped servis:
+`BankaOtomasyonOturumu` (`IBankaOtomasyonOturumu`).
+
+**Neden bu yol:** Sunucuda tenant `HttpCurrentTenant` ile önce JWT'nin `tn` claim'inden
+okunuyor, başlık ancak claim yoksa devreye giriyor. Yani istemciden tenant'ı değiştirmenin
+tek gerçek yolu token'ı yenilemek. Ekranda firma seçip isteği başlıkla yönlendirmeye
+çalışmak sessizce çalışmazdı: ekran "PKF Aday" yazarken veri SMMM'ye yazılırdı.
+
+**Sıra kritik:** Firma içi her ekran açılışta `BaglamiHazirlaAsync()` çağırıyor ve ancak
+`null` dönmezse veri çekiyor. Böylece ekranın **ilk** isteği bile doğru firmaya gidiyor.
+`null` dönerse (seçim yok) firma listesine yönlendiriliyor.
+
+**Çakışma çözümü — sayfadaki seçim kazanır:** Modül ekranı açıkken üstteki genel
+`FİRMA DEĞİŞTİR` kullanılırsa modül kendi firmasını geri uyguluyor ve bildirimle uyarıyor.
+Üstünlük yalnız `Oturum.Aktif` iken geçerli; firma listesine dönüldüğünde bayrak kapanıyor,
+modül dışında kullanıcının genel seçimine karışılmıyor.
+
+Bu sırada `FirmChanged` iki kez tetikleniyor (önce gelen firma, sonra geri uygulanan).
+Firma içi ekranlar olayı **seçili firmayla eşleşmiyorsa yok sayıyor**; aksi halde bir
+anlığına yanlış firmanın verisi için istek atılırdı.
+
+**Seçim oturum boyunca hatırlanıyor:** WASM'de scoped servis uygulama ömrü kadar yaşıyor,
+sekme değişimlerinde seçim korunuyor. Sayfa yenilemesinde servis sıfırlandığı için seçim
+`sessionStorage`'dan geri geliyor (`IBankaOtomasyonDeposu` — mantık tarayıcı deposuna
+bağlanmadan test edilebilsin diye ayrı arayüz).
+
+**Test:** İstemci tarafında `BankaOtomasyonOturumuTests` (sahte oturum yöneticisiyle:
+girişin tenant'ı çevirdiği, sekme değişiminde tekrar sorulmadığı, yenilemede geri geldiği,
+çakışmada sayfanın kazandığı, modül kapalıyken karışılmadığı). Sunucu tarafında
+`FirmaTenantIzolasyonuTests`: **Aday seçiliyken yapılan hesap planı içe aktarımı Aday'ın
+kayıtlarına yazılıyor**, SMMM'ninkiler bozulmuyor — iki firma aynı veritabanını paylaşıyor.
+
+## 64. Firma seçim ekranının sayaçları: tenant filtresi tek yerde baypas
+
+**Karar:** Yeni uç nokta `GET …/banka-ekstre/firmalar/ozet?tenantlar=201&tenantlar=106`,
+tek servis `FirmaOzetService`. Global query filter `IgnoreQueryFilters()` ile atlanıyor ve
+istenen her tenant için `{hesap planı sayısı, banka hesabı sayısı, onay bekleyen}` dönüyor.
+
+**Neden baypas gerekti:** Ekran firmaya **girilmeden önce** açılıyor; token'da tek `tn`
+claim'i var. Filtreye uyularak yalnız o an seçili firmanın sayıları okunabilirdi, diğer
+satırlar boş kalırdı.
+
+**Risk nasıl sınırlandı:** Baypas tek dosyada ve yalnız **adet** üretiminde; kayıt içeriği
+hiç dönmüyor. Modülün geri kalan tüm sorguları izolasyonunu aynen koruyor. Hangi firmaların
+sorulacağını istemci belirliyor ve listeyi login yanıtındaki **kendi** firmalarından
+kuruyor; CatalogService token'da diğer firmaları göremediği için doğrulayamıyor. Sızabilecek
+en fazla şey, bilinen bir firma numarasının kayıt adedi.
+
+**"Onay bekleyen" tanımı:** Firmanın **tüm** bankaları ve **tüm** dönemleri toplanarak,
+durumu `OnayBekliyor` veya `Cozulemedi` olan satır sayısı. Aktar ekranındaki banka rozeti
+yalnız seçili dönemi sayar; iki sayı kasten farklı ve ekranın altında yazıyor. Firma
+listesinde "bu firmada iş var mı?" sorusunun cevabı dönemden bağımsız olmalı.
+
+Satırın kendi `TenantNo`'su yok (izolasyonu bağlı olduğu yüklemeden alıyor), bu yüzden
+sayım `EkstreYuklemeler` üzerinden join ile yapılıyor.
+
+## 65. Banka hesapları CRUD'u Tanımlar'a döndü
+
+**Karar:** Tam CRUD (`Yeni hesap`, `Toplu İçe Aktar`, `Örnek şablon indir`, düzenle, sil)
+Tanımlar ekranında, hesap planının hemen altında. Kapsüldeki
+"Bu bankanın kuralları → Ayrıştırıcı ayarları" bölümü **kaldı** ama yalnız ayrıştırıcı ve
+katman bayraklarını düzenliyor; her satırda tam düzenlemeye giden bağlantı var
+(`/banka-otomasyon/tanimlar?hesap={id}`).
+
+**Neden kapsülde olamaz:** (1) Banka hesabı tanımı bankaya değil **firmaya** ait bir kayıt —
+ORKA kodu, IBAN, hesap tipi, eşleştirme anahtarları hep firmanın muhasebesinin verisi.
+(2) Yeni bir banka eklenirken o bankanın sekmesi henüz yok; kapsülün içinden erişilemeyen
+bir yerde dursaydı yeni banka hiç eklenemezdi.
+
+Kapsülün "Yeni hesap" düğmeleri artık Tanımlar'a yönlendiriyor (`?yeniHesap=1` formu
+açıyor). `BankaHesaplariBolumu`'nun `BankaFiltresi` parametresi ve `YeniHesapAc` metodu
+kaldırıldı: bölüm artık tek yerde ve daima tüm hesapları listeliyor.
+
+## 66. Banka adı otomatik tamamlamalı; yeni yazım uyarı veriyor
+
+**Karar:** Form alanı `RadzenAutoComplete`, verisi mevcut hesapların banka adları. Serbest
+yazma engellenmiyor (gerçekten yeni banka eklenebilmeli) ama listede olmayan yazım
+`BankaAdiDenetimi.YeniBankaUyarisi` ile uyarı üretiyor.
+
+**Neden gerekli:** Sorun görüntüsel değil. "Aynı banka önceliği" kuralı `BankaAdi` üzerinden
+çalışıyor; aynı banka iki yazımla girilince (`İş Bankası` / `İŞ BANKASI`) sistem onları ayrı
+bankalar sayıyor, sekme sayısı şişiyor (9 sekme, 8 banka) ve bankalar arası eşleştirme
+bozuluyor.
+
+**Karşılaştırma sekme şeridiyle birebir aynı** (`OrdinalIgnoreCase` + kırpma). Uyarı böylece
+tam olarak "yeni bir sekme açılacak mı?" sorusunu yanıtlıyor. Türkçe sonucu bilinçli:
+`ZIRAAT` ile `Ziraat` aynı sayılıyor, ama `İŞ BANKASI` ile `İş Bankası` **ayrı** — ordinal
+karşılaştırma `ı` ile `I`'yı eşlemiyor ve sekme şeridi de tam bu yüzden ikiye bölünüyor.
+Uyarının çıkması doğru: kullanıcının düzeltmesi gereken şey zaten bu.
+
+**Eşleştirme mantığına dokunulmadı.** Gruplamayı kültür duyarlı hale getirmek tutarsızlığı
+gizlerdi; görev kullanıcının düzeltebilmesini istiyor, sistemin örtmesini değil.
+
+## 67. Yükleme ve içe aktarım onaylarında firma adı
+
+**Karar:** Üç yerde dosya seçildikten sonra firma adıyla onay diyaloğu çıkıyor: ekstre
+yükleme (Aktar), hesap planı içe aktarımı ve banka hesapları toplu içe aktarımı (Tanımlar).
+Hesap silme de onaylı hale getirildi. Sonuç bildirimleri de firma adıyla başlıyor
+(`PKF Aday · 287 satır okundu · …`).
+
+**Prompt'taki "PKF Aday için 287 satır yüklenecek" neden birebir değil:** Satır sayısı dosya
+**sunucuda ayrıştırılmadan** bilinemiyor; onay ise istek atılmadan önce sorulmalı. Onayda
+firma adı + dosya adı, sonuç bildiriminde firma adı + okunan satır sayısı var. Kritik olan
+yarı — hangi firmaya yazılacağı — onaydan önce ekranda.

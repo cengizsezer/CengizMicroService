@@ -5,20 +5,30 @@
 @using WebApp.Shared.Dto.BankaEkstre
 
 @inject IBankaEkstreApi Api
+@inject IBankaOtomasyonOturumu Oturum
 @inject NotificationService Notif
+@inject DialogService Dialog
 @inject IJSRuntime JS
 
 @*
-    Banka kapsülünün "Bu bankanın hesapları" bölümü. Liste aynı zamanda "banka kayıt
-    defteri"dir: bankalar arası hareketlerde karşı taraf buradan bulunur, bu yüzden
-    her banka için ORKA kodu doğru girilmeli. İşleme ekranının banka sekmeleri de
-    buradaki tanımlardan türer.
+    Tanımlar ekranının "Banka hesapları" bölümü — hesapların TAM CRUD'u.
 
-    BankaFiltresi doluyken yalnız o bankanın hesapları listelenir ve yeni hesap formu
-    banka adını hazır getirir. Boşken tüm hesaplar görünür (kapsül dışı kullanım).
+    Liste aynı zamanda "banka kayıt defteri"dir: bankalar arası hareketlerde karşı taraf
+    buradan bulunur, bu yüzden her banka için ORKA kodu doğru girilmeli. Aktar ekranının
+    banka sekmeleri de buradaki tanımlardan türer.
 
-    Hesap sahibi unvanı burada DÜZENLENMEZ: firma bazlı bir değer, Firma Tanımları
-    ekranına taşındı. Form değeri yine de taşır (kaydederken silinmesin diye).
+    NEDEN BURADA, BANKANIN KAPSÜLÜNDE DEĞİL: banka hesabı tanımı bankaya değil FİRMAYA
+    ait bir kayıttır; ayrıca yeni bir banka eklenirken o bankanın sekmesi henüz yoktur,
+    kapsülün içinden erişilemez. Kapsülde yalnız ayrıştırıcı/katman ayarları kaldı ve
+    oradan buraya bağlantı var.
+
+    BANKA ADI TUTARSIZLIĞI: "aynı banka önceliği" kuralı BankaAdi üzerinden çalışır.
+    Aynı banka iki yazımla girilirse ("İş Bankası" / "İŞ BANKASI") sistem onları ayrı
+    bankalar sanır, sekme sayısı şişer ve bankalar arası eşleştirme bozulur. Bu yüzden
+    alan otomatik tamamlamalı ve listede olmayan yazım uyarı üretiyor.
+
+    Hesap sahibi unvanı burada DÜZENLENMEZ: firma bazlı tek bir değer, kendi bölümünde.
+    Form değeri yine de taşır (kaydederken silinmesin diye).
 *@
 
 <style>
@@ -53,7 +63,7 @@
 </style>
 
 <div class="bh-arac">
-    <h5 style="margin:0">@(BankaFiltresi is null ? "Banka hesapları" : $"{BankaFiltresi} hesapları")</h5>
+    <h5 style="margin:0">Banka hesapları</h5>
     <div style="display:flex; gap:6px; align-items:center">
         <RadzenCheckBox TValue="bool" Value="@_pasifDahil" Name="pasifDahil"
                         Change="@(async (bool secili) => { _pasifDahil = secili; await YukleAsync(); })" />
@@ -82,11 +92,7 @@ else
 
         @if (Gorunen.Count == 0)
         {
-            <div class="bh-bos">
-                @(BankaFiltresi is null
-                    ? "Henüz banka hesabı tanımlanmadı."
-                    : $"{BankaFiltresi} için tanımlı hesap yok.")
-            </div>
+            <div class="bh-bos">Henüz banka hesabı tanımlanmadı.</div>
         }
 
         @foreach (var hesap in Gorunen)
@@ -135,8 +141,7 @@ else
         <span class="bh-ipucu">
             xlsx; kolonlar başlık adıyla bulunur, sıraları değişebilir. Anahtar ORKA hesap
             kodu: varsa güncellenir, yoksa eklenir. Dosyada olmayan hesaplara dokunulmaz.
-            <b>Tüm bankaları kapsar</b> — her satır dosyadaki kendi bankasına yazılır,
-            bu sekmedeki bankaya değil.
+            <b>Tüm bankaları kapsar</b> — her satır dosyadaki kendi bankasına yazılır.
         </span>
     </div>
 
@@ -197,7 +202,14 @@ else
         <div class="bh-form">
             <div class="bh-alan">
                 <label>Banka adı</label>
-                <RadzenTextBox @bind-Value="_form.BankaAdi" Placeholder="Vakıfbank" />
+                @*
+                    Otomatik tamamlama mevcut hesapların banka adlarından beslenir: aynı
+                    bankayı ikinci bir yazımla girmenin önündeki ilk engel. Serbest yazma
+                    yine mümkün (gerçekten yeni banka eklenebilmeli), ama uyarı çıkar.
+                *@
+                <RadzenAutoComplete @bind-Value="_form.BankaAdi" Data="@MevcutBankaAdlari"
+                                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                    Placeholder="Vakıfbank" Style="width:100%" />
                 <span class="bh-ipucu">
                     Yalnız <b>kısa banka adı</b>: Vakıfbank, Ziraat, TEB, Akbank, İş Bankası.
                     Tam hesap adını yazmayın — o metin hiçbir açıklamada geçmez, eşleşme hiç olmaz.
@@ -205,6 +217,10 @@ else
                 @if (BankaAdiDenetimi.Uyari(_form.BankaAdi) is string bankaUyari)
                 {
                     <span class="bh-uyari">@bankaUyari</span>
+                }
+                @if (BankaAdiDenetimi.YeniBankaUyarisi(_form.BankaAdi, MevcutBankaAdlari) is string yeniBankaUyari)
+                {
+                    <span class="bh-uyari">@yeniBankaUyari</span>
                 }
             </div>
 
@@ -320,23 +336,92 @@ else
     /// <summary>Sunucudaki sınırla aynı; büyük dosya isteği boşuna gitmesin.</summary>
     private const long EnFazlaBayt = 20 * 1024 * 1024;
 
-    /// <summary>Hesap listesi değişince günlük ekranın sekmeleri de yenilensin.</summary>
-    [Parameter] public EventCallback Degisti { get; set; }
+    /// <summary>
+    /// Aktar ekranındaki "Banka ekle" düğmesi buraya <c>?yeniHesap=1</c> ile gelir;
+    /// sayfa açılır açılmaz boş form açılsın.
+    /// </summary>
+    [Parameter] public bool YeniHesapIstendi { get; set; }
 
     /// <summary>
-    /// Doluysa yalnız bu bankanın hesapları listelenir ve yeni hesap formu banka adını
-    /// hazır getirir. Banka kapsülü bu parametreyi verir; boşken tüm hesaplar görünür.
+    /// Kapsüldeki "Tam düzenleme" bağlantısı buraya <c>?hesap={id}</c> ile gelir;
+    /// o hesabın düzenleme formu açılsın.
     /// </summary>
-    [Parameter] public string? BankaFiltresi { get; set; }
+    [Parameter] public int? AcilacakHesapId { get; set; }
 
-    private List<BankaHesabiDto> Gorunen => BankaFiltresi is null
-        ? _hesaplar
-        : _hesaplar.Where(h => string.Equals(h.BankaAdi, BankaFiltresi, StringComparison.OrdinalIgnoreCase)).ToList();
+    /// <summary>
+    /// En son uygulanan adres isteği. Aynı istek tekrar uygulanmaz (kullanıcı formu
+    /// kapattıysa yeniden açılmasın) ama <b>farklı</b> bir hesaba geçilirse uygulanır.
+    /// </summary>
+    private string? _uygulananIstek;
+
+    private List<BankaHesabiDto> Gorunen => _hesaplar;
+
+    /// <summary>
+    /// Otomatik tamamlamayı besleyen mevcut banka adları. Tanımlı hesaplardan türer;
+    /// listede olmayan bir yazım girildiğinde <see cref="BankaAdiDenetimi.YeniBankaUyarisi"/>
+    /// uyarı verir. Aynı bankanın iki yazımla girilmesi eşleştirmeyi bozduğu için burada
+    /// büyük/küçük harf duyarsız tekilleştirme yapılır: liste zaten tutarsızsa iki yazım
+    /// da görünür ve kullanıcı hangisini seçtiğini bilir.
+    /// </summary>
+    private List<string> MevcutBankaAdlari =>
+        _hesaplar.Select(h => h.BankaAdi)
+                 .Where(a => !string.IsNullOrWhiteSpace(a))
+                 .Distinct(StringComparer.Ordinal)
+                 .OrderBy(a => a, StringComparer.CurrentCulture)
+                 .ToList();
+
+    /// <summary>Onay ve bildirim metinlerinde geçen firma adı.</summary>
+    private string FirmaAdi => Oturum.SeciliFirma?.Ad ?? "seçili firma";
 
     protected override async Task OnInitializedAsync()
     {
         _parserler = await Api.GetParserlerAsync();
         await YukleAsync();
+        SorguIsteginiUygula();
+    }
+
+    protected override void OnParametersSet() => SorguIsteginiUygula();
+
+    /// <summary>
+    /// Adresle gelen form isteğini bir kez uygular. Hesaplar henüz yüklenmediyse
+    /// beklenir: düzenleme formu kaydı listeden bulur.
+    /// </summary>
+    private void SorguIsteginiUygula()
+    {
+        if (_yukleniyor) return;
+        if (!YeniHesapIstendi && AcilacakHesapId is null) return;
+
+        var istek = AcilacakHesapId is int hedef ? $"hesap:{hedef}" : "yeni";
+        if (istek == _uygulananIstek) return;
+
+        _uygulananIstek = istek;
+
+        if (AcilacakHesapId is int id)
+        {
+            var hesap = _hesaplar.FirstOrDefault(h => h.Id == id);
+            if (hesap is not null)
+            {
+                FormAc(hesap);
+                return;
+            }
+
+            // Pasif hesaplar varsayılan listede yok; bağlantı kırılmasın diye açılır.
+            _pasifDahil = true;
+            _ = YukleVeAcAsync(id);
+            return;
+        }
+
+        FormAc(null);
+    }
+
+    private async Task YukleVeAcAsync(int id)
+    {
+        await YukleAsync();
+
+        var hesap = _hesaplar.FirstOrDefault(h => h.Id == id);
+        if (hesap is not null) FormAc(hesap);
+
+        StateHasChanged();
     }
 
     /// <summary>Firma değişince üst sayfa bunu çağırır.</summary>
@@ -371,29 +456,16 @@ else
         }
     }
 
-    /// <summary>
-    /// Kapsül dışarıdan yeni hesap formunu açar: banka sekmesindeki "Yeni hesap" ve tab
-    /// şeridindeki "Banka ekle" düğmeleri buraya gelir. <paramref name="bankaAdi"/> boşsa
-    /// yeni bir banka giriliyordur, alan boş bırakılır.
-    /// </summary>
-    public void YeniHesapAc(string? bankaAdi)
-    {
-        FormAc(null);
-        if (_form is not null) _form.BankaAdi = bankaAdi ?? string.Empty;
-        StateHasChanged();
-    }
-
     private void FormAc(BankaHesabiDto? hesap)
     {
         _duzenlenenId = hesap?.Id;
         _form = hesap is null
-            // Hesap sahibi unvanı ve takma adlar burada DÜZENLENMEZ (Firma Tanımları'na
-            // taşındı) ama forma yüklenir: kaydederken alanlar boş gitseydi firma kimliği
+            // Hesap sahibi unvanı ve takma adlar burada DÜZENLENMEZ (kendi bölümünde)
+            // ama forma yüklenir: kaydederken alanlar boş gitseydi firma kimliği
             // silinir, banka açıklamalarındaki kendi unvanımız karşı taraf sanılırdı.
             ? new BankaHesabiYazDto
             {
                 ParserTipi = string.Empty,
-                BankaAdi = BankaFiltresi ?? string.Empty,
                 HesapSahibiUnvani = FirmaUnvani(),
                 HesapSahibiTakmaAdlari = FirmaTakmaAdlari()
             }
@@ -466,7 +538,7 @@ else
             return;
         }
 
-        Notif.Notify(NotificationSeverity.Success, "Kaydedildi", veri?.BankaAdi, 3000);
+        Notif.Notify(NotificationSeverity.Success, "Kaydedildi", $"{FirmaAdi} · {veri?.BankaAdi}", 3000);
 
         if (bankaAdiUyarisi is not null)
             Notif.Notify(NotificationSeverity.Warning, "Banka adını gözden geçirin", bankaAdiUyarisi, 9000);
@@ -474,7 +546,6 @@ else
         _form = null;
         _duzenlenenId = null;
         await YukleAsync();
-        await Degisti.InvokeAsync();
     }
 
     /// <summary>
@@ -485,6 +556,15 @@ else
     {
         var dosya = args.File;
         if (dosya is null) return;
+
+        // Firma adıyla onay: dosya tüm bankaları kapsıyor ve yanlış firmaya yazılırsa
+        // hesap tanımlarının tamamı bozulur.
+        var onay = await Dialog.Confirm(
+            $"{FirmaAdi} firmasına \"{dosya.Name}\" dosyasındaki banka hesapları aktarılacak.",
+            "Toplu içe aktarım onayı",
+            new ConfirmOptions { OkButtonText = "İçe aktar", CancelButtonText = "Vazgeç", ShowClose = true });
+
+        if (onay != true) return;
 
         _iceAktarimSonucu = null;
         _iceAktariliyor = true;
@@ -505,9 +585,8 @@ else
 
             _iceAktarimSonucu = veri;
             await YukleAsync();
-            await Degisti.InvokeAsync();
-
-            var ozet = $"{veri?.Eklenen} eklendi, {veri?.Guncellenen} güncellendi";
+    
+            var ozet = $"{FirmaAdi} · {veri?.Okunan} satır okundu, {veri?.Eklenen} eklendi, {veri?.Guncellenen} güncellendi";
             if (veri is { Atlanan: > 0 })
                 Notif.Notify(NotificationSeverity.Warning, "İçe aktarım tamamlandı",
                              $"{ozet}, {veri.Atlanan} satır atlandı. Sebepler aşağıda.", 8000);
@@ -534,6 +613,14 @@ else
 
     private async Task SilAsync(BankaHesabiDto hesap)
     {
+        var onay = await Dialog.Confirm(
+            $"{FirmaAdi} firmasının \"{hesap.BankaAdi} · {hesap.OrkaHesapKodu}\" hesabı silinecek. " +
+            "Ekstresi işlenmiş hesap silinmez, pasife çekilir.",
+            "Hesap silme onayı",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç", ShowClose = true });
+
+        if (onay != true) return;
+
         var hata = await Api.DeleteHesapAsync(hesap.Id);
         if (hata is not null)
         {
@@ -541,8 +628,7 @@ else
             return;
         }
 
-        Notif.Notify(NotificationSeverity.Success, "Silindi", hesap.BankaAdi, 3000);
+        Notif.Notify(NotificationSeverity.Success, "Silindi", $"{FirmaAdi} · {hesap.BankaAdi}", 3000);
         await YukleAsync();
-        await Degisti.InvokeAsync();
     }
 }

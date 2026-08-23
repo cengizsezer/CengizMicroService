@@ -166,6 +166,8 @@ builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IUnv
                            CatalogService.Api.Features.BankaEkstre.Services.UnvanDeseniService>();
 builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IKisiYonlendirmeService,
                            CatalogService.Api.Features.BankaEkstre.Services.KisiYonlendirmeService>();
+builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IFirmaOzetService,
+                           CatalogService.Api.Features.BankaEkstre.Services.FirmaOzetService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolMaddeService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolMaddeService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolMizanService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolMizanService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IMizanNotuService, CatalogService.Api.Features.FirmaKontrol.Services.MizanNotuService>();

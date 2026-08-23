@@ -520,4 +520,27 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         /// <summary>Son içe aktarımın üzerinden geçen gün; 30'u aşarsa ekranda hatırlatma çıkar.</summary>
         public int? GunFarki { get; set; }
     }
+
+    /// <summary>
+    /// Banka Otomasyon firma seçim ekranının bir satırı: firmanın kurulum durumu.
+    /// Tenant filtresi baypas edilerek okunur (bkz. <c>FirmaOzetService</c>), çünkü
+    /// ekran <b>girilmemiş</b> firmaların sayaçlarını da gösterir.
+    /// </summary>
+    public class FirmaBankaOzetiDto
+    {
+        public string TenantNo { get; set; } = string.Empty;
+
+        /// <summary>Aktif hesap planı kaydı sayısı; 0 ise firma "kurulum gerekli".</summary>
+        public int HesapPlaniSayisi { get; set; }
+
+        /// <summary>Tanımlı aktif banka hesabı sayısı.</summary>
+        public int BankaHesabiSayisi { get; set; }
+
+        /// <summary>
+        /// Dışa aktarıma engel satır sayısı (onay bekleyen + çözülemeyen), firmanın
+        /// <b>tüm</b> bankaları ve <b>tüm</b> dönemleri toplanarak. Aktar ekranındaki
+        /// banka rozeti yalnız seçili dönemi sayar; bu sütun kasten daha geniştir.
+        /// </summary>
+        public int OnayBekleyen { get; set; }
+    }
 }

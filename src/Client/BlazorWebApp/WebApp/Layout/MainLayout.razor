@@ -171,13 +171,15 @@
                 </RadzenPanelMenuItem>
 
                 @*
-                    İşleme günlük ekran (varsayılan) ve aynı zamanda banka kapsülü: her
-                    bankanın kuralları kendi sekmesindedir. Firma Tanımları yalnız bankadan
-                    bağımsız olanları toplar — nadiren açılır.
+                    Modülün girişi firma seçim ekranıdır (üst öğenin kendi yolu): önce
+                    hangi firmada çalışılacağı seçilir, seçim tenant bağlamını gerçekten
+                    değiştirir. Alt öğeler firma içi iki sekme — Aktar günlük iş ve banka
+                    kapsülü, Tanımlar firmanın kurulumu (hesap planı, banka hesapları,
+                    bankadan bağımsız tanımlar).
                 *@
-                <RadzenPanelMenuItem Text="Banka İşleme" Icon="account_balance_wallet">
-                    <RadzenPanelMenuItem Text="İşleme" Icon="fact_check" Path="/banka-isleme" />
-                    <RadzenPanelMenuItem Text="Firma Tanımları" Icon="settings" Path="/banka-isleme/firma-tanimlari" />
+                <RadzenPanelMenuItem Text="Banka Otomasyon" Icon="account_balance_wallet" Path="/banka-otomasyon">
+                    <RadzenPanelMenuItem Text="Aktar" Icon="fact_check" Path="/banka-otomasyon/aktar" />
+                    <RadzenPanelMenuItem Text="Tanımlar" Icon="settings" Path="/banka-otomasyon/tanimlar" />
                 </RadzenPanelMenuItem>
 
                 <RadzenPanelMenuItem Text="Finans" Icon="account_balance">

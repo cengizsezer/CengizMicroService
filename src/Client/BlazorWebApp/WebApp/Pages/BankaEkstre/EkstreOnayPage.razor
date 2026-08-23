@@ -1,14 +1,17 @@
-﻿@page "/banka-isleme/onay/{EkstreId:int}"
+﻿@page "/banka-otomasyon/onay/{EkstreId:int}"
 
 @using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
+@using WebApp.Pages.BankaEkstre.Bolumler
 @using WebApp.Shared.Dto.BankaEkstre
 
 @implements IDisposable
 
 @inject IBankaEkstreApi Api
+@inject IBankaOtomasyonOturumu Oturum
 @inject NotificationService Notif
+@inject NavigationManager Nav
 @inject IJSRuntime JS
 
 @*
@@ -83,6 +86,9 @@
     .eo-cozulmus { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
 </style>
 
+@* Firma adı burada da sürekli görünür: onaylar doğrudan o firmanın kayıtlarına yazılır. *@
+<FirmaBasligi Sekme="BankaOtomasyonSekmesi.Aktar" />
+
 @if (_yukleme is null)
 {
     <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
@@ -92,7 +98,9 @@ else
     <div class="eo-ust">
         <div>
             <h4 style="margin:0">@_yukleme.DosyaAdi</h4>
-            <div style="font-size:12px; color:#718096">@_yukleme.BankaAdi</div>
+            <div style="font-size:12px; color:#718096">
+                @_yukleme.BankaAdi · <a href="/banka-otomasyon/aktar">Aktar'a dön</a>
+            </div>
         </div>
 
         <div class="eo-sayaclar">
@@ -364,7 +372,20 @@ else
     private void YonlendirDegisti(EkstreSatirDto satir, object? deger)
         => _yonlendir[satir.Id] = deger is bool b && b;
 
-    protected override async Task OnParametersSetAsync() => await YukleAsync();
+    /// <summary>
+    /// Önce firma bağlamı, sonra veri: onay ekranına doğrudan (yer imiyle) gelinebilir ve
+    /// o an tenant başka firmada olabilir. Seçim yoksa firma listesine dönülür.
+    /// </summary>
+    protected override async Task OnParametersSetAsync()
+    {
+        if (await Oturum.BaglamiHazirlaAsync() is null)
+        {
+            Nav.NavigateTo("/banka-otomasyon", replace: true);
+            return;
+        }
+
+        await YukleAsync();
+    }
 
     private async Task YukleAsync()
     {

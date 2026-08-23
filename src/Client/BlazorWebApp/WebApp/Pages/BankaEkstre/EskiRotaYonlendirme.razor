@@ -1,0 +1,35 @@
+@page "/banka-isleme"
+@page "/banka-isleme/firma-tanimlari"
+@page "/banka-isleme/tanimlar"
+@page "/banka-isleme/onay/{EkstreId:int}"
+
+@inject NavigationManager Nav
+
+@*
+    Modül "Banka İşleme" iken kullanılan adresler. Kayıtlı bağlantılar ve tarayıcı yer
+    imleri kırılmasın diye rotalar duruyor; içerik yok, yalnız yeni adrese yönlendiriyor.
+
+    /banka-isleme kökü Aktar'a değil firma seçim ekranına gider: modülün girişi artık
+    orası ve yer imini açan kullanıcının hangi firmada olduğu belirsizdir — sessizce bir
+    firmanın Aktar ekranını açmak, yanlış firmaya veri girme riskinin ta kendisi.
+
+    replace: true — geri düğmesi eski adrese dönüp sonsuz yönlendirme kurmasın.
+*@
+
+@code {
+    /// <summary>Yalnız eski onay rotasında dolu; diğer rotalarda null.</summary>
+    [Parameter] public int? EkstreId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        var yol = new Uri(Nav.Uri).AbsolutePath.TrimEnd('/');
+
+        var hedef = EkstreId is int id ? $"/banka-otomasyon/onay/{id}"
+                  : yol.EndsWith("/tanimlar", StringComparison.OrdinalIgnoreCase)
+                    || yol.EndsWith("/firma-tanimlari", StringComparison.OrdinalIgnoreCase)
+                        ? "/banka-otomasyon/tanimlar"
+                        : "/banka-otomasyon";
+
+        Nav.NavigateTo(hedef, forceLoad: false, replace: true);
+    }
+}

@@ -5,12 +5,17 @@
 @using WebApp.Shared.Dto.BankaEkstre
 
 @inject IBankaEkstreApi Api
+@inject IBankaOtomasyonOturumu Oturum
 @inject NotificationService Notif
+@inject DialogService Dialog
 
 @*
     Tanımlar ekranının "Hesap planı" bölümü. Hesap planı yılda birkaç kez değişir;
     bu yüzden günlük ekranda değil burada durur. İçe aktarım kayıt silmez: yeni kodlar
     eklenir, adlar güncellenir, ORKA'da olmayanlar pasife çekilir.
+
+    İçe aktarım FİRMA ADIYLA onaylanır: dosya seçili firmanın hesap planının tamamını
+    değiştirir, yanlış firmaya girilirse cari eşleştirmesi baştan aşağı bozulur.
 *@
 
 <style>
@@ -56,6 +61,7 @@ else
     <span class="hp-ipucu">
         Beklenen kolonlar: <code>Hesap Kodu</code>, <code>Hesap Adı</code>.
         Kayıt silinmez; dosyada olmayan kodlar pasife çekilir.
+        Dosya <b>@FirmaAdi</b> firmasına aktarılır.
     </span>
 </div>
 
@@ -70,7 +76,7 @@ else
 @if (_sonuc is not null)
 {
     <RadzenAlert AlertStyle="AlertStyle.Success" ShowIcon="true" AllowClose="false" Style="margin-top:10px">
-        @_sonuc.Okunan satır okundu · @_sonuc.Eklenen eklendi · @_sonuc.Guncellenen güncellendi
+        @FirmaAdi · @_sonuc.Okunan satır okundu · @_sonuc.Eklenen eklendi · @_sonuc.Guncellenen güncellendi
         @if (_sonuc.Pasiflenen > 0)
         {
             <span> · @_sonuc.Pasiflenen pasife çekildi</span>
@@ -107,10 +113,21 @@ else
         StateHasChanged();
     }
 
+    /// <summary>Onay ve bildirim metinlerinde geçen firma adı.</summary>
+    private string FirmaAdi => Oturum.SeciliFirma?.Ad ?? "seçili firma";
+
     private async Task SecildiAsync(InputFileChangeEventArgs args)
     {
         var dosya = args.File;
         if (dosya is null) return;
+
+        // Yanlış firmaya veri girmeye karşı son savunma: firma adı onayda yazar.
+        var onay = await Dialog.Confirm(
+            $"{FirmaAdi} firmasının hesap planı \"{dosya.Name}\" dosyasından güncellenecek.",
+            "Hesap planı içe aktarım onayı",
+            new ConfirmOptions { OkButtonText = "İçe aktar", CancelButtonText = "Vazgeç", ShowClose = true });
+
+        if (onay != true) return;
 
         _sonuc = null;
         _isleniyor = true;
@@ -131,7 +148,8 @@ else
 
             _sonuc = veri;
             _ozet = await Api.HesapPlaniOzetAsync();
-            Notif.Notify(NotificationSeverity.Success, "Hesap planı güncellendi", null, 3000);
+            Notif.Notify(NotificationSeverity.Success, "Hesap planı güncellendi",
+                         $"{FirmaAdi} · {veri?.Okunan} satır okundu", 4000);
         }
         finally
         {

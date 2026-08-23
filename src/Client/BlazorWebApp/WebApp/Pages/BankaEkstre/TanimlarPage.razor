@@ -1,0 +1,155 @@
+@page "/banka-otomasyon/tanimlar"
+
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Domain.Models.User
+@using WebApp.Manager
+@using WebApp.Pages.BankaEkstre.Bolumler
+
+@implements IDisposable
+
+@inject IAppSessionManager SessionManager
+@inject IBankaOtomasyonOturumu Oturum
+@inject NavigationManager Nav
+
+@*
+    Banka Otomasyon > Tanımlar — firmanın kurulumu.
+
+    Buradaki bölümlerin ortak yanı: hiçbiri bir bankanın YAZIM KALIBINA bağlı değil,
+    hepsi FİRMANIN muhasebesine ait. Bankaya bağlı olanlar (ayrıştırıcı ayarları, unvan
+    desenleri, açıklama şablonları, sabit kurallar) her bankanın kendi kapsülünde:
+    Aktar ekranı > banka sekmesi > "Bu bankanın kuralları".
+
+    BANKA HESAPLARI BURADADIR. Kapsül düzenlemesinde bankanın sekmesine taşınmıştı;
+    iki sebeple geri geldi:
+      • Banka hesabı tanımı bankaya değil firmaya ait bir kayıttır (ORKA kodu, IBAN,
+        hesap tipi, eşleştirme anahtarları hep firmanın muhasebesinin verisi).
+      • Yeni bir banka eklenirken o bankanın sekmesi henüz yoktur; kapsülün içinden
+        erişilemeyen bir yerde durursa yeni banka hiç eklenemez.
+    Kapsüldeki "Ayrıştırıcı ayarları" bölümü kaldı (ayrıştırıcı ve katman bayrakları için
+    pratik) ama her satırdan buradaki tam düzenlemeye bağlantı var.
+
+    Sorgu parametreleri:
+      ?yeniHesap=1   — yeni banka hesabı formunu açar (Aktar'daki "Banka ekle" buraya gelir)
+      ?hesap={id}    — o hesabın düzenleme formunu açar (kapsüldeki "Tam düzenleme")
+*@
+
+<style>
+    .ft-kart { border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; padding: 16px; margin-bottom: 16px; }
+    .ft-not { border: 1px solid #bee3f8; background: #ebf8ff; color: #2c5282; border-radius: 6px;
+              padding: 10px 14px; font-size: 13px; margin-bottom: 16px; }
+</style>
+
+<FirmaBasligi Sekme="BankaOtomasyonSekmesi.Tanimlar" />
+
+<h4 style="margin:0 0 4px">Tanımlar</h4>
+<div style="font-size:12px; color:#718096; margin-bottom:14px">
+    Günlük çalışma için <a href="/banka-otomasyon/aktar">Aktar</a> ekranını kullanın.
+</div>
+
+<div class="ft-not">
+    <b>Bu tanımlar firmaya aittir, bankaya değil.</b> Tek bir bankaya özel ayar
+    arıyorsanız (ayrıştırıcı, unvan desenleri, açıklama şablonları, sabit kurallar)
+    o bankanın kendi sekmesindedir: <a href="/banka-otomasyon/aktar">Aktar</a> → banka →
+    <i>Bu bankanın kuralları</i>.
+</div>
+
+<div class="ft-kart">
+    <HesapPlaniBolumu @ref="_hesapPlani" />
+</div>
+
+@*
+    Banka hesapları hesap planının hemen altında: firmanın kurulumu bu ikisiyle başlar
+    (hesap planı olmadan cari eşleşmez, banka hesabı olmadan ekstre yüklenemez).
+*@
+<div class="ft-kart">
+    <BankaHesaplariBolumu @ref="_bankaHesaplari"
+                          YeniHesapIstendi="@_yeniHesapIstendi"
+                          AcilacakHesapId="@_acilacakHesapId" />
+</div>
+
+<div class="ft-kart">
+    <OgrenilenEslesmelerBolumu @ref="_eslesmeler" />
+</div>
+
+<div class="ft-kart">
+    <KisiYonlendirmeleriBolumu @ref="_kisiYonlendirmeleri" />
+</div>
+
+<div class="ft-kart">
+    <VergiKodlariBolumu @ref="_vergiKodlari" />
+</div>
+
+<div class="ft-kart">
+    <HesapSahibiUnvanlariBolumu @ref="_hesapSahibi" />
+</div>
+
+@code {
+    private HesapPlaniBolumu? _hesapPlani;
+    private BankaHesaplariBolumu? _bankaHesaplari;
+    private OgrenilenEslesmelerBolumu? _eslesmeler;
+    private KisiYonlendirmeleriBolumu? _kisiYonlendirmeleri;
+    private VergiKodlariBolumu? _vergiKodlari;
+    private HesapSahibiUnvanlariBolumu? _hesapSahibi;
+
+    private bool _yeniHesapIstendi;
+    private int? _acilacakHesapId;
+
+    protected override void OnInitialized() => SessionManager.FirmChanged += OnFirmaDegisti;
+
+    /// <summary>
+    /// Önce firma bağlamı, sonra bölümler. Bölümler kendi verilerini kendileri çeker;
+    /// bağlam hazır olmadan çizilirlerse ilk istek yanlış firmaya giderdi.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        if (await Oturum.BaglamiHazirlaAsync() is null)
+        {
+            Nav.NavigateTo("/banka-otomasyon", replace: true);
+            return;
+        }
+
+        OkuSorguParametreleri();
+    }
+
+    /// <summary>Aynı sayfaya farklı sorguyla gelinebilir (Aktar'dan "Banka ekle").</summary>
+    protected override void OnParametersSet() => OkuSorguParametreleri();
+
+    private void OkuSorguParametreleri()
+    {
+        var sorgu = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(new Uri(Nav.Uri).Query);
+
+        _yeniHesapIstendi = sorgu.TryGetValue("yeniHesap", out var yeni)
+                            && !string.IsNullOrWhiteSpace(yeni.ToString());
+
+        _acilacakHesapId = sorgu.TryGetValue("hesap", out var hesap) && int.TryParse(hesap.ToString(), out var id)
+            ? id
+            : null;
+    }
+
+    /// <summary>
+    /// Firma değişince tüm bölümler yenilenir. Hesap planı, banka hesapları, öğrenilen
+    /// eşleşmeler, kişi yönlendirmeleri ve hesap sahibi kimliği firma bazlıdır; eski
+    /// firmanın verisi ekranda kalmamalı. Vergi kodları global olsa da ekran bütün
+    /// olarak tazelenir.
+    ///
+    /// Yalnız modülün SEÇİLİ firmasına ait olay işlenir: genel FİRMA DEĞİŞTİR ile çelişki
+    /// çıktığında olay önce gelen firmayla, sonra geri uygulanan firmayla tetiklenir.
+    /// </summary>
+    private async void OnFirmaDegisti(FirmaDto firma)
+        => await InvokeAsync(async () =>
+        {
+            if (!string.Equals(firma?.FirmaNo, Oturum.SeciliFirma?.FirmaNo, StringComparison.Ordinal)) return;
+
+            if (_hesapPlani is not null) await _hesapPlani.YenileAsync();
+            if (_bankaHesaplari is not null) await _bankaHesaplari.YenileAsync();
+            if (_eslesmeler is not null) await _eslesmeler.YenileAsync();
+            if (_kisiYonlendirmeleri is not null) await _kisiYonlendirmeleri.YenileAsync();
+            if (_vergiKodlari is not null) await _vergiKodlari.YenileAsync();
+            if (_hesapSahibi is not null) await _hesapSahibi.YenileAsync();
+            StateHasChanged();
+        });
+
+    public void Dispose() => SessionManager.FirmChanged -= OnFirmaDegisti;
+}

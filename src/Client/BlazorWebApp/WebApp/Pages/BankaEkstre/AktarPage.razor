@@ -1,4 +1,4 @@
-@page "/banka-isleme"
+@page "/banka-otomasyon/aktar"
 
 @using Microsoft.AspNetCore.Components.Forms
 @using Radzen
@@ -13,27 +13,32 @@
 
 @inject IBankaEkstreApi Api
 @inject IAppSessionManager SessionManager
+@inject IBankaOtomasyonOturumu Oturum
 @inject NotificationService Notif
+@inject DialogService Dialog
 @inject NavigationManager Nav
 
 @*
-    Banka İşleme — banka kapsülü.
+    Banka Otomasyon > Aktar — günlük iş ekranı, banka kapsülü.
+
+    Firma seçim ekranından girilir; hangi firmada olunduğu üstteki başlıkta sürekli görünür
+    ve tüm istekler o firmanın tenant'ıyla gider (bkz. BankaOtomasyonOturumu).
 
     Üstte tanımlı hesaplardan türeyen banka sekmeleri (rozet: o bankanın onay bekleyen
     satır sayısı). Seçili bankanın içinde iki alt sekme:
 
-      İşleme            — o bankanın hesap kartları, ekstre yükleme, onay ekranına giriş
+      Aktar             — o bankanın hesap kartları, ekstre yükleme, onay ekranına giriş
       Bu bankanın kuralları — ayrıştırıcı ayarları, unvan desenleri, açıklama şablonları,
-                          sabit kurallar, o bankanın hesapları
+                          sabit kurallar
 
-    Kapsülün dışında kalan her şey (hesap planı, öğrenilen eşleşmeler, kişi yönlendirmeleri,
-    vergi kodları, hesap sahibi unvanları) bankadan bağımsızdır ve Firma Tanımları
-    ekranındadır. Ayrım şu soruya göre: kayıt bankanın YAZIM KALIBINA mı bağlı, yoksa
-    FİRMANIN muhasebesine mi?
+    Kapsülün dışında kalan her şey (hesap planı, BANKA HESAPLARI, öğrenilen eşleşmeler,
+    kişi yönlendirmeleri, vergi kodları, hesap sahibi unvanları) bankadan bağımsızdır ve
+    Tanımlar ekranındadır. Ayrım şu soruya göre: kayıt bankanın YAZIM KALIBINA mı bağlı,
+    yoksa FİRMANIN muhasebesine mi?
 
     Sekmeler ekstresi işlenmeyen bankaları da gösterir (vadeli, süpürme, karşı hesap
-    defteri): kuralları ve hesapları ancak kendi kapsülünden yönetilebilir. O sekmelerde
-    İşleme boş kalır, sekme başlığı soluk yazılır.
+    defteri): kuralları ancak kendi kapsülünden yönetilebilir. O sekmelerde Aktar boş
+    kalır, sekme başlığı soluk yazılır.
 *@
 
 <style>
@@ -83,14 +88,16 @@
                 border: 1px dashed #cbd5e0; border-radius: 6px; }
     .is-aksiyon { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
     .is-bos { padding: 30px; text-align: center; color: #a0aec0; }
-    .is-kart-cerceve { border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; padding: 16px; }
 </style>
+
+<FirmaBasligi Sekme="BankaOtomasyonSekmesi.Aktar" />
 
 <div class="is-ust">
     <div>
-        <h4 style="margin:0">Banka İşleme</h4>
+        <h4 style="margin:0">Aktar</h4>
         <div style="font-size:12px; color:#718096">
-            Bankadan bağımsız tanımlar için <a href="/banka-isleme/firma-tanimlari">Firma Tanımları</a>.
+            Hesap planı, banka hesapları ve firma geneli tanımlar için
+            <a href="/banka-otomasyon/tanimlar">Tanımlar</a>.
         </div>
     </div>
 
@@ -117,17 +124,17 @@
 else if (_hesaplar.Count == 0)
 {
     @*
-        Hiç hesap yokken banka sekmesi de yok, dolayısıyla kapsül de yok. İlk hesap
-        buradan girilir; kaydedilince sekmeler oluşur ve ekran normal akışına döner.
+        Hiç hesap yokken banka sekmesi de yok, dolayısıyla kapsül de yok. Hesap tanımı
+        Tanımlar sekmesinde: banka hesabı bankaya değil FİRMAYA ait bir kayıttır ve yeni
+        banka eklenirken o bankanın sekmesi henüz yoktur.
     *@
     <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false" Style="margin-bottom:14px">
-        Henüz banka hesabı tanımlanmadı. İlk hesabı ekleyin; her banka kendi sekmesinde
-        kuralları ve hesaplarıyla birlikte görünecek.
+        @Oturum.SeciliFirma?.Ad için henüz banka hesabı tanımlanmadı. İlk hesabı Tanımlar
+        sekmesinden ekleyin; her banka kendi sekmesinde kurallarıyla birlikte görünecek.
     </RadzenAlert>
 
-    <div class="is-kart-cerceve">
-        <BankaHesaplariBolumu Degisti="@YukleAsync" />
-    </div>
+    <RadzenButton Text="Tanımlar'a git — banka hesabı ekle" Icon="add" ButtonStyle="ButtonStyle.Primary"
+                  Size="ButtonSize.Small" Click="@(() => Nav.NavigateTo(YeniHesapAdresi))" />
 }
 else
 {
@@ -150,13 +157,14 @@ else
 
         <div class="is-sekme-ekle">
             <RadzenButton Text="Banka ekle" Icon="add" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
-                          Click="@YeniBanka" />
+                          title="Banka hesabı tanımı Tanımlar sekmesindedir"
+                          Click="@(() => Nav.NavigateTo(YeniHesapAdresi))" />
         </div>
     </div>
 
     <div class="is-alt">
         <div class="is-alt-sekme @(_altSekme == AltSekme.Isleme ? "aktif" : "")"
-             @onclick="@(() => _altSekme = AltSekme.Isleme)">İşleme</div>
+             @onclick="@(() => _altSekme = AltSekme.Isleme)">Aktar</div>
         <div class="is-alt-sekme @(_altSekme == AltSekme.Kurallar ? "aktif" : "")"
              @onclick="@(() => _altSekme = AltSekme.Kurallar)">Bu bankanın kuralları</div>
     </div>
@@ -167,14 +175,14 @@ else
         {
             <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" AllowClose="false" Style="margin-bottom:12px">
                 Hesap planı içe aktarılmadı; cari eşleştirmesi çalışmaz.
-                <a href="/banka-isleme/firma-tanimlari">Firma Tanımları</a> ekranından yükleyin.
+                <a href="/banka-otomasyon/tanimlar">Tanımlar</a> ekranından yükleyin.
             </RadzenAlert>
         }
         else if (_planGunFarki is int gun && gun > EskiSayilanGun)
         {
             <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false" Style="margin-bottom:12px">
                 Hesap planı @gun gündür güncellenmedi. Yeni cariler eksik olabilir —
-                <a href="/banka-isleme/firma-tanimlari">Firma Tanımları</a>'ndan güncelleyin.
+                <a href="/banka-otomasyon/tanimlar">Tanımlar</a>'dan güncelleyin.
             </RadzenAlert>
         }
 
@@ -184,7 +192,7 @@ else
                 @_aktifBanka için ekstre yüklenebilen hesap yok.
                 <div style="margin-top:6px; font-size:12px">
                     Ekstresi işlenecekse <b>Bu bankanın kuralları</b> sekmesinden hesabın
-                    ayrıştırıcısını seçin.
+                    ayrıştırıcısını seçin; hesabın kendisi <a href="/banka-otomasyon/tanimlar">Tanımlar</a>'da tanımlanır.
                 </div>
             </div>
         }
@@ -253,13 +261,13 @@ else
                             <div class="is-aksiyon">
                                 <RadzenButton Text="Onay ekranı" Icon="fact_check" ButtonStyle="ButtonStyle.Primary"
                                               Size="ButtonSize.ExtraSmall"
-                                              Click="@(() => Nav.NavigateTo($"/banka-isleme/onay/{yukleme.Id}"))" />
+                                              Click="@(() => Nav.NavigateTo($"/banka-otomasyon/onay/{yukleme.Id}"))" />
 
                                 @if (yukleme.Sayaclar.Eksik == 0)
                                 {
                                     <RadzenButton Text="Dışa aktar" Icon="download" ButtonStyle="ButtonStyle.Secondary"
                                                   Size="ButtonSize.ExtraSmall"
-                                                  Click="@(() => Nav.NavigateTo($"/banka-isleme/onay/{yukleme.Id}"))" />
+                                                  Click="@(() => Nav.NavigateTo($"/banka-otomasyon/onay/{yukleme.Id}"))" />
                                 }
 
                                 <RadzenButton Icon="delete" title="Yüklemeyi sil" ButtonStyle="ButtonStyle.Light"
@@ -304,8 +312,8 @@ else
 
     private BankaKurallariBolumu? _kurallar;
 
-    /// <summary>"Banka ekle" tıklandı, kapsül çizilince hesap formu açılacak.</summary>
-    private bool _yeniBankaBekliyor;
+    /// <summary>Tanımlar ekranında yeni hesap formunu açtıran adres (bkz. TanimlarPage).</summary>
+    private const string YeniHesapAdresi = "/banka-otomasyon/tanimlar?yeniHesap=1";
 
     private bool _yukleniyor = true;
     private bool _isleniyor;
@@ -326,8 +334,11 @@ else
 
     /// <summary>
     /// Sekmeler TÜM tanımlı hesaplardan türer — ayrıştırıcısı olmayan bankalar dahil.
-    /// Kapsül yapısında hesaplar ve kurallar bankanın kendi sekmesinde yönetiliyor;
-    /// ayrıştırıcısız banka gizlenseydi hesaplarına hiçbir yerden ulaşılamazdı.
+    /// Ayrıştırıcısız banka gizlenseydi o bankanın kurallarına hiçbir yerden ulaşılamazdı.
+    ///
+    /// Sekme sayısı BankaAdi'nın yazımına bağlıdır (OrdinalIgnoreCase): aynı banka iki
+    /// yazımla girilirse iki sekme çıkar. Düzeltmesi Tanımlar → Banka hesapları'nda;
+    /// form yeni yazım girildiğinde uyarır.
     ///
     /// Sıra: ekstresi işlenen bankalar önce (günlük iş orada), kayıt defteri bankaları sonra.
     /// </summary>
@@ -344,7 +355,7 @@ else
         => _hesaplar.Any(h => string.Equals(h.BankaAdi, banka, StringComparison.OrdinalIgnoreCase)
                               && h.Aktif && !string.IsNullOrWhiteSpace(h.ParserTipi));
 
-    /// <summary>Aktif bankanın tüm hesapları; kapsül bunları kullanır.</summary>
+    /// <summary>Aktif bankanın tüm hesapları; kapsülün ayrıştırıcı ayarları bunları listeler.</summary>
     private List<BankaHesabiDto> AktifBankaHesaplari =>
         _hesaplar.Where(h => string.Equals(h.BankaAdi, _aktifBanka, StringComparison.OrdinalIgnoreCase))
                  .OrderBy(h => h.HesapTipi).ThenBy(h => h.ParaBirimi).ToList();
@@ -355,7 +366,7 @@ else
     /// <item><b>Ayrıştırıcısı olmayan</b> hesap dosya kabul etmiyor; boş kartı sürükle-bırak
     /// alanıyla göstermek kullanıcıyı çalışmayacak bir işleme davet ederdi.</item>
     /// <item><b>Pasif</b> hesaba ekstre yüklenmez. Sekme şeridi pasifleri de kapsıyor
-    /// (kapsülünden yönetilebilsinler diye), kart listesi kapsamıyor.</item>
+    /// (bankanın kuralları yönetilebilsin diye), kart listesi kapsamıyor.</item>
     /// </list>
     /// </summary>
     private List<BankaHesabiDto> AktifHesaplar =>
@@ -366,12 +377,35 @@ else
 
     protected override void OnInitialized() => SessionManager.FirmChanged += OnFirmaDegisti;
 
-    protected override async Task OnInitializedAsync() => await YukleAsync();
+    /// <summary>
+    /// Önce firma bağlamı, sonra veri. Sıra kritik: hazırlık tenant'ı seçili firmaya
+    /// getirir, ilk istek de o firmaya gider. Seçim yoksa (doğrudan adres yazıldı ya da
+    /// oturum tazelendi) firma listesine dönülür — sessizce bir firmanın verisi açılmaz.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        if (await Oturum.BaglamiHazirlaAsync() is null)
+        {
+            Nav.NavigateTo("/banka-otomasyon", replace: true);
+            return;
+        }
 
-    /// <summary>Firma değişince sayfa baştan yüklenir; eski firmanın verisi ekranda kalmasın.</summary>
-    private async void OnFirmaDegisti(FirmaDto _)
+        await YukleAsync();
+    }
+
+    /// <summary>
+    /// Firma değişince sayfa baştan yüklenir; eski firmanın verisi ekranda kalmasın.
+    ///
+    /// Yalnız modülün SEÇİLİ firmasına ait olay işlenir. Üstteki genel FİRMA DEĞİŞTİR
+    /// ile çelişki çıktığında olay iki kez tetiklenir (önce gelen firma, sonra modülün
+    /// geri uyguladığı firma); ara olayı işleseydik bir anlığına yanlış firmanın verisi
+    /// için istek atardık.
+    /// </summary>
+    private async void OnFirmaDegisti(FirmaDto firma)
         => await InvokeAsync(async () =>
         {
+            if (!string.Equals(firma?.FirmaNo, Oturum.SeciliFirma?.FirmaNo, StringComparison.Ordinal)) return;
+
             _aktifBanka = null;
             await YukleAsync();
 
@@ -410,27 +444,6 @@ else
         _altSekme = AltSekme.Isleme;
     }
 
-    /// <summary>
-    /// Yeni banka: kurallar sekmesine geçilir ve oradaki hesap formu banka adı <b>boş</b>
-    /// açılır. Kaydedilince sekme şeridi yeni bankayla birlikte yeniden kurulur.
-    ///
-    /// Form doğrudan burada açılamaz: kapsül o an henüz çizilmemişse <c>@@ref</c> null olur.
-    /// Bayrak bırakılır, ilk render'dan sonra açılır.
-    /// </summary>
-    private void YeniBanka()
-    {
-        _altSekme = AltSekme.Kurallar;
-        _yeniBankaBekliyor = true;
-    }
-
-    protected override void OnAfterRender(bool firstRender)
-    {
-        if (!_yeniBankaBekliyor || _kurallar is null) return;
-
-        _yeniBankaBekliyor = false;
-        _kurallar.YeniHesapAc(null);
-    }
-
     /// <summary>Seçili döneme düşen son yükleme; dönem alanı boşsa yükleme tarihine bakılır.</summary>
     private EkstreYuklemeDto? SonYukleme(int hesapId)
         => _yuklemeler.Where(y => y.BankaHesabiId == hesapId && DonemeUyuyorMu(y))
@@ -451,11 +464,24 @@ else
                     .Where(y => y is not null)
                     .Sum(y => y!.Sayaclar.Eksik);
 
+    /// <summary>
+    /// Ekstre yükleme. Dosya seçildikten sonra FİRMA ADIYLA onay sorulur: yanlış firmaya
+    /// veri girmeye karşı son savunma. Kullanıcı vazgeçerse hiçbir istek atılmaz.
+    /// </summary>
     private async Task EkstreYukleAsync(BankaHesabiDto hesap, InputFileChangeEventArgs args)
     {
         var dosya = args.File;
         _suruklenenHesapId = null;
         if (dosya is null) return;
+
+        var hesapAdi = string.IsNullOrWhiteSpace(hesap.HesapAdi) ? hesap.BankaAdi : hesap.HesapAdi;
+
+        var onay = await Dialog.Confirm(
+            $"{FirmaAdi} için \"{dosya.Name}\" dosyası {hesapAdi} hesabına yüklenecek.",
+            "Ekstre yükleme onayı",
+            new ConfirmOptions { OkButtonText = "Yükle", CancelButtonText = "Vazgeç", ShowClose = true });
+
+        if (onay != true) return;
 
         _isleniyor = true;
 
@@ -483,7 +509,7 @@ else
             }
 
             Notif.Notify(NotificationSeverity.Success, "Ekstre işlendi",
-                         $"{veri?.SatirSayisi} satır · {veri?.Sayaclar.Eksik} satır onay bekliyor", 4000);
+                         $"{FirmaAdi} · {veri?.SatirSayisi} satır · {veri?.Sayaclar.Eksik} satır onay bekliyor", 4000);
         }
         finally
         {
@@ -502,6 +528,9 @@ else
 
         _yuklemeler = await Api.GetYuklemelerAsync();
     }
+
+    /// <summary>Onay ve bildirim metinlerinde geçen firma adı.</summary>
+    private string FirmaAdi => Oturum.SeciliFirma?.Ad ?? "seçili firma";
 
     public void Dispose() => SessionManager.FirmChanged -= OnFirmaDegisti;
 }

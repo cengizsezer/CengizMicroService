@@ -7,7 +7,7 @@
 @inject NotificationService Notif
 
 @*
-    Firma Tanımları'nın "Hesap sahibi unvanları" bölümü.
+    Tanımlar ekranının "Hesap sahibi unvanları" bölümü.
 
     Banka açıklamalarında firmanın KENDİ adı da geçiyor; bu alan doluyken o yakalama
     atılır ve karşı taraf sanılıp benzer adlı bir cariye eşlenmez. Ölçülen dosyada
@@ -44,7 +44,7 @@ else if (_kimlik.HesapSayisi == 0)
 {
     <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false">
         Henüz banka hesabı tanımlanmadı; unvan yazılacak bir kayıt yok. Önce
-        <a href="/banka-isleme">İşleme</a> ekranından bir banka hesabı ekleyin.
+        yukarıdaki <b>Banka hesapları</b> bölümünden bir hesap ekleyin.
     </RadzenAlert>
 }
 else

@@ -7,17 +7,23 @@
 @inject NotificationService Notif
 
 @*
-    Banka kapsülünün "Bu bankanın kuralları" alt sekmesi. İşleme sekmesi günlük iş,
+    Banka kapsülünün "Bu bankanın kuralları" alt sekmesi. Aktar sekmesi günlük iş,
     burası o bankanın kurulumu: ayrıştırıcı ayarları, unvan desenleri, açıklama
-    şablonları, sabit kurallar ve bankanın hesapları.
+    şablonları ve sabit kurallar.
+
+    HESAPLARIN TAM CRUD'U BURADA DEĞİL, Tanımlar ekranındadır: banka hesabı tanımı
+    bankaya değil firmaya ait bir kayıttır ve yeni banka eklenirken o bankanın sekmesi
+    henüz yoktur. Burada yalnız ayrıştırıcı ve katman bayrakları düzenlenir (günlük işin
+    yanında pratik); her satırdan tam düzenlemeye bağlantı var.
 
     KAPSAM: kural/şablon/desen tabloları ayrıştırıcıya göre süzülür, bankaya göre değil —
     bir bankanın yazım kalıbı ayrıştırıcısında tanımlıdır. Bankanın ayrıştırıcısı
     hesaplarından türer; hiçbir hesabında seçili değilse yalnız "tüm bankalar" kayıtları
     görünür ve yeni kayıt da ancak genel olarak yazılabilir.
 
-    Firma geneli tanımlar (hesap planı, kişi yönlendirmeleri, vergi kodları, öğrenilen
-    eşleşmeler, hesap sahibi unvanları) burada DEĞİL, Firma Tanımları ekranındadır.
+    Firma geneli tanımlar (hesap planı, banka hesapları, kişi yönlendirmeleri, vergi
+    kodları, öğrenilen eşleşmeler, hesap sahibi unvanları) burada DEĞİL, Tanımlar
+    ekranındadır.
 *@
 
 <style>
@@ -29,6 +35,7 @@
     .bk-ayar-kod { font-size: 11px; color: #718096; font-family: ui-monospace, Consolas, monospace; }
     .bk-ayar-alan { display: flex; gap: 6px; align-items: center; }
     .bk-ayar-alan label { font-size: 12px; color: #4a5568; }
+    .bk-tam { font-size: 12px; white-space: nowrap; }
     .bk-tablo { border: 1px solid #eee; border-radius: 6px; background: #fff; overflow: hidden; }
     .bk-ipucu { font-size: 12px; color: #718096; margin-bottom: 10px; }
     .bk-bos { padding: 22px; text-align: center; color: #a0aec0; }
@@ -40,6 +47,10 @@
         Ekstre dosyasını hangi ayrıştırıcının okuyacağı ve varsayılan kapalı eşleştirme
         katmanları. Ayrıştırıcısı olmayan hesaba ekstre yüklenmez; kayıt defterinde durur
         ve karşı hesap olarak bulunmaya devam eder.
+        <br />
+        Banka adı, hesap adı, ORKA kodu, hesap tipi, para birimi, IBAN ve eşleştirme
+        anahtarları için satırdaki <b>Tam düzenleme</b> bağlantısını kullanın
+        (<a href="/banka-otomasyon/tanimlar">Tanımlar → Banka hesapları</a>).
     </div>
 
     <div class="bk-tablo">
@@ -74,6 +85,10 @@
                                     Change="@(async (bool s) => await KatmanDegistiAsync(hesap, iban: hesap.IbanKatmaniAktif, vkn: s))" />
                     <label for="@($"vkn{hesap.Id}")">VKN katmanı</label>
                 </div>
+
+                @* Diğer tüm alanlar (banka adı dahil) firmaya ait; düzenlemesi Tanımlar'da. *@
+                <a class="bk-tam" href="@($"/banka-otomasyon/tanimlar?hesap={hesap.Id}")"
+                   title="Banka adı, ORKA kodu, IBAN, eşleştirme anahtarları…">Tam düzenleme →</a>
             </div>
         }
     </div>
@@ -100,10 +115,6 @@
     <SabitKurallarBolumu @ref="_kurallar" BankaParserTipi="@ParserTipi" BankaAdi="@BankaAdi" />
 </div>
 
-<div class="bk-kart">
-    <BankaHesaplariBolumu @ref="_hesapBolumu" BankaFiltresi="@BankaAdi" Degisti="@HesaplarDegistiAsync" />
-</div>
-
 @code {
     /// <summary>Kapsülün bankası; hesap listesi ve başlıklar buna göre süzülür.</summary>
     [Parameter, EditorRequired] public string BankaAdi { get; set; } = string.Empty;
@@ -111,13 +122,12 @@
     /// <summary>Bu bankanın hesapları (üst sayfadan gelir; ayrı istek atılmaz).</summary>
     [Parameter] public List<BankaHesabiDto> Hesaplar { get; set; } = new();
 
-    /// <summary>Hesaplar değişince üst sayfa sekmeleri ve sayaçları yenilesin.</summary>
+    /// <summary>Ayrıştırıcı/katman ayarı değişince üst sayfa sekmeleri ve sayaçları yenilesin.</summary>
     [Parameter] public EventCallback Degisti { get; set; }
 
     private UnvanDesenleriBolumu? _desenler;
     private AciklamaSablonlariBolumu? _sablonlar;
     private SabitKurallarBolumu? _kurallar;
-    private BankaHesaplariBolumu? _hesapBolumu;
 
     private List<ParserSecenekDto> _parserler = new();
 
@@ -153,12 +163,8 @@
         if (_desenler is not null) await _desenler.YenileAsync();
         if (_sablonlar is not null) await _sablonlar.YenileAsync();
         if (_kurallar is not null) await _kurallar.YenileAsync();
-        if (_hesapBolumu is not null) await _hesapBolumu.YenileAsync();
         StateHasChanged();
     }
-
-    /// <summary>Tab şeridindeki "Banka ekle" ve bu sekmedeki yeni hesap girişleri buraya gelir.</summary>
-    public void YeniHesapAc(string? bankaAdi) => _hesapBolumu?.YeniHesapAc(bankaAdi);
 
     private Task ParserDegistiAsync(BankaHesabiDto hesap, string? yeniTip)
         => KaydetAsync(hesap, yeniTip, hesap.IbanKatmaniAktif, hesap.VknKatmaniAktif);
@@ -206,12 +212,6 @@
 
         Notif.Notify(NotificationSeverity.Success, "Ayar kaydedildi", hesap.HesapAdi ?? hesap.BankaAdi, 2500);
 
-        await Degisti.InvokeAsync();
-        StateHasChanged();
-    }
-
-    private async Task HesaplarDegistiAsync()
-    {
         await Degisti.InvokeAsync();
         StateHasChanged();
     }

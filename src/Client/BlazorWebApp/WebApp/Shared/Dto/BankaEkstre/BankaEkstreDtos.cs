@@ -174,6 +174,37 @@ namespace WebApp.Shared.Dto.BankaEkstre
             return $"Banka adı {sebep}. Buraya kısa banka adı yazın (Vakıfbank, Ziraat, TEB); " +
                    "hesabın tam adı Hesap adı alanına, ayırt edici ifadeler Eşleştirme anahtarlarına girilir.";
         }
+
+        /// <summary>
+        /// Girilen ad mevcut hesaplardan hiçbiriyle eşleşmiyorsa uyarı; eşleşiyorsa null.
+        ///
+        /// Gerekçe biçimsel değil işlevsel: "aynı banka önceliği" kuralı <c>BankaAdi</c>
+        /// üzerinden çalışır. Aynı banka iki farklı yazımla girilirse sistem onları ayrı
+        /// bankalar sayar, sekme sayısı şişer ve bankalar arası eşleştirme bozulur.
+        ///
+        /// KARŞILAŞTIRMA, sekme şeridinin gruplamasıyla <b>birebir aynıdır</b>
+        /// (<c>OrdinalIgnoreCase</c> + kırpma). Uyarı böylece tam olarak "yeni bir sekme
+        /// açılacak mı?" sorusunu yanıtlar. Türkçe sonucu: "ZIRAAT" ile "Ziraat" aynı
+        /// sayılır, ama "İŞ BANKASI" ile "İş Bankası" AYRI sayılır — ordinal karşılaştırma
+        /// 'ı' ile 'I' harflerini eşlemez ve sekme şeridi de tam bu yüzden ikiye bölünür.
+        /// Uyarı doğru: kullanıcının düzeltmesi gereken şey de zaten bu.
+        /// </summary>
+        public static string? YeniBankaUyarisi(string? bankaAdi, IEnumerable<string?>? mevcutAdlar)
+        {
+            if (string.IsNullOrWhiteSpace(bankaAdi)) return null;
+
+            var ad = bankaAdi.Trim();
+
+            var eslesenVar = (mevcutAdlar ?? Enumerable.Empty<string?>())
+                .Any(m => !string.IsNullOrWhiteSpace(m)
+                          && string.Equals(m!.Trim(), ad, StringComparison.OrdinalIgnoreCase));
+
+            if (eslesenVar) return null;
+
+            return $"\"{ad}\" mevcut hiçbir hesapla eşleşmiyor, yeni bir banka sekmesi açılacak. " +
+                   "Var olan bir bankayı kastediyorsanız listeden aynı yazımı seçin; " +
+                   "farklı yazımlar ayrı banka sayılır ve bankalar arası eşleştirmeyi bozar.";
+        }
     }
 
     /// <summary>
@@ -658,5 +689,22 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public static string Tarih(DateTime tarih) => tarih.ToString(TarihBicimi, Kultur);
 
         public static string Skor(decimal skor) => skor <= 0m ? "—" : skor.ToString("0.00", Kultur);
+    }
+
+    /// <summary>
+    /// Banka Otomasyon firma seçim ekranının bir satırının sayaçları. Sunucudaki
+    /// <c>FirmaBankaOzetiDto</c> ile aynı sözleşme.
+    /// </summary>
+    public class FirmaBankaOzetiDto
+    {
+        public string TenantNo { get; set; } = string.Empty;
+
+        /// <summary>Aktif hesap planı kaydı sayısı; 0 ise firma "kurulum gerekli".</summary>
+        public int HesapPlaniSayisi { get; set; }
+
+        public int BankaHesabiSayisi { get; set; }
+
+        /// <summary>Tüm bankalar ve tüm dönemler toplamı (onay bekleyen + çözülemeyen).</summary>
+        public int OnayBekleyen { get; set; }
     }
 }
