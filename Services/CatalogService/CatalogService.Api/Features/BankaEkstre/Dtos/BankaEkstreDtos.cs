@@ -1,4 +1,4 @@
-﻿using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Domain;
 
 namespace CatalogService.Api.Features.BankaEkstre.Dtos
 {
@@ -523,12 +523,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
 
     /// <summary>
     /// Banka Otomasyon firma seçim ekranının bir satırı: firmanın kurulum durumu.
-    /// Tenant filtresi baypas edilerek okunur (bkz. <c>FirmaOzetService</c>), çünkü
-    /// ekran <b>girilmemiş</b> firmaların sayaçlarını da gösterir.
+    /// Kapsam <c>FirmaId</c> (catalog.Firmalar.Id) — Raporlar ekranıyla aynı anahtar.
     /// </summary>
     public class FirmaBankaOzetiDto
     {
-        public string TenantNo { get; set; } = string.Empty;
+        /// <summary>catalog.Firmalar.Id; istemci satırı bununla eşler.</summary>
+        public int FirmaId { get; set; }
 
         /// <summary>Aktif hesap planı kaydı sayısı; 0 ise firma "kurulum gerekli".</summary>
         public int HesapPlaniSayisi { get; set; }
@@ -542,5 +542,31 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         /// banka rozeti yalnız seçili dönemi sayar; bu sütun kasten daha geniştir.
         /// </summary>
         public int OnayBekleyen { get; set; }
+    }
+
+    /// <summary>
+    /// "Bu firmanın banka otomasyon verisini temizle" işleminin kapsamı: hangi tablodan
+    /// kaç kayıt silinecek (onaydan önce) veya silindi (onaydan sonra).
+    ///
+    /// Global tablolar (açıklama şablonları, unvan desenleri, sabit kurallar, vergi
+    /// kodları, kimlik kayıtları) bu listede YOK — onlar bankanın yazım kalıbına ait,
+    /// firmaya değil ve silinmiyor.
+    /// </summary>
+    public class BankaTemizlikOzetiDto
+    {
+        /// <summary>catalog.Firmalar.Id; 0 ise sahipsiz (eski tenant düzeninden kalan) kayıtlar.</summary>
+        public int FirmaId { get; set; }
+
+        public int HesapPlaniKaydi { get; set; }
+        public int BankaHesabi { get; set; }
+        public int EkstreYukleme { get; set; }
+        public int EkstreSatiri { get; set; }
+        public int HesapEslesmesi { get; set; }
+        public int KisiYonlendirme { get; set; }
+
+        public int Toplam => HesapPlaniKaydi + BankaHesabi + EkstreYukleme + EkstreSatiri
+                             + HesapEslesmesi + KisiYonlendirme;
+
+        public bool Bos => Toplam == 0;
     }
 }

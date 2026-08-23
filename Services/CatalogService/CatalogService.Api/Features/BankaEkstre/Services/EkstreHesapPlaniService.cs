@@ -1,4 +1,5 @@
 using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Infrastructure.Context;
 using ClosedXML.Excel;
@@ -22,15 +23,23 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
     public class EkstreHesapPlaniService : IEkstreHesapPlaniService
     {
         private readonly CatalogContext _db;
+        private readonly IBankaFirmaKapsami _kapsam;
 
-        public EkstreHesapPlaniService(CatalogContext db) => _db = db;
+        public EkstreHesapPlaniService(CatalogContext db, IBankaFirmaKapsami kapsam)
+        {
+            _db = db;
+            _kapsam = kapsam;
+        }
+
+        /// <summary>Seçili firmanın hesap planı. Kapsam her sorguda görünür yazılır.</summary>
+        private IQueryable<HesapPlaniKaydi> Plan => _db.EkstreHesapPlani.Where(h => h.FirmaId == _kapsam.FirmaId);
 
         private static readonly string[] KodBasliklari = { "Hesap Kodu", "Hesap Kod", "Kod", "HesapKodu" };
         private static readonly string[] AdBasliklari = { "Hesap Adı", "Hesap Adi", "Ad", "Unvan", "Ünvan", "HesapAdi" };
 
         public async Task<List<HesapPlaniKaydiDto>> AraAsync(string? q, string? anaGrup, int enFazla, CancellationToken ct = default)
         {
-            var sorgu = _db.EkstreHesapPlani.AsNoTracking().Where(h => h.Aktif);
+            var sorgu = Plan.AsNoTracking().Where(h => h.Aktif);
 
             if (!string.IsNullOrWhiteSpace(anaGrup))
             {
@@ -56,12 +65,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         public async Task<HesapPlaniKaydiDto?> KodaGoreAsync(string kod, CancellationToken ct = default)
         {
             var normal = Normalizasyon.HesapKoduNormalize(kod);
-            var kayit = await _db.EkstreHesapPlani.AsNoTracking().FirstOrDefaultAsync(h => h.Kod == normal, ct);
+            var kayit = await Plan.AsNoTracking().FirstOrDefaultAsync(h => h.Kod == normal, ct);
             return kayit is null ? null : Esle(kayit);
         }
 
         public Task<int> SayAsync(CancellationToken ct = default)
-            => _db.EkstreHesapPlani.CountAsync(h => h.Aktif, ct);
+            => Plan.CountAsync(h => h.Aktif, ct);
 
         /// <summary>
         /// Tanımlar ekranının hesap planı özeti: kaç kayıt var, en son ne zaman içe aktarıldı.
@@ -70,9 +79,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// </summary>
         public async Task<HesapPlaniOzetDto> OzetAsync(CancellationToken ct = default)
         {
-            var sayi = await _db.EkstreHesapPlani.CountAsync(h => h.Aktif, ct);
+            var sayi = await Plan.CountAsync(h => h.Aktif, ct);
 
-            var son = await _db.EkstreHesapPlani
+            var son = await Plan
                 .OrderByDescending(h => h.SonGuncelleme)
                 .Select(h => (DateTime?)h.SonGuncelleme)
                 .FirstOrDefaultAsync(ct);
@@ -103,7 +112,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
             var (kolonKod, kolonAd, baslikSatiri) = BasliklariBul(sayfa);
 
-            var mevcutlar = await _db.EkstreHesapPlani.ToDictionaryAsync(h => h.Kod, ct);
+            var mevcutlar = await Plan.ToDictionaryAsync(h => h.Kod, ct);
             var dosyadaGorulen = new HashSet<string>(StringComparer.Ordinal);
             var simdi = DateTime.Now;
 
@@ -154,6 +163,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 {
                     _db.EkstreHesapPlani.Add(new HesapPlaniKaydi
                     {
+                        FirmaId = _kapsam.FirmaId,
                         Kod = kod,
                         Ad = Normalizasyon.Kirp(ad, 200),
                         NormalizeAd = Normalizasyon.Kirp(Normalizasyon.UnvanNormalize(ad), 200),

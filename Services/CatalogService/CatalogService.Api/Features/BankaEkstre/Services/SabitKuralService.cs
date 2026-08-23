@@ -1,4 +1,5 @@
-﻿using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
 using CatalogService.Api.Infrastructure.Context;
@@ -26,11 +27,15 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
     {
         private readonly CatalogContext _db;
         private readonly IEkstreParserSecici _parserSecici;
+        private readonly IBankaFirmaKapsami _kapsam;
 
-        public SabitKuralService(CatalogContext db, IEkstreParserSecici parserSecici)
+        // Tablo GLOBAL (banka bazlı) — kural satırında FirmaId yok. Kapsam yalnız hesap
+        // kodunun doğrulanması için gerekiyor: plan firmaya aittir (bkz. KARARLAR §70).
+        public SabitKuralService(CatalogContext db, IEkstreParserSecici parserSecici, IBankaFirmaKapsami kapsam)
         {
             _db = db;
             _parserSecici = parserSecici;
+            _kapsam = kapsam;
         }
 
         public async Task<List<SabitKuralDto>> GetHepsiAsync(CancellationToken ct = default)
@@ -91,7 +96,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             await TekilligiDogrulaAsync(parser, dto.Kapsam, desen, mevcutId, ct);
 
             var plandaki = await YapilandirmaDogrulama.HesapKoduDogrulaAsync(
-                _db, dto.HesapKodu, nameof(dto.HesapKodu), ct);
+                _db, _kapsam.FirmaId, dto.HesapKodu, nameof(dto.HesapKodu), ct);
 
             kayit.ParserTipi = parser;
             kayit.IslemTipiDeseni = desen;

@@ -1,4 +1,4 @@
-﻿using CatalogService.Api.Extensions;
+using CatalogService.Api.Extensions;
 using CatalogService.Api.Features.AccountPlan;
 using CatalogService.Api.Features.Banka.Services;
 using CatalogService.Api.Features.Declarations.Services;
@@ -135,6 +135,12 @@ builder.Services.AddScoped<CatalogService.Api.Features.Muhasebe.Services.IMasraf
 builder.Services.AddSingleton<CatalogService.Api.Features.Muhasebe.Services.IBankaKoduService, CatalogService.Api.Features.Muhasebe.Services.BankaKoduService>();
 
 // Banka Ekstresi İşleme modülü.
+// Firma kapsamı isteğin ?firmaId= parametresinden kurulur (tenant claim'inden DEĞİL —
+// bkz. KARARLAR §68/§69). Kapsam tutucusu ve onu dolduran filtre Scoped.
+builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Kapsam.IBankaFirmaKapsami,
+                           CatalogService.Api.Features.BankaEkstre.Kapsam.BankaFirmaKapsami>();
+builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Kapsam.BankaFirmaFiltresi>();
+
 // Parser'lar durumsuz → Singleton; yeni banka eklemek için buraya bir IEkstreParser kaydı yeter.
 builder.Services.AddSingleton<CatalogService.Api.Features.BankaEkstre.Services.Parsing.IEkstreParser,
                               CatalogService.Api.Features.BankaEkstre.Services.Parsing.VakifbankVadesizParser>();
@@ -168,6 +174,8 @@ builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IKis
                            CatalogService.Api.Features.BankaEkstre.Services.KisiYonlendirmeService>();
 builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IFirmaOzetService,
                            CatalogService.Api.Features.BankaEkstre.Services.FirmaOzetService>();
+builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IBankaTemizlikService,
+                           CatalogService.Api.Features.BankaEkstre.Services.BankaTemizlikService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolMaddeService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolMaddeService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolMizanService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolMizanService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IMizanNotuService, CatalogService.Api.Features.FirmaKontrol.Services.MizanNotuService>();

@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
 using CatalogService.Api.Infrastructure.Context;
@@ -92,18 +92,24 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// kod kaydedilmez — yanlış yazılmış bir kod her ay sessizce yanlış hesaba yazardı.
         /// Plan hiç yüklenmemişse denetim atlanır (kurulum sırası bozulmasın) ve null döner.
         /// </summary>
+        ///
+        /// Plan <b>firma bazlıdır</b>: global kural tabloları (sabit kural, vergi kodu) bile
+        /// kodu seçili firmanın planına karşı doğrular — kod formatı ORKA'da firmadan firmaya
+        /// değişiyor ve kullanıcı kuralı hangi firmadaysa oradaki planla yazıyor.
         /// <returns>Plandaki kayıt; plan boşsa null.</returns>
         public static async Task<HesapPlaniKaydi?> HesapKoduDogrulaAsync(
-            CatalogContext db, string? hesapKodu, string field, CancellationToken ct)
+            CatalogContext db, int firmaId, string? hesapKodu, string field, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(hesapKodu))
                 throw new BankaEkstreKuralException(field, "Hesap kodu boş olamaz.");
 
             var kod = Normalizasyon.HesapKoduNormalize(hesapKodu);
 
-            if (!await db.EkstreHesapPlani.AnyAsync(ct)) return null;
+            var plan = db.EkstreHesapPlani.Where(h => h.FirmaId == firmaId);
 
-            var kayit = await db.EkstreHesapPlani.AsNoTracking()
+            if (!await plan.AnyAsync(ct)) return null;
+
+            var kayit = await plan.AsNoTracking()
                 .FirstOrDefaultAsync(h => h.Kod == kod && h.Aktif, ct);
 
             if (kayit is null)

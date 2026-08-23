@@ -33,7 +33,7 @@ namespace CatalogService.UnitTests.BankaEkstre
         public async Task Ice_aktarim_kodlari_bosluklu_saklar()
         {
             using var db = BankaEkstreTestOrtami.YeniContext();
-            var servis = new EkstreHesapPlaniService(db);
+            var servis = new EkstreHesapPlaniService(db, BankaEkstreTestOrtami.Kapsam());
 
             using var dosya = Dosya(("120 D22", "DAĞI GİYİM SANAYİ"), ("329 K08", "KEMAL TEKSTİL"));
             var sonuc = await servis.IceAktarAsync(dosya);
@@ -55,13 +55,13 @@ namespace CatalogService.UnitTests.BankaEkstre
             using (var db = BankaEkstreTestOrtami.YeniContext(veritabani))
             {
                 using var ilk = Dosya(("120 D22", "DAGI GIYIM"), ("120 Z01", "ZETA"));
-                await new EkstreHesapPlaniService(db).IceAktarAsync(ilk);
+                await new EkstreHesapPlaniService(db, BankaEkstreTestOrtami.Kapsam()).IceAktarAsync(ilk);
             }
 
             using (var db = BankaEkstreTestOrtami.YeniContext(veritabani))
             {
                 using var ikinci = Dosya(("120 D22", "DAĞI GİYİM SANAYİ"));
-                var sonuc = await new EkstreHesapPlaniService(db).IceAktarAsync(ikinci);
+                var sonuc = await new EkstreHesapPlaniService(db, BankaEkstreTestOrtami.Kapsam()).IceAktarAsync(ikinci);
 
                 Assert.Equal(1, sonuc.Guncellenen);
                 Assert.Equal(0, sonuc.Eklenen);
@@ -87,7 +87,7 @@ namespace CatalogService.UnitTests.BankaEkstre
             akis.Position = 0;
 
             var hata = await Assert.ThrowsAsync<InvalidDataException>(
-                () => new EkstreHesapPlaniService(db).IceAktarAsync(akis));
+                () => new EkstreHesapPlaniService(db, BankaEkstreTestOrtami.Kapsam()).IceAktarAsync(akis));
 
             Assert.Contains("Hesap Kodu", hata.Message);
         }
@@ -96,7 +96,7 @@ namespace CatalogService.UnitTests.BankaEkstre
         public async Task Arama_ana_gruba_gore_daraltir()
         {
             using var db = BankaEkstreTestOrtami.YeniContext();
-            var servis = new EkstreHesapPlaniService(db);
+            var servis = new EkstreHesapPlaniService(db, BankaEkstreTestOrtami.Kapsam());
 
             using var dosya = Dosya(("120 D22", "DAĞI GİYİM"), ("329 D05", "DAĞITIM AŞ"));
             await servis.IceAktarAsync(dosya);

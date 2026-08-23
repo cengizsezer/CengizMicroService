@@ -1,4 +1,4 @@
-﻿using Blazored.LocalStorage;
+using Blazored.LocalStorage;
 using Blazored.SessionStorage;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -128,7 +128,7 @@ namespace WebApp.StartupExtensions.ServiceExtensions
 
             // Banka Otomasyon'un firma bağlamı. WASM'de scoped = uygulama ömrü, bu yüzden
             // seçim sekme değişimlerinde korunur; sayfa yenilemesinde oturum deposundan
-            // geri gelir.
+            // geri gelir. Tenant'a DOKUNMAZ: firma catalog.Firmalar'dan gelir (KARARLAR §68).
             services.AddScoped<IBankaOtomasyonDeposu, SessionStorageBankaOtomasyonDeposu>();
             services.AddScoped<IBankaOtomasyonOturumu, BankaOtomasyonOturumu>();
             services.AddTransient<IIdentityService, IdentityService>();
@@ -162,8 +162,10 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             services.AddScoped<IMuhasebeApi>(sp =>
                 new MuhasebeApi(sp.GetRequiredService<HttpClient>()));
 
+            // Firma kapsamını (?firmaId=) adreslere ekleyebilmesi için modülün oturumunu alır.
             services.AddScoped<IBankaEkstreApi>(sp =>
-                new BankaEkstreApi(sp.GetRequiredService<HttpClient>()));
+                new BankaEkstreApi(sp.GetRequiredService<HttpClient>(),
+                                   sp.GetRequiredService<IBankaOtomasyonOturumu>()));
 
             services.AddScoped<IUserAdminService>(sp =>
                 new UserAdminService(sp.GetRequiredService<HttpClient>()));

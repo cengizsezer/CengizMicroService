@@ -1,79 +1,113 @@
 using WebApp.Application.Services;
 using WebApp.Application.Services.Interfaces;
-using WebApp.Domain.Models.User;
-using WebApp.Manager;
+using WebApp.Application.Services.Yonetim;
+using WebApp.Shared.Dto.Yonetim;
 
 namespace WebApp.UnitTests.BankaEkstre
 {
     /// <summary>
-    /// Banka Otomasyon'un firma bağlamı. Sınanan iddia şu: ekranda seçilen firma
-    /// <b>gerçekten</b> tenant'ı belirler. Ekran "PKF Aday" gösterirken isteğin SMMM
-    /// tenant'ıyla gitmesi, verinin yanlış firmaya yazılması demek.
+    /// Banka Otomasyon'un firma bağlamı. Sınanan iddia şu: seçilen firma
+    /// <c>catalog.Firmalar</c> kaydıdır ve modül boyunca kapsam olarak o kullanılır.
     ///
-    /// Tenant, <see cref="IAppSessionManager.SelectFirmAsync"/> ile üretilen token'ın
-    /// <c>tn</c> claim'inden gelir; bu yüzden testler o çağrının doğru firmayla ve
-    /// doğru anda yapıldığını doğrular.
+    /// Modül eskiden <see cref="IAppSessionManager.SelectFirmAsync"/> ile TENANT'ı
+    /// çeviriyordu. pkfadmin tek tenant'a bağlı olduğu için firma listesi tek satıra
+    /// düşüyor, sekiz firmanın verisi aynı kovaya yazılıyordu (bkz. KARARLAR §68).
+    /// Artık tenant'a hiç dokunulmuyor; kapsam isteğe <c>?firmaId=</c> olarak ekleniyor.
+    /// Bu yüzden testler de "token çevrildi mi" yerine "seçim doğru firma mı, kalıcı mı,
+    /// yenilemede kaynağından doğrulanıyor mu" sorularını sınıyor.
     /// </summary>
     public class BankaOtomasyonOturumuTests
     {
-        private static readonly FirmaDto Aday = new() { Ad = "PKF Aday", Vkn = "1111111111", FirmaNo = "201" };
-        private static readonly FirmaDto Smmm = new() { Ad = "PKF SMMM", Vkn = "2222222222", FirmaNo = "106" };
-
-        private static (BankaOtomasyonOturumu Oturum, SahteOturumYoneticisi Yonetici, SahteDepo Depo) Kur()
+        private static readonly FirmaDto Aday = new()
         {
-            var yonetici = new SahteOturumYoneticisi(Aday, Smmm);
+            Id = 4,
+            Unvan = "PKF ADAY BAĞIMSIZ DENETİM ANONİM ŞİRKETİ",
+            KisaAd = "PKF ADAY DENETİM",
+            VergiKimlikNo = "0070511435",
+            Aktif = true
+        };
+
+        private static readonly FirmaDto Smmm = new()
+        {
+            Id = 5,
+            Unvan = "PKF İSTANBUL SERBEST MUHASEBECİ VE MALİ MÜŞAVİRLİK A.Ş.",
+            KisaAd = "PKF SMMM",
+            VergiKimlikNo = "7300717173",
+            Aktif = true
+        };
+
+        private static (BankaOtomasyonOturumu Oturum, SahteFirmaKaynagi Kaynak, SahteDepo Depo) Kur()
+        {
+            var kaynak = new SahteFirmaKaynagi(Aday, Smmm);
             var depo = new SahteDepo();
-            return (new BankaOtomasyonOturumu(yonetici, depo), yonetici, depo);
+            return (new BankaOtomasyonOturumu(depo, kaynak), kaynak, depo);
         }
 
         [Fact]
-        public async Task Girilen_firma_tenant_baglamini_degistirir()
+        public async Task Girilen_firma_kapsam_olur_ve_hatirlanir()
         {
-            var (oturum, yonetici, depo) = Kur();
+            var (oturum, _, depo) = Kur();
 
             await oturum.GirAsync(Aday);
 
-            Assert.Equal("201", yonetici.SelectedFirm?.FirmaNo);
-            Assert.Equal(new[] { "201" }, yonetici.SecilenFirmaNolari);
-            Assert.Equal("PKF Aday", oturum.SeciliFirma?.Ad);
+            Assert.Equal(4, oturum.FirmaId);
+            Assert.Equal(Aday.Unvan, oturum.FirmaAdi);
 
             // Seçim oturum boyunca hatırlanır: sayfa yenilense de aynı firmaya dönülür.
-            Assert.Equal("201", await depo.FirmaNoAsync());
+            Assert.Equal(4, await depo.FirmaIdAsync());
         }
 
         [Fact]
-        public async Task Sekme_degisiminde_firma_tekrar_sorulmaz()
+        public async Task Sekme_degisiminde_firma_kaynagina_tekrar_gidilmez()
         {
-            var (oturum, yonetici, _) = Kur();
+            var (oturum, kaynak, _) = Kur();
 
             await oturum.GirAsync(Aday);
-            yonetici.SecilenFirmaNolari.Clear();
+            kaynak.OkunanIdler.Clear();
 
             // Aktar → Tanımlar → Aktar: her sekme açılışta bağlamı hazırlar.
             Assert.Equal(Aday, await oturum.BaglamiHazirlaAsync());
             Assert.Equal(Aday, await oturum.BaglamiHazirlaAsync());
             Assert.Equal(Aday, await oturum.BaglamiHazirlaAsync());
 
-            // Bağlam zaten Aday; boşuna token yenilenmedi ve kullanıcıya soru sorulmadı.
-            Assert.Empty(yonetici.SecilenFirmaNolari);
+            // Seçim bellekte: boşuna istek atılmadı.
+            Assert.Empty(kaynak.OkunanIdler);
         }
 
         [Fact]
-        public async Task Sayfa_yenilenince_secim_depodan_geri_gelir_ve_baglam_uygulanir()
+        public async Task Sayfa_yenilenince_secim_depodan_geri_gelir()
         {
-            var yonetici = new SahteOturumYoneticisi(Aday, Smmm);
+            var kaynak = new SahteFirmaKaynagi(Aday, Smmm);
             var depo = new SahteDepo();
 
-            await new BankaOtomasyonOturumu(yonetici, depo).GirAsync(Aday);
+            await new BankaOtomasyonOturumu(depo, kaynak).GirAsync(Aday);
 
-            // Yenileme: servis sıfırdan kurulur, üstelik token bu arada SMMM'ye kaymış olsun.
-            await yonetici.SelectFirmAsync(Smmm);
-            var yeni = new BankaOtomasyonOturumu(yonetici, depo);
-
+            // Yenileme: servis sıfırdan kurulur, seçim yalnız depodan gelebilir.
+            var yeni = new BankaOtomasyonOturumu(depo, kaynak);
             var firma = await yeni.BaglamiHazirlaAsync();
 
-            Assert.Equal("201", firma?.FirmaNo);
-            Assert.Equal("201", yonetici.SelectedFirm?.FirmaNo);
+            Assert.Equal(4, firma?.Id);
+            Assert.Equal(4, yeni.FirmaId);
+
+            // Firma kaynağından doğrulandı: arada silinmiş bir firmayla ekran açılmasın.
+            Assert.Equal(new[] { 4 }, kaynak.OkunanIdler);
+        }
+
+        /// <summary>
+        /// Depodaki firma artık tanımlı değilse (silinmiş ya da erişim kalkmış) bağlam
+        /// hazırlanamaz ve seçim temizlenir; ekran firma listesine yönlendirir.
+        /// </summary>
+        [Fact]
+        public async Task Artik_tanimli_olmayan_firma_icin_baglam_hazirlanamaz()
+        {
+            var kaynak = new SahteFirmaKaynagi(Aday, Smmm);
+            var depo = new SahteDepo();
+            await depo.FirmaIdYazAsync(999);
+
+            var oturum = new BankaOtomasyonOturumu(depo, kaynak);
+
+            Assert.Null(await oturum.BaglamiHazirlaAsync());
+            Assert.Null(await depo.FirmaIdAsync());
         }
 
         [Fact]
@@ -84,45 +118,7 @@ namespace WebApp.UnitTests.BankaEkstre
             // Ekran bunu null görünce firma listesine yönlendirir; sessizce bir firmanın
             // verisi açılmaz.
             Assert.Null(await oturum.BaglamiHazirlaAsync());
-        }
-
-        [Fact]
-        public async Task Genel_firma_degisikligi_modul_acikken_sayfadaki_secime_yenilir()
-        {
-            var (oturum, yonetici, _) = Kur();
-
-            await oturum.GirAsync(Aday);
-            oturum.Aktif = true;
-
-            var uyarilar = new List<string>();
-            oturum.Uyari += uyarilar.Add;
-
-            // Üstteki genel FİRMA DEĞİŞTİR ile SMMM seçildi.
-            await yonetici.SelectFirmAsync(Smmm);
-
-            Assert.Equal("201", yonetici.SelectedFirm?.FirmaNo);   // sayfadaki seçim kazandı
-            Assert.Equal("201", oturum.SeciliFirma?.FirmaNo);
-
-            var uyari = Assert.Single(uyarilar);
-            Assert.Contains("PKF Aday", uyari);
-            Assert.Contains("PKF SMMM", uyari);
-        }
-
-        [Fact]
-        public async Task Modul_kapaliyken_genel_firma_degisikligine_karisilmaz()
-        {
-            var (oturum, yonetici, _) = Kur();
-
-            await oturum.GirAsync(Aday);
-            oturum.Aktif = false;   // kullanıcı modülden çıktı (firma listesi ya da başka ekran)
-
-            var uyarilar = new List<string>();
-            oturum.Uyari += uyarilar.Add;
-
-            await yonetici.SelectFirmAsync(Smmm);
-
-            Assert.Equal("106", yonetici.SelectedFirm?.FirmaNo);
-            Assert.Empty(uyarilar);
+            Assert.Equal(0, oturum.FirmaId);
         }
 
         [Fact]
@@ -134,62 +130,65 @@ namespace WebApp.UnitTests.BankaEkstre
             await oturum.CikAsync();
 
             Assert.Null(oturum.SeciliFirma);
-            Assert.False(oturum.Aktif);
-            Assert.Null(await depo.FirmaNoAsync());
+            Assert.Equal(0, oturum.FirmaId);
+            Assert.Null(await depo.FirmaIdAsync());
+        }
+
+        /// <summary>
+        /// Ekranda gösterilen ad: unvan varsa o, yoksa kısa ad. Firma seçim ekranı da
+        /// aynı kuralı kullanıyor ki başlık ile listedeki satır aynı şeyi yazsın.
+        /// </summary>
+        [Fact]
+        public void Ad_unvan_yoksa_kisa_ada_duser()
+        {
+            Assert.Equal(Aday.Unvan, BankaOtomasyonOturumu.Ad(Aday));
+            Assert.Equal("YALNIZ KISA AD",
+                         BankaOtomasyonOturumu.Ad(new FirmaDto { Id = 9, KisaAd = "YALNIZ KISA AD" }));
+            Assert.Equal(string.Empty, BankaOtomasyonOturumu.Ad(null));
         }
 
         // ---- Sahteler ----
 
         /// <summary>
-        /// Gerçek yöneticinin tenant'a dair davranışını taklit eder: SelectFirmAsync
-        /// seçili firmayı değiştirir ve FirmChanged'i tetikler. Üretimde bu çağrı aynı
-        /// zamanda yeni access token'ı (tn claim'i) üretir.
+        /// Raporlar'ın da kullandığı firma kaynağı (<c>/catalog/firmalar</c>) taklidi.
+        /// Hangi id'lerin sorulduğu kaydediliyor: gereksiz istek atılmadığı sınanıyor.
         /// </summary>
-        private sealed class SahteOturumYoneticisi : IAppSessionManager
+        private sealed class SahteFirmaKaynagi : IFirmaApiClient
         {
-            public SahteOturumYoneticisi(params FirmaDto[] firmalar) => Firms = firmalar;
+            private readonly List<FirmaDto> _firmalar;
 
-            /// <summary>Tenant'ın kaç kez ve hangi firmaya çevrildiği.</summary>
-            public List<string> SecilenFirmaNolari { get; } = new();
+            public SahteFirmaKaynagi(params FirmaDto[] firmalar) => _firmalar = firmalar.ToList();
 
-            public string Token { get; private set; } = string.Empty;
-            public string RefreshToken => string.Empty;
-            public bool RememberMe => false;
-            public FirmaDto SelectedFirm { get; private set; } = default!;
-            public IReadOnlyList<FirmaDto> Firms { get; }
-            public bool IsAuthenticated => true;
+            public List<int> OkunanIdler { get; } = new();
 
-            public event Action? AuthChanged;
-            public event Action<FirmaDto>? FirmChanged;
+            public Task<List<FirmaDto>> GetAllAsync(bool includeInactive = false, CancellationToken ct = default)
+                => Task.FromResult(_firmalar.ToList());
 
-            public Task InitializeFromLoginAsync(LoginResponseModel login, bool rememberMe) => Task.CompletedTask;
-            public Task<bool> EnsureFirmSelectedAsync() => Task.FromResult(true);
-            public Task RestoreAsync() => Task.CompletedTask;
-            public Task ClearAsync() => Task.CompletedTask;
-
-            public Task SelectFirmAsync(FirmaDto firm)
+            public Task<FirmaDto?> GetByIdAsync(int id, CancellationToken ct = default)
             {
-                if (firm is null) return Task.CompletedTask;
-
-                SecilenFirmaNolari.Add(firm.FirmaNo);
-                SelectedFirm = firm;
-                Token = $"token-tn-{firm.FirmaNo}";
-
-                FirmChanged?.Invoke(firm);
-                AuthChanged?.Invoke();
-                return Task.CompletedTask;
+                OkunanIdler.Add(id);
+                return Task.FromResult(_firmalar.FirstOrDefault(f => f.Id == id));
             }
+
+            public Task<FirmaDto> CreateAsync(FirmaCreateDto dto, CancellationToken ct = default)
+                => throw new NotSupportedException();
+
+            public Task<FirmaDto> UpdateAsync(int id, FirmaUpdateDto dto, CancellationToken ct = default)
+                => throw new NotSupportedException();
+
+            public Task DeleteAsync(int id, CancellationToken ct = default)
+                => throw new NotSupportedException();
         }
 
         private sealed class SahteDepo : IBankaOtomasyonDeposu
         {
-            private string? _firmaNo;
+            private int? _firmaId;
 
-            public Task<string?> FirmaNoAsync() => Task.FromResult(_firmaNo);
+            public Task<int?> FirmaIdAsync() => Task.FromResult(_firmaId);
 
-            public Task FirmaNoYazAsync(string? firmaNo)
+            public Task FirmaIdYazAsync(int? firmaId)
             {
-                _firmaNo = string.IsNullOrWhiteSpace(firmaNo) ? null : firmaNo;
+                _firmaId = firmaId is > 0 ? firmaId : null;
                 return Task.CompletedTask;
             }
         }

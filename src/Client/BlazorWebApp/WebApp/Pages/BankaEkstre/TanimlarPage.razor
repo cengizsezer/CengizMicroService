@@ -3,13 +3,10 @@
 @using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
-@using WebApp.Domain.Models.User
-@using WebApp.Manager
 @using WebApp.Pages.BankaEkstre.Bolumler
 
 @implements IDisposable
 
-@inject IAppSessionManager SessionManager
 @inject IBankaOtomasyonOturumu Oturum
 @inject NavigationManager Nav
 
@@ -85,6 +82,14 @@
     <HesapSahibiUnvanlariBolumu @ref="_hesapSahibi" />
 </div>
 
+@*
+    Veri temizliği en sonda ve ayrı: yıkıcı bir işlem, kurulum bölümlerinin arasında
+    kazara tıklanacak bir yerde durmamalı.
+*@
+<div class="ft-kart">
+    <VeriTemizligiBolumu @ref="_temizlik" Temizlendi="@BolumleriTazeleAsync" />
+</div>
+
 @code {
     private HesapPlaniBolumu? _hesapPlani;
     private BankaHesaplariBolumu? _bankaHesaplari;
@@ -92,11 +97,12 @@
     private KisiYonlendirmeleriBolumu? _kisiYonlendirmeleri;
     private VergiKodlariBolumu? _vergiKodlari;
     private HesapSahibiUnvanlariBolumu? _hesapSahibi;
+    private VeriTemizligiBolumu? _temizlik;
 
     private bool _yeniHesapIstendi;
     private int? _acilacakHesapId;
 
-    protected override void OnInitialized() => SessionManager.FirmChanged += OnFirmaDegisti;
+    protected override void OnInitialized() => Oturum.Degisti += OnFirmaDegisti;
 
     /// <summary>
     /// Önce firma bağlamı, sonra bölümler. Bölümler kendi verilerini kendileri çeker;
@@ -133,23 +139,30 @@
     /// eşleşmeler, kişi yönlendirmeleri ve hesap sahibi kimliği firma bazlıdır; eski
     /// firmanın verisi ekranda kalmamalı. Vergi kodları global olsa da ekran bütün
     /// olarak tazelenir.
-    ///
-    /// Yalnız modülün SEÇİLİ firmasına ait olay işlenir: genel FİRMA DEĞİŞTİR ile çelişki
-    /// çıktığında olay önce gelen firmayla, sonra geri uygulanan firmayla tetiklenir.
     /// </summary>
-    private async void OnFirmaDegisti(FirmaDto firma)
+    private async void OnFirmaDegisti()
         => await InvokeAsync(async () =>
         {
-            if (!string.Equals(firma?.FirmaNo, Oturum.SeciliFirma?.FirmaNo, StringComparison.Ordinal)) return;
+            if (Oturum.SeciliFirma is null) return;
 
-            if (_hesapPlani is not null) await _hesapPlani.YenileAsync();
-            if (_bankaHesaplari is not null) await _bankaHesaplari.YenileAsync();
-            if (_eslesmeler is not null) await _eslesmeler.YenileAsync();
-            if (_kisiYonlendirmeleri is not null) await _kisiYonlendirmeleri.YenileAsync();
-            if (_vergiKodlari is not null) await _vergiKodlari.YenileAsync();
-            if (_hesapSahibi is not null) await _hesapSahibi.YenileAsync();
-            StateHasChanged();
+            await BolumleriTazeleAsync();
+            if (_temizlik is not null) await _temizlik.YenileAsync();
         });
 
-    public void Dispose() => SessionManager.FirmChanged -= OnFirmaDegisti;
+    /// <summary>
+    /// Bölümleri yeniden okur. Firma değişiminde ve veri temizliğinden sonra çağrılır —
+    /// temizlikten sonra ekranda silinmiş verinin durması kafa karıştırırdı.
+    /// </summary>
+    private async Task BolumleriTazeleAsync()
+    {
+        if (_hesapPlani is not null) await _hesapPlani.YenileAsync();
+        if (_bankaHesaplari is not null) await _bankaHesaplari.YenileAsync();
+        if (_eslesmeler is not null) await _eslesmeler.YenileAsync();
+        if (_kisiYonlendirmeleri is not null) await _kisiYonlendirmeleri.YenileAsync();
+        if (_vergiKodlari is not null) await _vergiKodlari.YenileAsync();
+        if (_hesapSahibi is not null) await _hesapSahibi.YenileAsync();
+        StateHasChanged();
+    }
+
+    public void Dispose() => Oturum.Degisti -= OnFirmaDegisti;
 }

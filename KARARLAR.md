@@ -1,4 +1,4 @@
-﻿# KARARLAR — Banka Ekstresi İşleme Modülü
+# KARARLAR — Banka Ekstresi İşleme Modülü
 
 Prompt'ta açıkça yazmayan noktalarda alınan kararlar ve gerekçeleri.
 Kural: belirsizse en muhafazakâr seçenek, mimari belirsizse repodaki benzer koda bak.
@@ -888,7 +888,11 @@ modülün baştan aşağı önlemeye çalıştığı riskin ta kendisi olurdu.
 **Ekran kalıbı Raporlar'dan kopyalandı** (`/firmakontrol`): tablo + sağda `GİRİŞ` düğmesi,
 satıra tıklamak da giriyor. Kendi tasarımı üretilmedi; iki ekran aynı işi yapıyor.
 
-## 63. Seçilen firma gerçekten tenant bağlamını değiştiriyor
+## 63. Seçilen firma gerçekten tenant bağlamını değiştiriyor — GEÇERSİZ (bkz. §68)
+
+> Bu karar geri alındı. Kapsam tenant değil `catalog.Firmalar.Id`; modül tenant bağlamına
+> hiç dokunmuyor. Aşağıdaki metin, kararın neden alındığını ve neyin değiştiğini
+> anlaşılır kılmak için duruyor.
 
 **Karar:** `GİRİŞ`, `IAppSessionManager.SelectFirmAsync` çağırıyor — yani yeni access token
 üretiliyor ve `tn` claim'i o firmaya geçiyor. Bağlamın sahibi yeni bir scoped servis:
@@ -923,7 +927,10 @@ girişin tenant'ı çevirdiği, sekme değişiminde tekrar sorulmadığı, yenil
 `FirmaTenantIzolasyonuTests`: **Aday seçiliyken yapılan hesap planı içe aktarımı Aday'ın
 kayıtlarına yazılıyor**, SMMM'ninkiler bozulmuyor — iki firma aynı veritabanını paylaşıyor.
 
-## 64. Firma seçim ekranının sayaçları: tenant filtresi tek yerde baypas
+## 64. Firma seçim ekranının sayaçları: tenant filtresi tek yerde baypas — GEÇERSİZ (bkz. §69)
+
+> Baypas tamamen kaldırıldı: global query filter kalkınca çok firmalı sayım sıradan bir
+> sorgu oldu. Metin, baypasın neden var olduğunu göstermek için duruyor.
 
 **Karar:** Yeni uç nokta `GET …/banka-ekstre/firmalar/ozet?tenantlar=201&tenantlar=106`,
 tek servis `FirmaOzetService`. Global query filter `IgnoreQueryFilters()` ile atlanıyor ve
@@ -995,3 +1002,195 @@ Hesap silme de onaylı hale getirildi. Sonuç bildirimleri de firma adıyla baş
 **sunucuda ayrıştırılmadan** bilinemiyor; onay ise istek atılmadan önce sorulmalı. Onayda
 firma adı + dosya adı, sonuç bildiriminde firma adı + okunan satır sayısı var. Kritik olan
 yarı — hangi firmaya yazılacağı — onaydan önce ekranda.
+
+## 68. Firma kapsamı tenant değil, `catalog.Firmalar.Id` — §62/§63/§64 düzeltildi
+
+**Belirti:** Raporlar (`/firmakontrol`) 8 firmayı gerçek VKN'leriyle listeliyordu
+(PKF Aday `0070511435`, PKF İstanbul SMMM `7300717173` …). Banka Otomasyon ise tek satır
+gösteriyordu: `PKF Istanbul SMMM A.Ş / 1234567890`.
+
+### Önce Raporlar incelendi
+
+| Soru | Cevap |
+|---|---|
+| Firma listesi nereden geliyor? | `GET /catalog/firmalar` → `FirmalarController` → `FirmaService.GetAllAsync()` → **`catalog.Firmalar`** tablosu (`Aktif` olanlar). Tabloda tenant filtresi **yok**: firma listesi globaldir. |
+| İstemci tarafı | `FirmaApiClient` → `MockFirmaKontrolService.EnsureFirmsLoadedAsync()` → `Pages/FirmaKontrol/Index.razor` |
+| Bir firmaya girilince veri hangi alanla kapsamlanıyor? | **`Firma.Id` (int)**, rota parametresi olarak: `GET api/catalog/firma-kontrol/{firmaId:int}/maddeler`, `…/mizan`, `…/vergi`, `…/notlar`. VKN değil, ayrı bir tablo değil, token claim'i hiç değil. |
+| Veri tablolarında karşılığı | `FirmaKontrolMadde.FirmaId`, `FirmaKontrolMizanSatir.FirmaId`, `MizanNotu.FirmaId`, `FirmaKontrolVergi.FirmaId` — hepsi `Firmalar`'a FK, `HasIndex(FirmaId)`. |
+| Ekranda seçim | `Index.razor` satıra tıklayınca `/firmakontrol/{firma.Id}`; tenant'a **dokunulmuyor**. |
+
+Yani Raporlar'ın mekanizması tek cümleyle: **firma listesi `catalog.Firmalar`'dan gelir,
+veri `FirmaId` ile kapsamlanır ve `FirmaId` isteğin parametresidir.**
+
+### Banka Otomasyon neden farklıydı
+
+Modül listesini `IAppSessionManager.Firms`'ten kuruyordu; o da login yanıtındaki
+**tenant**'lardan geliyor (`IdentityService` → `Tenants` tablosu). `pkfadmin` kullanıcısı
+tek tenant'a bağlı: `FirmaNo = "500"`, `Ad = "PKF Istanbul SMMM A.Ş"`, `Vkn = "1234567890"`
+(bkz. `IdentityContextSeed`). Ekrandaki tek satır buydu.
+
+Veri de aynı yerden kapsamlanıyordu: beş tablo `TenantEntity`'den türüyor ve
+`CatalogContext` bunlara `TenantNo == _tenant.CurrentTenantNo` global query filter'ı
+uyguluyordu. Sonuç: **kullanıcının yönettiği sekiz firmanın banka verisi tek kovaya
+("500") yazılıyordu.** PKF Aday'ın 6.128 satırlık hesap planı, 18 banka hesabı, öğrenilen
+eşleşmeleri ve ekstre yüklemeleri şu anda orada duruyor.
+
+§63'ün "seçilen firma gerçekten tenant bağlamını değiştiriyor" kararı doğru bir sorunu
+(ekran bir firmayı yazarken isteğin başkasına gitmesi) çözüyordu, ama **yanlış eksende**:
+tenant, kullanıcının kimliğine ait bir kavram; yönetilen firma sayısı ise tenant sayısından
+bağımsız. Tek oturumla sekiz firma yöneten kullanıcıda ikisi hiç örtüşmüyor.
+
+**Karar:** Modülün kapsamı `TenantNo` → **`FirmaId` (`catalog.Firmalar.Id`)**.
+Raporlar'ın kullandığı kaynağın ve anahtarın aynısı.
+
+| | Eski | Yeni |
+|---|---|---|
+| Firma listesi | login yanıtı (tenant'lar) | `GET /catalog/firmalar` (Raporlar ile aynı) |
+| Kapsam alanı | `TenantNo` (string) | `FirmaId` (int) |
+| Kapsam kaynağı | JWT `tn` claim'i | isteğin `?firmaId=` parametresi |
+| Firmaya giriş | `SelectFirmAsync` → yeni token | seçim modül oturumunda tutulur, token'a dokunulmaz |
+| Genel FİRMA DEĞİŞTİR çakışması | modül kendi tenant'ını geri uygular + uyarı | **çakışma yok**, ikisi farklı şeyler |
+
+Etkilenen tablolar: `EkstreHesapPlani`, `EkstreBankaHesaplari` (hesap sahibi unvanları da
+bu satırlarda), `EkstreYuklemeler`, `EkstreSatirlari` (kapsamını yüklemeden alır),
+`EkstreHesapEslesmeleri`, `EkstreKisiYonlendirmeleri`.
+
+`§62` (menü, rotalar, ekran kalıbı) geçerli. **`§63` ve `§64` bu kararla geçersizdir.**
+
+## 69. Global query filter kaldırıldı; kapsam her sorguda görünür yazılıyor
+
+**Karar:** Beş tablodaki `HasQueryFilter` **kaldırıldı**. Kapsam, scoped
+`IBankaFirmaKapsami`'den okunup her sorguda açıkça yazılıyor
+(`.Where(h => h.FirmaId == _kapsam.FirmaId)`); servislerin çoğunda tek bir
+`private IQueryable<T> …` özelliğinde toplanıyor.
+
+**Neden görünmez filtre değil:**
+
+1. **Baypas ihtiyacını doğuruyordu.** Firma seçim ekranının sayaçları meşru biçimde çok
+   firmalı bir sorgu; global filtre varken tek yolu `IgnoreQueryFilters()`'tı (§64). Filtre
+   kalkınca o sorgu sıradan bir `WHERE FirmaId IN (…)` oldu ve **baypas tamamen silindi**.
+2. Filtre görünmediği için hatalı olduğu da görünmüyordu: kapsamın token'dan geldiği
+   `CatalogContext`'in bir satırında yazıyordu, modülün 6.500 satırlık kodunda değil.
+
+Muhasebe ve gider modülleri tenant filtrelerini koruyor — onların kapsamı gerçekten
+kullanıcının tenant'ı; değişen yalnız Banka Otomasyon.
+
+**Kapsam nasıl geliyor:** `BankaFirmaFiltresi` (bir `IAsyncActionFilter`) isteğin
+**sorgu dizesindeki** `firmaId`'sini okur, `catalog.Firmalar`'da var mı diye bakar ve
+`IBankaFirmaKapsami`'ye yazar. Eksik/geçersiz/tanınmayan → **400**, sessiz varsayılan yok:
+kapsamsız bir okuma "kayıt yok" gibi görünüp kullanıcıyı yanıltırdı.
+
+Form gövdesi okunmuyor; istemci çok parçalı yüklemelerde de `?firmaId=`'yi sorgu dizesinde
+gönderiyor. Sebebi pratik: filtre model bağlamadan önce çalışıyor ve 20 MB'lik gövdeyi
+orada tamponlamanın anlamı yok.
+
+**Yazma tarafında sessiz varsayılan da yok.** `TenantEntity`'de `SaveChangesAsync`
+"boşsa istekten doldur" davranışı var; `FirmaKapsamliEntity` için **konmadı**:
+`FirmaId <= 0` olan kayıt istisna ile reddediliyor. Kapsamı yazmayı unutan bir kod yolu,
+kaydı yanlış firmaya değil hiçbir yere yazmalı.
+
+**İstemci tarafında tek kaynak:** `?firmaId=` adreslere tek yerde ekleniyor
+(`BankaEkstreApi.Adres`) ve değeri `IBankaOtomasyonOturumu.FirmaId`'den, yani ekranın
+başlıkta gösterdiği firmadan okunuyor. Ekranda görünen firma ile isteğe giden firmanın
+ayrışması böylece yapısal olarak imkânsız.
+
+## 70. Hangi tablo firma bazlı, hangisi global
+
+Düzeltme sırasında tablolar tek tek gözden geçirildi. Ölçüt: **kayıt firmanın
+muhasebesine mi ait, bankanın yazım kalıbına mı?**
+
+| Tablo | Kapsam | Gerekçe |
+|---|---|---|
+| `EkstreHesapPlani` | firma | ORKA hesap planı firmaya özel |
+| `EkstreBankaHesaplari` | firma | ORKA kodu, IBAN, hesap sahibi unvanları hep firmanın |
+| `EkstreYuklemeler` | firma | firmanın ekstresi |
+| `EkstreSatirlari` | firma (yükleme üzerinden) | kendi alanı yok; Muhasebe'deki `FisSatir` ile aynı yaklaşım |
+| `EkstreHesapEslesmeleri` | firma | aynı unvan her firmada farklı cari koduna gider |
+| `EkstreKisiYonlendirmeleri` | firma | kimin ortak, kimin personel olduğu firmaya özel |
+| `EkstreKimlikKayitlari` | **global** | bir unvanın *kim olduğu* her firmada aynı (§ mevcut karar) |
+| `EkstreAciklamaSablonlari` | **global** | banka bazlı (`ParserTipi`); Vakıfbank'ın yazımı firmadan firmaya değişmez |
+| `EkstreUnvanDesenleri` | **global** | aynı gerekçe |
+| `EkstreSabitKurallar` | **global** | banka masrafı → 770 gibi kurallar bankaya ait |
+| `EkstreVergiKodlari` | **global** | 0040 = damga, 0033 = kurum geçici; vergi kodları firmadan firmaya değişmez |
+
+**Global kalanlara `FirmaId` eklenmedi.** Eklenseydi her firma sekiz bankanın desen ve
+kural setini baştan kurmak zorunda kalırdı; modülün "yeni banka eklerken kod değişmez,
+tabloya satır eklenir" kararı (§2, §37, §54) da anlamını yitirirdi.
+
+**Ama kural tabloları hesap kodunu SEÇİLİ FİRMANIN planına karşı doğruluyor.**
+`SabitKuralService` ve `VergiKoduService` bu yüzden kapsam alıyor — satırlarında `FirmaId`
+yok, yalnız `YapilandirmaDogrulama.HesapKoduDogrulaAsync(db, firmaId, …)` çağrısı için.
+Kod formatı ORKA'da firmadan firmaya değişiyor ve kullanıcı kuralı hangi firmadaysa
+oradaki planla yazıyor.
+
+## 71. Yanlış firmadaki veri taşınmadı; Tanımlar'a "Veri temizliği" eklendi
+
+**Karar:** Migration (`BankaOtomasyonFirmaKapsami`) `FirmaId` kolonunu ekliyor,
+`TenantNo`'yu düşürüyor ve **hiçbir satırı bir firmaya atamıyor**. Yanlış yerdeki veriyi
+kullanıcı Tanımlar > **Veri temizliği** bölümünden siliyor, doğru firmaya yeniden yüklüyor.
+
+**Neden otomatik taşıma yok:** Tenant ile firma arasında güvenilir bir eşleme yok.
+Token'daki tenant `500 / "PKF Istanbul SMMM A.Ş" / VKN 1234567890`; `catalog.Firmalar`'da
+bu VKN yok ve kayıtlar aslında **PKF Aday'a** ait. Bu bilgi yalnız kullanıcının kafasında.
+VKN eşleştiren bir migration hiçbir satırı tutturamazdı; "hepsini şu firmaya yaz" diyen bir
+migration ise veriyi doğru sandığı bir yere koyup hatayı görünmez yapardı.
+
+**Eski satırlar neye atandı:** Düz `0` değil, **tenant başına tutarlı bir negatif sahte
+kapsam** (`-(ABS(CHECKSUM(TenantNo)) % 1000000 + 1)`, beş tabloda aynı ifade). Sebebi
+tekillik: eski şemanın `(TenantNo, Kod)` unique index'i düz sıfırda `(0, Kod)`'a çöker ve
+iki tenant'ta aynı kod varsa yeni unique index migration'ı düşürürdü. Gerçek `Firma.Id`'ler
+pozitif olduğu için bu satırlar hiçbir firmanın ekranında görünmüyor.
+
+Ekrandaki karşılığı: "**Sahipsiz eski kayıtlar**" — ayrı bir sayaç listesi ve ayrı bir
+temizle düğmesi. Olmasaydı o satırlar veritabanında sonsuza kadar erişilemez biçimde
+kalırdı.
+
+**`FirmaId`'ye FK kısıtı konmadı.** Sahipsiz satırlar `Firmalar`'da karşılığı olmayan
+değerler taşıdığı için kısıt migration'ı düşürürdü. Veri temizlendikten sonra eklenebilir;
+tablo eşlemelerinde not düşüldü.
+
+**Temizlik ekranının kuralları:**
+
+- Onaydan **önce** hangi tablodan kaç kayıt gideceği yazılıyor (hesap planı, banka hesabı,
+  ekstre yüklemesi, ekstre satırı, öğrenilen eşleşme, kişi yönlendirmesi). Silinen geri
+  gelmiyor; sayı göstermeden onay istemek kör imza olurdu.
+- **Silinmeyenler ekranda ayrıca yazıyor**: açıklama şablonları, unvan desenleri, sabit
+  kurallar, vergi kodları, kimlik kayıtları. Bunlar global (§70); bir firmanın temizliği
+  diğerlerinin çalışan kurulumunu bozmamalı.
+- Hesap sahibi unvanları ayrı bir tabloda değil `EkstreBankaHesaplari` satırlarında;
+  hesaplar gidince onlar da gidiyor. Ekranda parantez içinde yazıyor.
+- Silme sırası bağımlılıkları izliyor: satırlar → yüklemeler → banka hesapları
+  (`EkstreYukleme.BankaHesabiId` FK'sı `Restrict`).
+- Temizlikten sonra Tanımlar'ın tüm bölümleri tazeleniyor; ekranda silinmiş verinin
+  durması kafa karıştırırdı.
+
+## 72. Firma seçim ekranı ve modül oturumu sadeleşti
+
+- **Liste artık Raporlar ile aynı kaynaktan**: `IFirmaApiClient.GetAllAsync()`. Kolonlar
+  `Unvan` ve `VergiKimlikNo`; sayaçlar `FirmaId` ile eşleşiyor.
+- **`BankaOtomasyonOturumu` tenant'a dokunmuyor.** `IAppSessionManager` bağımlılığı,
+  `Aktif` bayrağı, `Uyari` olayı ve genel FİRMA DEĞİŞTİR çakışma çözümü kaldırıldı —
+  §63'ün bütün makinesi. Kalan: seçili firma, `FirmaId`, `FirmaAdi`, `Degisti` olayı.
+- **Seçim `sessionStorage`'da `FirmaId` olarak duruyor** (`BankaOtomasyon.FirmaId`).
+  Sayfa yenilendiğinde `BaglamiHazirlaAsync` firmayı **kaynağından doğruluyor**: arada
+  silinmiş/pasife alınmış bir firma için ekran açılmıyor, seçim temizleniyor.
+- Firma içi ekranlar `IAppSessionManager.FirmChanged` yerine `Oturum.Degisti`'yi dinliyor.
+  "Olay seçili firmaya ait mi?" kontrolüne gerek kalmadı; olay zaten yalnız modülden geliyor.
+- Ekranda gösterilen ad tek yerden geliyor (`BankaOtomasyonOturumu.Ad`: unvan varsa o,
+  yoksa kısa ad) ki başlık ile listedeki satır aynı şeyi yazsın.
+
+**Testler:**
+
+- Sunucu — `FirmaKapsamiTests`: aynı veritabanında iki firma; Aday'ın hesap planı
+  aktarımı Aday'a yazılıyor, SMMM'ninki bozulmuyor; aynı kod iki firmada ayrı kayıt oluyor;
+  **kapsamsız yazma istisna atıyor**; firma özeti girilmemiş firmaların sayaçlarını da
+  döndürüyor; temizlik yalnız seçili firmayı siliyor, diğer firmaya ve global tablolara
+  dokunmuyor.
+- Sunucu — `EkstreServiceTests.Iki_firma_birbirinin_hesap_planini_ve_eslesmelerini_gormez`:
+  uçtan uca yükleme + onay; aynı unvan iki firmada farklı koda çözülüyor, öğrenilen
+  eşleşmeler ayrışıyor, kimlik kaydı (global) paylaşılıyor. Doğrulamalar artık açıkça
+  `FirmaId` ile süzülüyor — "context ne görüyorsa odur" varsayımı gizli filtreyi sınamak
+  demekti, artık gizli filtre yok.
+- İstemci — `BankaOtomasyonOturumuTests`: seçim kapsam oluyor ve hatırlanıyor, sekme
+  değişiminde firma kaynağına tekrar gidilmiyor, yenilemede depodan gelip kaynağından
+  doğrulanıyor, artık tanımlı olmayan firma için bağlam hazırlanamıyor.

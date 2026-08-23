@@ -1,0 +1,179 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.BankaEkstre
+
+@inject IBankaEkstreApi Api
+@inject IBankaOtomasyonOturumu Oturum
+@inject NotificationService Notif
+@inject DialogService Dialog
+
+@*
+    Tanımlar > "Bu firmanın banka otomasyon verisini temizle".
+
+    Neden var: modül bir dönem veriyi tenant altına yazdı (bkz. KARARLAR §68). Kapsam
+    FirmaId'ye taşınırken o veri MIGRATION İLE TAŞINMADI — tenant ile firma arasında
+    güvenilir bir eşleme yok, otomatik taşıma veriyi doğru sandığı bir yere koyup hatayı
+    görünmez yapardı. Yanlış firmadaki veriyi kullanıcı buradan siler ve doğru firmada
+    yeniden yükler.
+
+    Ekran, onay istemeden önce HANGİ TABLODAN KAÇ KAYIT gideceğini yazar: silinen geri
+    gelmiyor, sayı görmeden onay istemek kör imza olurdu.
+
+    Global tablolar (açıklama şablonları, unvan desenleri, sabit kurallar, vergi kodları,
+    kimlik kayıtları) SİLİNMEZ ve bu ekranda da öyle yazar — onlar bankanın yazım kalıbına
+    ait, firmaya değil; bir firmanın temizliği başka firmaların kurulumunu bozmamalı.
+*@
+
+<style>
+    .vt-liste { list-style: none; padding: 0; margin: 10px 0 0; font-size: 13px; }
+    .vt-liste li { display: flex; justify-content: space-between; max-width: 420px;
+                   padding: 4px 0; border-bottom: 1px dashed #edf2f7; }
+    .vt-sayi { font-variant-numeric: tabular-nums; font-weight: 600; color: #2d3748; }
+    .vt-not { font-size: 11px; color: #718096; margin-top: 10px; max-width: 640px; line-height: 1.5; }
+    .vt-sahipsiz { margin-top: 18px; padding-top: 14px; border-top: 1px solid #e2e8f0; }
+</style>
+
+<h5 style="margin-top:0">Veri temizliği</h5>
+
+<RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" AllowClose="false">
+    Bu işlem <b>@FirmaAdi</b> firmasının banka otomasyon verisini siler. Geri alınamaz.
+</RadzenAlert>
+
+@if (_ozet.Bos)
+{
+    <div class="vt-not">Bu firmada silinecek banka otomasyon verisi yok.</div>
+}
+else
+{
+    <ul class="vt-liste">
+        <li><span>Hesap planı kaydı</span><span class="vt-sayi">@_ozet.HesapPlaniKaydi</span></li>
+        <li><span>Banka hesabı (hesap sahibi unvanları dahil)</span><span class="vt-sayi">@_ozet.BankaHesabi</span></li>
+        <li><span>Ekstre yüklemesi</span><span class="vt-sayi">@_ozet.EkstreYukleme</span></li>
+        <li><span>Ekstre satırı</span><span class="vt-sayi">@_ozet.EkstreSatiri</span></li>
+        <li><span>Öğrenilen eşleşme</span><span class="vt-sayi">@_ozet.HesapEslesmesi</span></li>
+        <li><span>Kişi yönlendirmesi</span><span class="vt-sayi">@_ozet.KisiYonlendirme</span></li>
+    </ul>
+
+    <RadzenButton Text="Bu firmanın verisini temizle"
+                  Icon="delete_forever"
+                  ButtonStyle="ButtonStyle.Danger"
+                  Size="ButtonSize.Small"
+                  Disabled="@_isleniyor"
+                  Click="@TemizleAsync"
+                  Style="margin-top:12px" />
+}
+
+<div class="vt-not">
+    <b>Silinmeyenler:</b> açıklama şablonları, unvan çıkarma desenleri, sabit kurallar,
+    vergi kodu eşlemeleri ve karşı taraf kimlik kayıtları. Bunlar bankanın yazım kalıbına
+    ait ve tüm firmalarda ortaktır; bir firmanın temizliği diğerlerinin kurulumunu bozmaz.
+</div>
+
+@if (!_sahipsiz.Bos)
+{
+    <div class="vt-sahipsiz">
+        <h6 style="margin:0 0 6px">Sahipsiz eski kayıtlar</h6>
+        <div class="vt-not" style="margin-top:0">
+            Modülün firma yerine tenant ile çalıştığı dönemden kalan ve hiçbir firmaya
+            bağlanamayan kayıtlar. Hiçbir firmanın ekranında görünmezler; yalnız buradan
+            silinebilirler.
+        </div>
+
+        <ul class="vt-liste">
+            <li><span>Hesap planı kaydı</span><span class="vt-sayi">@_sahipsiz.HesapPlaniKaydi</span></li>
+            <li><span>Banka hesabı</span><span class="vt-sayi">@_sahipsiz.BankaHesabi</span></li>
+            <li><span>Ekstre yüklemesi</span><span class="vt-sayi">@_sahipsiz.EkstreYukleme</span></li>
+            <li><span>Ekstre satırı</span><span class="vt-sayi">@_sahipsiz.EkstreSatiri</span></li>
+            <li><span>Öğrenilen eşleşme</span><span class="vt-sayi">@_sahipsiz.HesapEslesmesi</span></li>
+            <li><span>Kişi yönlendirmesi</span><span class="vt-sayi">@_sahipsiz.KisiYonlendirme</span></li>
+        </ul>
+
+        <RadzenButton Text="Sahipsiz kayıtları temizle"
+                      Icon="delete_sweep"
+                      ButtonStyle="ButtonStyle.Danger"
+                      Variant="Variant.Outlined"
+                      Size="ButtonSize.Small"
+                      Disabled="@_isleniyor"
+                      Click="@SahipsizTemizleAsync"
+                      Style="margin-top:12px" />
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// Temizlik bittiğinde üst sayfa tüm bölümleri tazeler: hesap planı, banka hesapları
+    /// ve eşleşme listeleri artık boş — ekranda silinmiş verinin durması kafa karıştırır.
+    /// </summary>
+    [Parameter] public EventCallback Temizlendi { get; set; }
+
+    private BankaTemizlikOzetiDto _ozet = new();
+    private BankaTemizlikOzetiDto _sahipsiz = new();
+    private bool _isleniyor;
+
+    protected override async Task OnInitializedAsync() => await YenileAsync();
+
+    /// <summary>Firma değişince üst sayfa bunu çağırır.</summary>
+    public async Task YenileAsync()
+    {
+        _ozet = await Api.TemizlikOzetiAsync();
+        _sahipsiz = await Api.SahipsizOzetiAsync();
+        StateHasChanged();
+    }
+
+    /// <summary>Onay ve bildirim metinlerinde geçen firma adı.</summary>
+    private string FirmaAdi => Oturum.SeciliFirma is null ? "seçili firma" : Oturum.FirmaAdi;
+
+    private async Task TemizleAsync()
+    {
+        var onay = await Dialog.Confirm(
+            $"{FirmaAdi} firmasının banka otomasyon verisi silinecek: " +
+            $"{_ozet.HesapPlaniKaydi} hesap planı kaydı, {_ozet.BankaHesabi} banka hesabı, " +
+            $"{_ozet.EkstreYukleme} ekstre yüklemesi ({_ozet.EkstreSatiri} satır), " +
+            $"{_ozet.HesapEslesmesi} öğrenilen eşleşme, {_ozet.KisiYonlendirme} kişi yönlendirmesi. " +
+            "Bu işlem geri alınamaz.",
+            "Banka otomasyon verisini temizleme onayı",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç", ShowClose = true });
+
+        if (onay != true) return;
+
+        await CalistirAsync(() => Api.TemizleAsync(), $"{FirmaAdi} verisi temizlendi");
+    }
+
+    private async Task SahipsizTemizleAsync()
+    {
+        var onay = await Dialog.Confirm(
+            $"Hiçbir firmaya bağlı olmayan {_sahipsiz.Toplam} kayıt silinecek " +
+            $"({_sahipsiz.HesapPlaniKaydi} hesap planı, {_sahipsiz.BankaHesabi} banka hesabı, " +
+            $"{_sahipsiz.EkstreYukleme} ekstre yüklemesi, {_sahipsiz.HesapEslesmesi} eşleşme, " +
+            $"{_sahipsiz.KisiYonlendirme} kişi yönlendirmesi). Bu işlem geri alınamaz.",
+            "Sahipsiz kayıtları temizleme onayı",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç", ShowClose = true });
+
+        if (onay != true) return;
+
+        await CalistirAsync(() => Api.SahipsizTemizleAsync(), "Sahipsiz kayıtlar temizlendi");
+    }
+
+    private async Task CalistirAsync(Func<Task<(BankaTemizlikOzetiDto? Veri, string? Hata)>> istek, string basarili)
+    {
+        _isleniyor = true;
+        try
+        {
+            var (veri, hata) = await istek();
+            if (hata is not null)
+            {
+                Notif.Notify(NotificationSeverity.Error, "Temizlenemedi", hata, 8000);
+                return;
+            }
+
+            Notif.Notify(NotificationSeverity.Success, basarili, $"{veri?.Toplam ?? 0} kayıt silindi", 5000);
+            await YenileAsync();
+            await Temizlendi.InvokeAsync();
+        }
+        finally
+        {
+            _isleniyor = false;
+        }
+    }
+}

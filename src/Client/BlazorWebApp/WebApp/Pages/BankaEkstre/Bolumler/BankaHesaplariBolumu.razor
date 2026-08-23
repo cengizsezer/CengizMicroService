@@ -1,4 +1,4 @@
-﻿@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Forms
 @using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
@@ -371,7 +371,7 @@ else
                  .ToList();
 
     /// <summary>Onay ve bildirim metinlerinde geçen firma adı.</summary>
-    private string FirmaAdi => Oturum.SeciliFirma?.Ad ?? "seçili firma";
+    private string FirmaAdi => Oturum.SeciliFirma is null ? "seçili firma" : Oturum.FirmaAdi;
 
     protected override async Task OnInitializedAsync()
     {

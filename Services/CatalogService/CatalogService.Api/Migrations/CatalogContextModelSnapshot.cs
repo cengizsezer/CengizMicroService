@@ -246,6 +246,9 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<int>("FirmaId")
+                        .HasColumnType("int");
+
                     b.Property<string>("HesapAdi")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -282,19 +285,14 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<string>("TenantNo")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
                     b.Property<bool>("VknKatmaniAktif")
                         .HasColumnType("bit");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantNo", "BankaAdi");
+                    b.HasIndex("FirmaId", "BankaAdi");
 
-                    b.HasIndex("TenantNo", "OrkaHesapKodu")
+                    b.HasIndex("FirmaId", "OrkaHesapKodu")
                         .IsUnique();
 
                     b.ToTable("EkstreBankaHesaplari", "catalog");
@@ -458,13 +456,11 @@ namespace CatalogService.Api.Migrations
                     b.Property<byte>("Durum")
                         .HasColumnType("tinyint");
 
-                    b.Property<int>("SatirSayisi")
+                    b.Property<int>("FirmaId")
                         .HasColumnType("int");
 
-                    b.Property<string>("TenantNo")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                    b.Property<int>("SatirSayisi")
+                        .HasColumnType("int");
 
                     b.Property<string>("Uyarilar")
                         .HasColumnType("nvarchar(max)");
@@ -476,7 +472,7 @@ namespace CatalogService.Api.Migrations
 
                     b.HasIndex("BankaHesabiId");
 
-                    b.HasIndex("TenantNo", "BankaHesabiId");
+                    b.HasIndex("FirmaId", "BankaHesabiId");
 
                     b.ToTable("EkstreYuklemeler", "catalog");
                 });
@@ -505,6 +501,9 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
 
+                    b.Property<int>("FirmaId")
+                        .HasColumnType("int");
+
                     b.Property<string>("HesapAdi")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -520,22 +519,17 @@ namespace CatalogService.Api.Migrations
                     b.Property<DateTime>("SonKullanim")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("TenantNo")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
                     b.Property<byte>("Yon")
                         .HasColumnType("tinyint");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantNo", "AnahtarTipi", "AnahtarCekirdek", "Yon")
+                    b.HasIndex("FirmaId", "AnahtarTipi", "AnahtarCekirdek", "Yon")
                         .IsUnique()
                         .HasDatabaseName("IX_EkstreHesapEslesmeleri_Cekirdek")
                         .HasFilter("[AyirtEdiciEk] IS NULL");
 
-                    b.HasIndex("TenantNo", "AnahtarTipi", "AnahtarCekirdek", "AyirtEdiciEk", "Yon")
+                    b.HasIndex("FirmaId", "AnahtarTipi", "AnahtarCekirdek", "AyirtEdiciEk", "Yon")
                         .IsUnique()
                         .HasDatabaseName("IX_EkstreHesapEslesmeleri_CekirdekEk")
                         .HasFilter("[AyirtEdiciEk] IS NOT NULL");
@@ -568,6 +562,9 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(1)
                         .HasColumnType("nvarchar(1)");
 
+                    b.Property<int>("FirmaId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Kod")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -581,17 +578,12 @@ namespace CatalogService.Api.Migrations
                     b.Property<DateTime>("SonGuncelleme")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("TenantNo")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantNo", "Kod")
+                    b.HasIndex("FirmaId", "Kod")
                         .IsUnique();
 
-                    b.HasIndex("TenantNo", "AnaGrup", "BaslangicHarfi");
+                    b.HasIndex("FirmaId", "AnaGrup", "BaslangicHarfi");
 
                     b.ToTable("EkstreHesapPlani", "catalog");
                 });
@@ -645,6 +637,9 @@ namespace CatalogService.Api.Migrations
                     b.Property<bool>("Aktif")
                         .HasColumnType("bit");
 
+                    b.Property<int>("FirmaId")
+                        .HasColumnType("int");
+
                     b.Property<string>("HesapAdi")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -664,17 +659,12 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<string>("TenantNo")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
                     b.Property<byte>("Yon")
                         .HasColumnType("tinyint");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantNo", "IsimCekirdegi", "Yon")
+                    b.HasIndex("FirmaId", "IsimCekirdegi", "Yon")
                         .IsUnique();
 
                     b.ToTable("EkstreKisiYonlendirmeleri", "catalog");

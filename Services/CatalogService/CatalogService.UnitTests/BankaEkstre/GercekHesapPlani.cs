@@ -1,4 +1,4 @@
-﻿using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Services;
 
 namespace CatalogService.UnitTests.BankaEkstre
@@ -43,6 +43,7 @@ namespace CatalogService.UnitTests.BankaEkstre
 
         public static HesapPlaniKaydi Kayit(string kod, string ad) => new()
         {
+            FirmaId = BankaEkstreTestOrtami.FirmaId,
             Kod = kod,
             Ad = ad,
             NormalizeAd = Normalizasyon.UnvanNormalize(ad),
@@ -214,6 +215,7 @@ namespace CatalogService.UnitTests.BankaEkstre
         private static BankaHesabi Banka(string bankaAdi, string kod, string? parser, string hesapAdi,
                                          string? anahtarlar = null) => new()
         {
+            FirmaId = BankaEkstreTestOrtami.FirmaId,
             BankaAdi = bankaAdi,
             HesapAdi = hesapAdi,
             OrkaHesapKodu = kod,

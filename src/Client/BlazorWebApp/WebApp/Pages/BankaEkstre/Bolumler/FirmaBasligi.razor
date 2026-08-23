@@ -5,17 +5,17 @@
 @implements IDisposable
 
 @inject IBankaOtomasyonOturumu Oturum
-@inject NotificationService Notif
 
 @*
     Banka Otomasyon'un firma içi başlığı: hangi firmada olunduğu ve iki sekme.
 
-    İki işi var:
-      1. Firma adı ekranın üstünde SÜREKLİ görünür ve firma listesine dönüş bağlantısı
-         her zaman elinin altındadır. Yanlış firmaya veri girmeye karşı ilk savunma.
-      2. Modül ekranı açıkken firma bağlamının sahibi olduğunu işaretler (Oturum.Aktif);
-         üstteki genel FİRMA DEĞİŞTİR ile çelişki çıkarsa sayfadaki seçim kazanır ve
-         kullanıcı bildirimle uyarılır.
+    Tek işi kaldı: firma adı ekranın üstünde SÜREKLİ görünür ve firma listesine dönüş
+    bağlantısı her zaman elinin altındadır. Yanlış firmaya veri girmeye karşı ilk savunma.
+
+    Eskiden ikinci bir işi daha vardı: modül açıkken tenant bağlamının sahibi olduğunu
+    işaretlemek ve üstteki genel FİRMA DEĞİŞTİR ile çelişkiyi çözmek. Modül artık tenant'a
+    hiç dokunmuyor (firma kapsamı ?firmaId= ile gidiyor, bkz. KARARLAR §68), çelişki de
+    kalmadı — o mekanizma kaldırıldı.
 *@
 
 <style>
@@ -36,10 +36,10 @@
 <div class="bo-ust">
     <div class="bo-firma">
         <RadzenIcon Icon="business" Style="font-size:18px; color:#2b6cb0" />
-        <span class="bo-firma-ad">@(Oturum.SeciliFirma?.Ad ?? "Firma seçilmedi")</span>
-        @if (!string.IsNullOrWhiteSpace(Oturum.SeciliFirma?.Vkn))
+        <span class="bo-firma-ad">@(Oturum.SeciliFirma is null ? "Firma seçilmedi" : Oturum.FirmaAdi)</span>
+        @if (!string.IsNullOrWhiteSpace(Oturum.SeciliFirma?.VergiKimlikNo))
         {
-            <span class="bo-firma-vkn">VKN @Oturum.SeciliFirma!.Vkn</span>
+            <span class="bo-firma-vkn">VKN @Oturum.SeciliFirma!.VergiKimlikNo</span>
         }
         <a class="bo-geri" href="/banka-otomasyon">← Firma listesi</a>
     </div>
@@ -55,32 +55,9 @@
 @code {
     [Parameter, EditorRequired] public BankaOtomasyonSekmesi Sekme { get; set; }
 
-    protected override void OnInitialized()
-    {
-        // Modül ekranı açık: bağlamın sahibi bu modül.
-        Oturum.Aktif = true;
-
-        Oturum.Degisti += OturumDegisti;
-        Oturum.Uyari += UyariGeldi;
-    }
+    protected override void OnInitialized() => Oturum.Degisti += OturumDegisti;
 
     private async void OturumDegisti() => await InvokeAsync(StateHasChanged);
 
-    private async void UyariGeldi(string mesaj)
-        => await InvokeAsync(() =>
-        {
-            Notif.Notify(NotificationSeverity.Warning, "Firma değişikliği uygulanmadı", mesaj, 10000);
-            StateHasChanged();
-        });
-
-    /// <summary>
-    /// Aktif bayrağı burada KAPATILMAZ: sekme değişiminde bu bileşen önce yok edilir,
-    /// yenisi sonra kurulur; arada kapatılsaydı modül bir an bağlamı bırakırdı.
-    /// Bayrağı yalnız firma seçim ekranı kapatır (modülden gerçekten çıkış).
-    /// </summary>
-    public void Dispose()
-    {
-        Oturum.Degisti -= OturumDegisti;
-        Oturum.Uyari -= UyariGeldi;
-    }
+    public void Dispose() => Oturum.Degisti -= OturumDegisti;
 }

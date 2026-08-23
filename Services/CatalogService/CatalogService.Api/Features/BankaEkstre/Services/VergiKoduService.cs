@@ -1,4 +1,5 @@
 using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
@@ -21,8 +22,15 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
     public class VergiKoduService : IVergiKoduService
     {
         private readonly CatalogContext _db;
+        private readonly IBankaFirmaKapsami _kapsam;
 
-        public VergiKoduService(CatalogContext db) => _db = db;
+        // Tablo GLOBAL — satırda FirmaId yok. Kapsam yalnız hesap kodunun seçili firmanın
+        // planına karşı doğrulanması için gerekiyor (bkz. KARARLAR §70).
+        public VergiKoduService(CatalogContext db, IBankaFirmaKapsami kapsam)
+        {
+            _db = db;
+            _kapsam = kapsam;
+        }
 
         public async Task<List<VergiKoduEslemesiDto>> GetHepsiAsync(CancellationToken ct = default)
         {
@@ -37,7 +45,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         {
             Dogrula(dto);
             var plandaki = await YapilandirmaDogrulama.HesapKoduDogrulaAsync(
-                _db, dto.HesapKodu, nameof(dto.HesapKodu), ct);
+                _db, _kapsam.FirmaId, dto.HesapKodu, nameof(dto.HesapKodu), ct);
 
             var kayit = new VergiKoduEslemesi();
             Uygula(kayit, dto, plandaki?.Ad);
@@ -52,7 +60,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         {
             Dogrula(dto);
             var plandaki = await YapilandirmaDogrulama.HesapKoduDogrulaAsync(
-                _db, dto.HesapKodu, nameof(dto.HesapKodu), ct);
+                _db, _kapsam.FirmaId, dto.HesapKodu, nameof(dto.HesapKodu), ct);
 
             var kayit = await _db.EkstreVergiKodlari.FirstOrDefaultAsync(v => v.Id == id, ct);
             if (kayit is null) return null;

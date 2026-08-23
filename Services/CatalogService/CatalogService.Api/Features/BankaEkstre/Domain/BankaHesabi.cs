@@ -6,7 +6,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
     /// Ekstresi işlenen banka hesabı. Aynı zamanda "banka kayıt defteri" görevi görür:
     /// bankalar arası hareketlerde karşı taraf bu tablodan bulunur (Katman 3).
     /// </summary>
-    public class BankaHesabi : TenantEntity
+    public class BankaHesabi : FirmaKapsamliEntity
     {
         public int Id { get; set; }
 

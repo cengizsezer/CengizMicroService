@@ -1,4 +1,5 @@
-﻿using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Infrastructure.Accessor;
 using CatalogService.Api.Infrastructure.Context;
 using ClosedXML.Excel;
@@ -12,22 +13,32 @@ namespace CatalogService.UnitTests.BankaEkstre
     /// </summary>
     public static class BankaEkstreTestOrtami
     {
-        public const string TenantNo = "201";
+        /// <summary>
+        /// Testlerin varsayılan firması: <c>catalog.Firmalar.Id</c>. Modülün kapsamı
+        /// artık tenant değil firma (bkz. KARARLAR §68); tenant yalnız context'in
+        /// istediği bağımlılığı doldurmak için duruyor ve modülü ilgilendirmiyor.
+        /// </summary>
+        public const int FirmaId = 201;
+
         public const string ParserTipi = "VAKIFBANK_VADESIZ";
 
         /// <summary>
         /// Bellek içi context. Aynı <paramref name="veritabaniAdi"/> ile farklı
-        /// <paramref name="tenantNo"/> vererek iki firmanın aynı veritabanını paylaştığı
+        /// <see cref="Kapsam"/> vererek iki firmanın aynı veritabanını paylaştığı
         /// izolasyon senaryosu kurulabilir.
         /// </summary>
-        public static CatalogContext YeniContext(string? veritabaniAdi = null, string? tenantNo = null)
+        public static CatalogContext YeniContext(string? veritabaniAdi = null)
         {
             var options = new DbContextOptionsBuilder<CatalogContext>()
                 .UseInMemoryDatabase(veritabaniAdi ?? $"banka-ekstre-{Guid.NewGuid()}")
                 .Options;
 
-            return new CatalogContext(options, new FixedTenantAccessor(tenantNo ?? TenantNo));
+            // Banka modülü tenant'a bakmıyor; sabit değer yalnız context'i kurmak için.
+            return new CatalogContext(options, new FixedTenantAccessor("test"));
         }
+
+        /// <summary>İsteğin firma kapsamı; üretimde ?firmaId= parametresinden gelir.</summary>
+        public static IBankaFirmaKapsami Kapsam(int firmaId = FirmaId) => new SabitBankaFirmaKapsami(firmaId);
 
         // ---- Yapılandırma satırları (üretimdeki seed ile aynı içerik) ----
 

@@ -1,5 +1,6 @@
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Services;
+using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,6 +14,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
     [ApiController]
     [Route("api/catalog/banka-ekstre/vergi-kodlari")]
     [Authorize]
+    [ServiceFilter(typeof(BankaFirmaFiltresi))]
     public class VergiKodlariController : ControllerBase
     {
         private readonly IVergiKoduService _service;

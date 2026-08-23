@@ -1,5 +1,6 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
 using CatalogService.Api.Infrastructure.Auth;
@@ -52,6 +53,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         private readonly IHesapEslestirici _eslestirici;
         private readonly IHesapEslesmeService _ogrenme;
         private readonly IHttpCurrentUser _kullanici;
+        private readonly IBankaFirmaKapsami _kapsam;
 
         public EkstreService(
             CatalogContext db,
@@ -60,7 +62,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             IAciklamaUretici aciklamaUretici,
             IHesapEslestirici eslestirici,
             IHesapEslesmeService ogrenme,
-            IHttpCurrentUser kullanici)
+            IHttpCurrentUser kullanici,
+            IBankaFirmaKapsami kapsam)
         {
             _db = db;
             _parserSecici = parserSecici;
@@ -69,13 +72,32 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             _eslestirici = eslestirici;
             _ogrenme = ogrenme;
             _kullanici = kullanici;
+            _kapsam = kapsam;
         }
+
+        // ---- Firma kapsami ----
+        // Modulun hicbir sorgusu gorunmez bir filtreye guvenmez; kapsam burada tek yerde
+        // tanimlanir ve her sorgu bu ifadelerden birinden gecer.
+
+        private IQueryable<BankaHesabi> Hesaplar
+            => _db.EkstreBankaHesaplari.Where(h => h.FirmaId == _kapsam.FirmaId);
+
+        private IQueryable<EkstreYukleme> Yuklemeler
+            => _db.EkstreYuklemeler.Where(y => y.FirmaId == _kapsam.FirmaId);
+
+        /// <summary>Satirin kendi FirmaId alani yok; kapsamini bagli oldugu yuklemeden alir.</summary>
+        private IQueryable<EkstreSatiri> Satirlar
+            => _db.EkstreSatirlari.Where(s => _db.EkstreYuklemeler
+                                                 .Any(y => y.Id == s.EkstreYuklemeId && y.FirmaId == _kapsam.FirmaId));
+
+        private IQueryable<HesapPlaniKaydi> Plan
+            => _db.EkstreHesapPlani.Where(h => h.FirmaId == _kapsam.FirmaId);
 
         // ---- Yükleme ve işleme ----
 
         public async Task<EkstreYuklemeDto> YukleAsync(int bankaHesabiId, Stream dosya, string dosyaAdi, CancellationToken ct = default)
         {
-            var hesap = await _db.EkstreBankaHesaplari.FirstOrDefaultAsync(h => h.Id == bankaHesabiId, ct)
+            var hesap = await Hesaplar.FirstOrDefaultAsync(h => h.Id == bankaHesabiId, ct)
                         ?? throw new BankaEkstreKuralException(nameof(bankaHesabiId), "Banka hesabı bulunamadı.");
 
             // Ayrıştırıcısı olmayan hesap bilerek tanımlanmış olabilir (vadeli, süpürme,
@@ -99,6 +121,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
             var yukleme = new EkstreYukleme
             {
+                FirmaId = _kapsam.FirmaId,
                 BankaHesabiId = hesap.Id,
                 DosyaAdi = Normalizasyon.Kirp(dosyaAdi, 260),
                 YuklemeTarihi = DateTime.Now,
@@ -235,7 +258,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         public async Task<List<EkstreYuklemeDto>> GetYuklemelerAsync(CancellationToken ct = default)
         {
-            var yuklemeler = await _db.EkstreYuklemeler.AsNoTracking()
+            var yuklemeler = await Yuklemeler.AsNoTracking()
                 .Include(y => y.BankaHesabi)
                 .OrderByDescending(y => y.Id)
                 .Select(y => new
@@ -260,7 +283,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         public async Task<EkstreYuklemeDto?> GetYuklemeAsync(int id, CancellationToken ct = default)
         {
-            var yukleme = await _db.EkstreYuklemeler.AsNoTracking()
+            var yukleme = await Yuklemeler.AsNoTracking()
                 .Include(y => y.BankaHesabi)
                 .Where(y => y.Id == id)
                 .Select(y => new { Yukleme = y, KaynakDosyaVar = y.DosyaIcerik != null })
@@ -276,9 +299,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         public async Task<List<EkstreSatirDto>?> GetSatirlarAsync(int ekstreId, SatirDurum? durum, CancellationToken ct = default)
         {
-            if (!await _db.EkstreYuklemeler.AnyAsync(y => y.Id == ekstreId, ct)) return null;
+            if (!await Yuklemeler.AnyAsync(y => y.Id == ekstreId, ct)) return null;
 
-            var sorgu = _db.EkstreSatirlari.AsNoTracking().Where(s => s.EkstreYuklemeId == ekstreId);
+            var sorgu = Satirlar.AsNoTracking().Where(s => s.EkstreYuklemeId == ekstreId);
             if (durum is SatirDurum d) sorgu = sorgu.Where(s => s.Durum == d);
 
             var satirlar = await sorgu.OrderBy(s => s.SiraNo).ToListAsync(ct);
@@ -305,8 +328,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             if (kod.Length == 0)
                 throw new BankaEkstreKuralException(nameof(hesapKodu), "Hesap kodu boş olamaz.");
 
-            var plan = await _db.EkstreHesapPlani.AsNoTracking().FirstOrDefaultAsync(h => h.Kod == kod, ct);
-            var planDolu = await _db.EkstreHesapPlani.AnyAsync(ct);
+            var plan = await Plan.AsNoTracking().FirstOrDefaultAsync(h => h.Kod == kod, ct);
+            var planDolu = await Plan.AnyAsync(ct);
             var bilinmeyenKod = plan is null && planDolu;
 
             satir.OnaylananHesapKodu = kod;
@@ -358,11 +381,11 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             var yon = satir.Yon == Yon.Giren ? YonlendirmeYonu.Giren : YonlendirmeYonu.Cikan;
 
             var mevcut = await _db.EkstreKisiYonlendirmeleri
-                .FirstOrDefaultAsync(k => k.IsimCekirdegi == cekirdek && k.Yon == yon, ct);
+                .FirstOrDefaultAsync(k => k.FirmaId == _kapsam.FirmaId && k.IsimCekirdegi == cekirdek && k.Yon == yon, ct);
 
             if (mevcut is null)
             {
-                mevcut = new KisiYonlendirme { IsimCekirdegi = cekirdek, Yon = yon };
+                mevcut = new KisiYonlendirme { FirmaId = _kapsam.FirmaId, IsimCekirdegi = cekirdek, Yon = yon };
                 _db.EkstreKisiYonlendirmeleri.Add(mevcut);
             }
 
@@ -399,7 +422,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// </summary>
         public async Task<DisaAktarimSonucDto?> DisaAktarAsync(int ekstreId, CancellationToken ct = default)
         {
-            var yukleme = await _db.EkstreYuklemeler.AsNoTracking()
+            var yukleme = await Yuklemeler.AsNoTracking()
                 .Include(y => y.BankaHesabi)
                 .Where(y => y.Id == ekstreId)
                 .Select(y => new { Yukleme = y, KaynakDosyaVar = y.DosyaIcerik != null })
@@ -440,7 +463,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// </summary>
         public async Task<EkstreDosyasi?> DuzeltilmisEkstreAsync(int ekstreId, CancellationToken ct = default)
         {
-            var yukleme = await _db.EkstreYuklemeler.AsNoTracking().FirstOrDefaultAsync(y => y.Id == ekstreId, ct);
+            var yukleme = await Yuklemeler.AsNoTracking().FirstOrDefaultAsync(y => y.Id == ekstreId, ct);
             if (yukleme is null) return null;
 
             if (yukleme.DosyaIcerik is null || yukleme.DosyaIcerik.Length == 0)
@@ -482,12 +505,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// </summary>
         public async Task<EkstreDosyasi?> AnalizDokumuAsync(int ekstreId, CancellationToken ct = default)
         {
-            var yukleme = await _db.EkstreYuklemeler.AsNoTracking()
+            var yukleme = await Yuklemeler.AsNoTracking()
                 .FirstOrDefaultAsync(y => y.Id == ekstreId, ct);
 
             if (yukleme is null) return null;
 
-            var satirlar = await _db.EkstreSatirlari.AsNoTracking()
+            var satirlar = await Satirlar.AsNoTracking()
                 .Where(s => s.EkstreYuklemeId == ekstreId)
                 .OrderBy(s => s.SiraNo)
                 .ToListAsync(ct);
@@ -539,7 +562,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         public async Task<bool> SilAsync(int ekstreId, CancellationToken ct = default)
         {
-            var yukleme = await _db.EkstreYuklemeler.FirstOrDefaultAsync(y => y.Id == ekstreId, ct);
+            var yukleme = await Yuklemeler.FirstOrDefaultAsync(y => y.Id == ekstreId, ct);
             if (yukleme is null) return false;
 
             // Satırlar cascade ile gider; öğrenilen kayıtlar kalır (bilgi kaybolmasın).
@@ -553,7 +576,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// <summary>Dışa aktarıma girecek satırlar; eksik satır varsa 400'e karşılık gelen kural hatası.</summary>
         private async Task<List<EkstreSatiri>> AktarilacakSatirlarAsync(int ekstreId, CancellationToken ct)
         {
-            var satirlar = await _db.EkstreSatirlari.AsNoTracking()
+            var satirlar = await Satirlar.AsNoTracking()
                 .Where(s => s.EkstreYuklemeId == ekstreId)
                 .OrderBy(s => s.SiraNo)
                 .ToListAsync(ct);
@@ -577,11 +600,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             return bellek.ToArray();
         }
 
-        /// <summary>Satırı, bağlı olduğu yükleme tenant filtresinden geçtiği için güvenle getirir.</summary>
+        /// <summary>
+        /// Satiri, bagli oldugu yukleme secili firmaya aitse getirir. Satirin kendi FirmaId
+        /// alani yok; baska firmanin satir id'si gonderilirse null doner.
+        /// </summary>
         private Task<EkstreSatiri?> SatirGetirAsync(int satirId, CancellationToken ct)
-            => _db.EkstreSatirlari
-                .Where(s => s.Id == satirId && _db.EkstreYuklemeler.Any(y => y.Id == s.EkstreYuklemeId))
-                .FirstOrDefaultAsync(ct);
+            => Satirlar.Where(s => s.Id == satirId).FirstOrDefaultAsync(ct);
 
         /// <summary>
         /// Hesap sahibinin kimliği: ana unvan + takma adlar. Firma bazlı ve tek kez girilir:
@@ -593,7 +617,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             if (!string.IsNullOrWhiteSpace(hesap.HesapSahibiUnvani))
                 return HesapSahibiKimligi.Kur(hesap.HesapSahibiUnvani, hesap.HesapSahibiTakmaAdlari);
 
-            var digeri = await _db.EkstreBankaHesaplari.AsNoTracking()
+            var digeri = await Hesaplar.AsNoTracking()
                 .Where(h => h.HesapSahibiUnvani != null && h.HesapSahibiUnvani != string.Empty)
                 .OrderBy(h => h.Id)
                 .Select(h => new { h.HesapSahibiUnvani, h.HesapSahibiTakmaAdlari })
@@ -610,14 +634,16 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             BankaHesabi hesap, HesapSahibiKimligi hesapSahibi, CancellationToken ct)
             => new()
             {
-                Eslesmeler = await _db.EkstreHesapEslesmeleri.AsNoTracking().ToListAsync(ct),
-                BankaHesaplari = await _db.EkstreBankaHesaplari.AsNoTracking().ToListAsync(ct),
+                Eslesmeler = await _db.EkstreHesapEslesmeleri.AsNoTracking()
+                                        .Where(e => e.FirmaId == _kapsam.FirmaId).ToListAsync(ct),
+                BankaHesaplari = await Hesaplar.AsNoTracking().ToListAsync(ct),
                 SabitKurallar = await SabitKurallariYukleAsync(hesap.ParserTipi, ct),
-                HesapPlani = await _db.EkstreHesapPlani.AsNoTracking().Where(h => h.Aktif).ToListAsync(ct),
+                HesapPlani = await Plan.AsNoTracking().Where(h => h.Aktif).ToListAsync(ct),
+                // Vergi kodlari GLOBAL (bkz. KARARLAR 70): kodun anlami firmadan firmaya degismez.
                 VergiKodlari = await _db.EkstreVergiKodlari.AsNoTracking().Where(v => v.Aktif)
                                         .OrderBy(v => v.Sira).ToListAsync(ct),
                 KisiYonlendirmeleri = await _db.EkstreKisiYonlendirmeleri.AsNoTracking()
-                                        .Where(k => k.Aktif).ToListAsync(ct),
+                                        .Where(k => k.FirmaId == _kapsam.FirmaId && k.Aktif).ToListAsync(ct),
                 IslenenBankaHesabiId = hesap.Id,
                 IbanKatmaniAktif = hesap.IbanKatmaniAktif,
                 VknKatmaniAktif = hesap.VknKatmaniAktif,
@@ -661,7 +687,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         private async Task<Dictionary<int, EkstreSayaclariDto>> SayaclariYukleAsync(IReadOnlyCollection<int> ekstreIdler, CancellationToken ct)
         {
-            var ham = await _db.EkstreSatirlari.AsNoTracking()
+            var ham = await Satirlar.AsNoTracking()
                 .Where(s => ekstreIdler.Contains(s.EkstreYuklemeId))
                 .GroupBy(s => new { s.EkstreYuklemeId, s.Durum })
                 .Select(g => new { g.Key.EkstreYuklemeId, g.Key.Durum, Adet = g.Count() })

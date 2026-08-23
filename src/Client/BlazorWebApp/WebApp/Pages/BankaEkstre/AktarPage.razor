@@ -12,7 +12,6 @@
 @implements IDisposable
 
 @inject IBankaEkstreApi Api
-@inject IAppSessionManager SessionManager
 @inject IBankaOtomasyonOturumu Oturum
 @inject NotificationService Notif
 @inject DialogService Dialog
@@ -22,7 +21,8 @@
     Banka Otomasyon > Aktar — günlük iş ekranı, banka kapsülü.
 
     Firma seçim ekranından girilir; hangi firmada olunduğu üstteki başlıkta sürekli görünür
-    ve tüm istekler o firmanın tenant'ıyla gider (bkz. BankaOtomasyonOturumu).
+    ve tüm isteklere o firmanın kimliği (?firmaId=) eklenir (bkz. BankaOtomasyonOturumu).
+    Kapsam token'daki tenant DEĞİLDİR — bkz. KARARLAR §68.
 
     Üstte tanımlı hesaplardan türeyen banka sekmeleri (rozet: o bankanın onay bekleyen
     satır sayısı). Seçili bankanın içinde iki alt sekme:
@@ -129,7 +129,7 @@ else if (_hesaplar.Count == 0)
         banka eklenirken o bankanın sekmesi henüz yoktur.
     *@
     <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false" Style="margin-bottom:14px">
-        @Oturum.SeciliFirma?.Ad için henüz banka hesabı tanımlanmadı. İlk hesabı Tanımlar
+        @Oturum.FirmaAdi için henüz banka hesabı tanımlanmadı. İlk hesabı Tanımlar
         sekmesinden ekleyin; her banka kendi sekmesinde kurallarıyla birlikte görünecek.
     </RadzenAlert>
 
@@ -375,11 +375,11 @@ else
     /// <summary>Aktif bankada kart göstermeyen hesap sayısı (ayrıştırıcısız veya pasif).</summary>
     private int GizliHesapSayisi => AktifBankaHesaplari.Count - AktifHesaplar.Count;
 
-    protected override void OnInitialized() => SessionManager.FirmChanged += OnFirmaDegisti;
+    protected override void OnInitialized() => Oturum.Degisti += OnFirmaDegisti;
 
     /// <summary>
-    /// Önce firma bağlamı, sonra veri. Sıra kritik: hazırlık tenant'ı seçili firmaya
-    /// getirir, ilk istek de o firmaya gider. Seçim yoksa (doğrudan adres yazıldı ya da
+    /// Önce firma bağlamı, sonra veri. Sıra kritik: hazırlık seçili firmayı geri getirir,
+    /// ilk istek de onun kimliğiyle gider. Seçim yoksa (doğrudan adres yazıldı ya da
     /// oturum tazelendi) firma listesine dönülür — sessizce bir firmanın verisi açılmaz.
     /// </summary>
     protected override async Task OnInitializedAsync()
@@ -395,16 +395,12 @@ else
 
     /// <summary>
     /// Firma değişince sayfa baştan yüklenir; eski firmanın verisi ekranda kalmasın.
-    ///
-    /// Yalnız modülün SEÇİLİ firmasına ait olay işlenir. Üstteki genel FİRMA DEĞİŞTİR
-    /// ile çelişki çıktığında olay iki kez tetiklenir (önce gelen firma, sonra modülün
-    /// geri uyguladığı firma); ara olayı işleseydik bir anlığına yanlış firmanın verisi
-    /// için istek atardık.
+    /// Olayın kaynağı modülün kendi oturumu; üstteki genel firma seçimi buraya karışmaz.
     /// </summary>
-    private async void OnFirmaDegisti(FirmaDto firma)
+    private async void OnFirmaDegisti()
         => await InvokeAsync(async () =>
         {
-            if (!string.Equals(firma?.FirmaNo, Oturum.SeciliFirma?.FirmaNo, StringComparison.Ordinal)) return;
+            if (Oturum.SeciliFirma is null) return;
 
             _aktifBanka = null;
             await YukleAsync();
@@ -530,7 +526,7 @@ else
     }
 
     /// <summary>Onay ve bildirim metinlerinde geçen firma adı.</summary>
-    private string FirmaAdi => Oturum.SeciliFirma?.Ad ?? "seçili firma";
+    private string FirmaAdi => Oturum.SeciliFirma is null ? "seçili firma" : Oturum.FirmaAdi;
 
-    public void Dispose() => SessionManager.FirmChanged -= OnFirmaDegisti;
+    public void Dispose() => Oturum.Degisti -= OnFirmaDegisti;
 }

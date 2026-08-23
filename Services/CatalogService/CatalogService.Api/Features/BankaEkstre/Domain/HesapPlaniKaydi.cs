@@ -7,7 +7,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
     /// Muhasebe modülündeki ağaç yapılı <c>HesapPlani</c>'dan kasıtlı olarak ayrıdır:
     /// buradaki kodlar ORKA formatında, boşluklu ve harf içerebilir ("120 D22").
     /// </summary>
-    public class HesapPlaniKaydi : TenantEntity
+    public class HesapPlaniKaydi : FirmaKapsamliEntity
     {
         public int Id { get; set; }
 

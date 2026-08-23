@@ -1,5 +1,6 @@
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Services;
+using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,6 +16,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
     [ApiController]
     [Route("api/catalog/banka-ekstre/kisi-yonlendirmeleri")]
     [Authorize]
+    [ServiceFilter(typeof(BankaFirmaFiltresi))]
     public class KisiYonlendirmeleriController : ControllerBase
     {
         private readonly IKisiYonlendirmeService _service;

@@ -1,4 +1,4 @@
-﻿using CatalogService.Api.Features.AccountPlan;
+using CatalogService.Api.Features.AccountPlan;
 using CatalogService.Api.Features.Banka.Domain;
 using CatalogService.Api.Features.Declarations.Entities;
 using CatalogService.Api.Features.Education.Domain;
@@ -112,7 +112,7 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<Features.Muhasebe.Domain.Fis> Fisler => Set<Features.Muhasebe.Domain.Fis>();
         public DbSet<Features.Muhasebe.Domain.FisSatir> FisSatirlar => Set<Features.Muhasebe.Domain.FisSatir>();
 
-        // Banka Ekstresi İşleme modülü — firma (tenant) bazlı tablolar
+        // Banka Ekstresi İşleme modülü — firma bazlı tablolar (catalog.Firmalar.Id)
         public DbSet<Features.BankaEkstre.Domain.BankaHesabi> EkstreBankaHesaplari => Set<Features.BankaEkstre.Domain.BankaHesabi>();
         public DbSet<Features.BankaEkstre.Domain.EkstreYukleme> EkstreYuklemeler => Set<Features.BankaEkstre.Domain.EkstreYukleme>();
         public DbSet<Features.BankaEkstre.Domain.EkstreSatiri> EkstreSatirlari => Set<Features.BankaEkstre.Domain.EkstreSatiri>();
@@ -231,13 +231,14 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.Entity<Features.Muhasebe.Domain.MasrafMerkezi>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
             builder.Entity<Features.Muhasebe.Domain.Fis>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
 
-            // Banka Ekstresi modülü tenant filtreleri.
-            // EkstreSatiri, bağlı olduğu EkstreYukleme üzerinden izole olur (FisSatir ile aynı yaklaşım).
-            builder.Entity<Features.BankaEkstre.Domain.BankaHesabi>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
-            builder.Entity<Features.BankaEkstre.Domain.EkstreYukleme>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
-            builder.Entity<Features.BankaEkstre.Domain.HesapEslesmesi>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
-            builder.Entity<Features.BankaEkstre.Domain.HesapPlaniKaydi>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
-            builder.Entity<Features.BankaEkstre.Domain.KisiYonlendirme>().HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo);
+            // Banka Ekstresi modülünün KAPSAMI TENANT DEĞİL FİRMADIR ve global query filter
+            // kurulmaz — sorgular kapsamı görünür biçimde yazar (bkz. IBankaFirmaKapsami,
+            // KARARLAR §69). Görünmez filtre iki sorun üretiyordu: (1) tek oturumla sekiz
+            // firmayı yöneten kullanıcıda token'daki tek tenant tüm firmaları aynı kovaya
+            // yazıyordu, (2) firma seçim ekranının sayaçları gibi meşru çoklu-firma
+            // sorguları IgnoreQueryFilters() baypasına mecbur kalıyordu.
+            // EkstreSatiri'nin kendi FirmaId'si yok; kapsamı bağlı olduğu EkstreYukleme
+            // üzerinden alır (Muhasebe'deki FisSatir ile aynı yaklaşım).
         }
 
 
@@ -252,6 +253,19 @@ namespace CatalogService.Api.Infrastructure.Context
 
         public override Task<int> SaveChangesAsync(CancellationToken ct = default)
         {
+            // Firma kapsamlı kayıtlarda FirmaId'nin sessiz varsayılanı YOKTUR. Tenant'ta
+            // olduğu gibi "boşsa istekten doldur" davranışı buraya konmadı: kapsamı yazan
+            // yer servis katmanıdır ve unutulursa kayıt yanlış firmaya değil, hiçbir yere
+            // gitmemeli. Modül bu hatayı bir kez tenant tarafında yaptı (KARARLAR §68).
+            foreach (var e in ChangeTracker.Entries<FirmaKapsamliEntity>()
+                                           .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified))
+            {
+                if (e.Entity.FirmaId <= 0)
+                    throw new InvalidOperationException(
+                        $"FirmaId boş; {e.Entity.GetType().Name} kaydı engellendi. " +
+                        "Banka otomasyon kayıtları firma kapsamı olmadan yazılamaz.");
+            }
+
             foreach (var e in ChangeTracker.Entries<TenantEntity>()
                                            .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified))
             {

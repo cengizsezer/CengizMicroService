@@ -1,4 +1,4 @@
-﻿using CatalogService.Api.Features.BankaEkstre;
+using CatalogService.Api.Features.BankaEkstre;
 using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Services;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
@@ -72,6 +72,7 @@ namespace CatalogService.UnitTests.BankaEkstre
 
         private static BankaHesabi Hesap(int id, string banka, string kod, string? anahtarlar = null) => new()
         {
+            FirmaId = BankaEkstreTestOrtami.FirmaId,
             Id = id,
             BankaAdi = banka,
             OrkaHesapKodu = kod,
@@ -252,7 +253,8 @@ namespace CatalogService.UnitTests.BankaEkstre
         {
             var secici = new EkstreParserSecici(new IEkstreParser[] { new VakifbankVadesizParser() });
             return new EkstreService(db, secici, new UnvanCikarici(), new AciklamaUretici(),
-                                     new HesapEslestirici(), new HesapEslesmeService(db), new SabitKullanici());
+                                     new HesapEslestirici(), new HesapEslesmeService(db, BankaEkstreTestOrtami.Kapsam()),
+                                     new SabitKullanici(), BankaEkstreTestOrtami.Kapsam());
         }
 
         /// <summary>Üretimdeki seed + gerçek kayıt defteri.</summary>
@@ -263,6 +265,7 @@ namespace CatalogService.UnitTests.BankaEkstre
 
             var islenen = new BankaHesabi
             {
+                FirmaId = BankaEkstreTestOrtami.FirmaId,
                 BankaAdi = "Vakıfbank",
                 HesapAdi = "VAKIFBANK VADESIZ TL",
                 OrkaHesapKodu = "102 1 1 01",
@@ -272,19 +275,22 @@ namespace CatalogService.UnitTests.BankaEkstre
                 Aktif = true
             };
 
+            const int firma = BankaEkstreTestOrtami.FirmaId;
+
             db.EkstreBankaHesaplari.AddRange(
                 islenen,
                 new BankaHesabi
                 {
+                    FirmaId = firma,
                     BankaAdi = "Vakıfbank",
                     HesapAdi = "Vakıfbank, Vadeli Tl - Otomatik Süpürme Hesabı",
                     OrkaHesapKodu = "102 1 1 04",
                     EslestirmeAnahtarlari = "Otomatik Süpürme, Süpürme",
                     Aktif = true
                 },
-                new BankaHesabi { BankaAdi = "Denizbank", OrkaHesapKodu = "102 1 3 02", Aktif = true },
-                new BankaHesabi { BankaAdi = "TEB", OrkaHesapKodu = "102 1 32 87", EslestirmeAnahtarlari = "TEB Maslak", Aktif = true },
-                new BankaHesabi { BankaAdi = "Ziraat", OrkaHesapKodu = "102 1 5 01", Aktif = true });
+                new BankaHesabi { FirmaId = firma, BankaAdi = "Denizbank", OrkaHesapKodu = "102 1 3 02", Aktif = true },
+                new BankaHesabi { FirmaId = firma, BankaAdi = "TEB", OrkaHesapKodu = "102 1 32 87", EslestirmeAnahtarlari = "TEB Maslak", Aktif = true },
+                new BankaHesabi { FirmaId = firma, BankaAdi = "Ziraat", OrkaHesapKodu = "102 1 5 01", Aktif = true });
 
             await db.SaveChangesAsync();
             return (db, islenen.Id);

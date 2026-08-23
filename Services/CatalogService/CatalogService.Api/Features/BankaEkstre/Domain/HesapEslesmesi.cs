@@ -3,7 +3,7 @@ using CatalogService.Api.Infrastructure.Domain;
 namespace CatalogService.Api.Features.BankaEkstre.Domain
 {
     /// <summary>
-    /// Öğrenilen anahtar → ORKA hesap kodu eşlemesi. **Firma bazlı** (<c>TenantNo</c>):
+    /// Öğrenilen anahtar → ORKA hesap kodu eşlemesi. **Firma bazlı** (<c>FirmaId</c>):
     /// hesap planı ve cari kodları firmaya özeldir.
     ///
     /// Anahtar ham açıklamanın hash'i değil, normalize unvan çekirdeğidir
@@ -12,7 +12,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
     /// (<see cref="AyirtEdiciEk"/>); aramada önce genişletilmiş anahtar, tutmazsa sade
     /// çekirdek denenir.
     /// </summary>
-    public class HesapEslesmesi : TenantEntity
+    public class HesapEslesmesi : FirmaKapsamliEntity
     {
         public int Id { get; set; }
 

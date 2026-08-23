@@ -1,4 +1,5 @@
-﻿using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
 using CatalogService.Api.Infrastructure.Context;
@@ -50,16 +51,22 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
     {
         private readonly CatalogContext _db;
         private readonly IEkstreParserSecici _parserSecici;
+        private readonly IBankaFirmaKapsami _kapsam;
 
-        public BankaHesabiService(CatalogContext db, IEkstreParserSecici parserSecici)
+        public BankaHesabiService(CatalogContext db, IEkstreParserSecici parserSecici, IBankaFirmaKapsami kapsam)
         {
             _db = db;
             _parserSecici = parserSecici;
+            _kapsam = kapsam;
         }
+
+        /// <summary>Seçili firmanın banka hesapları; kapsam her sorguda görünür yazılır.</summary>
+        private IQueryable<BankaHesabi> Hesaplar
+            => _db.EkstreBankaHesaplari.Where(h => h.FirmaId == _kapsam.FirmaId);
 
         public async Task<List<BankaHesabiDto>> GetHepsiAsync(bool pasifDahil, CancellationToken ct = default)
         {
-            var sorgu = _db.EkstreBankaHesaplari.AsNoTracking();
+            var sorgu = Hesaplar.AsNoTracking();
             if (!pasifDahil) sorgu = sorgu.Where(h => h.Aktif);
 
             var kayitlar = await sorgu
@@ -71,7 +78,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         public async Task<BankaHesabiDto?> GetByIdAsync(int id, CancellationToken ct = default)
         {
-            var hesap = await _db.EkstreBankaHesaplari.AsNoTracking()
+            var hesap = await Hesaplar.AsNoTracking()
                 .FirstOrDefaultAsync(h => h.Id == id, ct);
 
             return hesap is null ? null : Esle(hesap);
@@ -82,7 +89,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             Dogrula(dto);
             await OrkaKoduTekilMi(dto.OrkaHesapKodu, null, ct);
 
-            var hesap = new BankaHesabi();
+            var hesap = new BankaHesabi { FirmaId = _kapsam.FirmaId };
             Uygula(hesap, dto);
 
             _db.EkstreBankaHesaplari.Add(hesap);
@@ -95,7 +102,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         {
             Dogrula(dto);
 
-            var hesap = await _db.EkstreBankaHesaplari.FirstOrDefaultAsync(h => h.Id == id, ct);
+            var hesap = await Hesaplar.FirstOrDefaultAsync(h => h.Id == id, ct);
             if (hesap is null) return null;
 
             await OrkaKoduTekilMi(dto.OrkaHesapKodu, id, ct);
@@ -108,10 +115,10 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// <summary>Ekstresi olan hesap silinmez (geçmiş kayıtların bağı kopar); null = bulunamadı.</summary>
         public async Task<bool?> DeleteAsync(int id, CancellationToken ct = default)
         {
-            var hesap = await _db.EkstreBankaHesaplari.FirstOrDefaultAsync(h => h.Id == id, ct);
+            var hesap = await Hesaplar.FirstOrDefaultAsync(h => h.Id == id, ct);
             if (hesap is null) return null;
 
-            if (await _db.EkstreYuklemeler.AnyAsync(y => y.BankaHesabiId == id, ct))
+            if (await _db.EkstreYuklemeler.AnyAsync(y => y.FirmaId == _kapsam.FirmaId && y.BankaHesabiId == id, ct))
                 return false;
 
             _db.EkstreBankaHesaplari.Remove(hesap);
@@ -148,7 +155,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         private async Task OrkaKoduTekilMi(string kod, int? haricId, CancellationToken ct)
         {
             var normal = Normalizasyon.HesapKoduNormalize(kod);
-            var cakisiyor = await _db.EkstreBankaHesaplari
+            var cakisiyor = await Hesaplar
                 .AnyAsync(h => h.OrkaHesapKodu == normal && (haricId == null || h.Id != haricId), ct);
 
             if (cakisiyor)
@@ -200,7 +207,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         public async Task<HesapSahibiKimlikDto> HesapSahibiGetAsync(CancellationToken ct = default)
         {
-            var hesaplar = await _db.EkstreBankaHesaplari.AsNoTracking()
+            var hesaplar = await Hesaplar.AsNoTracking()
                 .OrderBy(h => h.Id)
                 .Select(h => new { h.HesapSahibiUnvani, h.HesapSahibiTakmaAdlari })
                 .ToListAsync(ct);
@@ -227,7 +234,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             var unvan = string.IsNullOrWhiteSpace(dto.Unvan) ? null : Normalizasyon.Kirp(dto.Unvan, 200);
             var takmaAdlar = TakmaAdlariDuzenle(dto.TakmaAdlar);
 
-            var hesaplar = await _db.EkstreBankaHesaplari.ToListAsync(ct);
+            var hesaplar = await Hesaplar.ToListAsync(ct);
             foreach (var hesap in hesaplar)
             {
                 hesap.HesapSahibiUnvani = unvan;
@@ -254,8 +261,10 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             // Kaynak: yüklenmiş ekstrelerde desenlerin çıkardığı unvanlar. Ham açıklamayı
             // baştan taramak yerine çıkarılmış unvanlar kullanılır — bankanın firmayı nasıl
             // yazdığı zaten orada duruyor.
+            // Satırın kendi FirmaId'si yok; kapsamı bağlı olduğu yüklemeden gelir.
             var unvanlar = await _db.EkstreSatirlari.AsNoTracking()
                 .Where(s => s.CikarilanUnvan != null && s.CikarilanUnvan != string.Empty)
+                .Where(s => _db.EkstreYuklemeler.Any(y => y.Id == s.EkstreYuklemeId && y.FirmaId == _kapsam.FirmaId))
                 .Select(s => s.CikarilanUnvan!)
                 .ToListAsync(ct);
 

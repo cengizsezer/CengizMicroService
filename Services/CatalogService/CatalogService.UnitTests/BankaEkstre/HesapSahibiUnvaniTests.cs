@@ -26,11 +26,13 @@ namespace CatalogService.UnitTests.BankaEkstre
         {
             var secici = new EkstreParserSecici(new IEkstreParser[] { new VakifbankVadesizParser() });
             return new EkstreService(db, secici, new UnvanCikarici(), new AciklamaUretici(),
-                                     new HesapEslestirici(), new HesapEslesmeService(db), new SabitKullanici());
+                                     new HesapEslestirici(), new HesapEslesmeService(db, BankaEkstreTestOrtami.Kapsam()),
+                                     new SabitKullanici(), BankaEkstreTestOrtami.Kapsam());
         }
 
         private static HesapPlaniKaydi Plan(string kod, string ad) => new()
         {
+            FirmaId = BankaEkstreTestOrtami.FirmaId,
             Kod = kod,
             Ad = ad,
             NormalizeAd = Normalizasyon.UnvanNormalize(ad),
@@ -55,6 +57,7 @@ namespace CatalogService.UnitTests.BankaEkstre
 
             var hesap = new BankaHesabi
             {
+                FirmaId = BankaEkstreTestOrtami.FirmaId,
                 BankaAdi = "Vakıfbank",
                 OrkaHesapKodu = "102 1 1 01",
                 ParserTipi = VakifbankVadesizParser.Tip,
@@ -153,6 +156,7 @@ namespace CatalogService.UnitTests.BankaEkstre
 
             db.EkstreBankaHesaplari.Add(new BankaHesabi
             {
+                FirmaId = BankaEkstreTestOrtami.FirmaId,
                 BankaAdi = "Ziraat",
                 OrkaHesapKodu = "102 2 1 01",
                 HesapSahibiUnvani = HesapSahibi,

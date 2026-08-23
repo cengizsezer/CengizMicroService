@@ -18,7 +18,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
     /// tahsilat başka bir hesap olabilir. <see cref="YonlendirmeYonu.Farketmez"/>
     /// seçilirse iki yönde de aynı hesap kullanılır.
     /// </summary>
-    public class KisiYonlendirme : TenantEntity
+    public class KisiYonlendirme : FirmaKapsamliEntity
     {
         public int Id { get; set; }
 

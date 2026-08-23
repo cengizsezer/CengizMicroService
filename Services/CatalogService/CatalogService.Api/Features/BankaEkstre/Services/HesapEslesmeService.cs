@@ -1,4 +1,5 @@
 using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
@@ -29,12 +30,21 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
     public class HesapEslesmeService : IHesapEslesmeService
     {
         private readonly CatalogContext _db;
+        private readonly IBankaFirmaKapsami _kapsam;
 
-        public HesapEslesmeService(CatalogContext db) => _db = db;
+        public HesapEslesmeService(CatalogContext db, IBankaFirmaKapsami kapsam)
+        {
+            _db = db;
+            _kapsam = kapsam;
+        }
+
+        /// <summary>Seçili firmanın öğrenilen eşleşmeleri; kapsam her sorguda görünür yazılır.</summary>
+        private IQueryable<HesapEslesmesi> Eslesmeler
+            => _db.EkstreHesapEslesmeleri.Where(e => e.FirmaId == _kapsam.FirmaId);
 
         public async Task<List<HesapEslesmesiDto>> AraAsync(string? q, int enFazla, CancellationToken ct = default)
         {
-            var sorgu = _db.EkstreHesapEslesmeleri.AsNoTracking();
+            var sorgu = Eslesmeler.AsNoTracking();
 
             if (!string.IsNullOrWhiteSpace(q))
             {
@@ -62,15 +72,16 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// </summary>
         public async Task<HesapEslesmesiDto?> GuncelleAsync(int id, HesapEslesmesiYazDto dto, CancellationToken ct = default)
         {
-            var kayit = await _db.EkstreHesapEslesmeleri.FirstOrDefaultAsync(e => e.Id == id, ct);
+            var kayit = await Eslesmeler.FirstOrDefaultAsync(e => e.Id == id, ct);
             if (kayit is null) return null;
 
             var kod = Normalizasyon.HesapKoduNormalize(dto.HesapKodu);
             if (kod.Length == 0)
                 throw new BankaEkstreKuralException(nameof(dto.HesapKodu), "Hesap kodu boş olamaz.");
 
-            var plan = await _db.EkstreHesapPlani.AsNoTracking().FirstOrDefaultAsync(h => h.Kod == kod, ct);
-            if (plan is null && await _db.EkstreHesapPlani.AnyAsync(ct))
+            var plan = await _db.EkstreHesapPlani.AsNoTracking()
+                .FirstOrDefaultAsync(h => h.FirmaId == _kapsam.FirmaId && h.Kod == kod, ct);
+            if (plan is null && await _db.EkstreHesapPlani.AnyAsync(h => h.FirmaId == _kapsam.FirmaId, ct))
                 throw new BankaEkstreKuralException(nameof(dto.HesapKodu),
                     $"'{kod}' hesap planında yok. Doğrulanmamış kod öğrenme tablosuna yazılmaz.");
 
@@ -78,7 +89,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 ? null
                 : Normalizasyon.UnvanCekirdek(dto.AyirtEdiciEk);
 
-            var cakisiyor = await _db.EkstreHesapEslesmeleri.AnyAsync(e =>
+            var cakisiyor = await Eslesmeler.AnyAsync(e =>
                 e.Id != id &&
                 e.AnahtarTipi == kayit.AnahtarTipi &&
                 e.AnahtarCekirdek == kayit.AnahtarCekirdek &&
@@ -101,7 +112,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         public async Task<bool> SilAsync(int id, CancellationToken ct = default)
         {
-            var kayit = await _db.EkstreHesapEslesmeleri.FirstOrDefaultAsync(e => e.Id == id, ct);
+            var kayit = await Eslesmeler.FirstOrDefaultAsync(e => e.Id == id, ct);
             if (kayit is null) return false;
 
             // Kimlik kaydı (global) silinmez: başka firmada hâlâ geçerli olabilir.
@@ -152,7 +163,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         {
             var anahtar = satir.BelirsizlikAnahtari!;
 
-            var mevcut = await _db.EkstreHesapEslesmeleri.FirstOrDefaultAsync(e =>
+            var mevcut = await Eslesmeler.FirstOrDefaultAsync(e =>
                 e.AnahtarTipi == AnahtarTipi.Belirsizlik &&
                 e.AnahtarCekirdek == anahtar &&
                 e.Yon == satir.Yon, ct);
@@ -161,6 +172,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             {
                 _db.EkstreHesapEslesmeleri.Add(new HesapEslesmesi
                 {
+                    FirmaId = _kapsam.FirmaId,
                     AnahtarTipi = AnahtarTipi.Belirsizlik,
                     AnahtarCekirdek = anahtar,
                     AdayKumesiOzeti = satir.AdayKumesiOzeti,
@@ -195,7 +207,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         private async Task EslesmeYazAsync(
             AnahtarTipi tip, string cekirdek, string? ek, Yon yon, string kod, string? ad, CancellationToken ct)
         {
-            var mevcut = await _db.EkstreHesapEslesmeleri.FirstOrDefaultAsync(e =>
+            var mevcut = await Eslesmeler.FirstOrDefaultAsync(e =>
                 e.AnahtarTipi == tip &&
                 e.AnahtarCekirdek == cekirdek &&
                 (e.AyirtEdiciEk ?? string.Empty) == (ek ?? string.Empty) &&
@@ -205,6 +217,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             {
                 _db.EkstreHesapEslesmeleri.Add(new HesapEslesmesi
                 {
+                    FirmaId = _kapsam.FirmaId,
                     AnahtarTipi = tip,
                     AnahtarCekirdek = cekirdek,
                     AyirtEdiciEk = ek,

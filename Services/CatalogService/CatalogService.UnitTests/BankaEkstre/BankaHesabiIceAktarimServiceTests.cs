@@ -19,8 +19,10 @@ namespace CatalogService.UnitTests.BankaEkstre
             { "Orka Hesap Kodu", "Hesap Adı", "Banka Adı", "Hesap Tipi", "Para Birimi", "Parser Tipi", "IBAN",
               "Eşleştirme Anahtarları" };
 
-        private static BankaHesabiIceAktarimService Servis(CatalogContext db)
-            => new(db, new EkstreParserSecici(new IEkstreParser[] { new VakifbankVadesizParser() }));
+        private static BankaHesabiIceAktarimService Servis(CatalogContext db,
+                                                           int firmaId = BankaEkstreTestOrtami.FirmaId)
+            => new(db, new EkstreParserSecici(new IEkstreParser[] { new VakifbankVadesizParser() }),
+                   BankaEkstreTestOrtami.Kapsam(firmaId));
 
         /// <summary>Kolon sırası <paramref name="basliklar"/> ile değiştirilebilir; satırlar aynı sırayı izler.</summary>
         private static MemoryStream DosyaBasliklarla(string[] basliklar, params string?[][] satirlar)
@@ -57,10 +59,14 @@ namespace CatalogService.UnitTests.BankaEkstre
         /// TenantNo yalnız <c>SaveChangesAsync</c> içinde dolduruluyor, bu yüzden async.
         /// </summary>
         private static Task PlanaEkleAsync(CatalogContext db, params string[] kodlar)
+            => PlanaEkleAsync(db, BankaEkstreTestOrtami.FirmaId, kodlar);
+
+        private static Task PlanaEkleAsync(CatalogContext db, int firmaId, params string[] kodlar)
         {
             foreach (var kod in kodlar)
                 db.EkstreHesapPlani.Add(new HesapPlaniKaydi
                 {
+                    FirmaId = firmaId,
                     Kod = kod,
                     Ad = $"{kod} HESABI",
                     AnaGrup = "102",
@@ -290,32 +296,33 @@ namespace CatalogService.UnitTests.BankaEkstre
             Assert.Contains(sonuc.Uyarilar, u => u.Message.Contains("102 ile başlamıyor"));
         }
 
+        /// <summary>
+        /// Aynı ORKA kodu iki firmada ayrı kayıttır. Tek veritabanı, iki kapsam: içe
+        /// aktarım kendi firmasının dışını görmediği için "güncelleme" değil "ekleme" yapar.
+        /// </summary>
         [Fact]
         public async Task Farkli_firmada_ayni_kod_ayri_kayit_olur()
         {
-            var veritabani = $"hesap-izolasyon-{Guid.NewGuid()}";
+            const int aday = 201;
+            const int smmm = 106;
 
-            using (var db = BankaEkstreTestOrtami.YeniContext(veritabani, "201"))
+            using var db = BankaEkstreTestOrtami.YeniContext();
+
+            await PlanaEkleAsync(db, aday, "102 1 32 87");
+            using (var dosya = Dosya(Satir("102 1 32 87")))
+                Assert.Equal(1, (await Servis(db, aday).IceAktarAsync(dosya)).Eklenen);
+
+            await PlanaEkleAsync(db, smmm, "102 1 32 87");
+            using (var dosya = Dosya(Satir("102 1 32 87", banka: "Ziraat")))
             {
-                await PlanaEkleAsync(db, "102 1 32 87");
-                using var dosya = Dosya(Satir("102 1 32 87"));
-                Assert.Equal(1, (await Servis(db).IceAktarAsync(dosya)).Eklenen);
-            }
+                var sonuc = await Servis(db, smmm).IceAktarAsync(dosya);
 
-            using (var db = BankaEkstreTestOrtami.YeniContext(veritabani, "106"))
-            {
-                await PlanaEkleAsync(db, "102 1 32 87");
-                using var dosya = Dosya(Satir("102 1 32 87", banka: "Ziraat"));
-                var sonuc = await Servis(db).IceAktarAsync(dosya);
-
-                // İkinci firma birincinin hesabını görmez: güncelleme değil ekleme olmalı.
                 Assert.Equal(1, sonuc.Eklenen);
                 Assert.Equal(0, sonuc.Guncellenen);
-                Assert.Equal("Ziraat", db.EkstreBankaHesaplari.Single().BankaAdi);
             }
 
-            using (var db = BankaEkstreTestOrtami.YeniContext(veritabani, "201"))
-                Assert.Equal("Vakıfbank", db.EkstreBankaHesaplari.Single().BankaAdi);
+            Assert.Equal("Ziraat", db.EkstreBankaHesaplari.Single(h => h.FirmaId == smmm).BankaAdi);
+            Assert.Equal("Vakıfbank", db.EkstreBankaHesaplari.Single(h => h.FirmaId == aday).BankaAdi);
         }
 
         [Fact]

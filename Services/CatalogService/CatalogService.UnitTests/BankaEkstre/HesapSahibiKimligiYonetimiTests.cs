@@ -1,4 +1,4 @@
-﻿using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Services;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
@@ -21,10 +21,12 @@ namespace CatalogService.UnitTests.BankaEkstre
         private const string TakmaAd = "ADAY BAĞIMSIZ DENETİM VE SMMM A.Ş.";
 
         private static BankaHesabiService Servis(CatalogContext db)
-            => new(db, new EkstreParserSecici(new IEkstreParser[] { new VakifbankVadesizParser() }));
+            => new(db, new EkstreParserSecici(new IEkstreParser[] { new VakifbankVadesizParser() }),
+                   BankaEkstreTestOrtami.Kapsam());
 
         private static BankaHesabi Hesap(string banka, string kod, string? unvan = null, string? takmaAdlar = null) => new()
         {
+            FirmaId = BankaEkstreTestOrtami.FirmaId,
             BankaAdi = banka,
             OrkaHesapKodu = kod,
             ParaBirimi = "TRY",
@@ -147,6 +149,17 @@ namespace CatalogService.UnitTests.BankaEkstre
             var servis = Servis(db);
 
             await servis.HesapSahibiKaydetAsync(new HesapSahibiKimlikYazDto { Unvan = Unvan });
+
+            // Satırın kendi FirmaId'si yok; kapsamını bağlı olduğu yüklemeden alıyor.
+            // Yükleme olmadan satır hiçbir firmaya ait değildir ve önerilere girmez.
+            db.EkstreYuklemeler.Add(new EkstreYukleme
+            {
+                FirmaId = BankaEkstreTestOrtami.FirmaId,
+                BankaHesabiId = db.EkstreBankaHesaplari.First().Id,
+                DosyaAdi = "ocak.xlsx",
+                SatirSayisi = 3
+            });
+            await db.SaveChangesAsync();
 
             // Çıkarılmış unvanlar: biri firmanın başka yazımı, biri ilgisiz bir cari.
             db.EkstreSatirlari.AddRange(

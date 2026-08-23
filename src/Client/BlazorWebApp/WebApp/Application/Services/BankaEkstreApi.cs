@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -11,6 +11,15 @@ namespace WebApp.Application.Services
     /// Banka ekstresi işleme modülü istemcisi. Gateway <c>/catalog/{everything}</c> route'u
     /// ile <c>api/catalog/*</c>'a bağlanır, bu yüzden önek <c>/catalog/banka-ekstre</c>'dir.
     /// Hata gövdesi <c>{ field, message }</c> sözleşmesiyle okunur (MuhasebeApi ile aynı).
+    ///
+    /// FİRMA KAPSAMI HER ADRESE BURADA EKLENİR (<c>?firmaId=</c>). Tek yerde olmasının
+    /// sebebi, ekranda görünen firma ile isteğe giden firmanın ayrışamaması: ikisi de
+    /// <see cref="IBankaOtomasyonOturumu.FirmaId"/>'den okunuyor. Modül eskiden kapsamı
+    /// token'daki tenant claim'inden alıyordu; tek oturumla sekiz firmayı yöneten
+    /// kullanıcıda bu, tüm firmaları aynı kovaya yazıyordu (bkz. KARARLAR §68).
+    ///
+    /// Çok parçalı (dosya) isteklerde de sorgu dizesi kullanılır: sunucudaki filtre form
+    /// gövdesini okumaz, 20 MB'lik yüklemeyi model bağlamadan önce tamponlamamak için.
     /// </summary>
     public class BankaEkstreApi : IBankaEkstreApi
     {
@@ -27,60 +36,96 @@ namespace WebApp.Application.Services
 
         private const string XlsxTuru = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-        private readonly HttpClient _http;
+        private const string Temizlik = "/catalog/banka-ekstre/temizlik";
 
-        public BankaEkstreApi(HttpClient http) => _http = http;
+        private readonly HttpClient _http;
+        private readonly IBankaOtomasyonOturumu _oturum;
+
+        public BankaEkstreApi(HttpClient http, IBankaOtomasyonOturumu oturum)
+        {
+            _http = http;
+            _oturum = oturum;
+        }
+
+        /// <summary>
+        /// Firma kapsamlı adres. Seçim yoksa <c>firmaId=0</c> gider ve sunucu 400 döner —
+        /// sessizce "kayıt yok" göstermek, kullanıcıya boş bir firma varmış izlenimi verirdi.
+        /// </summary>
+        private string Adres(string yol, params string[] parametreler)
+        {
+            var hepsi = new List<string> { $"firmaId={_oturum.FirmaId}" };
+            hepsi.AddRange(parametreler.Where(p => !string.IsNullOrWhiteSpace(p)));
+
+            var ayrac = yol.Contains('?') ? "&" : "?";
+            return yol + ayrac + string.Join("&", hepsi);
+        }
 
         // ---- Firma seçim ekranı ----
 
-        public async Task<List<FirmaBankaOzetiDto>> FirmaOzetleriAsync(IEnumerable<string> tenantlar,
+        /// <summary>
+        /// Firma seçim ekranının sayaçları. Kapsamsız tek uç nokta: ekran firmaya
+        /// <b>girilmeden önce</b> açılıyor ve doğası gereği birçok firmayı soruyor.
+        /// </summary>
+        public async Task<List<FirmaBankaOzetiDto>> FirmaOzetleriAsync(IEnumerable<int> firmaIdler,
                                                                        CancellationToken ct = default)
         {
-            var liste = (tenantlar ?? Enumerable.Empty<string>())
-                .Where(t => !string.IsNullOrWhiteSpace(t))
-                .ToList();
-
+            var liste = (firmaIdler ?? Enumerable.Empty<int>()).Where(id => id > 0).Distinct().ToList();
             if (liste.Count == 0) return new List<FirmaBankaOzetiDto>();
 
-            var sorgu = string.Join("&", liste.Select(t => $"tenantlar={Uri.EscapeDataString(t)}"));
+            var sorgu = string.Join("&", liste.Select(id => $"firmaIdler={id}"));
             return await GetOrNull<List<FirmaBankaOzetiDto>>($"{Firmalar}/ozet?{sorgu}", ct) ?? new();
         }
+
+        // ---- Veri temizliği ----
+
+        public async Task<BankaTemizlikOzetiDto> TemizlikOzetiAsync(CancellationToken ct = default)
+            => await GetOrNull<BankaTemizlikOzetiDto>(Adres($"{Temizlik}/ozet"), ct) ?? new();
+
+        public Task<(BankaTemizlikOzetiDto? Veri, string? Hata)> TemizleAsync(CancellationToken ct = default)
+            => GonderAsync<BankaTemizlikOzetiDto>(() => _http.DeleteAsync(Adres(Temizlik), ct));
+
+        public async Task<BankaTemizlikOzetiDto> SahipsizOzetiAsync(CancellationToken ct = default)
+            => await GetOrNull<BankaTemizlikOzetiDto>(Adres($"{Temizlik}/sahipsiz/ozet"), ct) ?? new();
+
+        public Task<(BankaTemizlikOzetiDto? Veri, string? Hata)> SahipsizTemizleAsync(CancellationToken ct = default)
+            => GonderAsync<BankaTemizlikOzetiDto>(() => _http.DeleteAsync(Adres($"{Temizlik}/sahipsiz"), ct));
 
         // ---- Banka hesapları ----
 
         public async Task<List<BankaHesabiDto>> GetHesaplarAsync(bool pasifDahil = false, CancellationToken ct = default)
-            => await GetOrNull<List<BankaHesabiDto>>($"{Hesaplar}?pasifDahil={pasifDahil.ToString().ToLowerInvariant()}", ct) ?? new();
+            => await GetOrNull<List<BankaHesabiDto>>(Adres(Hesaplar, $"pasifDahil={pasifDahil.ToString().ToLowerInvariant()}"), ct) ?? new();
 
         public async Task<List<ParserSecenekDto>> GetParserlerAsync(CancellationToken ct = default)
-            => await GetOrNull<List<ParserSecenekDto>>($"{Hesaplar}/parserler", ct) ?? new();
+            => await GetOrNull<List<ParserSecenekDto>>(Adres($"{Hesaplar}/parserler"), ct) ?? new();
 
         public async Task<string?> AnahtarOnerisiAsync(string? hesapAdi, string? bankaAdi, CancellationToken ct = default)
         {
-            var adres = $"{Hesaplar}/anahtar-onerisi?hesapAdi={Uri.EscapeDataString(hesapAdi ?? string.Empty)}" +
-                        $"&bankaAdi={Uri.EscapeDataString(bankaAdi ?? string.Empty)}";
+            var adres = Adres($"{Hesaplar}/anahtar-onerisi",
+                              $"hesapAdi={Uri.EscapeDataString(hesapAdi ?? string.Empty)}",
+                              $"bankaAdi={Uri.EscapeDataString(bankaAdi ?? string.Empty)}");
 
             return (await GetOrNull<AnahtarOnerisiDto>(adres, ct))?.EslestirmeAnahtarlari;
         }
 
         public async Task<HesapSahibiKimlikDto> HesapSahibiAsync(CancellationToken ct = default)
-            => await GetOrNull<HesapSahibiKimlikDto>($"{Hesaplar}/hesap-sahibi", ct) ?? new();
+            => await GetOrNull<HesapSahibiKimlikDto>(Adres($"{Hesaplar}/hesap-sahibi"), ct) ?? new();
 
         public Task<(HesapSahibiKimlikDto? Veri, string? Hata)> HesapSahibiKaydetAsync(HesapSahibiKimlikYazDto dto,
                                                                                        CancellationToken ct = default)
-            => GonderAsync<HesapSahibiKimlikDto>(() => _http.PutAsJsonAsync($"{Hesaplar}/hesap-sahibi", dto, ct));
+            => GonderAsync<HesapSahibiKimlikDto>(() => _http.PutAsJsonAsync(Adres($"{Hesaplar}/hesap-sahibi"), dto, ct));
 
         public async Task<List<HesapSahibiOnerisiDto>> HesapSahibiOnerileriAsync(CancellationToken ct = default)
-            => await GetOrNull<List<HesapSahibiOnerisiDto>>($"{Hesaplar}/hesap-sahibi-onerileri", ct) ?? new();
+            => await GetOrNull<List<HesapSahibiOnerisiDto>>(Adres($"{Hesaplar}/hesap-sahibi-onerileri"), ct) ?? new();
 
         public Task<(BankaHesabiDto? Veri, string? Hata)> CreateHesapAsync(BankaHesabiYazDto dto, CancellationToken ct = default)
-            => GonderAsync<BankaHesabiDto>(() => _http.PostAsJsonAsync(Hesaplar, dto, ct));
+            => GonderAsync<BankaHesabiDto>(() => _http.PostAsJsonAsync(Adres(Hesaplar), dto, ct));
 
         public Task<(BankaHesabiDto? Veri, string? Hata)> UpdateHesapAsync(int id, BankaHesabiYazDto dto, CancellationToken ct = default)
-            => GonderAsync<BankaHesabiDto>(() => _http.PutAsJsonAsync($"{Hesaplar}/{id}", dto, ct));
+            => GonderAsync<BankaHesabiDto>(() => _http.PutAsJsonAsync(Adres($"{Hesaplar}/{id}"), dto, ct));
 
         public async Task<string?> DeleteHesapAsync(int id, CancellationToken ct = default)
         {
-            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync($"{Hesaplar}/{id}", ct));
+            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync(Adres($"{Hesaplar}/{id}"), ct));
             return hata;
         }
 
@@ -93,20 +138,20 @@ namespace WebApp.Application.Services
                 dosya.Headers.ContentType = new MediaTypeHeaderValue(XlsxTuru);
                 form.Add(dosya, "file", dosyaAdi);
 
-                return _http.PostAsync($"{Hesaplar}/ice-aktar", form, ct);
+                return _http.PostAsync(Adres($"{Hesaplar}/ice-aktar"), form, ct);
             });
 
         public Task<(string? DosyaAdi, byte[]? Icerik, string? Hata)> HesapSablonuAsync(CancellationToken ct = default)
-            => DosyaIndirAsync(() => _http.GetAsync($"{Hesaplar}/sablon", ct), "banka-hesaplari-sablon.xlsx",
+            => DosyaIndirAsync(() => _http.GetAsync(Adres($"{Hesaplar}/sablon"), ct), "banka-hesaplari-sablon.xlsx",
                                "Şablon indirilemedi.", ct);
 
         // ---- Ekstre ----
 
         public async Task<List<EkstreYuklemeDto>> GetYuklemelerAsync(CancellationToken ct = default)
-            => await GetOrNull<List<EkstreYuklemeDto>>(Ekstre, ct) ?? new();
+            => await GetOrNull<List<EkstreYuklemeDto>>(Adres(Ekstre), ct) ?? new();
 
         public Task<EkstreYuklemeDto?> GetYuklemeAsync(int id, CancellationToken ct = default)
-            => GetOrNull<EkstreYuklemeDto>($"{Ekstre}/{id}", ct);
+            => GetOrNull<EkstreYuklemeDto>(Adres($"{Ekstre}/{id}"), ct);
 
         public Task<(EkstreYuklemeDto? Veri, string? Hata)> YukleAsync(int bankaHesabiId, Stream icerik, string dosyaAdi,
                                                                       CancellationToken ct = default)
@@ -121,13 +166,13 @@ namespace WebApp.Application.Services
                 dosya.Headers.ContentType = new MediaTypeHeaderValue(XlsxTuru);
                 form.Add(dosya, "file", dosyaAdi);
 
-                return _http.PostAsync($"{Ekstre}/yukle", form, ct);
+                return _http.PostAsync(Adres($"{Ekstre}/yukle"), form, ct);
             });
 
         public async Task<List<EkstreSatirDto>> GetSatirlarAsync(int ekstreId, SatirDurum? durum = null, CancellationToken ct = default)
         {
-            var url = $"{Ekstre}/{ekstreId}/satirlar";
-            if (durum is SatirDurum d) url += $"?durum={(byte)d}";
+            var url = Adres($"{Ekstre}/{ekstreId}/satirlar",
+                            durum is SatirDurum d ? $"durum={(byte)d}" : string.Empty);
 
             return await GetOrNull<List<EkstreSatirDto>>(url, ct) ?? new();
         }
@@ -135,15 +180,15 @@ namespace WebApp.Application.Services
         public Task<(EkstreSatirDto? Veri, string? Hata)> OnaylaAsync(int satirId, string hesapKodu,
                                                                       bool kisiYonlendir = false, CancellationToken ct = default)
             => GonderAsync<EkstreSatirDto>(() =>
-                _http.PutAsJsonAsync($"{Ekstre}/satir/{satirId}/onayla",
+                _http.PutAsJsonAsync(Adres($"{Ekstre}/satir/{satirId}/onayla"),
                                      new SatirOnaylaDto { HesapKodu = hesapKodu, KisiYonlendir = kisiYonlendir }, ct));
 
         public Task<(EkstreSatirDto? Veri, string? Hata)> DigerBankadaAsync(int satirId, CancellationToken ct = default)
             => GonderAsync<EkstreSatirDto>(() =>
-                _http.PutAsync($"{Ekstre}/satir/{satirId}/diger-bankada", content: null, ct));
+                _http.PutAsync(Adres($"{Ekstre}/satir/{satirId}/diger-bankada"), content: null, ct));
 
         public Task<(DisaAktarimSonucDto? Veri, string? Hata)> DisaAktarAsync(int ekstreId, CancellationToken ct = default)
-            => GonderAsync<DisaAktarimSonucDto>(() => _http.PostAsync($"{Ekstre}/{ekstreId}/disa-aktar", content: null, ct));
+            => GonderAsync<DisaAktarimSonucDto>(() => _http.PostAsync(Adres($"{Ekstre}/{ekstreId}/disa-aktar"), content: null, ct));
 
         /// <summary>
         /// Düzeltilmiş ekstre dosyası. JSON değil ikili içerik döner; hata gövdesi yine
@@ -151,7 +196,7 @@ namespace WebApp.Application.Services
         /// </summary>
         public Task<(string? DosyaAdi, byte[]? Icerik, string? Hata)> DuzeltilmisEkstreAsync(
             int ekstreId, CancellationToken ct = default)
-            => DosyaIndirAsync(() => _http.PostAsync($"{Ekstre}/{ekstreId}/duzeltilmis-ekstre", content: null, ct),
+            => DosyaIndirAsync(() => _http.PostAsync(Adres($"{Ekstre}/{ekstreId}/duzeltilmis-ekstre"), content: null, ct),
                                $"ekstre-{ekstreId}-duzeltilmis.xlsx", "Düzeltilmiş ekstre üretilemedi.", ct);
 
         /// <summary>
@@ -160,12 +205,12 @@ namespace WebApp.Application.Services
         /// </summary>
         public Task<(string? DosyaAdi, byte[]? Icerik, string? Hata)> AnalizDokumuAsync(
             int ekstreId, CancellationToken ct = default)
-            => DosyaIndirAsync(() => _http.PostAsync($"{Ekstre}/{ekstreId}/analiz-dokumu", content: null, ct),
+            => DosyaIndirAsync(() => _http.PostAsync(Adres($"{Ekstre}/{ekstreId}/analiz-dokumu"), content: null, ct),
                                $"ekstre-{ekstreId}-analiz.xlsx", "Analiz dökümü üretilemedi.", ct);
 
         public async Task<string?> SilAsync(int ekstreId, CancellationToken ct = default)
         {
-            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync($"{Ekstre}/{ekstreId}", ct));
+            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync(Adres($"{Ekstre}/{ekstreId}"), ct));
             return hata;
         }
 
@@ -178,14 +223,14 @@ namespace WebApp.Application.Services
             if (!string.IsNullOrWhiteSpace(q)) parametreler.Add($"q={Uri.EscapeDataString(q)}");
             if (!string.IsNullOrWhiteSpace(anaGrup)) parametreler.Add($"anaGrup={Uri.EscapeDataString(anaGrup)}");
 
-            return await GetOrNull<List<HesapPlaniKaydiDto>>($"{HesapPlani}?{string.Join("&", parametreler)}", ct) ?? new();
+            return await GetOrNull<List<HesapPlaniKaydiDto>>(Adres(HesapPlani, parametreler.ToArray()), ct) ?? new();
         }
 
         public async Task<int> HesapPlaniSayisiAsync(CancellationToken ct = default)
-            => await GetOrNull<int?>($"{HesapPlani}/sayi", ct) ?? 0;
+            => await GetOrNull<int?>(Adres($"{HesapPlani}/sayi"), ct) ?? 0;
 
         public async Task<HesapPlaniOzetDto> HesapPlaniOzetAsync(CancellationToken ct = default)
-            => await GetOrNull<HesapPlaniOzetDto>($"{HesapPlani}/ozet", ct) ?? new();
+            => await GetOrNull<HesapPlaniOzetDto>(Adres($"{HesapPlani}/ozet"), ct) ?? new();
 
         public Task<(HesapPlaniIceAktarimSonucDto? Veri, string? Hata)> HesapPlaniIceAktarAsync(
             Stream icerik, string dosyaAdi, CancellationToken ct = default)
@@ -196,7 +241,7 @@ namespace WebApp.Application.Services
                 dosya.Headers.ContentType = new MediaTypeHeaderValue(XlsxTuru);
                 form.Add(dosya, "file", dosyaAdi);
 
-                return _http.PostAsync($"{HesapPlani}/ice-aktar", form, ct);
+                return _http.PostAsync(Adres($"{HesapPlani}/ice-aktar"), form, ct);
             });
 
         // ---- Öğrenilen eşleşmeler ----
@@ -204,76 +249,76 @@ namespace WebApp.Application.Services
         public async Task<List<HesapEslesmesiDto>> EslesmeleriAraAsync(string? q, int enFazla = 100,
                                                                       CancellationToken ct = default)
         {
-            var url = $"{Eslesmeler}?enFazla={enFazla}";
-            if (!string.IsNullOrWhiteSpace(q)) url += $"&q={Uri.EscapeDataString(q)}";
+            var parametreler = new List<string> { $"enFazla={enFazla}" };
+            if (!string.IsNullOrWhiteSpace(q)) parametreler.Add($"q={Uri.EscapeDataString(q)}");
 
-            return await GetOrNull<List<HesapEslesmesiDto>>(url, ct) ?? new();
+            return await GetOrNull<List<HesapEslesmesiDto>>(Adres(Eslesmeler, parametreler.ToArray()), ct) ?? new();
         }
 
         public Task<(HesapEslesmesiDto? Veri, string? Hata)> EslesmeGuncelleAsync(int id, HesapEslesmesiYazDto dto,
                                                                                  CancellationToken ct = default)
-            => GonderAsync<HesapEslesmesiDto>(() => _http.PutAsJsonAsync($"{Eslesmeler}/{id}", dto, ct));
+            => GonderAsync<HesapEslesmesiDto>(() => _http.PutAsJsonAsync(Adres($"{Eslesmeler}/{id}"), dto, ct));
 
         public async Task<string?> EslesmeSilAsync(int id, CancellationToken ct = default)
         {
-            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync($"{Eslesmeler}/{id}", ct));
+            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync(Adres($"{Eslesmeler}/{id}"), ct));
             return hata;
         }
 
         // ---- Vergi kodları ----
 
         public async Task<List<VergiKoduEslemesiDto>> VergiKodlariAsync(CancellationToken ct = default)
-            => await GetOrNull<List<VergiKoduEslemesiDto>>(VergiKodlari, ct) ?? new();
+            => await GetOrNull<List<VergiKoduEslemesiDto>>(Adres(VergiKodlari), ct) ?? new();
 
         public Task<(VergiKoduEslemesiDto? Veri, string? Hata)> VergiKoduEkleAsync(VergiKoduEslemesiYazDto dto,
                                                                                   CancellationToken ct = default)
-            => GonderAsync<VergiKoduEslemesiDto>(() => _http.PostAsJsonAsync(VergiKodlari, dto, ct));
+            => GonderAsync<VergiKoduEslemesiDto>(() => _http.PostAsJsonAsync(Adres(VergiKodlari), dto, ct));
 
         public Task<(VergiKoduEslemesiDto? Veri, string? Hata)> VergiKoduGuncelleAsync(int id, VergiKoduEslemesiYazDto dto,
                                                                                       CancellationToken ct = default)
-            => GonderAsync<VergiKoduEslemesiDto>(() => _http.PutAsJsonAsync($"{VergiKodlari}/{id}", dto, ct));
+            => GonderAsync<VergiKoduEslemesiDto>(() => _http.PutAsJsonAsync(Adres($"{VergiKodlari}/{id}"), dto, ct));
 
         public async Task<string?> VergiKoduSilAsync(int id, CancellationToken ct = default)
         {
-            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync($"{VergiKodlari}/{id}", ct));
+            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync(Adres($"{VergiKodlari}/{id}"), ct));
             return hata;
         }
 
         // ---- Kişi yönlendirmeleri ----
 
         public async Task<List<KisiYonlendirmeDto>> KisiYonlendirmeleriAsync(CancellationToken ct = default)
-            => await GetOrNull<List<KisiYonlendirmeDto>>(KisiYonlendirmeleri, ct) ?? new();
+            => await GetOrNull<List<KisiYonlendirmeDto>>(Adres(KisiYonlendirmeleri), ct) ?? new();
 
         public Task<(KisiYonlendirmeDto? Veri, string? Hata)> KisiYonlendirmeEkleAsync(KisiYonlendirmeYazDto dto,
                                                                                        CancellationToken ct = default)
-            => GonderAsync<KisiYonlendirmeDto>(() => _http.PostAsJsonAsync(KisiYonlendirmeleri, dto, ct));
+            => GonderAsync<KisiYonlendirmeDto>(() => _http.PostAsJsonAsync(Adres(KisiYonlendirmeleri), dto, ct));
 
         public Task<(KisiYonlendirmeDto? Veri, string? Hata)> KisiYonlendirmeGuncelleAsync(int id, KisiYonlendirmeYazDto dto,
                                                                                            CancellationToken ct = default)
-            => GonderAsync<KisiYonlendirmeDto>(() => _http.PutAsJsonAsync($"{KisiYonlendirmeleri}/{id}", dto, ct));
+            => GonderAsync<KisiYonlendirmeDto>(() => _http.PutAsJsonAsync(Adres($"{KisiYonlendirmeleri}/{id}"), dto, ct));
 
         public async Task<string?> KisiYonlendirmeSilAsync(int id, CancellationToken ct = default)
         {
-            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync($"{KisiYonlendirmeleri}/{id}", ct));
+            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync(Adres($"{KisiYonlendirmeleri}/{id}"), ct));
             return hata;
         }
 
         // ---- Sabit kurallar ----
 
         public async Task<List<SabitKuralDto>> SabitKurallarAsync(CancellationToken ct = default)
-            => await GetOrNull<List<SabitKuralDto>>(SabitKurallar, ct) ?? new();
+            => await GetOrNull<List<SabitKuralDto>>(Adres(SabitKurallar), ct) ?? new();
 
         public Task<(SabitKuralDto? Veri, string? Hata)> SabitKuralEkleAsync(SabitKuralYazDto dto,
                                                                             CancellationToken ct = default)
-            => GonderAsync<SabitKuralDto>(() => _http.PostAsJsonAsync(SabitKurallar, dto, ct));
+            => GonderAsync<SabitKuralDto>(() => _http.PostAsJsonAsync(Adres(SabitKurallar), dto, ct));
 
         public Task<(SabitKuralDto? Veri, string? Hata)> SabitKuralGuncelleAsync(int id, SabitKuralYazDto dto,
                                                                                 CancellationToken ct = default)
-            => GonderAsync<SabitKuralDto>(() => _http.PutAsJsonAsync($"{SabitKurallar}/{id}", dto, ct));
+            => GonderAsync<SabitKuralDto>(() => _http.PutAsJsonAsync(Adres($"{SabitKurallar}/{id}"), dto, ct));
 
         public async Task<string?> SabitKuralSilAsync(int id, CancellationToken ct = default)
         {
-            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync($"{SabitKurallar}/{id}", ct));
+            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync(Adres($"{SabitKurallar}/{id}"), ct));
             return hata;
         }
 

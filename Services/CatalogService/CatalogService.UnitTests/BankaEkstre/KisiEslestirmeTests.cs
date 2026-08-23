@@ -1,4 +1,4 @@
-﻿using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Services;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
@@ -30,7 +30,8 @@ namespace CatalogService.UnitTests.BankaEkstre
         {
             var secici = new EkstreParserSecici(new IEkstreParser[] { new VakifbankVadesizParser() });
             return new EkstreService(db, secici, new UnvanCikarici(), new AciklamaUretici(),
-                                     new HesapEslestirici(), new HesapEslesmeService(db), new SabitKullanici());
+                                     new HesapEslestirici(), new HesapEslesmeService(db, BankaEkstreTestOrtami.Kapsam()),
+                                     new SabitKullanici(), BankaEkstreTestOrtami.Kapsam());
         }
 
         /// <summary>
@@ -76,6 +77,7 @@ namespace CatalogService.UnitTests.BankaEkstre
 
         private static KisiYonlendirme Yonlendirme(string isim, YonlendirmeYonu yon, string kod, string? ad = null) => new()
         {
+            FirmaId = BankaEkstreTestOrtami.FirmaId,
             Isim = isim,
             IsimCekirdegi = Normalizasyon.Cekirdek(isim),
             Yon = yon,
@@ -355,7 +357,7 @@ namespace CatalogService.UnitTests.BankaEkstre
         public async Task Kisi14_Gecersiz_hesap_kodu_kaydedilmez()
         {
             using var db = await PlanliContextAsync();
-            var servis = new KisiYonlendirmeService(db);
+            var servis = new KisiYonlendirmeService(db, BankaEkstreTestOrtami.Kapsam());
 
             var hata = await Assert.ThrowsAsync<BankaEkstreKuralException>(
                 () => servis.CreateAsync(Yaz("Abdulkadir Sayıcı", "999 99")));
@@ -368,7 +370,7 @@ namespace CatalogService.UnitTests.BankaEkstre
         public async Task Kisi15_Kayit_normalize_cekirdek_ve_hesap_adiyla_yazilir()
         {
             using var db = await PlanliContextAsync();
-            var servis = new KisiYonlendirmeService(db);
+            var servis = new KisiYonlendirmeService(db, BankaEkstreTestOrtami.Kapsam());
 
             var dto = await servis.CreateAsync(Yaz("Abdulkadir Sayıcı", "331 02"));
 
@@ -380,7 +382,7 @@ namespace CatalogService.UnitTests.BankaEkstre
         public async Task Kisi16_Ayni_isim_ve_yon_icin_ikinci_kayit_reddedilir()
         {
             using var db = await PlanliContextAsync();
-            var servis = new KisiYonlendirmeService(db);
+            var servis = new KisiYonlendirmeService(db, BankaEkstreTestOrtami.Kapsam());
 
             await servis.CreateAsync(Yaz("Abdulkadir Sayıcı", "331 02"));
 

@@ -15,11 +15,14 @@ namespace CatalogService.UnitTests.BankaEkstre
     {
         private const string GelenAciklama = "0000123 sorgu numaralı DAĞI GİYİM SANAYİ A.Ş. tarafından gönderilmiştir";
 
-        private static EkstreService Servis(CatalogContext db)
+        private static EkstreService Servis(CatalogContext db, int firmaId = BankaEkstreTestOrtami.FirmaId)
         {
             var secici = new EkstreParserSecici(new IEkstreParser[] { new VakifbankVadesizParser() });
+            var kapsam = BankaEkstreTestOrtami.Kapsam(firmaId);
+
             return new EkstreService(db, secici, new UnvanCikarici(), new AciklamaUretici(),
-                                     new HesapEslestirici(), new HesapEslesmeService(db), new SabitKullanici());
+                                     new HesapEslestirici(), new HesapEslesmeService(db, kapsam),
+                                     new SabitKullanici(), kapsam);
         }
 
         /// <summary>Bir banka hesabı, yapılandırma satırları ve iki cari içeren hazır context.</summary>
@@ -37,6 +40,7 @@ namespace CatalogService.UnitTests.BankaEkstre
 
             var hesap = new BankaHesabi
             {
+                FirmaId = BankaEkstreTestOrtami.FirmaId,
                 BankaAdi = "Vakıfbank",
                 OrkaHesapKodu = "102 1 1 01",
                 ParserTipi = VakifbankVadesizParser.Tip,
@@ -48,26 +52,41 @@ namespace CatalogService.UnitTests.BankaEkstre
             return (db, hesap.Id);
         }
 
-        /// <summary>Tenant izolasyon testi için: verilen context'e kendi planı ve hesabı kurulur.</summary>
-        private static async Task HazirlaTenantAsync(CatalogContext db, string cariAdi, string cariKodu)
+        /// <summary>
+        /// Firma izolasyon testi için: aynı veritabanına, verilen firmanın kendi planı ve
+        /// banka hesabı kurulur. Yapılandırma tabloları (şablon/desen) GLOBAL olduğu için
+        /// yalnız ilk çağrıda eklenir; iki kez eklenirse aynı desen iki kez denenirdi.
+        /// </summary>
+        private static async Task<int> HazirlaFirmaAsync(CatalogContext db, int firmaId,
+                                                         string cariAdi, string cariKodu,
+                                                         bool yapilandirmaEkle)
         {
-            db.EkstreAciklamaSablonlari.AddRange(BankaEkstreTestOrtami.Sablonlar());
-            db.EkstreUnvanDesenleri.AddRange(BankaEkstreTestOrtami.Desenler());
-            db.EkstreHesapPlani.Add(Plan(cariKodu, cariAdi));
-
-            db.EkstreBankaHesaplari.Add(new BankaHesabi
+            if (yapilandirmaEkle)
             {
+                db.EkstreAciklamaSablonlari.AddRange(BankaEkstreTestOrtami.Sablonlar());
+                db.EkstreUnvanDesenleri.AddRange(BankaEkstreTestOrtami.Desenler());
+            }
+
+            db.EkstreHesapPlani.Add(Plan(cariKodu, cariAdi, firmaId));
+
+            var hesap = new BankaHesabi
+            {
+                FirmaId = firmaId,
                 BankaAdi = "Vakıfbank",
                 OrkaHesapKodu = "102 1 1 01",
                 ParserTipi = VakifbankVadesizParser.Tip,
                 Aktif = true
-            });
+            };
+            db.EkstreBankaHesaplari.Add(hesap);
 
             await db.SaveChangesAsync();
+            return hesap.Id;
         }
 
-        private static HesapPlaniKaydi Plan(string kod, string ad) => new()
+        private static HesapPlaniKaydi Plan(string kod, string ad,
+                                            int firmaId = BankaEkstreTestOrtami.FirmaId) => new()
         {
+            FirmaId = firmaId,
             Kod = kod,
             Ad = ad,
             NormalizeAd = Normalizasyon.UnvanNormalize(ad),
@@ -85,6 +104,7 @@ namespace CatalogService.UnitTests.BankaEkstre
             // Vadeli/süpürme hesabı: kayıt defterinde duruyor ama ekstresi yüklenmiyor.
             var vadeli = new BankaHesabi
             {
+                FirmaId = BankaEkstreTestOrtami.FirmaId,
                 BankaAdi = "Vakıfbank",
                 HesapAdi = "Vakıfbank, Vadeli Tl - Otomatik Süpürme Hesabı",
                 OrkaHesapKodu = "102 1 1 04",
@@ -298,51 +318,55 @@ namespace CatalogService.UnitTests.BankaEkstre
             Assert.Equal(SatirDurum.Otomatik, ikinciSatir.Durum);
         }
 
+        /// <summary>
+        /// İKİ FİRMA AYNI VERİTABANINI PAYLAŞIR VE BİRBİRİNİ GÖRMEZ.
+        ///
+        /// Test artık tek context kullanıyor: kapsam global query filter'dan değil,
+        /// servise verilen firma kimliğinden geliyor (bkz. KARARLAR §69). Bu yüzden
+        /// doğrulamalar da açıkça FirmaId ile süzülüyor — "context ne görüyorsa odur"
+        /// varsayımı, gizli filtreyi sınamak demekti; artık gizli filtre yok.
+        /// </summary>
         [Fact]
         public async Task Iki_firma_birbirinin_hesap_planini_ve_eslesmelerini_gormez()
         {
-            // Aynı fiziksel veritabanı, iki farklı tenant erişimcisi.
-            var veritabani = $"ekstre-tenant-{Guid.NewGuid()}";
+            const int aday = 201;
+            const int smmm = 106;
 
-            using var aday = BankaEkstreTestOrtami.YeniContext(veritabani, "201");
-            using var smmm = BankaEkstreTestOrtami.YeniContext(veritabani, "106");
+            using var db = BankaEkstreTestOrtami.YeniContext();
 
-            await HazirlaTenantAsync(aday, "DAĞI GİYİM SANAYİ", "120 D22");
-            await HazirlaTenantAsync(smmm, "DAĞI GİYİM SANAYİ", "120 A07");
-
-            var adayHesap = aday.EkstreBankaHesaplari.Single();
-            var smmmHesap = smmm.EkstreBankaHesaplari.Single();
+            var adayHesapId = await HazirlaFirmaAsync(db, aday, "DAĞI GİYİM SANAYİ", "120 D22", yapilandirmaEkle: true);
+            var smmmHesapId = await HazirlaFirmaAsync(db, smmm, "DAĞI GİYİM SANAYİ", "120 A07", yapilandirmaEkle: false);
 
             using var adayDosya = BankaEkstreTestOrtami.BasliklıEkstre(
                 new object[] { "15.01.2026", "Gelen EFT Otomatik Yatan", 1000m, "", "", "A", GelenAciklama });
             using var smmmDosya = BankaEkstreTestOrtami.BasliklıEkstre(
                 new object[] { "15.01.2026", "Gelen EFT Otomatik Yatan", 1000m, "", "", "A", GelenAciklama });
 
-            var adayYukleme = await Servis(aday).YukleAsync(adayHesap.Id, adayDosya, "aday.xlsx");
-            var smmmYukleme = await Servis(smmm).YukleAsync(smmmHesap.Id, smmmDosya, "smmm.xlsx");
+            var adayYukleme = await Servis(db, aday).YukleAsync(adayHesapId, adayDosya, "aday.xlsx");
+            var smmmYukleme = await Servis(db, smmm).YukleAsync(smmmHesapId, smmmDosya, "smmm.xlsx");
 
-            var adaySatir = (await Servis(aday).GetSatirlarAsync(adayYukleme.Id, null))!.Single();
-            var smmmSatir = (await Servis(smmm).GetSatirlarAsync(smmmYukleme.Id, null))!.Single();
+            var adaySatir = (await Servis(db, aday).GetSatirlarAsync(adayYukleme.Id, null))!.Single();
+            var smmmSatir = (await Servis(db, smmm).GetSatirlarAsync(smmmYukleme.Id, null))!.Single();
 
             // Her firma kendi hesap planını görüyor: aynı unvan farklı koda eşleşiyor.
             Assert.Equal("120 D22", adaySatir.OnerilenHesapKodu);
             Assert.Equal("120 A07", smmmSatir.OnerilenHesapKodu);
 
-            await Servis(aday).OnaylaAsync(adaySatir.Id, "120 D22");
-            await Servis(smmm).OnaylaAsync(smmmSatir.Id, "120 A07");
+            await Servis(db, aday).OnaylaAsync(adaySatir.Id, "120 D22");
+            await Servis(db, smmm).OnaylaAsync(smmmSatir.Id, "120 A07");
 
-            // Eşleşmeler firma bazlı: her firma yalnız kendi kaydını görür.
-            Assert.Equal("120 D22", aday.EkstreHesapEslesmeleri.Single().HesapKodu);
-            Assert.Equal("120 A07", smmm.EkstreHesapEslesmeleri.Single().HesapKodu);
+            // Eşleşmeler firma bazlı: her firmanın tek ve kendi kaydı var.
+            Assert.Equal("120 D22", db.EkstreHesapEslesmeleri.Single(e => e.FirmaId == aday).HesapKodu);
+            Assert.Equal("120 A07", db.EkstreHesapEslesmeleri.Single(e => e.FirmaId == smmm).HesapKodu);
 
             // Yüklemeler ve hesap planları da karışmıyor.
-            Assert.Single(aday.EkstreYuklemeler.ToList());
-            Assert.Single(smmm.EkstreYuklemeler.ToList());
-            Assert.Equal("120 D22", aday.EkstreHesapPlani.Single().Kod);
-            Assert.Equal("120 A07", smmm.EkstreHesapPlani.Single().Kod);
+            Assert.Single(db.EkstreYuklemeler.Where(y => y.FirmaId == aday).ToList());
+            Assert.Single(db.EkstreYuklemeler.Where(y => y.FirmaId == smmm).ToList());
+            Assert.Equal("120 D22", db.EkstreHesapPlani.Single(h => h.FirmaId == aday).Kod);
+            Assert.Equal("120 A07", db.EkstreHesapPlani.Single(h => h.FirmaId == smmm).Kod);
 
             // Kimlik kaydı ise global: aynı unvan tek kayıt, iki firma paylaşıyor.
-            Assert.Single(aday.EkstreKimlikKayitlari.ToList());
+            Assert.Single(db.EkstreKimlikKayitlari.ToList());
         }
 
         [Fact]

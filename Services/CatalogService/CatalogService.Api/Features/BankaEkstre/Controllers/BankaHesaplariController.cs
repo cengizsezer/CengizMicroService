@@ -1,6 +1,7 @@
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Services;
 using CatalogService.Api.Infrastructure.Exceptions;
+using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,6 +14,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
     [ApiController]
     [Route("api/catalog/banka-ekstre/banka-hesaplari")]
     [Authorize]
+    [ServiceFilter(typeof(BankaFirmaFiltresi))]
     public class BankaHesaplariController : ControllerBase
     {
         private const long EnFazlaDosyaBayt = 20 * 1024 * 1024;

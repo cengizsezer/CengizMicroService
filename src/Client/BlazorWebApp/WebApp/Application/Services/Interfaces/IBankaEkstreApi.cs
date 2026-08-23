@@ -1,4 +1,4 @@
-﻿using WebApp.Shared.Dto.BankaEkstre;
+using WebApp.Shared.Dto.BankaEkstre;
 
 namespace WebApp.Application.Services.Interfaces
 {
@@ -6,11 +6,27 @@ namespace WebApp.Application.Services.Interfaces
     public interface IBankaEkstreApi
     {
         /// <summary>
-        /// Firma seçim ekranının sayaçları. Tenant başına bir satır döner; istek seçili
-        /// firmanın token'ıyla gitse de <b>tüm</b> istenen firmaların sayıları gelir
-        /// (ekran firmaya girilmeden önce açılıyor).
+        /// Firma seçim ekranının sayaçları. <c>catalog.Firmalar.Id</c> başına bir satır
+        /// döner. Kapsamsız tek uç nokta: ekran firmaya <b>girilmeden önce</b> açılıyor
+        /// ve doğası gereği birçok firmayı soruyor.
         /// </summary>
-        Task<List<FirmaBankaOzetiDto>> FirmaOzetleriAsync(IEnumerable<string> tenantlar, CancellationToken ct = default);
+        Task<List<FirmaBankaOzetiDto>> FirmaOzetleriAsync(IEnumerable<int> firmaIdler, CancellationToken ct = default);
+
+        // ---- Veri temizliği (Tanımlar) ----
+
+        /// <summary>Seçili firmada silinecek kayıt sayıları; onay diyaloğu bunu gösterir.</summary>
+        Task<BankaTemizlikOzetiDto> TemizlikOzetiAsync(CancellationToken ct = default);
+
+        /// <summary>Seçili firmanın banka otomasyon verisini siler.</summary>
+        Task<(BankaTemizlikOzetiDto? Veri, string? Hata)> TemizleAsync(CancellationToken ct = default);
+
+        /// <summary>
+        /// Hiçbir firmaya bağlı olmayan eski kayıtların sayısı (tenant düzeninden kalanlar).
+        /// Hiçbir firmanın ekranında görünmedikleri için başka türlü silinemezler.
+        /// </summary>
+        Task<BankaTemizlikOzetiDto> SahipsizOzetiAsync(CancellationToken ct = default);
+
+        Task<(BankaTemizlikOzetiDto? Veri, string? Hata)> SahipsizTemizleAsync(CancellationToken ct = default);
 
         // Banka hesapları
         Task<List<BankaHesabiDto>> GetHesaplarAsync(bool pasifDahil = false, CancellationToken ct = default);

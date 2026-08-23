@@ -1,4 +1,5 @@
 using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
@@ -30,12 +31,21 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
     public class KisiYonlendirmeService : IKisiYonlendirmeService
     {
         private readonly CatalogContext _db;
+        private readonly IBankaFirmaKapsami _kapsam;
 
-        public KisiYonlendirmeService(CatalogContext db) => _db = db;
+        public KisiYonlendirmeService(CatalogContext db, IBankaFirmaKapsami kapsam)
+        {
+            _db = db;
+            _kapsam = kapsam;
+        }
+
+        /// <summary>Seçili firmanın yönlendirmeleri; kapsam her sorguda görünür yazılır.</summary>
+        private IQueryable<KisiYonlendirme> Kayitlar
+            => _db.EkstreKisiYonlendirmeleri.Where(k => k.FirmaId == _kapsam.FirmaId);
 
         public async Task<List<KisiYonlendirmeDto>> GetHepsiAsync(CancellationToken ct = default)
         {
-            var kayitlar = await _db.EkstreKisiYonlendirmeleri.AsNoTracking()
+            var kayitlar = await Kayitlar.AsNoTracking()
                 .OrderBy(k => k.IsimCekirdegi).ThenBy(k => k.Yon)
                 .ToListAsync(ct);
 
@@ -45,10 +55,10 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         public async Task<KisiYonlendirmeDto> CreateAsync(KisiYonlendirmeYazDto dto, CancellationToken ct = default)
         {
             var cekirdek = Dogrula(dto);
-            await YapilandirmaDogrulama.HesapKoduDogrulaAsync(_db, dto.HesapKodu, nameof(dto.HesapKodu), ct);
+            await YapilandirmaDogrulama.HesapKoduDogrulaAsync(_db, _kapsam.FirmaId, dto.HesapKodu, nameof(dto.HesapKodu), ct);
             await TekilligiDogrulaAsync(cekirdek, dto.Yon, null, ct);
 
-            var kayit = new KisiYonlendirme();
+            var kayit = new KisiYonlendirme { FirmaId = _kapsam.FirmaId };
             await UygulaAsync(kayit, dto, cekirdek, ct);
 
             _db.EkstreKisiYonlendirmeleri.Add(kayit);
@@ -60,10 +70,10 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         public async Task<KisiYonlendirmeDto?> UpdateAsync(int id, KisiYonlendirmeYazDto dto, CancellationToken ct = default)
         {
             var cekirdek = Dogrula(dto);
-            await YapilandirmaDogrulama.HesapKoduDogrulaAsync(_db, dto.HesapKodu, nameof(dto.HesapKodu), ct);
+            await YapilandirmaDogrulama.HesapKoduDogrulaAsync(_db, _kapsam.FirmaId, dto.HesapKodu, nameof(dto.HesapKodu), ct);
             await TekilligiDogrulaAsync(cekirdek, dto.Yon, id, ct);
 
-            var kayit = await _db.EkstreKisiYonlendirmeleri.FirstOrDefaultAsync(k => k.Id == id, ct);
+            var kayit = await Kayitlar.FirstOrDefaultAsync(k => k.Id == id, ct);
             if (kayit is null) return null;
 
             await UygulaAsync(kayit, dto, cekirdek, ct);
@@ -74,7 +84,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)
         {
-            var kayit = await _db.EkstreKisiYonlendirmeleri.FirstOrDefaultAsync(k => k.Id == id, ct);
+            var kayit = await Kayitlar.FirstOrDefaultAsync(k => k.Id == id, ct);
             if (kayit is null) return false;
 
             _db.EkstreKisiYonlendirmeleri.Remove(kayit);
@@ -104,7 +114,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         private async Task TekilligiDogrulaAsync(string cekirdek, YonlendirmeYonu yon, int? haricId, CancellationToken ct)
         {
-            var cakisma = await _db.EkstreKisiYonlendirmeleri
+            var cakisma = await Kayitlar
                 .AnyAsync(k => k.IsimCekirdegi == cekirdek && k.Yon == yon && (haricId == null || k.Id != haricId), ct);
 
             if (cakisma)
@@ -121,7 +131,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             kayit.Yon = dto.Yon;
             kayit.HesapKodu = kod;
             kayit.HesapAdi = await _db.EkstreHesapPlani.AsNoTracking()
-                .Where(h => h.Kod == kod).Select(h => h.Ad).FirstOrDefaultAsync(ct);
+                .Where(h => h.FirmaId == _kapsam.FirmaId && h.Kod == kod).Select(h => h.Ad).FirstOrDefaultAsync(ct);
             kayit.Aciklama = string.IsNullOrWhiteSpace(dto.Aciklama) ? null : Normalizasyon.Kirp(dto.Aciklama, 300);
             kayit.Aktif = dto.Aktif;
         }

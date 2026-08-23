@@ -1,4 +1,4 @@
-﻿using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Services;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
 using CatalogService.Api.Infrastructure.Context;
@@ -37,6 +37,7 @@ namespace CatalogService.UnitTests.BankaEkstre
 
         private static HesapPlaniKaydi Plan(string kod, string ad) => new()
         {
+            FirmaId = BankaEkstreTestOrtami.FirmaId,
             Kod = kod,
             Ad = ad,
             NormalizeAd = Normalizasyon.UnvanNormalize(ad),
@@ -108,6 +109,7 @@ namespace CatalogService.UnitTests.BankaEkstre
                 {
                     new HesapEslesmesi
                     {
+                        FirmaId = BankaEkstreTestOrtami.FirmaId,
                         AnahtarTipi = AnahtarTipi.UnvanCekirdek,
                         AnahtarCekirdek = "ISLEM:GONDERILEN HAVALE",
                         Yon = Yon.Cikan,
@@ -178,7 +180,8 @@ namespace CatalogService.UnitTests.BankaEkstre
         {
             var secici = new EkstreParserSecici(new IEkstreParser[] { new VakifbankVadesizParser() });
             return new EkstreService(db, secici, new UnvanCikarici(), new AciklamaUretici(),
-                                     new HesapEslestirici(), new HesapEslesmeService(db), new SabitKullanici());
+                                     new HesapEslestirici(), new HesapEslesmeService(db, BankaEkstreTestOrtami.Kapsam()),
+                                     new SabitKullanici(), BankaEkstreTestOrtami.Kapsam());
         }
 
         private static async Task<(CatalogContext Db, int HesapId)> HazirlaAsync()
@@ -196,6 +199,7 @@ namespace CatalogService.UnitTests.BankaEkstre
 
             var hesap = new BankaHesabi
             {
+                FirmaId = BankaEkstreTestOrtami.FirmaId,
                 BankaAdi = "Vakıfbank",
                 OrkaHesapKodu = "102 1 1 01",
                 ParserTipi = VakifbankVadesizParser.Tip,

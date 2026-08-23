@@ -13,6 +13,7 @@ namespace CatalogService.UnitTests.BankaEkstre
 
         private static HesapPlaniKaydi Plan(string kod, string ad) => new()
         {
+            FirmaId = BankaEkstreTestOrtami.FirmaId,
             Kod = kod,
             Ad = ad,
             NormalizeAd = Normalizasyon.UnvanNormalize(ad),
@@ -199,8 +200,10 @@ namespace CatalogService.UnitTests.BankaEkstre
             {
                 BankaHesaplari = new[]
                 {
-                    new BankaHesabi { Id = 1, BankaAdi = "Vakıfbank", OrkaHesapKodu = "102 1 1 01", Aktif = true },
-                    new BankaHesabi { Id = 2, BankaAdi = "Akbank", OrkaHesapKodu = "102 2 1 01", Aktif = true }
+                    new BankaHesabi {
+                        FirmaId = BankaEkstreTestOrtami.FirmaId, Id = 1, BankaAdi = "Vakıfbank", OrkaHesapKodu = "102 1 1 01", Aktif = true },
+                    new BankaHesabi {
+                        FirmaId = BankaEkstreTestOrtami.FirmaId, Id = 2, BankaAdi = "Akbank", OrkaHesapKodu = "102 2 1 01", Aktif = true }
                 },
                 IslenenBankaHesabiId = 1
             };
@@ -221,7 +224,8 @@ namespace CatalogService.UnitTests.BankaEkstre
             {
                 BankaHesaplari = new[]
                 {
-                    new BankaHesabi { Id = 1, BankaAdi = "Vakıfbank", OrkaHesapKodu = "102 1 1 01", Aktif = true }
+                    new BankaHesabi {
+                        FirmaId = BankaEkstreTestOrtami.FirmaId, Id = 1, BankaAdi = "Vakıfbank", OrkaHesapKodu = "102 1 1 01", Aktif = true }
                 },
                 IslenenBankaHesabiId = 1
             };
@@ -242,11 +246,13 @@ namespace CatalogService.UnitTests.BankaEkstre
             {
                 new BankaHesabi
                 {
+                    FirmaId = BankaEkstreTestOrtami.FirmaId,
                     Id = 1, BankaAdi = "Vakıfbank", HesapAdi = "Vakıfbank, Vadesiz Tl",
                     OrkaHesapKodu = "102 1 1 01", EslestirmeAnahtarlari = vadesizAnahtari, Aktif = true
                 },
                 new BankaHesabi
                 {
+                    FirmaId = BankaEkstreTestOrtami.FirmaId,
                     Id = 2, BankaAdi = "Vakıfbank", HesapAdi = "Vakıfbank, Vadeli Tl - Otomatik Süpürme Hesabı",
                     OrkaHesapKodu = "102 1 1 04", EslestirmeAnahtarlari = supurmeAnahtari, Aktif = true
                 }
@@ -296,8 +302,10 @@ namespace CatalogService.UnitTests.BankaEkstre
             {
                 BankaHesaplari = new[]
                 {
-                    new BankaHesabi { Id = 1, BankaAdi = "Fibabanka", OrkaHesapKodu = "102 1 9 01", Aktif = true },
-                    new BankaHesabi { Id = 2, BankaAdi = "Vakıfbank", OrkaHesapKodu = "102 1 1 01", Aktif = true }
+                    new BankaHesabi {
+                        FirmaId = BankaEkstreTestOrtami.FirmaId, Id = 1, BankaAdi = "Fibabanka", OrkaHesapKodu = "102 1 9 01", Aktif = true },
+                    new BankaHesabi {
+                        FirmaId = BankaEkstreTestOrtami.FirmaId, Id = 2, BankaAdi = "Vakıfbank", OrkaHesapKodu = "102 1 1 01", Aktif = true }
                 },
                 IslenenBankaHesabiId = 9
             };
@@ -345,7 +353,8 @@ namespace CatalogService.UnitTests.BankaEkstre
             {
                 BankaHesaplari = new[]
                 {
-                    new BankaHesabi { Id = 1, BankaAdi = "TEB", OrkaHesapKodu = "102 1 32 87", Aktif = true }
+                    new BankaHesabi {
+                        FirmaId = BankaEkstreTestOrtami.FirmaId, Id = 1, BankaAdi = "TEB", OrkaHesapKodu = "102 1 32 87", Aktif = true }
                 },
                 IslenenBankaHesabiId = 9
             };
@@ -364,8 +373,10 @@ namespace CatalogService.UnitTests.BankaEkstre
             {
                 BankaHesaplari = new[]
                 {
-                    new BankaHesabi { Id = 1, BankaAdi = "Vakıfbank", OrkaHesapKodu = "102 1 1 01", Aktif = true },
-                    new BankaHesabi { Id = 2, BankaAdi = "Vakıfbank", OrkaHesapKodu = string.Empty, Aktif = true }
+                    new BankaHesabi {
+                        FirmaId = BankaEkstreTestOrtami.FirmaId, Id = 1, BankaAdi = "Vakıfbank", OrkaHesapKodu = "102 1 1 01", Aktif = true },
+                    new BankaHesabi {
+                        FirmaId = BankaEkstreTestOrtami.FirmaId, Id = 2, BankaAdi = "Vakıfbank", OrkaHesapKodu = string.Empty, Aktif = true }
                 },
                 IslenenBankaHesabiId = 9
             };

@@ -22,7 +22,8 @@ namespace CatalogService.UnitTests.BankaEkstre
         {
             var secici = new EkstreParserSecici(new IEkstreParser[] { new VakifbankVadesizParser() });
             return new EkstreService(db, secici, new UnvanCikarici(), new AciklamaUretici(),
-                                     new HesapEslestirici(), new HesapEslesmeService(db), new SabitKullanici());
+                                     new HesapEslestirici(), new HesapEslesmeService(db, BankaEkstreTestOrtami.Kapsam()),
+                                     new SabitKullanici(), BankaEkstreTestOrtami.Kapsam());
         }
 
         /// <summary>Gerçek dosyayı yükler ve işlenmiş satırları döner.</summary>

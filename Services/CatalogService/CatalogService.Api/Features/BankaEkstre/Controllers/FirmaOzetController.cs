@@ -9,6 +9,10 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
     /// Banka Otomasyon firma seçim ekranını besleyen sayaçlar. Rota yine
     /// <c>api/catalog/*</c> altında; gateway'in <c>/catalog/{everything}</c> route'u
     /// değişmeden geçirir.
+    ///
+    /// Firma kapsamı filtresi (<c>BankaFirmaFiltresi</c>) burada <b>uygulanmaz</b>: ekran
+    /// firmaya girilmeden önce açılıyor ve doğası gereği birden çok firmayı soruyor.
+    /// Eskisinden farkı, bunun artık bir baypas değil sıradan bir sorgu olması.
     /// </summary>
     [ApiController]
     [Route("api/catalog/banka-ekstre/firmalar")]
@@ -20,13 +24,13 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
         public FirmaOzetController(IFirmaOzetService service) => _service = service;
 
         /// <summary>
-        /// <c>?tenantlar=201&amp;tenantlar=106</c>. İstemci listeyi login yanıtındaki kendi
-        /// firmalarından kurar; sunucu token'da tek tenant gördüğü için doğrulayamaz,
-        /// bu yüzden yalnız adet döner (bkz. <see cref="FirmaOzetService"/>).
+        /// <c>?firmaIdler=3&amp;firmaIdler=7</c> — <c>catalog.Firmalar.Id</c> listesi.
+        /// İstemci listeyi Raporlar'la aynı kaynaktan (<c>/catalog/firmalar</c>) kurar.
+        /// Yalnız adet döner, kayıt içeriği dönmez.
         /// </summary>
         [HttpGet("ozet")]
-        public async Task<ActionResult<List<FirmaBankaOzetiDto>>> Ozet([FromQuery] string[] tenantlar,
+        public async Task<ActionResult<List<FirmaBankaOzetiDto>>> Ozet([FromQuery] int[] firmaIdler,
                                                                       CancellationToken ct)
-            => Ok(await _service.OzetlerAsync(tenantlar ?? Array.Empty<string>(), ct));
+            => Ok(await _service.OzetlerAsync(firmaIdler ?? Array.Empty<int>(), ct));
     }
 }

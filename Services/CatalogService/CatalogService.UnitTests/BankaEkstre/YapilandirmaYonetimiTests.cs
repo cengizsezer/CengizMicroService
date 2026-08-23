@@ -1,4 +1,4 @@
-﻿using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Services;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
@@ -29,6 +29,7 @@ namespace CatalogService.UnitTests.BankaEkstre
 
         private static HesapPlaniKaydi Plan(string kod, string ad) => new()
         {
+            FirmaId = BankaEkstreTestOrtami.FirmaId,
             Kod = kod,
             Ad = ad,
             NormalizeAd = Normalizasyon.UnvanNormalize(ad),
@@ -62,7 +63,8 @@ namespace CatalogService.UnitTests.BankaEkstre
 
         private static EkstreService Servis(CatalogContext db)
             => new(db, Secici(), new UnvanCikarici(), new AciklamaUretici(),
-                   new HesapEslestirici(), new HesapEslesmeService(db), new SabitKullanici());
+                   new HesapEslestirici(), new HesapEslesmeService(db, BankaEkstreTestOrtami.Kapsam()),
+                   new SabitKullanici(), BankaEkstreTestOrtami.Kapsam());
 
         /// <summary>
         /// Tek satırlık ekstre işler ve satırın önerilen hesap kodunu döndürür. Kural
@@ -76,6 +78,7 @@ namespace CatalogService.UnitTests.BankaEkstre
 
             var hesap = new BankaHesabi
             {
+                FirmaId = BankaEkstreTestOrtami.FirmaId,
                 BankaAdi = "Vakıfbank",
                 OrkaHesapKodu = "102 1 1 01",
                 ParserTipi = VakifbankVadesizParser.Tip,
@@ -132,7 +135,7 @@ namespace CatalogService.UnitTests.BankaEkstre
         public async Task Plan_disi_hesap_kodu_kaydedilmez()
         {
             using var db = await PlanliContextAsync();
-            var servis = new SabitKuralService(db, Secici());
+            var servis = new SabitKuralService(db, Secici(), BankaEkstreTestOrtami.Kapsam());
 
             var hata = await Assert.ThrowsAsync<BankaEkstreKuralException>(
                 () => servis.CreateAsync(Kural("MKK Masrafı", "770 99 999")));
@@ -145,7 +148,7 @@ namespace CatalogService.UnitTests.BankaEkstre
         {
             using var db = await PlanliContextAsync();
 
-            var kayit = await new SabitKuralService(db, Secici()).CreateAsync(Kural("MKK Masrafı"));
+            var kayit = await new SabitKuralService(db, Secici(), BankaEkstreTestOrtami.Kapsam()).CreateAsync(Kural("MKK Masrafı"));
 
             Assert.Equal("Banka Komisyonu", kayit.HesapAdi);
         }
@@ -155,7 +158,7 @@ namespace CatalogService.UnitTests.BankaEkstre
         {
             using var db = await PlanliContextAsync();
 
-            var kayit = await new SabitKuralService(db, Secici()).CreateAsync(Kural("MKK Masrafı"));
+            var kayit = await new SabitKuralService(db, Secici(), BankaEkstreTestOrtami.Kapsam()).CreateAsync(Kural("MKK Masrafı"));
 
             Assert.Equal(string.Empty, kayit.ParserTipi);
             Assert.Equal("Tüm bankalar", kayit.ParserAdi);
@@ -165,7 +168,7 @@ namespace CatalogService.UnitTests.BankaEkstre
         public async Task Tanimsiz_ayristirici_kaydedilmez()
         {
             using var db = await PlanliContextAsync();
-            var servis = new SabitKuralService(db, Secici());
+            var servis = new SabitKuralService(db, Secici(), BankaEkstreTestOrtami.Kapsam());
 
             var dto = Kural("MKK Masrafı");
             dto.ParserTipi = "VAKIFBAK_VADESIZ";   // yazım hatası
@@ -179,7 +182,7 @@ namespace CatalogService.UnitTests.BankaEkstre
         public async Task Ayni_ayristirici_kapsam_ve_ifade_ikinci_kez_eklenemez()
         {
             using var db = await PlanliContextAsync();
-            var servis = new SabitKuralService(db, Secici());
+            var servis = new SabitKuralService(db, Secici(), BankaEkstreTestOrtami.Kapsam());
 
             await servis.CreateAsync(Kural("MKK Masrafı"));
 
@@ -193,7 +196,7 @@ namespace CatalogService.UnitTests.BankaEkstre
         public async Task Bozuk_regex_kurali_kaydedilmez()
         {
             using var db = await PlanliContextAsync();
-            var servis = new SabitKuralService(db, Secici());
+            var servis = new SabitKuralService(db, Secici(), BankaEkstreTestOrtami.Kapsam());
 
             var dto = Kural("(bitmeyen grup");
             dto.EslesmeTuru = EslesmeTuru.Regex;
@@ -209,7 +212,7 @@ namespace CatalogService.UnitTests.BankaEkstre
             // Kurulum sırası bozulmasın: plan gelmeden kural girilebilmeli.
             using var db = BankaEkstreTestOrtami.YeniContext();
 
-            var kayit = await new SabitKuralService(db, Secici()).CreateAsync(Kural("MKK Masrafı"));
+            var kayit = await new SabitKuralService(db, Secici(), BankaEkstreTestOrtami.Kapsam()).CreateAsync(Kural("MKK Masrafı"));
 
             Assert.Equal("770 03 005", kayit.HesapKodu);
         }

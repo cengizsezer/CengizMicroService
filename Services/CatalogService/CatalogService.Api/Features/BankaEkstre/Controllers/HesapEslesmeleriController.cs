@@ -1,5 +1,6 @@
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Services;
+using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,6 +13,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
     [ApiController]
     [Route("api/catalog/banka-ekstre/eslesmeler")]
     [Authorize]
+    [ServiceFilter(typeof(BankaFirmaFiltresi))]
     public class HesapEslesmeleriController : ControllerBase
     {
         private readonly IHesapEslesmeService _service;

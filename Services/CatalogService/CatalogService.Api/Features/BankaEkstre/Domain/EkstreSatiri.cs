@@ -2,7 +2,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
 {
     /// <summary>
     /// Ekstrenin tek satırı: ham banka verisi + üretilen açıklama + önerilen/onaylanan karşı hesap.
-    /// Tenant izolasyonu bağlı olduğu <see cref="EkstreYukleme"/> üzerinden sağlanır
+    /// Firma kapsamı bağlı olduğu <see cref="EkstreYukleme"/> üzerinden sağlanır
     /// (Muhasebe modülündeki FisSatir ile aynı yaklaşım).
     /// </summary>
     public class EkstreSatiri

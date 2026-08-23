@@ -12,7 +12,8 @@ namespace CatalogService.UnitTests.BankaEkstre
     public class BankaHesabiServiceTests
     {
         private static BankaHesabiService Servis(CatalogContext db)
-            => new(db, new EkstreParserSecici(new IEkstreParser[] { new VakifbankVadesizParser() }));
+            => new(db, new EkstreParserSecici(new IEkstreParser[] { new VakifbankVadesizParser() }),
+                   BankaEkstreTestOrtami.Kapsam());
 
         private static BankaHesabiYazDto Yaz(string kod = "102 1 1 04", string banka = "Vakıfbank",
                                              string parser = "", string? anahtarlar = null) => new()

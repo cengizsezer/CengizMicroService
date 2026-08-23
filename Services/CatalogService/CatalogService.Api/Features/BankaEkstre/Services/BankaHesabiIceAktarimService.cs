@@ -1,4 +1,5 @@
 using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
 using CatalogService.Api.Infrastructure.Context;
@@ -29,11 +30,14 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
     {
         private readonly CatalogContext _db;
         private readonly IEkstreParserSecici _parserSecici;
+        private readonly IBankaFirmaKapsami _kapsam;
 
-        public BankaHesabiIceAktarimService(CatalogContext db, IEkstreParserSecici parserSecici)
+        public BankaHesabiIceAktarimService(CatalogContext db, IEkstreParserSecici parserSecici,
+                                            IBankaFirmaKapsami kapsam)
         {
             _db = db;
             _parserSecici = parserSecici;
+            _kapsam = kapsam;
         }
 
         /// <summary>Banka hesaplarının ORKA'daki ana grubu; başka grup uyarı üretir.</summary>
@@ -73,11 +77,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             // Kod duplikasyonuna karşı sözlük yerine elle doldurma: veritabanında (teorik
             // olarak) aynı kodun iki kez bulunması içe aktarımı patlatmasın.
             var mevcutlar = new Dictionary<string, BankaHesabi>(StringComparer.Ordinal);
-            foreach (var hesap in await _db.EkstreBankaHesaplari.ToListAsync(ct))
+            foreach (var hesap in await _db.EkstreBankaHesaplari.Where(h => h.FirmaId == _kapsam.FirmaId).ToListAsync(ct))
                 mevcutlar.TryAdd(hesap.OrkaHesapKodu, hesap);
 
-            // Hesap planı da firma bazlı; sorgu filtresi tenant'ı zaten daraltıyor.
+            // Hesap planı da firma bazlı; kapsam burada da açıkça yazılır.
             var plan = await _db.EkstreHesapPlani
+                .Where(h => h.FirmaId == _kapsam.FirmaId)
                 .AsNoTracking()
                 .Select(h => new { h.Kod, h.Aktif })
                 .ToListAsync(ct);
@@ -202,6 +207,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 {
                     _db.EkstreBankaHesaplari.Add(new BankaHesabi
                     {
+                        FirmaId = _kapsam.FirmaId,
                         OrkaHesapKodu = kod,
                         HesapAdi = Normalizasyon.Kirp(hesapAdi, 200),
                         BankaAdi = Normalizasyon.Kirp(bankaAdi, 100),

@@ -3,7 +3,7 @@ using CatalogService.Api.Infrastructure.Domain;
 namespace CatalogService.Api.Features.BankaEkstre.Domain
 {
     /// <summary>Tek bir ekstre dosyası yüklemesi; satırların üst kaydı.</summary>
-    public class EkstreYukleme : TenantEntity
+    public class EkstreYukleme : FirmaKapsamliEntity
     {
         public int Id { get; set; }
 

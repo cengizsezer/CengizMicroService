@@ -1,4 +1,4 @@
-﻿using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +8,12 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
     /// <summary>
     /// Banka ekstresi işleme modülünün tablo eşlemeleri. Tek dosyada toplandı:
     /// tablolar aynı modülün parçası ve her biri kısa.
+    ///
+    /// Firma bazlı tablolarda kapsam kolonu <c>FirmaId</c>'dir (catalog.Firmalar.Id) ve
+    /// <b>yabancı anahtar kısıtı konmadı</b>: tenant düzeninden kalan eski satırlar
+    /// <c>FirmaId = 0</c> ile duruyor, kısıt migration'ı düşürürdü. O satırlar hiçbir
+    /// firmanın ekranında görünmez; Tanımlar &gt; Veri temizliği bölümünden silinirler
+    /// (bkz. KARARLAR §71). Veri temizlendikten sonra kısıt eklenebilir.
     /// </summary>
     public class BankaHesabiEntityTypeConfiguration : IEntityTypeConfiguration<BankaHesabi>
     {
@@ -16,7 +22,7 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.ToTable("EkstreBankaHesaplari", CatalogContext.DEFAULT_SCHEMA);
             builder.HasKey(x => x.Id);
 
-            builder.Property(x => x.TenantNo).IsRequired().HasMaxLength(20);
+            builder.Property(x => x.FirmaId).IsRequired();
             builder.Property(x => x.BankaAdi).IsRequired().HasMaxLength(100);
             // Virgülle ayrılmış anahtar listesi; ayrı tablo açılmadı (bkz. KARARLAR §37).
             builder.Property(x => x.EslestirmeAnahtarlari).HasMaxLength(300);
@@ -34,11 +40,11 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             // defterinde durur, yalnız karşı hesap olarak bulunmak için tanımlıdırlar.
             builder.Property(x => x.ParserTipi).HasMaxLength(50);
 
-            builder.HasIndex(x => new { x.TenantNo, x.BankaAdi });
+            builder.HasIndex(x => new { x.FirmaId, x.BankaAdi });
 
             // Toplu içe aktarımın upsert anahtarı; tekillik servis katmanında da kontrol
             // ediliyor, index yarış durumunda son savunma.
-            builder.HasIndex(x => new { x.TenantNo, x.OrkaHesapKodu }).IsUnique();
+            builder.HasIndex(x => new { x.FirmaId, x.OrkaHesapKodu }).IsUnique();
         }
     }
 
@@ -49,7 +55,7 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.ToTable("EkstreYuklemeler", CatalogContext.DEFAULT_SCHEMA);
             builder.HasKey(x => x.Id);
 
-            builder.Property(x => x.TenantNo).IsRequired().HasMaxLength(20);
+            builder.Property(x => x.FirmaId).IsRequired();
             builder.Property(x => x.DosyaAdi).IsRequired().HasMaxLength(260);
             builder.Property(x => x.YuklemeTarihi).HasColumnType("datetime2");
             builder.Property(x => x.DonemBaslangic).HasColumnType("date");
@@ -67,7 +73,7 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
                    .HasForeignKey(x => x.EkstreYuklemeId)
                    .OnDelete(DeleteBehavior.Cascade);
 
-            builder.HasIndex(x => new { x.TenantNo, x.BankaHesabiId });
+            builder.HasIndex(x => new { x.FirmaId, x.BankaHesabiId });
         }
     }
 
@@ -115,7 +121,7 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
     }
 
     /// <summary>
-    /// Öğrenilen eşleşmeler — firma bazlı. Anahtar ham hash değil, unvan çekirdeği;
+    /// Öğrenilen eşleşmeler — firma bazlı (<c>FirmaId</c>). Anahtar ham hash değil, unvan çekirdeği;
     /// aynı çekirdeği paylaşan cari ailesinde ayırt edici ek anahtarın parçasıdır.
     /// </summary>
     public class HesapEslesmesiEntityTypeConfiguration : IEntityTypeConfiguration<HesapEslesmesi>
@@ -125,7 +131,7 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.ToTable("EkstreHesapEslesmeleri", CatalogContext.DEFAULT_SCHEMA);
             builder.HasKey(x => x.Id);
 
-            builder.Property(x => x.TenantNo).IsRequired().HasMaxLength(20);
+            builder.Property(x => x.FirmaId).IsRequired();
             builder.Property(x => x.AnahtarCekirdek).IsRequired().HasMaxLength(200);
             builder.Property(x => x.AyirtEdiciEk).HasMaxLength(60);
             builder.Property(x => x.HesapKodu).IsRequired().HasMaxLength(30);
@@ -138,12 +144,12 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             // Aynı firma + anahtar (çekirdek + ek) + tip + yön tek kayıt.
             // AyirtEdiciEk nullable olduğu için unique index filtresiz kurulamaz; SQL Server'da
             // NULL'lar tekil sayılır, bu yüzden ek dolu ve boş olan iki ayrı index kullanılıyor.
-            builder.HasIndex(x => new { x.TenantNo, x.AnahtarTipi, x.AnahtarCekirdek, x.Yon })
+            builder.HasIndex(x => new { x.FirmaId, x.AnahtarTipi, x.AnahtarCekirdek, x.Yon })
                    .IsUnique()
                    .HasFilter("[AyirtEdiciEk] IS NULL")
                    .HasDatabaseName("IX_EkstreHesapEslesmeleri_Cekirdek");
 
-            builder.HasIndex(x => new { x.TenantNo, x.AnahtarTipi, x.AnahtarCekirdek, x.AyirtEdiciEk, x.Yon })
+            builder.HasIndex(x => new { x.FirmaId, x.AnahtarTipi, x.AnahtarCekirdek, x.AyirtEdiciEk, x.Yon })
                    .IsUnique()
                    .HasFilter("[AyirtEdiciEk] IS NOT NULL")
                    .HasDatabaseName("IX_EkstreHesapEslesmeleri_CekirdekEk");
@@ -176,7 +182,7 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.ToTable("EkstreHesapPlani", CatalogContext.DEFAULT_SCHEMA);
             builder.HasKey(x => x.Id);
 
-            builder.Property(x => x.TenantNo).IsRequired().HasMaxLength(20);
+            builder.Property(x => x.FirmaId).IsRequired();
             builder.Property(x => x.Kod).IsRequired().HasMaxLength(30);
             builder.Property(x => x.Ad).IsRequired().HasMaxLength(200);
             builder.Property(x => x.NormalizeAd).IsRequired().HasMaxLength(200);
@@ -184,8 +190,8 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(x => x.BaslangicHarfi).HasMaxLength(1);
             builder.Property(x => x.SonGuncelleme).HasColumnType("datetime2");
 
-            builder.HasIndex(x => new { x.TenantNo, x.Kod }).IsUnique();
-            builder.HasIndex(x => new { x.TenantNo, x.AnaGrup, x.BaslangicHarfi });
+            builder.HasIndex(x => new { x.FirmaId, x.Kod }).IsUnique();
+            builder.HasIndex(x => new { x.FirmaId, x.AnaGrup, x.BaslangicHarfi });
         }
     }
 
@@ -241,7 +247,7 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
 
     /// <summary>
     /// Kişi yönlendirmeleri — <b>firma bazlı</b>. Vergi kodlarının aksine kimin ortak,
-    /// kimin personel olduğu firmaya özeldir; tablo tenant filtresine girer.
+    /// kimin personel olduğu firmaya özeldir; tablo <c>FirmaId</c> ile kapsamlanır.
     /// </summary>
     public class KisiYonlendirmeEntityTypeConfiguration : IEntityTypeConfiguration<KisiYonlendirme>
     {
@@ -250,7 +256,7 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.ToTable("EkstreKisiYonlendirmeleri", CatalogContext.DEFAULT_SCHEMA);
             builder.HasKey(x => x.Id);
 
-            builder.Property(x => x.TenantNo).IsRequired().HasMaxLength(20);
+            builder.Property(x => x.FirmaId).IsRequired();
             builder.Property(x => x.IsimCekirdegi).IsRequired().HasMaxLength(200);
             builder.Property(x => x.Isim).IsRequired().HasMaxLength(200);
             builder.Property(x => x.HesapKodu).IsRequired().HasMaxLength(30);
@@ -260,7 +266,7 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             // Aynı firmada aynı isim + aynı yön tek kayıt. Yön nullable olmadığı için
             // (Farketmez ayrı bir enum değeri) filtre gerekmiyor; tekillik servis
             // katmanında da kontrol ediliyor, index yarış durumunda son savunma.
-            builder.HasIndex(x => new { x.TenantNo, x.IsimCekirdegi, x.Yon }).IsUnique();
+            builder.HasIndex(x => new { x.FirmaId, x.IsimCekirdegi, x.Yon }).IsUnique();
         }
     }
 
