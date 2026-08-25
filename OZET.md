@@ -802,3 +802,98 @@ Tamamı geçiyor, mevcut testlerin hiçbiri değişmedi.
 - **Firma özeti uç noktası, istenen tenant listesini doğrulayamıyor.** Token'da tek `tn`
   claim'i var. Yalnız adet döndüğü için etki sınırlı; gerçek çözüm, kullanıcının
   firmalarını da claim'e koymak (IdentityService değişikliği, kapsam dışı).
+
+# Öğrenilen eşleşmeler — toplu içe aktarma
+
+Öğrenme tablosu yalnız onay ekranından tek tek doluyordu. ORKA yevmiyesinden çıkarılmış
+doğrulanmış eşleşmeler (PKF Aday: 402 satır, 7 aylık geçmiş) artık xlsx ile toplu
+aktarılıyor. Bunlar kullanıcının geçmişte kendi verdiği kararlar — onay ekranından tek tek
+geçmekle aynı şey, sadece toplu hâli.
+
+**Eşleştirme mantığına dokunulmadı**: katman sırası, eşikler ve algoritma aynı. Mevcut
+testlerin tamamı aynen geçiyor.
+
+## Dosya formatı
+
+Tek sayfa, kolonlar başlık **adıyla** bulunur (sıra önemsiz, Türkçe karakter ve
+büyük/küçük harf toleranslı — banka hesabı içe aktarımıyla aynı kalıp).
+
+| Kolon | Zorunlu | Not |
+|---|---|---|
+| `Anahtar Çekirdek` | evet | Unvan çekirdeği; en az 8 karakter, içe aktarılırken yeniden normalize edilir |
+| `Hesap Kodu` | evet | Boşluklu ORKA formatı (`120 N15`), aynen saklanır; hesap planında olmalı |
+| `Hesap Adı` | hayır | Yalnız bilgi; kaydedilen ad hesap planından okunur |
+| `Yön` | hayır | `Giren` / `Çıkan` / `Farketmez`; boşsa Farketmez |
+| `Kullanım Sayısı` | hayır | Boşsa 1 |
+| `Son Kullanım` | hayır | `gg.aa.yyyy`; boşsa içe aktarım tarihi |
+
+## Davranış
+
+- Anahtar tipi **unvan çekirdeği** (`Belirsizlik` değil — o kayıt aday kümesi özetiyle
+  anlamlı, geçmişten türetilen satırda o küme yok).
+- **Kullanıcının kararı korunur**: aynı anahtar için kayıt varsa satır **atlanır**,
+  üzerine yazılmaz.
+- **`Farketmez` iki kayıt yazar.** `HesapEslesmesi.Yon` yalnız Giren/Çıkan tutuyor;
+  enum'a değer eklemek eşleştirmeye dokunmak olurdu. Bir yön zaten doluysa o korunur.
+- **Doğrulama satır bazlı**, hatalı satır dosyayı düşürmez: plan dışı kod, 8 karakterden
+  kısa anahtar, hesap sahibinin kendi adını kapsayan anahtar, tanınmayan yön, dosyada
+  yönleri kesişerek iki kez geçen anahtar.
+- Kapsam **firma bazlı** (`?firmaId=`); aynı anahtar farklı firmada ayrı kayıt.
+
+## Uç noktalar
+
+```
+POST /api/catalog/banka-ekstre/eslesmeler/ice-aktar   (multipart, xlsx, 20 MB)
+GET  /api/catalog/banka-ekstre/eslesmeler/sablon
+```
+
+Görev metnindeki `banka-otomasyon/ogrenilen-eslesmeler` ekranın adresi; API öneki modülün
+mevcut şemasını (`banka-ekstre`) izliyor. Gateway değişmedi.
+
+## Arayüz
+
+Tanımlar → Öğrenilen eşleşmeler bölümüne "**Toplu İçe Aktar**" düğmesi, dosya seçici ve
+"**Örnek şablon indir**" bağlantısı. Onay kutusunda firma adı var. İçe aktarımdan sonra
+liste yenileniyor; sonuç raporu (okunan / eklenen / atlanan (mevcut) / hatalı + satır
+numarasıyla sebepler) ekranda kalıyor.
+
+## Veritabanı
+
+**Migration yok** — yeni kolon/tablo eklenmedi, mevcut `EkstreHesapEslesmeleri` şeması
+kullanılıyor.
+
+## Değişen / eklenen dosyalar
+
+| Dosya | İş |
+|---|---|
+| `Features/BankaEkstre/Services/OgrenilenEslesmeIceAktarimService.cs` | **Yeni** — okuma, doğrulama, yazma, şablon |
+| `Features/BankaEkstre/Controllers/HesapEslesmeleriController.cs` | `ice-aktar` ve `sablon` uçları |
+| `Features/BankaEkstre/Dtos/BankaEkstreDtos.cs` | **Yeni** `OgrenilenEslesmeIceAktarimSonucDto` |
+| `Program.cs` | DI kaydı |
+| `Shared/Dto/BankaEkstre/BankaEkstreDtos.cs` | İstemci tarafı sonuç DTO'su |
+| `Application/Services/BankaEkstreApi.cs` + arayüzü | `EslesmeleriIceAktarAsync`, `EslesmeSablonuAsync` |
+| `Pages/BankaEkstre/Bolumler/OgrenilenEslesmelerBolumu.razor` | İçe aktarım kutusu, şablon indirme, sonuç raporu |
+
+## Testler
+
+`CatalogService.UnitTests/BankaEkstre/OgrenilenEslesmeIceAktarimServiceTests` — 19 test:
+geçerli dosya 3 satır → 3 eklendi; ikinci kez aynı dosya → 0 eklendi / 3 atlandı; plan
+dışı kod atlanıp raporlanıyor; hesap sahibi çekirdeğini kapsayan anahtar reddediliyor;
+kolon sırası değiştirilmiş dosya okunuyor; farklı firmada aynı anahtar ayrı kayıt;
+içe aktarılan eşleşme `KaynakKatman.GecmisOnay` ile çözülüyor; ayrıca ham unvanın yeniden
+normalize edilmesi, boş yönün iki kayıt yazması, kısa anahtar / tanınmayan yön / dosya içi
+tekrar reddi, başlıksız dosyanın hiç işlenmemesi ve şablonun kendi içe aktarımından geçmesi.
+
+Sayılar: `CatalogService.UnitTests` 421 → **440**, `WebApp.UnitTests` **46** (değişmedi).
+Tamamı geçiyor, mevcut testlerin hiçbiri değişmedi.
+
+## Ne eksik kaldı
+
+- **Ekran tarayıcıda denenmedi** (bUnit yok). Elle bakılacaklar: dosya seçici, şablon
+  indirme, uzun hata listesinin görünümü, içe aktarım sonrası listenin yenilenmesi.
+- **Onay diyaloğunda satır sayısı yok** — dosya sunucuda ayrıştırılmadan bilinemiyor
+  (§67 ile aynı). Sayılar sonuç raporunda.
+- **Geri alma yok.** Yanlış dosya aktarılırsa kayıtlar tek tek silinir; toplu geri alma
+  (son içe aktarımı işaretleyip topluca silme) yazılmadı.
+- **Rapor listeleri 100 satırla sınırlı** (`EnFazlaSorun`); bozuk bir dosyada geri kalan
+  sebepler gösterilmiyor, sayaçlar tam.

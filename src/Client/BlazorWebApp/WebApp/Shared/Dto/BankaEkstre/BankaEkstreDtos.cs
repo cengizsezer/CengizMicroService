@@ -421,6 +421,38 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public string? AyirtEdiciEk { get; set; }
     }
 
+    /// <summary>
+    /// Öğrenilen eşleşmelerin toplu içe aktarım sonucu. Banka hesabı sonucundan ayrı bir
+    /// tip: burada "güncellenen" yok (mevcut kayıt korunur, üzerine yazılmaz) ve
+    /// <see cref="Atlanan"/> ile <see cref="Hatali"/> ayrı sayılır — biri kullanıcının
+    /// kararının korunduğu satır, diğeri reddedilen satır.
+    /// </summary>
+    public class OgrenilenEslesmeIceAktarimSonucDto
+    {
+        /// <summary>İşlenen (boş olmayan) satır sayısı.</summary>
+        public int Okunan { get; set; }
+
+        /// <summary>En az bir kayıt yazılan satır sayısı.</summary>
+        public int Eklenen { get; set; }
+
+        /// <summary>Anahtar zaten kayıtlı olduğu için dokunulmayan satır sayısı.</summary>
+        public int Atlanan { get; set; }
+
+        /// <summary>Doğrulamadan geçemeyen satır sayısı.</summary>
+        public int Hatali { get; set; }
+
+        /// <summary>
+        /// Yazılan kayıt sayısı. Satır sayısından fazla olabilir: <c>Farketmez</c> satırı
+        /// iki yön için de kayıt yazar (<c>HesapEslesmesi.Yon</c> yalnız Giren/Çıkan tutar).
+        /// </summary>
+        public int EklenenKayit { get; set; }
+
+        public List<IceAktarimSatirSorunuDto> Hatalar { get; set; } = new();
+
+        /// <summary>Satırı düşürmeyen sorunlar (mevcut kayıt korundu, ayırt edici ekli kayıt var…).</summary>
+        public List<IceAktarimSatirSorunuDto> Uyarilar { get; set; } = new();
+    }
+
     // ---- Hesap planı ----
 
     public class HesapPlaniKaydiDto

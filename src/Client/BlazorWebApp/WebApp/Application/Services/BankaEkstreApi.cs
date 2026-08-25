@@ -265,6 +265,22 @@ namespace WebApp.Application.Services
             return hata;
         }
 
+        public Task<(OgrenilenEslesmeIceAktarimSonucDto? Veri, string? Hata)> EslesmeleriIceAktarAsync(
+            Stream icerik, string dosyaAdi, CancellationToken ct = default)
+            => GonderAsync<OgrenilenEslesmeIceAktarimSonucDto>(() =>
+            {
+                var form = new MultipartFormDataContent();
+                var dosya = new StreamContent(icerik);
+                dosya.Headers.ContentType = new MediaTypeHeaderValue(XlsxTuru);
+                form.Add(dosya, "file", dosyaAdi);
+
+                return _http.PostAsync(Adres($"{Eslesmeler}/ice-aktar"), form, ct);
+            });
+
+        public Task<(string? DosyaAdi, byte[]? Icerik, string? Hata)> EslesmeSablonuAsync(CancellationToken ct = default)
+            => DosyaIndirAsync(() => _http.GetAsync(Adres($"{Eslesmeler}/sablon"), ct),
+                               "ogrenilen-eslesmeler-sablon.xlsx", "Şablon indirilemedi.", ct);
+
         // ---- Vergi kodları ----
 
         public async Task<List<VergiKoduEslemesiDto>> VergiKodlariAsync(CancellationToken ct = default)

@@ -93,6 +93,15 @@ namespace WebApp.Application.Services.Interfaces
         Task<(HesapEslesmesiDto? Veri, string? Hata)> EslesmeGuncelleAsync(int id, HesapEslesmesiYazDto dto, CancellationToken ct = default);
         Task<string?> EslesmeSilAsync(int id, CancellationToken ct = default);
 
+        /// <summary>
+        /// ORKA yevmiyesinden çıkarılmış doğrulanmış eşleşmelerin toplu içe aktarımı.
+        /// Mevcut kayıt korunur; onay ekranından verilen karar önceliklidir.
+        /// </summary>
+        Task<(OgrenilenEslesmeIceAktarimSonucDto? Veri, string? Hata)> EslesmeleriIceAktarAsync(
+            Stream icerik, string dosyaAdi, CancellationToken ct = default);
+
+        Task<(string? DosyaAdi, byte[]? Icerik, string? Hata)> EslesmeSablonuAsync(CancellationToken ct = default);
+
         // Vergi kodu eşlemeleri
         Task<List<VergiKoduEslemesiDto>> VergiKodlariAsync(CancellationToken ct = default);
         Task<(VergiKoduEslemesiDto? Veri, string? Hata)> VergiKoduEkleAsync(VergiKoduEslemesiYazDto dto, CancellationToken ct = default);

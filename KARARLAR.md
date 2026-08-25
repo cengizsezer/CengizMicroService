@@ -1194,3 +1194,71 @@ tablo eşlemelerinde not düşüldü.
 - İstemci — `BankaOtomasyonOturumuTests`: seçim kapsam oluyor ve hatırlanıyor, sekme
   değişiminde firma kaynağına tekrar gidilmiyor, yenilemede depodan gelip kaynağından
   doğrulanıyor, artık tanımlı olmayan firma için bağlam hazırlanamıyor.
+
+## 73. Öğrenilen eşleşmelerin toplu içe aktarımı
+
+Öğrenme tablosu şimdiye kadar yalnız onay ekranından tek tek doluyordu. ORKA
+yevmiyesinden çıkarılmış doğrulanmış eşleşmeler (PKF Aday'da 402 satır, 7 aylık geçmiş)
+elle girilemez; bunlar kullanıcının geçmişte kendi verdiği kararların toplu hâlidir.
+
+**Eşleştirme mantığına dokunulmadı.** Katman sırası, eşikler ve algoritma aynı; bu yalnız
+yeni bir yazma yolu. İçe aktarılan kayıt `HesapEslesmeService.OgrenAsync`'in yazdığı
+biçimin aynısıdır (`AnahtarTipi.UnvanCekirdek`, ayırt edici eksiz, sade çekirdek) ve
+sonraki ekstrede geçmiş onay katmanından çözülür.
+
+**Rota mevcut kalıbı izliyor:** `POST/GET api/catalog/banka-ekstre/eslesmeler/ice-aktar |
+/sablon`. Görev metnindeki `banka-otomasyon/ogrenilen-eslesmeler` yolu ekranın adresidir
+(`/banka-otomasyon/tanimlar`), API öneki değil — modülün tüm uçları `banka-ekstre`
+altında ve gateway `/catalog/{everything}` route'undan geçiyor. Ayrı bir önek eklemek
+gateway'i değiştirmeden çalışsa da modülün adres şemasını ikiye bölerdi.
+
+**Anahtar tipi `UnvanCekirdek`, `Belirsizlik` değil.** Belirsizlik kaydı aday kümesinin
+özetiyle birlikte anlamlıdır (§49); geçmişten türetilen satırda o küme yok. Özetsiz bir
+belirsizlik kaydı hiç uygulanmaz, yazılması ölü satır üretirdi.
+
+**Anahtar dosyadaki hâliyle değil, sistemin kendi normalizasyonundan geçirilerek yazılır.**
+Dosyadaki değer zaten normalize görünse bile (`UnvanCekirdek`) yeniden üretilir: gürültü
+kelimesi listesi veya Türkçe sadeleştirme ileride değişirse dosya ile tablo ayrışmasın.
+
+**Mevcut kayıt ezilmez, satır atlanır.** Tekli düzenlemeden ve banka hesabı içe
+aktarımından ayrılan tek nokta bu: kullanıcının onay ekranında verdiği karar, geçmişten
+türetilen kayda göre önceliklidir. `Atlanan` (mevcut) ve `Hatali` (reddedilen) ayrı
+sayılıyor — ikisi aynı sayaçta toplanırsa "402 satırın 380'i atlandı" raporu, dosyanın
+bozuk mu yoksa zaten işlenmiş mi olduğunu söylemez.
+
+**`Yon` boşsa "Farketmez" ve iki kayıt yazılır.** `HesapEslesmesi.Yon` yalnız
+Giren/Çıkan tutuyor (ekstre satırının yönü her zaman kesindir) ve eşleştirici
+`e.Yon == baglam.Yon` ile arıyor. Enum'a `Farketmez` eklemek eşleştirme mantığına
+dokunmak olurdu; onun yerine satır iki yöne açılıyor. Bir yönde kullanıcının kararı
+zaten varsa o yön korunur, yalnız boş yön yazılır ve satır uyarıyla raporlanır.
+Sonuç raporunda `Eklenen` satır sayısı, `EklenenKayit` yazılan kayıt sayısıdır.
+
+**Dosya içi tekrar denetimi yönleri kesişen satırlar için.** Aynı çekirdek Giren'de bir
+koda, Çıkan'da başka bir koda gidebilir — bu meşru. Hata yalnız yönler kesişince veriliyor;
+o durumda hangi kodun geçerli olduğu belirsiz ve sessizce "ilki kazandı" demek, dosyanın
+402 satırında görülmeyecek bir yanlışı tabloya yazardı.
+
+**Doğrulama satır bazlı** (hatalı satır dosyayı düşürmez): hesap kodu firmanın hesap
+planında olmalı; anahtar en az 8 karakter (kısa çekirdek gelecekte alakasız satırları tek
+cariye bağlar ve öğrenilen kayıt onaya bile düşmediği için hata sessiz kalır); anahtar
+hesap sahibinin çekirdeklerinden birini kapsıyorsa reddedilir (firmanın kendi adı asla
+karşı taraf olarak öğrenilmemeli — §46'nın aynı gerekçesi); yön tanınmalı.
+Kaydedilen `HesapAdi` dosyadan değil hesap planından okunur; dosyadaki ad yalnız bilgi.
+
+**Ayırt edici ekli kayıt "mevcut" saymaz, uyarı üretir.** `PARK PLAZA + AIDAT` ile sade
+`PARK PLAZA` farklı anahtarlardır; eşleştirici önce genişletilmişi, tutmazsa sadeyi dener.
+İçe aktarım sade anahtarı yazabilir ama kullanıcı aile ayrımı yapmışsa bunu görmeli.
+
+**Migration yok:** yeni kolon/tablo eklenmedi, mevcut `EkstreHesapEslesmeleri` şeması
+kullanılıyor.
+
+**Onay kutusunda firma adı var, satır sayısı yok** (§67 ile aynı sebep): dosya sunucuda
+ayrıştırılmadan satır sayısı bilinemiyor. Sayı sonuç raporunda ve bildirimde.
+
+**Testler** (`OgrenilenEslesmeIceAktarimServiceTests`, 19 test): geçerli dosya 3 satır →
+3 eklendi; ikinci kez aynı dosya → 0 eklendi / 3 atlandı; hesap planında olmayan kod
+atlanıp raporlanıyor ve dosyanın kalanı işleniyor; hesap sahibi çekirdeğini kapsayan
+anahtar reddediliyor; kolon sırası değişik ve Türkçe karaktersiz başlıklı dosya
+okunuyor; farklı firmada aynı anahtar ayrı kayıt oluyor; içe aktarılan eşleşme
+`HesapEslestirici`'de `KaynakKatman.GecmisOnay` ile çözülüyor; ham unvan yeniden
+normalize ediliyor; boş yön iki kayıt yazıyor; şablon kendi içe aktarımından geçiyor.

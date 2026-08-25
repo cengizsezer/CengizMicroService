@@ -1,10 +1,14 @@
+@using Microsoft.AspNetCore.Components.Forms
 @using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Shared.Dto.BankaEkstre
 
 @inject IBankaEkstreApi Api
+@inject IBankaOtomasyonOturumu Oturum
 @inject NotificationService Notif
+@inject DialogService Dialog
+@inject IJSRuntime JS
 
 @*
     Tanımlar ekranının "Öğrenilen eşleşmeler" bölümü. Yanlış onaylanan bir eşleşme bir
@@ -36,6 +40,14 @@
     .oe-rozet { display: inline-block; padding: 1px 6px; border-radius: 9px; font-size: 10px;
                 background: #edf2f7; color: #4a5568; }
     .oe-rozet.belirsizlik { background: #fefcbf; color: #744210; }
+    .oe-ice-aktar { margin-top: 14px; padding: 12px 14px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fbfdff; }
+    .oe-ice-aktar-baslik { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .oe-ipucu { font-size: 11px; color: #a0aec0; }
+    .oe-alan { display: flex; flex-direction: column; gap: 4px; }
+    .oe-alan > label { font-size: 11px; color: #718096; }
+    .oe-sorun { font-size: 12px; color: #4a5568; padding: 2px 0; }
+    .oe-sorun-hata { color: #c53030; }
+    .oe-sorun-no { display: inline-block; min-width: 62px; color: #718096; font-variant-numeric: tabular-nums; }
 </style>
 
 <div class="oe-arac">
@@ -95,6 +107,81 @@
     }
 </div>
 
+@*
+    Toplu içe aktarım. Öğrenme tablosu şimdiye kadar yalnız onay ekranından tek tek
+    doluyordu; ORKA yevmiyesinden çıkarılmış yüzlerce doğrulanmış eşleşme elle girilemez.
+
+    Kullanıcının kararı önceliklidir: aynı anahtar için kayıt varsa satır ATLANIR,
+    üzerine yazılmaz.
+*@
+<div class="oe-ice-aktar">
+    <div class="oe-ice-aktar-baslik">
+        <RadzenButton Text="Toplu İçe Aktar" Icon="upload_file" ButtonStyle="ButtonStyle.Secondary"
+                      Size="ButtonSize.Small" Disabled="@_iceAktariliyor"
+                      Click="@(() => _iceAktarimAcik = !_iceAktarimAcik)" />
+        <RadzenButton Text="Örnek şablon indir" Icon="download" ButtonStyle="ButtonStyle.Light"
+                      Size="ButtonSize.Small" Click="@SablonIndirAsync" />
+        <span class="oe-ipucu">
+            xlsx; kolonlar başlık adıyla bulunur, sıraları değişebilir. Anahtar unvan
+            çekirdeğidir ve içe aktarılırken yeniden normalize edilir.
+            <b>Mevcut kayıtlar korunur</b> — onaydan öğrenilmiş bir eşleşme ezilmez.
+        </span>
+    </div>
+
+    @if (_iceAktarimAcik)
+    {
+        <div class="oe-alan" style="margin-top:10px; max-width:460px">
+            <label>Dosya seç (.xlsx)</label>
+            <InputFile OnChange="IceAktarAsync" accept=".xlsx,.xls" disabled="@_iceAktariliyor" />
+            <span class="oe-ipucu">
+                Zorunlu kolonlar: <code>Anahtar Çekirdek</code>, <code>Hesap Kodu</code>.
+                İsteğe bağlı: <code>Hesap Adı</code>, <code>Yön</code>, <code>Kullanım Sayısı</code>,
+                <code>Son Kullanım</code>. Yön boşsa <code>Farketmez</code> sayılır ve iki yön için
+                de kayıt yazılır.
+            </span>
+        </div>
+    }
+
+    @if (_iceAktariliyor)
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.75rem" Style="margin-top:8px">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+            <span>İçe aktarılıyor...</span>
+        </RadzenStack>
+    }
+
+    @if (_iceAktarimSonucu is not null)
+    {
+        <RadzenAlert AlertStyle="@(_iceAktarimSonucu.Hatalar.Count > 0 ? AlertStyle.Warning : AlertStyle.Success)"
+                     ShowIcon="true" AllowClose="false" Style="margin-top:10px">
+            @_iceAktarimSonucu.Okunan satır okundu · @_iceAktarimSonucu.Eklenen eklendi
+            (@_iceAktarimSonucu.EklenenKayit kayıt)
+            @if (_iceAktarimSonucu.Atlanan > 0)
+            {
+                <span> · @_iceAktarimSonucu.Atlanan atlandı (mevcut)</span>
+            }
+            @if (_iceAktarimSonucu.Hatali > 0)
+            {
+                <span> · @_iceAktarimSonucu.Hatali hatalı</span>
+            }
+        </RadzenAlert>
+
+        @foreach (var hata in _iceAktarimSonucu.Hatalar)
+        {
+            <div class="oe-sorun oe-sorun-hata">
+                <span class="oe-sorun-no">Satır @hata.SatirNo</span> @hata.Message
+            </div>
+        }
+
+        @foreach (var uyari in _iceAktarimSonucu.Uyarilar)
+        {
+            <div class="oe-sorun">
+                <span class="oe-sorun-no">Satır @uyari.SatirNo</span> @uyari.Message
+            </div>
+        }
+    }
+</div>
+
 @if (_duzenlenen is not null && _form is not null)
 {
     <div style="margin-top:14px; padding:14px; border:1px solid #e2e8f0; border-radius:6px; background:#fff">
@@ -138,6 +225,15 @@
 
     private string? _arama;
     private bool _kaydediyor;
+
+    private bool _iceAktarimAcik;
+    private bool _iceAktariliyor;
+    private OgrenilenEslesmeIceAktarimSonucDto? _iceAktarimSonucu;
+
+    /// <summary>Sunucudaki sınırla aynı; büyük dosya isteği boşuna gitmesin.</summary>
+    private const long EnFazlaBayt = 20 * 1024 * 1024;
+
+    private string FirmaAdi => Oturum.SeciliFirma is null ? "seçili firma" : Oturum.FirmaAdi;
 
     private static string AnahtarTipiAdi(AnahtarTipi tip) => tip switch
     {
@@ -216,5 +312,69 @@
 
         Notif.Notify(NotificationSeverity.Success, "Silindi", kayit.TamAnahtar, 3000);
         await YenileAsync();
+    }
+
+    /// <summary>
+    /// Toplu içe aktarım. Hatalı satır dosyanın tamamını düşürmez; sonuç raporu
+    /// (eklenen / atlanan / hatalı + satır bazlı sebepler) ekranda kalır.
+    /// </summary>
+    private async Task IceAktarAsync(InputFileChangeEventArgs args)
+    {
+        var dosya = args.File;
+        if (dosya is null) return;
+
+        // Firma adıyla onay: eşleşmeler firma bazlı, yanlış firmaya yazılırsa o firmanın
+        // öğrenme tablosu doğrulanmamış kararlarla dolar.
+        var onay = await Dialog.Confirm(
+            $"{FirmaAdi} için \"{dosya.Name}\" dosyasındaki öğrenilmiş eşleşmeler içe aktarılacak. " +
+            "Aynı anahtar için kayıt varsa mevcut karar korunur.",
+            "Toplu içe aktarım onayı",
+            new ConfirmOptions { OkButtonText = "İçe aktar", CancelButtonText = "Vazgeç", ShowClose = true });
+
+        if (onay != true) return;
+
+        _iceAktarimSonucu = null;
+        _iceAktariliyor = true;
+
+        try
+        {
+            using var bellek = new MemoryStream();
+            await using (var kaynak = dosya.OpenReadStream(EnFazlaBayt))
+                await kaynak.CopyToAsync(bellek);
+            bellek.Position = 0;
+
+            var (veri, hata) = await Api.EslesmeleriIceAktarAsync(bellek, dosya.Name);
+            if (hata is not null)
+            {
+                Notif.Notify(NotificationSeverity.Error, "İçe aktarılamadı", hata, 8000);
+                return;
+            }
+
+            _iceAktarimSonucu = veri;
+            await YenileAsync();
+
+            var ozet = $"{FirmaAdi} · {veri?.Okunan} satır okundu, {veri?.Eklenen} eklendi";
+            if (veri is not null && (veri.Atlanan > 0 || veri.Hatali > 0))
+                Notif.Notify(NotificationSeverity.Warning, "İçe aktarım tamamlandı",
+                             $"{ozet}, {veri.Atlanan} atlandı (mevcut), {veri.Hatali} hatalı. Sebepler aşağıda.", 8000);
+            else
+                Notif.Notify(NotificationSeverity.Success, "İçe aktarım tamamlandı", ozet, 4000);
+        }
+        finally
+        {
+            _iceAktariliyor = false;
+        }
+    }
+
+    private async Task SablonIndirAsync()
+    {
+        var (dosyaAdi, icerik, hata) = await Api.EslesmeSablonuAsync();
+        if (hata is not null || icerik is null)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Şablon indirilemedi", hata, 6000);
+            return;
+        }
+
+        await JS.InvokeVoidAsync("downloadFileFromBytes", dosyaAdi, icerik);
     }
 }
