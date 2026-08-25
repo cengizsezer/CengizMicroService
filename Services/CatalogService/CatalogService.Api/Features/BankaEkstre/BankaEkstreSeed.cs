@@ -1,4 +1,5 @@
 ﻿using CatalogService.Api.Features.BankaEkstre.Domain;
+using CatalogService.Api.Features.BankaEkstre.Services;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
 using CatalogService.Api.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
@@ -27,11 +28,157 @@ namespace CatalogService.Api.Features.BankaEkstre
 
         public static async Task SeedAsync(CatalogContext db, CancellationToken ct = default)
         {
+            // Kategoriler önce: kural satırlarına atanabilmeleri için Id'lerinin oluşması
+            // gerekiyor, bu yüzden kendi SaveChanges'ini yapar.
+            await KategorileriSeedAsync(db, ct);
+
             await SablonlariSeedAsync(db, ct);
             await DesenleriSeedAsync(db, ct);
             await KurallariSeedAsync(db, ct);
             await VergiKodlariSeedAsync(db, ct);
             await db.SaveChangesAsync(ct);
+
+            // Atama en sonda: yeni eklenen satırlar da kategorisini alsın.
+            await KategorileriAtaAsync(db, ct);
+        }
+
+        // ---- İşlem kategorileri ----
+
+        /// <summary>
+        /// Dört bankanın gerçek verisinden ölçülen kategori listesi: (ad, varsayılan ana
+        /// hesap grubu). Kategoriler bankadan ve firmadan bağımsız; ana grup, ekstre
+        /// satırının hangi kategoriye düştüğünü belirleyen tek bağdır.
+        /// </summary>
+        public static readonly (string Ad, string AnaGrup)[] Kategoriler =
+        {
+            ("Hesaplar arası", "102"),
+            ("Müşteri tahsilatı", "120"),
+            ("Tedarikçi ödemesi", "329"),
+            ("Grup içi cari", "136"),
+            ("Diğer alacak", "159"),
+            ("Personel iş avansı", "195"),
+            ("Personel maaş avansı", "196"),
+            ("Banka gideri", "770"),
+            ("Araç/hizmet gideri", "740"),
+            ("Finansman gideri", "780"),
+            ("Kredi", "300"),
+            ("Kredi kartı", "309"),
+            ("Ortaklar", "331"),
+            ("Diğer borç", "336"),
+            ("Vergi borcu", "360"),
+            ("SGK", "361"),
+            ("KKEG", "689")
+        };
+
+        /// <summary>
+        /// Açıklama şablonlarının kategorisi. Şablonda hesap kodu yok — kategori ancak
+        /// işlemin niteliğinden okunabilir; bu yüzden tek yer burada elle yazılıyor.
+        /// Kural/vergi/kişi satırları kodlarının ana grubundan türetiliyor.
+        /// </summary>
+        private static readonly Dictionary<string, string> SablonKategorileri = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Gelen EFT Otomatik Yatan"] = "Müşteri tahsilatı",
+            ["Tös Hesaba Havale"] = "Müşteri tahsilatı",
+            ["Alınan havale"] = "Müşteri tahsilatı",
+            ["Gelen FAST Anlık Ödeme"] = "Müşteri tahsilatı",
+            ["Gelen EFT Ödeme"] = "Müşteri tahsilatı",
+            ["FAST Anlık Ödeme"] = "Tedarikçi ödemesi",
+            ["Hesaba giden EFT"] = "Tedarikçi ödemesi",
+            ["Gönderilen havale"] = "Tedarikçi ödemesi",
+            ["Otomatik Süpürme İşlemleri Virman"] = "Hesaplar arası",
+            ["Virman"] = "Hesaplar arası",
+            ["Hesaplar Arası EFT"] = "Hesaplar arası",
+            ["HGS Bakiye Yükle"] = "Araç/hizmet gideri",
+            ["Otoyolu Bakiye Yükle"] = "Araç/hizmet gideri",
+            ["MKK Masrafı"] = "Banka gideri",
+            ["DIT Yp transfer"] = "Banka gideri",
+            ["Vergi Tahsilatı"] = "Vergi borcu",
+            ["Kredi Kartı Borç Öde"] = "Kredi kartı"
+        };
+
+        private static async Task KategorileriSeedAsync(CatalogContext db, CancellationToken ct)
+        {
+            var mevcut = await db.EkstreIslemKategorileri.Select(k => k.Ad).ToListAsync(ct);
+            var kayitli = new HashSet<string>(mevcut, StringComparer.OrdinalIgnoreCase);
+
+            var sira = 0;
+            foreach (var (ad, anaGrup) in Kategoriler)
+            {
+                sira += 10;
+                if (!kayitli.Add(ad)) continue;
+
+                db.EkstreIslemKategorileri.Add(new IslemKategorisi
+                {
+                    Ad = ad,
+                    VarsayilanAnaGrup = anaGrup,
+                    Sira = sira,
+                    Aktif = true
+                });
+            }
+
+            await db.SaveChangesAsync(ct);
+        }
+
+        /// <summary>
+        /// Kategorisi <b>boş</b> olan kayıtlara kategori yazar; dolu olana dokunmaz —
+        /// kullanıcının ekrandan verdiği karar korunur (seed'in genel kuralı).
+        ///
+        /// Kod taşıyan kayıtlar (sabit kural, vergi kodu, kişi yönlendirme) kategorilerini
+        /// <b>hesap kodunun ana grubundan</b> alır. Elle yazılmış bir eşleme listesi
+        /// tutulmadı: ana grup zaten kategorinin tanımı ve ekstre satırının etiketi de aynı
+        /// yoldan bulunuyor — iki liste ayrışırsa aynı hesap kuralda bir, satırda başka
+        /// kategori gösterirdi.
+        /// </summary>
+        private static async Task KategorileriAtaAsync(CatalogContext db, CancellationToken ct)
+        {
+            var kategoriler = await db.EkstreIslemKategorileri.ToListAsync(ct);
+            if (kategoriler.Count == 0) return;
+
+            var adaGore = kategoriler
+                .GroupBy(k => k.Ad, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
+
+            var anaGrubaGore = kategoriler
+                .Where(k => !string.IsNullOrWhiteSpace(k.VarsayilanAnaGrup))
+                .GroupBy(k => k.VarsayilanAnaGrup!, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.Ordinal);
+
+            int? KodunKategorisi(string? hesapKodu)
+            {
+                var anaGrup = Normalizasyon.AnaGrup(hesapKodu);
+                return anaGrup.Length > 0 && anaGrubaGore.TryGetValue(anaGrup, out var id) ? id : null;
+            }
+
+            var degisti = false;
+
+            foreach (var kural in await db.EkstreSabitKurallar.Where(k => k.IslemKategorisiId == null).ToListAsync(ct))
+            {
+                kural.IslemKategorisiId = KodunKategorisi(kural.HesapKodu);
+                degisti |= kural.IslemKategorisiId is not null;
+            }
+
+            foreach (var vergi in await db.EkstreVergiKodlari.Where(v => v.IslemKategorisiId == null).ToListAsync(ct))
+            {
+                vergi.IslemKategorisiId = KodunKategorisi(vergi.HesapKodu);
+                degisti |= vergi.IslemKategorisiId is not null;
+            }
+
+            foreach (var kisi in await db.EkstreKisiYonlendirmeleri.Where(k => k.IslemKategorisiId == null).ToListAsync(ct))
+            {
+                kisi.IslemKategorisiId = KodunKategorisi(kisi.HesapKodu);
+                degisti |= kisi.IslemKategorisiId is not null;
+            }
+
+            foreach (var sablon in await db.EkstreAciklamaSablonlari.Where(s => s.IslemKategorisiId == null).ToListAsync(ct))
+            {
+                if (!SablonKategorileri.TryGetValue(sablon.IslemTipiDeseni, out var ad)) continue;
+                if (!adaGore.TryGetValue(ad, out var id)) continue;
+
+                sablon.IslemKategorisiId = id;
+                degisti = true;
+            }
+
+            if (degisti) await db.SaveChangesAsync(ct);
         }
 
         // ---- Açıklama şablonları ----
@@ -84,7 +231,8 @@ namespace CatalogService.Api.Features.BankaEkstre
             Ekle("HGS Bakiye Yükle", "Hgs Bakiye Yüklemesi - {PLAKA}");
             Ekle("Otoyolu Bakiye Yükle", "Hgs Bakiye Yüklemesi - {PLAKA}", tur: EslesmeTuru.Icerir);
             Ekle("MKK Masrafı", "Banka Gideri");
-            Ekle("DIT Yp transfer", "Banka Gideri");
+            // Gerçek işlem tipi "DIT Yp transfer para çek işlemi"; TAM eşleşme tutmuyor.
+            Ekle("DIT Yp transfer", "Banka Gideri", tur: EslesmeTuru.Icerir);
             Ekle("Vergi Tahsilatı", "Vergi Ödemesi - {VERGI}");
             Ekle("Kredi Kartı Borç Öde", "Kredi Kartı Borç Ödemesi");
         }
@@ -213,19 +361,26 @@ namespace CatalogService.Api.Features.BankaEkstre
             Avans("Maaş Avansı", "196", "Personel Avansları");
             Avans("Avans", "196", "Personel Avansları");
 
-            // MKK masrafı ve kambiyo muamele vergisi ana grupta değil, banka komisyonu
-            // muavininde toplanır. Kalanlar 770'te bırakıldı: hangi muavine gittikleri
-            // firmadan firmaya değişiyor, kullanıcı Tanımlar > Sabit Kurallar'dan daraltır.
+            // Banka masrafı sayılan işlemlerin tamamı banka komisyonu muavinine gider:
+            // MKK masrafı, kambiyo muamele vergisi, DIT yp transfer, komisyon ve BSMV.
+            // Ölçümde bunlar ana grupta (770) kalıyor ve "otomatik" damgasıyla yanlış
+            // hesaba yazılıyordu.
+            //
+            // Eşleşme türü İÇERİR: gerçek işlem tipleri seed'deki kısa adın uzun hâli
+            // ("DIT Yp transfer para çek işlemi", "Kambiyo Muameleleri Vergisi Tahsilatı").
+            // TAM eşleşme ile kural hiçbir satıra uymuyordu.
             //
             // Bu satırlar zaten 770 ile kurulmuş bir veritabanında GÜNCELLENMEZ — seed
             // mevcut kayda dokunmaz (kullanıcı düzenlemesini ezmemek için). Eski kurulumda
             // kod arayüzden düzeltilir.
-            Ekle("MKK Masrafı", "770 03 005", "Banka Komisyonu");
+            Ekle("MKK Masrafı", "770 03 005", "Banka Komisyonu", EslesmeTuru.Icerir);
             Ekle("Kambiyo", "770 03 005", "Banka Komisyonu", EslesmeTuru.Icerir);
-            Ekle("DIT Yp transfer", "770", "Genel Yönetim Giderleri");
+            Ekle("DIT Yp transfer", "770 03 005", "Banka Komisyonu", EslesmeTuru.Icerir);
+            Ekle("Komisyon", "770 03 005", "Banka Komisyonu", EslesmeTuru.Icerir);
+            Ekle("BSMV", "770 03 005", "Banka Komisyonu", EslesmeTuru.Icerir);
+            // "Masraf" genel bir kelime (masraf ödemesi, kart masrafı…); banka komisyonuna
+            // değil ana gruba bırakıldı, kullanıcı Tanımlar'dan daraltır.
             Ekle("Masraf", "770", "Genel Yönetim Giderleri", EslesmeTuru.Icerir);
-            Ekle("Komisyon", "770", "Genel Yönetim Giderleri", EslesmeTuru.Icerir);
-            Ekle("BSMV", "770", "Genel Yönetim Giderleri", EslesmeTuru.Icerir);
             Ekle("HGS Bakiye Yükle", "740", "Hizmet Üretim Maliyeti");
             Ekle("Otoyolu Bakiye Yükle", "740", "Hizmet Üretim Maliyeti", EslesmeTuru.Icerir);
         }

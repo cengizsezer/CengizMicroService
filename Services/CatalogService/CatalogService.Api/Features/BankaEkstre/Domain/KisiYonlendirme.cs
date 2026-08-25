@@ -42,6 +42,14 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
         /// <summary>Serbest not ("ortak", "yönetici" gibi); eşleştirmede kullanılmaz.</summary>
         public string? Aciklama { get; set; }
 
+        /// <summary>
+        /// Muhasebe kategorisi (<see cref="IslemKategorisi"/>). Yalnız etiket ve görünüm:
+        /// eşleştirme kararına girmez, kural kategorisiz de aynen çalışır. Kategori
+        /// silinirse alan boşalır, kural kalır.
+        /// </summary>
+        public int? IslemKategorisiId { get; set; }
+
+
         public bool Aktif { get; set; } = true;
     }
 }

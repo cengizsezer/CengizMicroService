@@ -77,6 +77,51 @@ namespace CatalogService.UnitTests.BankaEkstre
             return db.SaveChangesAsync();
         }
 
+        /// <summary>
+        /// Dosyadaki banka adı mevcut hesaplardan hiçbiriyle eşleşmiyorsa satır eklenir ama
+        /// uyarılır: "aynı banka önceliği" kuralı BankaAdi üzerinden çalıştığı için ikinci
+        /// bir yazım bankayı ikiye böler ve bankalar arası eşleştirmeyi bozar.
+        /// </summary>
+        [Fact]
+        public async Task Taninmayan_banka_adi_uyari_verir_ama_satiri_dusurmez()
+        {
+            using var db = BankaEkstreTestOrtami.YeniContext();
+            await PlanaEkleAsync(db, "102 1 32 87", "102 1 33 01", "102 1 33 02");
+
+            // Önce bilinen bir banka adı oluşsun.
+            using (var ilk = Dosya(Satir("102 1 32 87", banka: "Vakıfbank")))
+                await Servis(db).IceAktarAsync(ilk);
+
+            using var dosya = Dosya(
+                Satir("102 1 33 01", banka: "Vakıf Bank Eur", parser: string.Empty),
+                Satir("102 1 33 02", banka: "Vakıf Bank Eur", parser: string.Empty));
+
+            var sonuc = await Servis(db).IceAktarAsync(dosya);
+
+            Assert.Equal(2, sonuc.Eklenen);
+            Assert.Empty(sonuc.Hatalar);
+
+            // Uyarı bir kez: aynı yeni ad dosyanın kalan satırlarında tekrar edilmiyor.
+            var bankaUyarilari = sonuc.Uyarilar.Where(u => u.Field == nameof(BankaHesabi.BankaAdi)).ToList();
+            Assert.Single(bankaUyarilari);
+            Assert.Contains("Vakıf Bank Eur", bankaUyarilari[0].Message);
+        }
+
+        [Fact]
+        public async Task Bilinen_banka_adi_uyari_uretmez()
+        {
+            using var db = BankaEkstreTestOrtami.YeniContext();
+            await PlanaEkleAsync(db, "102 1 32 87", "102 1 33 01");
+
+            using (var ilk = Dosya(Satir("102 1 32 87", banka: "Vakıfbank")))
+                await Servis(db).IceAktarAsync(ilk);
+
+            using var dosya = Dosya(Satir("102 1 33 01", banka: "Vakıfbank", parser: string.Empty));
+            var sonuc = await Servis(db).IceAktarAsync(dosya);
+
+            Assert.DoesNotContain(sonuc.Uyarilar, u => u.Field == nameof(BankaHesabi.BankaAdi));
+        }
+
         [Fact]
         public async Task Gecerli_dosya_uc_satiri_ekler()
         {

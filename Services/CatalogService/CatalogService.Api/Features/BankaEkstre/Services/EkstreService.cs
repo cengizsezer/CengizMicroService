@@ -18,7 +18,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         Task<EkstreYuklemeDto> YukleAsync(int bankaHesabiId, Stream dosya, string dosyaAdi, CancellationToken ct = default);
         Task<List<EkstreYuklemeDto>> GetYuklemelerAsync(CancellationToken ct = default);
         Task<EkstreYuklemeDto?> GetYuklemeAsync(int id, CancellationToken ct = default);
-        Task<List<EkstreSatirDto>?> GetSatirlarAsync(int ekstreId, SatirDurum? durum, CancellationToken ct = default);
+        /// <param name="kategoriId">
+        /// Dolu ise yalnız o işlem kategorisine düşen satırlar döner. Kategori satıra
+        /// yazılmıyor, hesap kodunun ana grubundan okunuyor (bkz. <see cref="KategoriCozucu"/>).
+        /// </param>
+        Task<List<EkstreSatirDto>?> GetSatirlarAsync(int ekstreId, SatirDurum? durum, int? kategoriId = null,
+                                                     CancellationToken ct = default);
         /// <summary>
         /// Satırı onaylar. <paramref name="kisiYonlendir"/> true ise satırdaki kişi için
         /// kalıcı bir <see cref="KisiYonlendirme"/> kaydı da oluşturulur (onay ekranındaki
@@ -167,12 +172,14 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             IReadOnlyList<UnvanDeseni> desenler,
             EslestirmeVerisi veri)
         {
+            var karsiIban = KarsiIbanSec(ayrilan, veri);
+
             var baglam = new SatirBaglami
             {
                 IslemTipi = ayrilan.IslemTipi,
                 HamAciklama = ayrilan.HamAciklama,
                 Yon = ayrilan.Yon,
-                KarsiIban = ayrilan.KarsiIban,
+                KarsiIban = karsiIban,
                 KarsiVkn = ayrilan.KarsiVkn
             };
 
@@ -233,7 +240,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 Tutar = ayrilan.Tutar,
                 IslemTipi = Normalizasyon.Kirp(ayrilan.IslemTipi, 150),
                 HamAciklama = ayrilan.HamAciklama,
-                KarsiIban = ayrilan.KarsiIban,
+                KarsiIban = karsiIban,
                 KarsiVkn = ayrilan.KarsiVkn,
                 Kanal = Normalizasyon.Kirp(ayrilan.Kanal, 100) is { Length: > 0 } k ? k : null,
                 UretilenAciklama = aciklama,
@@ -252,6 +259,26 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 AdayKumesiOzeti = eslestirme.AdayKumesiOzeti,
                 Durum = eslestirme.Durum
             };
+        }
+
+        /// <summary>
+        /// Satırın karşı IBAN'ı. Ayrıştırıcı metindeki <b>ilk</b> IBAN'ı veriyor; virman ve
+        /// döviz alış/satış satırlarında ilk IBAN ekstrenin kendi hesabı oluyor ("… TR40 …
+        /// nolu hesabından TR80 … nolu hesabına … döviz alış"). Kendi IBAN'ı karşı taraf
+        /// değildir: elenir ve sıradaki IBAN'a bakılır.
+        ///
+        /// Hesabın IBAN'ı Tanımlar'da boşsa eleme yapılamaz; ayrıştırıcının bulduğu değer
+        /// olduğu gibi kalır.
+        /// </summary>
+        private static string? KarsiIbanSec(AyrilanSatir ayrilan, EslestirmeVerisi veri)
+        {
+            var kendi = veri.IslenenIbanAnahtari;
+            if (kendi.Length == 0) return ayrilan.KarsiIban;
+
+            foreach (var iban in Normalizasyon.IbanlariBul(ayrilan.HamAciklama))
+                if (Normalizasyon.IbanAnahtar(iban) != kendi) return iban;
+
+            return Normalizasyon.IbanAnahtar(ayrilan.KarsiIban) == kendi ? null : ayrilan.KarsiIban;
         }
 
         // ---- Listeleme ----
@@ -297,7 +324,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                         yukleme.KaynakDosyaVar);
         }
 
-        public async Task<List<EkstreSatirDto>?> GetSatirlarAsync(int ekstreId, SatirDurum? durum, CancellationToken ct = default)
+        public async Task<List<EkstreSatirDto>?> GetSatirlarAsync(int ekstreId, SatirDurum? durum,
+                                                                   int? kategoriId = null,
+                                                                   CancellationToken ct = default)
         {
             if (!await Yuklemeler.AnyAsync(y => y.Id == ekstreId, ct)) return null;
 
@@ -305,8 +334,23 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             if (durum is SatirDurum d) sorgu = sorgu.Where(s => s.Durum == d);
 
             var satirlar = await sorgu.OrderBy(s => s.SiraNo).ToListAsync(ct);
-            return satirlar.Select(s => Esle(s)).ToList();
+            var cozucu = await KategoriCozucuKurAsync(ct);
+
+            var dtolar = satirlar.Select(s => Esle(s, cozucu)).ToList();
+
+            // Süzme bellekte: kategori satırda saklanmıyor, hesap kodundan türetiliyor.
+            // Bir yüklemenin satır sayısı birkaç yüz olduğu için tarama maliyeti önemsiz.
+            return kategoriId is int id
+                ? dtolar.Where(d => d.IslemKategorisiId == id).ToList()
+                : dtolar;
         }
+
+        /// <summary>
+        /// Kategori çözücüsü: ana grup → kategori indeksi. Kategori tablosu global ve
+        /// yirmi satır civarında; istek başına bir kez okunur.
+        /// </summary>
+        private async Task<KategoriCozucu> KategoriCozucuKurAsync(CancellationToken ct)
+            => KategoriCozucu.Kur(await _db.EkstreIslemKategorileri.AsNoTracking().ToListAsync(ct));
 
         // ---- Onay ve öğrenme ----
 
@@ -348,7 +392,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
             await _db.SaveChangesAsync(ct);
 
-            var dto = Esle(satir);
+            var dto = Esle(satir, await KategoriCozucuKurAsync(ct));
             if (bilinmeyenKod)
                 dto.Uyari = $"'{kod}' hesap planında yok — ORKA'da yeni açıldıysa hesap planını güncelleyin. " +
                             "Kod kaydedildi ama öğrenilmedi.";
@@ -411,7 +455,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             satir.OnaylayanKullanici = Normalizasyon.Kirp(_kullanici.UserName ?? _kullanici.UserId, 100);
 
             await _db.SaveChangesAsync(ct);
-            return Esle(satir);
+            return Esle(satir, await KategoriCozucuKurAsync(ct));
         }
 
         // ---- Dışa aktarım ----
@@ -759,7 +803,11 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             KaynakDosyaVar = kaynakDosyaVar
         };
 
-        private static EkstreSatirDto Esle(EkstreSatiri s) => new()
+        /// <summary>
+        /// Satır DTO'su. Kategori etiketi <paramref name="cozucu"/> verildiğinde doldurulur;
+        /// tek satır dönen uçlarda (onay, diğer bankada) çözücü ayrıca kurulur.
+        /// </summary>
+        private static EkstreSatirDto Esle(EkstreSatiri s, KategoriCozucu? cozucu = null) => new()
         {
             Id = s.Id,
             SiraNo = s.SiraNo,
@@ -781,6 +829,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             IkinciAdayAdi = s.IkinciAdayAdi,
             IkinciAdaySkoru = s.IkinciAdaySkoru,
             Adaylar = AdaylariOku(s.Adaylar),
+            IslemKategorisiId = (cozucu ?? KategoriCozucu.Bos).Coz(s.OnaylananHesapKodu ?? s.OnerilenHesapKodu).Id,
+            IslemKategorisiAdi = (cozucu ?? KategoriCozucu.Bos).Coz(s.OnaylananHesapKodu ?? s.OnerilenHesapKodu).Ad,
             OnaylananHesapKodu = s.OnaylananHesapKodu,
             OnaylananHesapAdi = s.OnaylananHesapAdi,
             Durum = s.Durum,

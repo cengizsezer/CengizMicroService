@@ -115,6 +115,13 @@
                 <RadzenTextBox @bind-Value="_form.Aciklama" Placeholder="Ortak" />
             </div>
             <div class="ky-alan">
+                <label>Kategori</label>
+                <RadzenDropDown TValue="int?" @bind-Value="_form.IslemKategorisiId" Data="@_kategoriler"
+                                TextProperty="Ad" ValueProperty="Id" AllowClear="true"
+                                Placeholder="(kategorisiz)" Style="width:100%" />
+                <span class="ky-ipucu">Muhasebe sınıflandırması; etiket ve görünüm, eşleştirmeye girmez.</span>
+            </div>
+            <div class="ky-alan">
                 <label>Durum</label>
                 <div style="display:flex; gap:6px; align-items:center">
                     <RadzenCheckBox TValue="bool" @bind-Value="_form.Aktif" Name="kyAktif" />
@@ -134,6 +141,12 @@
 
 @code {
     private List<KisiYonlendirmeDto> _kayitlar = new();
+    /// <summary>
+    /// Kategori seçenekleri. Kategori kuralın davranışını değiştirmez; kurallar
+    /// ekranında kategoriye göre gruplanabilmesi için tutulur.
+    /// </summary>
+    private List<IslemKategorisiDto> _kategoriler = new();
+
     private KisiYonlendirmeYazDto? _form;
     private int? _duzenlenenId;
     private bool _kaydediyor;
@@ -156,6 +169,7 @@
     public async Task YenileAsync()
     {
         _kayitlar = await Api.KisiYonlendirmeleriAsync();
+        _kategoriler = await Api.IslemKategorileriAsync();
         StateHasChanged();
     }
 
@@ -177,6 +191,7 @@
                 Yon = kayit.Yon,
                 HesapKodu = kayit.HesapKodu,
                 Aciklama = kayit.Aciklama,
+                IslemKategorisiId = kayit.IslemKategorisiId,
                 Aktif = kayit.Aktif
             };
     }

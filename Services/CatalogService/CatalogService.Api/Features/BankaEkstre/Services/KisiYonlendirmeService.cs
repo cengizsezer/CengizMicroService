@@ -45,6 +45,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         public async Task<List<KisiYonlendirmeDto>> GetHepsiAsync(CancellationToken ct = default)
         {
+            await KategorileriYukleAsync(ct);
+
             var kayitlar = await Kayitlar.AsNoTracking()
                 .OrderBy(k => k.IsimCekirdegi).ThenBy(k => k.Yon)
                 .ToListAsync(ct);
@@ -57,6 +59,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             var cekirdek = Dogrula(dto);
             await YapilandirmaDogrulama.HesapKoduDogrulaAsync(_db, _kapsam.FirmaId, dto.HesapKodu, nameof(dto.HesapKodu), ct);
             await TekilligiDogrulaAsync(cekirdek, dto.Yon, null, ct);
+
+            await KategorileriYukleAsync(ct);
 
             var kayit = new KisiYonlendirme { FirmaId = _kapsam.FirmaId };
             await UygulaAsync(kayit, dto, cekirdek, ct);
@@ -72,6 +76,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             var cekirdek = Dogrula(dto);
             await YapilandirmaDogrulama.HesapKoduDogrulaAsync(_db, _kapsam.FirmaId, dto.HesapKodu, nameof(dto.HesapKodu), ct);
             await TekilligiDogrulaAsync(cekirdek, dto.Yon, id, ct);
+
+            await KategorileriYukleAsync(ct);
 
             var kayit = await Kayitlar.FirstOrDefaultAsync(k => k.Id == id, ct);
             if (kayit is null) return null;
@@ -133,10 +139,22 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             kayit.HesapAdi = await _db.EkstreHesapPlani.AsNoTracking()
                 .Where(h => h.FirmaId == _kapsam.FirmaId && h.Kod == kod).Select(h => h.Ad).FirstOrDefaultAsync(ct);
             kayit.Aciklama = string.IsNullOrWhiteSpace(dto.Aciklama) ? null : Normalizasyon.Kirp(dto.Aciklama, 300);
+            kayit.IslemKategorisiId = await YapilandirmaDogrulama.KategoriDogrulaAsync(
+                _db, dto.IslemKategorisiId, nameof(dto.IslemKategorisiId), ct);
             kayit.Aktif = dto.Aktif;
         }
 
-        private static KisiYonlendirmeDto Esle(KisiYonlendirme k) => new()
+
+        /// <summary>
+        /// Kategori Id -> ad; listelerde kategori adini gostermek icin istek basina bir kez
+        /// okunur. Servis scoped oldugu icin alan istekler arasinda paylasilmaz.
+        /// </summary>
+        private Dictionary<int, string> _kategoriAdlari = new();
+
+        private async Task KategorileriYukleAsync(CancellationToken ct)
+            => _kategoriAdlari = await YapilandirmaDogrulama.KategoriAdlariAsync(_db, ct);
+
+        private KisiYonlendirmeDto Esle(KisiYonlendirme k) => new()
         {
             Id = k.Id,
             Isim = k.Isim,
@@ -145,6 +163,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             HesapKodu = k.HesapKodu,
             HesapAdi = k.HesapAdi,
             Aciklama = k.Aciklama,
+            IslemKategorisiId = k.IslemKategorisiId,
+            IslemKategorisiAdi = YapilandirmaDogrulama.KategoriAdi(_kategoriAdlari, k.IslemKategorisiId),
             Aktif = k.Aktif
         };
     }

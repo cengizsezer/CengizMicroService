@@ -103,6 +103,15 @@
     }
 </div>
 
+@*
+    Kategoriler görünümü en üstte: bu sekmenin amacı bankanın kurulumu ve ilk soru
+    "hangi kategoriler hâlâ kuralsız?" — kontrol listesi, düzenleme formlarından önce gelir.
+*@
+<div class="bk-kart">
+    <KategorilerBolumu @ref="_kategoriler" BankaParserTipi="@ParserTipi" BankaAdi="@BankaAdi"
+                       KuralDuzenlenecek="@KuralDuzenleAsync" />
+</div>
+
 <div class="bk-kart">
     <UnvanDesenleriBolumu @ref="_desenler" BankaParserTipi="@ParserTipi" BankaAdi="@BankaAdi" />
 </div>
@@ -125,6 +134,7 @@
     /// <summary>Ayrıştırıcı/katman ayarı değişince üst sayfa sekmeleri ve sayaçları yenilesin.</summary>
     [Parameter] public EventCallback Degisti { get; set; }
 
+    private KategorilerBolumu? _kategoriler;
     private UnvanDesenleriBolumu? _desenler;
     private AciklamaSablonlariBolumu? _sablonlar;
     private SabitKurallarBolumu? _kurallar;
@@ -160,9 +170,38 @@
     /// <summary>Firma değişince üst sayfa çağırır; alt bölümler kendi listelerini tazeler.</summary>
     public async Task YenileAsync()
     {
+        if (_kategoriler is not null) await _kategoriler.YenileAsync();
         if (_desenler is not null) await _desenler.YenileAsync();
         if (_sablonlar is not null) await _sablonlar.YenileAsync();
         if (_kurallar is not null) await _kurallar.YenileAsync();
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Kategoriler görünümünde bir kuralın "düzenle" düğmesine basıldı. Kural aynı
+    /// sekmedeki bölümde ise formu orada açılır; vergi kodu ve kişi yönlendirmesi
+    /// Tanımlar ekranında olduğu için kullanıcı oraya yönlendirilir.
+    /// </summary>
+    private async Task KuralDuzenleAsync(KategoriKuralDto kural)
+    {
+        switch (kural.Mekanizma)
+        {
+            case "sabit kural":
+                _kurallar?.Duzenle(kural.Id);
+                break;
+
+            case "şablon":
+                _sablonlar?.Duzenle(kural.Id);
+                break;
+
+            default:
+                Notif.Notify(NotificationSeverity.Info, "Bu kayıt Tanımlar ekranında",
+                             $"{kural.Mekanizma}: {kural.Ad} — Tanımlar → " +
+                             (kural.Mekanizma == "vergi kodu" ? "Vergi kodları" : "Kişi yönlendirmeleri"), 6000);
+                break;
+        }
+
+        await Task.CompletedTask;
         StateHasChanged();
     }
 

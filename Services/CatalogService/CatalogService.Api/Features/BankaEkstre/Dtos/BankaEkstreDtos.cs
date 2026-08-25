@@ -204,6 +204,15 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
 
         public string? OnaylananHesapKodu { get; set; }
         public string? OnaylananHesapAdi { get; set; }
+
+        /// <summary>
+        /// Satırın işlem kategorisi. Karar değil sonuç: onaylanan (yoksa önerilen) hesap
+        /// kodunun ana grubundan okunur. Kod yoksa ya da eşleşen kategori yoksa boş.
+        /// </summary>
+        public int? IslemKategorisiId { get; set; }
+
+        public string? IslemKategorisiAdi { get; set; }
+
         public SatirDurum Durum { get; set; }
 
         /// <summary>Öğrenme anahtarının çekirdeği; onay ekranında hangi anahtarın öğrenileceğini gösterir.</summary>
@@ -366,6 +375,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public int Id { get; set; }
         public string? VergiKodu { get; set; }
         public string? AnahtarKelime { get; set; }
+
+        /// <summary>Muhasebe kategorisi; yalnız etiket ve görünüm, eşleştirmeye girmez.</summary>
+        public int? IslemKategorisiId { get; set; }
+
+        /// <summary>Kategori adı (listede gösterilir); kategori atanmamışsa boş.</summary>
+        public string? IslemKategorisiAdi { get; set; }
         public string HesapKodu { get; set; } = string.Empty;
         public string? HesapAdi { get; set; }
         public int Sira { get; set; }
@@ -374,6 +389,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
 
     public class VergiKoduEslemesiYazDto
     {
+
+        /// <summary>Muhasebe kategorisi; boş bırakılabilir.</summary>
+        public int? IslemKategorisiId { get; set; }
         public string? VergiKodu { get; set; }
         public string? AnahtarKelime { get; set; }
         public string HesapKodu { get; set; } = string.Empty;
@@ -397,6 +415,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public YonlendirmeYonu Yon { get; set; }
         public string HesapKodu { get; set; } = string.Empty;
         public string? HesapAdi { get; set; }
+
+        /// <summary>Muhasebe kategorisi; yalnız etiket ve görünüm, eşleştirmeye girmez.</summary>
+        public int? IslemKategorisiId { get; set; }
+
+        /// <summary>Kategori adı (listede gösterilir); kategori atanmamışsa boş.</summary>
+        public string? IslemKategorisiAdi { get; set; }
         public string? Aciklama { get; set; }
         public bool Aktif { get; set; }
     }
@@ -405,6 +429,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
     {
         public string Isim { get; set; } = string.Empty;
         public YonlendirmeYonu Yon { get; set; } = YonlendirmeYonu.Farketmez;
+
+        /// <summary>Muhasebe kategorisi; boş bırakılabilir.</summary>
+        public int? IslemKategorisiId { get; set; }
         public string HesapKodu { get; set; } = string.Empty;
         public string? Aciklama { get; set; }
         public bool Aktif { get; set; } = true;
@@ -437,6 +464,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
 
         public string HesapKodu { get; set; } = string.Empty;
         public string? HesapAdi { get; set; }
+
+        /// <summary>Muhasebe kategorisi; yalnız etiket ve görünüm, eşleştirmeye girmez.</summary>
+        public int? IslemKategorisiId { get; set; }
+
+        /// <summary>Kategori adı (listede gösterilir); kategori atanmamışsa boş.</summary>
+        public string? IslemKategorisiAdi { get; set; }
         public bool UnvanCikarilsin { get; set; }
         public bool AltHesapGerekli { get; set; }
         public int Sira { get; set; }
@@ -454,6 +487,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public Yon? Yon { get; set; }
         public string HesapKodu { get; set; } = string.Empty;
         public string? HesapAdi { get; set; }
+
+        /// <summary>Muhasebe kategorisi; boş bırakılabilir.</summary>
+        public int? IslemKategorisiId { get; set; }
         public bool UnvanCikarilsin { get; set; } = true;
         public bool AltHesapGerekli { get; set; }
         public int Sira { get; set; }
@@ -471,6 +507,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public EslesmeTuru EslesmeTuru { get; set; }
         public string Sablon { get; set; } = string.Empty;
 
+
+        /// <summary>Muhasebe kategorisi; yalnız etiket ve görünüm, eşleştirmeye girmez.</summary>
+        public int? IslemKategorisiId { get; set; }
+
+        /// <summary>Kategori adı (listede gösterilir); kategori atanmamışsa boş.</summary>
+        public string? IslemKategorisiAdi { get; set; }
         /// <summary>Bankalar arası hareket mi (virman, süpürme); karşı taraf yerine banka adı kullanılır.</summary>
         public bool BankalarArasi { get; set; }
 
@@ -483,6 +525,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public string? ParserTipi { get; set; }
         public string IslemTipiDeseni { get; set; } = string.Empty;
         public EslesmeTuru EslesmeTuru { get; set; } = EslesmeTuru.Tam;
+
+        /// <summary>Muhasebe kategorisi; boş bırakılabilir.</summary>
+        public int? IslemKategorisiId { get; set; }
         public string Sablon { get; set; } = string.Empty;
         public bool BankalarArasi { get; set; }
         public int Sira { get; set; }
@@ -601,4 +646,122 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
 
         public bool Bos => Toplam == 0;
     }
+
+    // ---- Banka adları ----
+
+    /// <summary>
+    /// Firmada kullanılan bir banka adı ve kaç hesapta geçtiği. Banka adı alanı açılır
+    /// liste; yeni ad ancak ayrı bir adımdan eklenir çünkü "aynı banka önceliği" kuralı
+    /// bu alan üzerinden çalışıyor ve ikinci bir yazım bankayı ikiye böler.
+    /// </summary>
+    public class BankaAdiDto
+    {
+        public string Ad { get; set; } = string.Empty;
+
+        /// <summary>Bu adı taşıyan hesap sayısı (pasifler dahil); birleştirme önizlemesi bunu gösterir.</summary>
+        public int HesapSayisi { get; set; }
+    }
+
+    public class BankaAdiBirlestirDto
+    {
+        /// <summary>Tek ada indirilecek yazımlar; hedefin kendisi listede olabilir, yok sayılır.</summary>
+        public List<string> Kaynaklar { get; set; } = new();
+
+        /// <summary>Kalacak yazım.</summary>
+        public string Hedef { get; set; } = string.Empty;
+    }
+
+    public class BankaAdiBirlestirSonucDto
+    {
+        public string Hedef { get; set; } = string.Empty;
+
+        /// <summary>Adı değişen hesap sayısı.</summary>
+        public int EtkilenenHesap { get; set; }
+
+        /// <summary>İşlemden sonraki banka adı listesi; ekran tazelenmeden liste güncellenir.</summary>
+        public List<BankaAdiDto> BankaAdlari { get; set; } = new();
+    }
+
+    // ---- İşlem kategorileri ----
+
+    public class IslemKategorisiDto
+    {
+        public int Id { get; set; }
+        public string Ad { get; set; } = string.Empty;
+
+        /// <summary>Kategorinin varsayılan ana hesap grubu ("195"); ekstre satırı bununla etiketlenir.</summary>
+        public string? VarsayilanAnaGrup { get; set; }
+
+        public int Sira { get; set; }
+        public bool Aktif { get; set; }
+    }
+
+    public class IslemKategorisiYazDto
+    {
+        public string Ad { get; set; } = string.Empty;
+        public string? VarsayilanAnaGrup { get; set; }
+        public int Sira { get; set; }
+        public bool Aktif { get; set; } = true;
+    }
+
+    /// <summary>
+    /// Kategori görünümünde accordion açılınca listelenen kural. Mekanizması ne olursa
+    /// olsun (sabit kural, şablon, vergi kodu, kişi) hepsi tek listede; ayrım küçük bir
+    /// etiket olan <see cref="Mekanizma"/> alanında.
+    /// </summary>
+    public class KategoriKuralDto
+    {
+        public int Id { get; set; }
+
+        /// <summary>"sabit kural" | "şablon" | "vergi kodu" | "kişi".</summary>
+        public string Mekanizma { get; set; } = string.Empty;
+
+        /// <summary>Kuralı tanıtan metin: desen, şablon ifadesi ya da kişi adı.</summary>
+        public string Ad { get; set; } = string.Empty;
+
+        /// <summary>Şablonlarda boş: şablon hesap kodu belirlemez, açıklama üretir.</summary>
+        public string? HesapKodu { get; set; }
+
+        public string? HesapAdi { get; set; }
+        public bool Aktif { get; set; }
+    }
+
+    /// <summary>Bir kategorinin, seçili bankadaki kapsamı.</summary>
+    public class KategoriKapsamDto
+    {
+        public int Id { get; set; }
+        public string Ad { get; set; } = string.Empty;
+        public string? VarsayilanAnaGrup { get; set; }
+        public int Sira { get; set; }
+        public bool Aktif { get; set; }
+
+        /// <summary>Kategoriye bağlı kuralların ORKA kodları, tekrarsız ("195", "196").</summary>
+        public List<string> HesapKodlari { get; set; } = new();
+
+        public int KuralSayisi { get; set; }
+
+        /// <summary>Accordion açılınca gösterilen kurallar; kapalıyken de gönderilir (liste kısa).</summary>
+        public List<KategoriKuralDto> Kurallar { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Kategoriler görünümünün tamamı. Üstteki tek satır özet buradan yazılır:
+    /// "Vakıfbank · 13 / 17 kategori tanımlı".
+    /// </summary>
+    public class KategoriKapsamOzetiDto
+    {
+        public string? ParserTipi { get; set; }
+        public string ParserAdi { get; set; } = string.Empty;
+
+        public int Toplam { get; set; }
+
+        /// <summary>En az bir kuralı olan kategori sayısı.</summary>
+        public int Tanimli { get; set; }
+
+        /// <summary>Hiçbir kategoriye bağlanmamış kural sayısı; 0 değilse ekranda uyarı çıkar.</summary>
+        public int KategorisizKural { get; set; }
+
+        public List<KategoriKapsamDto> Kategoriler { get; set; } = new();
+    }
 }
+

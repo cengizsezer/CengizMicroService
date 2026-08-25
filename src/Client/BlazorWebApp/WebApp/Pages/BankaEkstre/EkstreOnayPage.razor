@@ -66,6 +66,8 @@
 
     .eo-etiket { font-size: 10px; padding: 1px 7px; border-radius: 10px; background: #edf2f7; color: #4a5568; margin-left: 6px; }
     .eo-etiket.cozulemedi { background: #fff5f5; color: #9b2c2c; }
+    /* Kategori etiketi: mekanizma etiketinden ayrılsın diye soğuk tonda ve kenarlıklı. */
+    .eo-etiket.kategori { background: #fff; color: #2c5282; border: 1px solid #bee3f8; }
     .eo-skor { font-size: 10px; color: #718096; margin-left: 4px; font-variant-numeric: tabular-nums; }
 
     .eo-yonlendir { display: flex; align-items: center; gap: 5px; margin-top: 5px; font-size: 11px; color: #4a5568; }
@@ -119,6 +121,16 @@ else
         <RadzenButton Text="@($"Çözülmüşler ({Cozulmusler.Count})")" Size="ButtonSize.Small"
                       ButtonStyle="@(_cozulmusSekme ? ButtonStyle.Primary : ButtonStyle.Light)"
                       Click="@(() => _cozulmusSekme = true)" />
+        @* Kategori filtresi: benzer satırları gruplayıp toplu gözden geçirmek için.
+           Süzme yerelde yapılır — satırlar zaten yüklü, sayaçlar da tüm listeyi sayıyor. *@
+        @if (Kategoriler.Count > 0)
+        {
+            <RadzenDropDown TValue="int?" Value="@_kategoriFiltre" Data="@Kategoriler"
+                            TextProperty="Ad" ValueProperty="Id" AllowClear="true"
+                            Placeholder="Tüm kategoriler" Style="width:210px"
+                            Change="@(deger => _kategoriFiltre = deger as int?)" />
+        }
+
         <div style="flex:1 1 auto"></div>
         <RadzenButton Text="Kod listesi" Icon="list_alt" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
                       title="ORKA gridine yazılacak karşı hesap kodları (PkfRobot bu listeyi tüketir)"
@@ -177,6 +189,12 @@ else
                             {
                                 <span class="eo-etiket">@BankaEkstreEtiket.Katman(satir.KaynakKatman)</span>
                                 <span class="eo-skor">@BankaEkstreEtiket.Skor(satir.GuvenSkoru)</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(satir.IslemKategorisiAdi))
+                            {
+                                <span class="eo-etiket kategori" title="İşlem kategorisi (hesap kodunun ana grubundan)">
+                                    @satir.IslemKategorisiAdi
+                                </span>
                             }
                         </div>
                         <div class="eo-ham" title="@satir.HamAciklama">@satir.IslemTipi · @satir.HamAciklama</div>
@@ -295,6 +313,10 @@ else
                     <span style="flex:0 0 240px; font-family:ui-monospace, Consolas, monospace">
                         @(satir.OnaylananHesapKodu ?? satir.OnerilenHesapKodu ?? "—")
                         <span class="eo-etiket">@BankaEkstreEtiket.Katman(satir.KaynakKatman)</span>
+                        @if (!string.IsNullOrWhiteSpace(satir.IslemKategorisiAdi))
+                        {
+                            <span class="eo-etiket kategori">@satir.IslemKategorisiAdi</span>
+                        }
                     </span>
                     <span style="flex:0 0 120px; color:#718096; font-size:12px">@BankaEkstreEtiket.Durum(satir.Durum)</span>
                 </div>
@@ -340,6 +362,12 @@ else
     /// <summary>Satır başına "bu kişiyi hep bu hesaba yönlendir" kutusu.</summary>
     private readonly Dictionary<int, bool> _yonlendir = new();
 
+    /// <summary>
+    /// Seçili kategori filtresi (boş = tümü). Satırın kategorisi sunucuda hesap kodunun
+    /// ana grubundan okunuyor; burada yalnız süzülür.
+    /// </summary>
+    private int? _kategoriFiltre;
+
     private List<HesapPlaniKaydiDto> _oneriler = new();
     private int _aktifSatirId;
     private bool _cozulmusSekme;
@@ -352,12 +380,26 @@ else
 
     /// <summary>Varsayılan filtre: yalnız çözülmemiş satırlar (onay bekleyen + çözülemeyen).</summary>
     private List<EkstreSatirDto> Bekleyenler =>
-        _satirlar.Where(s => s.Durum is SatirDurum.OnayBekliyor or SatirDurum.Cozulemedi)
-                 .OrderBy(s => s.SiraNo).ToList();
+        Suz(_satirlar.Where(s => s.Durum is SatirDurum.OnayBekliyor or SatirDurum.Cozulemedi));
 
     private List<EkstreSatirDto> Cozulmusler =>
-        _satirlar.Where(s => s.Durum is not (SatirDurum.OnayBekliyor or SatirDurum.Cozulemedi))
-                 .OrderBy(s => s.SiraNo).ToList();
+        Suz(_satirlar.Where(s => s.Durum is not (SatirDurum.OnayBekliyor or SatirDurum.Cozulemedi)));
+
+    /// <summary>Kategori filtresi + sıra. Filtre boşken liste olduğu gibi kalır.</summary>
+    private List<EkstreSatirDto> Suz(IEnumerable<EkstreSatirDto> satirlar)
+        => (_kategoriFiltre is int id ? satirlar.Where(s => s.IslemKategorisiId == id) : satirlar)
+           .OrderBy(s => s.SiraNo).ToList();
+
+    /// <summary>
+    /// Filtre seçenekleri: yalnız bu ekstrede <b>gerçekten geçen</b> kategoriler. Tüm
+    /// kategori listesi gösterilseydi çoğu seçim boş liste verirdi.
+    /// </summary>
+    private List<IslemKategorisiDto> Kategoriler =>
+        _satirlar.Where(s => s.IslemKategorisiId is int && !string.IsNullOrWhiteSpace(s.IslemKategorisiAdi))
+                 .GroupBy(s => s.IslemKategorisiId!.Value)
+                 .Select(g => new IslemKategorisiDto { Id = g.Key, Ad = $"{g.First().IslemKategorisiAdi} ({g.Count()})" })
+                 .OrderBy(k => k.Ad, StringComparer.CurrentCulture)
+                 .ToList();
 
     private int Sayi(SatirDurum durum) => _satirlar.Count(s => s.Durum == durum);
 

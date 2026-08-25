@@ -1,4 +1,4 @@
-using CatalogService.Api.Extensions;
+﻿using CatalogService.Api.Extensions;
 using CatalogService.Api.Features.AccountPlan;
 using CatalogService.Api.Features.Banka.Services;
 using CatalogService.Api.Features.Declarations.Services;
@@ -174,6 +174,8 @@ builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IUnv
                            CatalogService.Api.Features.BankaEkstre.Services.UnvanDeseniService>();
 builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IKisiYonlendirmeService,
                            CatalogService.Api.Features.BankaEkstre.Services.KisiYonlendirmeService>();
+builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IIslemKategorisiService,
+                           CatalogService.Api.Features.BankaEkstre.Services.IslemKategorisiService>();
 builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IFirmaOzetService,
                            CatalogService.Api.Features.BankaEkstre.Services.FirmaOzetService>();
 builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IBankaTemizlikService,

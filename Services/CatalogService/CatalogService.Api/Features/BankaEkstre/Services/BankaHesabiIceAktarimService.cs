@@ -90,6 +90,17 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             var planKodlari = new Dictionary<string, bool>(StringComparer.Ordinal);
             foreach (var kayit in plan) planKodlari[kayit.Kod] = kayit.Aktif;
 
+            // Mevcut banka adları: dosyadaki ad bunlardan hiçbiriyle eşleşmezse satır
+            // eklenir ama uyarılır. "Aynı banka önceliği" kuralı BankaAdi üzerinden
+            // çalışıyor; ikinci bir yazım bankayı ikiye böler ve bankalar arası
+            // eşleştirmeyi bozar. Karşılaştırma sekme şeridiyle aynı (ordinal, harf duyarsız).
+            var mevcutBankaAdlari = new HashSet<string>(
+                await _db.EkstreBankaHesaplari
+                    .Where(h => h.FirmaId == _kapsam.FirmaId)
+                    .Select(h => h.BankaAdi)
+                    .ToListAsync(ct),
+                StringComparer.OrdinalIgnoreCase);
+
             var dosyadaGorulen = new HashSet<string>(StringComparer.Ordinal);
             var sonSatir = sayfa.LastRowUsed()?.RowNumber() ?? 0;
 
@@ -147,7 +158,19 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                     hatalar.Add(Sorun(satirNo, nameof(BankaHesabi.HesapAdi), "Hesap adı boş."));
 
                 if (bankaAdi.Length == 0)
+                {
                     hatalar.Add(Sorun(satirNo, nameof(BankaHesabi.BankaAdi), "Banka adı boş."));
+                }
+                else if (!mevcutBankaAdlari.Contains(bankaAdi.Trim()))
+                {
+                    uyarilar.Add(Sorun(satirNo, nameof(BankaHesabi.BankaAdi),
+                        $"'{bankaAdi.Trim()}' mevcut banka adlarından hiçbiriyle eşleşmiyor; yeni bir banka " +
+                        "sekmesi açılacak. Var olan bir bankayı kastediyorsanız aynı yazımı kullanın — " +
+                        "farklı yazımlar ayrı banka sayılır. Kayıt yine de eklendi."));
+
+                    // Aynı yeni ad dosyanın kalan satırlarında tekrar uyarı üretmesin.
+                    mevcutBankaAdlari.Add(bankaAdi.Trim());
+                }
 
                 var tip = HesapTipiCoz(tipHam);
                 if (tip is null)

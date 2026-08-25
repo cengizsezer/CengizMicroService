@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -52,6 +52,10 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// <summary>Karşı IBAN deseni: açıklama içinde maskeli (yıldızlı) de geçebiliyor.</summary>
         private static readonly Regex IbanDeseni =
             new(@"TR\d{2}[\s\d\*]{16,30}", RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexZamanAsimi);
+
+        /// <summary>Kredi taksit satırlarındaki "(numara) KREDI HESAP NUMARALI" kalıbı (normalize metinde).</summary>
+        private static readonly Regex KrediHesapDeseni =
+            new(@"(\d{6,})\s+KREDI HESAP NUMARALI", RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexZamanAsimi);
 
         private static readonly Regex BosluklarDeseni =
             new(@"\s+", RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexZamanAsimi);
@@ -136,6 +140,25 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         }
 
         /// <summary>
+        /// Kredi taksit satırlarının öğrenme anahtarı: <b>kredi hesap numarası</b>.
+        /// Açıklama "6501439328  kredi hesap numaralı İşletme İhtiyaç Kredisi … Taksit
+        /// Tahsilatı …" biçiminde; işlem tipi ("Taksitli Tahsilat") her kredide aynı olduğu
+        /// için ondan üretilen anahtar bütün kredileri tek hesaba bağlıyordu. Oysa her
+        /// kredinin muavini ayrı (300 1 0015 328, 300 1 20 …).
+        ///
+        /// Karşılaştırma normalize metin üzerinden yapılır: "numaralı" yazımındaki Türkçe
+        /// karakter ve çift boşluklar burada sadeleşir.
+        /// </summary>
+        public static string KrediAnahtar(string? hamAciklama)
+        {
+            var metin = MetinNormalize(hamAciklama);
+            if (metin.Length == 0) return string.Empty;
+
+            var eslesme = KrediHesapDeseni.Match(metin);
+            return eslesme.Success ? "KREDI:" + eslesme.Groups[1].Value : string.Empty;
+        }
+
+        /// <summary>
         /// Unvan çıkarılamayan satırların (banka masrafı, HGS, vergi…) öğrenme anahtarı:
         /// işlem tipi + sabit önek. Ham açıklama kullanılsaydı her satır yeni anahtar üretirdi.
         /// </summary>
@@ -197,25 +220,43 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// <summary>
         /// Açıklama içindeki karşı IBAN. Ölçümde 286 satırın 97'sinde vardı; en değerli anahtar.
         /// Maskeli (yıldızlı) IBAN öğrenme anahtarı olamayacağı için elenir.
+        ///
+        /// <b>İlk</b> IBAN'ı verir; virman/döviz satırlarında metinde iki IBAN geçiyor ve
+        /// ilki ekstrenin kendi hesabı olabiliyor ("… TR40 … nolu hesabından TR80 … nolu
+        /// hesabına …"). Karşı tarafı ararken <see cref="IbanlariBul"/> kullanılmalı.
         /// </summary>
-        public static string? IbanBul(string? metin)
+        public static string? IbanBul(string? metin) => IbanlariBul(metin).FirstOrDefault();
+
+        /// <summary>
+        /// Metindeki <b>tüm</b> IBAN'lar, geçtikleri sırayla ve tekrarsız. Maskeli
+        /// (yıldızlı) yazımlar elenir; hepsi "TR" + 24 rakam biçimine indirgenir.
+        /// </summary>
+        public static List<string> IbanlariBul(string? metin)
         {
-            if (string.IsNullOrWhiteSpace(metin)) return null;
+            var bulunanlar = new List<string>();
+            if (string.IsNullOrWhiteSpace(metin)) return bulunanlar;
 
-            var eslesme = IbanDeseni.Match(metin);
-            if (!eslesme.Success) return null;
+            foreach (Match eslesme in IbanDeseni.Matches(metin))
+            {
+                var ham = eslesme.Value.Replace(" ", string.Empty);
+                if (ham.Contains('*')) continue;
 
-            var ham = eslesme.Value.Replace(" ", string.Empty);
-            if (ham.Contains('*')) return null;
+                var rakamlar = new string(ham.Where(char.IsDigit).ToArray());
+                // TR IBAN: 2 harf + 24 rakam.
+                if (rakamlar.Length < 24) continue;
 
-            var rakamlar = new string(ham.Where(char.IsDigit).ToArray());
-            // TR IBAN: 2 harf + 24 rakam.
-            if (rakamlar.Length < 24) return null;
+                var iban = "TR" + rakamlar[..24];
+                if (!bulunanlar.Contains(iban, StringComparer.Ordinal)) bulunanlar.Add(iban);
+            }
 
-            return "TR" + rakamlar[..24];
+            return bulunanlar;
         }
 
-        /// <summary>IBAN anahtarı: yalnız rakamlar; kullanıcı boşluklu da girse aynı anahtara düşer.</summary>
+        /// <summary>
+        /// IBAN anahtarı: yalnız rakamlar. Karşılaştırmanın <b>iki tarafı</b> da buradan
+        /// geçmeli — banka metninde IBAN boşluklu ("TR80 0001 5001 …"), Tanımlar'daki
+        /// kayıtta bitişik ("TR800001500158048013139400") yazılıyor.
+        /// </summary>
         public static string IbanAnahtar(string? iban)
         {
             if (string.IsNullOrWhiteSpace(iban)) return string.Empty;

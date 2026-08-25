@@ -215,6 +215,14 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
             if (mevcut is null)
             {
+                // Kalitesiz anahtar YENİ kayıt olarak yazılmaz: bir kez yazıldığında geçmiş
+                // onay katmanı onu satırı onaya bile düşürmeden, güven 1.0 ile uygular.
+                //
+                // Kayıt zaten varsa kapı uygulanmaz: orada kullanıcı mevcut (ve yanlış
+                // olabilen) bir kararı düzeltiyordur; yazmayı reddetmek eski kaydı yerinde
+                // bırakır, yani durumu iyileştirmez.
+                if (!AnahtarKalitesi.Uygun(cekirdek, ad)) return;
+
                 _db.EkstreHesapEslesmeleri.Add(new HesapEslesmesi
                 {
                     FirmaId = _kapsam.FirmaId,

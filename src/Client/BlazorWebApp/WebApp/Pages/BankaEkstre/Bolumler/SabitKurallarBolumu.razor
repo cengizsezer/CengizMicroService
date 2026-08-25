@@ -170,6 +170,13 @@
                 <span class="sk-ipucu">Farketmez ise kural iki yönde de uygulanır.</span>
             </div>
             <div class="sk-alan">
+                <label>Kategori</label>
+                <RadzenDropDown TValue="int?" @bind-Value="_form.IslemKategorisiId" Data="@_kategoriler"
+                                TextProperty="Ad" ValueProperty="Id" AllowClear="true"
+                                Placeholder="(kategorisiz)" Style="width:100%" />
+                <span class="sk-ipucu">Muhasebe sınıflandırması; etiket ve görünüm, eşleştirmeye girmez.</span>
+            </div>
+            <div class="sk-alan">
                 <label>Sıra</label>
                 <RadzenNumeric TValue="int" @bind-Value="_form.Sira" Min="0" />
                 <span class="sk-ipucu">Küçük sıra önce denenir. Dar ifadeyi genel ifadeden önce koyun.</span>
@@ -213,6 +220,12 @@
 
 @code {
     private List<SabitKuralDto> _kayitlar = new();
+    /// <summary>
+    /// Kategori seçenekleri. Kategori kuralın ne yaptığını değiştirmez; kurallar
+    /// ekranında kategoriye göre gruplanabilmesi için tutulur.
+    /// </summary>
+    private List<IslemKategorisiDto> _kategoriler = new();
+
     private SabitKuralYazDto? _form;
     private int? _duzenlenenId;
     private bool _kaydediyor;
@@ -309,6 +322,20 @@
     public async Task YenileAsync()
     {
         _kayitlar = await Api.SabitKurallarAsync();
+        _kategoriler = await Api.IslemKategorileriAsync();
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Kategoriler görünümündeki "düzenle" düğmesi bu kaydın formunu açar; kullanıcı
+    /// kuralı bulmak için listede aramak zorunda kalmasın.
+    /// </summary>
+    public void Duzenle(int id)
+    {
+        var kayit = _kayitlar.FirstOrDefault(k => k.Id == id);
+        if (kayit is null) return;
+
+        FormAc(kayit);
         StateHasChanged();
     }
 
@@ -331,6 +358,7 @@
                 HesapAdi = kayit.HesapAdi,
                 UnvanCikarilsin = kayit.UnvanCikarilsin,
                 AltHesapGerekli = kayit.AltHesapGerekli,
+                IslemKategorisiId = kayit.IslemKategorisiId,
                 Sira = kayit.Sira,
                 Aktif = kayit.Aktif
             };

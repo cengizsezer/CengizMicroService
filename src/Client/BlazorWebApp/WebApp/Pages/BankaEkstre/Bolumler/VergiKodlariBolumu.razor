@@ -106,6 +106,15 @@
                 <span class="vk-ipucu">Boş bırakılırsa hesap planındaki addan doldurulur.</span>
             </div>
             <div class="vk-alan">
+                <label>Kategori</label>
+                <RadzenDropDown TValue="int?" @bind-Value="_form.IslemKategorisiId" Data="@_kategoriler"
+                                TextProperty="Ad" ValueProperty="Id" AllowClear="true"
+                                Placeholder="(kategorisiz)" Style="width:100%" />
+                <span class="vk-ipucu">
+                    Muhasebe sınıflandırması; yalnız etiket ve görünüm, eşleştirme kararına girmez.
+                </span>
+            </div>
+            <div class="vk-alan">
                 <label>Sıra</label>
                 <RadzenNumeric TValue="int" @bind-Value="_form.Sira" Min="0" />
             </div>
@@ -129,6 +138,12 @@
 
 @code {
     private List<VergiKoduEslemesiDto> _kayitlar = new();
+    /// <summary>
+    /// Kategori seçenekleri. Kategori kuralın ne yaptığını değiştirmez; kurallar
+    /// ekranında kategoriye göre gruplanabilmesi için tutulur.
+    /// </summary>
+    private List<IslemKategorisiDto> _kategoriler = new();
+
     private VergiKoduEslemesiYazDto? _form;
     private int? _duzenlenenId;
     private bool _kaydediyor;
@@ -144,6 +159,7 @@
     public async Task YenileAsync()
     {
         _kayitlar = await Api.VergiKodlariAsync();
+        _kategoriler = await Api.IslemKategorileriAsync();
         StateHasChanged();
     }
 
@@ -171,6 +187,7 @@
                 AnahtarKelime = kayit.AnahtarKelime,
                 HesapKodu = kayit.HesapKodu,
                 HesapAdi = kayit.HesapAdi,
+                IslemKategorisiId = kayit.IslemKategorisiId,
                 Sira = kayit.Sira,
                 Aktif = kayit.Aktif
             };

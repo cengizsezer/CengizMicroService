@@ -201,6 +201,9 @@ namespace CatalogService.Api.Migrations
                     b.Property<byte>("EslesmeTuru")
                         .HasColumnType("tinyint");
 
+                    b.Property<int?>("IslemKategorisiId")
+                        .HasColumnType("int");
+
                     b.Property<string>("IslemTipiDeseni")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -220,6 +223,8 @@ namespace CatalogService.Api.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IslemKategorisiId");
 
                     b.HasIndex("ParserTipi", "Sira");
 
@@ -588,6 +593,39 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("EkstreHesapPlani", "catalog");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.BankaEkstre.Domain.IslemKategorisi", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("Aktif")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Sira")
+                        .HasColumnType("int");
+
+                    b.Property<string>("VarsayilanAnaGrup")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Ad")
+                        .IsUnique();
+
+                    b.HasIndex("Sira");
+
+                    b.ToTable("EkstreIslemKategorileri", "catalog");
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.BankaEkstre.Domain.KimlikKaydi", b =>
                 {
                     b.Property<int>("Id")
@@ -659,10 +697,15 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int?>("IslemKategorisiId")
+                        .HasColumnType("int");
+
                     b.Property<byte>("Yon")
                         .HasColumnType("tinyint");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IslemKategorisiId");
 
                     b.HasIndex("FirmaId", "IsimCekirdegi", "Yon")
                         .IsUnique();
@@ -699,6 +742,9 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<int?>("IslemKategorisiId")
+                        .HasColumnType("int");
+
                     b.Property<string>("IslemTipiDeseni")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -722,6 +768,8 @@ namespace CatalogService.Api.Migrations
                         .HasColumnType("tinyint");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IslemKategorisiId");
 
                     b.HasIndex("ParserTipi", "Kapsam", "Sira");
 
@@ -790,6 +838,9 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<int?>("IslemKategorisiId")
+                        .HasColumnType("int");
+
                     b.Property<int>("Sira")
                         .HasColumnType("int");
 
@@ -798,6 +849,8 @@ namespace CatalogService.Api.Migrations
                         .HasColumnType("nvarchar(10)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IslemKategorisiId");
 
                     b.HasIndex("Sira");
 
@@ -3359,6 +3412,14 @@ namespace CatalogService.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.BankaEkstre.Domain.AciklamaSablonu", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.BankaEkstre.Domain.IslemKategorisi", null)
+                        .WithMany()
+                        .HasForeignKey("IslemKategorisiId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.BankaEkstre.Domain.EkstreSatiri", b =>
                 {
                     b.HasOne("CatalogService.Api.Features.BankaEkstre.Domain.EkstreYukleme", "EkstreYukleme")
@@ -3379,6 +3440,30 @@ namespace CatalogService.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("BankaHesabi");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.BankaEkstre.Domain.KisiYonlendirme", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.BankaEkstre.Domain.IslemKategorisi", null)
+                        .WithMany()
+                        .HasForeignKey("IslemKategorisiId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.BankaEkstre.Domain.SabitKural", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.BankaEkstre.Domain.IslemKategorisi", null)
+                        .WithMany()
+                        .HasForeignKey("IslemKategorisiId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.BankaEkstre.Domain.VergiKoduEslemesi", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.BankaEkstre.Domain.IslemKategorisi", null)
+                        .WithMany()
+                        .HasForeignKey("IslemKategorisiId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("CatalogService.Api.Features.Expenses.Domain.ProductDetail", b =>

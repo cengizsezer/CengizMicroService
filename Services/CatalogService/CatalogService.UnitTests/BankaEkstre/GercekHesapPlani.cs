@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Domain;
+﻿using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Services;
 
 namespace CatalogService.UnitTests.BankaEkstre
@@ -135,6 +135,19 @@ namespace CatalogService.UnitTests.BankaEkstre
                 // Kişi planda var ama kuralın grubunda değil: ortaklar altında.
                 // Kural 195'e kilitlerse bu kayıt hiç bulunamaz (Tur 3, madde 1).
                 Kayit("331 02", "Abdulkadir Sayıcı"),
+
+                // --- Banka masrafı kurallarının hedefi (Tur 3, madde 4) ---
+                Kayit("770 03 005", "Banka Komisyonu"),
+
+                // --- Kredi taksitleri: her kredinin muavini ayrı (Tur 3, madde 5) ---
+                Kayit("300 1 0015 328", "İşletme İhtiyaç Kredisi 6501439328"),
+                Kayit("300 1 20", "Dijital İşletme İhtiyaç Kredisi"),
+
+                // --- Kesik banka metninden öğrenme (Tur 3, madde 5) ---
+                // Ölçümde "SUN TEKS.SAN.VE TİC.A.Ş." metni "120 S104"e öğrenilmişti;
+                // doğrusu Suntek Teknoloji. İki kayıt da planda duruyor.
+                Kayit("120 S22", "Suntek Teknoloji Anonim Şirketi"),
+                Kayit("120 S104", "Sungurlu Un Ve Yem Sanayi"),
 
                 // --- Vergi eşlemesinin hedefleri ---
                 Kayit("689 9 1", "Kanunen Kabul Edilmeyen Giderler"),

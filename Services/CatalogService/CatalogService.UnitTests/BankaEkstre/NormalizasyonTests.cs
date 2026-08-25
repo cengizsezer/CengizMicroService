@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Services;
+﻿using CatalogService.Api.Features.BankaEkstre.Services;
 
 namespace CatalogService.UnitTests.BankaEkstre
 {
@@ -81,6 +81,36 @@ namespace CatalogService.UnitTests.BankaEkstre
             Assert.Equal("ISLEM:MKK MASRAFI", Normalizasyon.IslemAnahtari("MKK Masrafı"));
             Assert.Equal(string.Empty, Normalizasyon.IslemAnahtari("   "));
         }
+
+        [Fact]
+        public void Kredi_taksit_satiri_kredi_hesap_numarasindan_anahtar_alir()
+        {
+            // İşlem tipi ("Taksitli Tahsilat") bütün kredilerde aynı; ayırt eden numara.
+            Assert.Equal("KREDI:6501439328", Normalizasyon.KrediAnahtar(
+                "6501439328  kredi hesap numaralı İşletme İhtiyaç Kredisi   Tam  Taksit  Tahsilatı  8  Taksit "));
+
+            Assert.Equal(string.Empty, Normalizasyon.KrediAnahtar("0000123 sorgu numaralı DAĞI GİYİM tarafından"));
+        }
+
+        [Fact]
+        public void Metindeki_butun_ibanlar_bulunur()
+        {
+            // Döviz ve virman satırlarında iki IBAN geçiyor; ilki hesabın kendisi.
+            var ibanlar = Normalizasyon.IbanlariBul(
+                "PKF ADAY TR40 0001 5001 5800 7298 4901 00 nolu hesabından " +
+                "TR80 0001 5001 5804 8013 1394 00 nolu hesabına döviz alış");
+
+            Assert.Equal(new[] { "TR400001500158007298490100", "TR800001500158048013139400" }, ibanlar);
+
+            // IbanBul ilkini vermeye devam eder.
+            Assert.Equal("TR400001500158007298490100", Normalizasyon.IbanBul(
+                "PKF ADAY TR40 0001 5001 5800 7298 4901 00 nolu hesabından TR80 0001 5001 5804 8013 1394 00 nolu"));
+        }
+
+        [Fact]
+        public void Iban_anahtari_bosluklu_ve_bitisik_yazimi_esitler()
+            => Assert.Equal(Normalizasyon.IbanAnahtar("TR80 0001 5001 5804 8013 1394 00"),
+                            Normalizasyon.IbanAnahtar("TR800001500158048013139400"));
 
         [Fact]
         public void Hesap_kodu_bosluklu_kalir()

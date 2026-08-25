@@ -159,6 +159,13 @@
                 </div>
             </div>
             <div class="as-alan">
+                <label>Kategori</label>
+                <RadzenDropDown TValue="int?" @bind-Value="_form.IslemKategorisiId" Data="@_kategoriler"
+                                TextProperty="Ad" ValueProperty="Id" AllowClear="true"
+                                Placeholder="(kategorisiz)" Style="width:100%" />
+                <span class="as-ipucu">Muhasebe sınıflandırması; etiket ve görünüm, eşleştirmeye girmez.</span>
+            </div>
+            <div class="as-alan">
                 <label>Sıra</label>
                 <RadzenNumeric TValue="int" @bind-Value="_form.Sira" Min="0" />
                 <span class="as-ipucu">Küçük sıra önce denenir.</span>
@@ -183,6 +190,12 @@
 
 @code {
     private List<AciklamaSablonuDto> _kayitlar = new();
+    /// <summary>
+    /// Kategori seçenekleri. Kategori kuralın davranışını değiştirmez; kurallar
+    /// ekranında kategoriye göre gruplanabilmesi için tutulur.
+    /// </summary>
+    private List<IslemKategorisiDto> _kategoriler = new();
+
     private List<YerTutucuDto> _yerTutucular = new();
     private AciklamaSablonuYazDto? _form;
     private int? _duzenlenenId;
@@ -260,6 +273,17 @@
     public async Task YenileAsync()
     {
         _kayitlar = await Api.AciklamaSablonlariAsync();
+        _kategoriler = await Api.IslemKategorileriAsync();
+        StateHasChanged();
+    }
+
+    /// <summary>Kategoriler görünümünden gelen "düzenle": kaydın formunu açar.</summary>
+    public void Duzenle(int id)
+    {
+        var kayit = _kayitlar.FirstOrDefault(s => s.Id == id);
+        if (kayit is null) return;
+
+        FormAc(kayit);
         StateHasChanged();
     }
 
@@ -277,6 +301,7 @@
                 EslesmeTuru = kayit.EslesmeTuru,
                 Sablon = kayit.Sablon,
                 BankalarArasi = kayit.BankalarArasi,
+                IslemKategorisiId = kayit.IslemKategorisiId,
                 Sira = kayit.Sira,
                 Aktif = kayit.Aktif
             };

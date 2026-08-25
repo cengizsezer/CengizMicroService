@@ -88,6 +88,35 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         }
 
         /// <summary>
+        /// Kategori seçimi geçerli mi? Boş bırakılabilir (kategori zorunlu değil), doluysa
+        /// tanımlı bir kategori olmalı — silinmiş bir kategorinin Id'si kayda yazılırsa
+        /// kural hiçbir kategoride görünmez ve kullanıcı nedenini göremez.
+        /// </summary>
+        public static async Task<int?> KategoriDogrulaAsync(
+            CatalogContext db, int? kategoriId, string field, CancellationToken ct)
+        {
+            if (kategoriId is not int id || id <= 0) return null;
+
+            var varMi = await db.EkstreIslemKategorileri.AnyAsync(k => k.Id == id, ct);
+            if (!varMi)
+                throw new BankaEkstreKuralException(field, "Seçilen işlem kategorisi bulunamadı.");
+
+            return id;
+        }
+
+        /// <summary>
+        /// Id → ad sözlüğü; listelerde kategori adını göstermek için. Kategori sayısı
+        /// yirmi civarında olduğu için tablo bir kerede okunur.
+        /// </summary>
+        public static async Task<Dictionary<int, string>> KategoriAdlariAsync(CatalogContext db, CancellationToken ct)
+            => await db.EkstreIslemKategorileri.AsNoTracking()
+                       .ToDictionaryAsync(k => k.Id, k => k.Ad, ct);
+
+        /// <summary>Sözlükten güvenli okuma; kategori silinmişse boş döner.</summary>
+        public static string? KategoriAdi(IReadOnlyDictionary<int, string>? adlar, int? kategoriId)
+            => kategoriId is int id && adlar is not null && adlar.TryGetValue(id, out var ad) ? ad : null;
+
+        /// <summary>
         /// Kod hesap planında var mı? Kural bir daha sorulmadan uygulandığı için geçersiz
         /// kod kaydedilmez — yanlış yazılmış bir kod her ay sessizce yanlış hesaba yazardı.
         /// Plan hiç yüklenmemişse denetim atlanır (kurulum sırası bozulmasın) ve null döner.

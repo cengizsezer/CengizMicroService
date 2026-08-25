@@ -206,6 +206,11 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(x => x.IslemTipiDeseni).IsRequired().HasMaxLength(200);
             builder.Property(x => x.Sablon).IsRequired().HasMaxLength(100);
 
+            builder.HasOne<IslemKategorisi>()
+                   .WithMany()
+                   .HasForeignKey(x => x.IslemKategorisiId)
+                   .OnDelete(DeleteBehavior.SetNull);
+
             builder.HasIndex(x => new { x.ParserTipi, x.Sira });
         }
     }
@@ -241,6 +246,11 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(x => x.HesapKodu).IsRequired().HasMaxLength(30);
             builder.Property(x => x.HesapAdi).HasMaxLength(200);
 
+            builder.HasOne<IslemKategorisi>()
+                   .WithMany()
+                   .HasForeignKey(x => x.IslemKategorisiId)
+                   .OnDelete(DeleteBehavior.SetNull);
+
             builder.HasIndex(x => x.Sira);
         }
     }
@@ -266,7 +276,35 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             // Aynı firmada aynı isim + aynı yön tek kayıt. Yön nullable olmadığı için
             // (Farketmez ayrı bir enum değeri) filtre gerekmiyor; tekillik servis
             // katmanında da kontrol ediliyor, index yarış durumunda son savunma.
+            builder.HasOne<IslemKategorisi>()
+                   .WithMany()
+                   .HasForeignKey(x => x.IslemKategorisiId)
+                   .OnDelete(DeleteBehavior.SetNull);
+
             builder.HasIndex(x => new { x.FirmaId, x.IsimCekirdegi, x.Yon }).IsUnique();
+        }
+    }
+
+    /// <summary>
+    /// İşlem kategorileri — <b>global</b>. "Banka gideri" her firmada ve her bankada aynı
+    /// şeydir; kuralın hangi hesaba gittiği zaten kuralın kendi alanında.
+    /// </summary>
+    public class IslemKategorisiEntityTypeConfiguration : IEntityTypeConfiguration<IslemKategorisi>
+    {
+        public void Configure(EntityTypeBuilder<IslemKategorisi> builder)
+        {
+            builder.ToTable("EkstreIslemKategorileri", CatalogContext.DEFAULT_SCHEMA);
+            builder.HasKey(x => x.Id);
+
+            builder.Property(x => x.Ad).IsRequired().HasMaxLength(100);
+            // Ana grup ORKA kodunun ilk segmenti ("102", "770"); kategori satırlarda
+            // bununla eşleşir. Boş olabilir: yalnız kural etiketi olan kategori de meşru.
+            builder.Property(x => x.VarsayilanAnaGrup).HasMaxLength(30);
+
+            // Aynı ad iki kez tanımlanamaz; kategori listesi kontrol listesi olarak
+            // kullanılıyor ve tekrar eden satır sayımı bozar.
+            builder.HasIndex(x => x.Ad).IsUnique();
+            builder.HasIndex(x => x.Sira);
         }
     }
 
@@ -287,6 +325,12 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             // UnvanCikarilsin'inki false. HasDefaultValue verilseydi EF bu değerleri "atanmamış"
             // sayıp veritabanı varsayılanını yazardı ve UnvanCikarilsin=false hiç kaydedilemezdi.
             // Mevcut satırların geriye dönük doldurulması migration içinde SQL ile yapılır.
+
+            // Kategori yalnız etiket: silinirse kural kalır, alan boşalır (SetNull).
+            builder.HasOne<IslemKategorisi>()
+                   .WithMany()
+                   .HasForeignKey(x => x.IslemKategorisiId)
+                   .OnDelete(DeleteBehavior.SetNull);
 
             // Katman 0 her satırda kapsam filtresiyle tarandığı için kapsam da indekste.
             builder.HasIndex(x => new { x.ParserTipi, x.Kapsam, x.Sira });

@@ -1,0 +1,285 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.BankaEkstre
+
+@inject IBankaEkstreApi Api
+@inject NotificationService Notif
+
+@*
+    "Bu bankanın kuralları" sekmesinin Kategoriler görünümü.
+
+    AMACI KONTROL LİSTESİ: yeni banka (Ziraat, Akbank, İş Bankası) eklenirken hangi
+    kategorilerin hâlâ kuralsız olduğunu tek bakışta göstermek. Bu yüzden görünüm sade
+    tutuldu — renk, ikon ve etiket yalnız EKSİK olanda var; tanımlı satırlar düz metin.
+    Kapsama kutusu, rozet bulutu ve ikon kalabalığı bilerek yok: onlar eksik olanı
+    öne çıkarmak yerine gizliyordu.
+
+    Kategori bir ETİKETTİR; eşleştirme kararına girmez. Katman sırası, eşikler ve desenler
+    kategoriden habersiz çalışır (bkz. KARARLAR).
+
+    Kurallar mekanizmasına göre değil kategorisine göre listelenir: kullanıcı "banka
+    gideri" diye düşünüyor, "sabit kural mı şablon mu" diye değil. Mekanizma accordion
+    içinde küçük bir etiket olarak duruyor.
+*@
+
+<style>
+    .kt-arac { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .kt-ozet { font-size: 12px; color: #718096; margin-bottom: 10px; }
+    .kt-tablo { border: 1px solid #eee; border-radius: 6px; background: #fff; overflow: hidden; }
+
+    .kt-satir { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-bottom: 1px solid #f5f5f5;
+                font-size: 13px; cursor: pointer; }
+    .kt-satir:last-child { border-bottom: none; }
+    .kt-head { background: #fafafa; border-bottom: 1px solid #eee; font-size: 11px; color: #718096;
+               text-transform: uppercase; letter-spacing: .3px; cursor: default; }
+    .kt-satir:not(.kt-head):hover { background: #f8fbff; }
+
+    .kt-ad { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .kt-kod { flex: 0 0 190px; font-family: ui-monospace, Consolas, monospace; }
+    .kt-sayi { flex: 0 0 110px; text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* Tek vurgu: kuralı olmayan kategori. Geri kalan her satır tamamen sade. */
+    .kt-eksik { background: #fff5f5; }
+    .kt-eksik .kt-ad, .kt-eksik .kt-kod, .kt-eksik .kt-sayi { color: #9b2c2c; }
+
+    .kt-pasif .kt-ad { color: #a0aec0; text-decoration: line-through; }
+
+    .kt-kurallar { padding: 4px 10px 10px 22px; background: #fcfdff; border-bottom: 1px solid #f5f5f5; }
+    .kt-kural { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px; }
+    .kt-mek { flex: 0 0 84px; font-size: 10px; color: #4a5568; background: #edf2f7; border-radius: 10px;
+              padding: 1px 7px; text-align: center; }
+    .kt-kural-ad { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .kt-kural-kod { flex: 0 0 120px; font-family: ui-monospace, Consolas, monospace; color: #2c5282; }
+    .kt-kural-pasif { color: #a0aec0; }
+    .kt-kural-bos { font-size: 12px; color: #a0aec0; padding: 4px 0; }
+
+    .kt-alan { display: flex; flex-direction: column; gap: 3px; }
+    .kt-alan label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .kt-ipucu { font-size: 11px; color: #a0aec0; }
+</style>
+
+<div class="kt-arac">
+    <h5 style="margin:0">Kategoriler</h5>
+    <RadzenButton Text="Yeni kategori" Icon="add" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                  Click="@(() => FormAc(null))" />
+</div>
+
+<div class="kt-ozet">
+    <b>@BankaAdi</b> · @_ozet.Tanimli / @_ozet.Toplam kategori tanımlı
+    @if (_ozet.KategorisizKural > 0)
+    {
+        <span> · @_ozet.KategorisizKural kural hiçbir kategoriye bağlı değil</span>
+    }
+</div>
+
+<div class="kt-tablo">
+    <div class="kt-satir kt-head">
+        <span class="kt-ad">Kategori</span>
+        <span class="kt-kod">Hesap kodu</span>
+        <span class="kt-sayi">Kural sayısı</span>
+    </div>
+
+    @if (_ozet.Kategoriler.Count == 0)
+    {
+        <div style="padding:22px; text-align:center; color:#a0aec0">Kategori tanımlı değil.</div>
+    }
+
+    @foreach (var kategori in _ozet.Kategoriler)
+    {
+        <div class="kt-satir @(kategori.Bos ? "kt-eksik" : "") @(kategori.Aktif ? "" : "kt-pasif")"
+             @onclick="@(() => Degistir(kategori.Id))"
+             title="Kuralları göster/gizle">
+            <span class="kt-ad">@kategori.Ad</span>
+            <span class="kt-kod">@kategori.KodMetni</span>
+            <span class="kt-sayi">@(kategori.Bos ? "yok" : kategori.KuralSayisi.ToString())</span>
+        </div>
+
+        @if (_acik.Contains(kategori.Id))
+        {
+            <div class="kt-kurallar">
+                @if (kategori.Kurallar.Count == 0)
+                {
+                    <div class="kt-kural-bos">
+                        Bu kategoride kural yok. Kural, şablon, vergi kodu ve kişi
+                        yönlendirmesi formlarındaki <b>Kategori</b> alanından bağlanır.
+                    </div>
+                }
+
+                @foreach (var kural in kategori.Kurallar)
+                {
+                    <div class="kt-kural @(kural.Aktif ? "" : "kt-kural-pasif")">
+                        <span class="kt-mek">@kural.Mekanizma</span>
+                        <span class="kt-kural-ad" title="@kural.HesapAdi">@kural.Ad</span>
+                        <span class="kt-kural-kod">@(kural.HesapKodu ?? "—")</span>
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                                      title="Bu kuralı düzenle"
+                                      Click="@(() => KuralDuzenle(kural))" />
+                    </div>
+                }
+
+                <div style="margin-top:6px">
+                    <RadzenButton Text="Kategoriyi düzenle" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                                  Click="@(() => FormAc(kategori))" />
+                    <RadzenButton Text="Sil" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                                  Click="@(() => SilAsync(kategori))" />
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@if (_form is not null)
+{
+    <div style="margin-top:14px; padding:14px; border:1px solid #e2e8f0; border-radius:6px; background:#fff">
+        <h6 style="margin-top:0">@(_duzenlenenId is null ? "Yeni kategori" : "Kategoriyi düzenle")</h6>
+
+        <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:12px">
+            <div class="kt-alan">
+                <label>Ad</label>
+                <RadzenTextBox @bind-Value="_form.Ad" Placeholder="Banka gideri" />
+            </div>
+            <div class="kt-alan">
+                <label>Varsayılan ana grup</label>
+                <RadzenTextBox @bind-Value="_form.VarsayilanAnaGrup" Placeholder="770" />
+                <span class="kt-ipucu">
+                    Ekstre satırı bu ana gruptaki hesaplara düştüğünde bu kategoriyle etiketlenir.
+                    Boş bırakılırsa kategori yalnız kural etiketi olur.
+                </span>
+            </div>
+            <div class="kt-alan">
+                <label>Sıra</label>
+                <RadzenNumeric TValue="int" @bind-Value="_form.Sira" Min="0" />
+            </div>
+        </div>
+
+        <div style="display:flex; gap:12px; align-items:center; margin-top:10px">
+            <RadzenCheckBox TValue="bool" @bind-Value="_form.Aktif" Name="ktAktif" />
+            <label for="ktAktif" style="font-size:12px; color:#4a5568">Aktif</label>
+        </div>
+
+        <div style="display:flex; gap:6px; margin-top:12px">
+            <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                          Disabled="@_kaydediyor" Click="@KaydetAsync" />
+            <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@FormKapat" />
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>Kapsülün bankası; başlık ve özet satırı buna göre yazılır.</summary>
+    [Parameter, EditorRequired] public string BankaAdi { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Bankanın ayrıştırıcısı. Kurallar ve şablonlar buna göre süzülür; boşsa yalnız
+    /// tüm bankalarda geçerli kayıtlar sayılır (üst bölümdeki kapsamın aynısı).
+    /// </summary>
+    [Parameter] public string BankaParserTipi { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Accordion'daki bir kuralın düzenlenmesi istendiğinde üst sayfaya haber verilir:
+    /// ilgili bölüm zaten aynı sekmede duruyor, ekran oraya kaydırılır.
+    /// </summary>
+    [Parameter] public EventCallback<KategoriKuralDto> KuralDuzenlenecek { get; set; }
+
+    private KategoriKapsamOzetiDto _ozet = new();
+    private readonly HashSet<int> _acik = new();
+
+    private IslemKategorisiYazDto? _form;
+    private int? _duzenlenenId;
+    private bool _kaydediyor;
+
+    private string _yuklenenParser = string.Empty;
+
+    protected override async Task OnInitializedAsync() => await YenileAsync();
+
+    /// <summary>
+    /// Ayrıştırıcı üst bölümden değiştirilebiliyor (hesap satırındaki açılır liste);
+    /// kapsam değişince liste yeniden çekilir.
+    /// </summary>
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_yuklenenParser == BankaParserTipi) return;
+
+        _yuklenenParser = BankaParserTipi;
+        await YenileAsync();
+    }
+
+    public async Task YenileAsync()
+    {
+        _ozet = await Api.KategoriKapsamiAsync(BankaParserTipi);
+        StateHasChanged();
+    }
+
+    private void Degistir(int kategoriId)
+    {
+        if (!_acik.Remove(kategoriId)) _acik.Add(kategoriId);
+    }
+
+    private Task KuralDuzenle(KategoriKuralDto kural) => KuralDuzenlenecek.InvokeAsync(kural);
+
+    private void FormKapat()
+    {
+        _form = null;
+        _duzenlenenId = null;
+    }
+
+    private void FormAc(KategoriKapsamDto? kategori)
+    {
+        _duzenlenenId = kategori?.Id;
+        _form = kategori is null
+            ? new IslemKategorisiYazDto { Sira = (_ozet.Kategoriler.Count + 1) * 10 }
+            : new IslemKategorisiYazDto
+            {
+                Ad = kategori.Ad,
+                VarsayilanAnaGrup = kategori.VarsayilanAnaGrup,
+                Sira = kategori.Sira,
+                Aktif = kategori.Aktif
+            };
+    }
+
+    private async Task KaydetAsync()
+    {
+        if (_form is null) return;
+
+        _kaydediyor = true;
+        var (_, hata) = _duzenlenenId is int id
+            ? await Api.IslemKategorisiGuncelleAsync(id, _form)
+            : await Api.IslemKategorisiEkleAsync(_form);
+        _kaydediyor = false;
+
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Error, "Kaydedilemedi", hata, 6000);
+            return;
+        }
+
+        Notif.Notify(NotificationSeverity.Success, "Kaydedildi", _form.Ad, 3000);
+        FormKapat();
+        await YenileAsync();
+    }
+
+    /// <summary>
+    /// Kategori silinince bağlı kurallar silinmez, kategorisiz kalır — kategori yalnız
+    /// etiket olduğu için eşleştirme değişmez. Uyarı metni bunu söylüyor.
+    /// </summary>
+    private async Task SilAsync(KategoriKapsamDto kategori)
+    {
+        var hata = await Api.IslemKategorisiSilAsync(kategori.Id);
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Silinemedi", hata, 6000);
+            return;
+        }
+
+        if (_duzenlenenId == kategori.Id) FormKapat();
+
+        Notif.Notify(NotificationSeverity.Success, "Kategori silindi",
+                     kategori.KuralSayisi > 0
+                        ? $"{kategori.KuralSayisi} kural kategorisiz kaldı; eşleştirme değişmedi."
+                        : null,
+                     4000);
+
+        await YenileAsync();
+    }
+}

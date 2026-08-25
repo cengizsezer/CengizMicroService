@@ -1,4 +1,4 @@
-# KARARLAR — Banka Ekstresi İşleme Modülü
+﻿# KARARLAR — Banka Ekstresi İşleme Modülü
 
 Prompt'ta açıkça yazmayan noktalarda alınan kararlar ve gerekçeleri.
 Kural: belirsizse en muhafazakâr seçenek, mimari belirsizse repodaki benzer koda bak.
@@ -1262,3 +1262,66 @@ anahtar reddediliyor; kolon sırası değişik ve Türkçe karaktersiz başlıkl
 okunuyor; farklı firmada aynı anahtar ayrı kayıt oluyor; içe aktarılan eşleşme
 `HesapEslestirici`'de `KaynakKatman.GecmisOnay` ile çözülüyor; ham unvan yeniden
 normalize ediliyor; boş yön iki kayıt yazıyor; şablon kendi içe aktarımından geçiyor.
+
+## 74. İşlem kategorisi bir ETİKET; eşleştirmeye girmiyor
+
+Kurallar mekanizmaya göre ayrılmıştı (sabit kural, vergi kodu, kişi yönlendirme, açıklama
+şablonu); kullanıcı ise muhasebe kategorisine göre düşünüyor ve yeni banka eklerken
+"hangi kategoriler eksik?" diye kontrol ediyor. Kategori bu iki bakışı bağlıyor.
+
+**Katman sırası, eşikler, algoritma ve desenler kategoriden habersiz.** Kategori kuralın
+üzerinde bir etiket; `HesapEslestirici` kategori tablosunu hiç okumuyor. Testte de
+sabitlendi: kategori tablosu boşaltılınca aynı ekstrenin bütün satırları aynı kodu, aynı
+katmanı ve aynı durumu veriyor.
+
+**Tablo global, görünüm banka bazlı.** "Banka gideri" her firmada ve her bankada aynı
+şeydir; hangi hesaba gittiği zaten kuralın kendi alanında. Görünüm ise ayrıştırıcıya göre
+süzülüyor: sabit kurallar ve şablonlar bankaya bağlı, vergi kodları (global) ve kişi
+yönlendirmeleri (firma) her bankada geçerli olduğu için hep listede.
+
+**Satırın kategorisi satıra YAZILMIYOR**, önerilen (yoksa onaylanan) hesap kodunun ana
+grubundan okunuyor (`KategoriCozucu`). Alternatifi `EkstreSatirlari`'na kolon eklemekti;
+iki sakıncası vardı: (1) hangi katmanın çözdüğünü eşleştiriciden dışarı taşımak gerekirdi
+— tam da dokunmamaya çalıştığımız yer, (2) kullanıcı kodu düzeltince etiket eskirdi.
+Koddan türetince etiket her zaman satırın güncel kodunu anlatıyor ve kategori tablosu
+değişince geçmiş satırlar da doğru etiketleniyor.
+
+**Kural kategorileri de aynı yoldan atanıyor** (kod taşıyanlar için ana gruptan). Elle
+yazılmış bir "kural → kategori" listesi tutulmadı: iki liste ayrışırsa aynı hesap kuralda
+bir, satırda başka kategori gösterirdi. Açıklama şablonlarının kodu olmadığı için tek elle
+yazılan eşleme onlarınki.
+
+**Atama yalnız boş alanlara.** Seed mevcut kayda dokunmuyor (modülün genel kuralı);
+kullanıcının ekrandan verdiği kategori kararı korunuyor.
+
+**Kategori silinince kural silinmiyor** (`SetNull`). Kategori etiket olduğu için silinmesi
+eşleştirmeyi değiştirmemeli; kural kategorisiz kalıp çalışmaya devam ediyor. Bellek içi
+sağlayıcıda veritabanı kısıtı olmadığından servis alanı ayrıca boşaltıyor.
+
+**Görünümde tek vurgu eksik olanda.** Tanımlı satırlar tamamen sade — renk, ikon, rozet
+yok; kuralsız kategoriler kırmızı zeminde ve sayı yerine `yok`. Kapsama kutusu ve etiket
+bulutu bilerek yazılmadı: onlar eksik olanı öne çıkarmak yerine gizliyordu.
+
+## 75. Banka adı açılır liste; yanlış yazımlar birleştirmeyle düzeltiliyor
+
+Otomatik tamamlama + uyarı yetmedi: gerçek veride `Vakıf Bank Eur`, `Vakıfbank Vadeli`,
+`İŞ BANKASI` gibi yazımlar girilmiş ve 8 banka 11 sekmeye bölünmüştü. Bu yalnız görüntü
+sorunu değil — "aynı banka önceliği" kuralı `BankaAdi` üzerinden çalıştığı için bankalar
+arası eşleştirme de bozuluyor.
+
+**Alan açılır liste, yeni banka ayrı adım.** Serbest yazım varsayılan olmaktan çıktı;
+gerçekten yeni bir banka "Yeni banka ekle" düğmesi → ad girme → onay adımından geçiyor.
+Düzenlenen hesabın adı listede yoksa seçeneklere ekleniyor: aksi hâlde eski yazımlı bir
+hesabı düzenlerken alan boş görünür ve kullanıcı farkında olmadan bankayı değiştirirdi.
+
+**Birleştirme şart**, çünkü yanlış yazımlar zaten girilmiş. Seçilen yazımlar tek ada
+iniyor; yalnız `BankaAdi` alanı değişiyor, hesaplar/kodlar/ekstreler duruyor.
+Karşılaştırma ordinal ve harf duyarsız — sekme şeridinin gruplaması da tam olarak böyle,
+yani işlemin etkisi ekranda görülenle birebir aynı. Pasif hesaplar da sayılıyor ve
+düzeltiliyor: yanlış yazımların bir kısmı pasif kayıtlarda duruyor.
+
+**Sunucu tarafı serbest metni engellemiyor.** Kısıt API'ye konsaydı toplu içe aktarım ve
+mevcut istemciler kırılırdı; içe aktarımda tanınmayan ad satırı düşürmüyor, uyarı
+üretiyor (aynı ad dosyanın kalanında tekrar uyarmıyor). "Ayrı adımdan geç" kuralı ekranın
+sorumluluğunda.
+

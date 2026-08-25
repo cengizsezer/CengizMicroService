@@ -40,6 +40,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         public async Task<List<SabitKuralDto>> GetHepsiAsync(CancellationToken ct = default)
         {
+            await KategorileriYukleAsync(ct);
+
             var kayitlar = await _db.EkstreSabitKurallar.AsNoTracking()
                 .OrderBy(k => k.Sira).ThenBy(k => k.Id)
                 .ToListAsync(ct);
@@ -49,6 +51,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         public async Task<SabitKuralDto> CreateAsync(SabitKuralYazDto dto, CancellationToken ct = default)
         {
+            await KategorileriYukleAsync(ct);
+
             var kayit = new SabitKural();
             await UygulaAsync(kayit, dto, null, ct);
 
@@ -60,6 +64,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         public async Task<SabitKuralDto?> UpdateAsync(int id, SabitKuralYazDto dto, CancellationToken ct = default)
         {
+            await KategorileriYukleAsync(ct);
+
             var kayit = await _db.EkstreSabitKurallar.FirstOrDefaultAsync(k => k.Id == id, ct);
             if (kayit is null) return null;
 
@@ -111,6 +117,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 : Normalizasyon.Kirp(dto.HesapAdi, 200);
             kayit.UnvanCikarilsin = dto.UnvanCikarilsin;
             kayit.AltHesapGerekli = dto.AltHesapGerekli;
+            kayit.IslemKategorisiId = await YapilandirmaDogrulama.KategoriDogrulaAsync(
+                _db, dto.IslemKategorisiId, nameof(dto.IslemKategorisiId), ct);
             kayit.Sira = dto.Sira;
             kayit.Aktif = dto.Aktif;
         }
@@ -133,6 +141,16 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                     "Bu ayrıştırıcı ve kapsam için aynı ifadeye sahip bir kural zaten var; mevcut kaydı düzenleyin.");
         }
 
+
+        /// <summary>
+        /// Kategori Id -> ad; listelerde kategori adini gostermek icin istek basina bir kez
+        /// okunur. Servis scoped oldugu icin alan istekler arasinda paylasilmaz.
+        /// </summary>
+        private Dictionary<int, string> _kategoriAdlari = new();
+
+        private async Task KategorileriYukleAsync(CancellationToken ct)
+            => _kategoriAdlari = await YapilandirmaDogrulama.KategoriAdlariAsync(_db, ct);
+
         private SabitKuralDto Esle(SabitKural k) => new()
         {
             Id = k.Id,
@@ -146,6 +164,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             HesapAdi = k.HesapAdi,
             UnvanCikarilsin = k.UnvanCikarilsin,
             AltHesapGerekli = k.AltHesapGerekli,
+            IslemKategorisiId = k.IslemKategorisiId,
+            IslemKategorisiAdi = YapilandirmaDogrulama.KategoriAdi(_kategoriAdlari, k.IslemKategorisiId),
             Sira = k.Sira,
             Aktif = k.Aktif
         };

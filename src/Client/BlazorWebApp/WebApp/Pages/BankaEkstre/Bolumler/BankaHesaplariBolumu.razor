@@ -68,6 +68,11 @@
         <RadzenCheckBox TValue="bool" Value="@_pasifDahil" Name="pasifDahil"
                         Change="@(async (bool secili) => { _pasifDahil = secili; await YukleAsync(); })" />
         <label for="pasifDahil" style="font-size:12px; color:#718096">Pasifleri de göster</label>
+        @* Yanlış yazımlar zaten girilmiş olabildiği için düzeltme yolu listenin başında. *@
+        <RadzenButton Text="Banka adlarını birleştir" Icon="merge_type" ButtonStyle="ButtonStyle.Light"
+                      Size="ButtonSize.Small" Disabled="@(_bankaAdlari.Count < 2)"
+                      title="Aynı bankanın farklı yazımlarını tek ada indir"
+                      Click="@BirlestirmeAc" />
         <RadzenButton Text="Yeni hesap" Icon="add" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
                       Click="@(() => FormAc(null))" />
     </div>
@@ -194,6 +199,62 @@ else
     }
 </div>
 
+@*
+    BİRLEŞTİRME. Yanlış yazımlar zaten girilmiş olduğu için açılır liste tek başına
+    yetmez: mevcut kayıtlar tek ada indirilebilmeli. Yalnız BankaAdi alanı değişir;
+    hesaplar, kodlar ve ekstreler olduğu gibi kalır.
+*@
+@if (_birlestirmeAcik)
+{
+    <div style="margin-top:16px; padding:14px; border:1px solid #e2e8f0; border-radius:6px; background:#fff">
+        <h5 style="margin-top:0">Banka adlarını birleştir</h5>
+
+        <div style="font-size:12px; color:#718096; margin-bottom:10px">
+            Aynı bankanın farklı yazımlarını seçip tek ada indirin. Örnek: "Vakıf Bank Eur",
+            "Vakıfbank Vadeli" → <b>Vakıfbank</b>. Eşleştirme kuralları değişmez; yalnız
+            hesapların banka adı güncellenir.
+        </div>
+
+        <div class="bh-form">
+            <div class="bh-alan" style="grid-column: 1 / -1">
+                <label>Birleştirilecek yazımlar</label>
+                <div style="display:flex; flex-direction:column; gap:4px">
+                    @foreach (var ad in _bankaAdlari)
+                    {
+                        <label style="display:flex; gap:6px; align-items:center; font-size:13px">
+                            <input type="checkbox" checked="@_birlestirmeSecimi.Contains(ad.Ad)"
+                                   @onchange="@(e => BirlestirmeSecimiDegisti(ad.Ad, e.Value))" />
+                            <span>@ad.Ad</span>
+                            <span style="color:#a0aec0; font-size:11px">@ad.HesapSayisi hesap</span>
+                        </label>
+                    }
+                </div>
+            </div>
+
+            <div class="bh-alan">
+                <label>Kalacak ad</label>
+                <RadzenDropDown TValue="string" @bind-Value="_birlestirmeHedefi" Data="@BankaAdiSecenekleri"
+                                AllowFiltering="true" AllowClear="false" Placeholder="Hedef banka adı"
+                                Style="width:100%" />
+            </div>
+        </div>
+
+        @if (BirlestirmeEtkisi is int etkilenen)
+        {
+            <div class="bh-uyari" style="margin-top:8px">
+                @etkilenen hesabın banka adı <b>@_birlestirmeHedefi</b> olarak değişecek.
+            </div>
+        }
+
+        <div style="display:flex; gap:6px; margin-top:12px">
+            <RadzenButton Text="Birleştir" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                          Disabled="@(_birlestiriliyor || BirlestirmeEtkisi is null)" Click="@BirlestirAsync" />
+            <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                          Click="@(() => _birlestirmeAcik = false)" />
+        </div>
+    </div>
+}
+
 @if (_form is not null)
 {
     <div style="margin-top:16px; padding:14px; border:1px solid #e2e8f0; border-radius:6px; background:#fff">
@@ -203,24 +264,50 @@ else
             <div class="bh-alan">
                 <label>Banka adı</label>
                 @*
-                    Otomatik tamamlama mevcut hesapların banka adlarından beslenir: aynı
-                    bankayı ikinci bir yazımla girmenin önündeki ilk engel. Serbest yazma
-                    yine mümkün (gerçekten yeni banka eklenebilmeli), ama uyarı çıkar.
+                    AÇILIR LİSTE, serbest metin değil. Otomatik tamamlama + uyarı yetmedi:
+                    gerçek veride "Vakıf Bank Eur", "Vakıfbank Vadeli", "İŞ BANKASI" gibi
+                    yazımlar girilmiş ve 8 banka 11 sekmeye bölünmüştü. "Aynı banka önceliği"
+                    kuralı BankaAdi üzerinden çalıştığı için bu yalnız görüntü sorunu değil;
+                    bankalar arası eşleştirme de bozuluyor.
+
+                    Gerçekten yeni banka eklemek hâlâ mümkün — ama ayrı bir adımdan geçerek.
                 *@
-                <RadzenAutoComplete @bind-Value="_form.BankaAdi" Data="@MevcutBankaAdlari"
-                                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                                    Placeholder="Vakıfbank" Style="width:100%" />
-                <span class="bh-ipucu">
-                    Yalnız <b>kısa banka adı</b>: Vakıfbank, Ziraat, TEB, Akbank, İş Bankası.
-                    Tam hesap adını yazmayın — o metin hiçbir açıklamada geçmez, eşleşme hiç olmaz.
-                </span>
-                @if (BankaAdiDenetimi.Uyari(_form.BankaAdi) is string bankaUyari)
+                @if (_yeniBankaAdimi)
                 {
-                    <span class="bh-uyari">@bankaUyari</span>
+                    <div style="display:flex; gap:6px; align-items:center">
+                        <RadzenTextBox @bind-Value="_yeniBankaAdi" Placeholder="Ziraat" Style="flex:1 1 auto" />
+                        <RadzenButton Text="Ekle" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.ExtraSmall"
+                                      Click="@YeniBankaOnayla" />
+                        <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                                      Click="@(() => _yeniBankaAdimi = false)" />
+                    </div>
+                    <span class="bh-ipucu">
+                        Yalnız <b>kısa banka adı</b>: Vakıfbank, Ziraat, TEB, Akbank, İş Bankası.
+                        Tam hesap adını yazmayın — o metin hiçbir açıklamada geçmez, eşleşme hiç olmaz.
+                    </span>
+                    @if (BankaAdiDenetimi.Uyari(_yeniBankaAdi) is string yeniUyari)
+                    {
+                        <span class="bh-uyari">@yeniUyari</span>
+                    }
                 }
-                @if (BankaAdiDenetimi.YeniBankaUyarisi(_form.BankaAdi, MevcutBankaAdlari) is string yeniBankaUyari)
+                else
                 {
-                    <span class="bh-uyari">@yeniBankaUyari</span>
+                    <div style="display:flex; gap:6px; align-items:center">
+                        <RadzenDropDown TValue="string" @bind-Value="_form.BankaAdi" Data="@BankaAdiSecenekleri"
+                                        AllowFiltering="true" AllowClear="false"
+                                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                        Placeholder="Banka seçin" Style="flex:1 1 auto" />
+                        <RadzenButton Text="Yeni banka ekle" Icon="add" ButtonStyle="ButtonStyle.Light"
+                                      Size="ButtonSize.ExtraSmall" Click="@YeniBankaAdimiAc" />
+                    </div>
+                    <span class="bh-ipucu">
+                        Listeden seçin. Farklı yazımlar ayrı banka sayılır ve bankalar arası
+                        eşleştirmeyi bozar; gerçekten yeni bir banka ekliyorsanız sağdaki düğmeyi kullanın.
+                    </span>
+                    @if (BankaAdiSecenekleri.Count == 0)
+                    {
+                        <span class="bh-ipucu">Henüz tanımlı banka yok — "Yeni banka ekle" ile başlayın.</span>
+                    }
                 }
             </div>
 
@@ -313,7 +400,7 @@ else
             <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
                           Disabled="@_kaydediyor" Click="@KaydetAsync" />
             <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
-                          Click="@(() => { _form = null; _duzenlenenId = null; })" />
+                          Click="@(() => { _form = null; _duzenlenenId = null; _yeniBankaAdimi = false; })" />
         </div>
     </div>
 }
@@ -349,12 +436,143 @@ else
     [Parameter] public int? AcilacakHesapId { get; set; }
 
     /// <summary>
+    /// Banka adı birleştirme gibi listeyi kökten değiştiren işlemlerden sonra üst sayfa
+    /// sekme şeridini ve sayaçları tazelesin.
+    /// </summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    /// <summary>
     /// En son uygulanan adres isteği. Aynı istek tekrar uygulanmaz (kullanıcı formu
     /// kapattıysa yeniden açılmasın) ama <b>farklı</b> bir hesaba geçilirse uygulanır.
     /// </summary>
     private string? _uygulananIstek;
 
     private List<BankaHesabiDto> Gorunen => _hesaplar;
+
+    // ---- Banka adı: açılır liste, yeni banka adımı, birleştirme ----
+
+    /// <summary>Sunucudan gelen banka adları (+ hesap sayıları); açılır listeyi ve birleştirmeyi besler.</summary>
+    private List<BankaAdiDto> _bankaAdlari = new();
+
+    /// <summary>Formda "yeni banka ekle" adımı açık mı? Serbest yazım yalnız bu adımda mümkün.</summary>
+    private bool _yeniBankaAdimi;
+    private string _yeniBankaAdi = string.Empty;
+
+    private bool _birlestirmeAcik;
+    private bool _birlestiriliyor;
+    private string _birlestirmeHedefi = string.Empty;
+    private readonly HashSet<string> _birlestirmeSecimi = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Açılır listenin seçenekleri: kayıtlı adlar + (düzenlenen hesabınki listede yoksa) o ad.
+    /// İkincisi olmasaydı eski/yanlış yazımlı bir hesabı düzenlerken alan boş görünür ve
+    /// kullanıcı farkında olmadan bankayı değiştirirdi.
+    /// </summary>
+    private List<string> BankaAdiSecenekleri
+    {
+        get
+        {
+            var liste = _bankaAdlari.Select(a => a.Ad).ToList();
+
+            if (_form is not null && !string.IsNullOrWhiteSpace(_form.BankaAdi) &&
+                !liste.Contains(_form.BankaAdi, StringComparer.Ordinal))
+                liste.Insert(0, _form.BankaAdi);
+
+            return liste;
+        }
+    }
+
+    /// <summary>Seçilen yazımların toplam hesap sayısı; hedefin kendisi sayılmaz. Seçim yoksa null.</summary>
+    private int? BirlestirmeEtkisi
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_birlestirmeHedefi)) return null;
+
+            var toplam = _bankaAdlari
+                .Where(a => _birlestirmeSecimi.Contains(a.Ad) &&
+                            !string.Equals(a.Ad, _birlestirmeHedefi, StringComparison.OrdinalIgnoreCase))
+                .Sum(a => a.HesapSayisi);
+
+            return toplam == 0 ? null : toplam;
+        }
+    }
+
+    private void BirlestirmeSecimiDegisti(string ad, object? deger)
+    {
+        if (deger is bool b && b) _birlestirmeSecimi.Add(ad);
+        else _birlestirmeSecimi.Remove(ad);
+    }
+
+    /// <summary>Yeni banka: ayrı adım. Onaylanana kadar form alanı değişmez.</summary>
+    private void YeniBankaAdimiAc()
+    {
+        _yeniBankaAdi = string.Empty;
+        _yeniBankaAdimi = true;
+    }
+
+    private void YeniBankaOnayla()
+    {
+        var ad = (_yeniBankaAdi ?? string.Empty).Trim();
+        if (ad.Length == 0 || _form is null) return;
+
+        _form.BankaAdi = ad;
+        _yeniBankaAdimi = false;
+
+        // Liste anında güncellenir ki seçim kutusu yeni adı gösterebilsin; kalıcı hâle
+        // hesap kaydedilince gelir.
+        if (!_bankaAdlari.Any(a => string.Equals(a.Ad, ad, StringComparison.Ordinal)))
+            _bankaAdlari = _bankaAdlari.Append(new BankaAdiDto { Ad = ad, HesapSayisi = 0 })
+                                       .OrderBy(a => a.Ad, StringComparer.CurrentCulture)
+                                       .ToList();
+
+        if (BankaAdiDenetimi.Uyari(ad) is string uyari)
+            Notif.Notify(NotificationSeverity.Warning, "Banka adını gözden geçirin", uyari, 9000);
+    }
+
+    private void BirlestirmeAc()
+    {
+        _birlestirmeSecimi.Clear();
+        _birlestirmeHedefi = _bankaAdlari.Count > 0 ? _bankaAdlari[0].Ad : string.Empty;
+        _birlestirmeAcik = true;
+    }
+
+    private async Task BirlestirAsync()
+    {
+        if (BirlestirmeEtkisi is not int etkilenen) return;
+
+        var onay = await Dialog.Confirm(
+            $"{_birlestirmeSecimi.Count} yazım tek ada indirilecek ve {etkilenen} hesabın banka adı " +
+            $"\"{_birlestirmeHedefi}\" olacak. Devam edilsin mi?",
+            "Banka adlarını birleştir",
+            new ConfirmOptions { OkButtonText = "Birleştir", CancelButtonText = "Vazgeç" });
+
+        if (onay != true) return;
+
+        _birlestiriliyor = true;
+        var (veri, hata) = await Api.BankaAdiBirlestirAsync(new BankaAdiBirlestirDto
+        {
+            Kaynaklar = _birlestirmeSecimi.ToList(),
+            Hedef = _birlestirmeHedefi
+        });
+        _birlestiriliyor = false;
+
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Error, "Birleştirilemedi", hata, 6000);
+            return;
+        }
+
+        Notif.Notify(NotificationSeverity.Success, "Birleştirildi",
+                     $"{veri?.EtkilenenHesap ?? 0} hesabın banka adı {veri?.Hedef} oldu.", 5000);
+
+        _bankaAdlari = veri?.BankaAdlari ?? _bankaAdlari;
+        _birlestirmeAcik = false;
+        _birlestirmeSecimi.Clear();
+
+        await YukleAsync();
+        await Degisti.InvokeAsync();
+    }
 
     /// <summary>
     /// Otomatik tamamlamayı besleyen mevcut banka adları. Tanımlı hesaplardan türer;
@@ -431,6 +649,9 @@ else
     {
         _yukleniyor = true;
         _hesaplar = await Api.GetHesaplarAsync(_pasifDahil);
+        // Banka adları listesi pasif hesapları da sayar; açılır liste ve birleştirme
+        // ekranın "pasifleri göster" seçiminden bağımsız olmalı.
+        _bankaAdlari = await Api.BankaAdlariAsync();
         _yukleniyor = false;
 
         // Firma değişiminde üst sayfa YenileAsync'i çağırıyor; kendi StateHasChanged'i
@@ -459,6 +680,7 @@ else
     private void FormAc(BankaHesabiDto? hesap)
     {
         _duzenlenenId = hesap?.Id;
+        _yeniBankaAdimi = false;
         _form = hesap is null
             // Hesap sahibi unvanı ve takma adlar burada DÜZENLENMEZ (kendi bölümünde)
             // ama forma yüklenir: kaydederken alanlar boş gitseydi firma kimliği

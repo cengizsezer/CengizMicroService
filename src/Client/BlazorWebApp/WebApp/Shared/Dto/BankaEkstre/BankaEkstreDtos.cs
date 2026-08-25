@@ -324,6 +324,15 @@ namespace WebApp.Shared.Dto.BankaEkstre
 
         public string? OnaylananHesapKodu { get; set; }
         public string? OnaylananHesapAdi { get; set; }
+
+        /// <summary>
+        /// Satırın işlem kategorisi; onaylanan (yoksa önerilen) hesap kodunun ana grubundan
+        /// sunucuda okunur. Onay ekranında küçük bir etiket olarak görünür.
+        /// </summary>
+        public int? IslemKategorisiId { get; set; }
+
+        public string? IslemKategorisiAdi { get; set; }
+
         public SatirDurum Durum { get; set; }
 
         public string? AnahtarCekirdek { get; set; }
@@ -486,6 +495,10 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public string? AnahtarKelime { get; set; }
         public string HesapKodu { get; set; } = string.Empty;
         public string? HesapAdi { get; set; }
+        /// <summary>Muhasebe kategorisi; yalnız etiket ve görünüm, eşleştirmeye girmez.</summary>
+        public int? IslemKategorisiId { get; set; }
+
+        public string? IslemKategorisiAdi { get; set; }
         public int Sira { get; set; }
         public bool Aktif { get; set; }
     }
@@ -496,6 +509,8 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public string? AnahtarKelime { get; set; }
         public string HesapKodu { get; set; } = string.Empty;
         public string? HesapAdi { get; set; }
+        /// <summary>Muhasebe kategorisi; boş bırakılabilir.</summary>
+        public int? IslemKategorisiId { get; set; }
         public int Sira { get; set; }
         public bool Aktif { get; set; } = true;
     }
@@ -522,6 +537,10 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public string HesapKodu { get; set; } = string.Empty;
         public string? HesapAdi { get; set; }
         public string? Aciklama { get; set; }
+        /// <summary>Muhasebe kategorisi; yalnız etiket ve görünüm, eşleştirmeye girmez.</summary>
+        public int? IslemKategorisiId { get; set; }
+
+        public string? IslemKategorisiAdi { get; set; }
         public bool Aktif { get; set; }
     }
 
@@ -531,6 +550,8 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public YonlendirmeYonu Yon { get; set; } = YonlendirmeYonu.Farketmez;
         public string HesapKodu { get; set; } = string.Empty;
         public string? Aciklama { get; set; }
+        /// <summary>Muhasebe kategorisi; boş bırakılabilir.</summary>
+        public int? IslemKategorisiId { get; set; }
         public bool Aktif { get; set; } = true;
     }
 
@@ -559,6 +580,10 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public string? HesapAdi { get; set; }
         public bool UnvanCikarilsin { get; set; }
         public bool AltHesapGerekli { get; set; }
+        /// <summary>Muhasebe kategorisi; yalnız etiket ve görünüm, eşleştirmeye girmez.</summary>
+        public int? IslemKategorisiId { get; set; }
+
+        public string? IslemKategorisiAdi { get; set; }
         public int Sira { get; set; }
         public bool Aktif { get; set; }
     }
@@ -574,6 +599,8 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public string? HesapAdi { get; set; }
         public bool UnvanCikarilsin { get; set; } = true;
         public bool AltHesapGerekli { get; set; }
+        /// <summary>Muhasebe kategorisi; boş bırakılabilir.</summary>
+        public int? IslemKategorisiId { get; set; }
         public int Sira { get; set; }
         public bool Aktif { get; set; } = true;
     }
@@ -591,7 +618,10 @@ namespace WebApp.Shared.Dto.BankaEkstre
 
         /// <summary>Bankalar arası hareket mi; karşı taraf yerine banka adı kullanılır.</summary>
         public bool BankalarArasi { get; set; }
+        /// <summary>Muhasebe kategorisi; yalnız etiket ve görünüm, eşleştirmeye girmez.</summary>
+        public int? IslemKategorisiId { get; set; }
 
+        public string? IslemKategorisiAdi { get; set; }
         public int Sira { get; set; }
         public bool Aktif { get; set; }
     }
@@ -603,6 +633,8 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public EslesmeTuru EslesmeTuru { get; set; } = EslesmeTuru.Tam;
         public string Sablon { get; set; } = string.Empty;
         public bool BankalarArasi { get; set; }
+        /// <summary>Muhasebe kategorisi; boş bırakılabilir.</summary>
+        public int? IslemKategorisiId { get; set; }
         public int Sira { get; set; }
         public bool Aktif { get; set; } = true;
     }
@@ -766,4 +798,94 @@ namespace WebApp.Shared.Dto.BankaEkstre
 
         public bool Bos => Toplam == 0;
     }
+
+    // ---- Banka adları ----
+
+    /// <summary>Firmada kullanılan bir banka adı ve kaç hesapta geçtiği.</summary>
+    public class BankaAdiDto
+    {
+        public string Ad { get; set; } = string.Empty;
+        public int HesapSayisi { get; set; }
+    }
+
+    public class BankaAdiBirlestirDto
+    {
+        public List<string> Kaynaklar { get; set; } = new();
+        public string Hedef { get; set; } = string.Empty;
+    }
+
+    public class BankaAdiBirlestirSonucDto
+    {
+        public string Hedef { get; set; } = string.Empty;
+        public int EtkilenenHesap { get; set; }
+        public List<BankaAdiDto> BankaAdlari { get; set; } = new();
+    }
+
+    // ---- İşlem kategorileri ----
+
+    public class IslemKategorisiDto
+    {
+        public int Id { get; set; }
+        public string Ad { get; set; } = string.Empty;
+
+        /// <summary>Varsayılan ana hesap grubu ("195"); ekstre satırı bununla etiketlenir.</summary>
+        public string? VarsayilanAnaGrup { get; set; }
+
+        public int Sira { get; set; }
+        public bool Aktif { get; set; }
+    }
+
+    public class IslemKategorisiYazDto
+    {
+        public string Ad { get; set; } = string.Empty;
+        public string? VarsayilanAnaGrup { get; set; }
+        public int Sira { get; set; }
+        public bool Aktif { get; set; } = true;
+    }
+
+    /// <summary>Kategori accordion'unda listelenen kural; mekanizması küçük bir etiket.</summary>
+    public class KategoriKuralDto
+    {
+        public int Id { get; set; }
+
+        /// <summary>"sabit kural" | "şablon" | "vergi kodu" | "kişi".</summary>
+        public string Mekanizma { get; set; } = string.Empty;
+
+        public string Ad { get; set; } = string.Empty;
+        public string? HesapKodu { get; set; }
+        public string? HesapAdi { get; set; }
+        public bool Aktif { get; set; }
+    }
+
+    public class KategoriKapsamDto
+    {
+        public int Id { get; set; }
+        public string Ad { get; set; } = string.Empty;
+        public string? VarsayilanAnaGrup { get; set; }
+        public int Sira { get; set; }
+        public bool Aktif { get; set; }
+
+        /// <summary>Kategoriye bağlı kuralların ORKA kodları, tekrarsız.</summary>
+        public List<string> HesapKodlari { get; set; } = new();
+
+        public int KuralSayisi { get; set; }
+        public List<KategoriKuralDto> Kurallar { get; set; } = new();
+
+        /// <summary>Hiç kuralı yok mu? Liste bu satırları kırmızı gösterir.</summary>
+        public bool Bos => KuralSayisi == 0;
+
+        /// <summary>Kod kolonu: birden fazlaysa "195 · 196".</summary>
+        public string KodMetni => HesapKodlari.Count == 0 ? "—" : string.Join(" · ", HesapKodlari);
+    }
+
+    public class KategoriKapsamOzetiDto
+    {
+        public string? ParserTipi { get; set; }
+        public string ParserAdi { get; set; } = string.Empty;
+        public int Toplam { get; set; }
+        public int Tanimli { get; set; }
+        public int KategorisizKural { get; set; }
+        public List<KategoriKapsamDto> Kategoriler { get; set; } = new();
+    }
 }
+

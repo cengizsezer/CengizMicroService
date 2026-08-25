@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.AccountPlan;
+﻿using CatalogService.Api.Features.AccountPlan;
 using CatalogService.Api.Features.Banka.Domain;
 using CatalogService.Api.Features.Declarations.Entities;
 using CatalogService.Api.Features.Education.Domain;
@@ -134,6 +134,12 @@ namespace CatalogService.Api.Infrastructure.Context
         /// <summary>Vergi kodu / anahtar kelime → hesap eşlemesi; vergi kodları firmadan firmaya değişmez.</summary>
         public DbSet<Features.BankaEkstre.Domain.VergiKoduEslemesi> EkstreVergiKodlari => Set<Features.BankaEkstre.Domain.VergiKoduEslemesi>();
 
+        /// <summary>
+        /// İşlem kategorileri (global). Kuralların muhasebe sınıflandırması; eşleştirme
+        /// kararına girmez, yalnız etiket ve görünüm.
+        /// </summary>
+        public DbSet<Features.BankaEkstre.Domain.IslemKategorisi> EkstreIslemKategorileri => Set<Features.BankaEkstre.Domain.IslemKategorisi>();
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -211,6 +217,7 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new SabitKuralEntityTypeConfiguration());
             builder.ApplyConfiguration(new VergiKoduEslemesiEntityTypeConfiguration());
             builder.ApplyConfiguration(new KisiYonlendirmeEntityTypeConfiguration());
+            builder.ApplyConfiguration(new IslemKategorisiEntityTypeConfiguration());
 
 
             SetBuilderPKFConfiguration(builder);

@@ -33,6 +33,7 @@ namespace WebApp.Application.Services
         private const string AciklamaSablonlari = "/catalog/banka-ekstre/aciklama-sablonlari";
         private const string UnvanDesenleri = "/catalog/banka-ekstre/unvan-desenleri";
         private const string Firmalar = "/catalog/banka-ekstre/firmalar";
+        private const string IslemKategorileri = "/catalog/banka-ekstre/islem-kategorileri";
 
         private const string XlsxTuru = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
@@ -94,6 +95,14 @@ namespace WebApp.Application.Services
 
         public async Task<List<BankaHesabiDto>> GetHesaplarAsync(bool pasifDahil = false, CancellationToken ct = default)
             => await GetOrNull<List<BankaHesabiDto>>(Adres(Hesaplar, $"pasifDahil={pasifDahil.ToString().ToLowerInvariant()}"), ct) ?? new();
+
+        public async Task<List<BankaAdiDto>> BankaAdlariAsync(CancellationToken ct = default)
+            => await GetOrNull<List<BankaAdiDto>>(Adres($"{Hesaplar}/banka-adlari"), ct) ?? new();
+
+        public Task<(BankaAdiBirlestirSonucDto? Veri, string? Hata)> BankaAdiBirlestirAsync(
+            BankaAdiBirlestirDto dto, CancellationToken ct = default)
+            => GonderAsync<BankaAdiBirlestirSonucDto>(
+                () => _http.PostAsJsonAsync(Adres($"{Hesaplar}/banka-adi-birlestir"), dto, ct));
 
         public async Task<List<ParserSecenekDto>> GetParserlerAsync(CancellationToken ct = default)
             => await GetOrNull<List<ParserSecenekDto>>(Adres($"{Hesaplar}/parserler"), ct) ?? new();
@@ -169,10 +178,12 @@ namespace WebApp.Application.Services
                 return _http.PostAsync(Adres($"{Ekstre}/yukle"), form, ct);
             });
 
-        public async Task<List<EkstreSatirDto>> GetSatirlarAsync(int ekstreId, SatirDurum? durum = null, CancellationToken ct = default)
+        public async Task<List<EkstreSatirDto>> GetSatirlarAsync(int ekstreId, SatirDurum? durum = null,
+                                                                  int? kategoriId = null, CancellationToken ct = default)
         {
             var url = Adres($"{Ekstre}/{ekstreId}/satirlar",
-                            durum is SatirDurum d ? $"durum={(byte)d}" : string.Empty);
+                            durum is SatirDurum d ? $"durum={(byte)d}" : string.Empty,
+                            kategoriId is int k ? $"kategoriId={k}" : string.Empty);
 
             return await GetOrNull<List<EkstreSatirDto>>(url, ct) ?? new();
         }
@@ -297,6 +308,33 @@ namespace WebApp.Application.Services
         public async Task<string?> VergiKoduSilAsync(int id, CancellationToken ct = default)
         {
             var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync(Adres($"{VergiKodlari}/{id}"), ct));
+            return hata;
+        }
+
+        // ---- İşlem kategorileri ----
+
+        public async Task<List<IslemKategorisiDto>> IslemKategorileriAsync(CancellationToken ct = default)
+            => await GetOrNull<List<IslemKategorisiDto>>(Adres(IslemKategorileri), ct) ?? new();
+
+        public async Task<KategoriKapsamOzetiDto> KategoriKapsamiAsync(string? parserTipi, CancellationToken ct = default)
+        {
+            var url = Adres($"{IslemKategorileri}/kapsam",
+                            string.IsNullOrWhiteSpace(parserTipi) ? string.Empty : $"parserTipi={Uri.EscapeDataString(parserTipi)}");
+
+            return await GetOrNull<KategoriKapsamOzetiDto>(url, ct) ?? new();
+        }
+
+        public Task<(IslemKategorisiDto? Veri, string? Hata)> IslemKategorisiEkleAsync(IslemKategorisiYazDto dto,
+                                                                                       CancellationToken ct = default)
+            => GonderAsync<IslemKategorisiDto>(() => _http.PostAsJsonAsync(Adres(IslemKategorileri), dto, ct));
+
+        public Task<(IslemKategorisiDto? Veri, string? Hata)> IslemKategorisiGuncelleAsync(int id, IslemKategorisiYazDto dto,
+                                                                                           CancellationToken ct = default)
+            => GonderAsync<IslemKategorisiDto>(() => _http.PutAsJsonAsync(Adres($"{IslemKategorileri}/{id}"), dto, ct));
+
+        public async Task<string?> IslemKategorisiSilAsync(int id, CancellationToken ct = default)
+        {
+            var (_, hata) = await GonderAsync<object>(() => _http.DeleteAsync(Adres($"{IslemKategorileri}/{id}"), ct));
             return hata;
         }
 

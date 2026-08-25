@@ -30,6 +30,19 @@ namespace WebApp.Application.Services.Interfaces
 
         // Banka hesapları
         Task<List<BankaHesabiDto>> GetHesaplarAsync(bool pasifDahil = false, CancellationToken ct = default);
+
+        /// <summary>
+        /// Firmada kullanılan banka adları (+ hesap sayıları). Banka adı alanı serbest metin
+        /// değil açılır listedir; kaynağı burasıdır.
+        /// </summary>
+        Task<List<BankaAdiDto>> BankaAdlariAsync(CancellationToken ct = default);
+
+        /// <summary>
+        /// Aynı bankanın farklı yazımlarını tek ada indirir; yanıtta kaç hesabın etkilendiği
+        /// ve güncel ad listesi döner.
+        /// </summary>
+        Task<(BankaAdiBirlestirSonucDto? Veri, string? Hata)> BankaAdiBirlestirAsync(
+            BankaAdiBirlestirDto dto, CancellationToken ct = default);
         Task<List<ParserSecenekDto>> GetParserlerAsync(CancellationToken ct = default);
 
         /// <summary>Hesap adından eşleştirme anahtarı önerisi (yeni hesap formunu doldurur).</summary>
@@ -61,7 +74,12 @@ namespace WebApp.Application.Services.Interfaces
         Task<List<EkstreYuklemeDto>> GetYuklemelerAsync(CancellationToken ct = default);
         Task<EkstreYuklemeDto?> GetYuklemeAsync(int id, CancellationToken ct = default);
         Task<(EkstreYuklemeDto? Veri, string? Hata)> YukleAsync(int bankaHesabiId, Stream icerik, string dosyaAdi, CancellationToken ct = default);
-        Task<List<EkstreSatirDto>> GetSatirlarAsync(int ekstreId, SatirDurum? durum = null, CancellationToken ct = default);
+        /// <param name="kategoriId">
+        /// Dolu ise yalnız o işlem kategorisine düşen satırlar döner; onay ekranındaki
+        /// kategori filtresi bunu kullanır.
+        /// </param>
+        Task<List<EkstreSatirDto>> GetSatirlarAsync(int ekstreId, SatirDurum? durum = null, int? kategoriId = null,
+                                                    CancellationToken ct = default);
         /// <summary>
         /// Satırı onaylar. <paramref name="kisiYonlendir"/> true ise satırdaki kişi için
         /// kalıcı bir yönlendirme kaydı da oluşturulur.
@@ -133,6 +151,16 @@ namespace WebApp.Application.Services.Interfaces
         Task<(UnvanDeseniDto? Veri, string? Hata)> UnvanDeseniEkleAsync(UnvanDeseniYazDto dto, CancellationToken ct = default);
         Task<(UnvanDeseniDto? Veri, string? Hata)> UnvanDeseniGuncelleAsync(int id, UnvanDeseniYazDto dto, CancellationToken ct = default);
         Task<string?> UnvanDeseniSilAsync(int id, CancellationToken ct = default);
+
+        // İşlem kategorileri (kuralların muhasebe sınıflandırması)
+        Task<List<IslemKategorisiDto>> IslemKategorileriAsync(CancellationToken ct = default);
+
+        /// <summary>Kategoriler görünümü: bankanın kuralları kategorilere dağıtılmış hâlde.</summary>
+        Task<KategoriKapsamOzetiDto> KategoriKapsamiAsync(string? parserTipi, CancellationToken ct = default);
+
+        Task<(IslemKategorisiDto? Veri, string? Hata)> IslemKategorisiEkleAsync(IslemKategorisiYazDto dto, CancellationToken ct = default);
+        Task<(IslemKategorisiDto? Veri, string? Hata)> IslemKategorisiGuncelleAsync(int id, IslemKategorisiYazDto dto, CancellationToken ct = default);
+        Task<string?> IslemKategorisiSilAsync(int id, CancellationToken ct = default);
 
         // Kişi yönlendirmeleri
         Task<List<KisiYonlendirmeDto>> KisiYonlendirmeleriAsync(CancellationToken ct = default);

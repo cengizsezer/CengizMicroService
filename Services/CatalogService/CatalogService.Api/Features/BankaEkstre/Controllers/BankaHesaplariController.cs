@@ -71,6 +71,32 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
         public async Task<ActionResult<List<HesapSahibiOnerisiDto>>> HesapSahibiOnerileri(CancellationToken ct)
             => Ok(await _service.HesapSahibiOnerileriAsync(ct));
 
+        /// <summary>
+        /// Firmada kullanılan banka adları (+ hesap sayıları). Banka adı alanı serbest metin
+        /// değil açılır liste; kaynağı burası.
+        /// </summary>
+        [HttpGet("banka-adlari")]
+        public async Task<ActionResult<List<BankaAdiDto>>> BankaAdlari(CancellationToken ct)
+            => Ok(await _service.BankaAdlariAsync(ct));
+
+        /// <summary>
+        /// Aynı bankanın farklı yazımlarını tek ada indirir. Kaç hesabın etkilendiği
+        /// yanıtta döner; ekran onay adımında bu sayıyı önceden gösterir.
+        /// </summary>
+        [HttpPost("banka-adi-birlestir")]
+        public async Task<ActionResult<BankaAdiBirlestirSonucDto>> BankaAdiBirlestir(
+            [FromBody] BankaAdiBirlestirDto dto, CancellationToken ct)
+        {
+            try
+            {
+                return Ok(await _service.BankaAdiBirlestirAsync(dto, ct));
+            }
+            catch (BankaEkstreKuralException ex)
+            {
+                return BadRequest(new { field = ex.Field, message = ex.Message });
+            }
+        }
+
         [HttpGet("{id:int}")]
         public async Task<ActionResult<BankaHesabiDto>> GetById(int id, CancellationToken ct)
         {

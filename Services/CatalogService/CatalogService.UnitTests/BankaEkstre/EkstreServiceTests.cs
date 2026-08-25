@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Domain;
+﻿using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Services;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
 using CatalogService.Api.Infrastructure.Context;
@@ -302,7 +302,9 @@ namespace CatalogService.UnitTests.BankaEkstre
 
             var ilk = await Servis(db).YukleAsync(hesapId, ilkDosya, "ocak.xlsx");
             var ilkSatir = (await Servis(db).GetSatirlarAsync(ilk.Id, null))!.Single();
-            await Servis(db).OnaylaAsync(ilkSatir.Id, "120 Z01");
+            // Kullanıcı cariyi kendi adını taşıyan muavine bağlar; öğrenme kaydı ancak
+            // anahtar hesabın adıyla örtüşürse yazılır (bkz. AnahtarKalitesi).
+            await Servis(db).OnaylaAsync(ilkSatir.Id, "329 K08");
 
             // İkinci ay: banka farklı sorgu numarası, farklı tarih ve tutar yazıyor.
             // Ham hash anahtarıyla bu satır ASLA eşleşmezdi; unvan çekirdeğiyle eşleşir.
@@ -314,7 +316,7 @@ namespace CatalogService.UnitTests.BankaEkstre
             var ikinciSatir = (await Servis(db).GetSatirlarAsync(ikinci.Id, null))!.Single();
 
             Assert.Equal(KaynakKatman.GecmisOnay, ikinciSatir.KaynakKatman);
-            Assert.Equal("120 Z01", ikinciSatir.OnerilenHesapKodu);
+            Assert.Equal("329 K08", ikinciSatir.OnerilenHesapKodu);
             Assert.Equal(SatirDurum.Otomatik, ikinciSatir.Durum);
         }
 

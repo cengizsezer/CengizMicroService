@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Domain;
+﻿using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Services;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
 using CatalogService.Api.Infrastructure.Context;
@@ -158,7 +158,8 @@ namespace CatalogService.UnitTests.BankaEkstre
             var sonuc = _eslestirici.Coz(
                 Baglam("MKK saklama bedeli", islemTipi: "MKK Masrafı"), Veri());
 
-            Assert.Equal("770", sonuc.HesapKodu);
+            // Banka masrafı kuralları ana grupta değil, banka komisyonu muavininde.
+            Assert.Equal("770 03 005", sonuc.HesapKodu);
             Assert.Equal(SatirDurum.Otomatik, sonuc.Durum);
             Assert.Equal(0.95m, sonuc.Guven);
         }

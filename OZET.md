@@ -897,3 +897,105 @@ Tamamı geçiyor, mevcut testlerin hiçbiri değişmedi.
   (son içe aktarımı işaretleyip topluca silme) yazılmadı.
 - **Rapor listeleri 100 satırla sınırlı** (`EnFazlaSorun`); bozuk bir dosyada geri kalan
   sebepler gösterilmiyor, sayaçlar tam.
+
+# İşlem kategorileri + banka adı açılır listesi
+
+İki ayrı sorun, aynı yerde: kurallar mekanizmasına göre (sabit kural / vergi kodu / kişi
+yönlendirme / şablon) ayrılmıştı ama kullanıcı **muhasebe kategorisine** göre düşünüyor;
+banka adı da serbest metin olduğu için aynı banka birden fazla yazımla giriliyordu.
+
+**Eşleştirme mantığına dokunulmadı**: katman sırası, eşikler, algoritma ve desenler aynı.
+Kategori yalnız etiket ve görünüm. Mevcut testlerin tamamı aynen geçiyor.
+
+## 1. İşlem kategorisi
+
+17 kategori seed'de (ad + varsayılan ana hesap grubu), tablo Tanımlar'dan yönetilebilir:
+
+| Kategori | Ana grup | | Kategori | Ana grup |
+|---|---|---|---|---|
+| Hesaplar arası | 102 | | Kredi | 300 |
+| Müşteri tahsilatı | 120 | | Kredi kartı | 309 |
+| Tedarikçi ödemesi | 329 | | Ortaklar | 331 |
+| Grup içi cari | 136 | | Diğer borç | 336 |
+| Diğer alacak | 159 | | Vergi borcu | 360 |
+| Personel iş avansı | 195 | | SGK | 361 |
+| Personel maaş avansı | 196 | | KKEG | 689 |
+| Banka gideri | 770 | | Araç/hizmet gideri | 740 |
+| Finansman gideri | 780 | | | |
+
+Dört tabloya nullable `IslemKategorisiId` eklendi: `SabitKural`, `VergiKoduEslemesi`,
+`KisiYonlendirme`, `AciklamaSablonu`. Yabancı anahtar `SetNull` — kategori silinince kural
+kalır, yalnız etiketi düşer.
+
+**Mevcut kayıtlara kategori atanıyor** (yalnız boş olanlara; kullanıcının seçimi ezilmez).
+Kod taşıyan kayıtlar kategorilerini **hesap kodunun ana grubundan** alıyor; açıklama
+şablonlarının kodu olmadığı için onların eşlemesi seed'de elle yazılı.
+
+## 2. Kategoriler görünümü
+
+"Bu bankanın kuralları" sekmesinde, tek liste + üç kolon: kategori adı · hesap kodu ·
+kural sayısı. Üstte tek satır özet (`Vakıfbank · 13 / 17 kategori tanımlı`). Tanımlı
+satırlar tamamen sade; **yalnız kuralsız kategoriler** kırmızı zeminde ve sayı yerine
+`yok` yazıyor — amaç yeni banka eklerken eksikleri kontrol listesi gibi görmek.
+
+Satıra tıklanınca accordion açılıyor: kategorideki bütün kurallar tek listede, mekanizma
+küçük bir etiket (`sabit kural`, `şablon`, `vergi kodu`, `kişi`). Kural buradan
+düzenlenebiliyor; sabit kural ve şablon aynı sekmedeki formda açılıyor, vergi kodu ve
+kişi yönlendirmesi Tanımlar ekranında olduğu için oraya yönlendiriliyor.
+
+## 3. Onay ekranı
+
+Satırın kategorisi küçük bir etiket olarak görünüyor ve üstte kategori filtresi var
+(yalnız o ekstrede geçen kategoriler, yanında satır sayısı). Kategori **satıra
+yazılmıyor**: önerilen/onaylanan hesap kodunun ana grubundan okunuyor — kullanıcı kodu
+düzeltince etiket de düzeliyor.
+
+## 4. Banka adı açılır liste + birleştirme
+
+Banka adı alanı artık açılır liste; gerçekten yeni bir banka "Yeni banka ekle" adımından
+geçiyor (serbest yazım varsayılan değil). Tanımlar > Banka hesapları'na **birleştirme**
+eklendi: aynı bankanın farklı yazımları seçilip tek ada indiriliyor, onay adımında kaç
+hesabın etkileneceği yazıyor. Toplu içe aktarımda tanınmayan banka adı satırı düşürmüyor,
+uyarı satırı üretiyor.
+
+## Uç noktalar
+
+| Uç | İş |
+|---|---|
+| `GET /catalog/banka-ekstre/islem-kategorileri` | Kategori listesi (form açılır listeleri) |
+| `GET /catalog/banka-ekstre/islem-kategorileri/kapsam?parserTipi=` | Kategoriler görünümü (özet + kurallar) |
+| `POST/PUT/DELETE /catalog/banka-ekstre/islem-kategorileri` | Kategori yönetimi |
+| `GET /catalog/banka-ekstre/banka-hesaplari/banka-adlari` | Banka adları + hesap sayıları |
+| `POST /catalog/banka-ekstre/banka-hesaplari/banka-adi-birlestir` | Yazımları tek ada indirir |
+| `GET /catalog/banka-ekstre/ekstre/{id}/satirlar?kategoriId=` | Kategori filtresi (mevcut uca parametre) |
+
+## Veritabanı
+
+`Migrations/20260825212831_BankaOtomasyonIslemKategorisi` — yeni `catalog.EkstreIslemKategorileri`
+tablosu (Ad tekil), dört tabloya nullable `IslemKategorisiId` + `SetNull` yabancı anahtar.
+Migration üretildi ve uygulandı; `has-pending-model-changes` temiz.
+
+## Testler
+
+| Test | Ne doğruluyor |
+|---|---|
+| `CatalogService.UnitTests/BankaEkstre/IslemKategorisiTests` (16) | 17 kategori tohumlanıyor ve ikinci seed tekrar etmiyor; mevcut kurallara kategori atanıyor, kullanıcının seçimi ezilmiyor; kapsam görünümü bankaya göre süzüyor ve kategorisiz kuralları sayıyor; ad tekilliği; kategori silinince kural kalıyor; satır etiketi ana gruptan okunuyor (195/196 ayrı); **kategori tablosu boşaltılınca eşleştirme sonucu değişmiyor**; kategori filtresi |
+| `CatalogService.UnitTests/BankaEkstre/BankaAdiYonetimiTests` (6) | Ad listesi pasif hesapları da sayıyor; yazımlar tek ada iniyor ve yalnız ad değişiyor; hedefin kendisi "etkilenen" sayılmıyor; büyük/küçük harf farkı birleşiyor; boş hedef/seçim reddediliyor; başka firmanın hesabına dokunulmuyor |
+| `CatalogService.UnitTests/BankaEkstre/BankaHesabiIceAktarimServiceTests` (+2) | Tanınmayan banka adı satırı düşürmüyor, bir kez uyarıyor; bilinen ad uyarı üretmiyor |
+| `WebApp.UnitTests/BankaEkstre/KategoriGorunumuTests` (4) | Kod kolonu (`195 · 196`), kuralsız kategorinin `yok` gösterimi, kodsuz şablon satırı |
+
+Sayılar: `CatalogService.UnitTests` 470 → **494**, `WebApp.UnitTests` 46 → **50**.
+Tamamı geçiyor, mevcut testlerin hiçbiri değişmedi.
+
+## Ne eksik kaldı
+
+- **Ekranlar tarayıcıda denenmedi** (bUnit yok). Elle bakılacaklar: accordion açılışı,
+  kırmızı eksik satırlar, banka adı açılır listesi + "Yeni banka ekle" adımı, birleştirme
+  onayı, onay ekranındaki kategori filtresi.
+- **Kategori satıra yazılmıyor**, hesap kodunun ana grubundan okunuyor. Aynı ana grupta iki
+  kategori tanımlanırsa sırası küçük olan kazanır; bu bilinçli bir sadeleştirme.
+- **Sunucu tarafı banka adını hâlâ serbest kabul ediyor.** "Açılır liste + ayrı adım"
+  kuralı ekranda; API'ye kısıt konmadı — toplu içe aktarım ve eski istemciler kırılmasın.
+- Kategorisi olmayan kurallar görünümde ayrı bir satırda listelenmiyor, yalnız sayısı
+  özet satırında yazıyor.
+

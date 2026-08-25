@@ -41,6 +41,19 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// Kimlik firma bazlı okunur; hangi hesabın ekstresinden geldiği fark etmez.
         /// </summary>
         Task<List<HesapSahibiOnerisiDto>> HesapSahibiOnerileriAsync(CancellationToken ct = default);
+
+        /// <summary>
+        /// Firmada kullanılan banka adları ve hesap sayıları. Banka adı alanının açılır
+        /// listesi buradan beslenir; pasif hesaplar da sayılır (adları düzeltilmeli).
+        /// </summary>
+        Task<List<BankaAdiDto>> BankaAdlariAsync(CancellationToken ct = default);
+
+        /// <summary>
+        /// Aynı bankanın farklı yazımlarını tek ada indirir ("Vakıf Bank Eur",
+        /// "Vakıfbank Vadeli" → "Vakıfbank"). Yalnız <c>BankaAdi</c> alanı değişir;
+        /// hesaplar, kodlar ve ekstreler olduğu gibi kalır.
+        /// </summary>
+        Task<BankaAdiBirlestirSonucDto> BankaAdiBirlestirAsync(BankaAdiBirlestirDto dto, CancellationToken ct = default);
     }
 
     /// <summary>
@@ -74,6 +87,66 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 .ToListAsync(ct);
 
             return kayitlar.Select(Esle).ToList();
+        }
+
+        public async Task<List<BankaAdiDto>> BankaAdlariAsync(CancellationToken ct = default)
+        {
+            // Pasif hesaplar da listelenir: yanlış yazımların bir kısmı pasife çekilmiş
+            // hesaplarda duruyor ve birleştirme onları da düzeltmeli.
+            var adlar = await Hesaplar.AsNoTracking()
+                .Select(h => h.BankaAdi)
+                .ToListAsync(ct);
+
+            return adlar
+                .Where(a => !string.IsNullOrWhiteSpace(a))
+                .GroupBy(a => a.Trim(), StringComparer.Ordinal)
+                .Select(g => new BankaAdiDto { Ad = g.Key, HesapSayisi = g.Count() })
+                .OrderBy(a => a.Ad, StringComparer.CurrentCulture)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Birleştirme. Karşılaştırma <b>ordinal ve büyük/küçük harf duyarsız</b>: sekme
+        /// şeridi ve "aynı banka önceliği" kuralı da tam olarak böyle grupluyor, yani
+        /// birleştirmenin etkisi ekranda görülenle birebir aynı.
+        /// </summary>
+        public async Task<BankaAdiBirlestirSonucDto> BankaAdiBirlestirAsync(BankaAdiBirlestirDto dto,
+                                                                            CancellationToken ct = default)
+        {
+            var hedef = (dto.Hedef ?? string.Empty).Trim();
+            if (hedef.Length == 0)
+                throw new BankaEkstreKuralException(nameof(dto.Hedef), "Hedef banka adı boş olamaz.");
+
+            if (hedef.Length > 100)
+                throw new BankaEkstreKuralException(nameof(dto.Hedef), "Banka adı en fazla 100 karakter olabilir.");
+
+            var kaynaklar = (dto.Kaynaklar ?? new List<string>())
+                .Where(k => !string.IsNullOrWhiteSpace(k))
+                .Select(k => k.Trim())
+                .Where(k => !string.Equals(k, hedef, StringComparison.OrdinalIgnoreCase))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (kaynaklar.Count == 0)
+                throw new BankaEkstreKuralException(nameof(dto.Kaynaklar),
+                    "Birleştirilecek en az bir farklı yazım seçin.");
+
+            var hesaplar = await Hesaplar.ToListAsync(ct);
+
+            var etkilenen = hesaplar
+                .Where(h => kaynaklar.Any(k => string.Equals(h.BankaAdi.Trim(), k, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+            foreach (var hesap in etkilenen) hesap.BankaAdi = hedef;
+
+            if (etkilenen.Count > 0) await _db.SaveChangesAsync(ct);
+
+            return new BankaAdiBirlestirSonucDto
+            {
+                Hedef = hedef,
+                EtkilenenHesap = etkilenen.Count,
+                BankaAdlari = await BankaAdlariAsync(ct)
+            };
         }
 
         public async Task<BankaHesabiDto?> GetByIdAsync(int id, CancellationToken ct = default)

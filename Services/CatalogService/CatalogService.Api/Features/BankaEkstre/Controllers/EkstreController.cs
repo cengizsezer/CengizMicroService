@@ -76,12 +76,17 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
             }
         }
 
-        /// <summary>Satırlar; <c>durum</c> ile filtrelenir (onay ekranı varsayılan olarak OnayBekliyor kullanır).</summary>
+        /// <summary>
+        /// Satırlar; <c>durum</c> ile filtrelenir (onay ekranı varsayılan olarak OnayBekliyor
+        /// kullanır). <c>kategoriId</c> verilirse yalnız o işlem kategorisine düşen satırlar
+        /// döner — benzer satırları gruplayıp gözden geçirmek için.
+        /// </summary>
         [HttpGet("{id:int}/satirlar")]
         public async Task<ActionResult<List<EkstreSatirDto>>> GetSatirlar(int id, [FromQuery] SatirDurum? durum,
+                                                                         [FromQuery] int? kategoriId,
                                                                          CancellationToken ct = default)
         {
-            var satirlar = await _service.GetSatirlarAsync(id, durum, ct);
+            var satirlar = await _service.GetSatirlarAsync(id, durum, kategoriId, ct);
             return satirlar is null ? NotFound() : Ok(satirlar);
         }
 

@@ -143,6 +143,17 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// <summary>Ekstresi işlenen hesabın kendisi; kendi kendine eşleşmesin diye elenir.</summary>
         public int IslenenBankaHesabiId { get; init; }
 
+        /// <summary>
+        /// Ekstresi işlenen hesabın IBAN anahtarı (yalnız rakamlar). Virman ve döviz
+        /// satırlarında açıklamada iki IBAN geçiyor ve ilki hesabın kendisi oluyor
+        /// ("… TR40 … nolu hesabından TR80 … nolu hesabına …"); karşı taraf aranırken bu
+        /// IBAN aday sayılmaz. Hesabın IBAN'ı Tanımlar'da boşsa boş döner.
+        /// </summary>
+        public string IslenenIbanAnahtari => _islenenIban ??= Normalizasyon.IbanAnahtar(
+            BankaHesaplari.FirstOrDefault(h => h.Id == IslenenBankaHesabiId)?.Iban);
+
+        private string? _islenenIban;
+
         /// <summary>Ekstresi işlenen hesapta IBAN öğrenme katmanı açık mı (varsayılan kapalı).</summary>
         public bool IbanKatmaniAktif { get; init; }
 
@@ -370,6 +381,13 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             // tuttuğunda anahtar hiç üretilmez: ne aranır ne de öğrenilir.
             if (baglam.AnahtarUretilmesin) return string.Empty;
 
+            // Kredi taksit satırlarında karşı taraf bir cari değil, belirli bir kredi
+            // hesabıdır; ayırt eden tek bilgi metindeki kredi hesap numarası. İşlem tipi
+            // ("Taksitli Tahsilat") bütün kredilerde aynı olduğu için ondan üretilen anahtar
+            // ilk onaydan sonra tüm taksitleri aynı hesaba çözerdi.
+            var kredi = Normalizasyon.KrediAnahtar(baglam.HamAciklama);
+            if (kredi.Length > 0) return kredi;
+
             var cekirdek = Normalizasyon.UnvanCekirdek(baglam.Unvan);
             return cekirdek.Length > 0 ? cekirdek : Normalizasyon.IslemAnahtari(baglam.IslemTipi);
         }
@@ -390,6 +408,10 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// hesapları arası transferde gönderen de alıcı da aynı firmadır ("… PKF ADAY
         /// BAĞIMSIZ DENETİM ANONİM ŞİRKETİ tarafından PKF ADAY BAĞIMSIZ DENETİM ANONİM
         /// ŞİRKETİ tarafına …"). Kalan 6 bankalar arası satır bu koşulla yakalanıyor.</item>
+        /// <item><b>(c)</b> Giden EFT gövdesi "… <b>VADESİZ HESABINDAN</b> (banka) …
+        /// <b>ŞUBESİ NEZDİNDEKİ</b> …" kalıbında ve çıkarılan unvan bir banka adı. Gönderen
+        /// hesap sahibinin kendi vadesiz hesabı, alıcı bir banka şubesi: satır firmanın
+        /// kendi hesapları arası transferidir. Bkz. <see cref="KendiHesabinaGidenEftMi"/>.</item>
         /// </list>
         ///
         /// <b>Neden bu kadar dar?</b> Katman önceden yalnız "açıklamada banka adı geçiyor"
@@ -399,7 +421,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// "NAOSKZ NAOS İSTANBUL KOZMETİK…/TÜRKİYE GARANTİ BANKASI …", tüm personel masraf
         /// ödemeleri). Bunların hepsi cari katmanlarına gitmeli.
         ///
-        /// İkisi de tutmazsa katman atlanır ve satır cari katmanlarına düşer; orada da
+        /// Hiçbiri tutmazsa katman atlanır ve satır cari katmanlarına düşer; orada da
         /// çözülemezse onaya gider — yanlış çözmektense sorar.
         ///
         /// <b>Arama sırası</b>
@@ -423,7 +445,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         public BankaEslesmesi BankaEslesmesiBul(SatirBaglami baglam, EslestirmeVerisi veri)
         {
             var bankalarArasi = BankalarArasiIfadeVarMi(baglam);
-            if (!bankalarArasi && !KarsiTarafHesapSahibiMi(baglam, veri)) return BankaEslesmesi.Yok;
+            if (!bankalarArasi
+                && !KarsiTarafHesapSahibiMi(baglam, veri)
+                && !KendiHesabinaGidenEftMi(baglam, veri)) return BankaEslesmesi.Yok;
 
             var adaylar = veri.BankaHesaplari
                 .Where(h => h.Aktif && h.Id != veri.IslenenBankaHesabiId)
@@ -431,13 +455,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
             if (adaylar.Count == 0) return BankaEslesmesi.Yok;
 
-            var ibanAnahtar = Normalizasyon.IbanAnahtar(baglam.KarsiIban);
-            if (ibanAnahtar.Length > 0)
-            {
-                var ibanEsi = adaylar.FirstOrDefault(h =>
-                    Normalizasyon.IbanAnahtar(h.Iban) == ibanAnahtar);
-                if (ibanEsi is not null) return new BankaEslesmesi { Hesap = ibanEsi };
-            }
+            var ibanEslesmesi = IbanlaAra(baglam, veri, adaylar);
+            if (ibanEslesmesi is not null) return ibanEslesmesi;
 
             var metin = Normalizasyon.MetinNormalize(baglam.HamAciklama + " " + baglam.IslemTipi);
             if (metin.Length == 0) return BankaEslesmesi.Yok;
@@ -462,9 +481,10 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             // adı hiç geçmiyor — ayrım ekstrenin kendi bankasından geliyor, o yüzden aynı
             // bankanın tüm hesapları aday olur; birden fazlaysa satır onaya düşer.
             //
-            // Bu genişletme YALNIZ (a) koşuluyla açılan satırlarda yapılır. (b) ile açılan
-            // satırlarda yapılsaydı, karşı tarafı gerçek bir cari olan satırlar cari
-            // eşleştirmesine hiç gidemeden banka adaylarıyla onaya düşerdi.
+            // Bu genişletme YALNIZ (a) koşuluyla açılan satırlarda yapılır. (b) veya (c) ile
+            // açılan satırlarda yapılsaydı, karşı tarafı gerçek bir cari olan satırlar cari
+            // eşleştirmesine hiç gidemeden banka adaylarıyla onaya düşerdi. (c) satırlarında
+            // zaten karşı bankanın adı açıklamada yazıyor; genişletmeye ihtiyaç yok.
             return bankalarArasi ? Eslesme(ayniBanka) : BankaEslesmesi.Yok;
         }
 
@@ -514,6 +534,44 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             return BankaAdiMiUnvan(baglam.Unvan, veri.BankaHesaplari);
         }
 
+        /// <summary>Kalıbın iki ucu; karşılaştırma <see cref="Normalizasyon.MetinNormalize"/> üzerinden.</summary>
+        private const string GondericiKalibi = "VADESIZ HESABINDAN";
+        private const string AliciKalibi = "SUBESI NEZDINDEKI";
+
+        /// <summary>
+        /// (c) Gönderen hesap sahibinin kendi hesabı, alıcı bir banka şubesi mi?
+        ///
+        /// Giden EFT gövdesi "(HESAP SAHİBİ) <b>VADESİZ HESABINDAN</b> (BANKA) A.Ş. - IBAN
+        /// MERKEZ SUBE <b>ŞUBESİ NEZDİNDEKİ</b> TR… NO'LU (KARŞI TARAF) HESABINA YAPILAN …"
+        /// diye yazılıyor. Bu iki ifade bu sırayla geçiyorsa parayı gönderen ekstrenin kendi
+        /// sahibidir ve alıcı bir banka şubesindeki hesaptır.
+        ///
+        /// Kalıp <b>tek başına</b> yetmez: aynı gövde müşteri/personel ödemelerinde de
+        /// kullanılıyor ("ZAFER GENÇ (… VADESİZ HESABINDAN YAPI VE KREDİ BANKASI A.Ş. …
+        /// NO'LU ZAFER GENÇ HESABINA …)"). Ayrım çıkarılan unvandan geliyor: unvan bir banka
+        /// adıysa ("DENİZBANK HESABINA", "İŞ BANKASI") karşı tarafta cari değil, firmanın
+        /// kendi hesabı vardır; kişi/firma adıysa satır cari katmanlarına düşer.
+        ///
+        /// <b>Neden (b) yetmedi?</b> (b) hesap sahibinin unvanının bir desen tarafından
+        /// yakalanıp elenmesine bağlı; karşı tarafı veren desen ("NO'LU … HESABINA") kayıtlı
+        /// değilse veya sırası kaydıysa bayrak hiç kalkmıyor. O zaman "İŞ BANKASI" unvanı
+        /// unvan benzerliği katmanına düşüp 0.43 ile "İstanbul Ticaret Odası"na eşleşiyordu.
+        /// Bu koşul desen sırasına bakmaz, gövdenin kendi kalıbına bakar.
+        /// </summary>
+        private static bool KendiHesabinaGidenEftMi(SatirBaglami baglam, EslestirmeVerisi veri)
+        {
+            if (string.IsNullOrWhiteSpace(baglam.Unvan)) return false;
+            if (!BankaAdiMiUnvan(baglam.Unvan, veri.BankaHesaplari)) return false;
+
+            var metin = Normalizasyon.MetinNormalize(baglam.HamAciklama);
+            if (!Normalizasyon.IfadeVarMi(metin, GondericiKalibi)) return false;
+            if (!Normalizasyon.IfadeVarMi(metin, AliciKalibi)) return false;
+
+            // Sıra önemli: önce gönderen hesap, sonra alıcı şube.
+            return metin.IndexOf(AliciKalibi, StringComparison.Ordinal)
+                 > metin.IndexOf(GondericiKalibi, StringComparison.Ordinal);
+        }
+
         /// <summary>
         /// Çıkarılan unvan bir bankayı mı gösteriyor? Önce genel banka kelimeleri
         /// ("… BANKASI", "… BANK"), sonra <b>kayıt defterindeki</b> banka adları ve
@@ -537,6 +595,43 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// IBAN'la karşı hesap araması. Metin katmanlarından <b>önce</b> gelir: IBAN kesin
+        /// bilgidir, banka adı/anahtar ise yalnız bankayı gösterir (aynı bankada birden
+        /// fazla hesap varsa satırı onaya düşürür).
+        ///
+        /// Metindeki <b>tüm</b> IBAN'lar sırayla denenir. Döviz alış/satış ve virman
+        /// satırlarında iki IBAN geçiyor ("… TR40 … nolu hesabından TR80 … nolu hesabına
+        /// … döviz alış") ve ilki ekstrenin kendi hesabı olabiliyor; tek IBAN okunduğunda
+        /// satır karşı tarafsız kalıyordu.
+        ///
+        /// Ekstrenin kendi IBAN'ı aday sayılmaz (<see cref="EslestirmeVerisi.IslenenIbanAnahtari"/>).
+        /// Karşılaştırma iki tarafta da <see cref="Normalizasyon.IbanAnahtar"/> üzerinden:
+        /// metinde boşluklu, kayıt defterinde bitişik yazılıyor.
+        /// </summary>
+        private static BankaEslesmesi? IbanlaAra(
+            SatirBaglami baglam, EslestirmeVerisi veri, IReadOnlyList<BankaHesabi> adaylar)
+        {
+            var kendi = veri.IslenenIbanAnahtari;
+
+            var anahtarlar = new List<string>();
+            foreach (var iban in Normalizasyon.IbanlariBul(baglam.HamAciklama).Prepend(baglam.KarsiIban))
+            {
+                var anahtar = Normalizasyon.IbanAnahtar(iban);
+                if (anahtar.Length == 0) continue;
+                if (anahtar == kendi) continue;
+                if (!anahtarlar.Contains(anahtar, StringComparer.Ordinal)) anahtarlar.Add(anahtar);
+            }
+
+            foreach (var anahtar in anahtarlar)
+            {
+                var esi = adaylar.FirstOrDefault(h => Normalizasyon.IbanAnahtar(h.Iban) == anahtar);
+                if (esi is not null) return new BankaEslesmesi { Hesap = esi };
+            }
+
+            return null;
         }
 
         /// <summary>Önce anahtarlar, sonra banka adı; ikisi de metinde aranır. Hiçbiri tutmazsa null.</summary>

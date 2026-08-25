@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Domain;
+﻿using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Services;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
 using CatalogService.Api.Infrastructure.Context;
@@ -603,6 +603,108 @@ namespace CatalogService.UnitTests.BankaEkstre
 
             Assert.All(otomatikler, s => Assert.Contains(
                 beklenen[s.OnerilenHesapKodu!], s.HamAciklama, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // ---- Tur 3, madde 3-4: banka masrafı kuralları ----
+
+        /// <summary>Açıklamasında değil, <b>işlem tipinde</b> aranan satır.</summary>
+        private static EkstreSatiri IslemTipiyle(IEnumerable<EkstreSatiri> satirlar, string ifade)
+            => satirlar.First(s => (s.IslemTipi ?? string.Empty).Contains(ifade, StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>
+        /// Banka masrafı sayılan işlemler ana grupta (770) değil, banka komisyonu muavininde
+        /// toplanır. "DIT Yp transfer" kuralı TAM eşleşmeyle tanımlıydı; gerçek işlem tipi
+        /// "DIT Yp transfer para çek işlemi" olduğu için hiçbir satıra uymuyordu.
+        /// </summary>
+        [Theory]
+        [InlineData("DIT Yp transfer")]
+        [InlineData("MKK Masrafı")]
+        [InlineData("Kambiyo")]
+        public async Task Kriter13_Banka_masraflari_banka_komisyonu_muavinine_gider(string islemTipi)
+        {
+            var (db, satirlar, _) = await IsleAsync();
+            using var _db = db;
+
+            var satir = IslemTipiyle(satirlar, islemTipi);
+
+            Assert.Equal("770 03 005", satir.OnerilenHesapKodu);
+            Assert.Equal(KaynakKatman.SabitKural, satir.KaynakKatman);
+            Assert.Equal(SatirDurum.Otomatik, satir.Durum);
+        }
+
+        // ---- Tur 3, madde 5: öğrenme anahtarı kalitesi ----
+
+        /// <summary>
+        /// Kredi taksitlerinin anahtarı işlem tipinden ("Taksitli Tahsilat") üretiliyordu;
+        /// o anahtar bütün kredileri tek hesaba bağlar. Her kredinin muavini ayrı olduğu
+        /// için anahtar kredi hesap numarasını taşımalı.
+        /// </summary>
+        [Fact]
+        public async Task Kriter14_Kredi_taksitlerinin_anahtari_kredi_hesap_numarasini_tasir()
+        {
+            var (db, satirlar, _) = await IsleAsync();
+            using var _db = db;
+
+            Assert.Equal("KREDI:6501439328", Satir(satirlar, "6501439328").AnahtarCekirdek);
+            Assert.Equal("KREDI:6501239656", Satir(satirlar, "6501239656").AnahtarCekirdek);
+        }
+
+        [Fact]
+        public async Task Kriter14b_Onaylanan_kredi_taksiti_yalniz_kendi_kredisini_cozer()
+        {
+            var veritabani = $"tur2-kredi-{Guid.NewGuid()}";
+            var (db, satirlar, hesapId) = await IsleAsync(veritabani);
+            using var _db = db;
+
+            await Servis(db).OnaylaAsync(Satir(satirlar, "6501439328").Id, "300 1 0015 328");
+
+            using var dosya = BankaEkstreTestOrtami.GercekEkstre();
+            var ikinci = await Servis(db).YukleAsync(hesapId, dosya, "Vakıfbank_Hesap_Ekstresi.xlsx");
+            var ikinciSatirlar = db.EkstreSatirlari.Where(s => s.EkstreYuklemeId == ikinci.Id).ToList();
+
+            var ayniKredi = Satir(ikinciSatirlar, "6501439328");
+            Assert.Equal("300 1 0015 328", ayniKredi.OnerilenHesapKodu);
+            Assert.Equal(KaynakKatman.GecmisOnay, ayniKredi.KaynakKatman);
+
+            // Başka bir kredinin taksiti bu karardan etkilenmez.
+            Assert.Null(Satir(ikinciSatirlar, "6501239656").OnerilenHesapKodu);
+        }
+
+        /// <summary>
+        /// "SUN TEKS.SAN.VE TİC.A.Ş." metninin çekirdeği ("SUN TEKSSANVE TICAS") kesik ve
+        /// bozuk. Alakasız bir firmaya onaylanırsa öğrenme kaydı yazılmamalı: kayıt bir kez
+        /// yazılınca sonraki ekstrelerde satır onaya bile düşmeden aynı hesaba giderdi.
+        /// </summary>
+        [Fact]
+        public async Task Kriter15_Hesabin_adiyla_ortusmeyen_anahtar_ogrenilmez()
+        {
+            var (db, satirlar, _) = await IsleAsync($"tur2-ogrenme-kalite-{Guid.NewGuid()}");
+            using var _db = db;
+
+            var satir = Satir(satirlar, "SUN TEKS.SAN.VE TİC.A.Ş.");
+            Assert.Equal("SUN TEKSSANVE TICAS", satir.AnahtarCekirdek);
+
+            await Servis(db).OnaylaAsync(satir.Id, "120 S104");
+
+            // Satır onaylandı ama karar genellenmedi.
+            Assert.Equal("120 S104", db.EkstreSatirlari.Single(s => s.Id == satir.Id).OnaylananHesapKodu);
+            Assert.Empty(db.EkstreHesapEslesmeleri.Where(e => e.AnahtarTipi == AnahtarTipi.UnvanCekirdek).ToList());
+        }
+
+        [Fact]
+        public async Task Kriter15b_Adi_ortusen_hesaba_onaylanirsa_ogrenilir()
+        {
+            var (db, satirlar, _) = await IsleAsync($"tur2-ogrenme-kalite2-{Guid.NewGuid()}");
+            using var _db = db;
+
+            // "SUN TEKS…" ile "Suntek Teknoloji" hiçbir kelimeyi paylaşmaz ama ikisi de
+            // "SUNTEK" ile başlar; doğru firma bu.
+            await Servis(db).OnaylaAsync(Satir(satirlar, "SUN TEKS.SAN.VE TİC.A.Ş.").Id, "120 S22");
+
+            var kayit = db.EkstreHesapEslesmeleri.Single(e => e.AnahtarTipi == AnahtarTipi.UnvanCekirdek);
+
+            Assert.Equal("SUN TEKSSANVE TICAS", kayit.AnahtarCekirdek);
+            Assert.Equal("120 S22", kayit.HesapKodu);
         }
 
         [Fact]

@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Domain;
+﻿using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Infrastructure.Accessor;
 using CatalogService.Api.Infrastructure.Context;
@@ -98,7 +98,14 @@ namespace CatalogService.UnitTests.BankaEkstre
             Avans("Masraf Ödemesi", "195", "İş Avansları", 20),
             Avans("Maaş Avansı", "196", "Personel Avansları", 30),
             Avans("Avans", "196", "Personel Avansları", 40),
-            Kural("MKK Masrafı", "770", "Genel Yönetim Giderleri", 50),
+            // Banka masrafı sayılan işlemler banka komisyonu muavinine gider; eşleşme türü
+            // İÇERİR, çünkü gerçek işlem tipleri kısa adın uzun hâli ("DIT Yp transfer para
+            // çek işlemi", "Kambiyo Muameleleri Vergisi Tahsilatı").
+            Kural("MKK Masrafı", "770 03 005", "Banka Komisyonu", 50, EslesmeTuru.Icerir),
+            Kural("Kambiyo", "770 03 005", "Banka Komisyonu", 52, EslesmeTuru.Icerir),
+            Kural("DIT Yp transfer", "770 03 005", "Banka Komisyonu", 54, EslesmeTuru.Icerir),
+            Kural("Komisyon", "770 03 005", "Banka Komisyonu", 56, EslesmeTuru.Icerir),
+            Kural("BSMV", "770 03 005", "Banka Komisyonu", 58, EslesmeTuru.Icerir),
             Kural("Masraf", "770", "Genel Yönetim Giderleri", 60, EslesmeTuru.Icerir),
             Kural("HGS Bakiye Yükle", "740", "Hizmet Üretim Maliyeti", 70)
         };
