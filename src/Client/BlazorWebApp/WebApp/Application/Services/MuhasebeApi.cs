@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using WebApp.Application.Services.Interfaces;
@@ -24,15 +24,69 @@ namespace WebApp.Application.Services
 
         // ---- Hesap planı ----
 
-        public async Task<List<HesapPlaniDto>> GetHesapPlaniAsync(CancellationToken ct = default)
+        public async Task<(bool Basarili, int Adet, string? Mesaj)> TekDuzenPlaniYukleAsync(
+            CancellationToken ct = default)
         {
             try
             {
-                return await _http.GetFromJsonAsync<List<HesapPlaniDto>>(HesapPlani, ct) ?? new();
+                var yanit = await _http.PostAsync($"{HesapPlani}/tek-duzen-yukle", content: null, ct);
+                var govde = await yanit.Content.ReadAsStringAsync(ct);
+                var mesaj = MesajCikar(govde);
+
+                if (!yanit.IsSuccessStatusCode)
+                    return (false, 0, mesaj ?? $"Yükleme başarısız ({(int)yanit.StatusCode}).");
+
+                var adet = 0;
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(govde);
+                    if (doc.RootElement.TryGetProperty("adet", out var a)) adet = a.GetInt32();
+                }
+                catch (System.Text.Json.JsonException) { }
+
+                return (true, adet, mesaj);
             }
             catch (Exception)
             {
-                return new();
+                return (false, 0, "Sunucuya ulaşılamadı; hesap planı yüklenemedi.");
+            }
+        }
+
+        /// <summary>Sunucunun <c>{ message }</c> gövdesini çıkarır; JSON değilse null.</summary>
+        private static string? MesajCikar(string govde)
+        {
+            if (string.IsNullOrWhiteSpace(govde)) return null;
+
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(govde);
+                return doc.RootElement.TryGetProperty("message", out var m) ? m.GetString() : null;
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                return null;
+            }
+        }
+
+        public async Task<List<HesapPlaniDto>> GetHesapPlaniAsync(CancellationToken ct = default)
+            => (await GetHesapPlaniSonucAsync(ct)).Liste;
+
+        /// <summary>
+        /// Hata yutulmaz, çağırana bildirilir: "istek başarısız" ile "kayıt yok" farklı
+        /// ekranlar gerektiriyor (KARARLAR §83). Liste her iki durumda da boş döner ki
+        /// çağıran null kontrolü yapmak zorunda kalmasın.
+        /// </summary>
+        public async Task<(List<HesapPlaniDto> Liste, bool Basarili)> GetHesapPlaniSonucAsync(
+            CancellationToken ct = default)
+        {
+            try
+            {
+                var liste = await _http.GetFromJsonAsync<List<HesapPlaniDto>>(HesapPlani, ct);
+                return (liste ?? new(), true);
+            }
+            catch (Exception)
+            {
+                return (new(), false);
             }
         }
 

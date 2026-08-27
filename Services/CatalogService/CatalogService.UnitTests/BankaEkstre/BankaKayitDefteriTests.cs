@@ -45,6 +45,14 @@ namespace CatalogService.UnitTests.BankaEkstre
             "TÜRKİYE İŞ BANKASI A.Ş. - IBAN MERKEZ ŞUBE ŞUBESİ NEZDİNDEKİ TR310006400000110083399663 " +
             "NO'LU PKF ADAY BAĞIMSIZ DENETİM A.Ş.   HESABINA YAPILAN 1414525 SORGU NO'LU EFT)";
 
+        // DBS ödemesi: gövde IsBankasi ile birebir aynı kalıpta, tek fark parantez öncesi
+        // metindeki "DBS … NO.LU ABONE". Banka aracı, para aboneye (tedarikçiye) gidiyor.
+        private const string IsBankasiDbs =
+            "İŞ BANKASI DBS - BORUSANPRE - 879382 NO.LU ABONE / İŞ BANKASI (PKF ADAY BAĞIMSIZ " +
+            "DENETİM ANONİM ŞİRKETİ VADESİZ HESABINDAN TÜRKİYE İŞ BANKASI A.Ş. - IBAN MERKEZ ŞUBE " +
+            "ŞUBESİ NEZDİNDEKİ TR360006400000110083430904 NO'LU PKF ADAY BAĞIMSIZ DENETİM ANONİM " +
+            "ŞİRKETİ HESABINA YAPILAN 8906612 SORGU NO'LU EFT)";
+
         private const string TebMaslak =
             "HESAPLAR ARASI EFT TEB MASLAK (PKF ADAY BAĞIMSIZ DENETİM ANONİM ŞİRKETİ VADESİZ " +
             "HESABINDAN TÜRK EKONOMİ BANKASI A.Ş. - IBAN MERKEZ SUBESI ŞUBESİ NEZDİNDEKİ " +
@@ -122,7 +130,12 @@ namespace CatalogService.UnitTests.BankaEkstre
                 // Ziraat ve İş Bankası kodları gerçek plandaki gibi ayrı; "102 1 5 01"
                 // İş Bankası'nın kodu (bkz. GercekHesapPlani).
                 Hesap(5, "Ziraat", "102 1 2 01"),
-                Hesap(7, "Türkiye İş Bankası", "102 1 5 01", "İş Bankası, Türkiye İş Bankası")
+                Hesap(7, "Türkiye İş Bankası", "102 1 5 01", "İş Bankası, Türkiye İş Bankası"),
+                // Kullanıcının defterindeki gerçek DBS hesabı. Eşleştirme HESAP ADINA
+                // bakmadığı için ("İş Bankası, Dbs Tl - 3430904, Borusan") DBS satırlarını
+                // adı yüzünden çekmez; yalnız BankaAdi ile genel yarışa girer ve 7 numaranın
+                // daha uzun anahtarına yenilir (bkz. KARARLAR §81).
+                Hesap(10, "İş Bankası", "102 1 5 06")
             };
 
             if (ayniBankadaIkinciHesap)
@@ -369,6 +382,69 @@ namespace CatalogService.UnitTests.BankaEkstre
 
             Assert.Equal("102 2 1 02", sonuc.HesapKodu);
             Assert.NotEqual("102 1 1 01", sonuc.HesapKodu);
+        }
+
+        // ---- DBS ödemesi: banka aracı, para aboneye gidiyor ----
+
+        /// <summary>
+        /// DBS satırının gövdesi <see cref="IsBankasi"/> ile birebir aynı kalıpta ve unvan
+        /// yine banka adlı; koşul (c) bu yüzden açılıyor ve satır İş Bankası hesabına
+        /// yazılıyordu. Oysa banka yalnız aracı: para Borusan'a gidiyor.
+        /// </summary>
+        [Fact]
+        public void Dbs_odemesi_kayit_defteri_katmanini_acmaz()
+        {
+            var baglam = Baglam(IsBankasiDbs, "Hesaba giden EFT", Yon.Cikan, KarsiTarafDeseniSiz());
+
+            // Katmanı yalnız (c) açabilirdi: (a) ifadesi yok, (b) bayrağı kalkmıyor.
+            Assert.False(baglam.HesapSahibiElendi);
+            Assert.Equal(BankaEslesmesi.Yok, _eslestirici.BankaEslesmesiBul(baglam, Veri()));
+        }
+
+        /// <summary>
+        /// Farkı yaratan tek şeyin DBS/ABONE olduğunun kanıtı: aynı metinden bu iki kelime
+        /// çıkarılınca koşul (c) yine açılıyor ve satır banka hesabına gidiyor.
+        /// </summary>
+        [Fact]
+        public void Dbs_ve_abone_kelimeleri_cikinca_ayni_govde_kayit_defterine_gider()
+        {
+            var isaretsiz = IsBankasiDbs.Replace(" DBS ", " ").Replace(" ABONE ", " ");
+
+            var sonuc = _eslestirici.Coz(
+                Baglam(isaretsiz, "Hesaba giden EFT", Yon.Cikan, KarsiTarafDeseniSiz()), Veri());
+
+            Assert.Equal("102 1 5 01", sonuc.HesapKodu);
+            Assert.Equal(KaynakKatman.BankaKayitDefteri, sonuc.Katman);
+        }
+
+        /// <summary>
+        /// Kullanıcı DBS hesabına "DBS" eşleştirme anahtarı tanımlasa bile satır kayıt
+        /// defterine düşmez: (c) hiç açılmadığı için anahtar aramasına sıra gelmiyor.
+        /// </summary>
+        [Fact]
+        public void Dbs_anahtari_tanimli_olsa_bile_dbs_satiri_kayit_defterine_dusmez()
+        {
+            var veri = Veri();
+            veri.BankaHesaplari.First(h => h.Id == 10).EslestirmeAnahtarlari = "Dbs, Borusan";
+
+            var baglam = Baglam(IsBankasiDbs, "Hesaba giden EFT", Yon.Cikan, KarsiTarafDeseniSiz());
+
+            Assert.Equal(BankaEslesmesi.Yok, _eslestirici.BankaEslesmesiBul(baglam, veri));
+        }
+
+        /// <summary>
+        /// DBS hesabı defterde dururken DBS <b>olmayan</b> İş Bankası satırı eskisi gibi
+        /// 102 1 5 01'e gitmeli: iki hesap da "İŞ BANKASI" metnini tutuyor ama uzun anahtar
+        /// ("Türkiye İş Bankası") kazanıyor, satır belirsizliğe düşmüyor.
+        /// </summary>
+        [Fact]
+        public void Dbs_hesabi_defterdeyken_normal_is_bankasi_satiri_bozulmaz()
+        {
+            var sonuc = _eslestirici.Coz(
+                Baglam(IsBankasi, "Hesaba giden EFT", Yon.Cikan, KarsiTarafDeseniSiz()), Veri());
+
+            Assert.Equal("102 1 5 01", sonuc.HesapKodu);
+            Assert.Equal(SatirDurum.Otomatik, sonuc.Durum);
         }
 
         // ---- Katman yanlış açılmamalı ----

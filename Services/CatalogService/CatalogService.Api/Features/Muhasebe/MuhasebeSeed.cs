@@ -1,38 +1,55 @@
-using System.Text.Json;
-using CatalogService.Api.Features.Muhasebe.Domain;
+﻿using CatalogService.Api.Features.Muhasebe.Domain;
+using CatalogService.Api.Features.Muhasebe.Services;
 using CatalogService.Api.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 
 namespace CatalogService.Api.Features.Muhasebe
 {
+    /// <summary>Tekdüzen plan yükleme denemesinin sonucu.</summary>
+    public enum PlanYuklemeSonuc
+    {
+        /// <summary>Plan yüklendi.</summary>
+        Yuklendi = 1,
+
+        /// <summary>Bu tenant'ın planı zaten dolu; hiçbir şey yapılmadı.</summary>
+        ZatenDolu = 2,
+
+        /// <summary>Şablon dosyası sunucuda yok. Sessizce geçilmez: loglanır ve bildirilir.</summary>
+        SablonYok = 3
+    }
+
     /// <summary>
     /// Firma (tenant) başına MSUGT tekdüzen hesap planını (sınıf/grup/kebir) ve
     /// varsayılan kod maskesini yükler. Idempotent: hesap planı doluysa atlar.
-    /// KodDuz/Seviye/Karakter/Yol seed anında hesaplanır; JSON'da yazmaz.
+    /// KodDuz/Seviye/Karakter/Yol yükleme anında hesaplanır; JSON'da yazmaz.
+    ///
+    /// İki çağıran var, ikisi de aynı <see cref="YukleAsync"/>'i kullanır: açılıştaki seed
+    /// ve ekrandaki "Tek düzen hesap planını yükle" düğmesi (KARARLAR §84).
     /// </summary>
     public static class MuhasebeSeed
     {
-        private sealed record ThpNode(string Kod, string Ad);
+        public static Task<(PlanYuklemeSonuc Sonuc, int Adet)> SeedAsync(
+            CatalogContext db, IWebHostEnvironment env, CancellationToken ct = default)
+            => YukleAsync(db, new DosyadanTekDuzenPlanKaynagi(env), ct);
 
-        private static readonly JsonSerializerOptions JsonOpts = new()
-        {
-            PropertyNameCaseInsensitive = true
-        };
-
-        public static async Task SeedAsync(CatalogContext db, IWebHostEnvironment env, CancellationToken ct = default)
+        /// <summary>
+        /// Geçerli tenant'ın hesap planını şablondan yükler. Plan doluysa dokunmaz;
+        /// şablon yoksa <see cref="PlanYuklemeSonuc.SablonYok"/> döner — <b>sessizce
+        /// geçmez</b>, çağıran loglar ve kullanıcıya söyler.
+        /// </summary>
+        public static async Task<(PlanYuklemeSonuc Sonuc, int Adet)> YukleAsync(
+            CatalogContext db, ITekDuzenPlanKaynagi kaynak, CancellationToken ct = default)
         {
             await EnsureKodMaskesiAsync(db, ct);
 
             // Idempotent: bu tenant'ın hesap planı zaten varsa dokunma.
             if (await db.HesapPlanlari.AnyAsync(ct))
-                return;
+                return (PlanYuklemeSonuc.ZatenDolu, 0);
 
-            var path = Path.Combine(env.ContentRootPath, "Infrastructure", "Setup", "SeedFiles", "thp-standart.json");
-            if (!File.Exists(path))
-                return;
+            if (!kaynak.Var)
+                return (PlanYuklemeSonuc.SablonYok, 0);
 
-            var raw = await File.ReadAllTextAsync(path, ct);
-            var nodes = JsonSerializer.Deserialize<List<ThpNode>>(raw, JsonOpts) ?? new();
+            var nodes = kaynak.Oku();
 
             // Kısa kodlar (sınıf/grup) üst; üst olan hiçbir kod yaprak değildir.
             var kodlar = nodes.Select(n => n.Kod).ToHashSet();
@@ -81,6 +98,8 @@ namespace CatalogService.Api.Features.Muhasebe
 
                 await db.SaveChangesAsync(ct);   // bu seviyenin Id'leri alt seviye Yol'u için gerekli
             }
+
+            return (PlanYuklemeSonuc.Yuklendi, eklenen.Count);
         }
 
         private static async Task EnsureKodMaskesiAsync(CatalogContext db, CancellationToken ct)

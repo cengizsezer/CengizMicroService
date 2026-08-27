@@ -1,4 +1,4 @@
-using Blazored.LocalStorage;
+﻿using Blazored.LocalStorage;
 using Blazored.SessionStorage;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -14,6 +14,7 @@ using WebApp.Application.Services.Yonetim;
 using WebApp.Infrastructure;
 using WebApp.Manager;
 using WebApp.Pages.Hesaplamalar.Bordro.Services;
+using WebApp.Pages.Hesaplamalar.FinansmanGiderKisitlamasi.Services;
 using WebApp.Pages.TaxPaymentPage.Client;
 using WebApp.StartupExtensions.Culture;
 
@@ -46,6 +47,7 @@ namespace WebApp.StartupExtensions.ServiceExtensions
         {
 
             services.AddScoped<IPayrollApiService, PayrollApiService>();
+            services.AddScoped<IFinansmanKisitlamaApiService, FinansmanKisitlamaApiService>();
 
 
             return services;

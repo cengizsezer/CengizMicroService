@@ -1,3 +1,4 @@
+﻿using CatalogService.Api.Features.Muhasebe;
 using CatalogService.Api.Features.Muhasebe.Dtos;
 using CatalogService.Api.Features.Muhasebe.Services;
 using CatalogService.Api.Infrastructure.Exceptions;
@@ -17,8 +18,56 @@ namespace CatalogService.Api.Features.Muhasebe.Controllers
     public class HesapPlaniController : ControllerBase
     {
         private readonly IHesapPlaniService _service;
+        private readonly ITekDuzenPlanKaynagi _planKaynagi;
+        private readonly ILogger<HesapPlaniController> _logger;
 
-        public HesapPlaniController(IHesapPlaniService service) => _service = service;
+        public HesapPlaniController(IHesapPlaniService service,
+                                    ITekDuzenPlanKaynagi planKaynagi,
+                                    ILogger<HesapPlaniController> logger)
+        {
+            _service = service;
+            _planKaynagi = planKaynagi;
+            _logger = logger;
+        }
+
+        // ---- Kurulum ----
+
+        /// <summary>
+        /// Geçerli firmaya tekdüzen hesap planını yükler ("Tek düzen hesap planını yükle"
+        /// düğmesi). Hangi firmaya yazılacağı istekten gelir: TenantNo'yu context damgalar.
+        ///
+        /// Açılıştaki seed yalnız <c>Program.cs</c>'teki sabit tenant listesi için
+        /// çalışıyordu; listede olmayan firma planssız kalıyor ve ekranda boş sayfa olarak
+        /// görünüyordu (KARARLAR §83). Bu uç, kullanıcının o an bağlı olduğu firmaya
+        /// kontrollü biçimde plan yüklemeyi sağlar (§84).
+        /// </summary>
+        [HttpPost("tek-duzen-yukle")]
+        public async Task<IActionResult> TekDuzenYukle(CancellationToken ct)
+        {
+            var (sonuc, adet) = await _service.TekDuzenPlaniYukleAsync(ct);
+
+            switch (sonuc)
+            {
+                case PlanYuklemeSonuc.Yuklendi:
+                    return Ok(new { adet, message = $"Tekdüzen hesap planı yüklendi ({adet} hesap)." });
+
+                case PlanYuklemeSonuc.ZatenDolu:
+                    return Conflict(new { message = "Bu firmanın hesap planı zaten dolu; yükleme yapılmadı." });
+
+                default:
+                    // Sessizce geçilmez: yayında eksik dosya sunucu logunda da görünsün.
+                    _logger.LogError(
+                        "Tekdüzen hesap planı şablonu bulunamadı: {Yol}. Yayına dosya eklenmeli.",
+                        _planKaynagi.Yol);
+
+                    return StatusCode(StatusCodes.Status500InternalServerError, new
+                    {
+                        message = "Tekdüzen hesap planı şablonu sunucuda bulunamadı " +
+                                  $"({DosyadanTekDuzenPlanKaynagi.DosyaAdi}). Yükleme yapılamadı; " +
+                                  "sunucu yöneticisine bildirin."
+                    });
+            }
+        }
 
         // ---- Okuma ----
 

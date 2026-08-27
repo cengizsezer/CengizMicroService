@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.Muhasebe.Dtos;
+﻿using CatalogService.Api.Features.Muhasebe.Dtos;
 
 namespace CatalogService.Api.Features.Muhasebe.Services
 {
@@ -8,6 +8,12 @@ namespace CatalogService.Api.Features.Muhasebe.Services
     /// </summary>
     public interface IHesapPlaniService
     {
+        /// <summary>
+        /// Geçerli firmaya (tenant) tekdüzen hesap planını yükler. Plan doluysa dokunmaz,
+        /// şablon dosyası yoksa bunu bildirir — sessizce geçmez (KARARLAR §84).
+        /// </summary>
+        Task<(PlanYuklemeSonuc Sonuc, int Adet)> TekDuzenPlaniYukleAsync(CancellationToken ct = default);
+
         /// <summary>Ağacın tamamı; düz liste + Yol, koda göre sıralı.</summary>
         Task<List<HesapPlaniDto>> GetHepsiAsync(CancellationToken ct = default);
 

@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.Muhasebe.Domain;
+﻿using CatalogService.Api.Features.Muhasebe.Domain;
 using CatalogService.Api.Features.Muhasebe.Dtos;
 using CatalogService.Api.Features.Muhasebe.Services;
 using CatalogService.Api.Infrastructure.Context;
@@ -10,7 +10,7 @@ namespace CatalogService.UnitTests.Muhasebe
     /// <summary>Hesap planı iş kuralları (1–9) için birim testleri.</summary>
     public class HesapPlaniServiceTests
     {
-        private static HesapPlaniService Servis(CatalogContext db) => new(db);
+        private static HesapPlaniService Servis(CatalogContext db) => MuhasebeTestOrtami.HesapPlaniServisi(db);
 
         private static HesapPlaniCreateDto Ekleme(int? ustId, string segment, string ad) => new()
         {

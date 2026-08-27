@@ -1,4 +1,4 @@
-@page "/muhasebe/hesap-plani"
+﻿@page "/muhasebe/hesap-plani"
 
 @using Radzen
 @using Radzen.Blazor
@@ -46,7 +46,9 @@
     .hp-rozet-pasif { background: #fff5f5; color: #742a2a; }
     .hp-kilit { font-size: 13px; color: #cbd5e0; vertical-align: middle; margin-left: 4px; }
     .hp-eslesme { background: #fffbe6; }
-    .hp-bos { padding: 24px; text-align: center; color: #a0aec0; }
+    .hp-bos { padding: 24px; text-align: center; color: #718096; line-height: 1.6; }
+    .hp-bos b { color: #4a5568; }
+    .hp-hata b { color: #9b2c2c; }
 </style>
 
 <h4 class="rz-mb-3">Hesap Planı</h4>
@@ -90,7 +92,31 @@ else
 
         @if (_kokler.Count == 0)
         {
-            <div class="hp-bos">Hesap planı boş.</div>
+            @*
+                Boş ekran iki farklı sebepten çıkabiliyor; ayırmadan gösterilirse
+                sunucu hatası "veri yok" gibi okunuyordu (KARARLAR §83).
+            *@
+            @if (!_istekBasarili)
+            {
+                <div class="hp-bos hp-hata">
+                    <div><b>Hesap planı alınamadı.</b></div>
+                    <div>Sunucuya ulaşılamadı ya da oturumunuz düşmüş olabilir. "Yenile" ile
+                         tekrar deneyin; sürerse tekrar giriş yapın.</div>
+                </div>
+            }
+            else
+            {
+                <div class="hp-bos">
+                    <div><b>Bu firma için hesap planı yüklenmemiş.</b></div>
+                    <div>Tekdüzen (MSUGT) hesap planını sınıf, grup ve kebir hesaplarıyla
+                         yükleyebilirsiniz; muavinleri sonra bu ekrandan eklersiniz.</div>
+                    <div style="margin-top:12px">
+                        <RadzenButton Text="Tek düzen hesap planını yükle" Icon="download_for_offline"
+                                      ButtonStyle="ButtonStyle.Primary" Disabled="@_yukleniyorPlan"
+                                      Click="@TekDuzenYukleAsync" />
+                    </div>
+                </div>
+            }
         }
         else if (_gorunur is not null && _gorunur.Count == 0)
         {
@@ -124,6 +150,13 @@ else
     };
 
     bool _yukleniyor = true;
+
+    /// <summary>Son isteğin gerçekten başarılı olup olmadığı; boş ekranın hangi mesajı
+    /// göstereceğini belirler (KARARLAR §83).</summary>
+    bool _istekBasarili = true;
+
+    /// <summary>Tekdüzen plan yüklemesi sürerken düğme kilitli kalsın.</summary>
+    bool _yukleniyorPlan;
     string _arama = string.Empty;
     Filtre _filtre = Filtre.Tumu;
 
@@ -148,7 +181,9 @@ else
         StateHasChanged();
 
         // Ağaç tek istekte çekilir, istemcide kurulur.
-        _duz = await Api.GetHesapPlaniAsync();
+        var sonuc = await Api.GetHesapPlaniSonucAsync();
+        _duz = sonuc.Liste;
+        _istekBasarili = sonuc.Basarili;
         _sozluk = _duz.ToDictionary(h => h.Id);
 
         foreach (var h in _duz) h.Cocuklar.Clear();
@@ -170,6 +205,41 @@ else
 
         _yukleniyor = false;
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// Tekdüzen hesap planını <b>bulunulan firmaya</b> yükler. Plan zaten doluysa ya da
+    /// sunucuda şablon dosyası yoksa sunucunun mesajı gösterilir — sessiz başarısızlık yok
+    /// (KARARLAR §84).
+    /// </summary>
+    async Task TekDuzenYukleAsync()
+    {
+        var onay = await Dialog.Confirm(
+            "Tekdüzen (MSUGT) hesap planı bu firmaya yüklenecek. Devam edilsin mi?",
+            "Hesap planı yükle",
+            new ConfirmOptions { OkButtonText = "Yükle", CancelButtonText = "Vazgeç" });
+
+        if (onay != true) return;
+
+        _yukleniyorPlan = true;
+        StateHasChanged();
+
+        var (basarili, adet, mesaj) = await Api.TekDuzenPlaniYukleAsync();
+
+        _yukleniyorPlan = false;
+
+        if (!basarili)
+        {
+            Notif.Notify(NotificationSeverity.Error, "Hesap planı yüklenemedi",
+                         mesaj ?? "Bilinmeyen hata.", 6000);
+            StateHasChanged();
+            return;
+        }
+
+        Notif.Notify(NotificationSeverity.Success, "Hesap planı yüklendi",
+                     mesaj ?? $"{adet} hesap eklendi.", 4000);
+
+        await YukleAsync();
     }
 
     // ---- Arama ve filtre ----

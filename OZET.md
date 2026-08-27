@@ -1196,3 +1196,258 @@ derleniyor; üç ocelot yapılandırması da geçerli JSON ve artık `public` ro
   `/catalog/{everything}` rotasının `AuthenticationOptions`'ı yok. Payroll'a özel değil,
   geliştirme yapılandırmasının geneli; üretim (`ocelot.json`) ve Docker yapılandırmasında
   Bearer var.
+
+---
+
+# Finansman Gider Kısıtlaması sekmesi
+
+Hesaplamalar sayfasının ikinci alt sekmesi: `/hesaplamalar/finansman-gider-kisitlamasi`.
+TÜRMOB formundaki dokuz satır — kullanıcı dördünü girer, beşi sunucuda hesaplanır.
+Kararlar ve gerekçeleri: **KARARLAR §80**.
+
+## Nasıl çalışıyor
+
+| # | Satır | Kaynak |
+|---|---|---|
+| 1 | Özsermaye tutarı | giriş (zorunlu, negatifse 0) |
+| 2 | Yabancı kaynak toplamı (Aktif − Özsermaye) | giriş |
+| 3 | Özsermayeyi aşan yabancı kaynak tutarı | `2 − 1` |
+| 4 | Aşan kısmın yabancı kaynağa oranı | `3 ÷ 2` (yüzde) |
+| 5 | Finansman gider tutarı (780, 660, 656 vb.) | giriş |
+| 6 | Örtülü sermaye gideri (KKEG) / aynı kaynaktan finansman geliri | giriş |
+| 7 | Hesaplamada dikkate alınacak finansman gideri | `5 − 6` (negatifse 0) |
+| 8 | Aşan kısma isabet eden finansman gideri | `4 × 7` |
+| 9 | **KKEG olacak finansman giderleri** | `8 × kısıtlama oranı` |
+
+**Kenar kuralları:** 1. satır negatifse sıfır kabul edilir; 3. satır sıfır veya negatifse
+kısıtlama yapılmaz (4–9 sıfır döner, ekranda gerekçe yazar; 3. satırın kendisi ham fark
+olarak durur); 2. satır sıfırken 4. satırda bölme yapılmaz; 7. satır negatif çıkarsa sıfır
+kabul edilir.
+
+**Hesap sunucuda.** `FinansmanGiderKisitlamasiMotoru` saf fonksiyon: veritabanı bilmez,
+oranı parametre alır. İstemci her değişiklikte 250 ms gecikmeyle `/hesapla`'yı çağırır
+(Bordro sekmesiyle aynı). 8 ve 9. satırlar 4. satırın **yuvarlanmamış** oranıyla
+hesaplanır; tutarlar sonuçta 2 haneye yuvarlanır.
+
+## Kısıtlama oranı
+
+Oranı (bugün %10) Cumhurbaşkanı Kararı belirliyor; koda gömülü değil, **yıl bazlı tabloda**
+ve ekrandaki "Kısıtlama oranını düzenle" bölümünden düzenlenebiliyor: yıl ekle/değiştir/sil,
+dayanak metni. Oran yüzde olarak saklanır (`10` = %10). Seçilen yılın oranı tanımlı değilse
+hesap yapılmaz, ekranda "…oranı tanımlı değil, ekrandan tanımlayın" hatası çıkar.
+
+Seed 2021–2026 için %10 yazar (kısıtlama 1/1/2021'de yürürlüğe girdi); yılı zaten kayıtlı
+olan orana dokunmaz.
+
+## Uç noktalar
+
+`api/catalog/finansman-gider-kisitlamasi` (`[Authorize]`, gateway'in genel
+`/catalog/{everything}` rotasından geçer — ayrı rota eklenmedi):
+
+| Metot | Yol | İş |
+|---|---|---|
+| POST | `hesapla` | Dokuz satırı döner; oran yoksa 400 + açıklama |
+| GET | `oranlar` | Tüm yılların oranları |
+| GET | `oranlar/{yil}` | Tek yıl |
+| PUT | `oranlar/{yil}` | Yıl bazlı upsert |
+| DELETE | `oranlar/{yil}` | Yılın oranını siler |
+
+## Veritabanı
+
+`catalog.FinansmanKisitlamaOranlari` — `Yil` (benzersiz), `Oran decimal(18,4)` (yüzde),
+`Dayanak`, `Not`, `GuncellenmeTarihi`. Firmadan/tenant'tan bağımsız ortak referans, query
+filter yok. Migration: `20260827192040_AddFinansmanKisitlamaOranlari` (uygulandı,
+`has-pending-model-changes` temiz).
+
+## Değişen / eklenen dosyalar
+
+**Sunucu (yeni):** `Features/FinansmanGiderKisitlamasi/` — `Domain/FinansmanKisitlamaOrani.cs`,
+`Dtos/FinansmanGiderKisitlamasiDtos.cs`, `Services/FinansmanGiderKisitlamasiMotoru.cs`,
+`Services/FinansmanKisitlamaOraniYokException.cs`,
+`Services/IFinansmanGiderKisitlamasiService.cs` + `FinansmanGiderKisitlamasiService.cs`,
+`Controllers/FinansmanGiderKisitlamasiController.cs`, `FinansmanGiderKisitlamasiSeed.cs`;
+`Infrastructure/EntityConfigurations/FinansmanKisitlamaOraniEntityTypeConfiguration.cs`.
+
+**Sunucu (değişen):** `CatalogContext` (DbSet + `ApplyConfiguration`), `Program.cs`
+(DI + seed çağrısı), migration + snapshot.
+
+**İstemci (yeni):** `Pages/Hesaplamalar/FinansmanGiderKisitlamasi/` —
+`FinansmanKisitlamaHesabi.razor(.css)`, `Model/FinansmanKisitlamaModels.cs`,
+`Services/IFinansmanKisitlamaApiService.cs` + `FinansmanKisitlamaApiService.cs`.
+
+**İstemci (değişen):** `HesaplamaSekmesi.cs` (kayıt listesine bir satır),
+`ServiceCollectionExtensions.cs` (DI), `MainLayout.razor` (alt menüye bir satır).
+**`HesaplamalarPage.razor` değişmedi.**
+
+## Testler
+
+`CatalogService.UnitTests/FinansmanGiderKisitlamasi/FinansmanGiderKisitlamasiMotoruTests.cs`
+— 10 test: normal senaryo, kısıtlama yok (aşmıyor / eşit), negatif özsermaye, yabancı kaynak
+sıfır (iki varyant), finansman geliri giderden fazla, oran tanımsız hatası, oran parametresi
+sonucu değiştiriyor, küsuratlı oranda yuvarlama.
+
+`CatalogService.UnitTests` **525**, `WebApp.UnitTests` **50**, `Sovos.InvoiceWorker.Tests`
+**1** — hepsi geçiyor, **hiçbir mevcut test değiştirilmedi**. CatalogService.Api ve WebApp
+temiz derleniyor.
+
+## Ne eksik kaldı
+
+- **Tarayıcıda denenmedi** (bUnit yok). Elle bakılacaklar: sekme şeridinde yeni sekme,
+  dokuz satırın anlık hesaplanması, oran panelinden ekleme/güncelleme/silme, Türkçe biçim.
+- **Oran uçları için otomatik test yok.** Motor birim testli; CRUD ve controller
+  doğrulamaları (yıl 2000–2100, oran 0–100) elle denenecek.
+- **Dışa aktarım yok.** Bordro'daki gibi Excel/PDF çıktısı istenmedi, eklenmedi.
+- **Beyannameye bağlanmadı.** Hesaplanan KKEG, Firma Kontrol'deki kurumlar vergisi
+  beyanname ekranına otomatik taşınmıyor; kullanıcı tutarı kendisi giriyor.
+- **Yerel veritabanına seed elle atıldı** (2021–2026, %10). Servis ilk açılışında seed zaten
+  aynı satırları yazacak; iki kez yazmaz (yıl kayıtlıysa dokunmuyor).
+
+---
+
+# DBS ödemesi kayıt defterine düşmüyor
+
+Bir satır yanlış çözülüyordu: `İŞ BANKASI DBS - BORUSANPRE - 879382 NO.LU ABONE / İŞ
+BANKASI (… VADESİZ HESABINDAN … ŞUBESİ NEZDİNDEKİ …)` sistem `102 1 5 01` diyordu, doğrusu
+`329 B15 Borusan Otomotiv Premium Kiralama`. Gerekçeler: **KARARLAR §81**.
+
+## Ne değişti
+
+**1. Koşul (c) DBS satırlarında kapalı.** Gövdede `DBS` ya da `ABONE` kelimesi geçiyorsa
+"… VADESİZ HESABINDAN … ŞUBESİ NEZDİNDEKİ …" kalıbı banka kayıt defteri katmanını artık
+açmıyor; satır cari katmanlarına düşüyor. Banka bu satırda yalnız aracı, para aboneye
+(tedarikçiye) gidiyor.
+
+Ölçüldü: bu satırda (a) tutmuyor (metinde "hesaplar arası" yok), (b) de tutmuyor
+(`HesapSahibiElendi = false`). Katmanı yalnız (c) açıyordu, o yüzden **yalnız (c)** kapatıldı;
+(a) ve (b) dokunulmadan duruyor.
+
+**2. Abone adı kısaltmasıyla cari araması.** (c)'yi kapatmak tek başına satırı `329 B15`'e
+götürmüyordu — çözülemedi kalıyordu: banka abone adını bitiştirip kısaltıyor
+(`BORUSANPRE` = `BORUSAN` + `PRE`mium) ve benzersiz önek katmanı hesap adının metnin
+token'ıyla **başlamasını** arıyor; burada ilişki ters. `CariOnekIndeksi.KisaltmaOnekiyleEslesenler`
+bu ters yönü arıyor: yalnız DBS satırlarında, yalnız hesap adının ilk kelimesiyle, ilk kelime
+en az 6 harfse ve **en son çare** olarak. Tek aday çıkarsa otomatik, birden fazlaysa satır
+onaya düşer.
+
+## `102 1 5 06` kontrolü
+
+Kullanıcının defterindeki `102 1 5 06 İş Bankası, Dbs Tl - 3430904, Borusan` hesabı DBS
+satırlarını **adı yüzünden çekmiyor**: eşleştirme hesap adına bakmıyor, yalnız `BankaAdi` ve
+`EslestirmeAnahtarlari` metinde aranıyor. Hesap genel banka adı yarışına giriyor ve
+`102 1 5 01`'in daha uzun anahtarına ("Türkiye İş Bankası") yeniliyor. Bu hesaba "Dbs" /
+"Borusan" anahtarı tanımlansa bile DBS satırı kayıt defterine düşmüyor — (c) hiç açılmadığı
+için anahtar aramasına sıra gelmiyor. Üçü de testte.
+
+## Değişen dosyalar
+
+| Dosya | Değişiklik |
+|---|---|
+| `Services/HesapEslestirici.cs` | `DbsOdemesiMi` (koşul c'nin önüne), `DbsAboneAramasi` + `DbsAboneAdi` (önek katmanının son çaresi) |
+| `Services/CariOnekIndeksi.cs` | `KisaltmaOnekiyleEslesenler` — ters yönde, dar önek araması |
+| `CatalogService.UnitTests/BankaEkstre/GercekHesapPlani.cs` | `329 B15 Borusan Otomotiv Premium Kiralama` carisi + `102 1 5 06` DBS banka hesabı |
+| `CatalogService.UnitTests/BankaEkstre/BankaKayitDefteriTests.cs` | Gerçek DBS açıklaması + 4 test |
+| `CatalogService.UnitTests/BankaEkstre/Tur2GercekVeriTests.cs` | Gerçek dosyada uçtan uca 2 test |
+
+Veritabanı, DTO ve istemci değişmedi; yeni `KaynakKatman` değeri açılmadı (eşleşme yine
+`BenzersizOnek`).
+
+## Testler
+
+Yeni 6 test:
+
+- DBS satırı kayıt defteri katmanını açmıyor (koşul (c) kapalı).
+- Aynı gövdeden `DBS`/`ABONE` kelimeleri çıkarılınca katman **yine açılıyor** — farkı
+  yaratanın bu iki kelime olduğunun kanıtı.
+- DBS hesabına "Dbs, Borusan" anahtarı tanımlansa bile satır kayıt defterine düşmüyor.
+- DBS hesabı defterdeyken normal `İŞ BANKASI (…)` satırı hâlâ `102 1 5 01`'e gidiyor.
+- Gerçek dosya, uçtan uca: DBS satırı → `329 B15`, otomatik, katman kayıt defteri değil.
+- Gerçek dosya: `HESAPLAR ARASI E.F.T. VAKIFBANK/DENİZBANK`, `İŞ BANKASI (…)` ve
+  `DENİZBANK HESABINA` satırları eskisi gibi kayıt defterinden çözülüyor.
+
+`CatalogService.UnitTests` **531**, `WebApp.UnitTests` **50** — hepsi geçiyor, mevcut
+testlerin hiçbiri değiştirilmedi. Gerçek dosyadaki diğer üç "ABONE" satırı (Superonline,
+Türk Telekom) eski eşleşmelerini koruyor.
+
+## Ne eksik kaldı
+
+- **Tek örnekle çalışıldı.** Dosyada bir DBS satırı var; başka bankaların DBS gövdeleri
+  ("DBS ÖDEMESİ - …" gibi) farklı yazılmış olabilir. `DBS` kelimesini izleyen token kuralı
+  o zaman gözden geçirilmeli.
+- **Kısaltma eşleşmesi yalnız DBS satırlarında açık.** Aynı sorun başka satır tiplerinde de
+  varsa (banka kısaltılmış satıcı adı yazıyorsa) kapsam genişletilmedi — bilerek dar
+  bırakıldı.
+- **`DBS` / `ABONE` kodda sabit**, yönetilebilir tabloda değil; `BankalarArasiIfadeleri` ile
+  aynı yerde duruyor.
+
+---
+
+# Düzeltilmiş ekstre: ORKA formatı ve satır kaybı
+
+İki sorun vardı: çıktı bankanın 17 kolonlu yapısını + künye bloğunu koruyordu (ORKA
+okumuyor) ve dosyada satırların yalnız bir kısmı görünüyordu. Gerekçeler: **KARARLAR §82**.
+
+## Yeni format
+
+```
+Tarih | Açıklama | Giren | Çıkan
+```
+
+- Başlık 1. satırda, veri 2. satırdan; **künye bloğu yok**.
+- **Tarih** — işlem tarihi, gerçek tarih hücresi, `dd.MM.yyyy` biçimi.
+- **Açıklama** — üretilen açıklama, 50 karakterde kırpılı.
+- **Giren / Çıkan** — yönüne göre biri dolu, diğeri boş. Tutarlar **sayısal hücre**
+  (`#,##0.00` biçimi); metin hücreyi ORKA yanlış ayrıştırabiliyor.
+
+Dosya artık orijinalin kopyası değil, satırlardan **sıfırdan** yazılıyor. Bunun yan
+faydası: kaynak dosya saklanmamış ya da açıklama kolonu belirlenememiş olsa bile düzeltilmiş
+ekstre üretiliyor (eski sürüm bu iki durumda hata veriyordu).
+
+## Satır kaybının nedeni
+
+Satır döngüsü suçsuzdu: gerçek dosyadaki 287 satırın hepsi işleniyor ve üretilen xlsx'e
+yazılıyordu. Sorun **kopyala-kaydet** yönteminin kendisiydi — kaynak dosyayı ClosedXML ile
+açıp değiştirmeden kaydetmek bile dosyayı bozuyor: üretilen dosya ClosedXML'in kendisiyle
+bile açılamıyor (`LoadStyle` → `ArgumentOutOfRangeException`), boyutu 48 KB'den 42 KB'ye
+düşüyor. Bozuk dosyayı okuyan taraf onarma moduna girip içeriğin bir kısmını düşürüyor;
+kullanıcının gördüğü 17 satır bu.
+
+Yeni yöntemde kaynak dosya hiç açılmıyor. Testler üretilen dosyayı ClosedXML ile okuyor —
+eski çıktıda bu mümkün değildi, yani regresyon artık otomatik yakalanır.
+
+## Hizalama garantisi
+
+Robot kod listesini ORKA gridine satır sırasına göre yazıyor; iki çıktının satır sayısı
+veya sırası ayrışırsa kodlar yanlış satırlara gider. Filtre artık iki yerde ayrı yazılmıyor,
+ikisi de `OrkayaGidenSatirlar` üzerinden geçiyor: dosyadaki sıra (`SiraNo`) + "diğer
+bankada" işaretli satırların düşürülmesi.
+
+## Değişen dosyalar
+
+| Dosya | Değişiklik |
+|---|---|
+| `Services/EkstreService.cs` | `DuzeltilmisEkstreAsync` baştan yazıldı (dört kolon, sıfırdan üretim); `OrkayaGidenSatirlar` ortak yardımcısı; `DisaAktarAsync` aynı yardımcıyı kullanıyor; `DuzeltilmisEkstreHazir` artık her zaman `true` |
+| `CatalogService.UnitTests/BankaEkstre/EkstreServiceTests.cs` | Eski 17 kolon testi yeni formatın testiyle değişti + kaynak dosyasız üretim testi |
+| `CatalogService.UnitTests/BankaEkstre/Tur2GercekVeriTests.cs` | Gerçek dosyada hizalama testleri (287 satır) |
+
+Veritabanı, DTO ve istemci değişmedi; indirme düğmesi ve uç noktası aynı.
+
+## Testler
+
+- **Format**: dört kolon, başlık 1. satırda, veri 2'den, künye yok; tarih hücresi
+  `dd.MM.yyyy`; giren satırında yalnız Giren dolu ve **sayısal** hücre, çıkan satırında
+  tersi; başlık + veri dışında satır yok.
+- **Kaynak dosyasız üretim**: `DosyaIcerik` ve `AciklamaKolonu` silinse de dosya üretiliyor.
+- **Hizalama (gerçek dosya, 287 satır)**: düzeltilmiş ekstrenin veri satırı sayısı = kod
+  listesi satır sayısı = 287; her i için tarih, açıklama ve tutar iki çıktıda birebir aynı
+  ve sıra dosyadaki sıra.
+- **"Diğer bankada"**: işaretli satır iki çıktıdan **birden** düşüyor, kalan satırlar hizalı.
+
+`CatalogService.UnitTests` **534**, `WebApp.UnitTests` **50** — hepsi geçiyor.
+
+## Ne eksik kaldı
+
+- **ORKA'da denenmedi.** Format kullanıcının tarifine göre yazıldı; gerçek Veri Transferi
+  ekranıyla doğrulama ofiste yapılacak.
+- **Sayfa adı sabit** ("Ekstre"); ORKA sayfa adına bakıyorsa ayarlanması gerekebilir.
+- **Kaynak dosya hâlâ saklanıyor** (`DosyaIcerik`). Düzeltilmiş ekstre artık kullanmıyor ama
+  yeniden işleme/inceleme için duruyor; temizlenmedi.

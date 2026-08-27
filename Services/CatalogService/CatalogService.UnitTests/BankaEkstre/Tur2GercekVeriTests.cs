@@ -707,6 +707,175 @@ namespace CatalogService.UnitTests.BankaEkstre
             Assert.Equal("120 S22", kayit.HesapKodu);
         }
 
+        // ---- DBS ödemesi (Tur 5) ----
+
+        /// <summary>
+        /// Gerçek dosyadaki DBS satırı: "İŞ BANKASI DBS - BORUSANPRE - 879382 NO.LU ABONE /
+        /// İŞ BANKASI (… VADESİZ HESABINDAN TÜRKİYE İŞ BANKASI A.Ş. … ŞUBESİ NEZDİNDEKİ …)".
+        ///
+        /// Gövde bankalar arası transfer kalıbında ve unvan banka adlı olduğu için satır
+        /// kayıt defterine düşüp <c>102 1 5 01</c>'e yazılıyordu. Banka aracı; para aboneye
+        /// gidiyor ve satır abonenin cari borcunu kapatıyor (KARARLAR §81).
+        /// </summary>
+        [Fact]
+        public async Task Kriter16_Dbs_odemesi_abonenin_carisine_gider()
+        {
+            var (db, satirlar, _) = await IsleAsync();
+            using var _db = db;
+
+            var satir = Satir(satirlar, "DBS", "BORUSANPRE");
+
+            Assert.Equal("329 B15", satir.OnerilenHesapKodu);
+            Assert.Equal(SatirDurum.Otomatik, satir.Durum);
+            Assert.NotEqual(KaynakKatman.BankaKayitDefteri, satir.KaynakKatman);
+        }
+
+        /// <summary>
+        /// DBS satırı bankaya gitmemeli ama bankalar arası satırlar eskisi gibi gitmeli:
+        /// aynı dosyada üç tanesi kontrol ediliyor. "İŞ BANKASI  (" satırı DBS hesabı
+        /// (<c>102 1 5 06</c>) defterde dururken de 102 1 5 01'e gider — eşleştirme hesap
+        /// adına değil, banka adı ve anahtarlara bakar.
+        /// </summary>
+        [Fact]
+        public async Task Kriter16b_Bankalar_arasi_satirlar_dbs_duzeltmesinden_etkilenmez()
+        {
+            var (db, satirlar, _) = await IsleAsync();
+            using var _db = db;
+
+            var vakifDeniz = Satir(satirlar, "HESAPLAR ARASI E.F.T. VAKIFBANK/DENİZBANK");
+            Assert.Equal("102 1 3 02", vakifDeniz.OnerilenHesapKodu);
+            Assert.Equal(KaynakKatman.BankaKayitDefteri, vakifDeniz.KaynakKatman);
+
+            var isBankasi = Satir(satirlar, "İŞ BANKASI  (");
+            Assert.Equal("102 1 5 01", isBankasi.OnerilenHesapKodu);
+            Assert.Equal(KaynakKatman.BankaKayitDefteri, isBankasi.KaynakKatman);
+
+            var denizbank = Satir(satirlar, "DENİZBANK HESABINA");
+            Assert.Equal("102 1 3 02", denizbank.OnerilenHesapKodu);
+            Assert.Equal(KaynakKatman.BankaKayitDefteri, denizbank.KaynakKatman);
+        }
+
+        // ---- ORKA çıktıları: iki dosya hizalı olmalı ----
+
+        /// <summary>
+        /// Robot kod listesini ORKA gridine <b>satır sırasına göre</b> yazıyor: düzeltilmiş
+        /// ekstre ile kod listesi aynı satırları aynı sırada içermezse kodlar yanlış
+        /// satırlara gider. Bu yüzden iki çıktı tek bir satır kümesinden üretiliyor
+        /// (<c>OrkayaGidenSatirlar</c>, KARARLAR §82) ve burada satır satır karşılaştırılıyor.
+        ///
+        /// Gerçek dosya 287 satır; eski sürümde çıktı orijinal dosyanın kopyasıydı ve
+        /// bozuluyordu (ClosedXML ile bile yeniden açılamıyordu).
+        /// </summary>
+        [Fact]
+        public async Task Kriter17_Duzeltilmis_ekstre_ve_kod_listesi_ayni_satirlari_ayni_sirada_verir()
+        {
+            var (db, satirlar, _) = await IsleAsync($"tur2-orka-hiza-{Guid.NewGuid()}");
+            using var _db = db;
+
+            var yuklemeId = TumSatirlariOnaylanmisYap(db, satirlar);
+
+            var kodListesi = await Servis(db).DisaAktarAsync(yuklemeId);
+            var ekstre = await Servis(db).DuzeltilmisEkstreAsync(yuklemeId);
+
+            Assert.NotNull(kodListesi);
+            Assert.NotNull(ekstre);
+
+            using var akis = new MemoryStream(ekstre!.Icerik);
+            using var kitap = new ClosedXML.Excel.XLWorkbook(akis);
+            var sayfa = kitap.Worksheets.First();
+
+            // 1. satır başlık, veri 2'den: dosyadaki veri satırı sayısı = kod listesi sayısı.
+            var veriSatirSayisi = sayfa.LastRowUsed()!.RowNumber() - 1;
+
+            Assert.Equal(287, satirlar.Count);
+            Assert.Equal(satirlar.Count, kodListesi!.SatirSayisi);
+            Assert.Equal(kodListesi.SatirSayisi, veriSatirSayisi);
+
+            // Sıra da birebir: i. veri satırı, kod listesinin i. kaydı ve ekstrenin i. satırı.
+            var beklenen = satirlar.OrderBy(s => s.SiraNo).ToList();
+
+            for (var i = 0; i < beklenen.Count; i++)
+            {
+                var kaynak = beklenen[i];
+                var kod = kodListesi.Satirlar[i];
+                var excelSatir = i + 2;
+
+                Assert.Equal(kaynak.SiraNo, kod.SiraNo);
+                Assert.Equal(kaynak.Tarih.Date, sayfa.Cell(excelSatir, 1).GetDateTime().Date);
+                Assert.Equal(kod.Aciklama, sayfa.Cell(excelSatir, 2).GetString());
+
+                if (kaynak.Yon == Yon.Giren)
+                {
+                    Assert.Equal(kaynak.Tutar, sayfa.Cell(excelSatir, 3).GetValue<decimal>());
+                    Assert.True(sayfa.Cell(excelSatir, 4).IsEmpty());
+                }
+                else
+                {
+                    Assert.True(sayfa.Cell(excelSatir, 3).IsEmpty());
+                    Assert.Equal(kaynak.Tutar, sayfa.Cell(excelSatir, 4).GetValue<decimal>());
+                }
+            }
+        }
+
+        /// <summary>
+        /// "Diğer bankada" işaretli satır iki çıktıdan da düşmeli — yalnız birinden düşerse
+        /// hizalama o satırdan sonra kayar ve robot kodları bir satır kaymış yazar.
+        /// </summary>
+        [Fact]
+        public async Task Kriter17b_Diger_bankada_satiri_iki_ciktidan_da_ayni_anda_duser()
+        {
+            var (db, satirlar, _) = await IsleAsync($"tur2-orka-hiza-atlama-{Guid.NewGuid()}");
+            using var _db = db;
+
+            var yuklemeId = TumSatirlariOnaylanmisYap(db, satirlar);
+
+            // Ortadaki bir satır başka bankanın ekstresinde işlenmiş sayılsın.
+            var atlananId = satirlar.OrderBy(x => x.SiraNo).ElementAt(10).Id;
+            var atlanan = db.EkstreSatirlari.Single(s => s.Id == atlananId);
+            atlanan.Durum = SatirDurum.DigerBankada;
+            db.SaveChanges();
+
+            var kodListesi = await Servis(db).DisaAktarAsync(yuklemeId);
+            var ekstre = await Servis(db).DuzeltilmisEkstreAsync(yuklemeId);
+
+            using var akis = new MemoryStream(ekstre!.Icerik);
+            using var kitap = new ClosedXML.Excel.XLWorkbook(akis);
+            var sayfa = kitap.Worksheets.First();
+
+            var veriSatirSayisi = sayfa.LastRowUsed()!.RowNumber() - 1;
+
+            Assert.Equal(satirlar.Count - 1, kodListesi!.SatirSayisi);
+            Assert.Equal(1, kodListesi.DigerBankadaAtlanan);
+            Assert.Equal(kodListesi.SatirSayisi, veriSatirSayisi);
+
+            // Atlanan satırın açıklaması iki çıktıda da yok.
+            var aciklamalar = Enumerable.Range(2, veriSatirSayisi)
+                .Select(r => sayfa.Cell(r, 2).GetString())
+                .ToList();
+
+            Assert.DoesNotContain(kodListesi.Satirlar, k => k.SiraNo == atlanan.SiraNo);
+            Assert.Equal(kodListesi.Satirlar.Select(k => k.Aciklama).ToList(), aciklamalar);
+        }
+
+        /// <summary>
+        /// Dışa aktarım çözülmemiş satır varken çalışmıyor; gerçek dosyada onaya düşen
+        /// satırlar var. Test hepsini onaylanmış sayar — konu dışa aktarımın kendisi.
+        /// </summary>
+        private static int TumSatirlariOnaylanmisYap(CatalogContext db, IReadOnlyList<EkstreSatiri> satirlar)
+        {
+            foreach (var satir in db.EkstreSatirlari.Where(s => s.EkstreYuklemeId == satirlar[0].EkstreYuklemeId))
+            {
+                if (satir.Durum is SatirDurum.OnayBekliyor or SatirDurum.Cozulemedi)
+                {
+                    satir.Durum = SatirDurum.Onaylandi;
+                    satir.OnaylananHesapKodu ??= "120 B62";
+                }
+            }
+
+            db.SaveChanges();
+            return satirlar[0].EkstreYuklemeId;
+        }
+
         [Fact]
         public async Task Butun_satirlar_islenir_ve_hicbiri_onaylanmis_gelmez()
         {

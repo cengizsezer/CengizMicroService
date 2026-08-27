@@ -113,6 +113,11 @@ namespace CatalogService.UnitTests.BankaEkstre
                 Kayit("329 T01", "Türk Telekom A.Ş"),
                 Kayit("329 T61", "Turknet İletişim Hizmetleri"),
 
+                // --- DBS ödemesinin abonesi (Tur 5) ---
+                // Banka abone adını bitiştirip kısaltıyor: açıklamada "BORUSANPRE" yazıyor,
+                // planda adın tamamı duruyor. Normal önek araması bu ikisini eşleyemez.
+                Kayit("329 B15", "Borusan Otomotiv Premium Kiralama"),
+
                 // --- Düşük skorda önerilen alakasız cariler (madde 6) ---
                 Kayit("329 A33", "Adobe Systems Ireland"),
                 Kayit("329 N21", "Novatek"),
@@ -237,7 +242,15 @@ namespace CatalogService.UnitTests.BankaEkstre
             Banka("Ziraat Bankası", "102 1 2 01", null, "Ziraat Vadesiz Tl"),
             Banka("Akbank", "102 1 4 01", null, "Akbank Vadesiz Tl"),
             Banka("Fibabanka", "102 1 6 01", null, "Fibabanka Vadesiz Tl", "Fibabank, Fibabanka"),
-            Banka("Türk Ekonomi Bankası", "102 1 7 01", null, "Teb Vadesiz Tl", "Teb Maslak, Türk Ekonomi Bankası")
+            Banka("Türk Ekonomi Bankası", "102 1 7 01", null, "Teb Vadesiz Tl", "Teb Maslak, Türk Ekonomi Bankası"),
+
+            // İş Bankası DBS hesabı: kullanıcının kayıt defterinde gerçekten böyle duruyor.
+            // Adında "Dbs" ve "Borusan" geçiyor ama eşleştirme HESAP ADINA bakmaz — yalnız
+            // BankaAdi ve EslestirmeAnahtarlari metinde aranır. Bu yüzden hesap DBS
+            // satırlarını adı yüzünden çekmez; adı "İş Bankası" olduğu için yalnız genel
+            // banka adı yarışına girer ve orada da 102 1 5 01'in daha uzun anahtarına
+            // ("Türkiye İş Bankası") yenilir (bkz. KARARLAR §81).
+            Banka("İş Bankası", "102 1 5 06", null, "İş Bankası, Dbs Tl - 3430904, Borusan")
         };
 
         private static BankaHesabi Banka(string bankaAdi, string kod, string? parser, string hesapAdi,

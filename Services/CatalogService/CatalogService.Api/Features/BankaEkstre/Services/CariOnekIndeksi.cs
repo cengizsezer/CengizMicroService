@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 using CatalogService.Api.Features.BankaEkstre.Domain;
 
@@ -282,6 +282,43 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 var ilkKelime = kayit.Cekirdek.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
                 if (parcalar.Any(p => p.Contains(ilkKelime, StringComparer.Ordinal)))
                     sonuc.Add(kayit.Kayit);
+            }
+
+            return sonuc;
+        }
+
+        /// <summary>
+        /// <b>Ters önek</b>: hesap adının ilk kelimesi, verilen tek kelimelik
+        /// <paramref name="token"/>'ın <b>başlangıcı</b> mı? Normal aramanın tam tersi yön.
+        ///
+        /// DBS satırlarında banka abone adını bitiştirip kısaltıyor:
+        /// <c>BORUSANPRE</c> = <c>BORUSAN</c> + <c>PRE</c>(mium). Normal önek araması
+        /// (hesap adı metnin token'ıyla başlar) bunu bulamaz — "Borusan Otomotiv Premium
+        /// Kiralama" adı "BORUSANPRE" ile başlamıyor, tersi doğru.
+        ///
+        /// <b>Dar tutuldu</b>, çünkü bu yön "içeriyor" kadar gevşek olabilir:
+        /// <list type="bullet">
+        /// <item>Yalnız <b>ilk kelime</b> ile eşleşir, adın ortasıyla değil.</item>
+        /// <item>İlk kelime en az <see cref="EnKisaCekirdek"/> harf olmalı — "Aras Kargo"nun
+        /// "ARAS"ı (4) ya da "Cms Jant"ın "CMS"i (3) her şeye eşleşirdi.</item>
+        /// <item>Token ilk kelimeden <b>uzun</b> olmalı; eşit uzunluk zaten normal önek
+        /// aramasının işi.</item>
+        /// </list>
+        /// Çağıran ayrıca yalnız DBS satırlarında ve tek aday çıktığında kullanır
+        /// (bkz. <c>HesapEslestirici.DbsAboneAramasi</c>, KARARLAR §81).
+        /// </summary>
+        public List<HesapPlaniKaydi> KisaltmaOnekiyleEslesenler(string token)
+        {
+            var sonuc = new List<HesapPlaniKaydi>();
+            if (token.Length <= EnKisaCekirdek) return sonuc;
+
+            foreach (var kayit in _sirali)
+            {
+                var bosluk = kayit.Cekirdek.IndexOf(' ');
+                var ilkKelime = bosluk < 0 ? kayit.Cekirdek : kayit.Cekirdek[..bosluk];
+
+                if (ilkKelime.Length < EnKisaCekirdek || ilkKelime.Length >= token.Length) continue;
+                if (token.StartsWith(ilkKelime, StringComparison.Ordinal)) sonuc.Add(kayit.Kayit);
             }
 
             return sonuc;

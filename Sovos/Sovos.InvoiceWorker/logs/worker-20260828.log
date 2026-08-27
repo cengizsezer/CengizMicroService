@@ -1,0 +1,143 @@
+2026-08-28 00:37:18.402 +03:00 [INF] Executed DbCommand (36ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-08-28 00:37:42.745 +03:00 [INF] Executed DbCommand (24,216ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-08-28 00:37:42.797 +03:00 [INF] Executed DbCommand (47ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-08-28 00:37:42.801 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-08-28 00:37:42.827 +03:00 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+2026-08-28 00:37:42.893 +03:00 [INF] No migrations were applied. The database is already up to date.
+2026-08-28 00:37:43.130 +03:00 [INF] InvoiceCheckWorker başladı. InitialDelay=30sn
+2026-08-28 00:37:43.247 +03:00 [WRN] Overriding address(es) 'http://localhost:5011'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2026-08-28 00:37:43.267 +03:00 [INF] Now listening on: http://localhost:5011
+2026-08-28 00:37:43.340 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-08-28 00:37:43.348 +03:00 [INF] Hosting environment: Development
+2026-08-28 00:37:43.350 +03:00 [INF] Content root path: C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker
+2026-08-28 00:38:04.672 +03:00 [INF] Executed DbCommand (32ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-08-28 00:38:04.791 +03:00 [INF] Executed DbCommand (21ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-08-28 00:38:04.800 +03:00 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-08-28 00:38:04.805 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-08-28 00:38:04.831 +03:00 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+2026-08-28 00:38:04.892 +03:00 [INF] No migrations were applied. The database is already up to date.
+2026-08-28 00:38:05.270 +03:00 [INF] InvoiceCheckWorker başladı. InitialDelay=30sn
+2026-08-28 00:38:05.503 +03:00 [WRN] Overriding address(es) 'http://localhost:5011'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2026-08-28 00:38:05.522 +03:00 [INF] Now listening on: http://localhost:5011
+2026-08-28 00:38:05.775 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-08-28 00:38:05.777 +03:00 [INF] Hosting environment: Development
+2026-08-28 00:38:05.779 +03:00 [INF] Content root path: C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker
+2026-08-28 00:38:35.374 +03:00 [INF] === ScheduledChecks BAŞLADI ===
+2026-08-28 00:39:10.913 +03:00 [ERR] Failed executing DbCommand (35,098ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[IsActive] = CAST(1 AS bit)
+2026-08-28 00:39:10.942 +03:00 [ERR] An exception occurred while iterating over the results of a query for context type 'Sovos.InvoiceWorker.Data.SovosDbContext'.
+Microsoft.Data.SqlClient.SqlException (0x80131904): Execution Timeout Expired.  The timeout period elapsed prior to completion of the operation or the server is not responding.
+ ---> System.ComponentModel.Win32Exception (258): The wait operation timed out.
+   at Microsoft.Data.SqlClient.SqlCommand.<>c.<ExecuteDbDataReaderAsync>b__211_0(Task`1 result)
+   at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+--- End of stack trace from previous location ---
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+--- End of stack trace from previous location ---
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.InitializeReaderAsync(AsyncEnumerator enumerator, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal.SqlServerExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.MoveNextAsync()
+ClientConnectionId:6c9259bb-b6ad-4976-aec8-300902dcdbfa
+Error Number:-2,State:0,Class:11
+Microsoft.Data.SqlClient.SqlException (0x80131904): Execution Timeout Expired.  The timeout period elapsed prior to completion of the operation or the server is not responding.
+ ---> System.ComponentModel.Win32Exception (258): The wait operation timed out.
+   at Microsoft.Data.SqlClient.SqlCommand.<>c.<ExecuteDbDataReaderAsync>b__211_0(Task`1 result)
+   at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+--- End of stack trace from previous location ---
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+--- End of stack trace from previous location ---
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.InitializeReaderAsync(AsyncEnumerator enumerator, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal.SqlServerExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.MoveNextAsync()
+ClientConnectionId:6c9259bb-b6ad-4976-aec8-300902dcdbfa
+Error Number:-2,State:0,Class:11
+2026-08-28 00:39:11.041 +03:00 [ERR] ScheduledChecks hata fırlattı, döngü devam edecek
+Microsoft.Data.SqlClient.SqlException (0x80131904): Execution Timeout Expired.  The timeout period elapsed prior to completion of the operation or the server is not responding.
+ ---> System.ComponentModel.Win32Exception (258): The wait operation timed out.
+   at Microsoft.Data.SqlClient.SqlCommand.<>c.<ExecuteDbDataReaderAsync>b__211_0(Task`1 result)
+   at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+--- End of stack trace from previous location ---
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+--- End of stack trace from previous location ---
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.InitializeReaderAsync(AsyncEnumerator enumerator, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal.SqlServerExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.MoveNextAsync()
+   at Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync[TSource](IQueryable`1 source, CancellationToken cancellationToken)
+   at Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync[TSource](IQueryable`1 source, CancellationToken cancellationToken)
+   at Sovos.InvoiceWorker.Services.InvoiceOrchestrator.RunScheduledChecksAsync(CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker\Services\InvoiceOrchestrator.cs:line 142
+   at Sovos.InvoiceWorker.Workers.InvoiceCheckWorker.RunSafelyAsync(String jobName, Func`2 action, CancellationToken ct) in C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker\Workers\InvoiceCheckWorker.cs:line 59
+ClientConnectionId:6c9259bb-b6ad-4976-aec8-300902dcdbfa
+Error Number:-2,State:0,Class:11
+2026-08-28 00:40:17.510 +03:00 [INF] Executed DbCommand (33ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-08-28 00:40:17.632 +03:00 [INF] Executed DbCommand (18ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-08-28 00:40:17.641 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-08-28 00:40:17.646 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-08-28 00:40:17.679 +03:00 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+2026-08-28 00:40:17.757 +03:00 [INF] No migrations were applied. The database is already up to date.
+2026-08-28 00:40:18.210 +03:00 [INF] InvoiceCheckWorker başladı. InitialDelay=30sn
+2026-08-28 00:40:18.594 +03:00 [WRN] Overriding address(es) 'http://localhost:5011'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2026-08-28 00:40:18.615 +03:00 [INF] Now listening on: http://localhost:5011
+2026-08-28 00:40:18.929 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-08-28 00:40:18.932 +03:00 [INF] Hosting environment: Development
+2026-08-28 00:40:18.934 +03:00 [INF] Content root path: C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker
+2026-08-28 00:40:48.296 +03:00 [INF] === ScheduledChecks BAŞLADI ===
+2026-08-28 00:40:48.932 +03:00 [INF] Executed DbCommand (39ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[IsActive] = CAST(1 AS bit)
+2026-08-28 00:40:49.106 +03:00 [INF] 🧮 IsDue "Daily" | Id=1 nowHour=0 schedHour=22 lastDate=2026-08-13 nowDate=2026-08-28 → false
+2026-08-28 00:40:49.118 +03:00 [INF] 🧮 IsDue "Daily" | Id=2 nowHour=0 schedHour=9 lastDate=2026-08-13 nowDate=2026-08-28 → false
+2026-08-28 00:40:49.125 +03:00 [INF] 🧮 IsDue "Manual" | Id=3 nowHour=0 schedHour=9 lastDate=NULL nowDate=2026-08-28 → false
+2026-08-28 00:40:49.133 +03:00 [INF] === ScheduledChecks BİTTİ (834ms) ===
+2026-08-28 00:41:49.185 +03:00 [INF] === ScheduledChecks BAŞLADI ===
+2026-08-28 00:41:49.274 +03:00 [INF] Executed DbCommand (4ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[IsActive] = CAST(1 AS bit)
+2026-08-28 00:41:49.278 +03:00 [INF] 🧮 IsDue "Daily" | Id=1 nowHour=0 schedHour=22 lastDate=2026-08-13 nowDate=2026-08-28 → false
+2026-08-28 00:41:49.281 +03:00 [INF] 🧮 IsDue "Daily" | Id=2 nowHour=0 schedHour=9 lastDate=2026-08-13 nowDate=2026-08-28 → false
+2026-08-28 00:41:49.283 +03:00 [INF] 🧮 IsDue "Manual" | Id=3 nowHour=0 schedHour=9 lastDate=NULL nowDate=2026-08-28 → false
+2026-08-28 00:41:49.286 +03:00 [INF] === ScheduledChecks BİTTİ (95ms) ===
+2026-08-28 00:42:49.309 +03:00 [INF] === ScheduledChecks BAŞLADI ===
+2026-08-28 00:42:49.318 +03:00 [INF] Executed DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[IsActive] = CAST(1 AS bit)
+2026-08-28 00:42:49.321 +03:00 [INF] 🧮 IsDue "Daily" | Id=1 nowHour=0 schedHour=22 lastDate=2026-08-13 nowDate=2026-08-28 → false
+2026-08-28 00:42:49.323 +03:00 [INF] 🧮 IsDue "Daily" | Id=2 nowHour=0 schedHour=9 lastDate=2026-08-13 nowDate=2026-08-28 → false
+2026-08-28 00:42:49.325 +03:00 [INF] 🧮 IsDue "Manual" | Id=3 nowHour=0 schedHour=9 lastDate=NULL nowDate=2026-08-28 → false
+2026-08-28 00:42:49.326 +03:00 [INF] === ScheduledChecks BİTTİ (13ms) ===

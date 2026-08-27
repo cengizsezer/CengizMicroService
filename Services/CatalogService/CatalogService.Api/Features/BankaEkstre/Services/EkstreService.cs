@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
@@ -475,7 +475,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             if (yukleme is null) return null;
 
             var satirlar = await AktarilacakSatirlarAsync(ekstreId, ct);
-            var aktarilacak = satirlar.Where(s => s.Durum != SatirDurum.DigerBankada).ToList();
+            var aktarilacak = OrkayaGidenSatirlar(satirlar);
             var bankaKodu = yukleme.Yukleme.BankaHesabi?.OrkaHesapKodu ?? string.Empty;
 
             return new DisaAktarimSonucDto
@@ -484,7 +484,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 DosyaAdi = yukleme.Yukleme.DosyaAdi,
                 SatirSayisi = aktarilacak.Count,
                 DigerBankadaAtlanan = satirlar.Count - aktarilacak.Count,
-                DuzeltilmisEkstreHazir = yukleme.KaynakDosyaVar,
+                // Düzeltilmiş ekstre artık kaynak dosyadan üretilmiyor, sıfırdan yazılıyor;
+                // kaynak dosya saklanmamış olsa da hazır (KARARLAR §82).
+                DuzeltilmisEkstreHazir = true,
                 Satirlar = aktarilacak.Select(s => new OrkaSatirDto
                 {
                     SiraNo = s.SiraNo,
@@ -500,36 +502,69 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             };
         }
 
+        // ORKA Veri Transferi'nin beklediği dört kolon (1 tabanlı).
+        private const int KolonTarih = 1;
+        private const int KolonAciklama = 2;
+        private const int KolonGiren = 3;
+        private const int KolonCikan = 4;
+
+        /// <summary>Tutar hücrelerinin görünüm biçimi; hücrenin kendisi sayısaldır.</summary>
+        private const string TutarBicimi = "#,##0.00";
+
         /// <summary>
-        /// Dışa aktarımın birinci parçası: orijinal ekstre dosyası, açıklama kolonu bizim
-        /// ürettiğimiz metinle değiştirilmiş. Değiştirilmezse ORKA gridinde ham banka metni
-        /// görünür.
+        /// Dışa aktarımın birinci parçası: ORKA Veri Transferi ekranının beklediği
+        /// <b>dört kolonlu sade dosya</b> — <c>Tarih | Açıklama | Giren | Çıkan</c>.
+        /// Başlık 1. satırda, veri 2. satırdan başlar; hesap künyesi bloğu yoktur.
+        ///
+        /// <b>Neden orijinal dosya artık kopyalanmıyor?</b> Önceki sürüm kaynak xlsx'i açıp
+        /// yalnız açıklama kolonunu değiştiriyordu; çıktı bankanın 17 kolonu ve 6 satırlık
+        /// künye bloğuyla geliyordu. ORKA bu yapıyı okumuyor. Üstelik kaynak dosyayı açıp
+        /// yeniden kaydetmek dosyayı bozuyordu: üretilen dosya ClosedXML ile bile yeniden
+        /// açılamıyor (stil tablosu round-trip'te tutarsızlaşıyor), ORKA da satırların
+        /// yalnız bir kısmını okuyordu. Dosya artık sıfırdan üretiliyor; kaynak dosyaya ve
+        /// <c>AciklamaKolonu</c> bilgisine hiç ihtiyaç yok (bkz. KARARLAR §82).
+        ///
+        /// <b>Satır kümesi kod listesiyle birebir aynı</b> (<see cref="OrkayaGidenSatirlar"/>):
+        /// robot kod listesini ORKA gridine satır sırasına göre yazıyor; iki dosyanın satır
+        /// sayısı veya sırası ayrışırsa kodlar yanlış satırlara gider.
+        ///
+        /// Tutarlar <b>sayısal hücre</b> olarak yazılır (metin hücreyi ORKA yanlış
+        /// ayrıştırabiliyor); yönüne göre yalnız bir kolon dolar, diğeri boş kalır. Tutar
+        /// veritabanında her zaman pozitiftir, işaret <see cref="Yon"/> alanındadır.
         /// </summary>
         public async Task<EkstreDosyasi?> DuzeltilmisEkstreAsync(int ekstreId, CancellationToken ct = default)
         {
             var yukleme = await Yuklemeler.AsNoTracking().FirstOrDefaultAsync(y => y.Id == ekstreId, ct);
             if (yukleme is null) return null;
 
-            if (yukleme.DosyaIcerik is null || yukleme.DosyaIcerik.Length == 0)
-                throw new BankaEkstreKuralException("dosya",
-                    "Bu yüklemenin kaynak dosyası saklanmamış; düzeltilmiş ekstre üretilemez. Ekstreyi yeniden yükleyin.");
+            var satirlar = OrkayaGidenSatirlar(await AktarilacakSatirlarAsync(ekstreId, ct));
 
-            if (yukleme.AciklamaKolonu <= 0)
-                throw new BankaEkstreKuralException("dosya",
-                    "Kaynak dosyada açıklama kolonu belirlenemedi; düzeltilmiş ekstre üretilemez.");
+            using var kitap = new XLWorkbook();
+            var sayfa = kitap.Worksheets.Add("Ekstre");
 
-            var satirlar = await AktarilacakSatirlarAsync(ekstreId, ct);
+            sayfa.Cell(1, KolonTarih).Value = "Tarih";
+            sayfa.Cell(1, KolonAciklama).Value = "Açıklama";
+            sayfa.Cell(1, KolonGiren).Value = "Giren";
+            sayfa.Cell(1, KolonCikan).Value = "Çıkan";
+            sayfa.Row(1).Style.Font.Bold = true;
 
-            using var kaynak = new MemoryStream(yukleme.DosyaIcerik, writable: false);
-            using var kitap = new XLWorkbook(kaynak);
-            var sayfa = kitap.Worksheets.First();
-
+            var satirNo = 2;
             foreach (var satir in satirlar)
             {
-                if (satir.KaynakSatirNo <= 0) continue;
-                sayfa.Cell(satir.KaynakSatirNo, yukleme.AciklamaKolonu).Value =
+                sayfa.Cell(satirNo, KolonTarih).Value = satir.Tarih;
+                sayfa.Cell(satirNo, KolonTarih).Style.DateFormat.Format = "dd.MM.yyyy";
+
+                sayfa.Cell(satirNo, KolonAciklama).Value =
                     Normalizasyon.Kirp(satir.UretilenAciklama, AciklamaUretici.EnFazlaUzunluk);
+
+                var tutarKolonu = satir.Yon == Yon.Giren ? KolonGiren : KolonCikan;
+                sayfa.Cell(satirNo, tutarKolonu).Value = satir.Tutar;
+                sayfa.Cell(satirNo, tutarKolonu).Style.NumberFormat.Format = TutarBicimi;
+
+                satirNo++;
             }
+
+            sayfa.ColumnsUsed().AdjustToContents(1, 60);
 
             using var cikti = new MemoryStream();
             kitap.SaveAs(cikti);
@@ -616,6 +651,21 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         }
 
         // ---- Yardımcılar ----
+
+        /// <summary>
+        /// ORKA'ya giden <b>ortak</b> satır kümesi: kod listesi ve düzeltilmiş ekstre
+        /// aynı satırları aynı sırayla içermek zorunda. Robot kod listesini ORKA gridine
+        /// satır sırasına göre yazdığı için iki çıktının ayrışması kodları yanlış satırlara
+        /// yazdırır (bkz. KARARLAR §82).
+        ///
+        /// Sıra dosyadaki sıradır (<see cref="EkstreSatiri.SiraNo"/>); "diğer bankada"
+        /// işaretli satırlar iki çıktıdan da düşer (§61).
+        /// </summary>
+        private static List<EkstreSatiri> OrkayaGidenSatirlar(IEnumerable<EkstreSatiri> satirlar)
+            => satirlar
+                .Where(s => s.Durum != SatirDurum.DigerBankada)
+                .OrderBy(s => s.SiraNo)
+                .ToList();
 
         /// <summary>Dışa aktarıma girecek satırlar; eksik satır varsa 400'e karşılık gelen kural hatası.</summary>
         private async Task<List<EkstreSatiri>> AktarilacakSatirlarAsync(int ekstreId, CancellationToken ct)

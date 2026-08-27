@@ -138,6 +138,1552 @@
     ]
   },
   {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.AciklamaSablonlariController",
+    "Method": "GetHepsi",
+    "RelativePath": "api/catalog/banka-ekstre/aciklama-sablonlari",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.BankaEkstre.Dtos.AciklamaSablonuDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.AciklamaSablonlariController",
+    "Method": "Create",
+    "RelativePath": "api/catalog/banka-ekstre/aciklama-sablonlari",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.AciklamaSablonuYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.AciklamaSablonuDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.AciklamaSablonlariController",
+    "Method": "Update",
+    "RelativePath": "api/catalog/banka-ekstre/aciklama-sablonlari/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.AciklamaSablonuYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.AciklamaSablonuDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.AciklamaSablonlariController",
+    "Method": "Delete",
+    "RelativePath": "api/catalog/banka-ekstre/aciklama-sablonlari/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.AciklamaSablonlariController",
+    "Method": "YerTutucular",
+    "RelativePath": "api/catalog/banka-ekstre/aciklama-sablonlari/yer-tutucular",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.BankaEkstre.Dtos.YerTutucuDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.BankaHesaplariController",
+    "Method": "GetHepsi",
+    "RelativePath": "api/catalog/banka-ekstre/banka-hesaplari",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "pasifDahil",
+        "Type": "System.Boolean",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.BankaEkstre.Dtos.BankaHesabiDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.BankaHesaplariController",
+    "Method": "Create",
+    "RelativePath": "api/catalog/banka-ekstre/banka-hesaplari",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.BankaHesabiYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.BankaHesabiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.BankaHesaplariController",
+    "Method": "GetById",
+    "RelativePath": "api/catalog/banka-ekstre/banka-hesaplari/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.BankaHesabiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.BankaHesaplariController",
+    "Method": "Update",
+    "RelativePath": "api/catalog/banka-ekstre/banka-hesaplari/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.BankaHesabiYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.BankaHesabiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.BankaHesaplariController",
+    "Method": "Delete",
+    "RelativePath": "api/catalog/banka-ekstre/banka-hesaplari/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.BankaHesaplariController",
+    "Method": "AnahtarOnerisi",
+    "RelativePath": "api/catalog/banka-ekstre/banka-hesaplari/anahtar-onerisi",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "hesapAdi",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "bankaAdi",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.AnahtarOnerisiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.BankaHesaplariController",
+    "Method": "BankaAdiBirlestir",
+    "RelativePath": "api/catalog/banka-ekstre/banka-hesaplari/banka-adi-birlestir",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.BankaAdiBirlestirDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.BankaAdiBirlestirSonucDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.BankaHesaplariController",
+    "Method": "BankaAdlari",
+    "RelativePath": "api/catalog/banka-ekstre/banka-hesaplari/banka-adlari",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.BankaEkstre.Dtos.BankaAdiDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.BankaHesaplariController",
+    "Method": "HesapSahibi",
+    "RelativePath": "api/catalog/banka-ekstre/banka-hesaplari/hesap-sahibi",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.HesapSahibiKimlikDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.BankaHesaplariController",
+    "Method": "HesapSahibiKaydet",
+    "RelativePath": "api/catalog/banka-ekstre/banka-hesaplari/hesap-sahibi",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.HesapSahibiKimlikYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.HesapSahibiKimlikDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.BankaHesaplariController",
+    "Method": "HesapSahibiOnerileri",
+    "RelativePath": "api/catalog/banka-ekstre/banka-hesaplari/hesap-sahibi-onerileri",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.BankaEkstre.Dtos.HesapSahibiOnerisiDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.BankaHesaplariController",
+    "Method": "IceAktar",
+    "RelativePath": "api/catalog/banka-ekstre/banka-hesaplari/ice-aktar",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "file",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.BankaHesabiIceAktarimSonucDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.BankaHesaplariController",
+    "Method": "GetParserler",
+    "RelativePath": "api/catalog/banka-ekstre/banka-hesaplari/parserler",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.BankaEkstre.Dtos.ParserSecenekDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.BankaHesaplariController",
+    "Method": "Sablon",
+    "RelativePath": "api/catalog/banka-ekstre/banka-hesaplari/sablon",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.EkstreController",
+    "Method": "GetYuklemeler",
+    "RelativePath": "api/catalog/banka-ekstre/ekstre",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.BankaEkstre.Dtos.EkstreYuklemeDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.EkstreController",
+    "Method": "GetYukleme",
+    "RelativePath": "api/catalog/banka-ekstre/ekstre/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.EkstreYuklemeDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.EkstreController",
+    "Method": "Sil",
+    "RelativePath": "api/catalog/banka-ekstre/ekstre/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.EkstreController",
+    "Method": "AnalizDokumu",
+    "RelativePath": "api/catalog/banka-ekstre/ekstre/{id}/analiz-dokumu",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.EkstreController",
+    "Method": "DisaAktar",
+    "RelativePath": "api/catalog/banka-ekstre/ekstre/{id}/disa-aktar",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.DisaAktarimSonucDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.EkstreController",
+    "Method": "DuzeltilmisEkstre",
+    "RelativePath": "api/catalog/banka-ekstre/ekstre/{id}/duzeltilmis-ekstre",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.EkstreController",
+    "Method": "GetSatirlar",
+    "RelativePath": "api/catalog/banka-ekstre/ekstre/{id}/satirlar",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "durum",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "kategoriId",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.BankaEkstre.Dtos.EkstreSatirDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.EkstreController",
+    "Method": "DigerBankada",
+    "RelativePath": "api/catalog/banka-ekstre/ekstre/satir/{satirId}/diger-bankada",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "satirId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.EkstreSatirDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.EkstreController",
+    "Method": "Onayla",
+    "RelativePath": "api/catalog/banka-ekstre/ekstre/satir/{satirId}/onayla",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "satirId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.SatirOnaylaDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.EkstreSatirDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.EkstreController",
+    "Method": "Yukle",
+    "RelativePath": "api/catalog/banka-ekstre/ekstre/yukle",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "bankaHesabiId",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "file",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.EkstreYuklemeDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.HesapEslesmeleriController",
+    "Method": "Ara",
+    "RelativePath": "api/catalog/banka-ekstre/eslesmeler",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "q",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "enFazla",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.BankaEkstre.Dtos.HesapEslesmesiDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.HesapEslesmeleriController",
+    "Method": "Guncelle",
+    "RelativePath": "api/catalog/banka-ekstre/eslesmeler/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.HesapEslesmesiYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.HesapEslesmesiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.HesapEslesmeleriController",
+    "Method": "Sil",
+    "RelativePath": "api/catalog/banka-ekstre/eslesmeler/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.HesapEslesmeleriController",
+    "Method": "IceAktar",
+    "RelativePath": "api/catalog/banka-ekstre/eslesmeler/ice-aktar",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "file",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.OgrenilenEslesmeIceAktarimSonucDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.HesapEslesmeleriController",
+    "Method": "Sablon",
+    "RelativePath": "api/catalog/banka-ekstre/eslesmeler/sablon",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.FirmaOzetController",
+    "Method": "Ozet",
+    "RelativePath": "api/catalog/banka-ekstre/firmalar/ozet",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaIdler",
+        "Type": "System.Int32[]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.BankaEkstre.Dtos.FirmaBankaOzetiDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.EkstreHesapPlaniController",
+    "Method": "Ara",
+    "RelativePath": "api/catalog/banka-ekstre/hesap-plani",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "q",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "anaGrup",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "enFazla",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.BankaEkstre.Dtos.HesapPlaniKaydiDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.EkstreHesapPlaniController",
+    "Method": "IceAktar",
+    "RelativePath": "api/catalog/banka-ekstre/hesap-plani/ice-aktar",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "file",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.HesapPlaniIceAktarimSonucDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.EkstreHesapPlaniController",
+    "Method": "KodaGore",
+    "RelativePath": "api/catalog/banka-ekstre/hesap-plani/kod/{kod}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "kod",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.HesapPlaniKaydiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.EkstreHesapPlaniController",
+    "Method": "Ozet",
+    "RelativePath": "api/catalog/banka-ekstre/hesap-plani/ozet",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.HesapPlaniOzetDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.EkstreHesapPlaniController",
+    "Method": "Sayi",
+    "RelativePath": "api/catalog/banka-ekstre/hesap-plani/sayi",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Int32",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.IslemKategorileriController",
+    "Method": "GetHepsi",
+    "RelativePath": "api/catalog/banka-ekstre/islem-kategorileri",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.BankaEkstre.Dtos.IslemKategorisiDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.IslemKategorileriController",
+    "Method": "Create",
+    "RelativePath": "api/catalog/banka-ekstre/islem-kategorileri",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.IslemKategorisiYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.IslemKategorisiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.IslemKategorileriController",
+    "Method": "Update",
+    "RelativePath": "api/catalog/banka-ekstre/islem-kategorileri/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.IslemKategorisiYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.IslemKategorisiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.IslemKategorileriController",
+    "Method": "Delete",
+    "RelativePath": "api/catalog/banka-ekstre/islem-kategorileri/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.IslemKategorileriController",
+    "Method": "Kapsam",
+    "RelativePath": "api/catalog/banka-ekstre/islem-kategorileri/kapsam",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "parserTipi",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.KategoriKapsamOzetiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.KisiYonlendirmeleriController",
+    "Method": "GetHepsi",
+    "RelativePath": "api/catalog/banka-ekstre/kisi-yonlendirmeleri",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.BankaEkstre.Dtos.KisiYonlendirmeDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.KisiYonlendirmeleriController",
+    "Method": "Create",
+    "RelativePath": "api/catalog/banka-ekstre/kisi-yonlendirmeleri",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.KisiYonlendirmeYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.KisiYonlendirmeDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.KisiYonlendirmeleriController",
+    "Method": "Update",
+    "RelativePath": "api/catalog/banka-ekstre/kisi-yonlendirmeleri/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.KisiYonlendirmeYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.KisiYonlendirmeDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.KisiYonlendirmeleriController",
+    "Method": "Delete",
+    "RelativePath": "api/catalog/banka-ekstre/kisi-yonlendirmeleri/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.SabitKurallarController",
+    "Method": "GetHepsi",
+    "RelativePath": "api/catalog/banka-ekstre/sabit-kurallar",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.BankaEkstre.Dtos.SabitKuralDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.SabitKurallarController",
+    "Method": "Create",
+    "RelativePath": "api/catalog/banka-ekstre/sabit-kurallar",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.SabitKuralYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.SabitKuralDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.SabitKurallarController",
+    "Method": "Update",
+    "RelativePath": "api/catalog/banka-ekstre/sabit-kurallar/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.SabitKuralYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.SabitKuralDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.SabitKurallarController",
+    "Method": "Delete",
+    "RelativePath": "api/catalog/banka-ekstre/sabit-kurallar/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.BankaTemizlikController",
+    "Method": "Temizle",
+    "RelativePath": "api/catalog/banka-ekstre/temizlik",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.BankaTemizlikOzetiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.BankaTemizlikController",
+    "Method": "Ozet",
+    "RelativePath": "api/catalog/banka-ekstre/temizlik/ozet",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.BankaTemizlikOzetiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.BankaTemizlikController",
+    "Method": "SahipsizTemizle",
+    "RelativePath": "api/catalog/banka-ekstre/temizlik/sahipsiz",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.BankaTemizlikOzetiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.BankaTemizlikController",
+    "Method": "SahipsizOzet",
+    "RelativePath": "api/catalog/banka-ekstre/temizlik/sahipsiz/ozet",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.BankaTemizlikOzetiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.UnvanDesenleriController",
+    "Method": "GetHepsi",
+    "RelativePath": "api/catalog/banka-ekstre/unvan-desenleri",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.BankaEkstre.Dtos.UnvanDeseniDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.UnvanDesenleriController",
+    "Method": "Create",
+    "RelativePath": "api/catalog/banka-ekstre/unvan-desenleri",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.UnvanDeseniYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.UnvanDeseniDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.UnvanDesenleriController",
+    "Method": "Update",
+    "RelativePath": "api/catalog/banka-ekstre/unvan-desenleri/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.UnvanDeseniYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.UnvanDeseniDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.UnvanDesenleriController",
+    "Method": "Delete",
+    "RelativePath": "api/catalog/banka-ekstre/unvan-desenleri/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.UnvanDesenleriController",
+    "Method": "Dene",
+    "RelativePath": "api/catalog/banka-ekstre/unvan-desenleri/dene",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "istek",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.DesenDenemeIstegiDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.DesenDenemeSonucDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.VergiKodlariController",
+    "Method": "GetHepsi",
+    "RelativePath": "api/catalog/banka-ekstre/vergi-kodlari",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.BankaEkstre.Dtos.VergiKoduEslemesiDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.VergiKodlariController",
+    "Method": "Create",
+    "RelativePath": "api/catalog/banka-ekstre/vergi-kodlari",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.VergiKoduEslemesiYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.VergiKoduEslemesiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.VergiKodlariController",
+    "Method": "Update",
+    "RelativePath": "api/catalog/banka-ekstre/vergi-kodlari/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.VergiKoduEslemesiYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.BankaEkstre.Dtos.VergiKoduEslemesiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.BankaEkstre.Controllers.VergiKodlariController",
+    "Method": "Delete",
+    "RelativePath": "api/catalog/banka-ekstre/vergi-kodlari/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "CatalogService.Api.Features.Banka.Controllers.BankaTakipController",
     "Method": "GetAy",
     "RelativePath": "api/catalog/BankaTakip",
@@ -742,6 +2288,125 @@
         "StatusCode": 404
       }
     ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FinansmanGiderKisitlamasi.Controllers.FinansmanGiderKisitlamasiController",
+    "Method": "Hesapla",
+    "RelativePath": "api/catalog/finansman-gider-kisitlamasi/hesapla",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.FinansmanGiderKisitlamasi.Dtos.FinansmanKisitlamaHesapRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.FinansmanGiderKisitlamasi.Dtos.FinansmanKisitlamaSonucDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FinansmanGiderKisitlamasi.Controllers.FinansmanGiderKisitlamasiController",
+    "Method": "GetOranlar",
+    "RelativePath": "api/catalog/finansman-gider-kisitlamasi/oranlar",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.FinansmanGiderKisitlamasi.Dtos.FinansmanKisitlamaOraniDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FinansmanGiderKisitlamasi.Controllers.FinansmanGiderKisitlamasiController",
+    "Method": "GetOran",
+    "RelativePath": "api/catalog/finansman-gider-kisitlamasi/oranlar/{yil}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "yil",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.FinansmanGiderKisitlamasi.Dtos.FinansmanKisitlamaOraniDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FinansmanGiderKisitlamasi.Controllers.FinansmanGiderKisitlamasiController",
+    "Method": "UpsertOran",
+    "RelativePath": "api/catalog/finansman-gider-kisitlamasi/oranlar/{yil}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "yil",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.FinansmanGiderKisitlamasi.Dtos.FinansmanKisitlamaOraniSaveDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.FinansmanGiderKisitlamasi.Dtos.FinansmanKisitlamaOraniDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FinansmanGiderKisitlamasi.Controllers.FinansmanGiderKisitlamasiController",
+    "Method": "DeleteOran",
+    "RelativePath": "api/catalog/finansman-gider-kisitlamasi/oranlar/{yil}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "yil",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
   },
   {
     "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
@@ -4275,6 +5940,170 @@
     ]
   },
   {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollController",
+    "Method": "GetBootstrap",
+    "RelativePath": "api/catalog/payroll/bootstrap",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "year",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollController",
+    "Method": "Calculate",
+    "RelativePath": "api/catalog/payroll/calculate",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Payroll.Dtos.Requests.CalculatePayrollRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollController",
+    "Method": "CompareDistribution",
+    "RelativePath": "api/catalog/payroll/compare-distribution",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Payroll.Commands.CompareDistribution.CompareDistributionCommand",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Payroll.Dtos.Shared.DistributionComparisonResultDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollController",
+    "Method": "ExportComparisonExcel",
+    "RelativePath": "api/catalog/payroll/compare-distribution/export-excel",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Payroll.Commands.CompareDistribution.CompareDistributionCommand",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollController",
+    "Method": "ExportComparisonPdf",
+    "RelativePath": "api/catalog/payroll/compare-distribution/export-pdf",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Payroll.Commands.CompareDistribution.CompareDistributionCommand",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollController",
+    "Method": "ExportExcel",
+    "RelativePath": "api/catalog/payroll/export-excel",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Payroll.Dtos.Requests.CalculatePayrollRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollController",
+    "Method": "ExportPdf",
+    "RelativePath": "api/catalog/payroll/export-pdf",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Payroll.Dtos.Requests.CalculatePayrollRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollController",
+    "Method": "GetLawTypes",
+    "RelativePath": "api/catalog/payroll/law-types",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "year",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.Payroll.Dtos.Shared.PayrollLawTypeDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollController",
+    "Method": "GetParametersByYear",
+    "RelativePath": "api/catalog/payroll/parameters/{year}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "year",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "CatalogService.Api.Features.PersonnelEmails.Controller.PersonnelEmailsController",
     "Method": "GetAll",
     "RelativePath": "api/catalog/personnel-emails",
@@ -5403,170 +7232,6 @@
     "IsController": true,
     "Order": 0,
     "Parameters": [],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
-    "Method": "GetBootstrap",
-    "RelativePath": "api/public/payroll/bootstrap",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "year",
-        "Type": "System.Int32",
-        "IsRequired": false
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
-    "Method": "Calculate",
-    "RelativePath": "api/public/payroll/calculate",
-    "HttpMethod": "POST",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "request",
-        "Type": "CatalogService.Api.Features.Payroll.Dtos.Requests.CalculatePayrollRequest",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
-    "Method": "CompareDistribution",
-    "RelativePath": "api/public/payroll/compare-distribution",
-    "HttpMethod": "POST",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "request",
-        "Type": "CatalogService.Api.Features.Payroll.Commands.CompareDistribution.CompareDistributionCommand",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": [
-      {
-        "Type": "CatalogService.Api.Features.Payroll.Dtos.Shared.DistributionComparisonResultDto",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 200
-      }
-    ]
-  },
-  {
-    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
-    "Method": "ExportComparisonExcel",
-    "RelativePath": "api/public/payroll/compare-distribution/export-excel",
-    "HttpMethod": "POST",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "request",
-        "Type": "CatalogService.Api.Features.Payroll.Commands.CompareDistribution.CompareDistributionCommand",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
-    "Method": "ExportComparisonPdf",
-    "RelativePath": "api/public/payroll/compare-distribution/export-pdf",
-    "HttpMethod": "POST",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "request",
-        "Type": "CatalogService.Api.Features.Payroll.Commands.CompareDistribution.CompareDistributionCommand",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
-    "Method": "ExportExcel",
-    "RelativePath": "api/public/payroll/export-excel",
-    "HttpMethod": "POST",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "request",
-        "Type": "CatalogService.Api.Features.Payroll.Dtos.Requests.CalculatePayrollRequest",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
-    "Method": "ExportPdf",
-    "RelativePath": "api/public/payroll/export-pdf",
-    "HttpMethod": "POST",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "request",
-        "Type": "CatalogService.Api.Features.Payroll.Dtos.Requests.CalculatePayrollRequest",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
-    "Method": "GetLawTypes",
-    "RelativePath": "api/public/payroll/law-types",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "year",
-        "Type": "System.Int32",
-        "IsRequired": false
-      }
-    ],
-    "ReturnTypes": [
-      {
-        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.Payroll.Dtos.Shared.PayrollLawTypeDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 200
-      }
-    ]
-  },
-  {
-    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollPublicController",
-    "Method": "GetParametersByYear",
-    "RelativePath": "api/public/payroll/parameters/{year}",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "year",
-        "Type": "System.Int32",
-        "IsRequired": true
-      }
-    ],
     "ReturnTypes": []
   }
 ]

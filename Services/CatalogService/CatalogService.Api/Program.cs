@@ -127,6 +127,9 @@ builder.Services.AddScoped<IHesapNotService, HesapNotService>();
 builder.Services.AddScoped<CatalogService.Api.Features.TicaretSicil.Services.ITicaretSicilService, CatalogService.Api.Features.TicaretSicil.Services.TicaretSicilService>();
 builder.Services.AddScoped<CatalogService.Api.Features.MevzuatNotlari.Services.IMevzuatNotuService, CatalogService.Api.Features.MevzuatNotlari.Services.MevzuatNotuService>();
 builder.Services.AddScoped<CatalogService.Api.Features.SmmmTakip.Services.ISmmmTakipService, CatalogService.Api.Features.SmmmTakip.Services.SmmmTakipService>();
+builder.Services.AddScoped<CatalogService.Api.Features.FinansmanGiderKisitlamasi.Services.IFinansmanGiderKisitlamasiService, CatalogService.Api.Features.FinansmanGiderKisitlamasi.Services.FinansmanGiderKisitlamasiService>();
+// Tekdüzen plan şablonu: dosyadan okunur, yükleme başına bir kez çözülür.
+builder.Services.AddSingleton<CatalogService.Api.Features.Muhasebe.Services.ITekDuzenPlanKaynagi, CatalogService.Api.Features.Muhasebe.Services.DosyadanTekDuzenPlanKaynagi>();
 builder.Services.AddScoped<CatalogService.Api.Features.Muhasebe.Services.IHesapPlaniService, CatalogService.Api.Features.Muhasebe.Services.HesapPlaniService>();
 builder.Services.AddScoped<CatalogService.Api.Features.Muhasebe.Services.IFisService, CatalogService.Api.Features.Muhasebe.Services.FisService>();
 builder.Services.AddScoped<CatalogService.Api.Features.Muhasebe.Services.IRaporService, CatalogService.Api.Features.Muhasebe.Services.RaporService>();
@@ -535,6 +538,9 @@ IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf')
             logger.LogInformation("🧮 SMMM Takip seed uygulanıyor...");
             await CatalogService.Api.Features.SmmmTakip.SmmmTakipSeed.SeedAsync(ctxOnce);
 
+            logger.LogInformation("💸 Finansman gider kısıtlaması oranları seed uygulanıyor...");
+            await CatalogService.Api.Features.FinansmanGiderKisitlamasi.FinansmanGiderKisitlamasiSeed.SeedAsync(ctxOnce);
+
             // Banka ekstresi şablon/desen/kural tabloları: banka bazlı referans, tenant'tan bağımsız.
             logger.LogInformation("🏦 Banka ekstresi yapılandırması seed uygulanıyor...");
             await CatalogService.Api.Features.BankaEkstre.BankaEkstreSeed.SeedAsync(ctxOnce);
@@ -553,7 +559,13 @@ IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf')
             using var ctx = new CatalogContext(options, new FixedTenantAccessor(t));
             await seeder.SeedAsync(ctx, envHost, logger, new[] { t }, force: true);
             await AccountPlanSeed.SeedAsync(ctx, logger);
-            await CatalogService.Api.Features.Muhasebe.MuhasebeSeed.SeedAsync(ctx, envHost);
+            // Sonuç loglanır: şablon dosyası yayında eksikse sessizce geçilmesin (KARARLAR §84).
+            var planSonucu = await CatalogService.Api.Features.Muhasebe.MuhasebeSeed.SeedAsync(ctx, envHost);
+            if (planSonucu.Sonuc == CatalogService.Api.Features.Muhasebe.PlanYuklemeSonuc.SablonYok)
+                logger.LogError("Tenant {Tenant}: tekdüzen hesap planı şablonu bulunamadı; plan yüklenmedi. " +
+                                "Ekrandaki \"Tek düzen hesap planını yükle\" düğmesi de bu dosyaya bağlıdır.", t);
+            else if (planSonucu.Sonuc == CatalogService.Api.Features.Muhasebe.PlanYuklemeSonuc.Yuklendi)
+                logger.LogInformation("Tenant {Tenant}: tekdüzen hesap planı yüklendi ({Adet} hesap).", t, planSonucu.Adet);
 
         }
     }

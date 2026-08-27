@@ -105,6 +105,10 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<Features.SmmmTakip.Domain.SmmmHad> SmmmHadler => Set<Features.SmmmTakip.Domain.SmmmHad>();
         public DbSet<Features.SmmmTakip.Domain.SmmmHadDegeri> SmmmHadDegerleri => Set<Features.SmmmTakip.Domain.SmmmHadDegeri>();
 
+        // Finansman gider kısıtlaması — yıl bazlı kısıtlama oranı (ortak referans; tenant'a bağlı değil)
+        public DbSet<Features.FinansmanGiderKisitlamasi.Domain.FinansmanKisitlamaOrani> FinansmanKisitlamaOranlari
+            => Set<Features.FinansmanGiderKisitlamasi.Domain.FinansmanKisitlamaOrani>();
+
         // Muhasebe modülü (Hesap Planı + Fiş/Yevmiye) — firma (tenant) bazlı
         public DbSet<Features.Muhasebe.Domain.KodMaskesi> KodMaskeleri => Set<Features.Muhasebe.Domain.KodMaskesi>();
         public DbSet<Features.Muhasebe.Domain.HesapPlani> HesapPlanlari => Set<Features.Muhasebe.Domain.HesapPlani>();
@@ -197,6 +201,9 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new SmmmKonuEntityTypeConfiguration());
             builder.ApplyConfiguration(new SmmmHadEntityTypeConfiguration());
             builder.ApplyConfiguration(new SmmmHadDegeriEntityTypeConfiguration());
+
+            // Finansman gider kısıtlaması modülü
+            builder.ApplyConfiguration(new FinansmanKisitlamaOraniEntityTypeConfiguration());
 
             // Muhasebe modülü (Hesap Planı + Fiş)
             builder.ApplyConfiguration(new KodMaskesiEntityTypeConfiguration());

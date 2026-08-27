@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.Muhasebe.Domain;
+﻿using CatalogService.Api.Features.Muhasebe.Domain;
 using CatalogService.Api.Features.Muhasebe.Dtos;
 using CatalogService.Api.Features.Muhasebe.Services;
 using CatalogService.Api.Infrastructure.Accessor;
@@ -176,7 +176,7 @@ namespace CatalogService.UnitTests.Muhasebe
             var kasa = await MuhasebeTestOrtami.HesapAsync(db, "100");
 
             // Faz 2 hesap planı servisi ile pasife çekilir.
-            await new HesapPlaniService(db).PasifeAlAsync(kasa.Id);
+            await MuhasebeTestOrtami.HesapPlaniServisi(db).PasifeAlAsync(kasa.Id);
 
             var hata = await Assert.ThrowsAsync<MuhasebeKuralException>(
                 () => servis.CreateAsync(Fis(false,
@@ -195,7 +195,7 @@ namespace CatalogService.UnitTests.Muhasebe
 
             var taslak = await servis.CreateAsync(await DengeliFisAsync(db));
             var kasa = await MuhasebeTestOrtami.HesapAsync(db, "100");
-            await new HesapPlaniService(db).PasifeAlAsync(kasa.Id);
+            await MuhasebeTestOrtami.HesapPlaniServisi(db).PasifeAlAsync(kasa.Id);
 
             var hata = await Assert.ThrowsAsync<MuhasebeKuralException>(() => servis.KesinlestirAsync(taslak.Id));
 
@@ -459,7 +459,7 @@ namespace CatalogService.UnitTests.Muhasebe
         {
             using var db = await MuhasebeTestOrtami.HazirContextAsync();
             var servis = Servis(db);
-            var hesapPlani = new HesapPlaniService(db);
+            var hesapPlani = MuhasebeTestOrtami.HesapPlaniServisi(db);
 
             var banka = await MuhasebeTestOrtami.HesapAsync(db, "102");
             var muavin = await hesapPlani.CreateAsync(new HesapPlaniCreateDto

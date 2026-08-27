@@ -1441,3 +1441,401 @@ yönlendirme seçildi. `replace: true` geri düğmesinin sonsuz döngü kurması
 
 Tanınmayan slug hata vermiyor: şerit yine çiziliyor, içerik alanında "sekme bulunamadı"
 yazıyor. Kırık bir yer imi kullanıcıyı 404'e değil, çalışan sekmelere düşürsün.
+
+## 80. Finansman gider kısıtlaması: oran koda gömülü değil, yıl bazlı tabloda
+
+9. satırdaki oranı (bugün **%10**) Cumhurbaşkanı Kararı belirliyor ve değişebiliyor.
+Üç seçenek vardı: sabit (`const`), bordrodaki gibi bellekteki yapılandırma deposu
+(`PayrollYearConfigStore`), ya da veritabanı tablosu. **Tablo seçildi** — çünkü oranın
+*ekrandan düzenlenebilmesi* isteniyor; ilk ikisi yeni bir Cumhurbaşkanı Kararında
+derleme + yayın gerektirirdi. Tablo `catalog.FinansmanKisitlamaOranlari`, `Yil`
+benzersiz (yıl başına tek oran, `SmmmHadDegeri` ile aynı kalıp).
+
+**Kapsam tenant değil, global.** Mevzuat oranı her firma için aynı; Ticaret Sicil /
+Mevzuat Notları / SMMM Takip tablolarıyla aynı gerekçe (bkz. §70). Query filter yok.
+
+**Oran yüzde olarak saklanıyor** (`10` = %10, `0,10` değil). Ekranda da yüzde girildiği
+için dönüşüm tek yerde — motorun içinde — yapılıyor; iki temsil arasında gidip gelmek
+yüzde/oran karışıklığının en sık kaynağı.
+
+**Oran yoksa varsayılan uydurulmuyor.** Seçilen yılın kaydı yoksa hesap durur
+(`FinansmanKisitlamaOraniYokException` → 400 + "…oranı tanımlı değil, ekrandan
+tanımlayın"). Sessizce %10 varsaymak, oranın değiştiği bir yılda **yanlış bir KKEG**
+üretir ve kullanıcı bunu ekranda göremezdi. Aynı gerekçeyle yıl açılır listesinde oranı
+tanımsız yıllar da duruyor: kullanıcı eksiği hesap denerken görsün.
+
+**Seed idempotent ve üzerine yazmıyor.** 2021–2026 için %10 ekleniyor (kısıtlama
+1/1/2021'de yürürlüğe girdi, oran o gün bugün %10); yılı zaten kayıtlı olan orana
+dokunulmuyor — kullanıcı ekrandan değiştirdiyse seed geri almasın (§73'teki seed kuralı).
+
+### Hesap sunucuda ve saf bir motorda
+
+`FinansmanGiderKisitlamasiMotoru` veritabanı bilmez: dört girdiyi ve **yılın oranını
+parametre olarak** alır, dokuz satırı döner (`VergiHesaplamaMotoru` ile aynı kalıp).
+Oranı servis okur, motor sorgu yapmaz. Kazanç: "oran tanımlı değil" hâli dahil bütün
+kenar kuralları veritabanısız birim testlenebiliyor.
+
+İstemci hesabı kendi yapmıyor, her değişiklikte (250 ms gecikmeyle) sunucuya soruyor —
+Bordro sekmesiyle aynı yaklaşım. Aynı formülün iki yerde durması, birinin unutulduğu gün
+ekranla beyannamenin ayrışması demekti.
+
+### 3. satır sıfırlanmıyor, 4–9 sıfırlanıyor
+
+Yabancı kaynak özsermayeyi aşmıyorsa kısıtlama yapılmaz: 4'ten 9'a kadar bütün satırlar
+sıfır döner ve ekranda "yabancı kaynak özsermayeyi aşmıyor, gider kısıtlaması yapılmaz"
+yazar. **3. satır ham fark olarak duruyor** (negatif görünür): kullanıcı özsermayenin
+yabancı kaynağı ne kadar aştığını görsün; sıfırlamak bilgiyi silerdi, hesaba etkisi yok.
+
+Diğer kenar kuralları: 1. satır negatifse sıfır kabul edilir (negatif özsermayeyle
+hesap yapılmaz), 2. satır sıfırken 4. satırda bölme yapılmaz (sıfır kabul edilir),
+7. satır negatif çıkarsa (finansman geliri giderden fazla) sıfır kabul edilir.
+
+### Yuvarlama: 8 ve 9, ekrandaki iki haneli oranla değil tam oranla hesaplanıyor
+
+4. satır ekranda %33,33 gösterilir ama 8. satır `3 ÷ 2`'nin **tam** değeriyle çarpılır;
+yuvarlanmış oranla çarpmak 100.000 TL'lik bir giderde ~3 TL sapma üretiyordu. Tutarlar
+yalnız sonuçta 2 haneye yuvarlanıyor (`MidpointRounding.AwayFromZero`, motorun geri
+kalanıyla aynı).
+
+### Türkçe biçim: hesaplanan satırlar sabit, giriş kutuları uygulamanın kültüründe
+
+Uygulamanın kültürü kullanıcı tarafından değiştirilebiliyor (`CultureService`: tr-TR /
+en-US). Hesaplanan satırlar ve yüzdeler bu yüzden ambient kültüre bırakılmadı, doğrudan
+`tr-TR` ile biçimleniyor. `RadzenNumeric` kültür parametresi almıyor (7.1.4'te böyle bir
+özellik yok), dolayısıyla **giriş kutuları** uygulamanın kültürünü izler; varsayılan
+tr-TR olduğu için ikisi normalde aynı görünür.
+
+### Sekme, sayfa iskeletine dokunmadan eklendi
+
+§79'daki kalıp ilk kez sınandı: yeni bir Razor bileşeni + `HesaplamaSekmesi.Hepsi`
+listesine bir satır. `HesaplamalarPage.razor` **değişmedi**. Bileşen adı klasör adıyla
+çakışmasın diye `FinansmanKisitlamaHesabi` (klasör `FinansmanGiderKisitlamasi`) —
+Bordro'daki `Bordro/BordroHesaplamasi` ile aynı adlandırma. `MainLayout`'taki
+Hesaplamalar alt menüsüne de bir satır eklendi; menü sekmeleri elle sayıyor, oradaki
+liste kayıt listesinden üretilmiyor.
+
+## 81. DBS ödemesi bankalar arası transfer değil; banka yalnız aracı
+
+Gerçek dosyadaki satır:
+
+```
+İŞ BANKASI DBS - BORUSANPRE - 879382 NO.LU ABONE / İŞ BANKASI (PKF ADAY BAĞIMSIZ
+DENETİM ANONİM ŞİRKETİ VADESİZ HESABINDAN TÜRKİYE İŞ BANKASI A.Ş. - IBAN MERKEZ ŞUBE
+ŞUBESİ NEZDİNDEKİ TR360006400000110083430904 NO'LU PKF ADAY BAĞIMSIZ DENETİM ANONİM
+ŞİRKETİ HESABINA YAPILAN 8906612 SORGU NO'LU EFT)
+```
+
+sistem `102 1 5 01` diyordu, doğrusu `329 B15 Borusan Otomotiv Premium Kiralama`.
+
+**Neden yanlış gidiyordu.** Gövde §-koşul (c)'nin kalıbının aynısı: "… VADESİZ HESABINDAN
+… ŞUBESİ NEZDİNDEKİ …" + banka adlı unvan. Ölçüldü: bu satırda (a) tutmuyor (metinde
+"hesaplar arası" yok) ve (b) de tutmuyor (`HesapSahibiElendi = false`) — katmanı **yalnız
+(c)** açıyordu.
+
+**Ayırt edici işaret gövdenin kendisinde:** `DBS` ve `NO.LU ABONE`. İkisinden biri geçen
+satırda (c) devre dışı kalıyor; satır cari katmanlarına düşüyor. **Yalnız (c) kapanıyor** —
+(a) ve (b)'ye dokunulmadı, "HESAPLAR ARASI E.F.T. VAKIFBANK/DENİZBANK" ve "İŞ BANKASI (…)"
+satırları eskisi gibi kayıt defterine gidiyor.
+
+Gerçek dosyada "ABONE" geçen üç satır daha var (Superonline ve Türk Telekom tahsilatları,
+"Abone No:22912623 …"). Onlar zaten (c) kalıbında değil; kontrol onlarda hiçbir şey
+değiştirmiyor, `329 T06` / `329 T01` eşleşmeleri duruyor.
+
+### `102 1 5 06` hesabı DBS satırlarını adı yüzünden ÇEKMİYOR
+
+Kontrol edildi: kayıt defteri eşleştirmesi **hesap adına bakmaz**. Metinde aranan iki alan
+var — `BankaAdi` ve `EslestirmeAnahtarlari` (`MetinleAra`). Yani adı
+"İş Bankası, Dbs Tl - 3430904, Borusan" olan hesap bu ad yüzünden hiçbir satırı çekmiyor;
+yalnız `BankaAdi = "İş Bankası"` ile genel yarışa giriyor ve orada da `102 1 5 01`'in daha
+uzun anahtarına ("Türkiye İş Bankası", 18 karakter > 10) yeniliyor — en uzun eşleşen
+kazanıyor (§-arama sırası). Kullanıcı bu hesaba "Dbs" ya da "Borusan" anahtarı **tanımlasa
+bile** DBS satırı kayıt defterine düşmüyor: (c) hiç açılmadığı için anahtar aramasına sıra
+gelmiyor. Üçü de teste bağlandı.
+
+### (c)'yi kapatmak tek başına yetmedi: abone adı kısaltılmış yazılıyor
+
+Ölçüm: koşul kapatılınca satır `329 B15`'e gitmiyor, **çözülemedi** kalıyordu. Sebep,
+bankanın abone adını bitiştirip kısaltması — `BORUSANPRE` = `BORUSAN` + `PRE`(mium).
+Benzersiz önek katmanı hesap adının **metnin token'ıyla başlamasını** arıyor; burada ilişki
+ters yönde: **token, hesap adının ilk kelimesiyle başlıyor**. Alt metin yedeği de tutmuyor
+("BORUSANPRE" hesap adının içinde geçmiyor).
+
+Bu yüzden ters yönde dar bir arama eklendi (`CariOnekIndeksi.KisaltmaOnekiyleEslesenler`):
+
+- Yalnız **DBS satırlarında** çalışır — anahtar kelime `DBS`'yi izleyen, harflerden oluşan
+  ve 6 karakterden uzun token (abone numarasına ya da "NO"/"LU"ya düşmesin).
+- Yalnız hesap adının **ilk kelimesiyle** eşleşir, ortasıyla değil.
+- İlk kelime en az `EnKisaCekirdek` (6) harf olmalı: "Aras Kargo"nun `ARAS`'ı (4),
+  "Cms Jant"ın `CMS`'i (3) her şeye eşleşirdi.
+- **En son** denenir: normal önek ya da alt metin araması bir şey bulduysa buraya hiç
+  gelinmiyor.
+- Sonuç önek katmanının kendi karar kurallarına tabi: tek aday otomatik, çok aday onaya
+  düşer. Yani "kısaltma" gevşekliği tek başına yanlış kayıt üretemiyor.
+
+Katman etiketi için yeni bir `KaynakKatman` değeri açılmadı; eşleşme yine bir önek
+eşleşmesi olduğu için `BenzersizOnek` kullanılıyor (istemci DTO'sunun sayısal sözleşmesi
+değişmedi).
+
+**Alternatif neydi?** Satırı onaya düşürüp kullanıcının bir kez `329 B15` demesini beklemek
+— öğrenme katmanı sonraki DBS satırlarını zaten çözerdi. Bu turda otomatik çözüm seçildi
+çünkü kullanıcı beklenen sonucu (`329 B15`) açıkça verdi; gevşeklik yukarıdaki dört koşulla
+sınırlandı. İstenirse `DbsAboneAramasi` çağrısı kaldırılınca davranış onay + öğrenmeye döner
+ve §81'in geri kalanı (koşul c'nin kapanması) ayakta kalır.
+
+**Anahtar kelimeler kodda, tabloda değil.** `DBS` / `ABONE`, `BankalarArasiIfadeleri` ile
+aynı yerde ve aynı gerekçeyle sabit: bunlar kullanıcı yapılandırması değil, banka
+gövdesinin dilbilgisi.
+
+## 82. Düzeltilmiş ekstre orijinalin kopyası değil; sıfırdan yazılan dört kolonlu dosya
+
+ORKA Veri Transferi ekranı `Tarih | Açıklama | Giren | Çıkan` bekliyor: başlık 1. satırda,
+veri 2'den, künye bloğu yok. Eski sürüm bankanın **17 kolonlu** dosyasını açıp yalnız
+açıklama kolonunu değiştiriyordu; çıktı 6 satırlık hesap künyesiyle ve bankanın tüm
+kolonlarıyla geliyordu — ORKA bu yapıyı okumuyor.
+
+### "Yalnız 17 satır" — nedeni kopyala-kaydet yöntemiydi
+
+Ölçüm sırası:
+
+1. **Satır döngüsü suçsuz.** Gerçek dosyada 287 satırın hepsi işleniyor,
+   `KaynakSatirNo` 8–294 arası, hiçbiri sıfır değil, hepsi tekil; üretilen xlsx'in
+   XML'inde de 297 `row` elemanı duruyordu. Yani satırlar dosyaya **yazılıyordu**.
+2. **Ama üretilen dosya bozuktu.** Kaynak dosyayı ClosedXML ile açıp hiçbir şey
+   değiştirmeden kaydetmek bile yeterli: üretilen dosya **ClosedXML'in kendisiyle bile
+   yeniden açılamıyor** — `XLWorkbook.LoadStyle` içinde
+   `ArgumentOutOfRangeException (index)`. Round-trip'te stil tablosu (`cellXfs` 6→7,
+   `numFmts`) kaynakla tutarsızlaşıyor. Dosya boyu da 48 KB'den 42 KB'ye düşüyor.
+
+Bozuk bir dosyayı okuyan taraf (Excel/ORKA) onarma moduna girip içeriğin bir kısmını
+düşürüyor; kullanıcının gördüğü **17 veri satırı** buna karşılık geliyor. Yeni yöntemde
+kaynak dosya hiç açılmıyor — sorun kökten kalkıyor. Testler üretilen dosyayı ClosedXML ile
+**okuyor**: eski çıktıda bu mümkün değildi, artık regresyon otomatik yakalanır.
+
+### Kaynak dosyaya ve `AciklamaKolonu`'na artık ihtiyaç yok
+
+Eski sürüm iki ön koşul arıyordu: `DosyaIcerik` saklanmış olmalı ve `AciklamaKolonu`
+belirlenmiş olmalı; ikisi de yoksa kural hatası veriyordu. Dosya artık satırlardan
+üretildiği için ikisi de gereksiz; `DuzeltilmisEkstreHazir` sabit `true`.
+(Yükleme listesindeki `KaynakDosyaVar` alanı bilgi amaçlı duruyor, dokunulmadı.)
+
+### İki çıktı tek satır kümesinden üretiliyor
+
+Robot kod listesini ORKA gridine **satır sırasına göre** yazıyor. Düzeltilmiş ekstre ile
+kod listesi aynı satırları aynı sırada içermezse kodlar yanlış satırlara gider — sessiz ve
+pahalı bir hata. Bu yüzden filtre iki yerde ayrı ayrı yazılmıyor; ikisi de
+`OrkayaGidenSatirlar` üzerinden geçiyor: `SiraNo` sırası + "diğer bankada" işaretli
+satırların düşürülmesi (§61). Hizalama teste bağlandı: 287 satırın her biri için tarih,
+açıklama ve tutar iki çıktıda karşılaştırılıyor; ayrıca bir satır "diğer bankada"
+işaretlenip **ikisinden birden** düştüğü doğrulanıyor.
+
+### Kolon kararları
+
+- **Tutar sayısal hücre**, metin değil: ORKA metin hücreyi yanlış ayrıştırabiliyor.
+  Görünüm biçimi `#,##0.00`; hücrenin kendisi sayı.
+- **Yönüne göre tek kolon dolar**, diğeri boş kalır. Tutar veritabanında her zaman
+  pozitif, işaret `Yon` alanında (§-domain kuralı); dosyada da işaret değil kolon taşıyor.
+- **Tarih gerçek tarih hücresi**, `dd.MM.yyyy` biçiminde. Metin yazılsaydı ORKA'nın kültür
+  ayarına bağlı kalırdı.
+- **Açıklama 50 karakterde kırpılıyor** (`AciklamaUretici.EnFazlaUzunluk`) — ORKA zaten
+  kesiyor; kırpma üretimde değil çıktıda tekrar uygulanıyor ki kaynak ne olursa olsun sınır
+  aşılmasın.
+
+## 83. Muhasebe > Hesap Planı prod'da boş: teşhis
+
+Sayfa prod'da "Hesap planı boş." diyor, local'de dolu, ekranda hata yok. Ölçülenler:
+
+### 1. Veri kaynağı: `catalog.HesapPlani`, Banka Otomasyon'un tablosu değil
+
+`HesapPlaniPage` → `GET /catalog/muhasebe/hesap-plani` → `HesapPlaniService.GetHepsiAsync`
+→ **yalnız** `_db.HesapPlanlari` (tablo `catalog.HesapPlani`). Ağaç istemcide `UstHesapId`
+ile kuruluyor.
+
+Karıştırılan iki kaynak <b>değil</b>:
+- `catalog.EkstreHesapPlani` — Banka Otomasyon'un kendi kopyası, **firma bazlı** (FirmaId),
+  ekstre eşleştirmesi için (§70). Bu sayfa oraya hiç bakmıyor.
+- `Fis`/`FisSatir` — hesap planı ağacı bunlardan **hesaplanmıyor**. Yalnız yan kolondaki
+  **bakiye** mizan ucundan geliyor; bakiye gelmese bile ağaç dolu görünürdü.
+
+### 2. Kapsam: `TenantNo` + JWT `tn` claim'i — ve claim header'ı EZİYOR
+
+`HesapPlani : TenantEntity`; `CatalogContext`'te
+`HasQueryFilter(x => x.TenantNo == _tenant.CurrentTenantNo)`. Değer `HttpCurrentTenant`'tan:
+**önce JWT `tn` claim'i**, yoksa `x-tenant-no` header'ı.
+
+İstemci `TenantHeaderHandler` ile session'daki seçili firmayı header'a koyuyor — ama
+sunucu claim'i önceliyor. **Canlı ölçüldü** (yerel servis, gerçek veriyle):
+
+| İstek | Sonuç |
+|---|---|
+| Token yok | **401** |
+| `tn=201` (planı olan tenant) | **200**, 293 kayıt, 9 kök |
+| `tn=999` (planı olmayan tenant) | **200, `[]`** |
+| Token'da `tn` claim'i yok | **200, `[]`** |
+| `tn=999` claim + `x-tenant-no: 201` header | **200, `[]`** → claim kazanıyor |
+| claim yok + `x-tenant-no: 201` header | **200**, 293 kayıt |
+
+Yani: kullanıcı ekrandan hangi firmayı seçerse seçsin, token'ında `tn` varsa Muhasebe
+kapsamı **o**dur. Prod'da token'ın `tn`'i planı olmayan bir tenant ise sayfa sessizce boş
+kalır — tam görülen tablo.
+
+### 3. Hata neden görünmüyor: istemci her hatayı yutuyordu
+
+`MuhasebeApi.GetHesapPlaniAsync` `catch (Exception) { return new(); }` yapıyordu. 401, 500,
+zaman aşımı, gateway hatası — hepsi boş listeye dönüşüp ekranda "Hesap planı boş." diye
+görünüyordu. **Boş ekran teşhis için kanıt değildi**: prod'da isteğin başarılı olup
+olmadığı ekrandan anlaşılamıyordu.
+
+Düzeltildi: `GetHesapPlaniSonucAsync` liste + `Basarili` döndürüyor, sayfa iki durumu ayrı
+mesajla gösteriyor (aşağıda). Eski metot davranışını koruyor, diğer çağıranlar bozulmadı.
+
+### 4. Prod verisi: buradan doğrulanamadı
+
+Prod veritabanına bu makineden erişim yok (bağlantı dizeleri local ve docker içi:
+`s_sqlserver`). Doğrulanabilen tek şey **rota**: `https://www.dijitalmasraf.com/catalog/muhasebe/hesap-plani`
+token'sız **401** dönüyor — yani uç yayında ve gateway rotası çalışıyor, "404/rota yok"
+senaryosu elendi.
+
+Kalan iki soru prod erişimi istiyor:
+1. `SELECT TenantNo, COUNT(*) FROM catalog.HesapPlani GROUP BY TenantNo` — prod'da satır var mı, hangi tenant'ta?
+2. Prod token'ının `tn` claim'i ne? (Tarayıcı > Application > token'ı jwt.io'da açmak yeter.)
+
+İkisi eşleşmiyorsa sebep budur ve **düzeltilecek bir kod hatası değildir**: o tenant için
+plan yüklenmemiştir.
+
+### 5. Plan nasıl yükleniyor — ve neden prod'da eksik olabilir
+
+`MuhasebeSeed.SeedAsync` tenant başına MSUGT planını `thp-standart.json`'dan yüklüyor;
+idempotent (plan doluysa dokunmuyor). İki dar yeri var:
+
+- **Tenant listesi kodda sabit**: `Program.cs`'te `var tenants = new[] { "201","106","108","105","107","500" }`.
+  Bu listede olmayan bir firma için seed **hiç çalışmaz**; yeni açılan firma planssız kalır.
+- **Dosya yoksa sessizce çıkıyor**: `if (!File.Exists(path)) return;`. Dosya depoda var ve
+  csproj `PreserveNewest` ile çıktıya kopyalıyor (kontrol edildi), ama yayında eksikse hata
+  değil sessizlik üretir.
+
+**Ekrandan yükleme yolu yok.** `HesapPlaniController`'da içe aktarma ucu yok; sayfadaki
+ekleme yalnız **mevcut bir satırın altına** alt hesap açıyor (`AltHesapEkleAsync`). Plan
+boşsa kullanıcı ilk kök hesabı ekranda oluşturamaz — boş plan çıkmaz sokak.
+
+### 6. `Fis`/`FisSatir` query filter uyarısı bu sayfanın sebebi DEĞİL
+
+Derleme uyarısı gerçek: `Fis`'te global query filter var, `FisSatir`'de yok ve ilişki
+zorunlu. Ama:
+
+- Hesap planı ağacı `Fis`/`FisSatir`'a **hiç dokunmuyor** (madde 1).
+- `FisSatir` zaten tenant kolonu taşımıyor; izolasyon **tasarım gereği** `Fis` üzerinden.
+  `RaporService`'teki üç sorgunun üçü de `FisSatirlar`'ı `Fisler` ile **join'leyerek**
+  okuyor, filtre join'e uygulanıyor: ne satır kaybı ne de tenant sızıntısı var.
+- `HesapPlaniService`'te iki yerde (`AnyAsync(s => s.HesapId == ...)`) join yok; orada
+  kapsam `HesapId`'den geliyor (hesap zaten o tenant'ın), sonuç değişmiyor.
+
+Yani filtreyi iki tarafa eşitlemek ya da ilişkiyi opsiyonel yapmak **bu boş sayfayı
+düzeltmez**. Uyarıyı susturmak istenirse doğru yol `FisSatir`'a navigasyon üzerinden eşleşen
+bir filtre (`HasQueryFilter(s => s.Fis.TenantNo == ...)`) eklemek; ilişkiyi opsiyonel yapmak
+yanlış olur — satır fişsiz var olamaz. Bu tur kapsam dışı bırakıldı: davranış değişmiyor,
+yalnız uyarı susuyor ve her sorguya ikinci bir filtre bindiriyor.
+
+### 7. Yan bulgu: migration zinciri sıfırdan bir veritabanını kuramıyor
+
+Teşhis için boş bir veritabanına (`HesapPlaniTani`) servis bağlandığında migration
+`Error 4924` ile düştü; yalnız 16 tablo oluştu ve uygulama hatayı yutup açıldı. Bu, prod'da
+**yeni bir veritabanı** kurulursa şemanın eksik kalacağı anlamına gelir. Mevcut prod
+veritabanı zaten kurulu olduğu için bugünkü sorunla ilgisi yok, ama ayrı bir iş olarak
+kayda geçiyor.
+
+### Ekran mesajı: "boş" yerine ne yazıyor
+
+Boş ekran artık iki ayrı mesaj:
+
+- **İstek başarısızsa**: "Hesap planı alınamadı. Sunucuya ulaşılamadı ya da oturumunuz
+  düşmüş olabilir…" — 401/500 bir daha "veri yok" gibi okunmaz.
+- **İstek başarılı ama kayıt yoksa**: "Bu firma için hesap planı yüklenmemiş. Hesap planı
+  firma (tenant) bazlıdır ve sunucu tarafında yüklenir; bu ekrandan boş bir plana ilk hesap
+  eklenemez…"
+
+Mesaj bilerek "Tanımlar'dan yükleyin" demiyor: bugün öyle bir ekran yok (madde 5). Olmayan
+bir yola yönlendirmek kullanıcıyı boşuna dolaştırırdı.
+
+## 84. Tekdüzen hesap planı ekrandan yükleniyor; açılış seed'i artık sessiz değil
+
+§83'te ölçülen boşluk: plan yalnız açılışta ve yalnız `Program.cs`'teki **sabit tenant
+listesi** (`201,106,108,105,107,500`) için yükleniyordu. Listede olmayan firma planssız
+kalıyor, ekranda boş sayfa görünüyor ve **ekrandan yükleme yolu yok**; sayfadaki ekleme
+yalnız mevcut bir satırın altına alt hesap açıyor.
+
+### Seçilen yol: düğme, otomatik toplu seed değil
+
+Ekrana **"Tek düzen hesap planını yükle"** düğmesi kondu (boş plan mesajının altında).
+Yükleme, kullanıcının **o an bağlı olduğu** firmaya yazılır: `TenantNo`'yu
+`CatalogContext.SaveChangesAsync` istekteki tenant'tan damgalar.
+
+Değerlendirilen alternatif — "açılışta, kaydı olmayan **her** tenant'a otomatik yükle" —
+seçilmedi:
+
+- Açılışta hangi tenant'ların var olduğu tek bir kaynaktan gelmiyor; liste
+  `Firmalar`/`Mukellefler`/kullanıcı kayıtlarından türetilseydi, sistemde adı geçen ama
+  muhasebe kullanmayan her firmaya 293 satır yazılırdı — geri alması elle iş.
+- Yükleme kararı muhasebeye ait: bir firma planını ORKA'dan farklı bir maskeyle kurmak
+  isteyebilir. Kullanıcının bakarak bastığı düğme, açılışta sessizce yazılan 293 satırdan
+  daha kontrollü.
+- Boş sayfanın asıl teşhis maliyeti "veri yok" ile "hata var"ı ayırt edememekti (§83);
+  o ayrım zaten düzeltildi.
+
+**Açılıştaki sabit tenant listesine bu turda dokunulmadı.** Düğme boşluğu kapattığı için
+listeyi türetilmiş hâle getirmek acil değil; istenirse ayrı bir iş olarak yapılır.
+
+### Yükleyici tek kod, iki çağıran
+
+`MuhasebeSeed.YukleAsync(db, kaynak, ct)` hem açılış seed'inin hem düğmenin arkasında.
+İki ayrı yükleyici olsaydı biri güncellenip diğeri unutulurdu. Sonuç üç durumlu:
+`Yuklendi` / `ZatenDolu` / `SablonYok`.
+
+Şablon dosyası erişimi `ITekDuzenPlanKaynagi` arkasına alındı
+(`DosyadanTekDuzenPlanKaynagi` → `Infrastructure/Setup/SeedFiles/thp-standart.json`).
+Kazanç: testler dosyaya bağlı kalmadan sahte şablon verebiliyor ve "dosya yok" hâli
+gerçekten sınanabiliyor.
+
+### Sessiz çıkış kaldırıldı
+
+Eskiden dosya yoksa `if (!File.Exists(path)) return;` — hiçbir iz bırakmadan. Artık:
+
+- **Açılışta**: `SablonYok` sonucu `LogError` ile yazılıyor (tenant numarasıyla birlikte).
+- **Düğmede**: uç 500 + açık mesaj dönüyor ("Tekdüzen hesap planı şablonu sunucuda
+  bulunamadı (thp-standart.json)…") ve controller ayrıca sunucu loguna yazıyor.
+- **Testte**: `Gercek_sablon_dosyasi_depoda_duruyor` dosyanın depodan düşmesini yakalar
+  (yayına kopyalanması csproj'daki `PreserveNewest` kuralına bağlı).
+
+### Uç: `POST /catalog/muhasebe/hesap-plani/tek-duzen-yukle`
+
+| Durum | Yanıt |
+|---|---|
+| Yüklendi | `200 { adet, message }` |
+| Plan zaten dolu | `409 { message }` — üzerine yazmaz, ikilemez |
+| Şablon yok | `500 { message }` + sunucu logunda `LogError` |
+
+**Canlı ölçüldü** (yerel servis, boş bir veritabanı, gerçek şablon dosyası):
+
+```
+tn=777, yüklemeden önce GET      → 200 []
+POST .../tek-duzen-yukle         → 200 {"adet":293}
+tekrar POST                      → 409 "zaten dolu"
+tn=777 GET                       → 200, 293 kayıt, 9 kök
+tn=888 GET                       → 200 []            (başka tenant etkilenmedi)
+veritabanı                       → yalnız TenantNo=777 için 293 satır
+```
+
+### Bilinen sınır: kapsam hâlâ token'ın `tn` claim'i — firma seçimini eziyor
+
+§83'te ölçüldü, burada kayda geçiyor: Muhasebe modülünün kapsamı JWT'deki **tek** `tn`
+claim'inden geliyor ve istemcinin gönderdiği `x-tenant-no` header'ını (ekrandaki firma
+seçimi) **eziyor**. Ölçüm: `tn=999` claim + `x-tenant-no: 201` header → boş liste.
+
+Sonuç: **sekiz firmayı tek oturumla yöneten kullanıcı, ekranda hangi firmayı seçerse
+seçsin bu sayfada aynı veriyi görüyor** — token'ının tenant'ınınkini. Düğme de o tenant'a
+yazar. Banka Otomasyon modülü tam bu sebeple tenant kapsamından **`catalog.Firmalar.Id`**
+kapsamına taşınmıştı (§68/§69): tek tenant claim'i çok firmalı çalışmayı taşımıyor.
+
+Bu tur Muhasebe tarafı **bilerek değiştirilmedi** (kapsam değişikliği fiş, mizan, masraf
+merkezi ve hesap planının tamamını ilgilendirir; ayrı bir iş). İleride Banka
+Otomasyon'daki mekanizmaya taşınmalı: kapsam istekten (`?firmaId=`) gelir, sorgularda
+görünür yazılır, `SaveChanges` boş kapsamı reddeder.

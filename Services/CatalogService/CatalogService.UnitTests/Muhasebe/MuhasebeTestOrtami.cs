@@ -1,4 +1,5 @@
-using CatalogService.Api.Features.Muhasebe.Domain;
+﻿using CatalogService.Api.Features.Muhasebe.Domain;
+using CatalogService.Api.Features.Muhasebe.Services;
 using CatalogService.Api.Infrastructure.Accessor;
 using CatalogService.Api.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +13,39 @@ namespace CatalogService.UnitTests.Muhasebe
     public static class MuhasebeTestOrtami
     {
         public const string TenantNo = "201";
+
+        /// <summary>
+        /// Tekdüzen plan şablonunun test karşılığı. Dosyaya bağlı kalınmasın diye kaynak
+        /// arayüzden geliyor (bkz. KARARLAR §84); <paramref name="dugumler"/> verilmezse
+        /// küçük bir sınıf/grup/kebir kümesi kullanılır.
+        /// </summary>
+        public sealed class SahtePlanKaynagi : ITekDuzenPlanKaynagi
+        {
+            private readonly IReadOnlyList<ThpDugum> _dugumler;
+
+            public SahtePlanKaynagi(bool var = true, IReadOnlyList<ThpDugum>? dugumler = null)
+            {
+                Var = var;
+                _dugumler = dugumler ?? new[]
+                {
+                    new ThpDugum("1", "DÖNEN VARLIKLAR"),
+                    new ThpDugum("10", "Hazır Değerler"),
+                    new ThpDugum("100", "Kasa"),
+                    new ThpDugum("102", "Bankalar"),
+                    new ThpDugum("3", "KISA VADELİ YABANCI KAYNAKLAR"),
+                    new ThpDugum("32", "Ticari Borçlar"),
+                    new ThpDugum("320", "Satıcılar")
+                };
+            }
+
+            public bool Var { get; }
+            public string Yol => "test://thp-standart.json";
+            public IReadOnlyList<ThpDugum> Oku() => Var ? _dugumler : Array.Empty<ThpDugum>();
+        }
+
+        /// <summary>Testlerin kullandığı varsayılan hesap planı servisi.</summary>
+        public static HesapPlaniService HesapPlaniServisi(CatalogContext db, ITekDuzenPlanKaynagi? kaynak = null)
+            => new(db, kaynak ?? new SahtePlanKaynagi());
 
         public static CatalogContext YeniContext() => YeniContext(YeniVeritabaniAdi());
 

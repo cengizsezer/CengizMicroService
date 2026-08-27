@@ -561,6 +561,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         private static bool KendiHesabinaGidenEftMi(SatirBaglami baglam, EslestirmeVerisi veri)
         {
             if (string.IsNullOrWhiteSpace(baglam.Unvan)) return false;
+            if (DbsOdemesiMi(baglam)) return false;
             if (!BankaAdiMiUnvan(baglam.Unvan, veri.BankaHesaplari)) return false;
 
             var metin = Normalizasyon.MetinNormalize(baglam.HamAciklama);
@@ -570,6 +571,35 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             // Sıra önemli: önce gönderen hesap, sonra alıcı şube.
             return metin.IndexOf(AliciKalibi, StringComparison.Ordinal)
                  > metin.IndexOf(GondericiKalibi, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// DBS (doğrudan borçlandırma) ödemesi mi? Bankanın kendi DBS hesabına yapılan
+        /// aktarımda gövde <see cref="KendiHesabinaGidenEftMi"/> kalıbının aynısı
+        /// ("… VADESİZ HESABINDAN TÜRKİYE İŞ BANKASI A.Ş. … ŞUBESİ NEZDİNDEKİ …") ve
+        /// parantez öncesi metin banka adıyla başlıyor ("İŞ BANKASI DBS - BORUSANPRE -
+        /// 879382 NO.LU ABONE / İŞ BANKASI (…)"). Koşul (c) bu satırı bankalar arası
+        /// transfer sanıp banka hesabına yazıyordu.
+        ///
+        /// Oysa <b>banka yalnız aracı</b>: para abone/tedarikçiye gidiyor, satır o carinin
+        /// borcunu kapatıyor. Ayırt edici işaret gövdede duruyor — <b>DBS</b> ve
+        /// <b>ABONE</b> kelimeleri. Bunlardan biri geçiyorsa (c) devre dışı kalır ve satır
+        /// cari katmanlarına düşer (bkz. KARARLAR §81).
+        ///
+        /// <b>Yalnız (c) kapanır.</b> (a) ve (b) dokunulmadan durur: "HESAPLAR ARASI E.F.T.
+        /// VAKIFBANK/DENİZBANK" satırları ve karşı tarafı hesap sahibinin kendisi olan
+        /// satırlar eskisi gibi banka kayıt defterine gider. Gerçek dosyadaki diğer üç
+        /// "ABONE" satırı (Superonline / Türk Telekom tahsilatları) zaten (c) kalıbında
+        /// değil; onlarda bu kontrol bir şey değiştirmiyor.
+        /// </summary>
+        private static readonly string[] DbsIfadeleri = { "DBS", "ABONE" };
+
+        private static bool DbsOdemesiMi(SatirBaglami baglam)
+        {
+            var metin = Normalizasyon.MetinNormalize(baglam.HamAciklama + " " + baglam.IslemTipi);
+            if (metin.Length == 0) return false;
+
+            return DbsIfadeleri.Any(ifade => Normalizasyon.IfadeVarMi(metin, ifade));
         }
 
         /// <summary>
@@ -1205,8 +1235,61 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
             var parcalar = veri.HesapSahibi.Parcala(Normalizasyon.CekirdekTokenlari(baglam.HamAciklama));
             var metinSonucu = indeks.Ara(parcalar);
+            if (metinSonucu.Bulundu) return metinSonucu;
 
-            return metinSonucu.Bulundu ? metinSonucu : null;
+            // Son çare, yalnız DBS satırlarında: abone adı kısaltılmış yazılıyor.
+            var dbs = DbsAboneAramasi(baglam, indeks);
+            return dbs.Bulundu ? dbs : null;
+        }
+
+        /// <summary>
+        /// DBS satırında abone adıyla cari araması.
+        ///
+        /// Gövde "(BANKA) DBS - (ABONE ADI) - (ABONE NO) NO.LU ABONE / …" biçiminde ve abone
+        /// adı bitiştirilip kısaltılmış oluyor ("BORUSANPRE"). Normal önek araması bunu
+        /// bulamaz (hesap adı token ile başlamıyor, token hesap adının ilk kelimesiyle
+        /// başlıyor); <see cref="CariOnekIndeksi.KisaltmaOnekiyleEslesenler"/> bu ters yönü
+        /// arar.
+        ///
+        /// <b>Yalnız DBS satırlarında</b> çalışır ve <b>en son</b> denenir: normal önek ya da
+        /// alt metin araması bir şey bulduysa buraya hiç gelinmez. Çıkan adaylar normal önek
+        /// katmanının karar kurallarına tabidir — tek aday otomatik, çok aday onaya düşer.
+        /// Böylece "kısaltma" gevşekliği tek başına yanlış kayıt üretemez (KARARLAR §81).
+        /// </summary>
+        private static OnekSonuc DbsAboneAramasi(SatirBaglami baglam, CariOnekIndeksi indeks)
+        {
+            var abone = DbsAboneAdi(baglam.HamAciklama);
+            if (abone is null) return OnekSonuc.Yok;
+
+            var hesaplar = indeks.KisaltmaOnekiyleEslesenler(abone);
+            return hesaplar.Count == 0
+                ? OnekSonuc.Yok
+                : new OnekSonuc { Anahtar = abone, Hesaplar = hesaplar };
+        }
+
+        /// <summary>
+        /// DBS gövdesinde <c>DBS</c> kelimesini izleyen abone adı token'ı; DBS satırı
+        /// değilse ya da ad yoksa null.
+        ///
+        /// Yalnız harflerden oluşan ve yeterince uzun bir token kabul edilir: abone
+        /// numarasına ("879382") ya da "NO"/"LU" gibi bağlaçlara düşmesin.
+        /// </summary>
+        private static string? DbsAboneAdi(string? hamAciklama)
+        {
+            var metin = Normalizasyon.MetinNormalize(hamAciklama);
+            if (metin.Length == 0) return null;
+
+            var tokenlar = metin.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+            for (var i = 0; i < tokenlar.Length - 1; i++)
+            {
+                if (!string.Equals(tokenlar[i], "DBS", StringComparison.Ordinal)) continue;
+
+                var aday = tokenlar[i + 1];
+                if (aday.Length > CariOnekIndeksi.EnKisaCekirdek && aday.All(char.IsLetter)) return aday;
+            }
+
+            return null;
         }
 
         /// <summary>

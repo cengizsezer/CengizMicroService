@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.Muhasebe.Domain;
+﻿using CatalogService.Api.Features.Muhasebe.Domain;
 using CatalogService.Api.Features.Muhasebe.Dtos;
 using CatalogService.Api.Features.Muhasebe.Services;
 using CatalogService.Api.Infrastructure.Accessor;
@@ -49,7 +49,7 @@ namespace CatalogService.UnitTests.Muhasebe
         /// </summary>
         private static async Task<Kitap> KitapKurAsync(CatalogContext db)
         {
-            var hesapPlani = new HesapPlaniService(db);
+            var hesapPlani = MuhasebeTestOrtami.HesapPlaniServisi(db);
             var fisler = FisServisi(db);
 
             var sinif3 = await hesapPlani.CreateAsync(new HesapPlaniCreateDto
@@ -436,7 +436,7 @@ namespace CatalogService.UnitTests.Muhasebe
             var kitap = await KitapKurAsync(db);
 
             // Hareketi olan yaprak hesap pasife alınsa da yaprak kalır.
-            await new HesapPlaniService(db).PasifeAlAsync(kitap.Akbank);
+            await MuhasebeTestOrtami.HesapPlaniServisi(db).PasifeAlAsync(kitap.Akbank);
             var mizan = await Servis(db).GetMizanAsync(new RaporFiltreDto(), null);
 
             var akbank = SatirBul(mizan, "102.01");
@@ -570,7 +570,7 @@ namespace CatalogService.UnitTests.Muhasebe
             using var db = await MuhasebeTestOrtami.HazirContextAsync();
             var kitap = await KitapKurAsync(db);
 
-            await new HesapPlaniService(db).PasifeAlAsync(kitap.Akbank);
+            await MuhasebeTestOrtami.HesapPlaniServisi(db).PasifeAlAsync(kitap.Akbank);
 
             var mizan = await Servis(db).GetMizanAsync(new RaporFiltreDto(), null);
             var akbank = SatirBul(mizan, "102.01");

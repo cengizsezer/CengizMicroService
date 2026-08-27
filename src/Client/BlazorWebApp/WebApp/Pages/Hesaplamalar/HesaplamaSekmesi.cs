@@ -30,7 +30,9 @@ namespace WebApp.Pages.Hesaplamalar
         /// </summary>
         public static readonly IReadOnlyList<HesaplamaSekmesi> Hepsi = new[]
         {
-            new HesaplamaSekmesi("bordro", "Bordro Hesaplaması", "payments", typeof(BordroHesaplamasi))
+            new HesaplamaSekmesi("bordro", "Bordro Hesaplaması", "payments", typeof(BordroHesaplamasi)),
+            new HesaplamaSekmesi("finansman-gider-kisitlamasi", "Finansman Gider Kısıtlaması", "percent",
+                typeof(FinansmanGiderKisitlamasi.FinansmanKisitlamaHesabi))
         };
 
         /// <summary>Kök adresin açtığı sekme.</summary>

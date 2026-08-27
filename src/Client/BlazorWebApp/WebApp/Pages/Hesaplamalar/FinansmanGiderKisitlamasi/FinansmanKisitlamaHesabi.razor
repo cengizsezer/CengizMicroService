@@ -1,0 +1,427 @@
+@using System.Globalization
+@using WebApp.Pages.Hesaplamalar.FinansmanGiderKisitlamasi.Model
+@using WebApp.Pages.Hesaplamalar.FinansmanGiderKisitlamasi.Services
+@inject IFinansmanKisitlamaApiService Api
+@inject NotificationService NotificationService
+
+@*
+    Hesaplamalar > Finansman Gider Kısıtlaması sekmesinin içeriği (KVK 11/1-i, GVK 41/9).
+
+    Kendi @page rotası YOK: sekmeyi HesaplamalarPage basıyor (bkz. HesaplamaSekmesi kayıt
+    listesi, KARARLAR §79). Hesap sunucuda: dört girdi gönderilir, dokuz satır döner —
+    Bordro sekmesiyle aynı yaklaşım. Kısıtlama oranı koda gömülü değil, yıl bazlı tabloda
+    ve aşağıdaki bölümden düzenlenebiliyor (KARARLAR §80).
+*@
+
+<div class="fgk-sayfa">
+
+    <div class="fgk-ust">
+        <div class="fgk-alan">
+            <label>Hesap yılı</label>
+            <RadzenDropDown TValue="int"
+                            Data="@_yilSecenekleri"
+                            Value="@_model.Yil"
+                            Change="@OnYilChangedAsync"
+                            Style="width:110px" />
+        </div>
+
+        <div class="fgk-oran-rozet">
+            <span class="fgk-oran-etiket">Kısıtlama oranı</span>
+            <span class="fgk-oran-deger">@(SeciliOran is decimal o ? Yuzde(o) : "tanımsız")</span>
+        </div>
+
+        <RadzenButton Text="@(_oranPaneliAcik ? "Oran tablosunu gizle" : "Kısıtlama oranını düzenle")"
+                      Icon="tune"
+                      ButtonStyle="ButtonStyle.Light"
+                      Size="ButtonSize.Small"
+                      Click="@(() => _oranPaneliAcik = !_oranPaneliAcik)" />
+    </div>
+
+    @if (_oranPaneliAcik)
+    {
+        <div class="fgk-oran-panel">
+            <div class="fgk-panel-baslik">
+                Kısıtlama oranı — yıl bazlı
+                <span class="fgk-panel-not">
+                    Oranı Cumhurbaşkanı Kararı belirler; değiştiğinde yeni yılı buradan ekleyin.
+                </span>
+            </div>
+
+            <table class="fgk-oran-tablo">
+                <thead>
+                    <tr>
+                        <th style="width:90px">Yıl</th>
+                        <th style="width:140px">Oran (%)</th>
+                        <th>Dayanak</th>
+                        <th style="width:140px">Güncellenme</th>
+                        <th style="width:160px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var satir in _oranlar)
+                    {
+                        <tr>
+                            <td>@satir.Yil</td>
+                            <td>
+                                @if (_duzenlenenYil == satir.Yil)
+                                {
+                                    <RadzenNumeric TValue="decimal" @bind-Value="_taslak.Oran"
+                                                   Min="0" Max="100" Step="0.5" Format="N2" Style="width:110px" />
+                                }
+                                else
+                                {
+                                    @Yuzde(satir.Oran)
+                                }
+                            </td>
+                            <td>
+                                @if (_duzenlenenYil == satir.Yil)
+                                {
+                                    <RadzenTextBox @bind-Value="_taslak.Dayanak" Style="width:100%" />
+                                }
+                                else
+                                {
+                                    @satir.Dayanak
+                                }
+                            </td>
+                            <td>@(satir.GuncellenmeTarihi?.ToString("dd.MM.yyyy", Tr) ?? "—")</td>
+                            <td class="fgk-islem">
+                                @if (_duzenlenenYil == satir.Yil)
+                                {
+                                    <RadzenButton Text="Kaydet" Size="ButtonSize.Small"
+                                                  Click="@(() => OranKaydetAsync(satir.Yil))" />
+                                    <RadzenButton Text="İptal" Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Light"
+                                                  Click="@(() => _duzenlenenYil = null)" />
+                                }
+                                else
+                                {
+                                    <RadzenButton Icon="edit" Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Light"
+                                                  Click="@(() => DuzenlemeyeBasla(satir))" />
+                                    <RadzenButton Icon="delete" Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Danger" Variant="Variant.Text"
+                                                  Click="@(() => OranSilAsync(satir.Yil))" />
+                                }
+                            </td>
+                        </tr>
+                    }
+
+                    <tr class="fgk-yeni-satir">
+                        <td>
+                            <RadzenNumeric TValue="int" @bind-Value="_yeniYil" Min="2000" Max="2100" Style="width:80px" />
+                        </td>
+                        <td>
+                            <RadzenNumeric TValue="decimal" @bind-Value="_yeniOran.Oran"
+                                           Min="0" Max="100" Step="0.5" Format="N2" Style="width:110px" />
+                        </td>
+                        <td>
+                            <RadzenTextBox @bind-Value="_yeniOran.Dayanak"
+                                           Placeholder="Dayanak (örn. 3490 sayılı Cumhurbaşkanı Kararı)"
+                                           Style="width:100%" />
+                        </td>
+                        <td></td>
+                        <td class="fgk-islem">
+                            <RadzenButton Text="Ekle" Icon="add" Size="ButtonSize.Small" Click="@YeniOranEkleAsync" />
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <div class="fgk-govde">
+
+        <div class="fgk-form">
+
+            @if (_hata is not null)
+            {
+                <div class="fgk-hata">@_hata</div>
+            }
+
+            @if (_sonuc is not null && !_sonuc.KisitlamaVar && _sonuc.Aciklama is not null)
+            {
+                <div class="fgk-bilgi">@_sonuc.Aciklama</div>
+            }
+
+            @* 1 — özsermaye (giriş, zorunlu) *@
+            <div class="fgk-satir">
+                <span class="fgk-no">1</span>
+                <span class="fgk-etiket">
+                    Özsermaye tutarı<span class="fgk-zorunlu">*</span>
+                </span>
+                <span class="fgk-deger">
+                    <RadzenNumeric TValue="decimal?" Value="@_model.Ozsermaye" Format="N2"
+                                   Placeholder="0,00" Style="width:100%"
+                                   Change="@(async v => { _model.Ozsermaye = v; await HesaplaTetikleAsync(); })" />
+                </span>
+            </div>
+
+            @* 2 — yabancı kaynak toplamı (giriş) *@
+            <div class="fgk-satir">
+                <span class="fgk-no">2</span>
+                <span class="fgk-etiket">Yabancı kaynak toplamı (Aktif − Özsermaye)</span>
+                <span class="fgk-deger">
+                    <RadzenNumeric TValue="decimal" Value="@_model.YabanciKaynakToplami" Format="N2"
+                                   Style="width:100%"
+                                   Change="@(async v => { _model.YabanciKaynakToplami = v; await HesaplaTetikleAsync(); })" />
+                </span>
+            </div>
+
+            @* 3 — 2 − 1 *@
+            <div class="fgk-satir hesaplanan">
+                <span class="fgk-no">3</span>
+                <span class="fgk-etiket">
+                    Özsermayeyi aşan yabancı kaynak tutarı
+                    <span class="fgk-formul">2 − 1</span>
+                </span>
+                <span class="fgk-deger">@Tutar(_sonuc?.AsanYabanciKaynak)</span>
+            </div>
+
+            @* 4 — 3 ÷ 2 *@
+            <div class="fgk-satir hesaplanan">
+                <span class="fgk-no">4</span>
+                <span class="fgk-etiket">
+                    Aşan kısmın yabancı kaynağa oranı
+                    <span class="fgk-formul">3 ÷ 2</span>
+                </span>
+                <span class="fgk-deger">@(_sonuc is null ? "—" : Yuzde(_sonuc.AsanKisimOrani))</span>
+            </div>
+
+            @* 5 — finansman gideri (giriş) *@
+            <div class="fgk-satir">
+                <span class="fgk-no">5</span>
+                <span class="fgk-etiket">Finansman gider tutarı (780, 660, 656 vb.)</span>
+                <span class="fgk-deger">
+                    <RadzenNumeric TValue="decimal" Value="@_model.FinansmanGideri" Format="N2"
+                                   Style="width:100%"
+                                   Change="@(async v => { _model.FinansmanGideri = v; await HesaplaTetikleAsync(); })" />
+                </span>
+            </div>
+
+            @* 6 — örtülü sermaye gideri / finansman geliri (giriş) *@
+            <div class="fgk-satir">
+                <span class="fgk-no">6</span>
+                <span class="fgk-etiket">
+                    Örtülü sermayeye ait finansman gideri (KKEG) / aynı yabancı kaynak nedeniyle
+                    elde edilen finansman geliri
+                </span>
+                <span class="fgk-deger">
+                    <RadzenNumeric TValue="decimal" Value="@_model.OrtuluSermayeVeFinansmanGeliri" Format="N2"
+                                   Style="width:100%"
+                                   Change="@(async v => { _model.OrtuluSermayeVeFinansmanGeliri = v; await HesaplaTetikleAsync(); })" />
+                </span>
+            </div>
+
+            @* 7 — 5 − 6 *@
+            <div class="fgk-satir hesaplanan">
+                <span class="fgk-no">7</span>
+                <span class="fgk-etiket">
+                    Hesaplamada dikkate alınacak finansman gideri
+                    <span class="fgk-formul">5 − 6</span>
+                </span>
+                <span class="fgk-deger">@Tutar(_sonuc?.DikkateAlinacakFinansmanGideri)</span>
+            </div>
+
+            @* 8 — 4 × 7 *@
+            <div class="fgk-satir hesaplanan">
+                <span class="fgk-no">8</span>
+                <span class="fgk-etiket">
+                    Aşan kısma isabet eden finansman gideri
+                    <span class="fgk-formul">4 × 7</span>
+                </span>
+                <span class="fgk-deger">@Tutar(_sonuc?.AsanKismaIsabetEdenGider)</span>
+            </div>
+
+            @* 9 — 8 × kısıtlama oranı *@
+            <div class="fgk-satir hesaplanan sonuc">
+                <span class="fgk-no">9</span>
+                <span class="fgk-etiket">
+                    KKEG olacak finansman giderleri
+                    <span class="fgk-formul">8 × @(SeciliOran is decimal oran ? Yuzde(oran) : "oran")</span>
+                </span>
+                <span class="fgk-deger">@Tutar(_sonuc?.Kkeg)</span>
+            </div>
+
+            <div class="fgk-dipnot">* Özsermaye tutarı zorunlu; girilene kadar hesap yapılmaz.</div>
+        </div>
+
+        <aside class="fgk-notlar">
+            <div class="fgk-notlar-baslik">Açıklamalar</div>
+            <ul>
+                @foreach (var not in Aciklamalar)
+                {
+                    <li>@not</li>
+                }
+            </ul>
+        </aside>
+    </div>
+</div>
+
+@code {
+    // Tutarlar ve yüzdeler her zaman Türkçe biçimde gösteriliyor (binlik nokta, ondalık
+    // virgül). Uygulamanın kültürü değiştirilebildiği için ambient kültüre bırakılmadı;
+    // Radzen giriş kutuları kültür parametresi almadığından yalnız HESAPLANAN satırlar
+    // sabitlenebiliyor (bkz. KARARLAR §80).
+    private static readonly CultureInfo Tr = new("tr-TR");
+
+    private static readonly string[] Aciklamalar =
+    {
+        "Özsermayesi yabancı kaynaklarından fazla olan kurumlar finansman gider kısıtlaması yapmayacaklardır.",
+        "Örtülü sermayeye isabet eden finansman gideri varsa bu tutar doğrudan KKEG olur; toplam finansman giderlerinden bu tutar düşülür, kalan finansman gideri kısıtlamaya tabi olur.",
+        "Hesaplanan finansman gider kısıtlaması beyanname üzerinde KKEG olarak gösterilir; gelir tablosunda gider yazılan finansman giderleri üzerinde herhangi bir işlem yapılmaz.",
+        "İşletmelerin mevduat ve benzeri alacak hesaplarının değerlemesinden kaynaklanan kur farkları kısıtlamaya tabi değildir."
+    };
+
+    private readonly FinansmanKisitlamaPageModel _model = new();
+    private FinansmanKisitlamaSonucDto? _sonuc;
+    private string? _hata;
+    private CancellationTokenSource? _debounceCts;
+
+    // Oran tablosu
+    private List<FinansmanKisitlamaOraniDto> _oranlar = new();
+    private List<int> _yilSecenekleri = new();
+    private bool _oranPaneliAcik;
+    private int? _duzenlenenYil;
+    private FinansmanKisitlamaOraniSaveDto _taslak = new();
+    private int _yeniYil = DateTime.Now.Year;
+    private FinansmanKisitlamaOraniSaveDto _yeniOran = new() { Oran = 10m };
+
+    private decimal? SeciliOran => _oranlar.FirstOrDefault(x => x.Yil == _model.Yil)?.Oran;
+
+    protected override async Task OnInitializedAsync() => await OranlariYukleAsync();
+
+    private async Task OranlariYukleAsync()
+    {
+        _oranlar = await Api.GetOranlarAsync();
+
+        // Yıl listesi: oranı tanımlı yıllar + içinde bulunulan yıl. Oranı olmayan yıl da
+        // seçilebiliyor; hesap denendiğinde kullanıcı eksik oranı görsün.
+        _yilSecenekleri = _oranlar.Select(x => x.Yil)
+            .Append(DateTime.Now.Year)
+            .Append(_model.Yil)
+            .Distinct()
+            .OrderByDescending(y => y)
+            .ToList();
+    }
+
+    private async Task OnYilChangedAsync(object? value)
+    {
+        _model.Yil = value is int yil ? yil : Convert.ToInt32(value);
+        await HesaplaTetikleAsync();
+    }
+
+    /// <summary>250 ms geciktirir; her tuş vuruşunda sunucuya gitmesin (Bordro ile aynı).</summary>
+    private async Task HesaplaTetikleAsync()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+
+        try
+        {
+            await Task.Delay(250, token);
+            await HesaplaAsync(token);
+        }
+        catch (TaskCanceledException)
+        {
+        }
+    }
+
+    private async Task HesaplaAsync(CancellationToken ct = default)
+    {
+        // 1. satır zorunlu: girilmeden hesap yapılmaz.
+        if (_model.Ozsermaye is null)
+        {
+            _sonuc = null;
+            _hata = null;
+            StateHasChanged();
+            return;
+        }
+
+        var (sonuc, hata) = await Api.HesaplaAsync(new FinansmanKisitlamaHesapRequest
+        {
+            Yil = _model.Yil,
+            Ozsermaye = _model.Ozsermaye,
+            YabanciKaynakToplami = _model.YabanciKaynakToplami,
+            FinansmanGideri = _model.FinansmanGideri,
+            OrtuluSermayeVeFinansmanGeliri = _model.OrtuluSermayeVeFinansmanGeliri
+        }, ct);
+
+        _sonuc = sonuc;
+        _hata = hata;
+        StateHasChanged();
+    }
+
+    // ---- Oran tablosu ----
+
+    private void DuzenlemeyeBasla(FinansmanKisitlamaOraniDto satir)
+    {
+        _duzenlenenYil = satir.Yil;
+        _taslak = new FinansmanKisitlamaOraniSaveDto
+        {
+            Oran = satir.Oran,
+            Dayanak = satir.Dayanak,
+            Not = satir.Not
+        };
+    }
+
+    private async Task OranKaydetAsync(int yil)
+    {
+        var (_, hata) = await Api.UpsertOranAsync(yil, _taslak);
+        if (hata is not null)
+        {
+            Uyar(NotificationSeverity.Error, hata);
+            return;
+        }
+
+        _duzenlenenYil = null;
+        await OranlariYukleAsync();
+        await HesaplaAsync();
+        Uyar(NotificationSeverity.Success, $"{yil} yılı oranı kaydedildi.");
+    }
+
+    private async Task YeniOranEkleAsync()
+    {
+        var eklenenYil = _yeniYil;
+
+        var (_, hata) = await Api.UpsertOranAsync(eklenenYil, _yeniOran);
+        if (hata is not null)
+        {
+            Uyar(NotificationSeverity.Error, hata);
+            return;
+        }
+
+        _yeniOran = new FinansmanKisitlamaOraniSaveDto { Oran = 10m };
+        await OranlariYukleAsync();
+        await HesaplaAsync();
+        Uyar(NotificationSeverity.Success, $"{eklenenYil} yılı oranı kaydedildi.");
+    }
+
+    private async Task OranSilAsync(int yil)
+    {
+        if (!await Api.DeleteOranAsync(yil))
+        {
+            Uyar(NotificationSeverity.Error, $"{yil} yılı oranı silinemedi.");
+            return;
+        }
+
+        await OranlariYukleAsync();
+        await HesaplaAsync();
+        Uyar(NotificationSeverity.Info, $"{yil} yılı oranı silindi.");
+    }
+
+    private void Uyar(NotificationSeverity seviye, string mesaj) =>
+        NotificationService.Notify(new NotificationMessage
+        {
+            Severity = seviye,
+            Summary = seviye == NotificationSeverity.Error ? "Hata" : "Bilgi",
+            Detail = mesaj,
+            Duration = 4000
+        });
+
+    // ---- Biçimleme ----
+
+    private static string Tutar(decimal? deger) => deger is null ? "—" : deger.Value.ToString("N2", Tr);
+
+    private static string Yuzde(decimal deger) => "%" + deger.ToString("N2", Tr);
+}

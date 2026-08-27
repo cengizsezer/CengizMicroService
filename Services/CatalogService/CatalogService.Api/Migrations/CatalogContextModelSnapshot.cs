@@ -1320,6 +1320,39 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("ReceiptItems", "catalog");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.FinansmanGiderKisitlamasi.Domain.FinansmanKisitlamaOrani", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Dayanak")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("GuncellenmeTarihi")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Not")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<decimal>("Oran")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int>("Yil")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Yil")
+                        .IsUnique();
+
+                    b.ToTable("FinansmanKisitlamaOranlari", "catalog");
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.FirmaKontrol.Domain.FirmaKontrolMadde", b =>
                 {
                     b.Property<long>("Id")

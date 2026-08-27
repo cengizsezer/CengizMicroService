@@ -1,4 +1,4 @@
-using WebApp.Shared.Dto.Muhasebe;
+﻿using WebApp.Shared.Dto.Muhasebe;
 
 namespace WebApp.Application.Services.Interfaces
 {
@@ -11,7 +11,22 @@ namespace WebApp.Application.Services.Interfaces
         // ---- Hesap planı ----
 
         /// <summary>Ağacın tamamı; düz liste, koda göre sıralı.</summary>
+        /// <summary>
+        /// Geçerli firmaya tekdüzen hesap planını yükler. Başarısızlıkta sunucunun
+        /// açıkladığı mesaj döner (plan zaten dolu, şablon dosyası yok…) — KARARLAR §84.
+        /// </summary>
+        Task<(bool Basarili, int Adet, string? Mesaj)> TekDuzenPlaniYukleAsync(CancellationToken ct = default);
+
         Task<List<HesapPlaniDto>> GetHesapPlaniAsync(CancellationToken ct = default);
+
+        /// <summary>
+        /// Hesap planı + isteğin gerçekten başarılı olup olmadığı.
+        ///
+        /// <see cref="GetHesapPlaniAsync"/> her hatayı yutup boş liste döndüğü için
+        /// 401/500/zaman aşımı ile "veri yok" ekranda ayırt edilemiyordu; sayfa iki durumu
+        /// ayrı mesajla göstersin diye bu metot eklendi (bkz. KARARLAR §83).
+        /// </summary>
+        Task<(List<HesapPlaniDto> Liste, bool Basarili)> GetHesapPlaniSonucAsync(CancellationToken ct = default);
 
         Task<HesapPlaniDto?> GetHesapAsync(int id, CancellationToken ct = default);
 

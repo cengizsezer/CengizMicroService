@@ -371,14 +371,20 @@ namespace CatalogService.UnitTests.BankaEkstre
             Assert.Single(db.EkstreKimlikKayitlari.ToList());
         }
 
+        /// <summary>
+        /// Düzeltilmiş ekstre ORKA Veri Transferi'nin beklediği dört kolonlu sade dosyadır:
+        /// başlık 1. satırda, veri 2'den, künye bloğu yok. Eski sürüm bankanın 17 kolonlu
+        /// dosyasını kopyalayıp yalnız açıklama kolonunu değiştiriyordu (KARARLAR §82).
+        /// </summary>
         [Fact]
-        public async Task Duzeltilmis_ekstre_aciklama_kolonunu_degistirir()
+        public async Task Duzeltilmis_ekstre_dort_kolonlu_sade_dosya_uretir()
         {
             var (db, hesapId) = await HazirlaAsync();
             using var _ = db;
 
             using var dosya = BankaEkstreTestOrtami.BasliklıEkstre(
-                new object[] { "15.01.2026", "Gelen EFT Otomatik Yatan", 1000m, "", "", "A", GelenAciklama });
+                new object[] { "15.01.2026", "Gelen EFT Otomatik Yatan", 1000m, "", "", "A", GelenAciklama },
+                new object[] { "16.01.2026", "Gönderilen havale", 250.75m, "", "", "B", "ZETA MADENCİLİK ödemesi" });
 
             var yukleme = await Servis(db).YukleAsync(hesapId, dosya, "ocak.xlsx");
             var duzeltilmis = await Servis(db).DuzeltilmisEkstreAsync(yukleme.Id);
@@ -390,10 +396,62 @@ namespace CatalogService.UnitTests.BankaEkstre
             using var kitap = new ClosedXML.Excel.XLWorkbook(akis);
             var sayfa = kitap.Worksheets.First();
 
-            // Açıklama kolonu (17) ham banka metni yerine bizim ürettiğimizi taşıyor.
-            Assert.Equal("Gelen Eft - Dağı Giyim Sanayi A.Ş.", sayfa.Cell(8, 17).GetString());
-            // Diğer kolonlar dokunulmadan kaldı: dosya orijinal yapıda.
-            Assert.Equal("Gelen EFT Otomatik Yatan", sayfa.Cell(8, 6).GetString());
+            // Başlık 1. satırda, dört kolon.
+            Assert.Equal("Tarih", sayfa.Cell(1, 1).GetString());
+            Assert.Equal("Açıklama", sayfa.Cell(1, 2).GetString());
+            Assert.Equal("Giren", sayfa.Cell(1, 3).GetString());
+            Assert.Equal("Çıkan", sayfa.Cell(1, 4).GetString());
+            Assert.Equal(4, sayfa.LastColumnUsed()!.ColumnNumber());
+
+            // Veri 2. satırdan; künye bloğu yok.
+            Assert.Equal(new DateTime(2026, 1, 15), sayfa.Cell(2, 1).GetDateTime());
+            Assert.Equal("dd.MM.yyyy", sayfa.Cell(2, 1).Style.DateFormat.Format);
+            Assert.Equal("Gelen Eft - Dağı Giyim Sanayi A.Ş.", sayfa.Cell(2, 2).GetString());
+
+            // Giren satırında yalnız Giren kolonu dolu, tutar SAYISAL hücre.
+            Assert.Equal(1000m, sayfa.Cell(2, 3).GetValue<decimal>());
+            Assert.Equal(ClosedXML.Excel.XLDataType.Number, sayfa.Cell(2, 3).DataType);
+            Assert.True(sayfa.Cell(2, 4).IsEmpty());
+
+            // Çıkan satırında tersi.
+            Assert.Equal(new DateTime(2026, 1, 16), sayfa.Cell(3, 1).GetDateTime());
+            Assert.True(sayfa.Cell(3, 3).IsEmpty());
+            Assert.Equal(250.75m, sayfa.Cell(3, 4).GetValue<decimal>());
+            Assert.Equal(ClosedXML.Excel.XLDataType.Number, sayfa.Cell(3, 4).DataType);
+
+            // Başlık + iki satır; fazlası yok.
+            Assert.Equal(3, sayfa.LastRowUsed()!.RowNumber());
+        }
+
+        /// <summary>
+        /// Kaynak dosya saklanmamış olsa bile düzeltilmiş ekstre üretilir: dosya artık
+        /// orijinalin kopyası değil, satırlardan sıfırdan yazılıyor (KARARLAR §82).
+        /// </summary>
+        [Fact]
+        public async Task Duzeltilmis_ekstre_kaynak_dosya_olmadan_da_uretilir()
+        {
+            var (db, hesapId) = await HazirlaAsync();
+            using var _ = db;
+
+            using var dosya = BankaEkstreTestOrtami.BasliklıEkstre(
+                new object[] { "15.01.2026", "Gelen EFT Otomatik Yatan", 1000m, "", "", "A", GelenAciklama });
+
+            var yukleme = await Servis(db).YukleAsync(hesapId, dosya, "ocak.xlsx");
+
+            // Kaynak içerik ve açıklama kolonu bilgisi silinsin: eski sürüm burada hata veriyordu.
+            var kayit = db.EkstreYuklemeler.Single(y => y.Id == yukleme.Id);
+            kayit.DosyaIcerik = null;
+            kayit.AciklamaKolonu = 0;
+            await db.SaveChangesAsync();
+
+            var duzeltilmis = await Servis(db).DuzeltilmisEkstreAsync(yukleme.Id);
+
+            Assert.NotNull(duzeltilmis);
+
+            using var akis = new MemoryStream(duzeltilmis!.Icerik);
+            using var kitap = new ClosedXML.Excel.XLWorkbook(akis);
+            Assert.Equal("Gelen Eft - Dağı Giyim Sanayi A.Ş.",
+                         kitap.Worksheets.First().Cell(2, 2).GetString());
         }
 
         [Fact]

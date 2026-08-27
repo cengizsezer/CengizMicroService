@@ -1,4 +1,5 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
+using CatalogService.Api.Features.Muhasebe;
 using CatalogService.Api.Features.Muhasebe.Domain;
 using CatalogService.Api.Features.Muhasebe.Dtos;
 using CatalogService.Api.Infrastructure.Context;
@@ -13,8 +14,23 @@ namespace CatalogService.Api.Features.Muhasebe.Services
         private const int AramaLimiti = 100;
 
         private readonly CatalogContext _db;
+        private readonly ITekDuzenPlanKaynagi _planKaynagi;
 
-        public HesapPlaniService(CatalogContext db) => _db = db;
+        public HesapPlaniService(CatalogContext db, ITekDuzenPlanKaynagi planKaynagi)
+        {
+            _db = db;
+            _planKaynagi = planKaynagi;
+        }
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// Yazma işi açılıştaki seed ile <b>aynı</b> koddan geçer (<see cref="MuhasebeSeed.YukleAsync"/>):
+        /// iki ayrı yükleyici olsaydı biri güncellenip diğeri unutulurdu. TenantNo'yu
+        /// <c>CatalogContext.SaveChangesAsync</c> istekteki tenant'tan damgalar, yani plan
+        /// kullanıcının o an bağlı olduğu firmaya yazılır (KARARLAR §84).
+        /// </remarks>
+        public Task<(PlanYuklemeSonuc Sonuc, int Adet)> TekDuzenPlaniYukleAsync(CancellationToken ct = default)
+            => MuhasebeSeed.YukleAsync(_db, _planKaynagi, ct);
 
         private static readonly Expression<Func<HesapPlani, HesapPlaniDto>> Projeksiyon = h => new HesapPlaniDto
         {
