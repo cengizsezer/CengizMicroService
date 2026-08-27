@@ -117,6 +117,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 : Normalizasyon.Kirp(dto.HesapAdi, 200);
             kayit.UnvanCikarilsin = dto.UnvanCikarilsin;
             kayit.AltHesapGerekli = dto.AltHesapGerekli;
+            kayit.AnaGruplar = YapilandirmaDogrulama.AnaGruplarDogrula(
+                dto.AnaGruplar, dto.AltHesapGerekli, nameof(dto.AnaGruplar));
             kayit.IslemKategorisiId = await YapilandirmaDogrulama.KategoriDogrulaAsync(
                 _db, dto.IslemKategorisiId, nameof(dto.IslemKategorisiId), ct);
             kayit.Sira = dto.Sira;
@@ -164,6 +166,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             HesapAdi = k.HesapAdi,
             UnvanCikarilsin = k.UnvanCikarilsin,
             AltHesapGerekli = k.AltHesapGerekli,
+            AnaGruplar = k.AnaGruplar,
             IslemKategorisiId = k.IslemKategorisiId,
             IslemKategorisiAdi = YapilandirmaDogrulama.KategoriAdi(_kategoriAdlari, k.IslemKategorisiId),
             Sira = k.Sira,

@@ -147,5 +147,40 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
             return kayit;
         }
+
+        /// <summary>
+        /// Sabit kuralın ana grup listesini ("195, 196") doğrular ve saklama biçimine
+        /// çevirir. Boş bırakılırsa <c>null</c> döner: kural tek gruplu kalır.
+        ///
+        /// Her parça ana gruba indirgenir, yani kullanıcı tam kod yazsa da ("195 01")
+        /// kural çalışır. Liste <b>yalnız</b> alt hesabı kullanıcıdan beklenen kurallarda
+        /// anlamlı; başka bir kuralda doldurulursa sessizce yok saymak yerine hata verilir,
+        /// yoksa kullanıcı yazdığı şeyin neden hiçbir etkisi olmadığını göremezdi.
+        /// </summary>
+        public static string? AnaGruplarDogrula(string? anaGruplar, bool altHesapGerekli, string field)
+        {
+            var gruplar = Normalizasyon.AnaGruplariAyir(anaGruplar);
+
+            if (gruplar.Count == 0)
+            {
+                if (!string.IsNullOrWhiteSpace(anaGruplar))
+                    throw new BankaEkstreKuralException(field,
+                        "Ana grup listesi okunamadı. Grupları virgülle ayırarak yazın: \"195, 196\".");
+
+                return null;
+            }
+
+            if (!altHesapGerekli)
+                throw new BankaEkstreKuralException(field,
+                    "Ana grup listesi yalnız \"kural yalnız ana grubu belirliyor\" seçiliyken kullanılır; " +
+                    "ya seçeneği işaretleyin ya da listeyi boşaltın.");
+
+            var birlesik = Normalizasyon.AnaGruplariBirlestir(gruplar);
+
+            if (birlesik.Length > 200)
+                throw new BankaEkstreKuralException(field, "Ana grup listesi 200 karakteri aşamaz.");
+
+            return birlesik;
+        }
     }
 }

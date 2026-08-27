@@ -182,6 +182,15 @@
                     <RadzenPanelMenuItem Text="Tanımlar" Icon="settings" Path="/banka-otomasyon/tanimlar" />
                 </RadzenPanelMenuItem>
 
+                @*
+                    Hesaplama araçları. Alt sekmeler HesaplamaSekmesi.Hepsi listesinden
+                    üretiliyor; menüye yeni bir satır eklemek yalnız o listeye satır
+                    eklendiğinde gerekir (bkz. KARARLAR §79).
+                *@
+                <RadzenPanelMenuItem Text="Hesaplamalar" Icon="calculate" Path="/hesaplamalar">
+                    <RadzenPanelMenuItem Text="Bordro Hesaplaması" Icon="payments" Path="/hesaplamalar/bordro" />
+                </RadzenPanelMenuItem>
+
                 <RadzenPanelMenuItem Text="Finans" Icon="account_balance">
                     <RadzenPanelMenuItem Text="Firma Gruplama" Icon="category" Path="/finans/firma-gruplama" />
                     <RadzenPanelMenuItem Text="Banka Tanımları" Icon="account_balance" Path="/finans/banka-tanimlari" />

@@ -13,7 +13,7 @@ using WebApp.Application.Services.KdvBeyanname;
 using WebApp.Application.Services.Yonetim;
 using WebApp.Infrastructure;
 using WebApp.Manager;
-using WebApp.Pages.Payroll.Services;
+using WebApp.Pages.Hesaplamalar.Bordro.Services;
 using WebApp.Pages.TaxPaymentPage.Client;
 using WebApp.StartupExtensions.Culture;
 

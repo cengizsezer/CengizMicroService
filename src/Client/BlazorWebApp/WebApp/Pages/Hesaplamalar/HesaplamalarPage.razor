@@ -1,0 +1,75 @@
+@page "/hesaplamalar"
+@page "/hesaplamalar/{Slug}"
+
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+
+@attribute [Authorize]
+
+@inject NavigationManager Nav
+
+@*
+    Hesaplamalar — alt sekmeli hesaplama araçları.
+
+    İskelet sekmeleri BİLMEZ: şeridi de içeriği de HesaplamaSekmesi.Hepsi listesinden
+    üretir. Yeni sekme eklemek yeni bir Razor bileşeni + listeye bir satır demek; bu
+    dosyaya dokunmak gerekmez (bkz. KARARLAR §79).
+
+    Sayfa normal kimlik doğrulamasından geçer ([Authorize]) ve uygulamanın standart
+    MainLayout'unu kullanır. Bordro hesaplayıcısı eskiden /payroll-calculator adresinde,
+    girişin dışında ve ayrı bir kabukta duruyordu; hepsi kaldırıldı (KARARLAR §78).
+*@
+
+<style>
+    .hs-sekmeler { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+    .hs-sekme { display: inline-flex; align-items: center; gap: 6px;
+                border: 1px solid #e2e8f0; border-radius: 999px; padding: 5px 16px;
+                font-size: 13px; color: #4a5568; background: #fff; text-decoration: none; }
+    .hs-sekme:hover { background: #edf5ff; }
+    .hs-sekme.aktif { background: #2b6cb0; border-color: #2b6cb0; color: #fff; font-weight: 600; }
+    .hs-bos { padding: 26px; text-align: center; color: #a0aec0;
+              border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; }
+</style>
+
+<PageTitle>@(Aktif?.Baslik ?? "Hesaplamalar")</PageTitle>
+
+<div class="hs-sekmeler">
+    @foreach (var sekme in HesaplamaSekmesi.Hepsi)
+    {
+        <a class="hs-sekme @(sekme == Aktif ? "aktif" : "")" href="@sekme.Yol">
+            <RadzenIcon Icon="@sekme.Ikon" Style="font-size:16px" />
+            @sekme.Baslik
+        </a>
+    }
+</div>
+
+@if (Aktif is not null)
+{
+    <DynamicComponent Type="@Aktif.Bilesen" />
+}
+else if (Slug is not null)
+{
+    <div class="hs-bos">"@Slug" diye bir hesaplama sekmesi yok. Yukarıdan bir sekme seçin.</div>
+}
+
+@code {
+    /// <summary>Adresin son parçası; <c>/hesaplamalar</c> kökünde null.</summary>
+    [Parameter] public string? Slug { get; set; }
+
+    private HesaplamaSekmesi? Aktif;
+
+    protected override void OnParametersSet()
+    {
+        // Kök adres kanonik sekme adresine gider: aynı ekranın iki adresi olmasın, şerit
+        // vurgusu ve yer imi tek yol üzerinden yürüsün. replace: true — geri düğmesi köke
+        // dönüp sonsuz yönlendirme kurmasın (aynı gerekçe BankaEkstre/EskiRotaYonlendirme).
+        if (Slug is null)
+        {
+            Nav.NavigateTo(HesaplamaSekmesi.Varsayilan.Yol, forceLoad: false, replace: true);
+            return;
+        }
+
+        Aktif = HesaplamaSekmesi.Bul(Slug);
+    }
+}

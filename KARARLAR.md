@@ -1325,3 +1325,119 @@ mevcut istemciler kırılırdı; içe aktarımda tanınmayan ad satırı düşü
 üretiyor (aynı ad dosyanın kalanında tekrar uyarmıyor). "Ayrı adımdan geç" kuralı ekranın
 sorumluluğunda.
 
+## 76. Kural grubu adayları önceliklendirir; başka gruptaki isim otomatiği engellemez
+
+Alt hesap araması eskiden "kural grubunda tek eşleşme **ve** başka grupta hiç karşılık
+yok" istiyordu. Gerçek planda bu neredeyse hiç tutmuyor: personelin çoğu hem maaş avansı
+(196) hem iş avansı (195) altında kayıtlı, bazıları ayrıca 335'te. `ÖMER CAN DİZDAR`
+maaş avansı satırı bu yüzden onaya düşüyordu — oysa kural zaten 196 demişti ve o grupta
+**tek** aday vardı.
+
+**Kararı kuralın grubu verir.** Grup içi sayım belirleyici: tam bir aday → otomatik,
+sıfır ya da birden fazla → onaya düşer. Başka gruplardaki birebir karşılıklar aday olarak
+saklanmaya devam ediyor (kullanıcı iş avansına yazmak isteyebilir) ama otomatik çözümü
+engellemiyor.
+
+**Neden güvenli?** Kural grubu kullanıcının kendi tanımı — "maaş avansı satırı 196'ya
+gider" diyen o. Grup içinde tek aday varsa belirsizlik yok; belirsizlik olsaydı grup
+içinde iki aday çıkardı ve satır zaten onaya düşerdi. Yakın isimli başka kişiye düşme
+riski de değişmedi: arama hâlâ **benzersiz önek**, benzerlik değil (bkz. §-Tur 3), ve
+tek kelimelik isim hiçbir zaman otomatik seçilmiyor.
+
+Ölçüm: gerçek dosyada otomatik 62 → 63, onay 102 → 101; fark tam olarak hedef satır.
+
+## 77. Çoklu ana grup ayrı alanda (`AnaGruplar`), hesap kodunun içinde değil
+
+Genel `Avans` kuralı hem iş avansını hem maaş avansını kapsıyor; tek bir ana gruba
+bağlanamaz. En kısa yol `HesapKodu` alanına virgüllü liste yazmaktı (`"195, 196"`) —
+**yapılmadı**.
+
+`HesapKodu` gerçek bir ORKA kodudur: hesap planına karşı doğrulanıyor, aday bulunamayan
+satırda öneri olarak yazılıyor, dışa aktarıma ve ORKA'ya gidiyor, `Normalizasyon.AnaGrup`
+ilk segmentini okuyor. İçine liste konsaydı kod normalizasyonu, ana grup çıkarımı ve dışa
+aktarım aynı anda bozulurdu; ekrandaki kod kutusu da hesap planı otomatik tamamlamasına
+bağlı ve virgüllü metinle çalışmaz.
+
+**Ayrı nullable alan:** `AnaGruplar` (virgülle ayrılmış, 200 karakter). Boşsa küme,
+`HesapKodu`'nun tek ana grubu — eski davranış aynen korunuyor, migration veri doldurmuyor.
+Her parça `AnaGrup`'a indirgeniyor, yani kullanıcı `"195 01"` yazsa da kural çalışıyor.
+
+**Yalnız `AltHesapGerekli` kurallarda geçerli.** Başka bir kuralda doldurulursa sessizce
+yok sayılmıyor, hata veriliyor: sessiz yok sayma kullanıcının yazdığı şeyin neden hiçbir
+etkisi olmadığını gizlerdi (§-aynı gerekçe geçersiz parser/regex denetimlerinde de var).
+
+**Çoklu gruplu kuralda aday bulunamazsa kod önerilmiyor.** Tek gruplu kuralda kutuda ana
+grup kalıyordu (195/196); çoklu grupta hangisinin kastedildiği bilinmiyor ve birini yazmak
+kullanıcıyı yanlış gruba yönlendirirdi.
+
+**Seed'de dar bir yükseltme var.** Seed kuralı mevcut kayıtların üzerine yazmamak; ama
+çoklu gruptan önce kurulmuş veritabanlarındaki `Avans` satırı tek gruplu kalırsa kural
+**eksik** çalışır (195 hiç taranmaz). Bu yüzden kayıt hâlâ seed'in bıraktığı hâldeyse
+(Vakıfbank, kod `196`, liste boş, alt hesap bekleniyor) listeye `195, 196` yazılıyor;
+kullanıcı kodu ya da listeyi değiştirdiyse kayda dokunulmuyor.
+
+## 78. Bordro hesaplayıcısı: anonim erişim nasıl kurulmuştu (taşımadan önceki tespit)
+
+Sayfa uygulamanın dışında, girişsiz açılan bir ada duruyordu. Anonim erişim **tek bir
+bayrakla** değil, dört ayrı yerde birden kurulmuştu; taşımadan önce hepsi tek tek bulundu:
+
+| # | Nerede | Ne yapıyordu |
+|---|---|---|
+| 1 | `WebApp/Pages/Payroll/Page/PayrollCalculator.razor` | `@page "/payroll-calculator"`, `@attribute [Authorize]` **yok** |
+| 2 | Aynı dosyanın 1. satırı: `@layout PublicPayrollLayout` | Uygulamanın `MainLayout`'u yerine ayrı, menüsüz/kullanıcısız bir kabuk |
+| 3 | `WebApp/Pages/Payroll/Layout/PublicPayrollLayout.razor` (+ `.css`) | Yalnız bu sayfa için yazılmış tam sayfa kabuk (PKF logosu + "Ücret Bordrosu" başlığı) |
+| 4 | `CatalogService.Api/Features/Payroll/Controllers/PayrollPublicController.cs` | `[Route("api/public/payroll")]` + `[AllowAnonymous]` |
+| 5 | `Web.ApiGateway/Configurations/ocelot.json` / `.Docker.json` / `.Development.json` | `/api/public/payroll/{everything}` için **AuthenticationOptions'sız** ayrı bir rota |
+
+Kritik nokta: **`[AllowAnonymous]`'u kaldırmak tek başına hiçbir şey değiştirmezdi.**
+CatalogService'te global bir yetki politikası (`FallbackPolicy`) yok; `AddAuthorization()`
+çıplak çağrılıyor. Servisteki 39 controller'ın korunanları yetkiyi **kendi üzerlerindeki
+açık `[Authorize]`** ile alıyor (BankaEkstre, Muhasebe, Jobs… hepsi böyle). Yani
+`[AllowAnonymous]` silinseydi controller yetkisiz değil, **hâlâ herkese açık** kalırdı.
+Bu yüzden yerine açıkça `[Authorize]` konuldu.
+
+İkinci kritik nokta: gateway'deki ayrı rota, `[Authorize]` konsa bile **token'sız isteği
+CatalogService'e kadar taşımaya devam ederdi** (401 dönerdi ama kapı açık kalırdı). Rota
+üç yapılandırmadan da silindi; istek artık mevcut `/catalog/{everything}` rotasından
+(Bearer'lı) geçiyor.
+
+**Menüde kayıtlı değildi.** `MainLayout.razor`'daki `RadzenPanelMenu` içinde
+`/payroll-calculator` geçmiyordu; sayfaya yalnız adresi bilerek giriliyordu.
+
+**Anonim erişim için ayrıca bir CORS istisnası yoktu.** `Program.cs`'teki `"wasm"`
+politikası tüm servis için tek ve zaten uygulamanın kendi kaynaklarını (localhost:2000,
+dijitalmasraf.com) sayıyor — payroll'a özel bir giriş içermiyor, dokunulmadı.
+
+**İstemci tarafında ayrı bir HttpClient yoktu.** `PayrollApiService`, DI'daki varsayılan
+scoped `HttpClient`'ı alıyor; o da `ApiGatewayCorridor` (AuthTokenHandler + TenantHeader +
+RefreshTokenCorridor). Yani token zaten gönderiliyordu, sadece **istenmiyordu**. Bu yüzden
+taşımada DI'ya dokunmak gerekmedi, yalnız temel yol değişti.
+
+**Nginx / index.html tarafında payroll'a özel bir kural yok** (arandı, bulunamadı).
+
+Yan tespit, kapsam dışı bırakıldı: `ocelot.Development.json`'da genel
+`/catalog/{everything}` rotasının da `AuthenticationOptions`'ı yok. Bu payroll'a özel
+değil, geliştirme yapılandırmasının geneli; bu turda dokunulmadı ama **üretim
+yapılandırmasında böyle olmadığı doğrulandı** (`ocelot.json` ve `.Docker.json`'da Bearer
+var).
+
+## 79. Hesaplamalar sekmeleri: kayıt listesi + `DynamicComponent`, elle yazılmış sekme şeridi değil
+
+Banka Otomasyon'un sekme şeridi (`FirmaBasligi`) iki sekmeyi elle `<a>` etiketiyle
+yazıyor; üçüncü sekme eklemek hem enum'a hem şeride hem de sayfa iskeletine dokunmayı
+gerektirir. Hesaplamalar'ın büyümesi bekleniyor (bordro ilk sekme, başkaları gelecek),
+bu yüzden kalıp bir adım ileri taşındı:
+
+`HesaplamaSekmesi` bir **kayıt listesi** — slug, başlık, ikon ve bileşen tipi. Sayfa
+iskeleti (`HesaplamalarPage`) listeyi dolaşıp şeridi üretiyor ve aktif sekmenin bileşenini
+`<DynamicComponent>` ile basıyor. **Yeni sekme = yeni Razor bileşeni + listeye bir satır**;
+sayfa dosyası hiç değişmiyor.
+
+`/hesaplamalar` kökü ilk sekmeye `replace: true` ile yönleniyor. Kökte de aynı içeriği
+basmak mümkündü ama o zaman aynı ekranın iki adresi olurdu; sekme bağlantısı, tarayıcı
+yer imi ve "hangi sekmedeyim" vurgusu tek kanonik adres üzerinden yürüsün diye
+yönlendirme seçildi. `replace: true` geri düğmesinin sonsuz döngü kurmasını engelliyor
+(aynı gerekçe `BankaEkstre/EskiRotaYonlendirme`'de de var).
+
+Tanınmayan slug hata vermiyor: şerit yine çiziliyor, içerik alanında "sekme bulunamadı"
+yazıyor. Kırık bir yer imi kullanıcıyı 404'e değil, çalışan sekmelere düşürsün.

@@ -580,6 +580,10 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public string? HesapAdi { get; set; }
         public bool UnvanCikarilsin { get; set; }
         public bool AltHesapGerekli { get; set; }
+
+        /// <summary>Kuralın kapsadığı ana gruplar ("195, 196"); tek gruplu kuralda boş.</summary>
+        public string? AnaGruplar { get; set; }
+
         /// <summary>Muhasebe kategorisi; yalnız etiket ve görünüm, eşleştirmeye girmez.</summary>
         public int? IslemKategorisiId { get; set; }
 
@@ -599,6 +603,13 @@ namespace WebApp.Shared.Dto.BankaEkstre
         public string? HesapAdi { get; set; }
         public bool UnvanCikarilsin { get; set; } = true;
         public bool AltHesapGerekli { get; set; }
+
+        /// <summary>
+        /// Virgülle ayrılmış ana gruplar ("195, 196"). Boş bırakılırsa kural tek gruplu
+        /// kalır; yalnız <see cref="AltHesapGerekli"/> açıkken doldurulabilir.
+        /// </summary>
+        public string? AnaGruplar { get; set; }
+
         /// <summary>Muhasebe kategorisi; boş bırakılabilir.</summary>
         public int? IslemKategorisiId { get; set; }
         public int Sira { get; set; }

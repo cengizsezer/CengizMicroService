@@ -141,6 +141,305 @@
         overflow-y: auto;
     }
 }
+/* /Pages/Hesaplamalar/Bordro/BordroHesaplamasi.razor.rz.scp.css */
+html[b-fw2jhspjsg], body[b-fw2jhspjsg] {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+body[b-fw2jhspjsg] {
+    overflow-x: hidden;
+}
+
+.payroll-page[b-fw2jhspjsg] {
+    height: 100vh;
+    background: #f3f3f3;
+    padding: 8px 0;
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.payroll-container[b-fw2jhspjsg] {
+    width: 100%;
+    max-width: 1680px;
+    height: calc(100vh - 16px);
+    margin: 0 auto;
+    padding: 0 10px 6px 10px;
+    font-family: Arial, sans-serif;
+    color: #222;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* LOGO + BAŞLIK */
+.payroll-header[b-fw2jhspjsg] {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 0 0 8px 0;
+    min-height: 58px;
+}
+
+.payroll-logo[b-fw2jhspjsg] {
+    height: 52px;
+    width: auto;
+    object-fit: contain;
+}
+
+.page-title[b-fw2jhspjsg] {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+    line-height: 1.1;
+}
+
+/* Eski bilgi alanlarını kapat */
+.payroll-top-text[b-fw2jhspjsg],
+.payroll-info-text[b-fw2jhspjsg] {
+    display: none !important;
+}
+
+/* Filtre alanı */
+.payroll-filters[b-fw2jhspjsg] {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px 14px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.filter-item[b-fw2jhspjsg] {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+    .filter-item label[b-fw2jhspjsg] {
+        font-size: 13px;
+        color: #333;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+.year-box[b-fw2jhspjsg] {
+    min-width: 110px;
+}
+
+.switch-item[b-fw2jhspjsg] {
+    min-width: 110px;
+}
+
+.switch-wrap[b-fw2jhspjsg] {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    white-space: nowrap;
+}
+
+.action-link a[b-fw2jhspjsg] {
+    color: #4a90e2;
+    text-decoration: none;
+    font-size: 14px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+[b-fw2jhspjsg] .pkf-switch.rz-switch.rz-state-active,
+[b-fw2jhspjsg] .pkf-switch.rz-switch.rz-state-active .rz-switch-slider,
+[b-fw2jhspjsg] .pkf-switch.rz-switch.rz-state-active .rz-switch-circle,
+[b-fw2jhspjsg] .pkf-switch.rz-switch.rz-state-active .rz-switch-handle {
+    background: #2ea3db !important;
+    border-color: #2ea3db !important;
+}
+
+/* TABLE WRAPPER */
+.table-wrapper[b-fw2jhspjsg] {
+    width: 100%;
+    flex: 0 0 auto;
+    min-height: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border: 1px solid #d8d8d8;
+    background: #f3f3f3;
+    margin-bottom: 6px;
+}
+
+/* TABLO */
+.payroll-table[b-fw2jhspjsg] {
+    width: 100%;
+    min-width: max-content;
+    border-collapse: collapse;
+    background: #f3f3f3;
+    table-layout: auto;
+    font-size: 13px;
+    margin-bottom: 0;
+}
+
+
+    /* HEADER */
+    .payroll-table th[b-fw2jhspjsg] {
+        background: #eef5fa; /* açık mavi */
+        color: #1f3b57;
+        font-weight: 700;
+        font-size: 11px;
+        padding: 5px 4px;
+        text-align: center;
+        vertical-align: middle;
+        border: 1px solid #c9ddea;
+        white-space: normal;
+        line-height: 1.15;
+    }
+
+
+    /* CELL */
+    .payroll-table td[b-fw2jhspjsg] {
+        padding: 4px 3px;
+        font-size: 11px;
+        text-align: center;
+        border: 1px solid #e0e0e0;
+        background: #f3f3f3;
+        white-space: nowrap;
+        line-height: 1.2;
+        height: 30px;
+    }
+
+        /* AY SÜTUNU */
+        .payroll-table td:first-child[b-fw2jhspjsg],
+        .payroll-table th:first-child[b-fw2jhspjsg] {
+            text-align: left;
+            background: #eef5fa;
+            width: 84px;
+            min-width: 84px;
+            max-width: 84px;
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        /* TUTAR SÜTUNU - sadece header ve veri satırları; total-row colspan="2" ile sarmaladığı için hariç tut */
+        .payroll-table th:nth-child(2)[b-fw2jhspjsg],
+        .payroll-table tbody tr:not(.total-row) td:nth-child(2)[b-fw2jhspjsg] {
+            width: 100px;
+            min-width: 100px;
+            max-width: 100px;
+        }
+
+    .payroll-table tbody tr:nth-child(even) td:not(:first-child)[b-fw2jhspjsg] {
+        background: #f7fafc;
+    }
+
+/* INPUT HÜCRESİ */
+.input-cell[b-fw2jhspjsg] {
+    text-align: center;
+    vertical-align: middle;
+    padding: 2px 4px !important;
+}
+
+.input-wrap[b-fw2jhspjsg] {
+    width: 88px;
+    margin: 0 auto;
+}
+
+    .input-wrap .rz-numeric[b-fw2jhspjsg] {
+        width: 100% !important;
+        display: block;
+        height: 28px;
+    }
+
+    .input-wrap .rz-inputtext[b-fw2jhspjsg],
+    .input-wrap .rz-numeric-input[b-fw2jhspjsg],
+    .input-wrap input[b-fw2jhspjsg] {
+        width: 100% !important;
+        box-sizing: border-box;
+        text-align: right;
+        padding: 3px 5px !important;
+        height: 28px !important;
+        font-size: 12px;
+    }
+
+/* TOTAL - toplam satırı*/
+.total-row td[b-fw2jhspjsg] {
+    background: #c7d9e6; /* koyu mavi-gri */
+    font-weight: 700;
+    color: #1f3b57;
+}
+    .total-row td:first-child[b-fw2jhspjsg] {
+        background: #c7d9e6 !important;
+    }
+
+/*.total-row td {
+    background: linear-gradient(to bottom, #d6e7f3, #c4d9e8);
+}*/
+
+.status-text[b-fw2jhspjsg] {
+    margin-top: 8px;
+    color: #444;
+    font-size: 13px;
+}
+
+.error-box[b-fw2jhspjsg] {
+    margin-top: 8px;
+    color: #b00020;
+    background: #ffe9ec;
+    padding: 10px 12px;
+    border: 1px solid #ffc7cf;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.payroll-actions[b-fw2jhspjsg] {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-top: 4px;
+    margin-bottom: 0;
+    padding: 0;
+    flex: 0 0 auto;
+}
+
+    .payroll-actions .rz-button[b-fw2jhspjsg] {
+        margin: 0;
+    }
+
+/* SOL TARAF — Yasal açıklama / sorumluluk reddi (küçük, soluk, normal kalınlık) */
+.payroll-disclaimer[b-fw2jhspjsg] {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 11px;
+    font-weight: 400;
+    color: #6b7280; /* muted gri */
+    line-height: 1.4;
+    margin: 0;
+}
+
+    .payroll-disclaimer p[b-fw2jhspjsg] {
+        margin: 0 0 3px 0;
+        font-weight: 400;
+    }
+
+        .payroll-disclaimer p:last-child[b-fw2jhspjsg] {
+            margin-bottom: 0;
+        }
+
+/* SAĞ TARAF — Buton grubu: her zaman yatay, daralmaz, sarmaz */
+.payroll-buttons[b-fw2jhspjsg] {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
 /* /Pages/LoginPage.razor.rz.scp.css */
 /*.login-container {
     display: flex;
@@ -225,417 +524,6 @@
     justify-content: center;
     align-items: center;
     background-color: #f5f7fa;
-}
-/* /Pages/Payroll/Layout/PublicPayrollLayout.razor.rz.scp.css */
-.public-payroll-layout[b-0gztsyy4l7] {
-    min-height: 100vh;
-    background: #f3f3f3;
-}
-
-/* HEADER */
-.public-payroll-header[b-0gztsyy4l7] {
-    height: 86px;
-    background: #ffffff;
-    border-bottom: 1px solid #e5e7eb;
-    display: flex;
-    align-items: center;
-}
-
-/* HEADER INNER */
-.public-payroll-header-inner[b-0gztsyy4l7] {
-    width: 100%;
-    max-width: 1720px; /* 1280 yerine büyüttük */
-    margin: 0 auto;
-    padding: 0 16px;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    box-sizing: border-box;
-}
-
-/* LOGO + YAZI */
-.public-payroll-brand[b-0gztsyy4l7] {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-
-/* LOGO */
-.public-payroll-logo[b-0gztsyy4l7] {
-    height: 68px;
-    width: auto;
-    display: block;
-}
-
-.public-payroll-title[b-0gztsyy4l7] {
-    font-size: 24px;
-    font-weight: 700;
-    color: #1f2937;
-    line-height: 1;
-}
-
-/* MAIN */
-.public-payroll-main[b-0gztsyy4l7] {
-    padding: 10px 0 12px 0; /* 20px yerine küçülttük */
-}
-
-.payroll-actions[b-0gztsyy4l7] {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 20px;
-}
-
-/* SWITCH */
-.switch-wrap[b-0gztsyy4l7] {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.switch-item[b-0gztsyy4l7] {
-    display: flex;
-    align-items: flex-end;
-}
-
-/* GENEL TASARIM */
-.payroll-container[b-0gztsyy4l7] {
-    background: #ffffff;
-    border-radius: 12px;
-    padding: 16px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}
-
-/* TABLE */
-.payroll-table[b-0gztsyy4l7] {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-}
-
-    .payroll-table thead[b-0gztsyy4l7] {
-        background: #e9f2f9;
-    }
-
-    .payroll-table th[b-0gztsyy4l7] {
-        padding: 10px;
-        text-align: center;
-        font-weight: 600;
-    }
-
-    .payroll-table td[b-0gztsyy4l7] {
-        padding: 8px;
-        text-align: center;
-    }
-
-    /* zebra */
-    .payroll-table tbody tr:nth-child(even)[b-0gztsyy4l7] {
-        background: #f6f8fb;
-    }
-
-/* total */
-.total-row[b-0gztsyy4l7] {
-    font-weight: bold;
-    background: #eef2f7;
-}
-/* /Pages/Payroll/Page/PayrollCalculator.razor.rz.scp.css */
-html[b-i9md2k4r3s], body[b-i9md2k4r3s] {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-}
-
-body[b-i9md2k4r3s] {
-    overflow-x: hidden;
-}
-
-.payroll-page[b-i9md2k4r3s] {
-    height: 100vh;
-    background: #f3f3f3;
-    padding: 8px 0;
-    display: flex;
-    justify-content: center;
-    overflow: hidden;
-    box-sizing: border-box;
-}
-
-.payroll-container[b-i9md2k4r3s] {
-    width: 100%;
-    max-width: 1680px;
-    height: calc(100vh - 16px);
-    margin: 0 auto;
-    padding: 0 10px 6px 10px;
-    font-family: Arial, sans-serif;
-    color: #222;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-/* LOGO + BAŞLIK */
-.payroll-header[b-i9md2k4r3s] {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin: 0 0 8px 0;
-    min-height: 58px;
-}
-
-.payroll-logo[b-i9md2k4r3s] {
-    height: 52px;
-    width: auto;
-    object-fit: contain;
-}
-
-.page-title[b-i9md2k4r3s] {
-    font-size: 22px;
-    font-weight: 700;
-    color: #1f2937;
-    margin: 0;
-    line-height: 1.1;
-}
-
-/* Eski bilgi alanlarını kapat */
-.payroll-top-text[b-i9md2k4r3s],
-.payroll-info-text[b-i9md2k4r3s] {
-    display: none !important;
-}
-
-/* Filtre alanı */
-.payroll-filters[b-i9md2k4r3s] {
-    display: flex;
-    align-items: flex-end;
-    gap: 12px 14px;
-    flex-wrap: wrap;
-    margin-bottom: 10px;
-}
-
-.filter-item[b-i9md2k4r3s] {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-    .filter-item label[b-i9md2k4r3s] {
-        font-size: 13px;
-        color: #333;
-        font-weight: 600;
-        white-space: nowrap;
-    }
-
-.year-box[b-i9md2k4r3s] {
-    min-width: 110px;
-}
-
-.switch-item[b-i9md2k4r3s] {
-    min-width: 110px;
-}
-
-.switch-wrap[b-i9md2k4r3s] {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 36px;
-    white-space: nowrap;
-}
-
-.action-link a[b-i9md2k4r3s] {
-    color: #4a90e2;
-    text-decoration: none;
-    font-size: 14px;
-    min-height: 36px;
-    display: flex;
-    align-items: center;
-    white-space: nowrap;
-}
-
-[b-i9md2k4r3s] .pkf-switch.rz-switch.rz-state-active,
-[b-i9md2k4r3s] .pkf-switch.rz-switch.rz-state-active .rz-switch-slider,
-[b-i9md2k4r3s] .pkf-switch.rz-switch.rz-state-active .rz-switch-circle,
-[b-i9md2k4r3s] .pkf-switch.rz-switch.rz-state-active .rz-switch-handle {
-    background: #2ea3db !important;
-    border-color: #2ea3db !important;
-}
-
-/* TABLE WRAPPER */
-.table-wrapper[b-i9md2k4r3s] {
-    width: 100%;
-    flex: 0 0 auto;
-    min-height: auto;
-    overflow-x: auto;
-    overflow-y: hidden;
-    border: 1px solid #d8d8d8;
-    background: #f3f3f3;
-    margin-bottom: 6px;
-}
-
-/* TABLO */
-.payroll-table[b-i9md2k4r3s] {
-    width: 100%;
-    min-width: max-content;
-    border-collapse: collapse;
-    background: #f3f3f3;
-    table-layout: auto;
-    font-size: 13px;
-    margin-bottom: 0;
-}
-
-
-    /* HEADER */
-    .payroll-table th[b-i9md2k4r3s] {
-        background: #eef5fa; /* açık mavi */
-        color: #1f3b57;
-        font-weight: 700;
-        font-size: 11px;
-        padding: 5px 4px;
-        text-align: center;
-        vertical-align: middle;
-        border: 1px solid #c9ddea;
-        white-space: normal;
-        line-height: 1.15;
-    }
-
-
-    /* CELL */
-    .payroll-table td[b-i9md2k4r3s] {
-        padding: 4px 3px;
-        font-size: 11px;
-        text-align: center;
-        border: 1px solid #e0e0e0;
-        background: #f3f3f3;
-        white-space: nowrap;
-        line-height: 1.2;
-        height: 30px;
-    }
-
-        /* AY SÜTUNU */
-        .payroll-table td:first-child[b-i9md2k4r3s],
-        .payroll-table th:first-child[b-i9md2k4r3s] {
-            text-align: left;
-            background: #eef5fa;
-            width: 84px;
-            min-width: 84px;
-            max-width: 84px;
-            font-weight: 700;
-            font-size: 12px;
-        }
-
-        /* TUTAR SÜTUNU - sadece header ve veri satırları; total-row colspan="2" ile sarmaladığı için hariç tut */
-        .payroll-table th:nth-child(2)[b-i9md2k4r3s],
-        .payroll-table tbody tr:not(.total-row) td:nth-child(2)[b-i9md2k4r3s] {
-            width: 100px;
-            min-width: 100px;
-            max-width: 100px;
-        }
-
-    .payroll-table tbody tr:nth-child(even) td:not(:first-child)[b-i9md2k4r3s] {
-        background: #f7fafc;
-    }
-
-/* INPUT HÜCRESİ */
-.input-cell[b-i9md2k4r3s] {
-    text-align: center;
-    vertical-align: middle;
-    padding: 2px 4px !important;
-}
-
-.input-wrap[b-i9md2k4r3s] {
-    width: 88px;
-    margin: 0 auto;
-}
-
-    .input-wrap .rz-numeric[b-i9md2k4r3s] {
-        width: 100% !important;
-        display: block;
-        height: 28px;
-    }
-
-    .input-wrap .rz-inputtext[b-i9md2k4r3s],
-    .input-wrap .rz-numeric-input[b-i9md2k4r3s],
-    .input-wrap input[b-i9md2k4r3s] {
-        width: 100% !important;
-        box-sizing: border-box;
-        text-align: right;
-        padding: 3px 5px !important;
-        height: 28px !important;
-        font-size: 12px;
-    }
-
-/* TOTAL - toplam satırı*/
-.total-row td[b-i9md2k4r3s] {
-    background: #c7d9e6; /* koyu mavi-gri */
-    font-weight: 700;
-    color: #1f3b57;
-}
-    .total-row td:first-child[b-i9md2k4r3s] {
-        background: #c7d9e6 !important;
-    }
-
-/*.total-row td {
-    background: linear-gradient(to bottom, #d6e7f3, #c4d9e8);
-}*/
-
-.status-text[b-i9md2k4r3s] {
-    margin-top: 8px;
-    color: #444;
-    font-size: 13px;
-}
-
-.error-box[b-i9md2k4r3s] {
-    margin-top: 8px;
-    color: #b00020;
-    background: #ffe9ec;
-    padding: 10px 12px;
-    border: 1px solid #ffc7cf;
-    border-radius: 6px;
-    font-size: 13px;
-}
-
-.payroll-actions[b-i9md2k4r3s] {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 16px;
-    margin-top: 4px;
-    margin-bottom: 0;
-    padding: 0;
-    flex: 0 0 auto;
-}
-
-    .payroll-actions .rz-button[b-i9md2k4r3s] {
-        margin: 0;
-    }
-
-/* SOL TARAF — Yasal açıklama / sorumluluk reddi (küçük, soluk, normal kalınlık) */
-.payroll-disclaimer[b-i9md2k4r3s] {
-    flex: 1 1 auto;
-    min-width: 0;
-    font-size: 11px;
-    font-weight: 400;
-    color: #6b7280; /* muted gri */
-    line-height: 1.4;
-    margin: 0;
-}
-
-    .payroll-disclaimer p[b-i9md2k4r3s] {
-        margin: 0 0 3px 0;
-        font-weight: 400;
-    }
-
-        .payroll-disclaimer p:last-child[b-i9md2k4r3s] {
-            margin-bottom: 0;
-        }
-
-/* SAĞ TARAF — Buton grubu: her zaman yatay, daralmaz, sarmaz */
-.payroll-buttons[b-i9md2k4r3s] {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-    white-space: nowrap;
 }
 /* /Pages/TaxPaymentPage/Page/ImportTaxPaymentsDialog.razor.rz.scp.css */
 .tax-import-dialog-content[b-9z6y6pa5xn] {

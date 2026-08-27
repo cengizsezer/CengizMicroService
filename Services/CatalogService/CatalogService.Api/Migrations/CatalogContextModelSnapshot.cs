@@ -727,6 +727,10 @@ namespace CatalogService.Api.Migrations
                     b.Property<bool>("AltHesapGerekli")
                         .HasColumnType("bit");
 
+                    b.Property<string>("AnaGruplar")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<byte>("EslesmeTuru")
                         .HasColumnType("tinyint");
 

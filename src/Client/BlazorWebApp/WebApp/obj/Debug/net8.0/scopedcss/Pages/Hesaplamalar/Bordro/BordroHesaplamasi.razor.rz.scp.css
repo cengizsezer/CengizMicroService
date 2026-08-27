@@ -1,0 +1,298 @@
+html[b-fw2jhspjsg], body[b-fw2jhspjsg] {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+body[b-fw2jhspjsg] {
+    overflow-x: hidden;
+}
+
+.payroll-page[b-fw2jhspjsg] {
+    height: 100vh;
+    background: #f3f3f3;
+    padding: 8px 0;
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.payroll-container[b-fw2jhspjsg] {
+    width: 100%;
+    max-width: 1680px;
+    height: calc(100vh - 16px);
+    margin: 0 auto;
+    padding: 0 10px 6px 10px;
+    font-family: Arial, sans-serif;
+    color: #222;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* LOGO + BAŞLIK */
+.payroll-header[b-fw2jhspjsg] {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 0 0 8px 0;
+    min-height: 58px;
+}
+
+.payroll-logo[b-fw2jhspjsg] {
+    height: 52px;
+    width: auto;
+    object-fit: contain;
+}
+
+.page-title[b-fw2jhspjsg] {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+    line-height: 1.1;
+}
+
+/* Eski bilgi alanlarını kapat */
+.payroll-top-text[b-fw2jhspjsg],
+.payroll-info-text[b-fw2jhspjsg] {
+    display: none !important;
+}
+
+/* Filtre alanı */
+.payroll-filters[b-fw2jhspjsg] {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px 14px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.filter-item[b-fw2jhspjsg] {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+    .filter-item label[b-fw2jhspjsg] {
+        font-size: 13px;
+        color: #333;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+.year-box[b-fw2jhspjsg] {
+    min-width: 110px;
+}
+
+.switch-item[b-fw2jhspjsg] {
+    min-width: 110px;
+}
+
+.switch-wrap[b-fw2jhspjsg] {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    white-space: nowrap;
+}
+
+.action-link a[b-fw2jhspjsg] {
+    color: #4a90e2;
+    text-decoration: none;
+    font-size: 14px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+[b-fw2jhspjsg] .pkf-switch.rz-switch.rz-state-active,
+[b-fw2jhspjsg] .pkf-switch.rz-switch.rz-state-active .rz-switch-slider,
+[b-fw2jhspjsg] .pkf-switch.rz-switch.rz-state-active .rz-switch-circle,
+[b-fw2jhspjsg] .pkf-switch.rz-switch.rz-state-active .rz-switch-handle {
+    background: #2ea3db !important;
+    border-color: #2ea3db !important;
+}
+
+/* TABLE WRAPPER */
+.table-wrapper[b-fw2jhspjsg] {
+    width: 100%;
+    flex: 0 0 auto;
+    min-height: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border: 1px solid #d8d8d8;
+    background: #f3f3f3;
+    margin-bottom: 6px;
+}
+
+/* TABLO */
+.payroll-table[b-fw2jhspjsg] {
+    width: 100%;
+    min-width: max-content;
+    border-collapse: collapse;
+    background: #f3f3f3;
+    table-layout: auto;
+    font-size: 13px;
+    margin-bottom: 0;
+}
+
+
+    /* HEADER */
+    .payroll-table th[b-fw2jhspjsg] {
+        background: #eef5fa; /* açık mavi */
+        color: #1f3b57;
+        font-weight: 700;
+        font-size: 11px;
+        padding: 5px 4px;
+        text-align: center;
+        vertical-align: middle;
+        border: 1px solid #c9ddea;
+        white-space: normal;
+        line-height: 1.15;
+    }
+
+
+    /* CELL */
+    .payroll-table td[b-fw2jhspjsg] {
+        padding: 4px 3px;
+        font-size: 11px;
+        text-align: center;
+        border: 1px solid #e0e0e0;
+        background: #f3f3f3;
+        white-space: nowrap;
+        line-height: 1.2;
+        height: 30px;
+    }
+
+        /* AY SÜTUNU */
+        .payroll-table td:first-child[b-fw2jhspjsg],
+        .payroll-table th:first-child[b-fw2jhspjsg] {
+            text-align: left;
+            background: #eef5fa;
+            width: 84px;
+            min-width: 84px;
+            max-width: 84px;
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        /* TUTAR SÜTUNU - sadece header ve veri satırları; total-row colspan="2" ile sarmaladığı için hariç tut */
+        .payroll-table th:nth-child(2)[b-fw2jhspjsg],
+        .payroll-table tbody tr:not(.total-row) td:nth-child(2)[b-fw2jhspjsg] {
+            width: 100px;
+            min-width: 100px;
+            max-width: 100px;
+        }
+
+    .payroll-table tbody tr:nth-child(even) td:not(:first-child)[b-fw2jhspjsg] {
+        background: #f7fafc;
+    }
+
+/* INPUT HÜCRESİ */
+.input-cell[b-fw2jhspjsg] {
+    text-align: center;
+    vertical-align: middle;
+    padding: 2px 4px !important;
+}
+
+.input-wrap[b-fw2jhspjsg] {
+    width: 88px;
+    margin: 0 auto;
+}
+
+    .input-wrap .rz-numeric[b-fw2jhspjsg] {
+        width: 100% !important;
+        display: block;
+        height: 28px;
+    }
+
+    .input-wrap .rz-inputtext[b-fw2jhspjsg],
+    .input-wrap .rz-numeric-input[b-fw2jhspjsg],
+    .input-wrap input[b-fw2jhspjsg] {
+        width: 100% !important;
+        box-sizing: border-box;
+        text-align: right;
+        padding: 3px 5px !important;
+        height: 28px !important;
+        font-size: 12px;
+    }
+
+/* TOTAL - toplam satırı*/
+.total-row td[b-fw2jhspjsg] {
+    background: #c7d9e6; /* koyu mavi-gri */
+    font-weight: 700;
+    color: #1f3b57;
+}
+    .total-row td:first-child[b-fw2jhspjsg] {
+        background: #c7d9e6 !important;
+    }
+
+/*.total-row td {
+    background: linear-gradient(to bottom, #d6e7f3, #c4d9e8);
+}*/
+
+.status-text[b-fw2jhspjsg] {
+    margin-top: 8px;
+    color: #444;
+    font-size: 13px;
+}
+
+.error-box[b-fw2jhspjsg] {
+    margin-top: 8px;
+    color: #b00020;
+    background: #ffe9ec;
+    padding: 10px 12px;
+    border: 1px solid #ffc7cf;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.payroll-actions[b-fw2jhspjsg] {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-top: 4px;
+    margin-bottom: 0;
+    padding: 0;
+    flex: 0 0 auto;
+}
+
+    .payroll-actions .rz-button[b-fw2jhspjsg] {
+        margin: 0;
+    }
+
+/* SOL TARAF — Yasal açıklama / sorumluluk reddi (küçük, soluk, normal kalınlık) */
+.payroll-disclaimer[b-fw2jhspjsg] {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 11px;
+    font-weight: 400;
+    color: #6b7280; /* muted gri */
+    line-height: 1.4;
+    margin: 0;
+}
+
+    .payroll-disclaimer p[b-fw2jhspjsg] {
+        margin: 0 0 3px 0;
+        font-weight: 400;
+    }
+
+        .payroll-disclaimer p:last-child[b-fw2jhspjsg] {
+            margin-bottom: 0;
+        }
+
+/* SAĞ TARAF — Buton grubu: her zaman yatay, daralmaz, sarmaz */
+.payroll-buttons[b-fw2jhspjsg] {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}

@@ -779,7 +779,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// Kural sonucunu üretir. Kural yalnız <b>ana grubu</b> veriyorsa
         /// (<see cref="SabitKural.AltHesapGerekli"/>) alt hesap kullanıcıdan beklenmeden
         /// önce unvanla aranır: arama uzayı yönün ana grubu (120/329) değil, <b>kuralın</b>
-        /// ana grubudur. "masraf ödemesi … İlyas Ömeroğlu hesabına" satırı böylece 195
+        /// ana grup kümesidir (<see cref="SabitKural.AnaGruplar"/> doluysa birden fazla
+        /// olabilir). "masraf ödemesi … İlyas Ömeroğlu hesabına" satırı böylece 195
         /// içindeki kişi muavinine iner; bulunamazsa satır eskisi gibi ana grupla onaya düşer.
         ///
         /// Arama <b>benzersiz önek</b> yöntemiyle yapılır, benzerlik skoruyla değil
@@ -818,10 +819,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 };
             }
 
+            var yedek = KuralYedekKodu(kural);
+
             return new EslestirmeSonuc
             {
-                HesapKodu = kural.HesapKodu,
-                HesapAdi = kural.HesapAdi,
+                HesapKodu = yedek.Kod,
+                HesapAdi = yedek.Ad,
                 // Yalnız ana grubu veren kuralda güven bildirilmez: kod eksik, kullanıcı tamamlayacak.
                 Guven = kural.AltHesapGerekli ? 0m : kural.Guven,
                 Katman = KaynakKatman.SabitKural,
@@ -829,6 +832,17 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 Durum = kural.AltHesapGerekli ? SatirDurum.OnayBekliyor : SatirDurum.Otomatik
             };
         }
+
+        /// <summary>
+        /// Alt hesap çözülemediğinde kutuda kalacak kod. Tek gruplu kuralda kuralın kendi
+        /// kodudur (195/196); <b>çoklu</b> gruplu kuralda kod önerilmez: "Avans" kuralı 195
+        /// ile 196'yı birlikte kapsıyorsa hangisinin kastedildiği bilinmiyor demektir,
+        /// ikisinden birini yazmak kullanıcıyı yanlış gruba yönlendirirdi.
+        /// </summary>
+        private static (string? Kod, string? Ad) KuralYedekKodu(SabitKural kural)
+            => kural.AltHesapGerekli && Normalizasyon.KuralAnaGruplari(kural.AnaGruplar, kural.HesapKodu).Count > 1
+                ? (null, null)
+                : (kural.HesapKodu, kural.HesapAdi);
 
         /// <summary>
         /// Verilen kapsamdaki ilk uyan kural. İşlem tipi kapsamında desen işlem tipi
@@ -938,17 +952,25 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// ONAYLA'ya basarken yanlış kişi kolayca gözden kaçıyor. Yakın isimli başka kişi
         /// <b>asla</b> önerilmez.
         ///
-        /// <b>Kural ana grubu tek başına kilitlemez.</b> Aynı isim başka bir grupta
-        /// <b>birebir</b> varsa (ABDULKADİR SAYICI planda gerçekten var, ama <c>331 02</c>
-        /// ortaklar altında) o da aday olur ve satır onaya düşer. Kural grubundaki adaylar
-        /// listenin başında durur.
+        /// <b>Kararı kuralın grubu verir.</b> Kural bir ana grup belirlediyse (196) o grup
+        /// içindeki aday sayısı belirleyicidir; aynı ismin <b>başka</b> gruplardaki birebir
+        /// karşılıkları (ÖMER CAN DİZDAR planda 195 iş avansında da var) alternatif olarak
+        /// listelenir ama otomatik çözümü <b>engellemez</b>. Engelleseydi maaş avansı ödenen
+        /// her personel — planda çoğunun 195'te de kaydı var — gereksiz yere onaya düşerdi.
+        ///
+        /// Kural birden fazla ana grup kapsıyorsa (<c>Avans → 195, 196</c>) grup içi sayım
+        /// grupların <b>toplamı</b> üzerinden yapılır: tamamında tek aday varsa otomatik,
+        /// birden fazlaysa onaya düşer.
         ///
         /// Karar:
         /// <list type="bullet">
-        /// <item>Ad + soyad (≥2 kelime) verilmiş, grup içinde <b>tek</b> eşleşme var ve başka
-        /// grupta karşılığı yok → otomatik.</item>
-        /// <item>Birden fazla eşleşme, ya da başka grupta da karşılık var → satır onaya düşer,
+        /// <item>Ad + soyad (≥2 kelime) verilmiş ve kural grup(lar)ında <b>tam bir</b>
+        /// eşleşme var → otomatik.</item>
+        /// <item>Kural grubunda <b>iki veya daha fazla</b> eşleşme → satır onaya düşer,
         /// hepsi aday listelenir.</item>
+        /// <item>Kural grubunda <b>sıfır</b> eşleşme ama başka grupta karşılık var
+        /// (ABDULKADİR SAYICI yalnız <c>331 02</c> ortaklar altında) → satır onaya düşer,
+        /// o karşılıklar aday listelenir.</item>
         /// <item>Tek kelimelik isim (<c>İlyas</c>) → hiçbir zaman otomatik değil; planda
         /// <c>İlyas Ömeroğlu</c> ve <c>İlyas Yücel</c> birlikte olabiliyor.</item>
         /// <item>Hiç eşleşme yok → <c>null</c>; çağıran satırı ana grupla (195) onaya düşürür,
@@ -961,23 +983,31 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             if (isim.Length == 0) return null;
 
             var kelimeSayisi = isim.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
-            var anaGrup = Normalizasyon.AnaGrup(kural.HesapKodu);
-            if (anaGrup.Length == 0) return null;
+            var kuralGruplari = Normalizasyon.KuralAnaGruplari(kural.AnaGruplar, kural.HesapKodu);
+            if (kuralGruplari.Count == 0) return null;
 
-            var grupIci = OnekleBaslayanlar(veri.Indeks, anaGrup, isim);
-            var digerGruplar = DigerGruplardakiTamEslesmeler(veri.Indeks, anaGrup, isim);
+            var grupIci = new List<HesapPlaniKaydi>();
+            foreach (var grup in kuralGruplari)
+                grupIci.AddRange(OnekleBaslayanlar(veri.Indeks, grup, isim));
+
+            var digerGruplar = DigerGruplardakiTamEslesmeler(veri.Indeks, kuralGruplari, isim);
 
             if (grupIci.Count == 0 && digerGruplar.Count == 0) return null;
 
-            // Tek belirgin kişi: ad + soyad verilmiş, grup içinde tek eşleşme, başka grupta
-            // karşılığı yok. "Mesut Aktaş", "Eda Budak", "İlyas Ömeroğlu" böyle çözülür.
-            if (kelimeSayisi >= 2 && grupIci.Count == 1 && digerGruplar.Count == 0)
+            // Kuralın grup(lar)ında TEK aday: ad + soyad verilmişse otomatik seçilir.
+            // "Mesut Aktaş", "Eda Budak", "Ömer Can Dizdar" böyle çözülür.
+            if (kelimeSayisi >= 2 && grupIci.Count == 1)
                 return new EslestirmeSonuc
                 {
                     HesapKodu = grupIci[0].Kod,
                     HesapAdi = grupIci[0].Ad,
                     Guven = OnekGuveni,
                     Katman = KaynakKatman.SabitKural,
+                    // Başka gruplardaki aynı isimli kayıtlar alternatif olarak saklanır ama
+                    // otomatik çözümü ENGELLEMEZ: kural ana grubu belirlemiştir ve o grupta
+                    // tek aday vardır. Aksi hâlde planda hem 196'da (maaş avansı) hem 195 /
+                    // 335'te kaydı olan her personel gereksiz yere onaya düşerdi.
+                    Adaylar = AlternatifAdaylar(grupIci[0], digerGruplar),
                     Durum = SatirDurum.Otomatik
                 };
 
@@ -986,12 +1016,14 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             foreach (var hesap in digerGruplar) AdayEkle(adaylar, hesap.Kod, hesap.Ad);
             adaylar = adaylar.Take(EnFazlaAday).ToList();
 
+            var yedek = KuralYedekKodu(kural);
+
             return new EslestirmeSonuc
             {
                 // Kod önerilmez: kutuda kuralın ana grubu kalır, kişiyi kullanıcı seçer.
                 // Yanlış kişiyi önermektense alt hesabı boş bırakmak yeğdir.
-                HesapKodu = kural.HesapKodu,
-                HesapAdi = kural.HesapAdi,
+                HesapKodu = yedek.Kod,
+                HesapAdi = yedek.Ad,
                 Guven = 0m,
                 Katman = KaynakKatman.SabitKural,
                 Adaylar = adaylar,
@@ -1000,6 +1032,23 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 IkinciAdaySkoru = adaylar.Count > 1 ? adaylar[1].Skor : null,
                 Durum = SatirDurum.OnayBekliyor
             };
+        }
+
+        /// <summary>
+        /// Otomatik seçilen hesap + başka gruplardaki aynı isimli karşılıklar. Yalnız
+        /// alternatif varken doldurulur: tek adaylı satırda aday listesi taşımanın anlamı
+        /// yok, dışa aktarımdaki "AdaySayisi" kolonu da gereksiz yere kabarırdı.
+        /// </summary>
+        private static List<AdayKayit> AlternatifAdaylar(
+            HesapPlaniKaydi secilen, IReadOnlyList<HesapPlaniKaydi> digerGruplar)
+        {
+            if (digerGruplar.Count == 0) return new List<AdayKayit>();
+
+            var adaylar = new List<AdayKayit>();
+            AdayEkle(adaylar, secilen.Kod, secilen.Ad);
+            foreach (var hesap in digerGruplar) AdayEkle(adaylar, hesap.Kod, hesap.Ad);
+
+            return adaylar.Take(EnFazlaAday).ToList();
         }
 
         /// <summary>
@@ -1021,14 +1070,14 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         /// meşrudur, yoksa her avans satırına ilgisiz cariler eklenirdi.
         /// </summary>
         private static List<HesapPlaniKaydi> DigerGruplardakiTamEslesmeler(
-            HesapPlaniIndeksi indeks, string anaGrup, string isim)
+            HesapPlaniIndeksi indeks, IReadOnlyList<string> kuralGruplari, string isim)
         {
             var ilkKelime = isim.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
             var sonuc = new List<HesapPlaniKaydi>();
 
             foreach (var grup in CariOnekIndeksi.CariGruplari)
             {
-                if (string.Equals(grup, anaGrup, StringComparison.Ordinal)) continue;
+                if (kuralGruplari.Contains(grup, StringComparer.Ordinal)) continue;
 
                 foreach (var hesap in indeks.CipaylaBaslayanlar(grup, ilkKelime))
                     if (string.Equals(hesap.NormalizeAd, isim, StringComparison.Ordinal))

@@ -472,6 +472,10 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public string? IslemKategorisiAdi { get; set; }
         public bool UnvanCikarilsin { get; set; }
         public bool AltHesapGerekli { get; set; }
+
+        /// <summary>Kuralın kapsadığı ana gruplar ("195, 196"); tek gruplu kuralda boş.</summary>
+        public string? AnaGruplar { get; set; }
+
         public int Sira { get; set; }
         public bool Aktif { get; set; }
     }
@@ -492,6 +496,13 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public int? IslemKategorisiId { get; set; }
         public bool UnvanCikarilsin { get; set; } = true;
         public bool AltHesapGerekli { get; set; }
+
+        /// <summary>
+        /// Virgülle ayrılmış ana gruplar ("195, 196"). Boş bırakılırsa kural tek gruplu
+        /// kalır. Yalnız <see cref="AltHesapGerekli"/> açıkken doldurulabilir.
+        /// </summary>
+        public string? AnaGruplar { get; set; }
+
         public int Sira { get; set; }
         public bool Aktif { get; set; } = true;
     }

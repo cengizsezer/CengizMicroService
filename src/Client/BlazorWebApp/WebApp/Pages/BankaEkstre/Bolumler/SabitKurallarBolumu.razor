@@ -100,7 +100,9 @@
                         @kayit.ParserAdi
                     }
                 </span>
-                <span class="sk-kod">@kayit.HesapKodu</span>
+                <span class="sk-kod" title="@(kayit.AnaGruplar is null ? kayit.HesapKodu : $"Ana gruplar: {kayit.AnaGruplar}")">
+                    @(kayit.AnaGruplar ?? kayit.HesapKodu)
+                </span>
                 <span class="sk-ad" title="@kayit.HesapAdi">@(kayit.HesapAdi ?? "—")</span>
                 <span class="sk-yon">@BankaEkstreEtiket.KuralYonu(kayit.Yon)</span>
                 <span class="sk-bayrak" title="Kural tuttuğunda çıkarılan unvan cari sayılsın mı">
@@ -198,7 +200,19 @@
                     <RadzenCheckBox TValue="bool" @bind-Value="_form.AltHesapGerekli" Name="skAlt" />
                     <label for="skAlt">Kural yalnız ana grubu belirliyor</label>
                 </div>
-                <span class="sk-ipucu">Muavin bu grubun içinde aranır; bulunamazsa satır onaya düşer.</span>
+                <span class="sk-ipucu">
+                    Muavin bu grubun içinde aranır. Grupta <b>tam bir</b> aday varsa satır otomatik
+                    çözülür; sıfır ya da birden fazlaysa onaya düşer.
+                </span>
+            </div>
+            <div class="sk-alan">
+                <label>Ana gruplar</label>
+                <RadzenTextBox @bind-Value="_form.AnaGruplar" Placeholder="195, 196"
+                               Disabled="@(!_form.AltHesapGerekli)" />
+                <span class="sk-ipucu">
+                    Kural birden fazla grubu kapsıyorsa (genel "Avans" hem iş hem maaş avansı olabilir)
+                    grupları virgülle yazın. Boş bırakılırsa yalnız hesap kodunun grubu taranır.
+                </span>
             </div>
             <div class="sk-alan">
                 <label>Durum</label>
@@ -358,6 +372,7 @@
                 HesapAdi = kayit.HesapAdi,
                 UnvanCikarilsin = kayit.UnvanCikarilsin,
                 AltHesapGerekli = kayit.AltHesapGerekli,
+                AnaGruplar = kayit.AnaGruplar,
                 IslemKategorisiId = kayit.IslemKategorisiId,
                 Sira = kayit.Sira,
                 Aktif = kayit.Aktif
@@ -391,6 +406,9 @@
 
         _form.ParserTipi = _parserSecimi;
         _form.Yon = _yonSecimi == 0 ? null : (Yon)_yonSecimi;
+        // Kutu "alt hesap gerekli" kapatılınca kilitleniyor ama içindeki metin ekranda
+        // kalabiliyor; sunucu bu ikiliyi reddediyor. Kaydederken sessizce temizlenir.
+        if (!_form.AltHesapGerekli) _form.AnaGruplar = null;
 
         _kaydediyor = true;
         var (_, hata) = _duzenlenenId is int id

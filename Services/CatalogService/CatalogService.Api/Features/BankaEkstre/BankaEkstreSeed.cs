@@ -321,7 +321,8 @@ namespace CatalogService.Api.Features.BankaEkstre
                 EslesmeTuru tur = EslesmeTuru.Tam,
                 KuralKapsami kapsam = KuralKapsami.IslemTipi,
                 bool unvanCikarilsin = true,
-                bool altHesapGerekli = false)
+                bool altHesapGerekli = false,
+                string? anaGruplar = null)
             {
                 sira += 10;
                 if (!kayitli.Add(desen)) return;
@@ -337,6 +338,7 @@ namespace CatalogService.Api.Features.BankaEkstre
                     Guven = 0.95m,
                     UnvanCikarilsin = unvanCikarilsin,
                     AltHesapGerekli = altHesapGerekli,
+                    AnaGruplar = anaGruplar,
                     Sira = sira,
                     Aktif = true
                 });
@@ -346,20 +348,28 @@ namespace CatalogService.Api.Features.BankaEkstre
             // önce çalışır. Karşı taraf bir cari değil, ödeme yapılan kişidir; bu yüzden
             // unvan çıkarılmaz (çıkarılsaydı unvan benzerliği katmanı kişiyi 329 altında
             // bir cariye eşlerdi) ve yalnız ana grup verilir — kişi muavinini kullanıcı seçer.
-            void Avans(string desen, string kod, string ad, EslesmeTuru tur = EslesmeTuru.Icerir)
-                => Ekle(desen, kod, ad, tur, KuralKapsami.Aciklama, unvanCikarilsin: false, altHesapGerekli: true);
+            void Avans(string desen, string kod, string ad, EslesmeTuru tur = EslesmeTuru.Icerir,
+                       string? anaGruplar = null)
+                => Ekle(desen, kod, ad, tur, KuralKapsami.Aciklama, unvanCikarilsin: false,
+                        altHesapGerekli: true, anaGruplar: anaGruplar);
 
             // Kodlar boşluklu ORKA formatında; ana hesap seviyesinde bırakıldı, muavin
             // kırılımı firmadan firmaya değiştiği için arayüzden düzenlenmeli.
 
             // Sıra önemli: "Maaş Avansı" tek başına "Avans"tan önce denenmeli, yoksa genel
-            // desen tutar ve 196 yerine ayrıştırılamayan bir grup seçilirdi.
+            // desen tutar ve 196 yerine ayrıştırılamayan bir grup seçilirdi. Sıra numaraları
+            // Ekle içinde onar onar artıyor: İş Avansı 10, İş Avans 20, Masraf Ödemesi 30,
+            // Maaş Avansı 40, genel Avans 50 — dar ifadelerin hepsi genelden önce.
             Avans("İş Avansı", "195", "İş Avansları");
             // Gerçek dosyada kısaltılmış hâli de geçiyor ("İş Avans").
             Avans("İş Avans", "195", "İş Avansları");
             Avans("Masraf Ödemesi", "195", "İş Avansları");
             Avans("Maaş Avansı", "196", "Personel Avansları");
-            Avans("Avans", "196", "Personel Avansları");
+            // Genel "Avans": hangi avans olduğunu söylemiyor, iş avansı da olabilir maaş
+            // avansı da. Bu yüzden tek grup değil, İKİ ana grup birden taranır; ikisinin
+            // toplamında tek kişi muavini varsa satır otomatik çözülür, birden fazlaysa
+            // hepsi aday olarak onaya düşer.
+            Avans("Avans", "196", "Personel Avansları", anaGruplar: "195, 196");
 
             // Banka masrafı sayılan işlemlerin tamamı banka komisyonu muavinine gider:
             // MKK masrafı, kambiyo muamele vergisi, DIT yp transfer, komisyon ve BSMV.
@@ -383,6 +393,33 @@ namespace CatalogService.Api.Features.BankaEkstre
             Ekle("Masraf", "770", "Genel Yönetim Giderleri", EslesmeTuru.Icerir);
             Ekle("HGS Bakiye Yükle", "740", "Hizmet Üretim Maliyeti");
             Ekle("Otoyolu Bakiye Yükle", "740", "Hizmet Üretim Maliyeti", EslesmeTuru.Icerir);
+
+            await GenelAvansiCokGruplaYukseltAsync(db, ct);
+        }
+
+        /// <summary>
+        /// Genel "Avans" kuralı çoklu ana gruptan önce kurulmuş veritabanlarında tek gruplu
+        /// (196) duruyor. Seed mevcut kayıtların üzerine yazmaz — kullanıcı düzenlemesi
+        /// korunsun diye — ama bu satırın tek gruplu kalması kuralın <b>eksik</b> çalışması
+        /// demek: iş avansı da olabilen genel bir avans satırında 195 hiç taranmaz.
+        ///
+        /// Bu yüzden tek seferlik, <b>dar</b> bir yükseltme yapılır: kayıt hâlâ seed'in
+        /// bıraktığı hâldeyse (kod 196, liste boş, alt hesap bekleniyor) listeye "195, 196"
+        /// yazılır. Kullanıcı kodu ya da listeyi elle değiştirdiyse kayda dokunulmaz.
+        /// </summary>
+        private static async Task GenelAvansiCokGruplaYukseltAsync(CatalogContext db, CancellationToken ct)
+        {
+            const string genelAvans = "Avans";
+
+            var kayit = await db.EkstreSabitKurallar.FirstOrDefaultAsync(
+                k => k.ParserTipi == Vakifbank &&
+                     k.IslemTipiDeseni == genelAvans &&
+                     k.Kapsam == KuralKapsami.Aciklama &&
+                     k.AltHesapGerekli &&
+                     k.HesapKodu == "196" &&
+                     k.AnaGruplar == null, ct);
+
+            if (kayit is not null) kayit.AnaGruplar = "195, 196";
         }
 
         // ---- Vergi kodu eşlemeleri ----

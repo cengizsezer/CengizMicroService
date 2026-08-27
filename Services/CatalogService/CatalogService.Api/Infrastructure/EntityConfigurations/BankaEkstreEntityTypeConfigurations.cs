@@ -319,6 +319,8 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(x => x.IslemTipiDeseni).IsRequired().HasMaxLength(200);
             builder.Property(x => x.HesapKodu).IsRequired().HasMaxLength(30);
             builder.Property(x => x.HesapAdi).HasMaxLength(200);
+            // Virgülle ayrılmış ana grup listesi ("195, 196"); boş = tek gruplu kural.
+            builder.Property(x => x.AnaGruplar).HasMaxLength(200);
             builder.Property(x => x.Guven).HasColumnType("decimal(5,4)");
 
             // Sütun varsayılanı KASITLI tanımlanmadı: KuralKapsami'nin CLR varsayılanı 0,

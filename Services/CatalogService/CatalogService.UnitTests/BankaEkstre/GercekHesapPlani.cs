@@ -136,6 +136,21 @@ namespace CatalogService.UnitTests.BankaEkstre
                 // Kural 195'e kilitlerse bu kayıt hiç bulunamaz (Tur 3, madde 1).
                 Kayit("331 02", "Abdulkadir Sayıcı"),
 
+                // --- Maaş avansı muavinleri (Tur 4: kural grubu önceliği) ---
+                // Dosyanın sonundaki dört MAAŞ AVANSI satırının gerçek karşılıkları.
+                // Ömer Can Dizdar planda ÜÇ kez var; kural 196 dediği ve o grupta tam bir
+                // tane aday olduğu için satır otomatik çözülmeli — 195 ve 335'teki kayıtlar
+                // alternatif olarak kalır ama engellemez.
+                Kayit("196 03 25 O04", "Ömer Can Dizdar"),
+                Kayit("195 01 O09", "Ömer Can Dizdar"),
+                Kayit("335 01 O09", "Ömer Can Dizdar"),
+
+                // Aynı kişinin kural grubunda İKİ kaydı var: ayırt edilemez, onaya düşer.
+                Kayit("196 03 25 E01", "Emirhan Özer"),
+                Kayit("196 IU 77", "Emirhan Özer"),
+                // "Emirhan Özdemir" bilerek YOK: planda karşılığı olmayan kişi için yakın
+                // isimli "Emirhan Özer" önerilmemeli.
+
                 // --- Banka masrafı kurallarının hedefi (Tur 3, madde 4) ---
                 Kayit("770 03 005", "Banka Komisyonu"),
 

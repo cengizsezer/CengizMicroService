@@ -1,0 +1,19 @@
+@page "/payroll-calculator"
+
+@inject NavigationManager Nav
+
+@*
+    Bordro hesaplayıcısının eski adresi. Sayfa uygulamanın dışında, girişin arkasında
+    olmadan bu adreste duruyordu; kayıtlı bağlantılar ve tarayıcı yer imleri kırılmasın
+    diye rota duruyor, içerik yok — yalnız yeni adrese yönlendiriyor.
+
+    Yönlendirme bir açık kapı DEĞİL: hedef sayfa [Authorize] taşıyor, girişsiz gelen
+    kullanıcı oradan login'e düşer. Anonim erişimin kendisi kaldırıldı (KARARLAR §78).
+
+    replace: true — geri düğmesi eski adrese dönüp sonsuz yönlendirme kurmasın.
+*@
+
+@code {
+    protected override void OnInitialized()
+        => Nav.NavigateTo(HesaplamaSekmesi.Varsayilan.Yol, forceLoad: false, replace: true);
+}

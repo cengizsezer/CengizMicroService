@@ -323,6 +323,44 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         }
 
         /// <summary>
+        /// Virgülle ayrılmış ana grup listesini ayrıştırır: <c>"195, 196"</c> → <c>["195","196"]</c>.
+        /// Her parça ana gruba indirgenir (<c>"195 01"</c> → <c>"195"</c>) — kullanıcı kutuya
+        /// tam kod yazarsa da kural çalışır. Tekrarlar ilk görüldükleri sırada tekilleştirilir.
+        /// </summary>
+        public static List<string> AnaGruplariAyir(string? metin)
+        {
+            var sonuc = new List<string>();
+            if (string.IsNullOrWhiteSpace(metin)) return sonuc;
+
+            foreach (var parca in metin.Split(AnaGrupAyraclari, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var grup = AnaGrup(parca);
+                if (grup.Length > 0 && !sonuc.Contains(grup, StringComparer.Ordinal)) sonuc.Add(grup);
+            }
+
+            return sonuc;
+        }
+
+        /// <summary>Ana grup listesinin saklama ve gösterim biçimi: <c>"195, 196"</c>.</summary>
+        public static string AnaGruplariBirlestir(IEnumerable<string> gruplar) => string.Join(", ", gruplar);
+
+        /// <summary>
+        /// Bir sabit kuralın alt hesap araması yapacağı ana grup kümesi. Kuralda ana grup
+        /// listesi tanımlıysa o kullanılır; tanımlı değilse küme, hesap kodunun tek ana
+        /// grubudur — çoklu grup gelmeden önceki davranış aynen korunur.
+        /// </summary>
+        public static List<string> KuralAnaGruplari(string? anaGruplar, string? hesapKodu)
+        {
+            var tanimli = AnaGruplariAyir(anaGruplar);
+            if (tanimli.Count > 0) return tanimli;
+
+            var tek = AnaGrup(hesapKodu);
+            return tek.Length == 0 ? new List<string>() : new List<string> { tek };
+        }
+
+        private static readonly char[] AnaGrupAyraclari = { ',', ';' };
+
+        /// <summary>
         /// Ana gruptan sonraki ilk harf, ör. "120 D22" → "D", "329 K08" → "K".
         /// Cari kodları unvanın ilk harfiyle başladığı için arama uzayı bununla daralır.
         /// </summary>

@@ -999,3 +999,200 @@ Tamamı geçiyor, mevcut testlerin hiçbiri değişmedi.
 - Kategorisi olmayan kurallar görünümde ayrı bir satırda listelenmiyor, yalnız sayısı
   özet satırında yazıyor.
 
+---
+
+# Kural grubu önceliği + çoklu ana grup
+
+Sabit kural bir ana grup belirlediğinde (`MAAŞ AVANSI → 196`), grup içindeki alt hesap
+araması diğer gruplardaki aynı isimli kayıtları da **eşit aday** sayıyor ve satır
+gereksiz yere onaya düşüyordu. Gerçek örnek — `MAAŞ AVANSI … ÖMER CAN DİZDAR hesabına
+giden FAST ödemesi`; kişi planda üç kez var:
+
+```
+195 01 O09       Ömer Can Dizdar     (iş avansı)
+196 03 25 O04    Ömer Can Dizdar     (maaş avansı)   ← kuralın grubu
+335 01 O09       Ömer Can Dizdar     (personele borçlar)
+```
+
+## 1. Kararı kuralın grubu veriyor
+
+Kural bir ana grup belirlediyse **o gruptaki aday sayısı** belirleyici:
+
+| Kuralın grubunda | Sonuç |
+|---|---|
+| tam **bir** aday | **Otomatik.** Diğer gruplardaki karşılıklar alternatif olarak saklanır, engellemez |
+| **sıfır** aday | Onaya düşer; diğer gruplardaki karşılıklar aday listelenir |
+| **iki veya daha fazla** | Onaya düşer; hepsi aday listelenir |
+
+Tek kelimelik isimde (`İlyas`) hiçbir zaman otomatik seçim yapılmıyor — bu kural değişmedi.
+
+## 2. Kural birden fazla ana grup kapsayabiliyor
+
+`SabitKural.AnaGruplar` (yeni, nullable): virgülle ayrılmış grup listesi (`195, 196`).
+Doluysa alt hesap araması bu grupların **tamamında** yapılır ve sayım toplamı üzerinden
+karar verilir. Boşsa küme, `HesapKodu`'nun tek ana grubudur — eski davranış aynen.
+
+Alan yalnız "kural yalnız ana grubu belirliyor" işaretliyken doldurulabiliyor; başka bir
+kuralda yazılırsa sessizce yok sayılmıyor, hata veriliyor. Çoklu gruplu kuralda aday
+bulunamazsa **kod önerilmiyor**: 195 mi 196 mı bilinmiyorsa birini yazmak kullanıcıyı
+yanlış gruba yönlendirirdi.
+
+Seed: `İş Avansı → 195` ve `Maaş Avansı → 196` **tek gruplu kaldı**, genel `Avans` kuralı
+`195, 196` oldu. Sıra numaraları zaten doğruydu (İş Avansı 10, İş Avans 20, Masraf Ödemesi
+30, Maaş Avansı 40, genel Avans 50) — dar ifadeler genelden önce; test bunu sabitliyor.
+Çoklu gruptan önce kurulmuş veritabanlarındaki `Avans` satırı için **dar** bir tek seferlik
+yükseltme var: kayıt hâlâ seed'in bıraktığı hâldeyse (kod 196, liste boş) listeye
+`195, 196` yazılır, kullanıcı düzenlediyse dokunulmaz.
+
+## Veritabanı
+
+`Migrations/20260827172923_BankaOtomasyonKuralAnaGruplari` — `catalog.EkstreSabitKurallar`
+tablosuna nullable `AnaGruplar nvarchar(200)`. Migration üretildi ve **uygulandı**.
+
+## Arayüz
+
+Sabit Kurallar bölümüne "Ana gruplar" alanı eklendi (yalnız "alt hesap gerekli" açıkken
+etkin); listede hesap kodu kolonu çoklu gruplu kuralda grup listesini gösteriyor. **Sıra
+kolonu zaten düzenlenebilirdi** (form içindeki `Sıra` sayısal alanı) — doğrulandı, değişmedi.
+
+## Gerçek dosyayla ölçüm
+
+Depo kökündeki gerçek Vakıfbank ekstresi (287 satır), fikstür planına dört senaryonun
+gerçek ORKA kayıtları eklenerek, önce/sonra:
+
+```
+Otomatik      62 → 63
+Onay bekliyor 102 → 101
+Çözülemedi    123 → 123
+```
+
+Fark tam olarak **bir satır** — düzeltmenin hedefi olan satırın kendisi. Dört senaryonun
+dördü de bu dosyanın 286–289. satırlarında duruyor ve hepsi beklendiği gibi davranıyor:
+
+| Satır | Kural grubu | Grup içi aday | Sonuç |
+|---|---|---|---|
+| `ÖMER CAN DİZDAR` | 196 | 1 (`196 03 25 O04`) | **Otomatik** → `196 03 25 O04`; `195 01 O09` alternatif |
+| `emirhan özer` | 196 | 2 (`196 03 25 E01`, `196 IU 77`) | Onaya düşüyor, ikisi de aday |
+| `ABDULKADİR SAYICI` | 195 | 0 (yalnız `331 02` var) | Onaya düşüyor, `331 02` aday |
+| `EMİRHAN ÖZDEMİR` (2 satır) | 196 | 0 (planda yok) | Onaya düşüyor, öneri yok |
+
+Regresyon: ad + soyadı geçen diğer satırlar eskisi gibi otomatik çözülüyor
+(`Mesut Aktaş` → `195 01 M05`, `İlyas Ömeroğlu` → `195 01 H13`, `Eda Budak` → `195 01 E03`,
+`Dilara Kaya` → `195 01 D06`), `dilara sager` ve tek kelimelik `İlyas` satırları hâlâ
+öneri almıyor.
+
+**Ofis planıyla ölçüm ayrıca yapılmalı:** depoda 88 kayıtlık fikstür var, gerçek plan
+6.128 kayıt. Mekanizma plandan bağımsız ama toplam sayılar ancak orada anlamlı.
+
+## Testler
+
+| Test | Ne doğruluyor |
+|---|---|
+| `CatalogService.UnitTests/BankaEkstre/KuralGrubuOnceligiTests` (21) | Dört senaryo (birim + gerçek dosya uçtan uca); çoklu grupta toplam tek aday otomatik, birden fazlası onaya; çoklu grupta aday yoksa kod önerilmiyor; kural kümesi dışındaki grup sayıma girmiyor; tek kelimelik isim otomatik değil; seed sırası ve `195, 196`; tek gruplu eski kaydın yükseltilmesi ve kullanıcı düzenlemesinin korunması; ana grup listesinin normalize edilmesi ve geçersiz kullanımın reddi |
+
+Sayı: `CatalogService.UnitTests` 494 → **515**. Tamamı geçiyor; **mevcut testlerin hiçbiri
+değiştirilmedi**. `GercekHesapPlani` fikstürüne dört senaryonun gerçek ORKA kayıtları
+eklendi (196 grubu daha önce fikstürde hiç yoktu).
+
+## Ne eksik kaldı
+
+- **Ekranlar tarayıcıda denenmedi:** "Ana gruplar" alanının kilidi, listedeki grup
+  gösterimi. Sunucu tarafı testli.
+- **Ana grup listesi hesap planına karşı doğrulanmıyor.** Gruplar (195/196) plan kaydı
+  değil, kod öneki; var olmayan bir grup yazılırsa kural o grupta hiç aday bulamaz —
+  hata vermez, sessizce boş döner.
+- **Çoklu grup yalnız genel `Avans` kuralında kullanılıyor.** Başka kurallara gerekirse
+  arayüzden eklenir; kod değişmez.
+
+---
+
+# Bordro hesaplayıcısı Hesaplamalar'ın altına taşındı
+
+Sayfa `/payroll-calculator` adresinde, **girişin dışında**, uygulamanın menüsü ve
+kullanıcısı olmayan ayrı bir kabukta duruyordu. Artık uygulamanın içinde, kimlik
+doğrulamasının arkasında.
+
+## Anonim erişim nasıl kurulmuştu (ve nasıl kapatıldı)
+
+Tek bir bayrak değildi; beş ayrı yerde birden. Tespitlerin tamamı **KARARLAR §78**'de:
+
+| Ne vardı | Ne oldu |
+|---|---|
+| `@page "/payroll-calculator"`, `[Authorize]` yok | Rota eski adres yönlendirmesine indi; içerik `[Authorize]`'lu sayfada |
+| `@layout PublicPayrollLayout` | Kaldırıldı; standart `MainLayout` |
+| `Pages/Payroll/Layout/PublicPayrollLayout.razor` (+ `.css`) | **Silindi** |
+| `[Route("api/public/payroll")] [AllowAnonymous]` | `[Route("api/catalog/payroll")] [Authorize]`; sınıf `PayrollController` |
+| Ocelot'ta yetkisiz `/api/public/payroll/{everything}` rotası | **Üç yapılandırmadan da silindi** (`ocelot.json`, `.Docker.json`, `.Development.json`) |
+
+En kritik ayrıntı: CatalogService'te global bir yetki politikası yok — korunan 39
+controller'ın hepsi yetkiyi kendi `[Authorize]`'ıyla alıyor. `[AllowAnonymous]`'u sadece
+silmek controller'ı **herkese açık bırakırdı**; yerine açıkça `[Authorize]` kondu.
+
+Anonim erişime özel bir CORS istisnası, ayrı bir HttpClient ya da nginx kuralı **yoktu**
+(arandı). `PayrollApiService` zaten token gönderen `ApiGatewayCorridor` istemcisini
+kullanıyordu — token isteniyor değildi, o kadar. Bu yüzden DI'ya dokunulmadı, yalnız
+temel yol `/api/public/payroll` → `/catalog/payroll` oldu.
+
+## Yeni yapı
+
+```
+Menü:  Hesaplamalar (/hesaplamalar)
+         └── Bordro Hesaplaması (/hesaplamalar/bordro)
+```
+
+`Pages/Hesaplamalar/`
+- `HesaplamaSekmesi.cs` — sekme **kayıt listesi**: slug, başlık, ikon, bileşen tipi
+- `HesaplamalarPage.razor` — `@page "/hesaplamalar"` + `@page "/hesaplamalar/{Slug}"`,
+  `[Authorize]`; şeridi listeden üretir, aktif sekmeyi `<DynamicComponent>` ile basar
+- `EskiRotaYonlendirme.razor` — `/payroll-calculator` → `/hesaplamalar/bordro`
+- `Bordro/` — taşınan bordro modülünün tamamı
+
+**Yeni sekme eklemek:** bir Razor bileşeni yazın (kendi `@page`'i olmasın) ve
+`HesaplamaSekmesi.Hepsi` listesine bir satır ekleyin. Sayfa iskeleti değişmez
+(KARARLAR §79). Banka Otomasyon'un şeridi sekmeleri elle yazıyor; burada büyüme
+beklendiği için kalıp bir adım ileri taşındı.
+
+`/hesaplamalar` kökü ilk sekmeye `replace: true` ile yönleniyor — aynı ekranın iki adresi
+olmasın. Tanınmayan slug hata vermiyor, şerit çizilip "sekme bulunamadı" yazıyor.
+
+## Taşınan dosyalar
+
+`Pages/Payroll/` → `Pages/Hesaplamalar/Bordro/` (klasör tamamen kalktı):
+
+| Eski | Yeni |
+|---|---|
+| `Payroll/Page/PayrollCalculator.razor(.css)` | `Hesaplamalar/Bordro/BordroHesaplamasi.razor(.css)` |
+| `Payroll/Component/` (3 bileşen) | `Hesaplamalar/Bordro/Component/` |
+| `Payroll/Model/` (11 dosya) | `Hesaplamalar/Bordro/Model/` |
+| `Payroll/Services/` (`IPayrollApiService`, `PayrollApiService`) | `Hesaplamalar/Bordro/Services/` |
+| `Payroll/PayrollDisclaimerTexts.cs` | `Hesaplamalar/Bordro/PayrollDisclaimerTexts.cs` |
+| `Payroll/Layout/PublicPayrollLayout.razor(.css)` | **silindi** |
+
+Ad alanı `WebApp.Pages.Payroll.*` → `WebApp.Pages.Hesaplamalar.Bordro.*` (17 dosya).
+Sınıf adları ve **hesaplama mantığı değişmedi**; taşınan bileşenden yalnız `@layout`,
+`@page` ve `<PageTitle>` satırları çıkarıldı (başlığı artık sayfa iskeleti veriyor).
+
+Sunucu tarafında `Features/Payroll/` altındaki komut/sorgu/servis/entity katmanlarının
+**hiçbirine dokunulmadı**; yalnız controller'ın rotası, yetki bayrağı ve adı değişti.
+
+## Testler
+
+`CatalogService.UnitTests` **515**, `WebApp.UnitTests` **50** — ikisi de tamamen geçiyor,
+**hiçbir test değiştirilmedi**. WebApp, CatalogService.Api ve Web.ApiGateway temiz
+derleniyor; üç ocelot yapılandırması da geçerli JSON ve artık `public` rota içermiyor.
+
+## Ne eksik kaldı
+
+- **Tarayıcıda denenmedi** (bUnit yok). Elle bakılacaklar: menüdeki Hesaplamalar başlığı
+  ve alt sekme, `/hesaplamalar` → `/hesaplamalar/bordro` yönlendirmesi, eski
+  `/payroll-calculator` yer iminin çalışması, bordro ekranının `MainLayout` içinde
+  bozulmadan görünmesi (eski kabuk tam sayfaydı).
+- **Bordro CSS'i taşınırken sadeleştirilmedi.** `BordroHesaplamasi.razor.css` hâlâ
+  `html, body { overflow: hidden }` ile başlıyor; Blazor CSS izolasyonu bunu bileşene
+  kapsadığı için etkisiz (bu yüzden dokunulmadı), ama tam sayfa kabuktan kalma ölü kod.
+- **Bordro uçları için otomatik test yok.** Rota ve yetki değişikliği derleme + elle
+  denemeyle doğrulanacak; `PayrollController` üzerinde entegrasyon testi bulunmuyor.
+- **Kapsam dışı bırakılan yan tespit:** `ocelot.Development.json`'da genel
+  `/catalog/{everything}` rotasının `AuthenticationOptions`'ı yok. Payroll'a özel değil,
+  geliştirme yapılandırmasının geneli; üretim (`ocelot.json`) ve Docker yapılandırmasında
+  Bearer var.

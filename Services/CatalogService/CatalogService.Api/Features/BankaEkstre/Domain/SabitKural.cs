@@ -50,6 +50,19 @@
         /// </summary>
         public bool AltHesapGerekli { get; set; }
 
+        /// <summary>
+        /// Kuralın kapsadığı ana gruplar, virgülle ayrılmış: <c>"195, 196"</c>. Yalnız
+        /// <see cref="AltHesapGerekli"/> kurallarda anlamlıdır — alt hesap araması bu
+        /// grupların <b>tamamında</b> yapılır ve toplamda tek aday çıkarsa satır otomatik
+        /// çözülür. Boş bırakılırsa küme, <see cref="HesapKodu"/>'nun tek ana grubudur.
+        ///
+        /// <b>Neden ayrı alan?</b> <see cref="HesapKodu"/> gerçek bir ORKA kodudur: hesap
+        /// planında doğrulanır, aday bulunamayan satırda öneri olarak yazılır ve dışa
+        /// aktarıma girer. İçine virgüllü bir liste konsaydı kod normalizasyonu, ana grup
+        /// çıkarımı ve dışa aktarım aynı anda bozulurdu (bkz. KARARLAR §77).
+        /// </summary>
+        public string? AnaGruplar { get; set; }
+
 
         /// <summary>
         /// Muhasebe kategorisi (<see cref="IslemKategorisi"/>). Yalnız etiket ve görünüm:
