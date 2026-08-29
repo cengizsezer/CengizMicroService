@@ -2221,7 +2221,7 @@ dilimlerle de (`Banka`, `Firmalar`, `Mukellefler`) tutarlı. Hub sınıfının a
 ## 101. Hub Ocelot'tan geçmiyor, nginx doğrudan bağlıyor
 
 `wss://dijitalmasraf.com/agenthub` isteği nginx'ten **doğrudan**
-`c_catalogservice:5004`'e gidiyor; gateway'e uğramıyor.
+`catalogservice.api:5004`'e gidiyor; gateway'e uğramıyor.
 
 SignalR bağlantısı gün boyu açık kalan bir WebSocket. Ocelot bunu sıradan bir
 HTTP isteği gibi ele alıp kendi timeout ve buffering ayarlarını uyguluyor — bu
@@ -2235,13 +2235,24 @@ sıradan bir HTTP isteği olduğu için Ocelot'tan geçmeye devam ediyor ve mevc
 Gateway'i tamamen atlamak, ileride C adımında ekrandan yapılacak sıradan
 çağrıları da kural dışı bırakırdı.
 
-nginx bloğu repodaki `Nginx/conf.d/dijitalmasraf.conf`'a doğrudan yazılmadı,
-`deploy/nginx-agenthub.conf`'ta duruyor (uygulama talimatı OZET.md'de). Neden:
-bloğu hem repoya işleyip hem sunucuda elle uygulamak, aynı server bloğunda iki
-`location /agenthub` demek olur ve nginx bunu `duplicate location` ile reddedip
-**hiç ayağa kalkmaz** — yani yanlış sırayla yapılan bir "iyileştirme" siteyi
-komple düşürürdü. Talimat, iki yolu (repo + rebuild / container'da elle reload)
-birbirini dışlayan seçenekler olarak veriyor.
+nginx bloğu artık **repodaki `Nginx/conf.d/dijitalmasraf.conf`'ın kendisinde**;
+ara dosya (`deploy/nginx-agenthub.conf`) kaldırıldı. Önce ayrı tutulmuştu, çünkü
+bloğu hem repoya işleyip hem sunucuda elle uygulamak aynı server bloğunda iki
+`location /agenthub` demek olur; nginx bunu `duplicate location` ile reddedip
+**hiç ayağa kalkmaz** — yanlış sırayla yapılan bir "iyileştirme" siteyi komple
+düşürürdü. Tek kaynak kalınca o risk kapandı: uygulama yolu tek, imajı yeniden
+derlemek (`docker compose build nginx.public`). Sunucuda elle yapıştırma yolu
+artık **yok** — bir kez daha yapıştırılırsa duplicate hatası geri gelir.
+
+`map $http_upgrade $connection_upgrade` da `nginx.conf`'a değil, aynı conf
+dosyasının en başına yazıldı. `conf.d/*.conf` zaten `http` bağlamına dahil
+ediliyor, yani `map` orada geçerli; iki dosyaya bölünmeyince "birini ekledim,
+diğerini unuttum" hali de kalmıyor.
+
+Hedef adres `catalogservice.api:5004` — `net_backendservices` ağındaki servis
+adı. Container adı (`c_catalogservice`) de çözülür ama servis adı compose'un
+sözleşmesi; replika sayısı değişse ya da container yeniden adlandırılsa ayakta
+kalan bu.
 
 ## 102. Ajan listesi bellekte; kalıcı tablo yanlış bilgi üretirdi
 

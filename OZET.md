@@ -1810,44 +1810,44 @@ Docker'da compose'a **yeni servis ya da port eklenmedi**; hub mevcut
 
 ## Nginx: `/agenthub` yolu
 
-Blok hazır: **`deploy/nginx-agenthub.conf`**. İki parçadan oluşuyor ve iki ayrı
-dosyaya gidiyor.
+**Uygulandı — repoda duruyor.** `Nginx/conf.d/dijitalmasraf.conf` dosyasına iki
+ekleme yapıldı; elle yapıştırılacak bir şey kalmadı (`deploy/nginx-agenthub.conf`
+kaldırıldı, artık kaynağın kendisi conf dosyası).
 
-> **Aynı bloğu iki kez eklemeyin.** nginx aynı server bloğunda tekrar eden
-> `location`'ı `duplicate location` hatasıyla reddeder ve o an ayağa kalkmaz.
+1. Dosyanın **en başında**, server bloklarının dışında `map $http_upgrade
+   $connection_upgrade` (WebSocket el sıkışmasında `Connection: upgrade`, aksi
+   halde `close`). `conf.d/*.conf` doğrudan `http` bağlamına dahil edildiği için
+   `map` burada geçerli; `nginx.conf`'a dokunulmadı.
+2. `dijitalmasraf.com` 443 server bloğunda, `location /catalog/`'un hemen
+   altında `location /agenthub` — `proxy_pass http://catalogservice.api:5004;`
+   (URI'siz), 3600 sn timeout, `proxy_buffering off`.
 
-### Kalıcı yol (önerilen — repoya işlenir, Jenkins dağıtır)
+> **Aynı bloğu ikinci kez eklemeyin.** nginx tekrar eden `location`'ı
+> `duplicate location` hatasıyla reddeder ve o an ayağa kalkmaz. Aynısı `map`
+> için de geçerli — `nginx.conf`'a ikinci bir `map $http_upgrade` yazmayın.
 
-1. `Nginx/nginx.conf` → `http { ... }` içinde, `include /etc/nginx/conf.d/*.conf;`
-   satırının **üstüne** `deploy/nginx-agenthub.conf`'un **PARÇA 1**'ini (`map`
-   bloğu) yapıştır. (`map` yalnız `http` bağlamında yazılabilir.)
-2. `Nginx/conf.d/dijitalmasraf.conf` → `listen 443` server bloğunun içine,
-   `location / { ... }` bloğunun **üstüne** **PARÇA 2**'yi (`location /agenthub`)
-   yapıştır.
-3. Sunucuda:
+Hedef adres **`catalogservice.api:5004`** (`net_backendservices` ağındaki servis
+adı), `c_catalogservice` değil. Ocelot baypas ediliyor; durum ucu
+(`/catalog/agent/baglilar`) gateway'den geçmeye devam ediyor, `ocelot.json`'a
+dokunulmadı.
 
-   ```bash
-   cd <repo>
-   git pull
-   docker-compose -f docker-compose.yml -f docker-compose.override.yml up -d --build nginx.public
-   docker exec c_nginx_public nginx -t
-   ```
+### Yayınlama (sunucuda elle)
 
-   (Jenkins zaten `up --build -d` çalıştırıyor; 3. adım elle doğrulama içindir.)
-
-### Hızlı yol (sunucuda elle, yeniden derlemeden)
+Conf dosyaları imaja gömülü (bind mount değil), yani **imajın yeniden derlenmesi
+gerekiyor**:
 
 ```bash
-docker cp c_nginx_public:/etc/nginx/nginx.conf ./nginx.conf
-docker cp c_nginx_public:/etc/nginx/conf.d/dijitalmasraf.conf ./dijitalmasraf.conf
-# iki parçayı yukarıdaki yerlerine ekle
-docker cp ./nginx.conf          c_nginx_public:/etc/nginx/nginx.conf
-docker cp ./dijitalmasraf.conf  c_nginx_public:/etc/nginx/conf.d/dijitalmasraf.conf
-docker exec c_nginx_public nginx -t && docker exec c_nginx_public nginx -s reload
+docker compose build nginx.public
+docker compose up -d nginx.public
+docker exec c_nginx_public nginx -t
 ```
 
-Bu yol **imaj yeniden derlendiğinde kaybolur** (conf dosyaları imaja gömülü);
-kalıcı olması için aynı değişikliğin repoya da girmesi gerekir.
+`nginx -t` hata verirse **reload etmeyin** — hatalı yapılandırmayla reload site
+tamamen düşer. Hata varsa önceki imajla geri dönün.
+
+Yapılandırma yerelde gerçekten doğrulandı: Dockerfile'daki `dos2unix` adımı
+taklit edilip `nginx -t` bir tek kullanımlık `nginx` container'ında çalıştırıldı
+(upstream adları ve sertifikalar sahte) → `syntax is ok / test is successful`.
 
 ### Doğrulama
 
@@ -1856,14 +1856,23 @@ curl -i -X POST "https://dijitalmasraf.com/agenthub/negotiate?negotiateVersion=1
 ```
 
 - **401** → doğru: yol açık, hub yetki bekliyor.
-- **404 / 502** → nginx bloğu yerine oturmamış ya da `c_catalogservice` erişilemiyor.
+- **404 / 502** → nginx bloğu yerine oturmamış ya da `catalogservice.api`
+  erişilemiyor.
 
-Token'lı hâli 200 dönmeli:
+Token'lı hâli 200 dönmeli; durum ucu ajan yokken boş liste (`[]`) dönmeli:
 
 ```bash
 curl -i -X POST "https://dijitalmasraf.com/agenthub/negotiate?negotiateVersion=1&access_token=$TOKEN"
 curl -s -H "Authorization: Bearer $TOKEN" https://dijitalmasraf.com/catalog/agent/baglilar
 ```
+
+Son adım: `tools/AgentHubTestClient` yayındaki adrese karşı bağlanmalı.
+
+```bash
+dotnet run --project tools/AgentHubTestClient -- --api https://dijitalmasraf.com \
+    --hub https://dijitalmasraf.com/agenthub --token <jwt>
+```
+
 
 ## Test istemcisi
 
