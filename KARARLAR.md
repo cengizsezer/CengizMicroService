@@ -2062,3 +2062,142 @@ gerekçeyle klavye odağı da görünür (`:focus-visible` konturu).
 
 `index.html`'deki `app.css?v=` sürümü artırıldı; aksi hâlde tarayıcı eski dosyayı
 önbellekten verir ve menü beyaz kalırdı.
+
+## 97. Alt menü: kutu değil girinti
+
+**Karar:** Alt menü satırları da koyu (`#18202b` — üst seviyeden bir tık daha koyu).
+Kart görünümü kaldırıldı: arka plan kutusu, köşe yuvarlaması, yan boşluk ve kenarlık yok;
+yerine solda ince bir dikey çizgi (`inset box-shadow`) ve girinti var. Metin üst seviyeden
+soluk (`#9aa7b8`), hover'da hafif açılıyor, seçili satırda metin beyaza dönüyor ve sol
+çizgi vurgulu renge geçiyor.
+
+**Neden kutu görünüyordu:** Radzen'in material teması ikinci seviye satırlara *açıkça*
+beyaz zemin + 4px köşe + 0.5rem yan boşluk veriyor
+(`.rz-panel-menu .rz-navigation-menu .rz-navigation-item-wrapper`). Birinci seviyeye böyle
+bir kural yok — orada `.app-sidebar`'ın koyu zemini görünüyor. Bu yüzden §96'daki blok
+üst seviyeyi koyultmuş, alt seviyeyi hiç etkilememişti.
+
+İki ayrıntı:
+- **Seçici seviyesi.** §96'daki "alt seviye soluk metin" kuralı
+  `.rz-navigation-menu .rz-navigation-menu` yazıyordu; kök `<ul>` `rz-panel-menu` olduğu
+  için bu üçüncü seviyeye denk geliyor ve hiç uygulanmıyordu. Doğrusu
+  `.rz-panel-menu .rz-navigation-menu`.
+- **Renkler yine tek `:root` bloğunda.** Radzen'in `--rz-panel-menu-item-2nd/3rd-level-*`
+  token'ları `.app-sidebar` üzerinde bizim değişkenlerimize bağlandı: tek tek kural
+  yazmadan Radzen'in kendi kuralları da koyu temayı izliyor, ham renk kodu hiçbir kurala
+  dağılmıyor.
+
+**Devre dışı görünen satır yok.** Menüde hiçbir `RadzenPanelMenuItem`'da `Disabled` yok;
+yetki kontrolü satırı *çizmemekle* yapılıyor (`@if (canView...)` ve `AuthorizeView`).
+Soluk görünen satırlar Radzen'in ikinci seviye "tertiary" gri metin rengiydi — gerçekten
+devre dışı değillerdi.
+
+`index.html`'de `app.css?v=` yine artırıldı. Ayrıca **sürümsüz ikinci `app.css` bağlantısı
+kaldırıldı**: sürümlü bağlantıdan *sonra* geldiği için tarayıcı önbellekteki eski kopyayı
+üstüne yükleyebiliyordu — sürüm artırmanın etkisini götüren asıl sebep buydu.
+
+## 98. Beyanname türleri tek kaynak, seed adım adım yalıtık
+
+**Karar:** Beyanname türlerinin tek kaynağı `catalog.BeyannameTurleri`. Takip sekmesindeki
+sabit `List<string>` kaldırıldı; Takip filtresi, yeni/düzenle formu ve Özet matrisi aynı
+tablodan okuyor (`GET api/catalog/beyanname/turler`). Tablo **Tanımlar** sekmesinden
+(`/beyannameler/tanimlar`) yönetiliyor: vergi kodu + ad + saklanan değer + sıra + aktif.
+
+**Silme yok, pasife alma var.** `Deger` alanı mevcut kayıtların `DeclarationType` metniyle
+eşleşiyor; tanım silinseydi o türdeki eski kayıtlar Özet matrisinde kolonsuz kalırdı.
+Pasif tanımın kolonu çizilmez, kayıtlar durur, tanım geri açılabilir.
+
+**Asıl hata seed'in kendisinde değildi.** `BeyannameTuruSeed` ne sabit tenant listesine ne
+de bir seed dosyasına bağlı — açılışta tenant'sız context ile bir kez çalışıyor. Sorun
+şuydu: bütün global seed'ler **tek bir `try/catch`** içindeydi, sıradaki herhangi bir seed
+patlayınca ondan sonrakilerin hiçbiri çalışmıyor ve geriye tek bir genel hata satırı
+kalıyordu. Tablo bu yüzden yayında boş kaldı.
+
+Kalıcı çözüm `Infrastructure/Seeding/SeedAdimi.cs`: her seed adımı kendi `try/catch`'inde,
+adıyla loglanıyor — biri düşse sonrakiler çalışıyor ve hangisinin düştüğü logdan okunuyor.
+Aynı yalıtım tenant döngüsüne de uygulandı (§83'teki hesap planı hatasının kardeşi).
+Beyanname seed'i ayrıca sonucunu loglar; tablo seed sonrası hâlâ boşsa `LogError` düşer.
+
+Kurulu veritabanları için kaçış yolu: **"Varsayılanları yükle"** düğmesi
+(`POST .../turler/varsayilanlari-yukle`) — hesap planındaki "Tek düzen hesap planını yükle"
+ucuyla aynı kalıp (§84). Satır bazında idempotent: eksikleri ekler, kullanıcının
+düzenlediği adların üzerine yazmaz.
+
+Özet sekmesi tablo boşken artık yalnız "tanım yok" demiyor; **Tanımlar ekranını açan bir
+düğme** gösteriyor.
+
+## 99. Firma bir oturum bağlamı değil, verinin bir boyutu — firma seçim ekranı geri alındı
+
+**Bu karar bir önceki turu geri alıyor ve bilinçli bir yön değişikliğidir.** §69–§71 ile
+Banka Otomasyon'a bir *firma seçim ekranı* (giriş kapısı) ve modül içi bir *firma bağlamı*
+eklenmişti: kullanıcı önce bir firmaya "girer", sonra o firmanın ekranlarında çalışırdı.
+Kapsamın tenant'tan alınması hatası (§68) böyle kapatılmıştı.
+
+Kapsam düzeltmesi doğruydu ve **duruyor**. Yanlış olan, düzeltmenin arayüze taşınma
+biçimiydi: pkfadmin tek oturumla sorumlu olduğu sekiz firmayı birlikte yönetiyor ve her
+işlem için firma değiştirmek istemiyor. Giriş kapısı, bir veri sorununa oturum çözümü
+getirmişti.
+
+**Yeni kural:** Firma, verinin bir kolonu — ekranın bir kipi değil.
+
+**Değişmeyen:** Veri modeli. `FirmaId` kapsamı bütün tablolarda aynen duruyor; hesap planı,
+cariler, öğrenilen eşleşmeler, banka hesapları ve beyannameler firmadan firmaya farklı.
+Migration yok. `IBankaFirmaKapsami` de duruyor — zaten oturumdan değil isteğin `?firmaId=`
+parametresinden besleniyordu (§68); değişen, o parametreyi kimin doldurduğu.
+
+**Kaldırılan:** Firma seçim ekranı (`FirmaSecimPage`), istemcideki firma oturumu
+(`IBankaOtomasyonOturumu` ve oturum deposu) ve `FirmaBasligi`'ndaki "hangi firmadayız"
+başlığı. `/banka-otomasyon` kökü artık Aktar'a yönleniyor. Üstteki genel FİRMA DEĞİŞTİR
+(tenant seçimi) duruyor ama bu modüllerde hiçbir şeyi belirlemiyor.
+
+**Okuma ile yazma ayrıştı** — kararın özü burada:
+
+| | Kapsam kaynağı | `firmaId` yoksa |
+|---|---|---|
+| **Okuma (GET/HEAD)** | Kullanıcının seçtiği filtre | Tüm firmalar; her satır firma kolonu taşır |
+| **Yazma** | Kaydın kendisi | **400** — ayrıca `SaveChangesAsync` ikinci kez reddeder |
+
+Yazmada firma asla "aktif firma"dan türemiyor; ya **seçilen kayıttan** geliyor (ekstre bir
+banka hesabına yüklenir, hesap zaten firmayı belirler) ya da **formda seçiliyor**. Filtre
+ile form alanı bilerek ayrı iki kontrol: filtre neyin görüldüğünü, form alanı kaydın nereye
+yazılacağını söyler. Tek kontrole bağlansalardı "listeyi daraltayım" derken kaydın firması
+da değişirdi.
+
+Kapsamsız yazmaya izin verilen tek yer `[FirmaKapsamiGerekmez]`: (1) "sahipsiz kayıtları
+temizle" — kaydın kapsamsız oluşu işin kendisi (§71), (2) global yapılandırma tabloları
+(açıklama şablonları, unvan desenleri, sabit kurallar, vergi kodları, işlem kategorileri) —
+entity'leri `FirmaKapsamliEntity`'den türemiyor, bankanın yazım kalıbına ait. Nitelik dar
+tutuldu: `FirmaKapsamliEntity` yazan hiçbir uca konmaz.
+
+**Yıkıcı ve firma başına anlamlı işlemler "tüm firmalar" görünümünde kapalı:** veri
+temizliği, hesap planı içe aktarımı/özeti, hesap sahibi unvanı, banka adı birleştirme,
+öğrenilen eşleşme içe aktarımı. Hepsi kullanıcıya hangi firmayı seçmesi gerektiğini yazıyor.
+Kapsamı örtük bir silme ya da "sekiz firmanın toplamı" gibi okunamayan bir özet olmaz.
+
+**Firma adı kaybolmadı, yer değiştirdi.** Ekranın tepesindeki tek etiket yerine işin
+yapıldığı yerde: listelerde satır başına firma kolonu, Aktar'daki hesap kartlarında firma
+satırı, onay ekranının başlığında ekstrenin firması, yükleme/silme/kaydetme onaylarında
+firma adı ("PKF Aday için 287 satır yüklenecek"). Yanlış firmaya veri girmeye karşı savunma
+artık tek bir yerde değil, işlemin yanında.
+
+Firma adları `catalog.Firmalar`'dan geliyor ve yanıtlara `BankaFirmaFiltresi` içinde tek
+yerde yazılıyor. Beş servisin bir düzine dönüş noktasına dağıtılsaydı biri unutulur, o
+listede firma kolonu sessizce boş çıkardı. Kapsamın kendisi (hangi kayıtların geldiği)
+buraya taşınmadı — o hâlâ sorgularda görünür yazılı (§69 duruyor).
+
+**Anasayfa** kırpmayı bıraktı: onay bekleyen satırı olan bütün firmalar listeleniyor.
+Kırpma, listenin dışında kalan firmayı görünmez yapıyordu — oysa işi bekleyen firma tam da
+gözden kaçandır.
+
+**Kapsam dışı: Muhasebe.** Muhasebe'nin hesap planı `TenantNo` kapsamlı (`TenantEntity` +
+global query filter, token'dan besleniyor), `FirmaId` değil. Oraya firma seçici koymak ya
+veri modelini değiştirmeyi (bu turda hariç tutuldu) ya da firma diye tenant listelemeyi
+gerektirirdi — pkfadmin tek tenant'ta olduğu için ikincisi §68'deki sorunun aynısını üretir.
+Muhasebe bu turda hiç değiştirilmedi; kapsam farkı bilinçli bir açık uç.
+
+**Testler:** İzolasyon testleri aynen duruyor ve geçiyor — tek firma kapsamında sorgu hâlâ
+yalnız o firmayı görüyor. `TumFirmalarKapsamiTests` yeni hâli sınıyor: kapsamsız okuma iki
+firmayı birlikte getiriyor, her satır kendi firmasını taşıyor, kapsamsız yazma reddediliyor,
+silme komşu firmaya dokunmuyor. İstemci tarafında `BankaOtomasyonOturumuTests` (oturumun
+kalıcılığını sınıyordu) yerini `FirmaKapsamiIstektenGelirTests`'e bıraktı: çağıranın verdiği
+firma adrese aynen yansıyor mu, ardışık çağrılar birbirinin firmasını taşıyor mu.

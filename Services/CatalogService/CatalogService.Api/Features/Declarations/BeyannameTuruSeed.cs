@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.Declarations.Entities;
+﻿using CatalogService.Api.Features.Declarations.Entities;
 using CatalogService.Api.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 
@@ -34,13 +34,25 @@ namespace CatalogService.Api.Features.Declarations
             ("0010 KURUMLAR VERGISI", "0010", "Kurumlar Vergisi")
         };
 
-        public static async Task SeedAsync(CatalogContext db, CancellationToken ct = default)
+        /// <summary>
+        /// Eksik tanımları ekler. Kaynak <b>dosya değil, yukarıdaki dizi</b>: yayında
+        /// eksik bir seed dosyası yüzünden sessizce boş kalma ihtimali yok. Sabit tenant
+        /// listesine de bağlı değil — tablo global, tek bir tenant'sız context ile bir kez
+        /// doldurulur (bkz. KARARLAR §83'teki hesap planı hatası).
+        ///
+        /// Aynı metot hem açılışta hem de Tanımlar ekranındaki "Varsayılanları yükle"
+        /// düğmesinde çalışır; kurulu bir veritabanında tablo boş kalmışsa kullanıcı
+        /// deploy beklemeden doldurabilsin.
+        /// </summary>
+        /// <returns>Eklenen tanım sayısı ve işlem sonrası toplam tanım sayısı.</returns>
+        public static async Task<(int Eklenen, int Toplam)> SeedAsync(CatalogContext db,
+                                                                      CancellationToken ct = default)
         {
             var mevcut = await db.BeyannameTurleri.Select(t => t.Deger).ToListAsync(ct);
             var kayitli = new HashSet<string>(mevcut, StringComparer.OrdinalIgnoreCase);
 
             var sira = 0;
-            var eklendi = false;
+            var eklenen = 0;
 
             foreach (var (deger, kod, ad) in Turler)
             {
@@ -56,10 +68,32 @@ namespace CatalogService.Api.Features.Declarations
                     Aktif = true
                 });
 
-                eklendi = true;
+                eklenen++;
             }
 
-            if (eklendi) await db.SaveChangesAsync(ct);
+            if (eklenen > 0) await db.SaveChangesAsync(ct);
+
+            return (eklenen, mevcut.Count + eklenen);
+        }
+
+        /// <summary>
+        /// Açılış sarmalayıcısı: sonucu loga yazar. Tablo doluysa da satır düşülür ki
+        /// "seed çalıştı mı?" sorusu logdan cevaplanabilsin.
+        /// </summary>
+        public static async Task SeedVeLoglaAsync(CatalogContext db, ILogger logger,
+                                                   CancellationToken ct = default)
+        {
+            var (eklenen, toplam) = await SeedAsync(db, ct);
+
+            if (eklenen > 0)
+                logger.LogInformation("Beyanname türleri: {Eklenen} tanım eklendi, toplam {Toplam}.",
+                                      eklenen, toplam);
+            else
+                logger.LogInformation("Beyanname türleri: eksik tanım yok, toplam {Toplam}.", toplam);
+
+            if (toplam == 0)
+                logger.LogError("Beyanname türleri tablosu seed sonrası hâlâ BOŞ. Özet sekmesi " +
+                                "kolonlarını bu tablodan üretiyor; ekran boş görünecek.");
         }
     }
 }

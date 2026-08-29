@@ -1,4 +1,4 @@
-@using Radzen
+﻿@using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Shared.Dto.BankaEkstre
@@ -125,6 +125,9 @@
 </div>
 
 @code {
+    /// <summary>Sayfanın firma filtresi; global kural tablolarında yalnız doğrulama içindir.</summary>
+    [Parameter] public int FirmaId { get; set; }
+
     /// <summary>Kapsülün bankası; hesap listesi ve başlıklar buna göre süzülür.</summary>
     [Parameter, EditorRequired] public string BankaAdi { get; set; } = string.Empty;
 
@@ -163,7 +166,7 @@
         }
     }
 
-    protected override async Task OnInitializedAsync() => _parserler = await Api.GetParserlerAsync();
+    protected override async Task OnInitializedAsync() => _parserler = await Api.GetParserlerAsync(FirmaId);
 
     protected override void OnParametersSet() => _hesaplar = Hesaplar;
 
@@ -234,7 +237,9 @@
             VknKatmaniAktif = vkn
         };
 
-        var (veri, hata) = await Api.UpdateHesapAsync(hesap.Id, dto);
+        // Hesabın firması kaydın kendisinden; kapsül birden çok firmanın hesabını
+        // gösterebilir.
+        var (veri, hata) = await Api.UpdateHesapAsync(hesap.FirmaId, hesap.Id, dto);
         if (hata is not null)
         {
             Notif.Notify(NotificationSeverity.Error, "Kaydedilemedi", hata, 6000);

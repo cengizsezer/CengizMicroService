@@ -1,4 +1,4 @@
-namespace CatalogService.Api.Features.Declarations.Dtos
+﻿namespace CatalogService.Api.Features.Declarations.Dtos
 {
     /// <summary>
     /// Özet matrisinin bir hücresinin durumu. Sıra <b>ilerleyiş sırası</b>: sayısal
@@ -27,6 +27,19 @@ namespace CatalogService.Api.Features.Declarations.Dtos
         public string Ad { get; set; } = string.Empty;
         public int Sira { get; set; }
         public bool Aktif { get; set; }
+    }
+
+    /// <summary>
+    /// Tanımlar ekranından gelen yazma isteği. <c>Deger</c> beyanname kayıtlarındaki
+    /// <c>DeclarationType</c> metniyle eşleşen alandır; ad ve kod yalnız görünümü etkiler.
+    /// </summary>
+    public class BeyannameTuruYazDto
+    {
+        public string Deger { get; set; } = string.Empty;
+        public string? Kod { get; set; }
+        public string Ad { get; set; } = string.Empty;
+        public int Sira { get; set; }
+        public bool Aktif { get; set; } = true;
     }
 
     /// <summary>Matrisin tek hücresi: bir firmanın bir türdeki durumu.</summary>

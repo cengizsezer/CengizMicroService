@@ -128,11 +128,12 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             services.AddScoped<AppStateManager>();
             services.AddScoped<IAppSessionManager, AppSessionManager>();
 
-            // Banka Otomasyon'un firma bağlamı. WASM'de scoped = uygulama ömrü, bu yüzden
-            // seçim sekme değişimlerinde korunur; sayfa yenilemesinde oturum deposundan
-            // geri gelir. Tenant'a DOKUNMAZ: firma catalog.Firmalar'dan gelir (KARARLAR §68).
-            services.AddScoped<IBankaOtomasyonDeposu, SessionStorageBankaOtomasyonDeposu>();
-            services.AddScoped<IBankaOtomasyonOturumu, BankaOtomasyonOturumu>();
+            // Banka Otomasyon'un firma OTURUMU KALDIRILDI (KARARLAR §99): firma artık bir
+            // oturum bağlamı değil, verinin bir boyutu. Kapsam her isteğe çağrı yerinden
+            // geçiyor — listede kullanıcının seçtiği filtre, yazmada kaydın kendi firması.
+            // Geriye kalan tek ortak ihtiyaç firma LİSTESİ: filtreler ve form alanları
+            // için bir kez okunur.
+            services.AddScoped<IFirmaSecenekleri, FirmaSecenekleri>();
             services.AddTransient<IIdentityService, IdentityService>();
             //services.AddScoped<LanguageService>();
 
@@ -147,6 +148,10 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             // Beyanname özeti (firma × tür matrisi) ve beyanname belgeleri.
             services.AddScoped<IBeyannameOzetApiService>(sp =>
                 new BeyannameOzetApiService(sp.GetRequiredService<HttpClient>()));
+
+            // Beyanname türü tanımları: Takip, Özet ve Tanımlar ekranlarının ortak kaynağı.
+            services.AddScoped<IBeyannameTuruApiService>(sp =>
+                new BeyannameTuruApiService(sp.GetRequiredService<HttpClient>()));
 
             // Firma Bilgileri (sicil / ortaklık / imza yetkilileri / belgeler).
             services.AddScoped<IFirmaBilgiApiClient>(sp =>
@@ -178,10 +183,9 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             services.AddScoped<IMuhasebeApi>(sp =>
                 new MuhasebeApi(sp.GetRequiredService<HttpClient>()));
 
-            // Firma kapsamını (?firmaId=) adreslere ekleyebilmesi için modülün oturumunu alır.
+            // Firma kapsamı çağrı başına parametreyle geçer; istemcinin saklı bağlamı yok.
             services.AddScoped<IBankaEkstreApi>(sp =>
-                new BankaEkstreApi(sp.GetRequiredService<HttpClient>(),
-                                   sp.GetRequiredService<IBankaOtomasyonOturumu>()));
+                new BankaEkstreApi(sp.GetRequiredService<HttpClient>()));
 
             services.AddScoped<IUserAdminService>(sp =>
                 new UserAdminService(sp.GetRequiredService<HttpClient>()));

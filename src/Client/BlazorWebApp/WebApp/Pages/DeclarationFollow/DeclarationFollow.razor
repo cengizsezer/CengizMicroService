@@ -18,6 +18,7 @@
 @inject IDeclarationApiService DeclarationApiService
 @inject ICustomerCompanyApiService CustomerCompanyApiService
 @inject IPermissionService PermissionService
+@inject IBeyannameTuruApiService BeyannameTuruApi
 @inject NavigationManager Navigation
 
 <PageTitle>Beyanname Takip</PageTitle>
@@ -68,7 +69,9 @@
             <RadzenColumn Size="12" SizeMD="2">
                 <RadzenFormField Text="Beyanname Türü" Style="width:100%">
                     <RadzenDropDown @bind-Value="selectedDeclarationType"
-                                    Data="@declarationTypes"
+                                    Data="@turSecenekleri"
+                                    TextProperty="Etiket"
+                                    ValueProperty="Deger"
                                     AllowClear="true"
                                     Placeholder="Tümü"
                                     Style="width:100%" />
@@ -229,17 +232,18 @@
     private List<MonthOption> months = new();
     private List<DropdownOption> companyOptions = new();
     private int? selectedCompanyId;
-    private List<string> declarationTypes = new()
-    {
-        "0015 KDV-1",
-        "4017 KDV-2",
-        "0003 STOPAJ MUHTASAR",
-        "0095 UCRET MUHTASAR",
-        "SGK",
-        "0040 DAMGA VERGISI",
-        "0033 GECİCİ VERGI",
-        "0010 KURUMLAR VERGISI"
-    };
+    // Beyanname türleri artık burada sabit DEĞİL: catalog.BeyannameTurleri tablosundan
+    // geliyor — Özet sekmesiyle aynı kaynak. İki liste ayrı durduğu sürece biri
+    // doluyken diğeri boş kalabiliyordu. Tanımlar sekmesinden yönetilir.
+    private List<BeyannameTuruDto> beyannameTurleri = new();
+
+    /// <summary>Açılır listenin gösterdiği etiket; filtreye giden değer <c>Deger</c>.</summary>
+    private sealed record TurSecenegi(string Deger, string Etiket);
+
+    private List<TurSecenegi> turSecenekleri = new();
+
+    private static TurSecenegi Secenek(BeyannameTuruDto tur)
+        => new(tur.Deger, string.IsNullOrWhiteSpace(tur.Kod) ? tur.Ad : $"{tur.Kod} {tur.Ad}");
 
     private decimal monthlyTotal => monthlyData?.Sum(x => x.TotalAmount) ?? 0;
     private decimal monthlyPaid => monthlyData?.Sum(x => x.PaidAmount) ?? 0;
@@ -292,6 +296,9 @@
 
             // 🔥 4. API çağrıları
             customerCompanies = await CustomerCompanyApiService.GetAllAsync();
+
+            beyannameTurleri = await BeyannameTuruApi.GetHepsiAsync();
+            turSecenekleri = beyannameTurleri.Select(Secenek).ToList();
 
             await LoadData();
         }
@@ -366,7 +373,8 @@
     new Dictionary<string, object>
     {
         { "Model", model },
-        { "Companies", customerCompanies }
+        { "Companies", customerCompanies },
+        { "Turler", beyannameTurleri }
     },
     new DialogOptions
     {
@@ -409,7 +417,8 @@
     new Dictionary<string, object>
     {
         { "Model", model },
-        { "Companies", customerCompanies }
+        { "Companies", customerCompanies },
+        { "Turler", beyannameTurleri }
     },
     new DialogOptions
     {

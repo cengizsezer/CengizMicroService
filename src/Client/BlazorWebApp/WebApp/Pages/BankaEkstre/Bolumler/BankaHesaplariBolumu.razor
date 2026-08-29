@@ -1,11 +1,10 @@
-@using Microsoft.AspNetCore.Components.Forms
+﻿@using Microsoft.AspNetCore.Components.Forms
 @using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Shared.Dto.BankaEkstre
 
 @inject IBankaEkstreApi Api
-@inject IBankaOtomasyonOturumu Oturum
 @inject NotificationService Notif
 @inject DialogService Dialog
 @inject IJSRuntime JS
@@ -29,6 +28,11 @@
 
     Hesap sahibi unvanı burada DÜZENLENMEZ: firma bazlı tek bir değer, kendi bölümünde.
     Form değeri yine de taşır (kaydederken silinmesin diye).
+
+    LİSTE ÇOK FİRMALIDIR (KARARLAR §99): satırda firma kolonu var, üstteki filtre daraltır.
+    Formda firma AYRI bir alandır ve filtreden bağımsızdır — filtre neyin görüldüğünü,
+    form alanı kaydın nereye yazılacağını söyler. Düzenlemede alan kilitli: hesabı başka
+    firmaya taşımak, ona bağlı ekstreleri ve eşleşmeleri sahipsiz bırakırdı.
 *@
 
 <style>
@@ -38,6 +42,8 @@
     .bh-head { background: #fafafa; border-bottom: 1px solid #eee; font-size: 11px; color: #718096;
                text-transform: uppercase; letter-spacing: .3px; }
     .bh-satir:not(.bh-head):hover { background: #f8fbff; }
+    .bh-firma { flex: 0 0 150px; font-weight: 600; color: #2b6cb0; overflow: hidden;
+                text-overflow: ellipsis; white-space: nowrap; }
     .bh-ad { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .bh-kod { flex: 0 0 130px; font-family: ui-monospace, Consolas, monospace; }
     .bh-iban { flex: 0 0 190px; font-family: ui-monospace, Consolas, monospace; color: #4a5568; }
@@ -65,12 +71,17 @@
 <div class="bh-arac">
     <h5 style="margin:0">Banka hesapları</h5>
     <div style="display:flex; gap:6px; align-items:center">
+        <FirmaFiltresi FirmaId="@FirmaId" FirmaIdChanged="@FirmaFiltresiDegistiAsync" Style="width:200px" />
         <RadzenCheckBox TValue="bool" Value="@_pasifDahil" Name="pasifDahil"
                         Change="@(async (bool secili) => { _pasifDahil = secili; await YukleAsync(); })" />
         <label for="pasifDahil" style="font-size:12px; color:#718096">Pasifleri de göster</label>
         @* Yanlış yazımlar zaten girilmiş olabildiği için düzeltme yolu listenin başında. *@
+        @*
+            Birleştirme bir YAZMA işlemi ve tek firmanın hesaplarını yeniden adlandırır;
+            "tüm firmalar" görünümünde hangi firmada birleştirileceği belirsiz olurdu.
+        *@
         <RadzenButton Text="Banka adlarını birleştir" Icon="merge_type" ButtonStyle="ButtonStyle.Light"
-                      Size="ButtonSize.Small" Disabled="@(_bankaAdlari.Count < 2)"
+                      Size="ButtonSize.Small" Disabled="@(_bankaAdlari.Count < 2 || FirmaId <= 0)"
                       title="Aynı bankanın farklı yazımlarını tek ada indir"
                       Click="@BirlestirmeAc" />
         <RadzenButton Text="Yeni hesap" Icon="add" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
@@ -86,6 +97,7 @@ else
 {
     <div class="bh-tablo">
         <div class="bh-satir bh-head">
+            <span class="bh-firma">Firma</span>
             <span class="bh-ad">Banka / hesap adı</span>
             <span class="bh-tip">Tip</span>
             <span class="bh-kod">ORKA kodu</span>
@@ -103,6 +115,7 @@ else
         @foreach (var hesap in Gorunen)
         {
             <div class="bh-satir @(hesap.Aktif ? "" : "bh-pasif")">
+                <span class="bh-firma" title="@hesap.FirmaAdi">@hesap.FirmaAdi</span>
                 <span class="bh-ad">
                     @hesap.BankaAdi
                     @if (!string.IsNullOrWhiteSpace(hesap.HesapAdi))
@@ -261,6 +274,17 @@ else
         <h5 style="margin-top:0">@(_duzenlenenId is null ? "Yeni banka hesabı" : "Hesabı düzenle")</h5>
 
         <div class="bh-form">
+            @*
+                Kaydın firması. Filtreden ayrı: filtre listeyi daraltır, bu alan kaydın
+                nereye yazılacağını belirler. Düzenlemede kilitli — hesabı taşımak ona bağlı
+                ekstreleri ve öğrenilen eşleşmeleri sahipsiz bırakırdı.
+            *@
+            <div class="bh-alan">
+                <label>Firma</label>
+                <FirmaSecici FirmaId="@_formFirmaId" FirmaIdChanged="@FormFirmasiDegistiAsync"
+                             Disabled="@(_duzenlenenId is not null)" />
+            </div>
+
             <div class="bh-alan">
                 <label>Banka adı</label>
                 @*
@@ -441,6 +465,42 @@ else
     /// </summary>
     [Parameter] public EventCallback Degisti { get; set; }
 
+    /// <summary>Liste filtresi; 0 = tüm firmalar.</summary>
+    [Parameter] public int FirmaId { get; set; }
+
+    /// <summary>Filtrede seçili firmanın adı; bildirim metinlerinde geçer.</summary>
+    [Parameter] public string FirmaAdi { get; set; } = string.Empty;
+
+    [Parameter] public EventCallback<int> FirmaIdChanged { get; set; }
+
+    /// <summary>
+    /// Formdaki kaydın firması. Filtreden ayrı tutulur: kullanıcı "tüm firmalar"a bakarken
+    /// de yeni hesap açabilmeli ve o hesabın firmasını bilinçli seçmeli.
+    /// </summary>
+    private int _formFirmaId;
+
+    private async Task FirmaFiltresiDegistiAsync(int firmaId)
+    {
+        FirmaId = firmaId;
+        await FirmaIdChanged.InvokeAsync(firmaId);
+        await YukleAsync();
+    }
+
+    private Task FormFirmasiDegistiAsync(int firmaId)
+    {
+        _formFirmaId = firmaId;
+
+        // Hesap sahibi unvanı firma başına tek değerdir; firma değişince yeni firmanınki
+        // yüklenmeli, yoksa yeni hesap önceki firmanın kimliğini devralırdı.
+        if (_form is not null && _duzenlenenId is null)
+        {
+            _form.HesapSahibiUnvani = FirmaUnvani(firmaId);
+            _form.HesapSahibiTakmaAdlari = FirmaTakmaAdlari(firmaId);
+        }
+
+        return Task.CompletedTask;
+    }
+
     /// <summary>
     /// En son uygulanan adres isteği. Aynı istek tekrar uygulanmaz (kullanıcı formu
     /// kapattıysa yeniden açılmasın) ama <b>farklı</b> bir hesaba geçilirse uygulanır.
@@ -550,7 +610,7 @@ else
         if (onay != true) return;
 
         _birlestiriliyor = true;
-        var (veri, hata) = await Api.BankaAdiBirlestirAsync(new BankaAdiBirlestirDto
+        var (veri, hata) = await Api.BankaAdiBirlestirAsync(FirmaId, new BankaAdiBirlestirDto
         {
             Kaynaklar = _birlestirmeSecimi.ToList(),
             Hedef = _birlestirmeHedefi
@@ -589,11 +649,10 @@ else
                  .ToList();
 
     /// <summary>Onay ve bildirim metinlerinde geçen firma adı.</summary>
-    private string FirmaAdi => Oturum.SeciliFirma is null ? "seçili firma" : Oturum.FirmaAdi;
 
     protected override async Task OnInitializedAsync()
     {
-        _parserler = await Api.GetParserlerAsync();
+        _parserler = await Api.GetParserlerAsync(FirmaId);
         await YukleAsync();
         SorguIsteginiUygula();
     }
@@ -648,10 +707,10 @@ else
     private async Task YukleAsync()
     {
         _yukleniyor = true;
-        _hesaplar = await Api.GetHesaplarAsync(_pasifDahil);
+        _hesaplar = await Api.GetHesaplarAsync(FirmaId, _pasifDahil);
         // Banka adları listesi pasif hesapları da sayar; açılır liste ve birleştirme
         // ekranın "pasifleri göster" seçiminden bağımsız olmalı.
-        _bankaAdlari = await Api.BankaAdlariAsync();
+        _bankaAdlari = await Api.BankaAdlariAsync(FirmaId);
         _yukleniyor = false;
 
         // Firma değişiminde üst sayfa YenileAsync'i çağırıyor; kendi StateHasChanged'i
@@ -681,6 +740,10 @@ else
     {
         _duzenlenenId = hesap?.Id;
         _yeniBankaAdimi = false;
+
+        // Yeni kayıtta filtre bir firmaya daraltılmışsa o firma önerilir (en sık durum);
+        // "tüm firmalar" görünümünde alan boş açılır ve kullanıcı seçmek zorunda kalır.
+        _formFirmaId = hesap?.FirmaId ?? FirmaId;
         _form = hesap is null
             // Hesap sahibi unvanı ve takma adlar burada DÜZENLENMEZ (kendi bölümünde)
             // ama forma yüklenir: kaydederken alanlar boş gitseydi firma kimliği
@@ -688,15 +751,15 @@ else
             ? new BankaHesabiYazDto
             {
                 ParserTipi = string.Empty,
-                HesapSahibiUnvani = FirmaUnvani(),
-                HesapSahibiTakmaAdlari = FirmaTakmaAdlari()
+                HesapSahibiUnvani = FirmaUnvani(FirmaId),
+                HesapSahibiTakmaAdlari = FirmaTakmaAdlari(FirmaId)
             }
             : new BankaHesabiYazDto
             {
                 BankaAdi = hesap.BankaAdi,
                 HesapAdi = hesap.HesapAdi,
                 EslestirmeAnahtarlari = hesap.EslestirmeAnahtarlari,
-                HesapSahibiUnvani = hesap.HesapSahibiUnvani ?? FirmaUnvani(),
+                HesapSahibiUnvani = hesap.HesapSahibiUnvani ?? FirmaUnvani(hesap.FirmaId),
                 HesapSahibiTakmaAdlari = hesap.HesapSahibiTakmaAdlari,
                 HesapTipi = hesap.HesapTipi,
                 ParaBirimi = hesap.ParaBirimi,
@@ -709,14 +772,21 @@ else
             };
     }
 
-    /// <summary>Mevcut hesaplarda girilmiş hesap sahibi unvanı (firma başına tek değer).</summary>
-    private string? FirmaUnvani()
-        => _hesaplar.Select(h => h.HesapSahibiUnvani)
+    /// <summary>
+    /// O firmanın hesaplarında girilmiş hesap sahibi unvanı (firma başına tek değer).
+    /// Liste çok firmalı olduğu için firma <b>süzülmek zorunda</b>: süzülmeseydi yeni
+    /// hesap listede rastlanan ilk firmanın unvanını devralır ve o firmanın adı başka
+    /// bir firmanın ekstresinde "karşı taraf değil, biziz" diye işaretlenirdi.
+    /// </summary>
+    private string? FirmaUnvani(int firmaId)
+        => _hesaplar.Where(h => h.FirmaId == firmaId)
+                    .Select(h => h.HesapSahibiUnvani)
                     .FirstOrDefault(u => !string.IsNullOrWhiteSpace(u));
 
-    /// <summary>Aynı şekilde takma adlar: yeni hesap firmanın kimliğini devralır.</summary>
-    private string? FirmaTakmaAdlari()
-        => _hesaplar.Select(h => h.HesapSahibiTakmaAdlari)
+    /// <summary>Aynı şekilde takma adlar: yeni hesap kendi firmasının kimliğini devralır.</summary>
+    private string? FirmaTakmaAdlari(int firmaId)
+        => _hesaplar.Where(h => h.FirmaId == firmaId)
+                    .Select(h => h.HesapSahibiTakmaAdlari)
                     .FirstOrDefault(t => !string.IsNullOrWhiteSpace(t));
 
     /// <summary>
@@ -738,7 +808,7 @@ else
     {
         if (_form is null || string.IsNullOrWhiteSpace(_form.HesapAdi)) return;
 
-        _form.EslestirmeAnahtarlari = await Api.AnahtarOnerisiAsync(_form.HesapAdi, _form.BankaAdi);
+        _form.EslestirmeAnahtarlari = await Api.AnahtarOnerisiAsync(_formFirmaId, _form.HesapAdi, _form.BankaAdi);
     }
 
     private async Task KaydetAsync()
@@ -748,10 +818,18 @@ else
         // Banka adı biçimi engellemez, yalnız uyarır: kullanıcı bilerek uzun ad yazmış olabilir.
         var bankaAdiUyarisi = BankaAdiDenetimi.Uyari(_form.BankaAdi);
 
+        // Kaydın firması FORM ALANINDAN gelir, ekrandaki filtreden değil.
+        if (_formFirmaId <= 0)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Firma seçilmedi",
+                         "Banka hesabının hangi firmaya ait olduğunu seçin.", 6000);
+            return;
+        }
+
         _kaydediyor = true;
         var (veri, hata) = _duzenlenenId is int id
-            ? await Api.UpdateHesapAsync(id, _form)
-            : await Api.CreateHesapAsync(_form);
+            ? await Api.UpdateHesapAsync(_formFirmaId, id, _form)
+            : await Api.CreateHesapAsync(_formFirmaId, _form);
         _kaydediyor = false;
 
         if (hata is not null)
@@ -760,7 +838,9 @@ else
             return;
         }
 
-        Notif.Notify(NotificationSeverity.Success, "Kaydedildi", $"{FirmaAdi} · {veri?.BankaAdi}", 3000);
+        // Onay metninde firma adı: yanlış firmaya kayıt açmaya karşı savunma.
+        Notif.Notify(NotificationSeverity.Success, "Kaydedildi",
+                     $"{veri?.FirmaAdi} · {veri?.BankaAdi}", 3000);
 
         if (bankaAdiUyarisi is not null)
             Notif.Notify(NotificationSeverity.Warning, "Banka adını gözden geçirin", bankaAdiUyarisi, 9000);
@@ -798,7 +878,7 @@ else
                 await kaynak.CopyToAsync(bellek);
             bellek.Position = 0;
 
-            var (veri, hata) = await Api.HesaplariIceAktarAsync(bellek, dosya.Name);
+            var (veri, hata) = await Api.HesaplariIceAktarAsync(FirmaId, bellek, dosya.Name);
             if (hata is not null)
             {
                 Notif.Notify(NotificationSeverity.Error, "İçe aktarılamadı", hata, 8000);
@@ -823,7 +903,7 @@ else
 
     private async Task SablonIndirAsync()
     {
-        var (dosyaAdi, icerik, hata) = await Api.HesapSablonuAsync();
+        var (dosyaAdi, icerik, hata) = await Api.HesapSablonuAsync(FirmaId);
         if (hata is not null || icerik is null)
         {
             Notif.Notify(NotificationSeverity.Warning, "Şablon indirilemedi", hata, 6000);
@@ -843,7 +923,7 @@ else
 
         if (onay != true) return;
 
-        var hata = await Api.DeleteHesapAsync(hesap.Id);
+        var hata = await Api.DeleteHesapAsync(hesap.FirmaId, hesap.Id);
         if (hata is not null)
         {
             Notif.Notify(NotificationSeverity.Warning, "Silinemedi", hata, 6000);

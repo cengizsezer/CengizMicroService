@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.Anasayfa.Dtos;
+﻿using CatalogService.Api.Features.Anasayfa.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.Declarations.Entities;
 
@@ -17,8 +17,6 @@ namespace CatalogService.Api.Features.Anasayfa.Services
         /// <summary>Yaklaşan ödemelerde gösterilecek en fazla satır; kart uzayıp sayfayı boğmasın.</summary>
         public const int EnFazlaOdeme = 8;
 
-        /// <summary>Onay bekleyen banka satırında gösterilecek en fazla firma.</summary>
-        public const int EnFazlaFirma = 8;
 
         public static AnasayfaOzetDto Kur(
             int yil,
@@ -47,10 +45,13 @@ namespace CatalogService.Api.Features.Anasayfa.Services
             ozet.ToplamBeyannameSayisi = ayinBeyannameleri.Count;
             ozet.ToplamVergiTutari = ayinBeyannameleri.Sum(b => b.Amount);
 
+            // KIRPILMAZ: kullanıcı sekiz firmanın işini tek oturumda yapıyor ve anasayfada
+            // hepsinin durumunu birlikte görmek istiyor (KARARLAR §99). Kırpma, listenin
+            // dışında kalan firmayı görünmez yapıyordu — oysa işi bekleyen firma tam da
+            // gözden kaçandır. Firma sayısı iki haneli; liste uzamıyor.
             ozet.BankaOnayBekleyen = bankaOzetleri
                 .Where(o => o.OnayBekleyen > 0)
                 .OrderByDescending(o => o.OnayBekleyen)
-                .Take(EnFazlaFirma)
                 .Select(o => new AnasayfaBankaSatiriDto
                 {
                     FirmaId = o.FirmaId,
@@ -59,8 +60,8 @@ namespace CatalogService.Api.Features.Anasayfa.Services
                 })
                 .ToList();
 
-            // Toplam, listelenen firmalarla değil TÜM firmalarla hesaplanır: liste
-            // kırpılmış olabilir ve kart "8 firmada 40 satır" derken toplam 52 olabilir.
+            // Toplam yine ayrı hesaplanır: liste yalnız onay bekleyeni olan firmaları
+            // gösterir, toplam ise bütün firmaları kapsar.
             ozet.BankaOnayBekleyenToplam = bankaOzetleri.Sum(o => o.OnayBekleyen);
 
             ozet.YaklasanOdemeler = yaklasanBeyannameler

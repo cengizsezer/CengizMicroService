@@ -1,4 +1,4 @@
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using CatalogService.Api.Features.Declarations.Dtos;
 using WebApp.Application.Services.Interfaces;
 using WebApp.Extensions;
@@ -13,9 +13,6 @@ namespace WebApp.Application.Services
         private readonly HttpClient _http;
 
         public BeyannameOzetApiService(HttpClient http) => _http = http;
-
-        public async Task<List<BeyannameTuruDto>> TurleriGetAsync(CancellationToken ct = default)
-            => await _http.GetResponseAsync<List<BeyannameTuruDto>>($"{Prefix}/turler") ?? new();
 
         public async Task<BeyannameOzetDto?> OzetGetAsync(int yil, int ay, CancellationToken ct = default)
             => await _http.GetResponseAsync<BeyannameOzetDto>($"{Prefix}/ozet?yil={yil}&ay={ay}");

@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Domain;
+﻿using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
@@ -73,9 +73,12 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             _kapsam = kapsam;
         }
 
-        /// <summary>Seçili firmanın banka hesapları; kapsam her sorguda görünür yazılır.</summary>
+        /// <summary>
+        /// Kapsamdaki banka hesapları. Kapsam belirtilmemişse (Aktar ekranının hesap
+        /// listesi) tüm firmaların hesapları gelir; süzme her sorguda görünür yazılır.
+        /// </summary>
         private IQueryable<BankaHesabi> Hesaplar
-            => _db.EkstreBankaHesaplari.Where(h => h.FirmaId == _kapsam.FirmaId);
+            => _db.EkstreBankaHesaplari.FirmayaGore(_kapsam);
 
         public async Task<List<BankaHesabiDto>> GetHepsiAsync(bool pasifDahil, CancellationToken ct = default)
         {
@@ -335,9 +338,11 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             // baştan taramak yerine çıkarılmış unvanlar kullanılır — bankanın firmayı nasıl
             // yazdığı zaten orada duruyor.
             // Satırın kendi FirmaId'si yok; kapsamı bağlı olduğu yüklemeden gelir.
+            var kapsamliYuklemeler = _db.EkstreYuklemeler.FirmayaGore(_kapsam);
+
             var unvanlar = await _db.EkstreSatirlari.AsNoTracking()
                 .Where(s => s.CikarilanUnvan != null && s.CikarilanUnvan != string.Empty)
-                .Where(s => _db.EkstreYuklemeler.Any(y => y.Id == s.EkstreYuklemeId && y.FirmaId == _kapsam.FirmaId))
+                .Where(s => kapsamliYuklemeler.Any(y => y.Id == s.EkstreYuklemeId))
                 .Select(s => s.CikarilanUnvan!)
                 .ToListAsync(ct);
 
@@ -384,6 +389,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         private static BankaHesabiDto Esle(BankaHesabi h) => new()
         {
             Id = h.Id,
+            FirmaId = h.FirmaId,
             BankaAdi = h.BankaAdi,
             HesapAdi = h.HesapAdi,
             EslestirmeAnahtarlari = h.EslestirmeAnahtarlari,

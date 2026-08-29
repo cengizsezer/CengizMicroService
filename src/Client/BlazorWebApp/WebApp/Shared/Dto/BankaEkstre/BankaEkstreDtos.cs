@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 
 namespace WebApp.Shared.Dto.BankaEkstre
 {
@@ -82,6 +82,12 @@ namespace WebApp.Shared.Dto.BankaEkstre
 
     public class BankaHesabiDto
     {
+
+        /// <summary>Kaydın firması. Listeler çok firmalı olduğu için satırda taşınır.</summary>
+        public int FirmaId { get; set; }
+
+        /// <summary>Firmanın görünen adı; sunucu doldurur (KARARLAR §99).</summary>
+        public string FirmaAdi { get; set; } = string.Empty;
         public int Id { get; set; }
         public string BankaAdi { get; set; } = string.Empty;
 
@@ -270,6 +276,12 @@ namespace WebApp.Shared.Dto.BankaEkstre
 
     public class EkstreYuklemeDto
     {
+
+        /// <summary>Kaydın firması. Listeler çok firmalı olduğu için satırda taşınır.</summary>
+        public int FirmaId { get; set; }
+
+        /// <summary>Firmanın görünen adı; sunucu doldurur (KARARLAR §99).</summary>
+        public string FirmaAdi { get; set; } = string.Empty;
         public int Id { get; set; }
         public int BankaHesabiId { get; set; }
         public string BankaAdi { get; set; } = string.Empty;
@@ -407,6 +419,12 @@ namespace WebApp.Shared.Dto.BankaEkstre
 
     public class HesapEslesmesiDto
     {
+
+        /// <summary>Kaydın firması. Listeler çok firmalı olduğu için satırda taşınır.</summary>
+        public int FirmaId { get; set; }
+
+        /// <summary>Firmanın görünen adı; sunucu doldurur (KARARLAR §99).</summary>
+        public string FirmaAdi { get; set; } = string.Empty;
         public int Id { get; set; }
         public string AnahtarCekirdek { get; set; } = string.Empty;
         public string? AyirtEdiciEk { get; set; }
@@ -466,6 +484,12 @@ namespace WebApp.Shared.Dto.BankaEkstre
 
     public class HesapPlaniKaydiDto
     {
+
+        /// <summary>Kaydın firması. Listeler çok firmalı olduğu için satırda taşınır.</summary>
+        public int FirmaId { get; set; }
+
+        /// <summary>Firmanın görünen adı; sunucu doldurur (KARARLAR §99).</summary>
+        public string FirmaAdi { get; set; } = string.Empty;
         public int Id { get; set; }
         public string Kod { get; set; } = string.Empty;
         public string Ad { get; set; } = string.Empty;
@@ -527,6 +551,12 @@ namespace WebApp.Shared.Dto.BankaEkstre
 
     public class KisiYonlendirmeDto
     {
+
+        /// <summary>Kaydın firması. Listeler çok firmalı olduğu için satırda taşınır.</summary>
+        public int FirmaId { get; set; }
+
+        /// <summary>Firmanın görünen adı; sunucu doldurur (KARARLAR §99).</summary>
+        public string FirmaAdi { get; set; } = string.Empty;
         public int Id { get; set; }
         public string Isim { get; set; } = string.Empty;
 

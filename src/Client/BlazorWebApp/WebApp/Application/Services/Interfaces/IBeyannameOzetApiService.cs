@@ -1,15 +1,13 @@
-using CatalogService.Api.Features.Declarations.Dtos;
+﻿using CatalogService.Api.Features.Declarations.Dtos;
 
 namespace WebApp.Application.Services.Interfaces
 {
     /// <summary>
-    /// Beyanname özeti (firma × tür matrisi), tür tanımları ve beyanname belgeleri.
-    /// Takip ekranının kendi istemcisi (<see cref="IDeclarationApiService"/>) değişmedi.
+    /// Beyanname özeti (firma × tür matrisi) ve beyanname belgeleri. Tür tanımları
+    /// <see cref="IBeyannameTuruApiService"/> üzerinden okunur/yazılır.
     /// </summary>
     public interface IBeyannameOzetApiService
     {
-        Task<List<BeyannameTuruDto>> TurleriGetAsync(CancellationToken ct = default);
-
         Task<BeyannameOzetDto?> OzetGetAsync(int yil, int ay, CancellationToken ct = default);
 
         Task<List<BeyannameEkDto>> EkleriGetAsync(int declarationId, CancellationToken ct = default);

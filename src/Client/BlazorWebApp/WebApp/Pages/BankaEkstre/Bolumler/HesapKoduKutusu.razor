@@ -1,4 +1,4 @@
-@using Radzen
+﻿@using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Shared.Dto.BankaEkstre
@@ -48,6 +48,13 @@
 </div>
 
 @code {
+    /// <summary>
+    /// Hangi firmanın hesap planında aranacağı. Kod önerileri firmadan firmaya değişir;
+    /// bu yüzden kutuyu kullanan formun kendi kaydının firmasını vermesi ZORUNLU. 0 ile
+    /// hiçbir öneri gelmez — yanlış firmanın kodlarını önermektense hiç önermemek doğru.
+    /// </summary>
+    [Parameter] public int FirmaId { get; set; }
+
     [Parameter] public string? Value { get; set; }
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
 
@@ -80,7 +87,7 @@
             return;
         }
 
-        var sonuc = await Api.HesapPlaniAraAsync(yeni.Trim(), null, 12, iptal);
+        var sonuc = await Api.HesapPlaniAraAsync(FirmaId, yeni.Trim(), null, 12, iptal);
         if (iptal.IsCancellationRequested) return;
 
         _oneriler = sonuc;

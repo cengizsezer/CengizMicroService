@@ -1,4 +1,4 @@
-@using Radzen
+﻿@using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Shared.Dto.BankaEkstre
@@ -167,6 +167,13 @@
 }
 
 @code {
+    /// <summary>
+    /// Sayfanın firma filtresi. Bu tablo GLOBALDİR (kayıt firmaya ait değil, bankanın
+    /// yazım kalıbına); firma yalnız girilen hesap kodunun o firmanın planında var olup
+    /// olmadığını denetlemek için gider. 0 = doğrulama yapılmaz, kayıt yine yazılır.
+    /// </summary>
+    [Parameter] public int FirmaId { get; set; }
+
     /// <summary>Kapsülün bankası; başlık ve özet satırı buna göre yazılır.</summary>
     [Parameter, EditorRequired] public string BankaAdi { get; set; } = string.Empty;
 
@@ -207,7 +214,7 @@
 
     public async Task YenileAsync()
     {
-        _ozet = await Api.KategoriKapsamiAsync(BankaParserTipi);
+        _ozet = await Api.KategoriKapsamiAsync(FirmaId, BankaParserTipi);
         StateHasChanged();
     }
 
@@ -244,8 +251,8 @@
 
         _kaydediyor = true;
         var (_, hata) = _duzenlenenId is int id
-            ? await Api.IslemKategorisiGuncelleAsync(id, _form)
-            : await Api.IslemKategorisiEkleAsync(_form);
+            ? await Api.IslemKategorisiGuncelleAsync(FirmaId, id, _form)
+            : await Api.IslemKategorisiEkleAsync(FirmaId, _form);
         _kaydediyor = false;
 
         if (hata is not null)
@@ -265,7 +272,7 @@
     /// </summary>
     private async Task SilAsync(KategoriKapsamDto kategori)
     {
-        var hata = await Api.IslemKategorisiSilAsync(kategori.Id);
+        var hata = await Api.IslemKategorisiSilAsync(FirmaId, kategori.Id);
         if (hata is not null)
         {
             Notif.Notify(NotificationSeverity.Warning, "Silinemedi", hata, 6000);

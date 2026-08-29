@@ -1,12 +1,30 @@
-using CatalogService.Api.Features.BankaEkstre.Domain;
+﻿using CatalogService.Api.Features.BankaEkstre.Domain;
 
 namespace CatalogService.Api.Features.BankaEkstre.Dtos
 {
+    /// <summary>
+    /// Firma kolonu taşıyan liste satırları. Listeler artık tek firmaya kilitli olmadığı
+    /// için (KARARLAR §99) her satırın hangi firmaya ait olduğu görünmek zorunda;
+    /// <c>FirmaAdi</c>'yi <c>IFirmaAdlari</c> tek okumayla doldurur.
+    /// </summary>
+    public interface IFirmaliSatir
+    {
+        int FirmaId { get; }
+        string FirmaAdi { get; set; }
+    }
+
     // ---- Banka hesabı ----
 
-    public class BankaHesabiDto
+    public class BankaHesabiDto : IFirmaliSatir
     {
         public int Id { get; set; }
+
+        /// <summary>Kaydın firması. Listeler tüm firmaları gösterdiği için satırda yazılır.</summary>
+        public int FirmaId { get; set; }
+
+        /// <summary>Firmanın görünen adı (unvan, yoksa kısa ad).</summary>
+        public string FirmaAdi { get; set; } = string.Empty;
+
         public string BankaAdi { get; set; } = string.Empty;
 
         /// <summary>Hesabın ORKA'daki adı, ör. "VAKIFBANK VADESIZ TL".</summary>
@@ -148,9 +166,16 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
         public int Eksik => OnayBekleyen + Cozulemeyen;
     }
 
-    public class EkstreYuklemeDto
+    public class EkstreYuklemeDto : IFirmaliSatir
     {
         public int Id { get; set; }
+
+        /// <summary>Kaydın firması. Listeler tüm firmaları gösterdiği için satırda yazılır.</summary>
+        public int FirmaId { get; set; }
+
+        /// <summary>Firmanın görünen adı (unvan, yoksa kısa ad).</summary>
+        public string FirmaAdi { get; set; } = string.Empty;
+
         public int BankaHesabiId { get; set; }
         public string BankaAdi { get; set; } = string.Empty;
         public string DosyaAdi { get; set; } = string.Empty;
@@ -286,9 +311,16 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
 
     // ---- Öğrenilen eşleşmeler ----
 
-    public class HesapEslesmesiDto
+    public class HesapEslesmesiDto : IFirmaliSatir
     {
         public int Id { get; set; }
+
+        /// <summary>Kaydın firması. Listeler tüm firmaları gösterdiği için satırda yazılır.</summary>
+        public int FirmaId { get; set; }
+
+        /// <summary>Firmanın görünen adı (unvan, yoksa kısa ad).</summary>
+        public string FirmaAdi { get; set; } = string.Empty;
+
         public string AnahtarCekirdek { get; set; } = string.Empty;
         public string? AyirtEdiciEk { get; set; }
         public string TamAnahtar { get; set; } = string.Empty;
@@ -346,9 +378,16 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
 
     // ---- Hesap planı ----
 
-    public class HesapPlaniKaydiDto
+    public class HesapPlaniKaydiDto : IFirmaliSatir
     {
         public int Id { get; set; }
+
+        /// <summary>Kaydın firması. Listeler tüm firmaları gösterdiği için satırda yazılır.</summary>
+        public int FirmaId { get; set; }
+
+        /// <summary>Firmanın görünen adı (unvan, yoksa kısa ad).</summary>
+        public string FirmaAdi { get; set; } = string.Empty;
+
         public string Kod { get; set; } = string.Empty;
         public string Ad { get; set; } = string.Empty;
         public string AnaGrup { get; set; } = string.Empty;
@@ -402,9 +441,15 @@ namespace CatalogService.Api.Features.BankaEkstre.Dtos
 
     // ---- Kişi yönlendirmeleri ----
 
-    public class KisiYonlendirmeDto
+    public class KisiYonlendirmeDto : IFirmaliSatir
     {
         public int Id { get; set; }
+
+        /// <summary>Kaydın firması. Listeler tüm firmaları gösterdiği için satırda yazılır.</summary>
+        public int FirmaId { get; set; }
+
+        /// <summary>Firmanın görünen adı (unvan, yoksa kısa ad).</summary>
+        public string FirmaAdi { get; set; } = string.Empty;
 
         /// <summary>Kullanıcının girdiği yazım.</summary>
         public string Isim { get; set; } = string.Empty;

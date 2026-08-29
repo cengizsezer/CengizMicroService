@@ -2319,6 +2319,16 @@ code {
     --app-menu-selected-text: #ffffff;
     --app-menu-border: #2d3748;
     --app-menu-focus: #63b3ed;
+    /* Alt menü: üst seviyeden bir tık daha koyu — ayrı bir kutu değil,
+       içeri girmiş bir bölüm gibi dursun. */
+    --app-submenu-bg: #18202b;
+    --app-submenu-text: #9aa7b8;
+    --app-submenu-hover-bg: #232e3d;
+    --app-submenu-hover-text: #e2e8f0;
+    --app-submenu-selected-bg: #24313f;
+    --app-submenu-selected-text: #ffffff;
+    --app-submenu-rail: #2d3748;         /* alt satırların solundaki ince dikey çizgi */
+    --app-submenu-rail-active: #63b3ed;  /* seçili satırda vurgulu */
 }
 
 .app-sidebar,
@@ -2329,10 +2339,14 @@ code {
 }
 
     /* Menü gövdesi ve tüm bağlantılar */
-    .app-sidebar .rz-panel-menu,
-    .app-sidebar .rz-navigation-menu {
+    .app-sidebar .rz-panel-menu {
         background: transparent;
     }
+
+        /* Alt menü zemini bir tık daha koyu: girinti hissi. */
+        .app-sidebar .rz-panel-menu .rz-navigation-menu {
+            background: var(--app-submenu-bg);
+        }
 
     .app-sidebar .rz-navigation-item-link,
     .app-sidebar .rz-navigation-item-wrapper,
@@ -2340,11 +2354,6 @@ code {
     .app-sidebar .rz-navigation-item-icon {
         color: var(--app-menu-text);
     }
-
-        /* Alt seviye başlıklar biraz daha soluk: hiyerarşi renkle de okunsun. */
-        .app-sidebar .rz-navigation-menu .rz-navigation-menu .rz-navigation-item-text {
-            color: var(--app-menu-text-muted);
-        }
 
     .app-sidebar .rz-navigation-item-wrapper:hover,
     .app-sidebar .rz-navigation-item-link:hover {
@@ -2403,3 +2412,86 @@ code {
         border-color: var(--app-menu-border);
     }
 
+
+/* --------------------------------------------------------------------------
+   ALT MENÜ (2. ve 3. seviye)
+
+   Radzen'in material teması alt satırlara beyaz zemin + 4px köşe + 0.5rem yan
+   boşluk veriyor; koyu menünün üstünde parlayan kutular gibi duruyorlardı.
+   Zemin kutusu, kenarlık, gölge ve yuvarlatma kaldırıldı; yerine solda ince
+   dikey çizgi + girinti — kart değil, içeri girmiş bir bölüm.
+
+   Renkler yine yalnız yukarıdaki :root bloğunda. Aşağıdaki ilk blok Radzen'in
+   kendi token'larını o değişkenlere bağlıyor; böylece Radzen'in tek tek
+   yakalamadığımız kuralları da koyu temayı izliyor.
+   -------------------------------------------------------------------------- */
+.app-sidebar {
+    --rz-panel-menu-item-2nd-level-background-color: transparent;
+    --rz-panel-menu-item-2nd-level-color: var(--app-submenu-text);
+    --rz-panel-menu-item-2nd-level-hover-background-color: var(--app-submenu-hover-bg);
+    --rz-panel-menu-item-2nd-level-hover-color: var(--app-submenu-hover-text);
+    --rz-panel-menu-item-2nd-level-active-background-color: var(--app-submenu-selected-bg);
+    --rz-panel-menu-item-2nd-level-active-color: var(--app-submenu-selected-text);
+    --rz-panel-menu-item-2nd-level-border-radius: 0;
+    --rz-panel-menu-item-2nd-level-margin-inline: 0;
+    /* Satırlar bitişik dursun ki soldaki dikey çizgi kesintisiz olsun. */
+    --rz-panel-menu-2nd-level-vertical-offset: 0;
+    --rz-panel-menu-item-3rd-level-background-color: transparent;
+    --rz-panel-menu-item-3rd-level-color: var(--app-submenu-text);
+    --rz-panel-menu-item-3rd-level-hover-background-color: var(--app-submenu-hover-bg);
+    --rz-panel-menu-item-3rd-level-hover-color: var(--app-submenu-hover-text);
+    --rz-panel-menu-item-3rd-level-active-background-color: var(--app-submenu-selected-bg);
+    --rz-panel-menu-item-3rd-level-active-color: var(--app-submenu-selected-text);
+}
+
+/* Kutu görünümü kalksın. Sol çizgi border yerine inset gölge: satırın
+   içeriğini kaydırmaz, ikon hizası bozulmaz. */
+.app-sidebar .rz-panel-menu .rz-navigation-menu .rz-navigation-item-wrapper {
+    background-color: transparent;
+    border: 0;
+    border-radius: 0;
+    margin-inline: 0;
+    box-shadow: inset 2px 0 0 var(--app-submenu-rail);
+}
+
+.app-sidebar .rz-panel-menu .rz-navigation-menu .rz-navigation-item-link,
+.app-sidebar .rz-panel-menu .rz-navigation-menu .rz-navigation-item-text,
+.app-sidebar .rz-panel-menu .rz-navigation-menu .rz-navigation-item-icon {
+    color: var(--app-submenu-text);
+}
+
+/* Üzerine gelince yalnız hafif açılma; kutu belirmiyor. */
+.app-sidebar .rz-panel-menu .rz-navigation-menu .rz-navigation-item-wrapper:hover,
+.app-sidebar .rz-panel-menu .rz-navigation-menu .rz-navigation-item-link:hover {
+    background-color: var(--app-submenu-hover-bg);
+}
+
+    .app-sidebar .rz-panel-menu .rz-navigation-menu .rz-navigation-item-wrapper:hover .rz-navigation-item-text,
+    .app-sidebar .rz-panel-menu .rz-navigation-menu .rz-navigation-item-wrapper:hover .rz-navigation-item-icon {
+        color: var(--app-submenu-hover-text);
+    }
+
+/* Seçili alt satır: metin açık, sol çizgi vurgulu. Üst seviyedeki dolu mavi
+   zemin burada kullanılmıyor — alt menü yine kutuya dönmesin. */
+.app-sidebar .rz-panel-menu .rz-navigation-menu .rz-navigation-item-wrapper-active,
+.app-sidebar .rz-panel-menu .rz-navigation-menu .rz-navigation-item-active {
+    background-color: var(--app-submenu-selected-bg);
+    box-shadow: inset 3px 0 0 var(--app-submenu-rail-active);
+}
+
+    .app-sidebar .rz-panel-menu .rz-navigation-menu .rz-navigation-item-wrapper-active .rz-navigation-item-text,
+    .app-sidebar .rz-panel-menu .rz-navigation-menu .rz-navigation-item-wrapper-active .rz-navigation-item-icon,
+    .app-sidebar .rz-panel-menu .rz-navigation-menu .rz-navigation-item-link-active,
+    .app-sidebar .rz-panel-menu .rz-navigation-menu a.rz-navigation-item-link.active {
+        color: var(--app-submenu-selected-text);
+        font-weight: 600;
+    }
+
+/* Material dalga (ripple) efekti açık gri; koyu zeminde tıklarken parlıyordu. */
+.app-sidebar .rz-panel-menu .rz-navigation-item-link {
+    background-image: none;
+}
+
+    .app-sidebar .rz-panel-menu .rz-navigation-item-link:active {
+        background-color: var(--app-menu-hover-bg);
+    }

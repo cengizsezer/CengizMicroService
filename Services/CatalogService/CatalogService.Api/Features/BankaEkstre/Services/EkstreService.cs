@@ -85,18 +85,25 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         // tanimlanir ve her sorgu bu ifadelerden birinden gecer.
 
         private IQueryable<BankaHesabi> Hesaplar
-            => _db.EkstreBankaHesaplari.Where(h => h.FirmaId == _kapsam.FirmaId);
+            => _db.EkstreBankaHesaplari.FirmayaGore(_kapsam);
 
         private IQueryable<EkstreYukleme> Yuklemeler
-            => _db.EkstreYuklemeler.Where(y => y.FirmaId == _kapsam.FirmaId);
+            => _db.EkstreYuklemeler.FirmayaGore(_kapsam);
 
         /// <summary>Satirin kendi FirmaId alani yok; kapsamini bagli oldugu yuklemeden alir.</summary>
         private IQueryable<EkstreSatiri> Satirlar
-            => _db.EkstreSatirlari.Where(s => _db.EkstreYuklemeler
-                                                 .Any(y => y.Id == s.EkstreYuklemeId && y.FirmaId == _kapsam.FirmaId));
+        {
+            get
+            {
+                // Kapsamli yukleme sorgusu once degiskene alinir: uzanti metodu dogrudan
+                // lambda icinde cagrilirsa ifade agacina girer ve EF ceviremez.
+                var kapsamli = _db.EkstreYuklemeler.FirmayaGore(_kapsam);
+                return _db.EkstreSatirlari.Where(s => kapsamli.Any(y => y.Id == s.EkstreYuklemeId));
+            }
+        }
 
         private IQueryable<HesapPlaniKaydi> Plan
-            => _db.EkstreHesapPlani.Where(h => h.FirmaId == _kapsam.FirmaId);
+            => _db.EkstreHesapPlani.FirmayaGore(_kapsam);
 
         // ---- Yükleme ve işleme ----
 
@@ -841,6 +848,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         private static EkstreYuklemeDto Esle(EkstreYukleme y, EkstreSayaclariDto sayaclar, bool kaynakDosyaVar) => new()
         {
             Id = y.Id,
+            FirmaId = y.FirmaId,
             BankaHesabiId = y.BankaHesabiId,
             BankaAdi = y.BankaHesabi?.BankaAdi ?? string.Empty,
             DosyaAdi = y.DosyaAdi,

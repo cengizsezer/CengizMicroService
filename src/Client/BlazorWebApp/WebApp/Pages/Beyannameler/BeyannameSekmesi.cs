@@ -1,4 +1,4 @@
-namespace WebApp.Pages.Beyannameler
+﻿namespace WebApp.Pages.Beyannameler
 {
     /// <summary>
     /// Beyannameler sayfasının bir alt sekmesi: adres parçası, başlık, ikon ve içeriği
@@ -29,7 +29,8 @@ namespace WebApp.Pages.Beyannameler
         public static readonly IReadOnlyList<BeyannameSekmesi> Hepsi = new[]
         {
             new BeyannameSekmesi("takip", "Takip", "receipt_long", typeof(WebApp.Pages.DeclarationFollow.DeclarationFollow)),
-            new BeyannameSekmesi("ozet", "Özet", "grid_on", typeof(BeyannameOzetTab))
+            new BeyannameSekmesi("ozet", "Özet", "grid_on", typeof(BeyannameOzetTab)),
+            new BeyannameSekmesi("tanimlar", "Tanımlar", "tune", typeof(BeyannameTurleriTab))
         };
 
         /// <summary>Kök adresin açtığı sekme.</summary>

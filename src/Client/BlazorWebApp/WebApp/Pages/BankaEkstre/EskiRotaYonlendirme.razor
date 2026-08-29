@@ -1,3 +1,4 @@
+﻿@page "/banka-otomasyon"
 @page "/banka-isleme"
 @page "/banka-isleme/firma-tanimlari"
 @page "/banka-isleme/tanimlar"
@@ -9,9 +10,9 @@
     Modül "Banka İşleme" iken kullanılan adresler. Kayıtlı bağlantılar ve tarayıcı yer
     imleri kırılmasın diye rotalar duruyor; içerik yok, yalnız yeni adrese yönlendiriyor.
 
-    /banka-isleme kökü Aktar'a değil firma seçim ekranına gider: modülün girişi artık
-    orası ve yer imini açan kullanıcının hangi firmada olduğu belirsizdir — sessizce bir
-    firmanın Aktar ekranını açmak, yanlış firmaya veri girme riskinin ta kendisi.
+    Kök adres (/banka-otomasyon) Aktar'a gider. Bir dönem firma seçim ekranına gidiyordu;
+    o ekran kaldırıldı (KARARLAR §99): firma artık bir oturum bağlamı olmadığı için
+    "hangi firmadayız" sorusu da yok. Aktar zaten tüm firmaların hesaplarını listeliyor.
 
     replace: true — geri düğmesi eski adrese dönüp sonsuz yönlendirme kurmasın.
 *@
@@ -28,7 +29,7 @@
                   : yol.EndsWith("/tanimlar", StringComparison.OrdinalIgnoreCase)
                     || yol.EndsWith("/firma-tanimlari", StringComparison.OrdinalIgnoreCase)
                         ? "/banka-otomasyon/tanimlar"
-                        : "/banka-otomasyon";
+                        : "/banka-otomasyon/aktar";
 
         Nav.NavigateTo(hedef, forceLoad: false, replace: true);
     }

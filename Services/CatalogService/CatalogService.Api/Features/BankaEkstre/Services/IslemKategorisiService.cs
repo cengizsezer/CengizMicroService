@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Domain;
+﻿using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.BankaEkstre.Services.Parsing;
@@ -80,7 +80,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 .ToListAsync(ct);
 
             var kisiler = await _db.EkstreKisiYonlendirmeleri.AsNoTracking()
-                .Where(k => k.FirmaId == _kapsam.FirmaId)
+                .FirmayaGore(_kapsam)
                 .OrderBy(k => k.Isim)
                 .ToListAsync(ct);
 

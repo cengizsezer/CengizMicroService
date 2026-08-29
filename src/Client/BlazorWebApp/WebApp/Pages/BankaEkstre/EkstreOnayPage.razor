@@ -9,7 +9,6 @@
 @implements IDisposable
 
 @inject IBankaEkstreApi Api
-@inject IBankaOtomasyonOturumu Oturum
 @inject NotificationService Notif
 @inject NavigationManager Nav
 @inject IJSRuntime JS
@@ -24,6 +23,11 @@
     katmanın önerdiği etiket olarak durur; yanılan katman böyle görülür.
     "geçmiş" etiketli bir satırda kod düzeltilirse öğrenme kaydı da güncellenir —
     hata gelecek ay geri gelmesin.
+
+    FİRMA BAĞLAMI YOK (KARARLAR §99). Ekran bir EKSTREYE bakar ve ekstre firmasını
+    kendisi taşır: yükleme kapsamsız okunur, sonraki bütün istekler o kaydın FirmaId'si
+    ile gider. Yer imiyle doğrudan gelinse bile doğru firma çalışır — kullanıcının önce
+    bir firmaya "girmesi" gerekmiyor.
 *@
 
 <style>
@@ -100,8 +104,13 @@ else
     <div class="eo-ust">
         <div>
             <h4 style="margin:0">@_yukleme.DosyaAdi</h4>
+            @*
+                Firma adı başlıkta: onaylanan her satır bu firmanın muhasebesine yazılıyor
+                ve ekranda başka bir firma göstergesi kalmadı.
+            *@
             <div style="font-size:12px; color:#718096">
-                @_yukleme.BankaAdi · <a href="/banka-otomasyon/aktar">Aktar'a dön</a>
+                <b style="color:#2b6cb0">@_yukleme.FirmaAdi</b> · @_yukleme.BankaAdi ·
+                <a href="/banka-otomasyon/aktar">Aktar'a dön</a>
             </div>
         </div>
 
@@ -415,24 +424,26 @@ else
         => _yonlendir[satir.Id] = deger is bool b && b;
 
     /// <summary>
-    /// Önce firma bağlamı, sonra veri: onay ekranına doğrudan (yer imiyle) gelinebilir ve
-    /// o an tenant başka firmada olabilir. Seçim yoksa firma listesine dönülür.
+    /// Ekstrenin firması. Yükleme kaydından okunur; ekranın kendi başına bir firma
+    /// bağlamı yok. Yükleme gelene kadar 0 — o aşamada zaten istek atılmıyor.
     /// </summary>
-    protected override async Task OnParametersSetAsync()
-    {
-        if (await Oturum.BaglamiHazirlaAsync() is null)
-        {
-            Nav.NavigateTo("/banka-otomasyon", replace: true);
-            return;
-        }
+    private int FirmaId => _yukleme?.FirmaId ?? IBankaEkstreApi.TumFirmalar;
 
-        await YukleAsync();
-    }
+    protected override Task OnParametersSetAsync() => YukleAsync();
 
     private async Task YukleAsync()
     {
-        _yukleme = await Api.GetYuklemeAsync(EkstreId);
-        _satirlar = await Api.GetSatirlarAsync(EkstreId);
+        // İlk okuma kapsamsız: hangi firmanın ekstresi olduğunu daha bilmiyoruz. Sunucu
+        // kaydı firmasıyla birlikte döner ve bundan sonraki her istek o firmaya gider.
+        _yukleme = await Api.GetYuklemeAsync(IBankaEkstreApi.TumFirmalar, EkstreId);
+
+        if (_yukleme is null)
+        {
+            _satirlar = new List<EkstreSatirDto>();
+            return;
+        }
+
+        _satirlar = await Api.GetSatirlarAsync(FirmaId, EkstreId);
 
         _kodlar.Clear();
         _adlar.Clear();
@@ -557,13 +568,13 @@ else
         // Arama yön → ana grupla daraltılır; giren 120, çıkan 329.
         var anaGrup = satir.Yon == Yon.Giren ? "120" : "329";
 
-        var sonuc = await Api.HesapPlaniAraAsync(kod.Trim(), anaGrup, 12, iptal);
+        var sonuc = await Api.HesapPlaniAraAsync(FirmaId, kod.Trim(), anaGrup, 12, iptal);
         if (iptal.IsCancellationRequested) return;
 
         // Grup içinde bulunamadıysa tüm plana genişlet (istisna satırlar için).
         if (sonuc.Count == 0)
         {
-            sonuc = await Api.HesapPlaniAraAsync(kod.Trim(), null, 12, iptal);
+            sonuc = await Api.HesapPlaniAraAsync(FirmaId, kod.Trim(), null, 12, iptal);
             if (iptal.IsCancellationRequested) return;
         }
 
@@ -601,7 +612,7 @@ else
                     : index > 0 ? liste[index - 1].Id
                     : (int?)null;
 
-        var (veri, hata) = await Api.OnaylaAsync(satir.Id, kod, Yonlendir(satir.Id));
+        var (veri, hata) = await Api.OnaylaAsync(FirmaId, satir.Id, kod, Yonlendir(satir.Id));
         if (hata is not null)
         {
             Notif.Notify(NotificationSeverity.Error, "Onaylanamadı", hata, 6000);
@@ -621,7 +632,7 @@ else
 
     private async Task DigerBankadaAsync(EkstreSatirDto satir)
     {
-        var (veri, hata) = await Api.DigerBankadaAsync(satir.Id);
+        var (veri, hata) = await Api.DigerBankadaAsync(FirmaId, satir.Id);
         if (hata is not null)
         {
             Notif.Notify(NotificationSeverity.Error, "İşaretlenemedi", hata, 6000);
@@ -650,7 +661,7 @@ else
     /// </summary>
     private async Task DisaAktarAsync()
     {
-        var (veri, hata) = await Api.DisaAktarAsync(EkstreId);
+        var (veri, hata) = await Api.DisaAktarAsync(FirmaId, EkstreId);
         if (hata is not null)
         {
             Notif.Notify(NotificationSeverity.Warning, "Dışa aktarılamadı", hata, 8000);
@@ -667,7 +678,7 @@ else
     /// </summary>
     private async Task DuzeltilmisEkstreAsync()
     {
-        var (dosyaAdi, icerik, hata) = await Api.DuzeltilmisEkstreAsync(EkstreId);
+        var (dosyaAdi, icerik, hata) = await Api.DuzeltilmisEkstreAsync(FirmaId, EkstreId);
         if (hata is not null || icerik is null)
         {
             Notif.Notify(NotificationSeverity.Warning, "Dosya üretilemedi",
@@ -684,7 +695,7 @@ else
     /// </summary>
     private async Task AnalizDokumuAsync()
     {
-        var (dosyaAdi, icerik, hata) = await Api.AnalizDokumuAsync(EkstreId);
+        var (dosyaAdi, icerik, hata) = await Api.AnalizDokumuAsync(FirmaId, EkstreId);
         if (hata is not null || icerik is null)
         {
             Notif.Notify(NotificationSeverity.Warning, "Döküm üretilemedi",

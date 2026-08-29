@@ -1,17 +1,23 @@
-@page "/banka-otomasyon/tanimlar"
+﻿@page "/banka-otomasyon/tanimlar"
 
 @using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
+@using WebApp.Application.Services
 @using WebApp.Pages.BankaEkstre.Bolumler
 
-@implements IDisposable
-
-@inject IBankaOtomasyonOturumu Oturum
+@inject IFirmaSecenekleri Firmalar
 @inject NavigationManager Nav
 
 @*
-    Banka Otomasyon > Tanımlar — firmanın kurulumu.
+    Banka Otomasyon > Tanımlar.
+
+    FİRMAYA GİRİLMEZ (KARARLAR §99). Listeler tüm firmaların kayıtlarını firma kolonuyla
+    gösterir; sayfanın tepesindeki tek filtre hepsini birlikte daraltır. Filtre yalnız
+    GÖRÜNÜMDÜR — kayıt eklerken firma formun kendi alanından seçilir.
+
+    Firma başına anlamlı olan iki bölüm (hesap planı özeti/içe aktarımı ve veri temizliği)
+    filtrede bir firma seçilmesini ister; "tüm firmalar" görünümünde çalışmazlar.
 
     Buradaki bölümlerin ortak yanı: hiçbiri bir bankanın YAZIM KALIBINA bağlı değil,
     hepsi FİRMANIN muhasebesine ait. Bankaya bağlı olanlar (ayrıştırıcı ayarları, unvan
@@ -36,6 +42,9 @@
     .ft-kart { border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; padding: 16px; margin-bottom: 16px; }
     .ft-not { border: 1px solid #bee3f8; background: #ebf8ff; color: #2c5282; border-radius: 6px;
               padding: 10px 14px; font-size: 13px; margin-bottom: 16px; }
+    .ft-filtre { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+    .ft-filtre label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .ft-filtre-not { font-size: 11px; color: #a0aec0; }
 </style>
 
 <FirmaBasligi Sekme="BankaOtomasyonSekmesi.Tanimlar" />
@@ -43,6 +52,15 @@
 <h4 style="margin:0 0 4px">Tanımlar</h4>
 <div style="font-size:12px; color:#718096; margin-bottom:14px">
     Günlük çalışma için <a href="/banka-otomasyon/aktar">Aktar</a> ekranını kullanın.
+</div>
+
+<div class="ft-filtre">
+    <label>Firma</label>
+    <FirmaFiltresi FirmaId="@_firmaId" FirmaIdChanged="@FirmaFiltresiDegistiAsync" />
+    <span class="ft-filtre-not">
+        Listeleri daraltır. Kayıt eklerken firma formda seçilir; bu filtre kaydın firmasını
+        belirlemez.
+    </span>
 </div>
 
 <div class="ft-not">
@@ -53,7 +71,7 @@
 </div>
 
 <div class="ft-kart">
-    <HesapPlaniBolumu @ref="_hesapPlani" />
+    <HesapPlaniBolumu @ref="_hesapPlani" FirmaId="@_firmaId" FirmaAdi="@_firmaAdi" />
 </div>
 
 @*
@@ -62,25 +80,31 @@
 *@
 <div class="ft-kart">
     <BankaHesaplariBolumu @ref="_bankaHesaplari"
+                          FirmaId="@_firmaId"
+                          FirmaAdi="@_firmaAdi"
+                          FirmaIdChanged="@FirmaFiltresiDegistiAsync"
                           YeniHesapIstendi="@_yeniHesapIstendi"
                           AcilacakHesapId="@_acilacakHesapId"
                           Degisti="@BolumleriTazeleAsync" />
 </div>
 
 <div class="ft-kart">
-    <OgrenilenEslesmelerBolumu @ref="_eslesmeler" />
+    <OgrenilenEslesmelerBolumu @ref="_eslesmeler"
+                               FirmaId="@_firmaId"
+                               FirmaAdi="@_firmaAdi"
+                               FirmaIdChanged="@FirmaFiltresiDegistiAsync" />
 </div>
 
 <div class="ft-kart">
-    <KisiYonlendirmeleriBolumu @ref="_kisiYonlendirmeleri" />
+    <KisiYonlendirmeleriBolumu @ref="_kisiYonlendirmeleri" FirmaId="@_firmaId" />
 </div>
 
 <div class="ft-kart">
-    <VergiKodlariBolumu @ref="_vergiKodlari" />
+    <VergiKodlariBolumu @ref="_vergiKodlari" FirmaId="@_firmaId" />
 </div>
 
 <div class="ft-kart">
-    <HesapSahibiUnvanlariBolumu @ref="_hesapSahibi" />
+    <HesapSahibiUnvanlariBolumu @ref="_hesapSahibi" FirmaId="@_firmaId" />
 </div>
 
 @*
@@ -88,7 +112,8 @@
     kazara tıklanacak bir yerde durmamalı.
 *@
 <div class="ft-kart">
-    <VeriTemizligiBolumu @ref="_temizlik" Temizlendi="@BolumleriTazeleAsync" />
+    <VeriTemizligiBolumu @ref="_temizlik" FirmaId="@_firmaId" FirmaAdi="@_firmaAdi"
+                         Temizlendi="@BolumleriTazeleAsync" />
 </div>
 
 @code {
@@ -103,22 +128,13 @@
     private bool _yeniHesapIstendi;
     private int? _acilacakHesapId;
 
-    protected override void OnInitialized() => Oturum.Degisti += OnFirmaDegisti;
+    /// <summary>Sayfa geneli liste filtresi; 0 = tüm firmalar (varsayılan).</summary>
+    private int _firmaId = IBankaEkstreApi.TumFirmalar;
 
-    /// <summary>
-    /// Önce firma bağlamı, sonra bölümler. Bölümler kendi verilerini kendileri çeker;
-    /// bağlam hazır olmadan çizilirlerse ilk istek yanlış firmaya giderdi.
-    /// </summary>
-    protected override async Task OnInitializedAsync()
-    {
-        if (await Oturum.BaglamiHazirlaAsync() is null)
-        {
-            Nav.NavigateTo("/banka-otomasyon", replace: true);
-            return;
-        }
+    private string _firmaAdi = string.Empty;
 
-        OkuSorguParametreleri();
-    }
+    /// <summary>Firma kapısı yok: sayfa doğrudan açılır, bölümler tüm firmaları listeler.</summary>
+    protected override void OnInitialized() => OkuSorguParametreleri();
 
     /// <summary>Aynı sayfaya farklı sorguyla gelinebilir (Aktar'dan "Banka ekle").</summary>
     protected override void OnParametersSet() => OkuSorguParametreleri();
@@ -136,19 +152,23 @@
     }
 
     /// <summary>
-    /// Firma değişince tüm bölümler yenilenir. Hesap planı, banka hesapları, öğrenilen
-    /// eşleşmeler, kişi yönlendirmeleri ve hesap sahibi kimliği firma bazlıdır; eski
-    /// firmanın verisi ekranda kalmamalı. Vergi kodları global olsa da ekran bütün
-    /// olarak tazelenir.
+    /// Filtre değişti: bütün bölümler birlikte tazelenir. Bölümler tek tek kendi
+    /// filtrelerini taşısaydı ekranın yarısı bir firmayı, yarısı başka bir firmayı
+    /// gösterebilirdi — kullanıcı hangi firmaya baktığını okuyamazdı.
+    ///
+    /// Alt bölümlerdeki filtreler de buraya bağlı (FirmaIdChanged): nerede değiştirilirse
+    /// değiştirilsin sayfanın tamamı aynı firmayı gösterir.
     /// </summary>
-    private async void OnFirmaDegisti()
-        => await InvokeAsync(async () =>
-        {
-            if (Oturum.SeciliFirma is null) return;
+    private async Task FirmaFiltresiDegistiAsync(int firmaId)
+    {
+        if (_firmaId == firmaId) return;
 
-            await BolumleriTazeleAsync();
-            if (_temizlik is not null) await _temizlik.YenileAsync();
-        });
+        _firmaId = firmaId;
+        _firmaAdi = await Firmalar.AdAsync(firmaId);
+
+        await BolumleriTazeleAsync();
+        if (_temizlik is not null) await _temizlik.YenileAsync();
+    }
 
     /// <summary>
     /// Bölümleri yeniden okur. Firma değişiminde ve veri temizliğinden sonra çağrılır —
@@ -165,5 +185,4 @@
         StateHasChanged();
     }
 
-    public void Dispose() => Oturum.Degisti -= OnFirmaDegisti;
 }

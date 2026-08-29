@@ -1,4 +1,4 @@
-@using Radzen
+﻿@using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Shared.Dto.BankaEkstre
@@ -189,6 +189,13 @@
 }
 
 @code {
+    /// <summary>
+    /// Sayfanın firma filtresi. Bu tablo GLOBALDİR (kayıt firmaya ait değil, bankanın
+    /// yazım kalıbına); firma yalnız girilen hesap kodunun o firmanın planında var olup
+    /// olmadığını denetlemek için gider. 0 = doğrulama yapılmaz, kayıt yine yazılır.
+    /// </summary>
+    [Parameter] public int FirmaId { get; set; }
+
     private List<AciklamaSablonuDto> _kayitlar = new();
     /// <summary>
     /// Kategori seçenekleri. Kategori kuralın davranışını değiştirmez; kurallar
@@ -254,7 +261,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _parserler = await Api.GetParserlerAsync();
+        _parserler = await Api.GetParserlerAsync(FirmaId);
         _yerTutucular = await Api.YerTutucularAsync();
     }
 
@@ -273,7 +280,7 @@
     public async Task YenileAsync()
     {
         _kayitlar = await Api.AciklamaSablonlariAsync();
-        _kategoriler = await Api.IslemKategorileriAsync();
+        _kategoriler = await Api.IslemKategorileriAsync(FirmaId);
         StateHasChanged();
     }
 

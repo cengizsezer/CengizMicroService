@@ -1,4 +1,4 @@
-@using Radzen
+﻿@using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Shared.Dto.BankaEkstre
@@ -16,6 +16,10 @@
     Bankadan bağımsızdır: değer banka hesabı satırlarında saklansa da firmanın kimliği
     bankaya göre değişmez. Kaydetmek değeri firmanın TÜM hesaplarına yazar — tek hesaba
     yazılsaydı ekstresi başka hesaptan işlenen banka firmayı tanımazdı.
+
+    FİRMA SEÇİLMESİNİ ister: değer firma başına tektir ve "tüm firmalar" görünümünde
+    hangi firmanın unvanı olduğu belirsiz olurdu (KARARLAR §99). Kaydetmek de bir yazma
+    işlemidir; kapsamı örtük olamaz.
 *@
 
 <style>
@@ -26,6 +30,13 @@
 </style>
 
 <h5 style="margin:0 0 4px">Hesap sahibi unvanları</h5>
+
+@if (FirmaId <= 0)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false">
+        Hesap sahibi unvanı firma başınadır. Üstteki <b>Firma</b> filtresinden bir firma seçin.
+    </RadzenAlert>
+}
 
 <div style="font-size:12px; color:#718096; margin-bottom:12px">
     Firmanın kendi resmî unvanı ve bankaların kullandığı diğer yazımları. Açıklamada bu
@@ -70,7 +81,7 @@ else
             <div>
                 <RadzenButton Text="@(_taraniyor ? "Taranıyor…" : "Yüklenmiş ekstrelerde ara")"
                               Icon="search" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
-                              Disabled="@_taraniyor" Click="@OnerileriYukleAsync" />
+                              Disabled="@(_taraniyor || FirmaId <= 0)" Click="@OnerileriYukleAsync" />
 
                 @if (_oneriler.Count > 0)
                 {
@@ -95,7 +106,7 @@ else
 
     <div style="display:flex; gap:6px; margin-top:12px">
         <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
-                      Disabled="@_kaydediyor" Click="@KaydetAsync" />
+                      Disabled="@(_kaydediyor || FirmaId <= 0)" Click="@KaydetAsync" />
         <RadzenButton Text="Geri al" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
                       Disabled="@_kaydediyor" Click="@YenileAsync" />
     </div>
@@ -112,7 +123,18 @@ else
     private bool _yukleniyor = true;
     private bool _kaydediyor;
 
-    protected override async Task OnInitializedAsync() => await YenileAsync();
+    /// <summary>Sayfanın firma filtresi; 0 iken bölüm firma seçilmesini ister.</summary>
+    [Parameter] public int FirmaId { get; set; }
+
+    private int _yuklenenFirmaId = -1;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_yuklenenFirmaId == FirmaId) return;
+
+        _yuklenenFirmaId = FirmaId;
+        await YenileAsync();
+    }
 
     /// <summary>Firma değişince üst sayfa çağırır; kimlik firma bazlıdır, mutlaka yenilenmeli.</summary>
     public async Task YenileAsync()
@@ -121,7 +143,7 @@ else
         _oneriler = new();
         _arandi = false;
 
-        _kimlik = await Api.HesapSahibiAsync();
+        _kimlik = FirmaId > 0 ? await Api.HesapSahibiAsync(FirmaId) : new HesapSahibiKimlikDto();
         _form = new HesapSahibiKimlikYazDto { Unvan = _kimlik.Unvan, TakmaAdlar = _kimlik.TakmaAdlar };
 
         _yukleniyor = false;
@@ -138,7 +160,7 @@ else
         _taraniyor = true;
         try
         {
-            _oneriler = await Api.HesapSahibiOnerileriAsync();
+            _oneriler = await Api.HesapSahibiOnerileriAsync(FirmaId);
             _arandi = true;
         }
         finally
@@ -165,8 +187,10 @@ else
 
     private async Task KaydetAsync()
     {
+        if (FirmaId <= 0) return;
+
         _kaydediyor = true;
-        var (veri, hata) = await Api.HesapSahibiKaydetAsync(_form);
+        var (veri, hata) = await Api.HesapSahibiKaydetAsync(FirmaId, _form);
         _kaydediyor = false;
 
         if (hata is not null)

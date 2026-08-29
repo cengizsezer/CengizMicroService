@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.Anasayfa.Services;
+﻿using CatalogService.Api.Features.Anasayfa.Services;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.Declarations.Entities;
 
@@ -109,17 +109,25 @@ namespace CatalogService.UnitTests.Anasayfa
             Assert.Equal(new[] { "CİTADEL", "PKF ADAY", "ALPHA" }, ozet.BankaOnayBekleyen.Select(s => s.FirmaAdi));
         }
 
+        /// <summary>
+        /// Liste artık KIRPILMIYOR (KARARLAR §99): kullanıcı bütün firmaların durumunu
+        /// anasayfada birlikte görmek istiyor. Bu test önceden kırpmayı doğruluyordu.
+        /// Toplamın ayrı hesaplanması ise korundu — satırı olmayan firma listede çıkmaz
+        /// ama toplama girer.
+        /// </summary>
         [Fact]
-        public void Toplam_listelenmeyen_firmalari_da_kapsar()
+        public void Butun_firmalar_listelenir_ve_toplam_hepsini_kapsar()
         {
-            // Liste kırpılsa bile kartın büyük sayısı gerçek toplamı göstermeli.
-            var ozetler = Enumerable.Range(1, AnasayfaOzetKurucu.EnFazlaFirma + 3)
+            var ozetler = Enumerable.Range(1, 11)
                 .Select(i => new FirmaBankaOzetiDto { FirmaId = i, OnayBekleyen = i })
                 .ToList();
 
+            // Onay bekleyeni olmayan firma listede çıkmaz, toplamı da değiştirmez.
+            ozetler.Add(new FirmaBankaOzetiDto { FirmaId = 99, OnayBekleyen = 0 });
+
             var ozet = Kur(banka: ozetler);
 
-            Assert.Equal(AnasayfaOzetKurucu.EnFazlaFirma, ozet.BankaOnayBekleyen.Count);
+            Assert.Equal(11, ozet.BankaOnayBekleyen.Count);
             Assert.Equal(ozetler.Sum(o => o.OnayBekleyen), ozet.BankaOnayBekleyenToplam);
         }
 

@@ -1,0 +1,295 @@
+@using CatalogService.Api.Features.Declarations.Dtos
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+
+@inject IBeyannameTuruApiService TurApi
+@inject NotificationService Notif
+
+@*
+    Beyannameler > Tanımlar: beyanname türlerinin yönetim ekranı.
+
+    Tür listesi eskiden iki ayrı kaynaktaydı — Takip sekmesinde sabit bir List<string>,
+    Özet sekmesinde catalog.BeyannameTurleri tablosu. Tablo boş kalınca iki sekme farklı
+    şeyler gösteriyordu. Artık tek kaynak tablo; bu ekran o tabloyu yönetiyor ve yeni tür
+    eklemek kod değiştirmeyi gerektirmiyor.
+
+    Silme yok, pasife alma var: Deger alanı mevcut beyanname kayıtlarının DeclarationType
+    metniyle eşleşiyor. Tanım silinse o türdeki kayıtlar Özet matrisinde kolonsuz kalırdı.
+*@
+
+<PageTitle>Beyanname Türleri</PageTitle>
+
+<style>
+    .bt-tablo { border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; overflow: hidden; }
+    .bt-satir { display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+                border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+    .bt-head { background: #f7fafc; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #718096;
+               text-transform: uppercase; letter-spacing: .3px; }
+    .bt-satir:not(.bt-head):hover { background: #f8fbff; }
+    .bt-sira { flex: 0 0 60px; font-variant-numeric: tabular-nums; color: #718096; }
+    .bt-kod { flex: 0 0 90px; font-family: ui-monospace, Consolas, monospace; }
+    .bt-ad { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bt-deger { flex: 0 0 240px; font-family: ui-monospace, Consolas, monospace; color: #4a5568;
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bt-durum { flex: 0 0 80px; }
+    .bt-aksiyon { flex: 0 0 60px; text-align: right; }
+    .bt-bos { padding: 26px; text-align: center; color: #a0aec0; }
+    .bt-pasif .bt-kod, .bt-pasif .bt-ad, .bt-pasif .bt-deger { color: #a0aec0; text-decoration: line-through; }
+    .bt-rozet-pasif { font-size: 11px; color: #a0aec0; border: 1px solid #e2e8f0; border-radius: 10px;
+                      padding: 1px 8px; }
+    .bt-alan { display: flex; flex-direction: column; gap: 3px; }
+    .bt-alan label { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: .3px; }
+    .bt-ipucu { font-size: 11px; color: #a0aec0; }
+</style>
+
+<RadzenStack Gap="1rem" class="rz-p-4">
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween"
+                 AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap" Gap="0.5rem">
+        <RadzenText Text="Beyanname Türleri" TextStyle="TextStyle.H4" class="rz-m-0" />
+
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+            <RadzenCheckBox TValue="bool" Value="@pasifDahil" Name="btPasif"
+                            Change="@(async (bool v) => { pasifDahil = v; await YenileAsync(); })" />
+            <RadzenLabel Text="Pasifleri de göster" Component="btPasif" />
+
+            <RadzenButton Text="Yeni tür" Icon="add" ButtonStyle="ButtonStyle.Primary"
+                          Click="@(() => FormAc(null))" />
+        </RadzenStack>
+    </RadzenStack>
+
+    <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0 rz-color-secondary">
+        Takip sekmesinin açılır listesi ve Özet matrisinin kolonları bu tablodan geliyor.
+        Yeni bir tür ekleyince her iki ekranda da görünür.
+    </RadzenText>
+
+    @if (yukleniyor)
+    {
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else
+    {
+        @if (kayitlar.Count == 0)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Warning" Shade="Shade.Lighter" AllowClose="false">
+                <RadzenStack Gap="0.75rem">
+                    <div>
+                        Beyanname türü tanımı yok. Özet matrisi kolonlarını, Takip sekmesi de
+                        açılır listesini bu tablodan üretiyor; tablo boşken ikisi de çalışmaz.
+                    </div>
+                    <div>
+                        <RadzenButton Text="Varsayılanları yükle" Icon="download"
+                                      ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                                      Disabled="@kaydediyor" Click="@VarsayilanlariYukleAsync" />
+                    </div>
+                </RadzenStack>
+            </RadzenAlert>
+        }
+
+        <div class="bt-tablo">
+            <div class="bt-satir bt-head">
+                <span class="bt-sira">Sıra</span>
+                <span class="bt-kod">Vergi kodu</span>
+                <span class="bt-ad">Ad</span>
+                <span class="bt-deger">Saklanan değer</span>
+                <span class="bt-durum">Durum</span>
+                <span class="bt-aksiyon"></span>
+            </div>
+
+            @if (kayitlar.Count == 0)
+            {
+                <div class="bt-bos">Henüz tanım yok.</div>
+            }
+
+            @foreach (var kayit in kayitlar)
+            {
+                <div class="bt-satir @(kayit.Aktif ? "" : "bt-pasif")">
+                    <span class="bt-sira">@kayit.Sira</span>
+                    <span class="bt-kod">@(string.IsNullOrWhiteSpace(kayit.Kod) ? "—" : kayit.Kod)</span>
+                    <span class="bt-ad" title="@kayit.Ad">@kayit.Ad</span>
+                    <span class="bt-deger" title="@kayit.Deger">@kayit.Deger</span>
+                    <span class="bt-durum">
+                        @if (!kayit.Aktif)
+                        {
+                            <span class="bt-rozet-pasif">pasif</span>
+                        }
+                    </span>
+                    <span class="bt-aksiyon">
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
+                                      Click="@(() => FormAc(kayit))" />
+                    </span>
+                </div>
+            }
+        </div>
+
+        @if (kayitlar.Count > 0)
+        {
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center"
+                         Wrap="FlexWrap.Wrap">
+                <RadzenButton Text="Varsayılanları yükle" Icon="download" ButtonStyle="ButtonStyle.Light"
+                              Size="ButtonSize.Small" Disabled="@kaydediyor"
+                              Click="@VarsayilanlariYukleAsync" />
+                <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">
+                    Eksik olan standart tanımları ekler; mevcut satırlara dokunmaz.
+                </RadzenText>
+            </RadzenStack>
+        }
+    }
+
+    @if (form is not null)
+    {
+        <RadzenCard Variant="Variant.Outlined">
+            <RadzenText TextStyle="TextStyle.H6" class="rz-mt-0">
+                @(duzenlenenId is null ? "Yeni tür" : "Türü düzenle")
+            </RadzenText>
+
+            <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px">
+                <div class="bt-alan">
+                    <label>Ad</label>
+                    <RadzenTextBox @bind-Value="form.Ad" Placeholder="KDV (1 No.lu)" />
+                    <span class="bt-ipucu">Ekranlarda görünen okunur ad.</span>
+                </div>
+
+                <div class="bt-alan">
+                    <label>Vergi kodu</label>
+                    <RadzenTextBox @bind-Value="form.Kod" Placeholder="0015" />
+                    <span class="bt-ipucu">
+                        Dört haneli beyanname kodu. Saklanan değer tutmasa bile kayıtlar bu kodla
+                        eşleşebilir.
+                    </span>
+                </div>
+
+                <div class="bt-alan" style="grid-column:1 / -1">
+                    <label>Saklanan değer</label>
+                    <RadzenTextBox @bind-Value="form.Deger" Placeholder="0015 KDV-1" Style="width:100%" />
+                    <span class="bt-ipucu">
+                        Beyanname kayıtlarına yazılan metin. <b>Var olan bir tanımda değiştirilirse</b>
+                        eski metni taşıyan kayıtlar bu türle eşleşmeyi bırakır ve Özet'te
+                        "eşleşmeyen tür" olarak listelenir.
+                    </span>
+                </div>
+
+                <div class="bt-alan">
+                    <label>Sıra</label>
+                    <RadzenNumeric TValue="int" @bind-Value="form.Sira" Min="0" />
+                    <span class="bt-ipucu">Özet matrisindeki kolon sırası.</span>
+                </div>
+
+                <div class="bt-alan">
+                    <label>Durum</label>
+                    <div style="display:flex; gap:6px; align-items:center">
+                        <RadzenCheckBox TValue="bool" @bind-Value="form.Aktif" Name="btAktif" />
+                        <label for="btAktif" style="font-size:12px; color:#4a5568; text-transform:none">
+                            Aktif
+                        </label>
+                    </div>
+                    <span class="bt-ipucu">Pasif tanım listelerde ve kolonlarda çıkmaz; kayıtlar durur.</span>
+                </div>
+            </div>
+
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" class="rz-mt-3">
+                <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                              Disabled="@kaydediyor" Click="@KaydetAsync" />
+                <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                              Click="@FormKapat" />
+            </RadzenStack>
+        </RadzenCard>
+    }
+</RadzenStack>
+
+@code {
+    private List<BeyannameTuruDto> kayitlar = new();
+    private BeyannameTuruYazDto? form;
+    private int? duzenlenenId;
+
+    /// <summary>Yönetim ekranı olduğu için pasifler de görülebilmeli.</summary>
+    private bool pasifDahil = true;
+
+    private bool yukleniyor = true;
+    private bool kaydediyor;
+
+    protected override async Task OnInitializedAsync() => await YenileAsync();
+
+    private async Task YenileAsync()
+    {
+        yukleniyor = true;
+        try
+        {
+            kayitlar = await TurApi.GetHepsiAsync(pasifDahil);
+        }
+        finally
+        {
+            yukleniyor = false;
+        }
+    }
+
+    private void FormKapat()
+    {
+        form = null;
+        duzenlenenId = null;
+    }
+
+    private void FormAc(BeyannameTuruDto? kayit)
+    {
+        duzenlenenId = kayit?.Id;
+        form = kayit is null
+            ? new BeyannameTuruYazDto { Sira = SonrakiSira(), Aktif = true }
+            : new BeyannameTuruYazDto
+            {
+                Deger = kayit.Deger,
+                Kod = kayit.Kod,
+                Ad = kayit.Ad,
+                Sira = kayit.Sira,
+                Aktif = kayit.Aktif
+            };
+    }
+
+    private int SonrakiSira() => (kayitlar.Count == 0 ? 0 : kayitlar.Max(k => k.Sira)) + 10;
+
+    private async Task KaydetAsync()
+    {
+        if (form is null) return;
+
+        // Ad girilmiş ama saklanan değer boşsa kullanıcıyı boş alana zorlamak yerine adı
+        // kullanıyoruz: yeni tür eklerken iki alanın farkı çoğu zaman gerekmiyor.
+        if (string.IsNullOrWhiteSpace(form.Deger)) form.Deger = form.Ad?.Trim() ?? string.Empty;
+
+        kaydediyor = true;
+        var (_, hata) = duzenlenenId is int id
+            ? await TurApi.GuncelleAsync(id, form)
+            : await TurApi.EkleAsync(form);
+        kaydediyor = false;
+
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Error, "Kaydedilemedi", hata, 6000);
+            return;
+        }
+
+        Notif.Notify(NotificationSeverity.Success, "Kaydedildi", null, 3000);
+        FormKapat();
+        await YenileAsync();
+    }
+
+    private async Task VarsayilanlariYukleAsync()
+    {
+        kaydediyor = true;
+        var (eklenen, toplam, hata) = await TurApi.VarsayilanlariYukleAsync();
+        kaydediyor = false;
+
+        if (hata is not null)
+        {
+            Notif.Notify(NotificationSeverity.Error, "Yüklenemedi", hata, 6000);
+            return;
+        }
+
+        Notif.Notify(NotificationSeverity.Success, "Varsayılanlar yüklendi",
+                     eklenen > 0
+                         ? $"{eklenen} tanım eklendi (toplam {toplam})."
+                         : $"Eksik tanım yoktu; tabloda {toplam} tanım var.",
+                     4000);
+
+        await YenileAsync();
+    }
+}

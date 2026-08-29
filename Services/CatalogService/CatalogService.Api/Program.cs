@@ -114,6 +114,10 @@ builder.Services.AddScoped<CatalogService.Api.Features.Declarations.Services.IBe
 builder.Services.AddScoped<CatalogService.Api.Features.Declarations.Services.IBeyannameEkService,
                            CatalogService.Api.Features.Declarations.Services.BeyannameEkService>();
 
+// Beyanname türü tanımları: Takip ve Özet'in ortak kaynağı; Tanımlar ekranından yönetilir.
+builder.Services.AddScoped<CatalogService.Api.Features.Declarations.Services.IBeyannameTuruService,
+                           CatalogService.Api.Features.Declarations.Services.BeyannameTuruService>();
+
 // Firma Bilgileri (sicil / ortaklık / imza yetkilileri / belgeler). Kapsam Banka
 // Otomasyon'daki mekanizmanın aynısı: ?firmaId= → BankaFirmaFiltresi → IBankaFirmaKapsami.
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaBilgileri.Services.IFirmaBilgiService,
@@ -158,6 +162,9 @@ builder.Services.AddSingleton<CatalogService.Api.Features.Muhasebe.Services.IBan
 builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Kapsam.IBankaFirmaKapsami,
                            CatalogService.Api.Features.BankaEkstre.Kapsam.BankaFirmaKapsami>();
 builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Kapsam.BankaFirmaFiltresi>();
+// Firma Id -> ad; listelerdeki firma kolonu bundan doluyor (istek başına tek okuma).
+builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Kapsam.IFirmaAdlari,
+                           CatalogService.Api.Features.BankaEkstre.Kapsam.FirmaAdlari>();
 
 // Parser'lar durumsuz → Singleton; yeni banka eklemek için buraya bir IEkstreParser kaydı yeter.
 builder.Services.AddSingleton<CatalogService.Api.Features.BankaEkstre.Services.Parsing.IEkstreParser,
@@ -545,53 +552,68 @@ IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf')
             logger.LogInformation("🧱 Migration uygulanıyor...");
             await ctxOnce.Database.MigrateAsync();
 
-            logger.LogInformation("💼 Payroll seed uygulanıyor...");
-            await PayrollSeedData.SeedAsync(ctxOnce);
-
-            logger.LogInformation("🏢 Firma/Mukellef seed uygulanıyor...");
+            // Global seed'ler adım adım ve YALITILMIŞ çalışır: biri patlarsa sonrakiler
+            // yine de çalışsın ve hangisinin düştüğü adıyla loglansın. Hepsi tek bir
+            // try/catch içindeyken erken bir hata sonraki tabloları sessizce boş
+            // bırakıyordu (catalog.BeyannameTurleri'nin yayında boş kalma sebebi).
             var globalSeeder = new CatalogContextSeed();
-            await globalSeeder.SeedFirmalarAsync(ctxOnce, envHost, logger);
-            await globalSeeder.SeedMukelleflerAsync(ctxOnce, envHost, logger);
 
-            logger.LogInformation("📜 Ticaret Sicil İşlemleri seed uygulanıyor...");
-            await CatalogService.Api.Features.TicaretSicil.TicaretSicilSeed.SeedAsync(ctxOnce);
+            await SeedAdimi.CalistirAsync(logger, "Payroll",
+                () => PayrollSeedData.SeedAsync(ctxOnce));
 
-            logger.LogInformation("🧮 SMMM Takip seed uygulanıyor...");
-            await CatalogService.Api.Features.SmmmTakip.SmmmTakipSeed.SeedAsync(ctxOnce);
+            await SeedAdimi.CalistirAsync(logger, "Firmalar", async () =>
+            {
+                await globalSeeder.SeedFirmalarAsync(ctxOnce, envHost, logger);
+                await globalSeeder.SeedMukelleflerAsync(ctxOnce, envHost, logger);
+            });
 
-            logger.LogInformation("💸 Finansman gider kısıtlaması oranları seed uygulanıyor...");
-            await CatalogService.Api.Features.FinansmanGiderKisitlamasi.FinansmanGiderKisitlamasiSeed.SeedAsync(ctxOnce);
+            await SeedAdimi.CalistirAsync(logger, "Ticaret Sicil İşlemleri",
+                () => CatalogService.Api.Features.TicaretSicil.TicaretSicilSeed.SeedAsync(ctxOnce));
+
+            await SeedAdimi.CalistirAsync(logger, "SMMM Takip",
+                () => CatalogService.Api.Features.SmmmTakip.SmmmTakipSeed.SeedAsync(ctxOnce));
+
+            await SeedAdimi.CalistirAsync(logger, "Finansman gider kısıtlaması oranları",
+                () => CatalogService.Api.Features.FinansmanGiderKisitlamasi
+                          .FinansmanGiderKisitlamasiSeed.SeedAsync(ctxOnce));
 
             // Banka ekstresi şablon/desen/kural tabloları: banka bazlı referans, tenant'tan bağımsız.
-            logger.LogInformation("🏦 Banka ekstresi yapılandırması seed uygulanıyor...");
-            await CatalogService.Api.Features.BankaEkstre.BankaEkstreSeed.SeedAsync(ctxOnce);
+            await SeedAdimi.CalistirAsync(logger, "Banka ekstresi yapılandırması",
+                () => CatalogService.Api.Features.BankaEkstre.BankaEkstreSeed.SeedAsync(ctxOnce));
 
-            // Beyanname türü tanımları: ülke çapında aynı, tenant'tan bağımsız.
-            logger.LogInformation("🧾 Beyanname türleri seed uygulanıyor...");
-            await CatalogService.Api.Features.Declarations.BeyannameTuruSeed.SeedAsync(ctxOnce);
+            // Beyanname türü tanımları: ülke çapında aynı, tenant'tan bağımsız. Sonuç
+            // loglanır; tablo boş kalırsa log hata seviyesinde uyarır.
+            await SeedAdimi.CalistirAsync(logger, "Beyanname türleri",
+                () => CatalogService.Api.Features.Declarations.BeyannameTuruSeed
+                          .SeedVeLoglaAsync(ctxOnce, logger));
 
             // Kurumlar vergisi beyanname kalemleri: katalog firmadan bağımsız, bir kez yüklenir.
-            logger.LogInformation("🧾 Vergi kalemleri seed uygulanıyor...");
-            await CatalogService.Api.Features.FirmaKontrol.VergiKalemSeed.SeedAsync(ctxOnce, envHost);
+            await SeedAdimi.CalistirAsync(logger, "Vergi kalemleri",
+                () => CatalogService.Api.Features.FirmaKontrol.VergiKalemSeed.SeedAsync(ctxOnce, envHost));
         }
 
         var seeder = new CatalogContextSeed();
         var tenants = new[] { "201", "106", "108", "105", "107" ,"500" };
 
-        // 🔑 Her tenant için sabit accessor ile AYRI bir context
+        // 🔑 Her tenant için sabit accessor ile AYRI bir context.
+        // Tenant'lar da yalıtık: bir firmanın seed'i patlarsa sıradaki firmalar yine
+        // çalışsın. (Listede olmayan firmalar için kaçış yolu ekranlardaki elle yükleme
+        // düğmeleridir — KARARLAR §83/§84.)
         foreach (var t in tenants)
         {
-            using var ctx = new CatalogContext(options, new FixedTenantAccessor(t));
-            await seeder.SeedAsync(ctx, envHost, logger, new[] { t }, force: true);
-            await AccountPlanSeed.SeedAsync(ctx, logger);
-            // Sonuç loglanır: şablon dosyası yayında eksikse sessizce geçilmesin (KARARLAR §84).
-            var planSonucu = await CatalogService.Api.Features.Muhasebe.MuhasebeSeed.SeedAsync(ctx, envHost);
-            if (planSonucu.Sonuc == CatalogService.Api.Features.Muhasebe.PlanYuklemeSonuc.SablonYok)
-                logger.LogError("Tenant {Tenant}: tekdüzen hesap planı şablonu bulunamadı; plan yüklenmedi. " +
-                                "Ekrandaki \"Tek düzen hesap planını yükle\" düğmesi de bu dosyaya bağlıdır.", t);
-            else if (planSonucu.Sonuc == CatalogService.Api.Features.Muhasebe.PlanYuklemeSonuc.Yuklendi)
-                logger.LogInformation("Tenant {Tenant}: tekdüzen hesap planı yüklendi ({Adet} hesap).", t, planSonucu.Adet);
-
+            await SeedAdimi.CalistirAsync(logger, $"Tenant {t}", async () =>
+            {
+                using var ctx = new CatalogContext(options, new FixedTenantAccessor(t));
+                await seeder.SeedAsync(ctx, envHost, logger, new[] { t }, force: true);
+                await AccountPlanSeed.SeedAsync(ctx, logger);
+                // Sonuç loglanır: şablon dosyası yayında eksikse sessizce geçilmesin (KARARLAR §84).
+                var planSonucu = await CatalogService.Api.Features.Muhasebe.MuhasebeSeed.SeedAsync(ctx, envHost);
+                if (planSonucu.Sonuc == CatalogService.Api.Features.Muhasebe.PlanYuklemeSonuc.SablonYok)
+                    logger.LogError("Tenant {Tenant}: tekdüzen hesap planı şablonu bulunamadı; plan yüklenmedi. " +
+                                    "Ekrandaki \"Tek düzen hesap planını yükle\" düğmesi de bu dosyaya bağlıdır.", t);
+                else if (planSonucu.Sonuc == CatalogService.Api.Features.Muhasebe.PlanYuklemeSonuc.Yuklendi)
+                    logger.LogInformation("Tenant {Tenant}: tekdüzen hesap planı yüklendi ({Adet} hesap).", t, planSonucu.Adet);
+            });
         }
     }
     catch (Exception ex)

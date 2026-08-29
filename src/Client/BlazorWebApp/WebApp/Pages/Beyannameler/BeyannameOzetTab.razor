@@ -1,4 +1,4 @@
-@using System.Globalization
+﻿@using System.Globalization
 @using CatalogService.Api.Features.Declarations.Dtos
 @using Radzen
 @using Radzen.Blazor
@@ -7,6 +7,7 @@
 
 @inject IBeyannameOzetApiService BeyannameApi
 @inject DialogService DialogService
+@inject NavigationManager Nav
 
 @*
     Beyannameler > Özet: firma × beyanname türü matrisi.
@@ -84,8 +85,16 @@
     else if (ozet.Turler.Count == 0)
     {
         <RadzenAlert AlertStyle="AlertStyle.Info" Shade="Shade.Lighter" AllowClose="false">
-            Beyanname türü tanımı yok. Matrisin kolonları tanımlardan üretiliyor; tanımlar
-            yüklenmeden tablo çizilemez.
+            <RadzenStack Gap="0.75rem">
+                <div>
+                    Beyanname türü tanımı yok. Matrisin kolonları tanımlardan üretiliyor; tanımlar
+                    yüklenmeden tablo çizilemez.
+                </div>
+                <div>
+                    <RadzenButton Text="Tanımlar ekranını aç" Icon="tune" Size="ButtonSize.Small"
+                                  Click="@(() => Nav.NavigateTo("/beyannameler/tanimlar"))" />
+                </div>
+            </RadzenStack>
         </RadzenAlert>
     }
     else if (ozet.Satirlar.Count == 0)

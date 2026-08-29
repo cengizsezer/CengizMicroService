@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Domain;
+﻿using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Infrastructure.Context;
@@ -32,7 +32,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         }
 
         /// <summary>Seçili firmanın hesap planı. Kapsam her sorguda görünür yazılır.</summary>
-        private IQueryable<HesapPlaniKaydi> Plan => _db.EkstreHesapPlani.Where(h => h.FirmaId == _kapsam.FirmaId);
+        private IQueryable<HesapPlaniKaydi> Plan => _db.EkstreHesapPlani.FirmayaGore(_kapsam);
 
         private static readonly string[] KodBasliklari = { "Hesap Kodu", "Hesap Kod", "Kod", "HesapKodu" };
         private static readonly string[] AdBasliklari = { "Hesap Adı", "Hesap Adi", "Ad", "Unvan", "Ünvan", "HesapAdi" };
@@ -226,6 +226,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         private static HesapPlaniKaydiDto Esle(HesapPlaniKaydi h) => new()
         {
             Id = h.Id,
+            FirmaId = h.FirmaId,
             Kod = h.Kod,
             Ad = h.Ad,
             AnaGrup = h.AnaGrup,

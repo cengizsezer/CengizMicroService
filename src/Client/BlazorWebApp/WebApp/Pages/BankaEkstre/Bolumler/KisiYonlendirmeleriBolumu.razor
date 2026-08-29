@@ -1,4 +1,4 @@
-@using Radzen
+﻿@using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Shared.Dto.BankaEkstre
@@ -25,6 +25,8 @@
     .ky-head { background: #fafafa; border-bottom: 1px solid #eee; font-size: 11px; color: #718096;
                text-transform: uppercase; letter-spacing: .3px; }
     .ky-satir:not(.ky-head):hover { background: #f8fbff; }
+    .ky-firma { flex: 0 0 150px; font-weight: 600; color: #2b6cb0; overflow: hidden;
+                text-overflow: ellipsis; white-space: nowrap; }
     .ky-isim { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .ky-yon { flex: 0 0 90px; }
     .ky-kod { flex: 0 0 120px; font-family: ui-monospace, Consolas, monospace; }
@@ -53,6 +55,7 @@
 
 <div class="ky-tablo">
     <div class="ky-satir ky-head">
+        <span class="ky-firma">Firma</span>
         <span class="ky-isim">İsim</span>
         <span class="ky-yon">Yön</span>
         <span class="ky-kod">Hesap kodu</span>
@@ -72,6 +75,7 @@
     @foreach (var kayit in _kayitlar)
     {
         <div class="ky-satir @(kayit.Aktif ? "" : "ky-pasif")">
+            <span class="ky-firma" title="@kayit.FirmaAdi">@kayit.FirmaAdi</span>
             <span class="ky-isim" title="@($"Eşleştirme çekirdeği: {kayit.IsimCekirdegi}")">@kayit.Isim</span>
             <span class="ky-yon">@BankaEkstreEtiket.YonlendirmeYonu(kayit.Yon)</span>
             <span class="ky-kod">@kayit.HesapKodu</span>
@@ -93,6 +97,16 @@
         <h6 style="margin-top:0">@(_duzenlenenId is null ? "Yeni yönlendirme" : "Yönlendirmeyi düzenle")</h6>
 
         <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px">
+            @*
+                Kaydın firması. Yönlendirme firma bazlıdır: aynı kişi bir firmada 331'e,
+                başka firmada başka bir hesaba gidebilir. Düzenlemede kilitli.
+            *@
+            <div class="ky-alan">
+                <label>Firma</label>
+                <FirmaSecici FirmaId="@_formFirmaId" FirmaIdChanged="@(f => { _formFirmaId = f; _kodKutusu?.Kapat(); })"
+                             Disabled="@(_duzenlenenId is not null)" />
+            </div>
+
             <div class="ky-alan">
                 <label>İsim</label>
                 <RadzenTextBox @bind-Value="_form.Isim" Placeholder="Abdulkadir Sayıcı" />
@@ -106,7 +120,8 @@
             </div>
             <div class="ky-alan">
                 <label>ORKA hesap kodu</label>
-                <HesapKoduKutusu @ref="_kodKutusu" Value="@_form.HesapKodu" Placeholder="331 02"
+                @* Öneriler kaydın firmasının planından gelmeli, ekrandaki filtreden değil. *@
+                <HesapKoduKutusu @ref="_kodKutusu" FirmaId="@_formFirmaId" Value="@_form.HesapKodu" Placeholder="331 02"
                                  ValueChanged="@(v => _form.HesapKodu = v)" />
                 <span class="ky-ipucu">Hesap planında olmayan kod kaydedilmez.</span>
             </div>
@@ -163,13 +178,27 @@
         new(YonlendirmeYonu.Farketmez, "Farketmez")
     };
 
-    protected override async Task OnInitializedAsync() => await YenileAsync();
+    /// <summary>Liste filtresi; 0 = tüm firmalar.</summary>
+    [Parameter] public int FirmaId { get; set; }
+
+    /// <summary>Formdaki kaydın firması; filtreden ayrıdır.</summary>
+    private int _formFirmaId;
+
+    private int _yuklenenFirmaId = -1;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_yuklenenFirmaId == FirmaId) return;
+
+        _yuklenenFirmaId = FirmaId;
+        await YenileAsync();
+    }
 
     /// <summary>Firma değişince üst sayfa çağırır; tablo firma bazlıdır.</summary>
     public async Task YenileAsync()
     {
-        _kayitlar = await Api.KisiYonlendirmeleriAsync();
-        _kategoriler = await Api.IslemKategorileriAsync();
+        _kayitlar = await Api.KisiYonlendirmeleriAsync(FirmaId);
+        _kategoriler = await Api.IslemKategorileriAsync(FirmaId);
         StateHasChanged();
     }
 
@@ -183,6 +212,9 @@
     private void FormAc(KisiYonlendirmeDto? kayit)
     {
         _duzenlenenId = kayit?.Id;
+
+        // Yeni kayıtta filtredeki firma önerilir; "tüm firmalar" görünümünde boş açılır.
+        _formFirmaId = kayit?.FirmaId ?? FirmaId;
         _form = kayit is null
             ? new KisiYonlendirmeYazDto()
             : new KisiYonlendirmeYazDto
@@ -200,10 +232,17 @@
     {
         if (_form is null) return;
 
+        if (_formFirmaId <= 0)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Firma seçilmedi",
+                         "Yönlendirmenin hangi firmaya ait olduğunu seçin.", 6000);
+            return;
+        }
+
         _kaydediyor = true;
         var (_, hata) = _duzenlenenId is int id
-            ? await Api.KisiYonlendirmeGuncelleAsync(id, _form)
-            : await Api.KisiYonlendirmeEkleAsync(_form);
+            ? await Api.KisiYonlendirmeGuncelleAsync(_formFirmaId, id, _form)
+            : await Api.KisiYonlendirmeEkleAsync(_formFirmaId, _form);
         _kaydediyor = false;
 
         if (hata is not null)
@@ -219,7 +258,7 @@
 
     private async Task SilAsync(KisiYonlendirmeDto kayit)
     {
-        var hata = await Api.KisiYonlendirmeSilAsync(kayit.Id);
+        var hata = await Api.KisiYonlendirmeSilAsync(kayit.FirmaId, kayit.Id);
         if (hata is not null)
         {
             Notif.Notify(NotificationSeverity.Warning, "Silinemedi", hata, 6000);

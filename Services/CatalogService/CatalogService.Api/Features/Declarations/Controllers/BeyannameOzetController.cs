@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using CatalogService.Api.Features.Declarations.Dtos;
 using CatalogService.Api.Features.Declarations.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -7,7 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace CatalogService.Api.Features.Declarations.Controllers
 {
     /// <summary>
-    /// Beyanname özeti (firma × tür matrisi), tür tanımları ve beyanname belgeleri.
+    /// Beyanname özeti (firma × tür matrisi) ve beyanname belgeleri. Tür tanımlarının
+    /// uçları <see cref="BeyannameTurleriController"/>'da.
     /// Rota <c>api/catalog/*</c> altında olduğu için gateway'in mevcut
     /// <c>/catalog/{everything}</c> route'undan değişiklik olmadan geçer.
     /// </summary>
@@ -24,12 +25,6 @@ namespace CatalogService.Api.Features.Declarations.Controllers
             _ozet = ozet;
             _ekler = ekler;
         }
-
-        /// <summary>Matris kolonları: aktif beyanname türü tanımları.</summary>
-        [HttpGet("turler")]
-        public async Task<ActionResult<List<BeyannameTuruDto>>> Turler([FromQuery] bool pasifDahil = false,
-                                                                      CancellationToken ct = default)
-            => Ok(await _ozet.TurleriGetAsync(pasifDahil, ct));
 
         /// <summary>Bir dönemin firma × tür matrisi.</summary>
         [HttpGet("ozet")]

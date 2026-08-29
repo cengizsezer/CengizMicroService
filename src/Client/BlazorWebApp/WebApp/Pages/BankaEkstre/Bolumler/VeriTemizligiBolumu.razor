@@ -1,10 +1,9 @@
-@using Radzen
+﻿@using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Shared.Dto.BankaEkstre
 
 @inject IBankaEkstreApi Api
-@inject IBankaOtomasyonOturumu Oturum
 @inject NotificationService Notif
 @inject DialogService Dialog
 
@@ -23,6 +22,10 @@
     Global tablolar (açıklama şablonları, unvan desenleri, sabit kurallar, vergi kodları,
     kimlik kayıtları) SİLİNMEZ ve bu ekranda da öyle yazar — onlar bankanın yazım kalıbına
     ait, firmaya değil; bir firmanın temizliği başka firmaların kurulumunu bozmamalı.
+
+    FİRMA SEÇİLMEDEN ÇALIŞMAZ. Sayfanın geri kalanı "tüm firmalar" görünümünü destekliyor
+    (KARARLAR §99) ama yıkıcı bir işlemin kapsamı asla örtük olamaz: filtre "tüm firmalar"
+    iken düğme kapalıdır ve ekran hangi firmanın seçilmesi gerektiğini söyler.
 *@
 
 <style>
@@ -35,6 +38,14 @@
 </style>
 
 <h5 style="margin-top:0">Veri temizliği</h5>
+
+@if (FirmaId <= 0)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false">
+        Temizlik firma bazlıdır. Üstteki <b>Firma</b> filtresinden bir firma seçin;
+        "tüm firmalar" görünümünde silme yapılmaz.
+    </RadzenAlert>
+}
 
 <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" AllowClose="false">
     Bu işlem <b>@FirmaAdi</b> firmasının banka otomasyon verisini siler. Geri alınamaz.
@@ -55,11 +66,12 @@ else
         <li><span>Kişi yönlendirmesi</span><span class="vt-sayi">@_ozet.KisiYonlendirme</span></li>
     </ul>
 
+    @* Firma seçilmeden yıkıcı işlem açılmaz — kapsamı örtük bir silme olmaz. *@
     <RadzenButton Text="Bu firmanın verisini temizle"
                   Icon="delete_forever"
                   ButtonStyle="ButtonStyle.Danger"
                   Size="ButtonSize.Small"
-                  Disabled="@_isleniyor"
+                  Disabled="@(_isleniyor || FirmaId <= 0)"
                   Click="@TemizleAsync"
                   Style="margin-top:12px" />
 }
@@ -107,25 +119,40 @@ else
     /// </summary>
     [Parameter] public EventCallback Temizlendi { get; set; }
 
+    /// <summary>Sayfanın firma filtresi; 0 iken firma bazlı temizlik kapalıdır.</summary>
+    [Parameter] public int FirmaId { get; set; }
+
+    /// <summary>Filtrede seçili firmanın adı; onay metinlerinde geçer.</summary>
+    [Parameter] public string FirmaAdi { get; set; } = string.Empty;
+
     private BankaTemizlikOzetiDto _ozet = new();
     private BankaTemizlikOzetiDto _sahipsiz = new();
     private bool _isleniyor;
 
-    protected override async Task OnInitializedAsync() => await YenileAsync();
+    private int _yuklenenFirmaId = -1;
 
-    /// <summary>Firma değişince üst sayfa bunu çağırır.</summary>
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_yuklenenFirmaId == FirmaId) return;
+
+        _yuklenenFirmaId = FirmaId;
+        await YenileAsync();
+    }
+
+    /// <summary>Firma filtresi değişince üst sayfa bunu çağırır.</summary>
     public async Task YenileAsync()
     {
-        _ozet = await Api.TemizlikOzetiAsync();
-        _sahipsiz = await Api.SahipsizOzetiAsync();
+        // Firma seçilmemişken firma bazlı sayıları sormanın anlamı yok: ekranda da
+        // "önce firma seçin" yazıyor.
+        _ozet = FirmaId > 0 ? await Api.TemizlikOzetiAsync(FirmaId) : new BankaTemizlikOzetiDto();
+        _sahipsiz = await Api.SahipsizOzetiAsync(IBankaEkstreApi.TumFirmalar);
         StateHasChanged();
     }
 
-    /// <summary>Onay ve bildirim metinlerinde geçen firma adı.</summary>
-    private string FirmaAdi => Oturum.SeciliFirma is null ? "seçili firma" : Oturum.FirmaAdi;
-
     private async Task TemizleAsync()
     {
+        if (FirmaId <= 0) return;
+
         var onay = await Dialog.Confirm(
             $"{FirmaAdi} firmasının banka otomasyon verisi silinecek: " +
             $"{_ozet.HesapPlaniKaydi} hesap planı kaydı, {_ozet.BankaHesabi} banka hesabı, " +
@@ -137,7 +164,7 @@ else
 
         if (onay != true) return;
 
-        await CalistirAsync(() => Api.TemizleAsync(), $"{FirmaAdi} verisi temizlendi");
+        await CalistirAsync(() => Api.TemizleAsync(FirmaId), $"{FirmaAdi} verisi temizlendi");
     }
 
     private async Task SahipsizTemizleAsync()
@@ -152,7 +179,9 @@ else
 
         if (onay != true) return;
 
-        await CalistirAsync(() => Api.SahipsizTemizleAsync(), "Sahipsiz kayıtlar temizlendi");
+        // Sahipsiz kayıtların firması yok; uç nokta bilerek kapsam muafiyeti taşıyor.
+        await CalistirAsync(() => Api.SahipsizTemizleAsync(IBankaEkstreApi.TumFirmalar),
+                            "Sahipsiz kayıtlar temizlendi");
     }
 
     private async Task CalistirAsync(Func<Task<(BankaTemizlikOzetiDto? Veri, string? Hata)>> istek, string basarili)

@@ -1,4 +1,4 @@
-@page "/banka-otomasyon/aktar"
+﻿@page "/banka-otomasyon/aktar"
 
 @using Microsoft.AspNetCore.Components.Forms
 @using Radzen
@@ -9,10 +9,7 @@
 @using WebApp.Pages.BankaEkstre.Bolumler
 @using WebApp.Shared.Dto.BankaEkstre
 
-@implements IDisposable
-
 @inject IBankaEkstreApi Api
-@inject IBankaOtomasyonOturumu Oturum
 @inject NotificationService Notif
 @inject DialogService Dialog
 @inject NavigationManager Nav
@@ -20,9 +17,13 @@
 @*
     Banka Otomasyon > Aktar — günlük iş ekranı, banka kapsülü.
 
-    Firma seçim ekranından girilir; hangi firmada olunduğu üstteki başlıkta sürekli görünür
-    ve tüm isteklere o firmanın kimliği (?firmaId=) eklenir (bkz. BankaOtomasyonOturumu).
-    Kapsam token'daki tenant DEĞİLDİR — bkz. KARARLAR §68.
+    FİRMAYA GİRİLMEZ (KARARLAR §99). Ekran tüm firmaların banka hesaplarını birlikte
+    gösterir; her kartta hesabın firması yazar. Kullanıcı sekiz firmanın işini tek
+    oturumda yapıyor ve her ekstre için firma değiştirmek istemiyor.
+
+    Ekstre bir BANKA HESABINA yüklenir ve hesap zaten firmayı belirler: istek o hesabın
+    FirmaId'siyle gider, ayrıca sorulmaz. Üstteki firma filtresi yalnız listeyi daraltır,
+    yazılan kaydın firmasını BELİRLEMEZ — ikisi karışsa kayıt yanlış firmaya giderdi.
 
     Üstte tanımlı hesaplardan türeyen banka sekmeleri (rozet: o bankanın onay bekleyen
     satır sayısı). Seçili bankanın içinde iki alt sekme:
@@ -57,6 +58,7 @@
     .is-sekme-ekle { margin-left: auto; align-self: center; }
     .is-rozet { font-size: 10px; border-radius: 10px; padding: 1px 7px; background: #fffaf0; color: #975a16; font-variant-numeric: tabular-nums; }
     .is-rozet.tamam { background: #f0fff4; color: #276749; }
+    .is-kart-firma { font-size: 11px; font-weight: 600; color: #2b6cb0; margin-top: 1px; }
 
     /* Alt sekmeler: banka kapsülünün içi. Üst şeritten ayrışsın diye hap biçiminde. */
     .is-alt { display: flex; gap: 6px; margin-bottom: 14px; }
@@ -101,6 +103,17 @@
         </div>
     </div>
 
+    <div class="is-donem">
+        <div class="is-alan">
+            <label>Firma</label>
+            @*
+                Yalnız FİLTRE: listeyi daraltır. Yüklenen ekstrenin firması buradan değil,
+                seçilen banka hesabından gelir.
+            *@
+            <FirmaFiltresi FirmaId="@_firmaId" FirmaIdChanged="@FirmaFiltresiDegistiAsync" Style="width:240px" />
+        </div>
+    </div>
+
     @if (_altSekme == AltSekme.Isleme)
     {
         <div class="is-donem">
@@ -129,8 +142,8 @@ else if (_hesaplar.Count == 0)
         banka eklenirken o bankanın sekmesi henüz yoktur.
     *@
     <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false" Style="margin-bottom:14px">
-        @Oturum.FirmaAdi için henüz banka hesabı tanımlanmadı. İlk hesabı Tanımlar
-        sekmesinden ekleyin; her banka kendi sekmesinde kurallarıyla birlikte görünecek.
+        @(_firmaId > 0 ? _firmaAdi : "Hiçbir firma") için banka hesabı tanımlanmadı. İlk hesabı
+        Tanımlar sekmesinden ekleyin; her banka kendi sekmesinde kurallarıyla birlikte görünecek.
     </RadzenAlert>
 
     <RadzenButton Text="Tanımlar'a git — banka hesabı ekle" Icon="add" ButtonStyle="ButtonStyle.Primary"
@@ -211,6 +224,12 @@ else
                         <div class="is-kart-ust">
                             <div>
                                 <div class="is-kart-ad">@hesap.BankaAdi</div>
+                                @*
+                                    Firma kartın üstünde: ekstre bu hesaba yüklenecek ve hesabın
+                                    firması kaydın firmasıdır. Liste çok firmalı olduğu için
+                                    hangi firmaya yüklendiği karta bakınca görünmeli.
+                                *@
+                                <div class="is-kart-firma">@hesap.FirmaAdi</div>
                                 <div class="is-kart-kod">
                                     @BankaEkstreEtiket.HesapTipi(hesap.HesapTipi) @hesap.ParaBirimi · @hesap.OrkaHesapKodu
                                 </div>
@@ -306,6 +325,11 @@ else
     private int _planSayisi;
     private int? _planGunFarki;
 
+    /// <summary>Liste filtresi; 0 = tüm firmalar (varsayılan).</summary>
+    private int _firmaId = IBankaEkstreApi.TumFirmalar;
+
+    private string _firmaAdi = string.Empty;
+
     private string? _aktifBanka;
     private AltSekme _altSekme = AltSekme.Isleme;
     private int? _suruklenenHesapId;
@@ -375,54 +399,61 @@ else
     /// <summary>Aktif bankada kart göstermeyen hesap sayısı (ayrıştırıcısız veya pasif).</summary>
     private int GizliHesapSayisi => AktifBankaHesaplari.Count - AktifHesaplar.Count;
 
-    protected override void OnInitialized() => Oturum.Degisti += OnFirmaDegisti;
-
     /// <summary>
-    /// Önce firma bağlamı, sonra veri. Sıra kritik: hazırlık seçili firmayı geri getirir,
-    /// ilk istek de onun kimliğiyle gider. Seçim yoksa (doğrudan adres yazıldı ya da
-    /// oturum tazelendi) firma listesine dönülür — sessizce bir firmanın verisi açılmaz.
+    /// Firma kapısı yok: ekran doğrudan açılır ve tüm firmaların hesaplarını gösterir.
+    ///
+    /// Adreste <c>?firmaId=</c> varsa filtre onunla başlar — anasayfadaki "şu firmada 12
+    /// satır bekliyor" satırı buraya böyle bağlanıyor. Bu bir bağlam değil, yalnız
+    /// başlangıç değeri: kullanıcı filtreyi kaldırınca tüm firmalara döner.
     /// </summary>
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
-        if (await Oturum.BaglamiHazirlaAsync() is null)
-        {
-            Nav.NavigateTo("/banka-otomasyon", replace: true);
-            return;
-        }
+        var sorgu = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(new Uri(Nav.Uri).Query);
 
-        await YukleAsync();
+        if (sorgu.TryGetValue("firmaId", out var ham) && int.TryParse(ham.ToString(), out var id) && id > 0)
+            _firmaId = id;
+
+        return YukleAsync();
     }
 
     /// <summary>
-    /// Firma değişince sayfa baştan yüklenir; eski firmanın verisi ekranda kalmasın.
-    /// Olayın kaynağı modülün kendi oturumu; üstteki genel firma seçimi buraya karışmaz.
+    /// Filtre değişti: veri sunucudan yeniden çekilir. İstemcide süzmek yerine yeniden
+    /// sormanın sebebi, sayaçların (onay bekleyen satır) da kapsama bağlı olması.
     /// </summary>
-    private async void OnFirmaDegisti()
-        => await InvokeAsync(async () =>
-        {
-            if (Oturum.SeciliFirma is null) return;
+    private async Task FirmaFiltresiDegistiAsync(int firmaId)
+    {
+        _firmaId = firmaId;
+        _aktifBanka = null;
 
-            _aktifBanka = null;
-            await YukleAsync();
+        await YukleAsync();
 
-            // Kapsül alt bölümleri kendi listelerini tazelesin (kural tabloları firma
-            // bağımsız olsa da hesaplar ve sayaçlar değişti).
-            if (_kurallar is not null) await _kurallar.YenileAsync();
-
-            StateHasChanged();
-        });
+        if (_kurallar is not null) await _kurallar.YenileAsync();
+    }
 
     private async Task YukleAsync()
     {
         _yukleniyor = true;
 
         // Pasif hesaplar da gelir: kapsül onların da yönetildiği yer, sekmesi kaybolmamalı.
-        _hesaplar = await Api.GetHesaplarAsync(pasifDahil: true);
-        _yuklemeler = await Api.GetYuklemelerAsync();
+        _hesaplar = await Api.GetHesaplarAsync(_firmaId, pasifDahil: true);
+        _yuklemeler = await Api.GetYuklemelerAsync(_firmaId);
 
-        var ozet = await Api.HesapPlaniOzetAsync();
-        _planSayisi = ozet.Sayi;
-        _planGunFarki = ozet.GunFarki;
+        _firmaAdi = _hesaplar.FirstOrDefault(h => h.FirmaId == _firmaId)?.FirmaAdi ?? string.Empty;
+
+        // Hesap planı ÖZETİ firma başına anlamlı: "kaç hesap var, kaç gündür güncellenmedi"
+        // sekiz firmanın toplamı olarak okunamaz. Filtre tek firmadayken sorulur; "tüm
+        // firmalar" görünümünde uyarı hiç gösterilmez (yanlış firmaya işaret etmesin).
+        if (_firmaId > 0)
+        {
+            var ozet = await Api.HesapPlaniOzetAsync(_firmaId);
+            _planSayisi = ozet.Sayi;
+            _planGunFarki = ozet.GunFarki;
+        }
+        else
+        {
+            _planSayisi = -1;
+            _planGunFarki = null;
+        }
 
         _yillar = Enumerable.Range(DateTime.Today.Year - 3, 5).Reverse().ToArray();
 
@@ -461,8 +492,9 @@ else
                     .Sum(y => y!.Sayaclar.Eksik);
 
     /// <summary>
-    /// Ekstre yükleme. Dosya seçildikten sonra FİRMA ADIYLA onay sorulur: yanlış firmaya
-    /// veri girmeye karşı son savunma. Kullanıcı vazgeçerse hiçbir istek atılmaz.
+    /// Ekstre yükleme. Kaydın firması <b>hesaptan</b> gelir (<c>hesap.FirmaId</c>) — ekranda
+    /// seçili filtreden değil. Dosya seçildikten sonra FİRMA ADIYLA onay sorulur: liste çok
+    /// firmalı olduğu için yanlış karta bırakma ihtimali arttı, onay metni tek savunma.
     /// </summary>
     private async Task EkstreYukleAsync(BankaHesabiDto hesap, InputFileChangeEventArgs args)
     {
@@ -473,7 +505,7 @@ else
         var hesapAdi = string.IsNullOrWhiteSpace(hesap.HesapAdi) ? hesap.BankaAdi : hesap.HesapAdi;
 
         var onay = await Dialog.Confirm(
-            $"{FirmaAdi} için \"{dosya.Name}\" dosyası {hesapAdi} hesabına yüklenecek.",
+            $"{HesapFirmasi(hesap)} için \"{dosya.Name}\" dosyası {hesapAdi} hesabına yüklenecek.",
             "Ekstre yükleme onayı",
             new ConfirmOptions { OkButtonText = "Yükle", CancelButtonText = "Vazgeç", ShowClose = true });
 
@@ -488,14 +520,14 @@ else
                 await kaynak.CopyToAsync(bellek);
             bellek.Position = 0;
 
-            var (veri, hata) = await Api.YukleAsync(hesap.Id, bellek, dosya.Name);
+            var (veri, hata) = await Api.YukleAsync(hesap.FirmaId, hesap.Id, bellek, dosya.Name);
             if (hata is not null)
             {
                 Notif.Notify(NotificationSeverity.Error, "Yüklenemedi", hata, 8000);
                 return;
             }
 
-            _yuklemeler = await Api.GetYuklemelerAsync();
+            _yuklemeler = await Api.GetYuklemelerAsync(_firmaId);
 
             // Yüklenen ekstrenin dönemi seçili dönemden farklıysa kart görünmez kalırdı.
             if (veri?.DonemBaslangic is DateTime d)
@@ -505,7 +537,8 @@ else
             }
 
             Notif.Notify(NotificationSeverity.Success, "Ekstre işlendi",
-                         $"{FirmaAdi} · {veri?.SatirSayisi} satır · {veri?.Sayaclar.Eksik} satır onay bekliyor", 4000);
+                         $"{HesapFirmasi(hesap)} · {veri?.SatirSayisi} satır · " +
+                         $"{veri?.Sayaclar.Eksik} satır onay bekliyor", 4000);
         }
         finally
         {
@@ -515,18 +548,27 @@ else
 
     private async Task SilAsync(EkstreYuklemeDto y)
     {
-        var hata = await Api.SilAsync(y.Id);
+        var onay = await Dialog.Confirm(
+            $"{FirmaEtiketi(y.FirmaAdi)} · \"{y.DosyaAdi}\" yüklemesi silinecek.",
+            "Yüklemeyi sil",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç", ShowClose = true });
+
+        if (onay != true) return;
+
+        // Kaydın firması yüklemenin kendisinden; ekrandaki filtre "tümü" olabilir.
+        var hata = await Api.SilAsync(y.FirmaId, y.Id);
         if (hata is not null)
         {
             Notif.Notify(NotificationSeverity.Warning, "Silinemedi", hata, 6000);
             return;
         }
 
-        _yuklemeler = await Api.GetYuklemelerAsync();
+        _yuklemeler = await Api.GetYuklemelerAsync(_firmaId);
     }
 
-    /// <summary>Onay ve bildirim metinlerinde geçen firma adı.</summary>
-    private string FirmaAdi => Oturum.SeciliFirma is null ? "seçili firma" : Oturum.FirmaAdi;
+    /// <summary>Onay ve bildirim metinlerinde geçen firma adı — boşsa da bir şey yazsın.</summary>
+    private static string HesapFirmasi(BankaHesabiDto hesap) => FirmaEtiketi(hesap.FirmaAdi);
 
-    public void Dispose() => Oturum.Degisti -= OnFirmaDegisti;
+    private static string FirmaEtiketi(string? ad)
+        => string.IsNullOrWhiteSpace(ad) ? "Firması belirsiz kayıt" : ad;
 }

@@ -1,4 +1,4 @@
-@using Radzen
+﻿@using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Shared.Dto.BankaEkstre
@@ -156,7 +156,12 @@
             </div>
             <div class="sk-alan">
                 <label>ORKA hesap kodu</label>
-                <HesapKoduKutusu @ref="_kodKutusu" Value="@_form.HesapKodu" Placeholder="770 03 005"
+                @*
+                    Öneriler sayfadaki firma filtresinin planından gelir. Tablo global
+                    olsa da hesap kodları firmaya göre değişir; filtre "tüm firmalar"
+                    iken öneri gelmez ve kod elle yazılır.
+                *@
+                <HesapKoduKutusu @ref="_kodKutusu" FirmaId="@FirmaId" Value="@_form.HesapKodu" Placeholder="770 03 005"
                                  ValueChanged="@(v => _form.HesapKodu = v)" Secildi="@KodSecildi" />
                 <span class="sk-ipucu">Boşluklu yazın. Hesap planında olmayan kod kaydedilmez.</span>
             </div>
@@ -233,6 +238,13 @@
 }
 
 @code {
+    /// <summary>
+    /// Sayfanın firma filtresi. Bu tablo GLOBALDİR (kayıt firmaya ait değil, bankanın
+    /// yazım kalıbına); firma yalnız girilen hesap kodunun o firmanın planında var olup
+    /// olmadığını denetlemek için gider. 0 = doğrulama yapılmaz, kayıt yine yazılır.
+    /// </summary>
+    [Parameter] public int FirmaId { get; set; }
+
     private List<SabitKuralDto> _kayitlar = new();
     /// <summary>
     /// Kategori seçenekleri. Kategori kuralın ne yaptığını değiştirmez; kurallar
@@ -319,7 +331,7 @@
         new((int)Yon.Cikan, "Çıkan")
     };
 
-    protected override async Task OnInitializedAsync() => _parserler = await Api.GetParserlerAsync();
+    protected override async Task OnInitializedAsync() => _parserler = await Api.GetParserlerAsync(FirmaId);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -335,8 +347,8 @@
     /// <summary>Firma değişince üst sayfa çağırır. Tablo firma bağımsız; ekran bütün olarak yenilenir.</summary>
     public async Task YenileAsync()
     {
-        _kayitlar = await Api.SabitKurallarAsync();
-        _kategoriler = await Api.IslemKategorileriAsync();
+        _kayitlar = await Api.SabitKurallarAsync(FirmaId);
+        _kategoriler = await Api.IslemKategorileriAsync(FirmaId);
         StateHasChanged();
     }
 
@@ -412,8 +424,8 @@
 
         _kaydediyor = true;
         var (_, hata) = _duzenlenenId is int id
-            ? await Api.SabitKuralGuncelleAsync(id, _form)
-            : await Api.SabitKuralEkleAsync(_form);
+            ? await Api.SabitKuralGuncelleAsync(FirmaId, id, _form)
+            : await Api.SabitKuralEkleAsync(FirmaId, _form);
         _kaydediyor = false;
 
         if (hata is not null)
@@ -429,7 +441,7 @@
 
     private async Task SilAsync(SabitKuralDto kayit)
     {
-        var hata = await Api.SabitKuralSilAsync(kayit.Id);
+        var hata = await Api.SabitKuralSilAsync(FirmaId, kayit.Id);
         if (hata is not null)
         {
             Notif.Notify(NotificationSeverity.Warning, "Silinemedi", hata, 6000);

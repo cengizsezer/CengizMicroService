@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Domain;
+﻿using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Infrastructure.Context;
@@ -41,7 +41,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         /// <summary>Seçili firmanın yönlendirmeleri; kapsam her sorguda görünür yazılır.</summary>
         private IQueryable<KisiYonlendirme> Kayitlar
-            => _db.EkstreKisiYonlendirmeleri.Where(k => k.FirmaId == _kapsam.FirmaId);
+            => _db.EkstreKisiYonlendirmeleri.FirmayaGore(_kapsam);
 
         public async Task<List<KisiYonlendirmeDto>> GetHepsiAsync(CancellationToken ct = default)
         {
@@ -157,6 +157,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         private KisiYonlendirmeDto Esle(KisiYonlendirme k) => new()
         {
             Id = k.Id,
+            FirmaId = k.FirmaId,
             Isim = k.Isim,
             IsimCekirdegi = k.IsimCekirdegi,
             Yon = k.Yon,

@@ -1,4 +1,4 @@
-@page "/anasayfa"
+﻿@page "/anasayfa"
 
 @using System.Globalization
 @using Microsoft.AspNetCore.Authorization
@@ -247,16 +247,20 @@
     // tıklamaları bu yüzden adlandırılmış işleyicilerden geçiyor.
     private void GitBeyannameOzet() => Git("/beyannameler/ozet");
     private void GitBeyannameTakip() => Git("/beyannameler/takip");
-    private void GitBankaOtomasyon() => Git("/banka-otomasyon");
+    private void GitBankaOtomasyon() => Git("/banka-otomasyon/aktar");
     private void GitFirmalar() => Git("/yonetim/firmalar");
 
     /// <summary>
     /// Firmaya giderken hızlı erişim listesi de güncellenir; "son kullanılan" gerçekten
     /// kullanımdan besleniyor.
+    ///
+    /// Firmaya "girilmiyor" (KARARLAR §99): Aktar ekranı adresteki <c>?firmaId=</c> ile
+    /// o firmaya SÜZÜLMÜŞ açılıyor. Kullanıcı filtreyi kaldırıp tüm firmalara dönebilir;
+    /// saklanan bir bağlam kalmıyor.
     /// </summary>
     private async Task FirmayaGit(AnasayfaBankaSatiriDto firma)
     {
         await SonFirmalar.KaydetAsync(firma.FirmaId, firma.FirmaAdi, DateTime.Now);
-        Nav.NavigateTo("/banka-otomasyon");
+        Nav.NavigateTo($"/banka-otomasyon/aktar?firmaId={firma.FirmaId}");
     }
 }

@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Dtos;
+﻿using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.BankaEkstre.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -17,6 +17,10 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
     [Route("api/catalog/banka-ekstre/islem-kategorileri")]
     [Authorize]
     [ServiceFilter(typeof(BankaFirmaFiltresi))]
+    // Tablo global (entity FirmaKapsamliEntity değil): yazarken firma zorunlu değil.
+    // Filtre yine de duruyor — ?firmaId= verilirse hesap kodu o firmanın planına
+    // karşı doğrulanır.
+    [FirmaKapsamiGerekmez]
     public class IslemKategorileriController : ControllerBase
     {
         private readonly IIslemKategorisiService _service;

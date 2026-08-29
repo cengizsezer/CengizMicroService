@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Dtos;
+﻿using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.BankaEkstre.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -42,6 +42,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Controllers
             => Ok(await _service.SahipsizOzetAsync(ct));
 
         [HttpDelete("sahipsiz")]
+        [FirmaKapsamiGerekmez]
         public async Task<ActionResult<BankaTemizlikOzetiDto>> SahipsizTemizle(CancellationToken ct)
             => Ok(await _service.SahipsizTemizleAsync(ct));
     }

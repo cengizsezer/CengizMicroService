@@ -1,11 +1,10 @@
-@using Microsoft.AspNetCore.Components.Forms
+﻿@using Microsoft.AspNetCore.Components.Forms
 @using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Shared.Dto.BankaEkstre
 
 @inject IBankaEkstreApi Api
-@inject IBankaOtomasyonOturumu Oturum
 @inject NotificationService Notif
 @inject DialogService Dialog
 @inject IJSRuntime JS
@@ -17,6 +16,10 @@
 
     Anahtar ham açıklama değil, normalize unvan çekirdeği: banka her satıra farklı sorgu
     numarası yazdığı için ham metin asla ikinci kez eşleşmiyordu.
+
+    Liste ÇOK FİRMALIDIR (KARARLAR §99): her satırda firma kolonu var, üstteki filtre
+    daraltır. Eşleşmeler firmadan firmaya değişir — aynı unvan farklı firmalarda farklı
+    hesaba gider — bu yüzden firma kolonu satırın anlamının parçası, süsü değil.
 *@
 
 <style>
@@ -26,6 +29,8 @@
     .oe-head { background: #fafafa; border-bottom: 1px solid #eee; font-size: 11px; color: #718096;
                text-transform: uppercase; letter-spacing: .3px; }
     .oe-satir:not(.oe-head):hover { background: #f8fbff; }
+    .oe-firma { flex: 0 0 150px; font-weight: 600; color: #2b6cb0; overflow: hidden;
+                text-overflow: ellipsis; white-space: nowrap; }
     .oe-anahtar { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
                   font-family: ui-monospace, Consolas, monospace; }
     .oe-kod { flex: 0 0 110px; font-family: ui-monospace, Consolas, monospace; }
@@ -53,6 +58,7 @@
 <div class="oe-arac">
     <h5 style="margin:0">Öğrenilen eşleşmeler</h5>
     <div style="display:flex; gap:6px; align-items:center">
+        <FirmaFiltresi FirmaId="@FirmaId" FirmaIdChanged="@FirmaFiltresiDegistiAsync" Style="width:200px" />
         <RadzenTextBox @bind-Value="_arama" Placeholder="Unvan veya kod ara" Style="width:220px"
                        Change="@(async (string _) => await YenileAsync())" />
         <RadzenButton Icon="search" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@YenileAsync" />
@@ -61,6 +67,7 @@
 
 <div class="oe-tablo">
     <div class="oe-satir oe-head">
+        <span class="oe-firma">Firma</span>
         <span class="oe-anahtar">Anahtar</span>
         <span class="oe-tip">Tür</span>
         <span class="oe-kod">Hesap kodu</span>
@@ -79,6 +86,7 @@
     @foreach (var kayit in _kayitlar)
     {
         <div class="oe-satir">
+            <span class="oe-firma" title="@kayit.FirmaAdi">@kayit.FirmaAdi</span>
             <span class="oe-anahtar" title="@kayit.TamAnahtar">
                 @kayit.AnahtarCekirdek
                 @if (!string.IsNullOrWhiteSpace(kayit.AyirtEdiciEk))
@@ -131,8 +139,21 @@
     @if (_iceAktarimAcik)
     {
         <div class="oe-alan" style="margin-top:10px; max-width:460px">
+            @*
+                İçe aktarım bir YAZMA işlemi: dosyadaki satırlar bir firmanın eşleşmeleri
+                olarak kaydedilir. Filtre "tüm firmalar" iken hangi firmaya yazılacağı
+                belirsiz olurdu; alan kapalı ve sebebi yazılı.
+            *@
+            @if (FirmaId <= 0)
+            {
+                <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false">
+                    İçe aktarım firma başınadır. Yukarıdaki firma filtresinden hedef firmayı seçin.
+                </RadzenAlert>
+            }
+
             <label>Dosya seç (.xlsx)</label>
-            <InputFile OnChange="IceAktarAsync" accept=".xlsx,.xls" disabled="@_iceAktariliyor" />
+            <InputFile OnChange="IceAktarAsync" accept=".xlsx,.xls"
+                       disabled="@(_iceAktariliyor || FirmaId <= 0)" />
             <span class="oe-ipucu">
                 Zorunlu kolonlar: <code>Anahtar Çekirdek</code>, <code>Hesap Kodu</code>.
                 İsteğe bağlı: <code>Hesap Adı</code>, <code>Yön</code>, <code>Kullanım Sayısı</code>,
@@ -233,7 +254,20 @@
     /// <summary>Sunucudaki sınırla aynı; büyük dosya isteği boşuna gitmesin.</summary>
     private const long EnFazlaBayt = 20 * 1024 * 1024;
 
-    private string FirmaAdi => Oturum.SeciliFirma is null ? "seçili firma" : Oturum.FirmaAdi;
+    /// <summary>Liste filtresi; 0 = tüm firmalar.</summary>
+    [Parameter] public int FirmaId { get; set; }
+
+    /// <summary>Seçili firmanın adı; içe aktarım onayında geçer.</summary>
+    [Parameter] public string FirmaAdi { get; set; } = string.Empty;
+
+    [Parameter] public EventCallback<int> FirmaIdChanged { get; set; }
+
+    private async Task FirmaFiltresiDegistiAsync(int firmaId)
+    {
+        FirmaId = firmaId;
+        await FirmaIdChanged.InvokeAsync(firmaId);
+        await YenileAsync();
+    }
 
     private static string AnahtarTipiAdi(AnahtarTipi tip) => tip switch
     {
@@ -260,7 +294,7 @@
     /// <summary>Firma değişince üst sayfa bunu çağırır.</summary>
     public async Task YenileAsync()
     {
-        _kayitlar = await Api.EslesmeleriAraAsync(_arama);
+        _kayitlar = await Api.EslesmeleriAraAsync(FirmaId, _arama);
         StateHasChanged();
     }
 
@@ -280,7 +314,8 @@
         if (_duzenlenen is null || _form is null) return;
 
         _kaydediyor = true;
-        var (_, hata) = await Api.EslesmeGuncelleAsync(_duzenlenen.Id, _form);
+        // Kaydın firması listedeki satırdan gelir — ekrandaki filtre "tümü" olabilir.
+        var (_, hata) = await Api.EslesmeGuncelleAsync(_duzenlenen.FirmaId, _duzenlenen.Id, _form);
         _kaydediyor = false;
 
         if (hata is not null)
@@ -297,7 +332,7 @@
 
     private async Task SilAsync(HesapEslesmesiDto kayit)
     {
-        var hata = await Api.EslesmeSilAsync(kayit.Id);
+        var hata = await Api.EslesmeSilAsync(kayit.FirmaId, kayit.Id);
         if (hata is not null)
         {
             Notif.Notify(NotificationSeverity.Warning, "Silinemedi", hata, 6000);
@@ -320,6 +355,8 @@
     /// </summary>
     private async Task IceAktarAsync(InputFileChangeEventArgs args)
     {
+        if (FirmaId <= 0) return;
+
         var dosya = args.File;
         if (dosya is null) return;
 
@@ -343,7 +380,7 @@
                 await kaynak.CopyToAsync(bellek);
             bellek.Position = 0;
 
-            var (veri, hata) = await Api.EslesmeleriIceAktarAsync(bellek, dosya.Name);
+            var (veri, hata) = await Api.EslesmeleriIceAktarAsync(FirmaId, bellek, dosya.Name);
             if (hata is not null)
             {
                 Notif.Notify(NotificationSeverity.Error, "İçe aktarılamadı", hata, 8000);
@@ -368,7 +405,7 @@
 
     private async Task SablonIndirAsync()
     {
-        var (dosyaAdi, icerik, hata) = await Api.EslesmeSablonuAsync();
+        var (dosyaAdi, icerik, hata) = await Api.EslesmeSablonuAsync(FirmaId);
         if (hata is not null || icerik is null)
         {
             Notif.Notify(NotificationSeverity.Warning, "Şablon indirilemedi", hata, 6000);

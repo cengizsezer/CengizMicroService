@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.Declarations.Dtos;
+﻿using CatalogService.Api.Features.Declarations.Dtos;
 using CatalogService.Api.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,8 +7,6 @@ namespace CatalogService.Api.Features.Declarations.Services
     public interface IBeyannameOzetService
     {
         Task<BeyannameOzetDto> GetAsync(int yil, int ay, CancellationToken ct = default);
-
-        Task<List<BeyannameTuruDto>> TurleriGetAsync(bool pasifDahil = false, CancellationToken ct = default);
     }
 
     /// <summary>
@@ -26,16 +24,6 @@ namespace CatalogService.Api.Features.Declarations.Services
         private readonly CatalogContext _db;
 
         public BeyannameOzetService(CatalogContext db) => _db = db;
-
-        public async Task<List<BeyannameTuruDto>> TurleriGetAsync(bool pasifDahil = false,
-                                                                  CancellationToken ct = default)
-        {
-            var sorgu = _db.BeyannameTurleri.AsNoTracking();
-            if (!pasifDahil) sorgu = sorgu.Where(t => t.Aktif);
-
-            var turler = await sorgu.OrderBy(t => t.Sira).ThenBy(t => t.Id).ToListAsync(ct);
-            return turler.Select(BeyannameOzetKurucu.TuruDto).ToList();
-        }
 
         public async Task<BeyannameOzetDto> GetAsync(int yil, int ay, CancellationToken ct = default)
         {

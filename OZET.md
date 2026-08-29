@@ -1636,6 +1636,44 @@ Sol menü koyu (`#1f2733`), metin açık, seçili satır hem renkle hem sol kena
 belirgin. Başlık ve içerik alanı açık kaldı. Bütün renk değerleri `app.css`'te tek bir
 `:root` bloğunda; kontrast oranları yorumda yazılı (KARARLAR §96).
 
+Alt menü de koyu: zemin bir tık daha koyu (`#18202b`), kutu/kart görünümü yok, solda ince
+dikey çizgi + girinti var. Metin soluk (`#9aa7b8`), hover'da açılıyor, seçili satırda metin
+beyaz ve sol çizgi vurgulu. Radzen'in ikinci/üçüncü seviye token'ları `.app-sidebar`
+üzerinde aynı değişkenlere bağlandı; ham renk kodu kurallara dağılmadı (KARARLAR §97).
+Menüdeki hiçbir satır gerçekten devre dışı değil — soluk görünen satırlar Radzen'in ikinci
+seviye gri metin rengiydi; yetki kontrolü satırı çizmemekle yapılıyor.
+
+## 5. Beyanname türleri: tek kaynak + Tanımlar ekranı
+
+Türler yalnız `catalog.BeyannameTurleri` tablosundan okunuyor. Takip sekmesindeki sabit
+liste kaldırıldı; Takip filtresi, yeni/düzenle formu ve Özet matrisi aynı kaynağı görüyor.
+Yeni **Tanımlar** sekmesi (`/beyannameler/tanimlar`) tür ekleme/düzenleme ve pasife alma
+sağlıyor; "Varsayılanları yükle" düğmesi kurulu veritabanlarında eksik standart tanımları
+tamamlıyor.
+
+Açılış seed'leri artık adım adım yalıtık (`Infrastructure/Seeding/SeedAdimi.cs`): bir seed
+patlayınca sonrakiler de atlanıyordu, tablonun yayında boş kalma sebebi buydu. Her adım
+kendi `try/catch`'inde ve adıyla loglanıyor (KARARLAR §98).
+
+## 6. Firma: oturum bağlamı değil, veri boyutu
+
+Banka Otomasyon'daki firma seçim ekranı ve modül içi firma bağlamı **kaldırıldı** — bir
+önceki turun bilinçli olarak geri alınması (KARARLAR §99). Kullanıcı tek oturumla sorumlu
+olduğu bütün firmaları yönetiyor; her işlem için firmaya girmiyor.
+
+- **Aktar** tüm firmaların banka hesaplarını gösteriyor; her kartta firma adı. Ekstre bir
+  banka hesabına yükleniyor, hesap firmayı belirliyor — ayrıca sorulmuyor.
+- **Tanımlar** sayfa geneli tek firma filtresi taşıyor; banka hesapları, öğrenilen
+  eşleşmeler ve kişi yönlendirmeleri listelerinde firma kolonu var. Kayıt eklerken firma
+  formda seçiliyor (filtreden ayrı bir alan).
+- **Onay ekranı** firmasını ekstreden alıyor; başlıkta firma adı yazıyor.
+- **Anasayfa** bütün firmaların özetini kırpmadan listeliyor.
+- Okuma kapsamsız olabiliyor ("tüm firmalar"); **yazma firma zorunlu** — 400 ve
+  `SaveChangesAsync` ile iki kez korunuyor. Yıkıcı ve firma başına anlamlı işlemler
+  "tüm firmalar" görünümünde kapalı, sebebi ekranda yazılı.
+- **Muhasebe kapsam dışı**: hesap planı `TenantNo` kapsamlı, `FirmaId` değil; bu turda
+  hiç değiştirilmedi.
+
 ## Değişen ve eklenen dosyalar
 
 | Alan | Dosya |
@@ -1645,15 +1683,30 @@ belirgin. Başlık ve içerik alanı açık kaldı. Bütün renk değerleri `app
 | Firma Bilgileri (API) | `Features/FirmaBilgileri/*` (domain, dto, servis, controller) |
 | Firma Bilgileri (istemci) | `Pages/Yonetim/FirmaBilgileri/*`, `Application/Services/FirmaBilgiApiClient.cs` |
 | Anasayfa | `Features/Anasayfa/*` (API), `Pages/Anasayfa/AnasayfaPage.razor`, `Application/Services/AnasayfaApiClient.cs` (+ `SonFirmalarStore`) |
-| Tema | `wwwroot/css/app.css` (koyu menü bloğu), `wwwroot/index.html` (sürüm) |
+| Tema | `wwwroot/css/app.css` (koyu menü + alt menü bloğu), `wwwroot/index.html` (sürüm artırıldı, sürümsüz ikinci `app.css` bağlantısı kaldırıldı) |
+| Beyanname türleri (API) | `Features/Declarations/Services/BeyannameTuruService.cs`, `Controllers/BeyannameTurleriController.cs` (yeni); `BeyannameTuruSeed.cs`, `BeyannameOzetService.cs`, `BeyannameOzetController.cs`, `Dtos/BeyannameOzetDtos.cs` (güncellendi); `Infrastructure/Seeding/SeedAdimi.cs` (yeni), `Program.cs` (seed yalıtımı + DI) |
+| Firma kapsamı (API) | `Features/BankaEkstre/Kapsam/*` — `BankaFirmaFiltresi` (okuma/yazma ayrımı + firma adı doldurma), yeni `FirmaKapsamiSorgu`, `FirmaAdlari`, `FirmaKapsamiGerekmez`; beş servisin kapsam sorgusu; `Dtos/BankaEkstreDtos.cs` (FirmaId/FirmaAdi + `IFirmaliSatir`); `Anasayfa/Services/AnasayfaOzetKurucu.cs` (kırpma kalktı) |
+| Firma kapsamı (istemci) | `Application/Services/BankaEkstreApi.cs` + arayüzü (53 metotta `firmaId` parametresi), yeni `FirmaSecenekleri.cs`; yeni `Bolumler/FirmaFiltresi.razor` ve `Bolumler/FirmaSecici.razor`; `AktarPage`, `TanimlarPage`, `EkstreOnayPage`, `EskiRotaYonlendirme`, on bir `Bolumler/*`, `AnasayfaPage`. **Silinen:** `FirmaSecimPage.razor`, `BankaOtomasyonOturumu.cs`, `IBankaOtomasyonOturumu.cs` |
+| Beyanname türleri (istemci) | `Pages/Beyannameler/BeyannameTurleriTab.razor` (yeni), `Application/Services/BeyannameTuruApiService.cs` + arayüzü (yeni); `BeyannameSekmesi.cs`, `BeyannameOzetTab.razor`, `DeclarationFollow.razor`, `DeclarationFormDialog.razor`, `Shared/Dto/DeclarationFollow/BeyannameOzetDtos.cs`, `MainLayout.razor` (güncellendi) |
 | Ortak | `CatalogContext` (7 yeni DbSet), iki yeni entity configuration dosyası, `Program.cs` (DI + seed), `MainLayout.razor` (menü), `LoginPage`/`FirmSelectDialog` (varsayılan rota), `DeclarationFollow.razor` (rota kaldırıldı + Belgeler kolonu), `Yonetim/Firmalar.razor` (Bilgiler düğmesi) |
 
 Migration: `BeyannameTurleriVeEkleri`, `FirmaBilgileri` — ikisi de üretildi ve uygulandı.
 
 ## Testler
 
-`CatalogService.UnitTests` **682** (öncesi 600), `WebApp.UnitTests` **62** — hepsi geçiyor.
+`CatalogService.UnitTests` **696** (öncesi 682), `WebApp.UnitTests` **60** — hepsi geçiyor.
 Yeni testler:
+
+- `BankaEkstre/TumFirmalarKapsamiTests` — tek firma kapsamında izolasyon (eski davranış
+  aynen), kapsamsız okumada bütün firmalar, her satırın kendi firmasını taşıması, kapsamsız
+  yazmanın reddi, silmenin komşu firmaya dokunmaması
+- `WebApp.UnitTests/BankaEkstre/FirmaKapsamiIstektenGelirTests` — çağıranın verdiği firmanın
+  adrese yansıması, "tüm firmalar"da `firmaId`'nin hiç gönderilmemesi, ardışık çağrıların
+  birbirinin firmasını taşımaması
+
+- `Beyannameler/BeyannameTuruServiceTests` — tanım ekleme/güncelleme, benzersiz `Deger`,
+  boş alan reddi, pasif tanımın listede çıkmaması, varsayılanların elle yüklenmesi ve
+  kullanıcının düzenlediği adın korunması
 
 - `Beyannameler/BeyannameTuruEsleyiciTests` — yazım çeşitleri, Türkçe harf tuzağı, kod
   eşleşmesi, tanınmayan tür
@@ -1668,12 +1721,19 @@ Yeni testler:
 
 ## Ne eksik kaldı
 
+- **Kaldırılan/değişen testler:** `BankaOtomasyonOturumuTests` (7 test) silindi — sınadığı
+  oturum tipi kaldırıldı; yerine `FirmaKapsamiIstektenGelirTests` (5 test) geldi.
+  `AnasayfaOzetKurucuTests.Toplam_listelenmeyen_firmalari_da_kapsar` kırpmayı doğruluyordu;
+  kırpma kalktığı için `Butun_firmalar_listelenir_ve_toplam_hepsini_kapsar` oldu. Firma
+  izolasyonu testlerinin hiçbiri değişmedi.
 - **Ekranlar tarayıcıda denenmedi.** Sunucu tarafı testli, istemci derleniyor; görsel
   doğrulama (koyu menü kontrastı, matrisin geniş ekranda görünümü, PDF iframe'i) ofiste
   yapılacak.
 - **Beyanname tablosunun kapsamı** hâlâ filtresiz (KARARLAR §92); bu turda bilerek
   değiştirilmedi.
-- **Tür tanımları için ekran yok**: `catalog.BeyannameTurleri` seed ile doluyor, yeni tür
-  eklemek için şimdilik kayıt eklemek gerekiyor. Tanımlar ekranı istenirse ayrı bir iş.
+- **Vergi Ödeme ekranlarındaki tür listeleri hâlâ sabit**: `TaxPayments.razor` ve
+  `CreateOrUpdateTaxPayment.razor` kendi `List<string>`'lerini taşıyor (ve `GECICI`/`GECİCİ`
+  yazımları tutarsız). Beyanname sekmeleri tanım tablosuna geçti; Vergi Ödeme ayrı bir modül
+  olduğu için bu turda bilerek elle tutulmadı.
 - **Ortaklık ve imza yetkilisi geçmişi tutulmuyor**: kayıt güncelleniyor, eski hâli
   saklanmıyor. Pay devri geçmişi gerekirse ayrı bir tablo ister.

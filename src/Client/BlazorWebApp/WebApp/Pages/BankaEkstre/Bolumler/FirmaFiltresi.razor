@@ -1,0 +1,53 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+
+@inject IFirmaSecenekleri Firmalar
+
+@*
+    Listelerin firma filtresi.
+
+    Varsayılan "Tüm firmalar": kullanıcı sekiz firmanın işini tek oturumda yapıyor ve
+    çoğu zaman aradığı satırın hangi firmada olduğunu bilmiyor (KARARLAR §99). Daraltmak
+    isteyen seçer; seçim ekranın kendi durumu, saklanmaz.
+
+    Bu bileşen yalnız OKUMA tarafıdır. Kayıt yazarken firma buradan alınmaz — form kendi
+    firma alanını taşır (FirmaSecici), çünkü "ekranda süzülen firma" ile "kaydın firması"
+    aynı şey değildir ve karıştırılırsa kayıt yanlış firmaya gider.
+*@
+
+<RadzenDropDown TValue="int"
+                Value="@FirmaId"
+                ValueChanged="@OnDegisti"
+                Data="@_secenekler"
+                TextProperty="Ad"
+                ValueProperty="Id"
+                Style="@Style"
+                Placeholder="Tüm firmalar" />
+
+@code {
+    /// <summary>Seçili firma; 0 = tüm firmalar.</summary>
+    [Parameter] public int FirmaId { get; set; }
+
+    [Parameter] public EventCallback<int> FirmaIdChanged { get; set; }
+
+    [Parameter] public string Style { get; set; } = "width:260px";
+
+    private List<FirmaSecenegi> _secenekler = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var firmalar = await Firmalar.HepsiAsync();
+
+        // "Tüm firmalar" listenin bir öğesi: ayrı bir onay kutusu koymak, filtrenin
+        // kapalı olduğunu ikinci bir yerden okumak demekti.
+        _secenekler = new List<FirmaSecenegi> { new(0, "Tüm firmalar", null) };
+        _secenekler.AddRange(firmalar);
+    }
+
+    private Task OnDegisti(int firmaId)
+    {
+        FirmaId = firmaId;
+        return FirmaIdChanged.InvokeAsync(firmaId);
+    }
+}

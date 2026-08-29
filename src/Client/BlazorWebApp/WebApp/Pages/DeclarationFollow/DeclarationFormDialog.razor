@@ -22,7 +22,9 @@
         <RadzenFormField Text="Beyanname Türü" Style="width:100%">
             <RadzenDropDown Name="DeclarationType"
                             @bind-Value="Model.DeclarationType"
-                            Data="@declarationTypes"
+                            Data="@turSecenekleri"
+                            TextProperty="Etiket"
+                            ValueProperty="Deger"
                             Style="width:100%" />
 
             <RadzenRequiredValidator Component="DeclarationType"
@@ -102,19 +104,17 @@
     [Parameter] public CreateDeclarationRequest Model { get; set; } = new();
     [Parameter] public List<CustomerCompanyDto> Companies { get; set; } = new();
 
+    /// <summary>
+    /// Tanım tablosundan gelen beyanname türleri (catalog.BeyannameTurleri). Buradaki
+    /// sabit liste kaldırıldı: form ile Takip filtresi aynı kaynağı görsün.
+    /// </summary>
+    [Parameter] public List<BeyannameTuruDto> Turler { get; set; } = new();
+
     private int? selectedCompanyId;
 
-    private List<string> declarationTypes = new()
-    {
-        "0015 KDV-1",
-        "4017 KDV-2",
-        "0003 STOPAJ MUHTASAR",
-        "0095 UCRET MUHTASAR",
-        "SGK",
-        "0040 DAMGA VERGISI",
-        "0033 GECİCİ VERGI",
-        "0010 KURUMLAR VERGISI"
-    };
+    private sealed record TurSecenegi(string Deger, string Etiket);
+
+    private List<TurSecenegi> turSecenekleri = new();
 
     private List<MonthOption> months = new()
     {
@@ -126,6 +126,21 @@
 
     protected override void OnParametersSet()
     {
+        turSecenekleri = Turler
+            .Select(t => new TurSecenegi(t.Deger,
+                                         string.IsNullOrWhiteSpace(t.Kod) ? t.Ad : $"{t.Kod} {t.Ad}"))
+            .ToList();
+
+        // Düzenlenen kaydın türü tanımlarda yoksa (tanım pasife alınmış ya da kayıt eski bir
+        // metin taşıyor) seçeneklere eklenir. Yoksa açılır liste boş görünür ve kaydet'e
+        // basıldığında kullanıcının türü sessizce silinirdi.
+        var mevcut = Model.DeclarationType;
+        if (!string.IsNullOrWhiteSpace(mevcut) &&
+            !turSecenekleri.Any(t => string.Equals(t.Deger, mevcut, StringComparison.OrdinalIgnoreCase)))
+        {
+            turSecenekleri.Insert(0, new TurSecenegi(mevcut, $"{mevcut} (tanımlarda yok)"));
+        }
+
         if (!string.IsNullOrWhiteSpace(Model.CompanyName) && Companies.Any())
         {
             var selected = Companies.FirstOrDefault(x => x.CompanyName == Model.CompanyName);

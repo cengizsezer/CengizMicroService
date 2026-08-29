@@ -1,4 +1,4 @@
-namespace CatalogService.Api.Features.Declarations.Entities
+﻿namespace CatalogService.Api.Features.Declarations.Entities
 {
     /// <summary>
     /// Beyanname kaydına bağlanabilen belge türleri. Sunucudaki
@@ -33,6 +33,19 @@ namespace CatalogService.Api.Features.Declarations.Dtos
         public string Ad { get; set; } = string.Empty;
         public int Sira { get; set; }
         public bool Aktif { get; set; }
+    }
+
+    /// <summary>
+    /// Tanımlar ekranından sunucuya giden yazma isteği; sunucudaki
+    /// <c>BeyannameTuruYazDto</c>'nun aynası.
+    /// </summary>
+    public class BeyannameTuruYazDto
+    {
+        public string Deger { get; set; } = string.Empty;
+        public string? Kod { get; set; }
+        public string Ad { get; set; } = string.Empty;
+        public int Sira { get; set; }
+        public bool Aktif { get; set; } = true;
     }
 
     public class BeyannameEkTuruDto

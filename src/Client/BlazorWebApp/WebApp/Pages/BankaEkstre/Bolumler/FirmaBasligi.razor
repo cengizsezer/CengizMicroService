@@ -1,31 +1,23 @@
 @using Radzen
 @using Radzen.Blazor
-@using WebApp.Application.Services.Interfaces
-
-@implements IDisposable
-
-@inject IBankaOtomasyonOturumu Oturum
 
 @*
-    Banka Otomasyon'un firma içi başlığı: hangi firmada olunduğu ve iki sekme.
+    Banka Otomasyon'un sekme şeridi.
 
-    Tek işi kaldı: firma adı ekranın üstünde SÜREKLİ görünür ve firma listesine dönüş
-    bağlantısı her zaman elinin altındadır. Yanlış firmaya veri girmeye karşı ilk savunma.
+    ESKİDEN firma başlığıydı: hangi firmaya "girildiğini" yazar ve firma listesine dönüş
+    bağlantısı taşırdı. Firma artık bir oturum bağlamı değil verinin bir boyutu
+    (KARARLAR §99) — girilecek bir firma, dönülecek bir liste, dolayısıyla gösterilecek
+    bir başlık da kalmadı. Geriye yalnız sekmeler kaldı.
 
-    Eskiden ikinci bir işi daha vardı: modül açıkken tenant bağlamının sahibi olduğunu
-    işaretlemek ve üstteki genel FİRMA DEĞİŞTİR ile çelişkiyi çözmek. Modül artık tenant'a
-    hiç dokunmuyor (firma kapsamı ?firmaId= ile gidiyor, bkz. KARARLAR §68), çelişki de
-    kalmadı — o mekanizma kaldırıldı.
+    Firma bilgisi kaybolmadı, yer değiştirdi: listelerde satır başına firma kolonu,
+    onay/yükleme mesajlarında firma adı. Yanlış firmaya veri girmeye karşı savunma
+    ekranın tepesindeki tek bir etiket değil, işlemin yapıldığı yerdeki firma adı.
 *@
 
 <style>
-    .bo-ust { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    .bo-ust { display: flex; justify-content: flex-end; align-items: center; gap: 12px;
               flex-wrap: wrap; padding: 8px 12px; margin-bottom: 14px;
               border: 1px solid #e2e8f0; border-radius: 6px; background: #f8fbff; }
-    .bo-firma { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-width: 0; }
-    .bo-firma-ad { font-weight: 600; font-size: 15px; color: #2b6cb0; }
-    .bo-firma-vkn { font-size: 11px; color: #718096; font-family: ui-monospace, Consolas, monospace; }
-    .bo-geri { font-size: 12px; }
     .bo-sekmeler { display: flex; gap: 6px; }
     .bo-sekme { border: 1px solid #e2e8f0; border-radius: 999px; padding: 5px 16px; font-size: 13px;
                 color: #4a5568; background: #fff; text-decoration: none; }
@@ -34,16 +26,6 @@
 </style>
 
 <div class="bo-ust">
-    <div class="bo-firma">
-        <RadzenIcon Icon="business" Style="font-size:18px; color:#2b6cb0" />
-        <span class="bo-firma-ad">@(Oturum.SeciliFirma is null ? "Firma seçilmedi" : Oturum.FirmaAdi)</span>
-        @if (!string.IsNullOrWhiteSpace(Oturum.SeciliFirma?.VergiKimlikNo))
-        {
-            <span class="bo-firma-vkn">VKN @Oturum.SeciliFirma!.VergiKimlikNo</span>
-        }
-        <a class="bo-geri" href="/banka-otomasyon">← Firma listesi</a>
-    </div>
-
     <div class="bo-sekmeler">
         <a class="bo-sekme @(Sekme == BankaOtomasyonSekmesi.Aktar ? "aktif" : "")"
            href="/banka-otomasyon/aktar">Aktar</a>
@@ -54,10 +36,4 @@
 
 @code {
     [Parameter, EditorRequired] public BankaOtomasyonSekmesi Sekme { get; set; }
-
-    protected override void OnInitialized() => Oturum.Degisti += OturumDegisti;
-
-    private async void OturumDegisti() => await InvokeAsync(StateHasChanged);
-
-    public void Dispose() => Oturum.Degisti -= OturumDegisti;
 }

@@ -1,11 +1,10 @@
-@using Microsoft.AspNetCore.Components.Forms
+﻿@using Microsoft.AspNetCore.Components.Forms
 @using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Shared.Dto.BankaEkstre
 
 @inject IBankaEkstreApi Api
-@inject IBankaOtomasyonOturumu Oturum
 @inject NotificationService Notif
 @inject DialogService Dialog
 
@@ -14,8 +13,13 @@
     bu yüzden günlük ekranda değil burada durur. İçe aktarım kayıt silmez: yeni kodlar
     eklenir, adlar güncellenir, ORKA'da olmayanlar pasife çekilir.
 
-    İçe aktarım FİRMA ADIYLA onaylanır: dosya seçili firmanın hesap planının tamamını
+    İçe aktarım FİRMA ADIYLA onaylanır: dosya o firmanın hesap planının tamamını
     değiştirir, yanlış firmaya girilirse cari eşleştirmesi baştan aşağı bozulur.
+
+    Bölüm FİRMA SEÇİLMESİNİ ister. Sayfanın listeleri "tüm firmalar" görünümünü destekliyor
+    (KARARLAR §99) ama buradaki iki şey de firma başına anlamlı: özet ("kaç hesap, kaç
+    gündür güncellenmedi") sekiz firmanın toplamı olarak okunamaz, içe aktarım da bir
+    yazma işlemi ve kapsamı örtük olamaz.
 *@
 
 <style>
@@ -28,7 +32,14 @@
 
 <h5 style="margin-top:0">Hesap planı</h5>
 
-@if (_ozet.Sayi == 0)
+@if (FirmaId <= 0)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" AllowClose="false">
+        Hesap planı firma başınadır. Üstteki <b>Firma</b> filtresinden bir firma seçin;
+        özet ve içe aktarım o firma için çalışır.
+    </RadzenAlert>
+}
+else if (_ozet.Sayi == 0)
 {
     <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" AllowClose="false">
         Hesap planı henüz içe aktarılmadı. Cari eşleştirmesi hesap planı olmadan çalışmaz.
@@ -57,7 +68,7 @@ else
 
 <div class="hp-alan">
     <label class="hp-etiket">Güncelle (.xlsx)</label>
-    <InputFile OnChange="SecildiAsync" accept=".xlsx,.xls" disabled="@_isleniyor" />
+    <InputFile OnChange="SecildiAsync" accept=".xlsx,.xls" disabled="@(_isleniyor || FirmaId <= 0)" />
     <span class="hp-ipucu">
         Beklenen kolonlar: <code>Hesap Kodu</code>, <code>Hesap Adı</code>.
         Kayıt silinmez; dosyada olmayan kodlar pasife çekilir.
@@ -99,22 +110,33 @@ else
 
     private const long EnFazlaBayt = 20 * 1024 * 1024;
 
+    /// <summary>Sayfanın firma filtresi; 0 iken bölüm firma seçilmesini ister.</summary>
+    [Parameter] public int FirmaId { get; set; }
+
+    /// <summary>Onay ve bildirim metinlerinde geçen firma adı.</summary>
+    [Parameter] public string FirmaAdi { get; set; } = string.Empty;
+
     private HesapPlaniOzetDto _ozet = new();
     private HesapPlaniIceAktarimSonucDto? _sonuc;
     private bool _isleniyor;
 
-    protected override async Task OnInitializedAsync() => await YenileAsync();
+    private int _yuklenenFirmaId = -1;
 
-    /// <summary>Firma değişince üst sayfa bunu çağırır.</summary>
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_yuklenenFirmaId == FirmaId) return;
+
+        _yuklenenFirmaId = FirmaId;
+        await YenileAsync();
+    }
+
+    /// <summary>Firma filtresi değişince üst sayfa bunu çağırır.</summary>
     public async Task YenileAsync()
     {
         _sonuc = null;
-        _ozet = await Api.HesapPlaniOzetAsync();
+        _ozet = FirmaId > 0 ? await Api.HesapPlaniOzetAsync(FirmaId) : new HesapPlaniOzetDto();
         StateHasChanged();
     }
-
-    /// <summary>Onay ve bildirim metinlerinde geçen firma adı.</summary>
-    private string FirmaAdi => Oturum.SeciliFirma is null ? "seçili firma" : Oturum.FirmaAdi;
 
     private async Task SecildiAsync(InputFileChangeEventArgs args)
     {
@@ -139,7 +161,7 @@ else
                 await kaynak.CopyToAsync(bellek);
             bellek.Position = 0;
 
-            var (veri, hata) = await Api.HesapPlaniIceAktarAsync(bellek, dosya.Name);
+            var (veri, hata) = await Api.HesapPlaniIceAktarAsync(FirmaId, bellek, dosya.Name);
             if (hata is not null)
             {
                 Notif.Notify(NotificationSeverity.Error, "İçe aktarılamadı", hata, 8000);
@@ -147,7 +169,7 @@ else
             }
 
             _sonuc = veri;
-            _ozet = await Api.HesapPlaniOzetAsync();
+            _ozet = await Api.HesapPlaniOzetAsync(FirmaId);
             Notif.Notify(NotificationSeverity.Success, "Hesap planı güncellendi",
                          $"{FirmaAdi} · {veri?.Okunan} satır okundu", 4000);
         }

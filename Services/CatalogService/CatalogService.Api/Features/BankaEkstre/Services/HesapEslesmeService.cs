@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Domain;
+﻿using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Infrastructure.Context;
@@ -40,7 +40,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
         /// <summary>Seçili firmanın öğrenilen eşleşmeleri; kapsam her sorguda görünür yazılır.</summary>
         private IQueryable<HesapEslesmesi> Eslesmeler
-            => _db.EkstreHesapEslesmeleri.Where(e => e.FirmaId == _kapsam.FirmaId);
+            => _db.EkstreHesapEslesmeleri.FirmayaGore(_kapsam);
 
         public async Task<List<HesapEslesmesiDto>> AraAsync(string? q, int enFazla, CancellationToken ct = default)
         {
@@ -285,6 +285,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         private static HesapEslesmesiDto Esle(HesapEslesmesi e) => new()
         {
             Id = e.Id,
+            FirmaId = e.FirmaId,
             AnahtarCekirdek = e.AnahtarCekirdek,
             AyirtEdiciEk = e.AyirtEdiciEk,
             TamAnahtar = e.TamAnahtar,

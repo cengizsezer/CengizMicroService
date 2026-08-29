@@ -1,0 +1,62 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+
+@inject IFirmaSecenekleri Firmalar
+
+@*
+    Formların firma alanı: kaydın HANGİ firmaya yazılacağı.
+
+    Filtreden (FirmaFiltresi) ayrı bir bileşen olması bilinçli. Filtre ekranda ne
+    görüldüğünü, bu ise kaydın nereye gittiğini söyler; ikisi tek kontrole bağlansaydı
+    "listeyi daraltayım" derken kaydın firması da değişirdi.
+
+    "Tümü" seçeneği YOK ve boş bırakılamaz: kapsamsız yazma sunucuda 400, veritabanında
+    da SaveChangesAsync ile reddediliyor (KARARLAR §99). Kullanıcı hatayı kaydet'e
+    bastıktan sonra değil, formda görsün.
+*@
+
+<RadzenDropDown TValue="int"
+                Value="@FirmaId"
+                ValueChanged="@OnDegisti"
+                Data="@_secenekler"
+                TextProperty="Ad"
+                ValueProperty="Id"
+                Disabled="@Disabled"
+                Style="@Style"
+                Placeholder="Firma seçin" />
+
+@if (Uyar && FirmaId <= 0)
+{
+    <span style="font-size:11px; color:#c53030">Firma seçilmeden kayıt yazılamaz.</span>
+}
+
+@code {
+    /// <summary>Kaydın firması; 0 = seçilmedi.</summary>
+    [Parameter] public int FirmaId { get; set; }
+
+    [Parameter] public EventCallback<int> FirmaIdChanged { get; set; }
+
+    /// <summary>
+    /// Mevcut kaydı düzenlerken true olur. Firma değiştirmek kaydı başka firmaya taşımak
+    /// demektir; eşleşmeler ve hesap kodları o firmanın planına bağlı olduğu için
+    /// düzenlemede alan kilitlenir — taşımak gerekirse kayıt yeni firmada açılır.
+    /// </summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>Seçim boşken uyarı yazısı gösterilsin mi?</summary>
+    [Parameter] public bool Uyar { get; set; } = true;
+
+    [Parameter] public string Style { get; set; } = "width:100%";
+
+    private List<FirmaSecenegi> _secenekler = new();
+
+    protected override async Task OnInitializedAsync()
+        => _secenekler = (await Firmalar.HepsiAsync()).ToList();
+
+    private Task OnDegisti(int firmaId)
+    {
+        FirmaId = firmaId;
+        return FirmaIdChanged.InvokeAsync(firmaId);
+    }
+}
