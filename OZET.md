@@ -1737,3 +1737,232 @@ Yeni testler:
   olduğu için bu turda bilerek elle tutulmadı.
 - **Ortaklık ve imza yetkilisi geçmişi tutulmuyor**: kayıt güncelleniyor, eski hâli
   saklanmıyor. Pay devri geçmişi gerekirse ayrı bir tablo ister.
+
+---
+
+# SignalR ajan hub'ı (A adımı): sunucu tarafı
+
+Kullanıcı dijitalmasraf.com'dan "ORKA'ya aktar" dediğinde işi ofisteki banka
+bilgisayarında çalışan **PkfRobot** yapacak. Sunucu o makineye uzanamıyor (NAT
+arkasında, sabit adresi yok), o yüzden **bağlantıyı ajan kuruyor**: SignalR ile
+ters yön. Ajan bağlanıp açık tutuyor, iş emri bu kanaldan geriye doğru gidecek.
+
+Bu tur **yalnız sunucu tarafı**: hub, bellekteki ajan listesi, durum ucu, nginx
+bloğu ve bağlantıyı kanıtlayan asgari test istemcisi. Windows ajanı (B adımı) ve
+Blazor durum göstergesi (C adımı) ayrı turlarda. Bu turda ajan kodu yazılmadı.
+
+Kararlar ve gerekçeleri: **KARARLAR.md §100–103**.
+
+## Nasıl çalışıyor
+
+1. Ajan `wss://dijitalmasraf.com/agenthub` adresine **JWT ile** bağlanır. Hub
+   `[Authorize]`; token yoksa ya da geçersizse el sıkışma 401 ile biter, bağlantı
+   hiç kurulmaz.
+2. Ajan `Kaydol(AjanKaydiIstegi)` çağırır: `MakineId`, `MakineAdi`, `AjanSurumu`,
+   `IsletimSistemi`, `OrkaCalisiyorMu`. Sunucu `KayitSonucu` döner:
+   `Kabul`, `Mesaj`, `SunucuSurumu`, `AsgariAjanSurumu`.
+3. **Sürüm kontrolü kayıttan önce.** Ajan sürümü yapılandırmadaki asgari sürümün
+   altındaysa kayıt reddedilir ve mesaj "Lütfen PkfRobot'u güncelleyin" der.
+   Reddedilen ajan depoya hiç girmez.
+4. Kabul edilen kayıt **bellekte** durur: `ConnectionId`, `MakineId`, `MakineAdi`,
+   `AjanSurumu`, `KullaniciId`, `BaglantiZamani`, `SonKalpAtisi`, `OrkaCalisiyorMu`.
+   Kaydın sahibi **token'daki** kullanıcı — istekle gelen `MakineId`'ye
+   güvenilmiyor.
+5. Ajan `KalpAtisi()` ile canlı olduğunu bildirir; `SonKalpAtisi` güncellenir.
+   `KalpAtisiZamanAsimiSaniye` boyunca atış gelmezse kayıt listeden düşer.
+6. Bağlantı koparsa (`OnDisconnectedAsync`) kayıt silinir. Aynı `MakineId` ile
+   ikinci bir bağlantı gelirse **eski soket kapatılır** ve listede tek kayıt kalır.
+
+## Uçlar
+
+| Uç | Yol | Nereden geçiyor |
+|---|---|---|
+| Hub | `/agenthub` — `Kaydol`, `KalpAtisi` | **nginx → doğrudan `c_catalogservice:5004`** (Ocelot baypas) |
+| Durum | `GET /api/catalog/agent/baglilar` | Ocelot: dışarıdan `https://dijitalmasraf.com/catalog/agent/baglilar` |
+
+İkisi de `[Authorize]`. Durum ucu sıradan bir HTTP isteği olduğu için gateway'den
+geçmeye devam ediyor; **`ocelot.json`'a dokunulmadı** — mevcut
+`/catalog/{everything}` → `/api/catalog/{everything}` kuralı yeni ucu zaten
+kapsıyor.
+
+Ajanların hiçbiri bağlı değilken uç boş liste (`[]`) döner.
+
+## Yapılandırma
+
+`Configurations/appsettings*.json` içinde yeni `AgentHub` bölümü:
+
+```json
+"AgentHub": {
+  "SunucuSurumu": "1.0.0",
+  "AsgariAjanSurumu": "1.0.0",
+  "KalpAtisiZamanAsimiSaniye": 90
+}
+```
+
+| Anahtar | Ne işe yarar |
+|---|---|
+| `SunucuSurumu` | Ajana bildirilen sunucu sözleşme sürümü (ajan kendi ekranında gösterir) |
+| `AsgariAjanSurumu` | Bu sürümün altındaki ajanlar reddedilir. Ortam değişkeniyle de verilebilir: `AgentHub__AsgariAjanSurumu=1.2.0` |
+| `KalpAtisiZamanAsimiSaniye` | Bu kadar süre atış gelmeyen kayıt "bağlı" sayılmaz |
+
+Docker'da compose'a **yeni servis ya da port eklenmedi**; hub mevcut
+`c_catalogservice` container'ının içinde yaşıyor.
+
+## Nginx: `/agenthub` yolu
+
+Blok hazır: **`deploy/nginx-agenthub.conf`**. İki parçadan oluşuyor ve iki ayrı
+dosyaya gidiyor.
+
+> **Aynı bloğu iki kez eklemeyin.** nginx aynı server bloğunda tekrar eden
+> `location`'ı `duplicate location` hatasıyla reddeder ve o an ayağa kalkmaz.
+
+### Kalıcı yol (önerilen — repoya işlenir, Jenkins dağıtır)
+
+1. `Nginx/nginx.conf` → `http { ... }` içinde, `include /etc/nginx/conf.d/*.conf;`
+   satırının **üstüne** `deploy/nginx-agenthub.conf`'un **PARÇA 1**'ini (`map`
+   bloğu) yapıştır. (`map` yalnız `http` bağlamında yazılabilir.)
+2. `Nginx/conf.d/dijitalmasraf.conf` → `listen 443` server bloğunun içine,
+   `location / { ... }` bloğunun **üstüne** **PARÇA 2**'yi (`location /agenthub`)
+   yapıştır.
+3. Sunucuda:
+
+   ```bash
+   cd <repo>
+   git pull
+   docker-compose -f docker-compose.yml -f docker-compose.override.yml up -d --build nginx.public
+   docker exec c_nginx_public nginx -t
+   ```
+
+   (Jenkins zaten `up --build -d` çalıştırıyor; 3. adım elle doğrulama içindir.)
+
+### Hızlı yol (sunucuda elle, yeniden derlemeden)
+
+```bash
+docker cp c_nginx_public:/etc/nginx/nginx.conf ./nginx.conf
+docker cp c_nginx_public:/etc/nginx/conf.d/dijitalmasraf.conf ./dijitalmasraf.conf
+# iki parçayı yukarıdaki yerlerine ekle
+docker cp ./nginx.conf          c_nginx_public:/etc/nginx/nginx.conf
+docker cp ./dijitalmasraf.conf  c_nginx_public:/etc/nginx/conf.d/dijitalmasraf.conf
+docker exec c_nginx_public nginx -t && docker exec c_nginx_public nginx -s reload
+```
+
+Bu yol **imaj yeniden derlendiğinde kaybolur** (conf dosyaları imaja gömülü);
+kalıcı olması için aynı değişikliğin repoya da girmesi gerekir.
+
+### Doğrulama
+
+```bash
+curl -i -X POST "https://dijitalmasraf.com/agenthub/negotiate?negotiateVersion=1"
+```
+
+- **401** → doğru: yol açık, hub yetki bekliyor.
+- **404 / 502** → nginx bloğu yerine oturmamış ya da `c_catalogservice` erişilemiyor.
+
+Token'lı hâli 200 dönmeli:
+
+```bash
+curl -i -X POST "https://dijitalmasraf.com/agenthub/negotiate?negotiateVersion=1&access_token=$TOKEN"
+curl -s -H "Authorization: Bearer $TOKEN" https://dijitalmasraf.com/catalog/agent/baglilar
+```
+
+## Test istemcisi
+
+`tools/AgentHubTestClient` — ajanın kendisi değil, **bağlantıyı kanıtlayan asgari
+istemci**. FlaUI, ORKA, iş kuyruğu yok.
+
+```bash
+# CatalogService ayakta olsun (yerelde 5004)
+dotnet run --project tools/AgentHubTestClient -- --api http://localhost:5004
+
+# yayındaki sunucuya karşı
+dotnet run --project tools/AgentHubTestClient -- --api https://dijitalmasraf.com \
+    --hub https://dijitalmasraf.com/agenthub --token <jwt>
+```
+
+Token verilmezse istemci Development imza anahtarıyla kendi token'ını üretir —
+doğrulama için IdentityService'i ayağa kaldırmak gerekmiyor. Çalıştığında sekiz
+adımı sırayla sınıyor ve başarısızlıkta 1 ile çıkıyor. **Gerçek çıktı** (yerelde,
+`ASPNETCORE_ENVIRONMENT=Development`, `http://localhost:5004`):
+
+```
+[ OK ] Durum ucu token'sız istekte 401 dönüyor
+[ OK ] Token'sız hub bağlantısı reddediliyor
+[ OK ] Eski sürümle kayıt reddediliyor, mesaj anlaşılır
+       sunucu mesajı: Ajan sürümü 0.0.1 desteklenmiyor; en az 1.0.0 gerekiyor.
+                      Lütfen PkfRobot'u güncelleyin.
+[ OK ] Geçerli sürümle kayıt kabul ediliyor
+[ OK ] Ajan 'baglilar' ucunda görünüyor
+       TEST-ISTEMCI / 1.0.0 / Microsoft Windows NT 10.0.26200.0 / kullanıcı test-istemci
+[ OK ] Kalp atışı son atış zamanını ilerletiyor
+[ OK ] Aynı MakineId ile ikinci bağlantı eskisini düşürüyor
+[ OK ] Bağlantı kopunca ajan listeden siliniyor
+8 geçti, 0 kaldı. Hub doğrulandı.
+```
+
+Ayrıca elle: ajan yokken `GET /api/catalog/agent/baglilar` → `[]`;
+`?access_token=` sorgu parametresi yalnız `/agenthub` yolunda kabul ediliyor
+(sıradan uçta hâlâ 401), Bearer başlığıyla 200.
+
+`AgentHubTestClient` çözüme (`.sln`) **eklenmedi** — `src/Robot.Agent` gibi ayrı
+duruyor, `dotnet run --project` ile çalışıyor. CI docker-compose üzerinden derliyor,
+bu proje derlemeye girmiyor.
+
+## Değişen ve eklenen dosyalar
+
+| Yer | Dosyalar |
+|---|---|
+| Hub (yeni) | `Features/Ajanlar/AgentHub.cs`, `AgentHubAyarlari.cs`, `Domain/AjanKaydi.cs`, `Dtos/AjanDtos.cs`, `Services/IAjanDeposu.cs`, `Services/AjanDeposu.cs`, `Services/SurumKontrolu.cs`, `Controllers/AgentController.cs` |
+| Program | `Program.cs` — `AddSignalR()`, `MapHub<AgentHub>("/agenthub")`, `IAjanDeposu` + `TimeProvider` DI, `AgentHubAyarlari` bağlama, JwtBearer'a `OnMessageReceived` (yalnız hub yolunda `?access_token=`) |
+| Yapılandırma | `Configurations/appsettings.json`, `appsettings.Development.json`, `appsettings.Docker.json` — `AgentHub` bölümü |
+| Dağıtım | `deploy/nginx-agenthub.conf` (yeni) |
+| Test istemcisi | `tools/AgentHubTestClient/AgentHubTestClient.csproj`, `Program.cs` (yeni) |
+| Testler | `CatalogService.UnitTests/Ajanlar/*` (yeni) |
+
+**Değişmeyenler:** `ocelot.json` (üç ortam), `docker-compose.yml`,
+`docker-compose.override.yml`, `Nginx/conf.d/dijitalmasraf.conf`,
+`Nginx/nginx.conf`, migration yok (veritabanına dokunulmadı).
+
+## Testler
+
+`CatalogService.UnitTests` **738** (öncesi 696) — hepsi geçiyor. Yeni 42 test:
+
+- `Ajanlar/AjanDeposuTests` — kayıt listede görünüyor, aynı makinenin ikinci
+  bağlantısı eskisini düşürüyor, aynı bağlantının ikinci kaydı düşürme sayılmıyor,
+  kopan bağlantı siliniyor, **düşürülen soketin kopuş bildirimi yerine geçen kaydı
+  silmiyor**, kalp atışı son atışı ilerletiyor, atışı kesilen kayıt listeden
+  düşüyor, atışını sürdüren ajan eşik aşılsa da kalıyor
+- `Ajanlar/AgentHubTests` — geçerli sürüm kabul + depoda görünme, eski sürüm reddi
+  (mesajda asgari sürüm ve "güncelleyin"), okunamayan sürüm reddi, boş `MakineId`
+  reddi, sonucun her hâlde sunucu/asgari sürümü taşıması, sahibin token'dan
+  gelmesi, ikinci bağlantının eski soketi kapatması, kalp atışı, kopuşta silinme,
+  `[Authorize]` ve `/agenthub` yolu
+- `Ajanlar/SurumKontroluTests` — eşit/yeni sürüm geçiyor, `1.10.0 ≥ 1.9.0`
+  (metin karşılaştırmasının yanılacağı yer), asgarinin altı reddediliyor,
+  okunamayan ajan sürümü reddediliyor, **bozuk asgari ayar kimseyi dışarıda
+  bırakmıyor**
+- `Ajanlar/AgentControllerTests` — boş liste, bütün alanların dönmesi, atışı
+  kesilen ajanın listede çıkmaması, `[Authorize]`, rota ön ekinin Ocelot kuralına
+  uyması
+
+Zamana bağlı testler sahte saatle (`SahteSaat : TimeProvider`) yazıldı: 90
+saniyelik eşiği 90 saniye uyuyarak sınayan bir test, süre uzadıkça ilk atılacak
+testtir.
+
+## Ne eksik kaldı
+
+- **Nginx bloğu sunucuya uygulanmadı.** Erişim yok; yukarıdaki talimat elle
+  uygulanacak. Uygulanana kadar hub yalnız yerelde ve container ağı içinden
+  erişilebilir.
+- **Ajanın kendisi yazılmadı (B adımı).** `src/Robot.Agent` (PkfRobot) hâlâ
+  SignalR bilmiyor; `Kaydol`/`KalpAtisi` çağıran bağlantı yönetimi, yeniden
+  bağlanma ve `MakineId`'nin yerelde saklanması o turda gelecek.
+- **Blazor durum göstergesi yok (C adımı).** `baglilar` ucu hazır, ekran yok.
+- **İş emri gönderimi yok.** Bu turda hub'ın ajana bir şey göndermesi
+  tasarlanmadı; kanal açık, sözleşme (hangi metot, hangi paket) B adımının konusu.
+- **Ajan listesi tek container'a özgü.** CatalogService birden fazla kopya olarak
+  çalıştırılırsa her kopya kendi listesini tutar; ajan yalnız bağlandığı kopyadan
+  görünür. Tek makine senaryosunda sorun değil, ölçeklenirse backplane
+  (Redis) ya da kalıcı kayıt gerekir.
+- **Kimlik yalnız saklanıyor, henüz bir kural kurmuyor.** `KullaniciId` kayıtta
+  duruyor ama "kim hangi makineye iş gönderebilir" kontrolü yazılmadı — iş emri
+  gelmeden dayanacağı bir şey yok.

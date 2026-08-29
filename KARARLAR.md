@@ -2201,3 +2201,101 @@ firmayı birlikte getiriyor, her satır kendi firmasını taşıyor, kapsamsız 
 silme komşu firmaya dokunmuyor. İstemci tarafında `BankaOtomasyonOturumuTests` (oturumun
 kalıcılığını sınıyordu) yerini `FirmaKapsamiIstektenGelirTests`'e bıraktı: çağıranın verdiği
 firma adrese aynen yansıyor mu, ardışık çağrılar birbirinin firmasını taşıyor mu.
+
+## 100. Ajan hub'ı ayrı servis değil, CatalogService'in içinde
+
+PkfRobot'un bağlanacağı SignalR hub'ı `CatalogService.Api` içinde
+(`Features/Ajanlar/`) yaşıyor. Ayrı bir "RobotGateway" servisi açmak yeni bir
+container, yeni bir compose girdisi, yeni bir Consul kaydı, yeni bir Dockerfile
+ve deploy adımı demekti — karşılığında kazanılan hiçbir şey yok. Ajanın
+işleyeceği banka aktarım paketini üreten uçlar (`api/catalog/banka-ekstre/*`)
+zaten bu serviste; iş emri o veriye bakacaksa hub'ın da orada olması ağ üzerinden
+bir tur eksiltiyor.
+
+Dilim adı `Ajanlar`, `AgentHub` değil. C#'ta bir tipin adı içinde bulunduğu ad
+alanının son parçasıyla aynı olduğunda (`Features.AgentHub.AgentHub`) her
+`using` çözümlemesi belirsizleşiyor. Klasör adı Türkçe olunca repodaki diğer
+dilimlerle de (`Banka`, `Firmalar`, `Mukellefler`) tutarlı. Hub sınıfının adı ve
+`/agenthub` yolu değişmedi — ajanın gördüğü sözleşme aynı.
+
+## 101. Hub Ocelot'tan geçmiyor, nginx doğrudan bağlıyor
+
+`wss://dijitalmasraf.com/agenthub` isteği nginx'ten **doğrudan**
+`c_catalogservice:5004`'e gidiyor; gateway'e uğramıyor.
+
+SignalR bağlantısı gün boyu açık kalan bir WebSocket. Ocelot bunu sıradan bir
+HTTP isteği gibi ele alıp kendi timeout ve buffering ayarlarını uyguluyor — bu
+projede uzun süren batch rotalarında tam olarak bu yüzden zaman aşımı yaşandı.
+Bir de her kopuş, ajanın yeniden bağlanıp yeniden kaydolması demek; dakikada bir
+dönen bir kopuş/kayıt turu, hub'ın çözmesi gereken sorunun kendisi olurdu.
+
+Baypas **yalnız hub'ın yolu için**. Durum ucu (`/api/catalog/agent/baglilar`)
+sıradan bir HTTP isteği olduğu için Ocelot'tan geçmeye devam ediyor ve mevcut
+`/catalog/{everything}` kuralına düşüyor: **`ocelot.json`'a hiç dokunulmadı.**
+Gateway'i tamamen atlamak, ileride C adımında ekrandan yapılacak sıradan
+çağrıları da kural dışı bırakırdı.
+
+nginx bloğu repodaki `Nginx/conf.d/dijitalmasraf.conf`'a doğrudan yazılmadı,
+`deploy/nginx-agenthub.conf`'ta duruyor (uygulama talimatı OZET.md'de). Neden:
+bloğu hem repoya işleyip hem sunucuda elle uygulamak, aynı server bloğunda iki
+`location /agenthub` demek olur ve nginx bunu `duplicate location` ile reddedip
+**hiç ayağa kalkmaz** — yani yanlış sırayla yapılan bir "iyileştirme" siteyi
+komple düşürürdü. Talimat, iki yolu (repo + rebuild / container'da elle reload)
+birbirini dışlayan seçenekler olarak veriyor.
+
+## 102. Ajan listesi bellekte; kalıcı tablo yanlış bilgi üretirdi
+
+Bağlı ajanlar `ConcurrentDictionary` içinde, veritabanında değil.
+
+Kayıt bir **bağlantının** ömrü kadar anlamlı. Veritabanına yazılsaydı container
+yeniden başladığında ya da ağ koptuğunda tabloda "bağlı" yazan ama gerçekte
+kimsenin dinlemediği satırlar kalırdı — ve o satıra bakıp iş gönderen kod
+sessizce boşluğa yazardı. Container yeniden başlarsa liste sıfırlanıyor, ajanlar
+birkaç saniyede yeniden bağlanıyor; kaybedilen tek şey birkaç saniyelik görünürlük.
+
+Anahtar `MakineId`, `ConnectionId` değil: "aynı makine listede iki kez
+görünmesin" kuralını dictionary'nin kendisi garanti etsin diye. Aynı makine
+ikinci kez bağlandığında eski kayıt çıkarılıyor ve **eski soket kapatılıyor**
+(hub `Context.Abort`'u depoya delege olarak veriyor; depo SignalR tiplerine
+bağlanmıyor). Buradaki asıl tuzak sıra: yeni bağlantı kaydolduktan sonra eski
+soketin "koptum" bildirimi geliyor. `Cikar` bu yüzden `ConnectionId` eşleşmesine
+bakıyor — bakmasaydı makine her yeniden bağlandığında listeden düşerdi. Testi
+var (`Dusurulen_baglantinin_kopusu_yerine_gecen_kaydi_silmez`).
+
+Zaman aşımı **okuma anında** süzülüyor, arka plan servisiyle değil. Ölü kaydı
+yalnız listeyi okuyan görüyor; temizliği de o yapabilir. Ayrı bir
+`BackgroundService` aynı işi bir zamanlayıcı, kendi hata yönetimi ve kendi
+testleriyle yapardı.
+
+Bunun bedeli açık: liste **tek container'a özgü**. CatalogService birden çok
+kopya olarak çalıştırılırsa ajan yalnız bağlandığı kopyadan görünür. Tek makine
+senaryosunda sorun değil; ölçeklenirse Redis backplane gerekir.
+
+## 103. Sürüm kontrolü ve kimlik baştan konuldu
+
+**Sürüm kontrolü ilk turda yazıldı**, "sonra ekleriz" denmedi. Ajan Google Drive
+üzerinden elle dağıtılıyor: sunucu yeni bir sözleşmeye geçtiğinde eski kurulumlar
+bir süre daha ayakta kalıyor ve uyumsuz ajan, hata vermek yerine yanlış iş yapar.
+Eşik yapılandırmadan okunuyor (`AgentHub:AsgariAjanSurumu`), koda gömülmedi —
+"şu sürümün altındakiler bağlanmasın" demek için sunucuyu yeniden derlemek
+gerekmesin.
+
+Karşılaştırma `Version.TryParse` ile, metinle değil: `"1.10.0" < "1.9.0"` metin
+olarak doğrudur ve tam da sürüm ondanla geçtiğinde, yani en kritik anda yanlış
+yanıt verirdi. Bozuk yazılmış bir **asgari sürüm ayarı** ise kontrolü atlatıyor,
+kimseyi dışarıda bırakmıyor: tek bir yapılandırma yazım hatasının bütün ofisi
+bağlantısız bırakması, korumanın kendisinden büyük bir risk.
+
+**Kaydın sahibi token'daki kullanıcı.** `MakineId` istekle geliyor ve ajanın
+kendi beyanı — ona güvenilmiyor. `KullaniciId` `sub` claim'inden alınıyor ve
+kayıtta saklanıyor; "kim hangi makineye iş gönderebilir" kuralı buna dayanacak.
+Bu turda kural yazılmadı (iş emri henüz yok), ama alan doldurulmadan bırakılsaydı
+sonradan geriye dönük doldurulamazdı.
+
+**Token WebSocket'te sorgu dizesinden okunuyor** — ama yalnız `/agenthub`
+yolunda. WebSocket el sıkışmasında tarayıcı `Authorization` başlığı
+gönderemediği için SignalR istemcileri token'ı `?access_token=` ile taşıyor.
+Bunu bütün uçlarda kabul etmek, token'ın adres çubuğunda ve nginx erişim
+kayıtlarında dolaşması demek olurdu; `OnMessageReceived` bu yüzden yol kontrolü
+yapıyor. Yerelde doğrulandı: `/agenthub/negotiate?access_token=…` → 200,
+`/api/catalog/agent/baglilar?access_token=…` → hâlâ 401.

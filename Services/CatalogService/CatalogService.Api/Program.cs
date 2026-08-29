@@ -1,5 +1,7 @@
 ﻿using CatalogService.Api.Extensions;
 using CatalogService.Api.Features.AccountPlan;
+using CatalogService.Api.Features.Ajanlar;
+using CatalogService.Api.Features.Ajanlar.Services;
 using CatalogService.Api.Features.Banka.Services;
 using CatalogService.Api.Features.Declarations.Services;
 using CatalogService.Api.Features.Education.Mapping;
@@ -80,6 +82,14 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.Configure<CatalogSettings>(configuration.GetSection("CatalogSettings"));
+
+// PkfRobot ajanı: hub + bellekteki bağlı ajan listesi. Ajan dışarı doğru bağlanıyor
+// (sunucu ofis makinesine uzanamıyor), liste bilerek veritabanına yazılmıyor —
+// bağlantının ömrü kadar yaşıyor.
+builder.Services.Configure<AgentHubAyarlari>(configuration.GetSection(AgentHubAyarlari.Bolum));
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<IAjanDeposu, AjanDeposu>();
+builder.Services.AddSignalR();
 builder.Services.ConfigureDbContext(configuration);
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy());
@@ -275,6 +285,24 @@ builder.Services.AddAuthentication(o =>
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["SigningKey"]!)),
         ValidateLifetime = true
+    };
+
+    // WebSocket el sıkışmasında tarayıcı Authorization başlığı gönderemiyor; SignalR
+    // istemcileri token'ı ?access_token= ile taşır. Yalnız hub yolunda okunuyor —
+    // sıradan API uçlarında sorgu dizesinden token kabul etmek, token'ın adres
+    // çubuğunda ve erişim kayıtlarında dolaşması demek olurdu.
+    o.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = ctx =>
+        {
+            var token = ctx.Request.Query["access_token"];
+            if (!string.IsNullOrEmpty(token) &&
+                ctx.HttpContext.Request.Path.StartsWithSegments(AgentHub.Yol))
+            {
+                ctx.Token = token;
+            }
+            return Task.CompletedTask;
+        }
     };
 });
 
@@ -637,6 +665,11 @@ app.UseAuthorization();
 
 // Routing
 app.MapControllers();
+
+// Ajan hub'ı. nginx bu yolu Ocelot'a değil doğrudan bu container'a bağlıyor
+// (deploy/nginx-agenthub.conf): uzun ömürlü WebSocket, gateway'in timeout ve
+// buffering ayarlarıyla iyi geçinmiyor.
+app.MapHub<AgentHub>(AgentHub.Yol);
 
 // HealthChecks
 app.MapHealthChecks("/hc", new HealthCheckOptions
