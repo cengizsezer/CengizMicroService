@@ -1,0 +1,162 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto.FirmaBilgileri
+
+@inject IFirmaBilgiApiClient Api
+@inject NotificationService Notif
+
+@*
+    İmza yetkilileri. Süresi dolmuş yetkili SİLİNMEZ — geçmişe dönük belge kontrolünde
+    kimin ne zaman yetkili olduğu gerekiyor — ama görsel olarak ayrılır (soluk satır +
+    "süresi doldu" rozeti).
+
+    "Süresi doldu" kararı sunucudan gelir (FirmaBilgiService): istemcinin saatine
+    bırakılsaydı iki kullanıcı aynı kaydı farklı görebilirdi. Ekranda yeni girilen,
+    henüz kaydedilmemiş satırlarda rozet çıkmaz.
+*@
+
+<RadzenCard Variant="Variant.Outlined">
+    <RadzenStack Gap="1rem">
+
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                     JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap" Gap="0.5rem">
+            <RadzenText TextStyle="TextStyle.H6" class="rz-m-0">
+                <RadzenIcon Icon="how_to_reg" class="rz-mr-1" />İmza yetkilileri
+            </RadzenText>
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                <RadzenButton Text="Yetkili ekle" Icon="person_add" Size="ButtonSize.Small"
+                              ButtonStyle="ButtonStyle.Light" Click="@Ekle" />
+                <RadzenButton Text="Kaydet" Icon="save" Size="ButtonSize.Small"
+                              Disabled="@kaydediyor" Click="@Kaydet" />
+            </RadzenStack>
+        </RadzenStack>
+
+        @if (yetkililer.Count == 0)
+        {
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary rz-m-0">
+                İmza yetkilisi kaydı yok.
+            </RadzenText>
+        }
+        else
+        {
+            <div style="overflow-x:auto">
+                <table class="fb-tablo">
+                    <thead>
+                        <tr>
+                            <th style="min-width:200px">Ad Soyad</th>
+                            <th style="width:140px">TCKN</th>
+                            <th style="min-width:160px">Görev / Unvan</th>
+                            <th style="width:150px">Temsil Şekli</th>
+                            <th style="width:160px">Başlangıç</th>
+                            <th style="width:160px">Bitiş</th>
+                            <th style="width:110px">Durum</th>
+                            <th style="width:50px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var y in yetkililer)
+                        {
+                            <tr class="@(y.SuresiDoldu ? "fb-suresi-dolmus" : "")">
+                                <td><RadzenTextBox @bind-Value="y.Ad" Style="width:100%" /></td>
+                                <td><RadzenTextBox @bind-Value="y.Tckn" MaxLength="11" Style="width:100%" /></td>
+                                <td><RadzenTextBox @bind-Value="y.Gorev" Style="width:100%" /></td>
+                                <td>
+                                    <RadzenDropDown @bind-Value="y.TemsilSekli" Data="@TemsilSecenekleri"
+                                                    TextProperty="Ad" ValueProperty="Deger" Style="width:100%" />
+                                </td>
+                                <td>
+                                    <RadzenDatePicker @bind-Value="y.YetkiBaslangic" DateFormat="dd.MM.yyyy"
+                                                      ShowTime="false" AllowClear="true" Style="width:100%" />
+                                </td>
+                                <td>
+                                    <RadzenDatePicker @bind-Value="y.YetkiBitis" DateFormat="dd.MM.yyyy"
+                                                      ShowTime="false" AllowClear="true" Style="width:100%" />
+                                </td>
+                                <td>
+                                    @if (y.SuresiDoldu)
+                                    {
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="süresi doldu" />
+                                    }
+                                    else if (y.YetkiBitis is null)
+                                    {
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="süresiz" />
+                                    }
+                                    else
+                                    {
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="geçerli" />
+                                    }
+                                </td>
+                                <td>
+                                    <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger"
+                                                  Variant="Variant.Text" Click="@(() => Sil(y))" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(hata))
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false">@hata</RadzenAlert>
+        }
+    </RadzenStack>
+</RadzenCard>
+
+<style>
+    .fb-tablo tr.fb-suresi-dolmus td { background:#fff5f5; }
+    .fb-tablo tr.fb-suresi-dolmus td:first-child { border-left:3px solid #fc8181; }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+
+    private sealed record TemsilSecenegi(TemsilSekli Deger, string Ad);
+
+    private static readonly TemsilSecenegi[] TemsilSecenekleri =
+    {
+        new(TemsilSekli.Munferit, "Münferit"),
+        new(TemsilSekli.Musterek, "Müşterek")
+    };
+
+    private List<FirmaImzaYetkilisiDto> yetkililer = new();
+    private bool kaydediyor;
+    private string? hata;
+
+    protected override async Task OnParametersSetAsync() => await Yukle();
+
+    private async Task Yukle()
+    {
+        yetkililer = await Api.YetkililerGetAsync(FirmaId);
+    }
+
+    private void Ekle() => yetkililer.Add(new FirmaImzaYetkilisiDto());
+
+    private void Sil(FirmaImzaYetkilisiDto y) => yetkililer.Remove(y);
+
+    private async Task Kaydet()
+    {
+        kaydediyor = true;
+        hata = null;
+
+        try
+        {
+            var (sonuc, mesaj) = await Api.YetkililerKaydetAsync(FirmaId, yetkililer);
+
+            if (sonuc is null)
+            {
+                hata = mesaj ?? "Kaydedilemedi.";
+                return;
+            }
+
+            yetkililer = sonuc;
+            Notif.Notify(NotificationSeverity.Success, "İmza yetkilileri kaydedildi");
+        }
+        finally
+        {
+            kaydediyor = false;
+        }
+    }
+}

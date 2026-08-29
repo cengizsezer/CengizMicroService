@@ -72,6 +72,7 @@
         await LocalStorage.SetItemAsync("SelectedFirmName", firm.Ad);
 
         DialogService.Close(true);
-        Nav.NavigateTo("/calendarpage");
+        // Firma seçildikten sonra da Anasayfa açılır.
+        Nav.NavigateTo("/anasayfa");
     }
     }

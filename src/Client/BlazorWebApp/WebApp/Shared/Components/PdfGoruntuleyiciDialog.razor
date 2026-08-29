@@ -1,0 +1,59 @@
+@using Radzen
+@using Radzen.Blazor
+@inject DialogService DialogService
+@inject IJSRuntime JS
+
+@*
+    PDF'i tarayıcı içinde gösterir. İndirme zorunlu değil: dosya iframe'de açılıyor,
+    indirme yalnız kullanıcı isterse.
+
+    Presigned URL MinIO'ya gittiği için (cross-origin) "yeni sekmede aç" en güvenilir
+    ikinci yol; aynı kalıp KDV modülündeki FaturaPdfDialog'da da böyle.
+
+    Beyanname belgeleri ve firma belgeleri aynı bileşeni kullanıyor; bu yüzden Pages
+    altında değil Shared/Components altında duruyor.
+*@
+
+<RadzenStack Orientation="Orientation.Vertical" Gap="0.75rem" Style="height:100%;">
+
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                 JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap" Gap="0.5rem">
+        <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0 rz-color-secondary">
+            <RadzenIcon Icon="picture_as_pdf" class="rz-mr-1" />@Baslik
+        </RadzenText>
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+            <RadzenButton Icon="open_in_new" Text="Yeni sekmede aç"
+                          ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                          Click="@YeniSekmedeAc" />
+            <RadzenButton Icon="close" Text="Kapat"
+                          ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                          Click="@(() => DialogService.Close())" />
+        </RadzenStack>
+    </RadzenStack>
+
+    @if (string.IsNullOrWhiteSpace(PresignedUrl))
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning" Shade="Shade.Lighter" AllowClose="false">
+            Belge adresi alınamadı. Dosya silinmiş ya da dosya servisi yanıt vermiyor olabilir.
+        </RadzenAlert>
+    }
+    else
+    {
+        <iframe src="@PresignedUrl"
+                style="flex:1 1 auto; width:100%; min-height:0; border:1px solid var(--rz-border-light); border-radius:6px; background:#fff;"
+                title="@Baslik"></iframe>
+    }
+</RadzenStack>
+
+@code {
+    [Parameter] public string PresignedUrl { get; set; } = string.Empty;
+
+    /// <summary>Başlıkta görünen metin: belge türü + dosya adı.</summary>
+    [Parameter] public string Baslik { get; set; } = "Belge";
+
+    private async Task YeniSekmedeAc()
+    {
+        if (string.IsNullOrWhiteSpace(PresignedUrl)) return;
+        await JS.InvokeVoidAsync("window.open", PresignedUrl, "_blank");
+    }
+}

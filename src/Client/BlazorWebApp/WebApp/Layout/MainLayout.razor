@@ -82,6 +82,9 @@
                  DisplayStyle="@(isCollapsed ? MenuItemDisplayStyle.Icon : MenuItemDisplayStyle.IconAndText)"
                  ShowArrow="false">
 
+                @* Giriş sonrası varsayılan sayfa; kartları ilgili ekranlara götürüyor. *@
+                <RadzenPanelMenuItem Text="Anasayfa" Icon="dashboard" Path="/anasayfa" />
+
                 <RadzenPanelMenuItem Text="Şirket" Icon="business_center" @bind-Expanded="sirketAcik">
                     @if (canViewCalendar)
                     {
@@ -91,12 +94,9 @@
                         </RadzenPanelMenuItem>
                     }
 
-                    @if (canViewBeyannameTakip)
-                    {
-                        <RadzenPanelMenuItem Text="Beyanname Takip"
-                                             Icon="receipt_long"
-                                             Path="/beyanname-takip" />
-                    }
+                    @* Beyanname Takip buradan "Beyannameler" grubuna taşındı: Takip ve Özet
+                       aynı üst sayfanın iki sekmesi (eski /beyanname-takip adresi
+                       yönlendirme olarak duruyor). *@
 
                     <RadzenPanelMenuItem Text="Fatura" Icon="receipt">
                         @if (canViewFaturaKontrol)
@@ -125,7 +125,19 @@
                     </AuthorizeView>
                 </RadzenPanelMenuItem>
 
-                <RadzenPanelMenuItem Text="Beyannameler" Icon="description">
+                @*
+                    Beyanname ekranları tek üst sayfada: Takip (eski Beyanname Takip) ve
+                    Özet (firma × tür matrisi). Alt sekmeler BeyannameSekmesi.Hepsi
+                    listesinden üretiliyor; menüye satır eklemek yalnız o listeye satır
+                    eklendiğinde gerekir (Hesaplamalar'daki kalıp, KARARLAR §79).
+                *@
+                <RadzenPanelMenuItem Text="Beyannameler" Icon="description" Path="/beyannameler">
+                    @if (canViewBeyannameTakip)
+                    {
+                        <RadzenPanelMenuItem Text="Takip" Icon="receipt_long" Path="/beyannameler/takip" />
+                    }
+                    <RadzenPanelMenuItem Text="Özet" Icon="grid_on" Path="/beyannameler/ozet" />
+
                     <RadzenPanelMenuItem Text="KDV Beyannamesi"
                                          Icon="request_quote"
                                          Path="/kdv-beyanname" />

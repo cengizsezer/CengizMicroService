@@ -13,6 +13,7 @@
 @inject IFirmaApiClient Api
 @inject DialogService Dialog
 @inject NotificationService Notif
+@inject NavigationManager Nav
 
 <RadzenCard class="rz-p-3">
 
@@ -67,6 +68,13 @@
             <RadzenDataGridColumn TItem="FirmaDto" Title="İşlemler" Width="150px" TextAlign="TextAlign.Center" Sortable="false" Filterable="false">
                 <Template Context="f">
                     <span @onclick:stopPropagation @onkeydown:stopPropagation>
+                        @* Firma künyesi: sicil, ortaklık, imza yetkilileri, belgeler. *@
+                        <RadzenButton Icon="badge"
+                                      Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Info"
+                                      class="rz-mr-1"
+                                      title="Firma Bilgileri"
+                                      Click="@(() => Nav.NavigateTo($"/yonetim/firmalar/{f.Id}/bilgiler"))" />
                         <RadzenButton Icon="key"
                                       Size="ButtonSize.Small"
                                       ButtonStyle="ButtonStyle.Secondary"

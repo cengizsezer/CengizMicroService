@@ -28,6 +28,14 @@ namespace CatalogService.Api.Features.BankaEkstre.Services.Parsing
         public string? KarsiVkn { get; set; }
 
         public string? Kanal { get; set; }
+
+        /// <summary>
+        /// Bankanın satıra verdiği referans/dekont numarası (İş Bankası "Referans",
+        /// Akbank "Fiş/Dekont No", Ziraat "Fiş No"). Bankanın kendi tekil anahtarı olduğu
+        /// için aynı dönemin iki kez yüklendiğini görmenin en sağlam yolu; Vakıfbank
+        /// ekstresinde karşılığı yok, orada null kalır.
+        /// </summary>
+        public string? Referans { get; set; }
     }
 
     public class EkstreParseSonuc

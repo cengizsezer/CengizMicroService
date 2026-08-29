@@ -46,6 +46,26 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<PersonnelEmail> PersonnelEmails => Set<PersonnelEmail>();
         public DbSet<Declaration> Declarations { get; set; }
         public DbSet<CustomerCompany> CustomerCompanies => Set<CustomerCompany>();
+
+        /// <summary>Beyanname türü tanımları (global): özet matrisinin kolonları buradan gelir.</summary>
+        public DbSet<BeyannameTuru> BeyannameTurleri => Set<BeyannameTuru>();
+
+        /// <summary>Beyanname belgeleri (tahakkuk/beyanname/dekont); dosyanın kendisi FileApiService'te.</summary>
+        public DbSet<BeyannameEk> BeyannameEkleri => Set<BeyannameEk>();
+
+        // Firma Bilgileri: kapsam catalog.Firmalar.Id, global query filter yok
+        // (kapsam her sorguda görünür yazılıyor — Banka Otomasyon'daki karar).
+        public DbSet<Features.FirmaBilgileri.Domain.FirmaSicilBilgisi> FirmaSicilBilgileri
+            => Set<Features.FirmaBilgileri.Domain.FirmaSicilBilgisi>();
+
+        public DbSet<Features.FirmaBilgileri.Domain.FirmaOrtak> FirmaOrtaklari
+            => Set<Features.FirmaBilgileri.Domain.FirmaOrtak>();
+
+        public DbSet<Features.FirmaBilgileri.Domain.FirmaImzaYetkilisi> FirmaImzaYetkilileri
+            => Set<Features.FirmaBilgileri.Domain.FirmaImzaYetkilisi>();
+
+        public DbSet<Features.FirmaBilgileri.Domain.FirmaBelgesi> FirmaBelgeleri
+            => Set<Features.FirmaBilgileri.Domain.FirmaBelgesi>();
         public DbSet<AccountNode> AccountNodes => Set<AccountNode>();
 
         public DbSet<PayrollParameter> PayrollParameters => Set<PayrollParameter>();
@@ -161,6 +181,12 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new AccountNodesEntityTypeConfiguration());
             builder.ApplyConfiguration(new DeclarationEntityTypeConfiguration());
             builder.ApplyConfiguration(new CustomerCompanyTypeConfiguration());
+            builder.ApplyConfiguration(new BeyannameTuruEntityTypeConfiguration());
+            builder.ApplyConfiguration(new BeyannameEkEntityTypeConfiguration());
+            builder.ApplyConfiguration(new FirmaSicilBilgisiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new FirmaOrtakEntityTypeConfiguration());
+            builder.ApplyConfiguration(new FirmaImzaYetkilisiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new FirmaBelgesiEntityTypeConfiguration());
             builder.ApplyConfiguration(new TaxPaymentConfiguration());
             builder.ApplyConfiguration(new FirmaEntityTypeConfiguration());
             builder.ApplyConfiguration(new MukellefEntityTypeConfiguration());

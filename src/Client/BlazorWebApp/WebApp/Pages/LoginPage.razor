@@ -140,7 +140,8 @@
             var ok = await SessionManager.EnsureFirmSelectedAsync(); // gerekirse dialogu kendi açar ve seçer
             if (!ok) { errorMessage = "Firma seçimi yapılmadı."; return; }
 
-            NavigationManager.NavigateTo("/calendarpage");
+            // Giriş sonrası varsayılan sayfa Anasayfa; eskiden doğrudan Takvim açılıyordu.
+            NavigationManager.NavigateTo("/anasayfa");
         }
         catch (Exception ex)
         {

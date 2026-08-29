@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Sovos.IncomingInvoiceWorker")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+556977e92bcf524412ab5a071688427342a33809")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+584d1861bfd0b0e1ec352772f5819126fd6152a7")]
 [assembly: System.Reflection.AssemblyProductAttribute("Sovos.IncomingInvoiceWorker")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Sovos.IncomingInvoiceWorker")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

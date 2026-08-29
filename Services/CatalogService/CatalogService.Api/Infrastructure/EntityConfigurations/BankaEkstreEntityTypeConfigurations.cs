@@ -94,6 +94,7 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(x => x.KarsiIban).HasMaxLength(34);
             builder.Property(x => x.KarsiVkn).HasMaxLength(11);
             builder.Property(x => x.Kanal).HasMaxLength(100);
+            builder.Property(x => x.Referans).HasMaxLength(100);
 
             // ORKA açıklamayı 50 karakterde kesiyor; sınır veritabanında da duruyor.
             builder.Property(x => x.UretilenAciklama).HasMaxLength(50);

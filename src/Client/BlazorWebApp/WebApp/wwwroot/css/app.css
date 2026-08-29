@@ -2292,3 +2292,114 @@ code {
         max-height: none;
     }
 }
+
+/* ==========================================================================
+   SOL MENÜ — KOYU TEMA
+   --------------------------------------------------------------------------
+   Menü beyazken gözü yoruyordu. Koyulaşan yalnız SOL MENÜ; başlık ve sağdaki
+   içerik alanı açık kalıyor.
+
+   Bütün renk değerleri aşağıdaki değişkenlerde; kural blokları yalnız bu
+   değişkenleri kullanıyor. Tema değişikliği tek yerden yapılır, renk kodu
+   dosyaya dağılmaz.
+
+   Kontrast (WCAG):
+     metin  #e2e8f0 / zemin #1f2733  → ~12:1   (AAA)
+     soluk  #a0aec0 / zemin #1f2733  → ~6.6:1  (AA)
+     seçili #ffffff / zemin #2b6cb0  → ~5.9:1  (AA)
+   ========================================================================== */
+
+:root {
+    --app-menu-bg: #1f2733;              /* saf siyah değil, yumuşak koyu lacivert-gri */
+    --app-menu-bg-alt: #1a212b;          /* alt/üst araç çubuğu şeridi */
+    --app-menu-text: #e2e8f0;
+    --app-menu-text-muted: #a0aec0;
+    --app-menu-hover-bg: #2a3444;
+    --app-menu-selected-bg: #2b6cb0;
+    --app-menu-selected-text: #ffffff;
+    --app-menu-border: #2d3748;
+    --app-menu-focus: #63b3ed;
+}
+
+.app-sidebar,
+.app-shell .rz-sidebar.app-sidebar {
+    background: var(--app-menu-bg);
+    border-right: 1px solid var(--app-menu-border);
+    color: var(--app-menu-text);
+}
+
+    /* Menü gövdesi ve tüm bağlantılar */
+    .app-sidebar .rz-panel-menu,
+    .app-sidebar .rz-navigation-menu {
+        background: transparent;
+    }
+
+    .app-sidebar .rz-navigation-item-link,
+    .app-sidebar .rz-navigation-item-wrapper,
+    .app-sidebar .rz-navigation-item-text,
+    .app-sidebar .rz-navigation-item-icon {
+        color: var(--app-menu-text);
+    }
+
+        /* Alt seviye başlıklar biraz daha soluk: hiyerarşi renkle de okunsun. */
+        .app-sidebar .rz-navigation-menu .rz-navigation-menu .rz-navigation-item-text {
+            color: var(--app-menu-text-muted);
+        }
+
+    .app-sidebar .rz-navigation-item-wrapper:hover,
+    .app-sidebar .rz-navigation-item-link:hover {
+        background: var(--app-menu-hover-bg);
+        color: var(--app-menu-text);
+    }
+
+    /* Seçili satır: yalnız renk değil, sol kenarda çubuk da var — renk körü
+       kullanıcıda seçim yine ayırt edilebilsin. */
+    .app-sidebar .rz-navigation-item-wrapper-active,
+    .app-sidebar .rz-navigation-item-link-active,
+    .app-sidebar a.rz-navigation-item-link.active {
+        background: var(--app-menu-selected-bg);
+        box-shadow: inset 3px 0 0 var(--app-menu-focus);
+    }
+
+        .app-sidebar .rz-navigation-item-wrapper-active .rz-navigation-item-text,
+        .app-sidebar .rz-navigation-item-wrapper-active .rz-navigation-item-icon,
+        .app-sidebar .rz-navigation-item-link-active,
+        .app-sidebar .rz-navigation-item-link-active .rz-navigation-item-text,
+        .app-sidebar .rz-navigation-item-link-active .rz-navigation-item-icon {
+            color: var(--app-menu-selected-text);
+            font-weight: 600;
+        }
+
+    /* Klavye ile gezinme görünür kalsın. */
+    .app-sidebar .rz-navigation-item-link:focus-visible {
+        outline: 2px solid var(--app-menu-focus);
+        outline-offset: -2px;
+    }
+
+    /* Aç/kapa düğmesinin bulunduğu şeritler */
+    .app-sidebar .side-toolbar {
+        background: var(--app-menu-bg-alt);
+        border-bottom: 1px solid var(--app-menu-border);
+    }
+
+    .app-sidebar .toggle-btn-bottom.side-toolbar {
+        border-bottom: none;
+        border-top: 1px solid var(--app-menu-border);
+    }
+
+        .app-sidebar .side-toolbar .rz-button {
+            background: transparent;
+            border: 1px solid var(--app-menu-border);
+            color: var(--app-menu-text);
+        }
+
+            .app-sidebar .side-toolbar .rz-button:hover {
+                background: var(--app-menu-hover-bg);
+            }
+
+    /* Ayraçlar koyu zeminde görünür olsun. */
+    .app-sidebar hr,
+    .app-sidebar .rz-navigation-item {
+        border-color: var(--app-menu-border);
+    }
+

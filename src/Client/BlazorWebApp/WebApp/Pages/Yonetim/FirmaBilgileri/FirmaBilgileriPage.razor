@@ -1,0 +1,96 @@
+@attribute [Authorize(Roles = "pkf")]
+@page "/yonetim/firmalar/{FirmaId:int}/bilgiler"
+
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Yonetim
+
+@inject IFirmaApiClient FirmaApi
+@inject NavigationManager Nav
+@inject WebApp.Application.Services.ISonFirmalarStore SonFirmalar
+
+@*
+    Firma Bilgileri — kullanıcının sık ihtiyaç duyduğu firma künyesi tek ekranda:
+    sicil, ortaklık, imza yetkilileri ve belgeler.
+
+    Her bölüm KENDİ kaydını yapar (ayrı uç nokta, ayrı doğrulama). Tek büyük form
+    olsaydı bir bölümdeki hata diğerlerinin kaydını da engellerdi.
+
+    Firma kapsamı adresten geliyor ve her isteğe ?firmaId= olarak ekleniyor —
+    Banka Otomasyon'daki mekanizmanın aynısı.
+*@
+
+<PageTitle>@(firma is null ? "Firma Bilgileri" : $"{firma.Unvan} — Bilgiler")</PageTitle>
+
+<RadzenStack Gap="1rem">
+
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                 JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap" Gap="0.5rem">
+        <RadzenStack Gap="0">
+            <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">
+                @(firma?.Unvan ?? "Firma Bilgileri")
+            </RadzenText>
+            @if (firma is not null)
+            {
+                <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">
+                    VKN @firma.VergiKimlikNo
+                </RadzenText>
+            }
+        </RadzenStack>
+
+        <RadzenButton Text="Firmalarım" Icon="arrow_back" ButtonStyle="ButtonStyle.Light"
+                      Size="ButtonSize.Small" Click="@(() => Nav.NavigateTo("/yonetim/firmalar"))" />
+    </RadzenStack>
+
+    @if (bulunamadi)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning" Shade="Shade.Lighter" AllowClose="false">
+            Firma bulunamadı (Id=@FirmaId). Firma listesini yenileyip tekrar deneyin.
+        </RadzenAlert>
+    }
+    else
+    {
+        <SicilBolumu FirmaId="@FirmaId" />
+        <OrtaklikBolumu FirmaId="@FirmaId" />
+        <ImzaYetkilileriBolumu FirmaId="@FirmaId" />
+        <FirmaBelgeleriBolumu FirmaId="@FirmaId" />
+    }
+</RadzenStack>
+
+@code {
+    [Parameter] public int FirmaId { get; set; }
+
+    private FirmaDto? firma;
+    private bool bulunamadi;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        bulunamadi = false;
+        firma = null;
+
+        if (FirmaId <= 0)
+        {
+            bulunamadi = true;
+            return;
+        }
+
+        try
+        {
+            firma = await FirmaApi.GetByIdAsync(FirmaId);
+            bulunamadi = firma is null;
+
+            // Anasayfadaki "son kullanılan firmalar" gerçek kullanımdan besleniyor.
+            if (firma is not null)
+            {
+                var ad = string.IsNullOrWhiteSpace(firma.KisaAd) ? firma.Unvan : firma.KisaAd;
+                await SonFirmalar.KaydetAsync(firma.Id, ad, DateTime.Now);
+            }
+        }
+        catch
+        {
+            bulunamadi = true;
+        }
+    }
+}

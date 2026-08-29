@@ -77,6 +77,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         public const string HesapYt = "{HESAP}";
         public const string PlakaYt = "{PLAKA}";
         public const string VergiYt = "{VERGI}";
+        public const string YonYt = "{YON}";
+        public const string KrediYt = "{KREDI}";
 
         /// <summary>
         /// Şablon ekranının listelediği yer tutucular ve <see cref="Uret"/>'in doldurduğu
@@ -91,7 +93,13 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             new YerTutucu(BankaYt, "Bankalar arası hareketlerde metinde geçen banka adı"),
             new YerTutucu(HesapYt, "Karşı hesabın adı: unvan varsa o, yoksa banka adı"),
             new YerTutucu(PlakaYt, "HGS/otoyol yüklemelerinde açıklamadaki plaka"),
-            new YerTutucu(VergiYt, "Vergi tahsilatlarında beyanname türü (KDV, Muhtasar, Damga …)")
+            new YerTutucu(VergiYt, "Vergi tahsilatlarında beyanname türü (KDV, Muhtasar, Damga …)"),
+            // Aynı işlem tipi hem gelen hem giden olabilen bankalarda (İş Bankası "EFT",
+            // "FAST", "Havale") yön ayrı bir şablon satırıyla ayrılamıyor: şablon tablosunda
+            // yön alanı yok ve eklenseydi eşleşme mantığı da değişirdi. Yer tutucu aynı işi
+            // veriden yapar: "{YON} Eft - {UNVAN}" → "Gelen Eft - …" / "Giden Eft - …".
+            new YerTutucu(YonYt, "Paranın yönü: \"Gelen\" veya \"Giden\""),
+            new YerTutucu(KrediYt, "Kredi hareketlerinde açıklamadaki kredi hesap numarası")
         };
 
         /// <summary>ORKA muhasebe açıklamasını 50 karakterde kesiyor.</summary>
@@ -177,11 +185,22 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
 
             // Şablon yoksa satır yine de bir açıklama alır: işlem tipi (+ varsa unvan).
             // Uydurma yapılmaz, yalnız bankanın kendi metni düzenlenir.
+            //
+            // Akbank ve Ziraat ekstrelerinde işlem tipi kolonu YOK ve alan boş geliyor;
+            // eski hâlde taban boş kalıp açıklama "- Unvan" diye başlıyordu. İşlem tipi
+            // boşsa sırayla unvana, o da yoksa bankanın kendi açıklamasına düşülür.
             if (string.IsNullOrWhiteSpace(sablon))
             {
-                var taban = Normalizasyon.BaslikBicimi(baglam.IslemTipi);
-                if (!string.IsNullOrWhiteSpace(baglam.Unvan))
-                    taban = $"{taban} - {Normalizasyon.BaslikBicimi(baglam.Unvan)}";
+                var islemTipi = Normalizasyon.BaslikBicimi(baglam.IslemTipi);
+                var unvan = Normalizasyon.BaslikBicimi(baglam.Unvan);
+
+                var taban = (islemTipi.Length, unvan.Length) switch
+                {
+                    ( > 0, > 0) => $"{islemTipi} - {unvan}",
+                    ( > 0, 0) => islemTipi,
+                    (0, > 0) => unvan,
+                    _ => Normalizasyon.BaslikBicimi(baglam.HamAciklama)
+                };
 
                 return Normalizasyon.Kirp(taban, EnFazlaUzunluk);
             }
@@ -192,6 +211,8 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             metin = YerTutucuDoldur(metin, HesapYt, HesapAdi(baglam));
             metin = YerTutucuDoldur(metin, PlakaYt, PlakaBul(baglam.HamAciklama));
             metin = YerTutucuDoldur(metin, VergiYt, VergiTuruBul(baglam.HamAciklama));
+            metin = YerTutucuDoldur(metin, YonYt, baglam.Yon == Yon.Giren ? "Gelen" : "Giden");
+            metin = YerTutucuDoldur(metin, KrediYt, KrediNoBul(baglam.HamAciklama));
 
             return Normalizasyon.Kirp(Normalizasyon.BaslikBicimi(metin), EnFazlaUzunluk);
         }
@@ -228,6 +249,18 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             {
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Kredi hareketlerinde açıklamadaki kredi hesap numarası. Öğrenme anahtarıyla
+        /// <b>aynı</b> kaynaktan okunur (<see cref="Normalizasyon.KrediAnahtar"/>): açıklamada
+        /// yazan numara ile anahtardaki numara ayrışırsa kullanıcı iki farklı krediyi aynı
+        /// sanır.
+        /// </summary>
+        private static string? KrediNoBul(string? metin)
+        {
+            var anahtar = Normalizasyon.KrediAnahtar(metin);
+            return anahtar.Length == 0 ? null : anahtar["KREDI:".Length..];
         }
 
         private static string? VergiTuruBul(string? metin)

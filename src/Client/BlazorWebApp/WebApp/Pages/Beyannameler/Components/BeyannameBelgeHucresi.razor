@@ -1,0 +1,52 @@
+@using CatalogService.Api.Features.Declarations.Dtos
+@using CatalogService.Api.Features.Declarations.Entities
+@using Radzen
+@using WebApp.Application.Services.Interfaces
+
+@inject IBeyannameOzetApiService BeyannameApi
+@inject DialogService DialogService
+
+@*
+    Takip listesindeki "Belgeler" hücresi: üç küçük PDF ikonu + tıklanınca belge
+    penceresi. Matristeki ikonlarla aynı bileşeni kullanır (BeyannameEkIkonlari) ki iki
+    ekranda "belge var mı" sorusu aynı görünsün.
+
+    Belge listesi satır başına bir kez okunur; iç ızgara yalnız açılan firma için
+    çizildiğinden istek sayısı görünen satır kadardır.
+*@
+
+<span style="cursor:pointer" title="Belgeleri aç">
+    <BeyannameEkIkonlari Ekler="@turler" OnTikla="@Ac" Durdur="true" />
+</span>
+
+@code {
+    [Parameter, EditorRequired] public int DeclarationId { get; set; }
+
+    /// <summary>Dekont yalnız ödendi işaretli kayda eklenebilir.</summary>
+    [Parameter] public bool Odendi { get; set; }
+
+    private List<BeyannameEkTuruDto> turler = new();
+
+    protected override async Task OnParametersSetAsync() => await Tazele();
+
+    private async Task Tazele()
+    {
+        var ekler = await BeyannameApi.EkleriGetAsync(DeclarationId);
+        turler = ekler.Select(e => new BeyannameEkTuruDto { EkId = e.Id, Tur = e.Tur }).ToList();
+    }
+
+    private async Task Ac()
+    {
+        await DialogService.OpenAsync<BeyannameEkYonetimiDialog>(
+            "Beyanname belgeleri",
+            new Dictionary<string, object>
+            {
+                { nameof(BeyannameEkYonetimiDialog.DeclarationId), DeclarationId },
+                { nameof(BeyannameEkYonetimiDialog.Odendi), Odendi }
+            },
+            new DialogOptions { Width = "min(720px, 96vw)", Resizable = true, Draggable = true });
+
+        await Tazele();
+        StateHasChanged();
+    }
+}

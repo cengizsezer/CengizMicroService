@@ -1,0 +1,54 @@
+@using CatalogService.Api.Features.Declarations.Dtos
+@using CatalogService.Api.Features.Declarations.Entities
+@using Radzen
+@using Radzen.Blazor
+
+@*
+    Üç belge için küçük PDF ikonu: tahakkuk, beyanname, dekont. Belge varsa ikon dolu
+    (kırmızı), yoksa soluk. Matriste ve takip listesinde aynı bileşen kullanılır ki iki
+    ekranda "belge var mı" sorusu aynı görünsün.
+
+    Bileşen yalnız GÖSTERİR; tıklama üst bileşene geçer (o da detay penceresini açar).
+*@
+
+<span class="by-ek-ikonlar" @onclick="Tiklandi" @onclick:stopPropagation="@Durdur">
+    @foreach (var tur in Turler)
+    {
+        var var = Ekler?.Any(e => e.Tur == tur) == true;
+        <RadzenIcon Icon="picture_as_pdf"
+                    title="@($"{Ad(tur)}: {(var ? "belge var" : "belge yok")}")"
+                    Style="@($"font-size:15px; color:{(var ? "#c53030" : "#e2e8f0")}")" />
+    }
+</span>
+
+<style>
+    .by-ek-ikonlar { display:inline-flex; gap:2px; align-items:center; line-height:1; }
+</style>
+
+@code {
+    [Parameter] public List<BeyannameEkTuruDto>? Ekler { get; set; }
+
+    /// <summary>Tıklamada üst bileşene haber verilir; ikon şeridi kendi penceresini açmaz.</summary>
+    [Parameter] public EventCallback OnTikla { get; set; }
+
+    /// <summary>Tıklama üst öğeye (hücreye) yayılmasın mı? Hücrenin kendi tıklaması varsa true verin.</summary>
+    [Parameter] public bool Durdur { get; set; }
+
+    private static readonly BeyannameEkTuru[] Turler =
+    {
+        BeyannameEkTuru.Tahakkuk, BeyannameEkTuru.Beyanname, BeyannameEkTuru.Dekont
+    };
+
+    private static string Ad(BeyannameEkTuru tur) => tur switch
+    {
+        BeyannameEkTuru.Tahakkuk => "Tahakkuk",
+        BeyannameEkTuru.Beyanname => "Beyanname",
+        BeyannameEkTuru.Dekont => "Dekont",
+        _ => tur.ToString()
+    };
+
+    private async Task Tiklandi()
+    {
+        if (OnTikla.HasDelegate) await OnTikla.InvokeAsync();
+    }
+}

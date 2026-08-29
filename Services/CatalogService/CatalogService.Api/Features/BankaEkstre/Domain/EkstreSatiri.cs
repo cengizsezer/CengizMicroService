@@ -39,6 +39,17 @@ namespace CatalogService.Api.Features.BankaEkstre.Domain
         /// <summary>Bankanın kanal alanı (ATM/İnternet/Şube…). Yalnız bilgi amaçlı.</summary>
         public string? Kanal { get; set; }
 
+        /// <summary>
+        /// Bankanın satıra verdiği referans/dekont numarası (İş Bankası "Referans",
+        /// Akbank "Fiş/Dekont No", Ziraat "Fiş No"). Vakıfbank ekstresinde karşılığı yok.
+        ///
+        /// Yalnız <b>saklanır</b>: mükerrer yükleme tespiti bu alan üzerinden yapılacak,
+        /// ama satırı sessizce düşüren bir otomatik eleme kasıtlı olarak yazılmadı —
+        /// bankanın referansı tekil olmadığında (iptal/düzeltme kayıtları) gerçek satırlar
+        /// kaybolurdu. Bkz. KARARLAR §88.
+        /// </summary>
+        public string? Referans { get; set; }
+
         // ---- Üretilenler ----
 
         /// <summary>Muhasebe açıklaması; ORKA kestiği için 50 karakteri aşmaz.</summary>

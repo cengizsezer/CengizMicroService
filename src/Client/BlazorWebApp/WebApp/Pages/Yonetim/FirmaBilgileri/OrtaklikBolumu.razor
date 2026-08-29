@@ -1,0 +1,169 @@
+@using System.Globalization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto.FirmaBilgileri
+
+@inject IFirmaBilgiApiClient Api
+@inject NotificationService Notif
+
+@*
+    Ortaklık bilgileri. Tablo bütün olarak kaydedilir: ekrandan silinen satır sunucuda
+    da silinir. Satır satır kaydetmek, silinen ortağın kayıtta kalmasına ve toplam pay
+    oranının tutmamasına yol açıyordu.
+
+    Toplam pay oranı %100 değilse UYARI verilir, kayıt engellenmez: pay devri ve sermaye
+    artışı dönemlerinde tablo geçici olarak tutmayabiliyor.
+*@
+
+<RadzenCard Variant="Variant.Outlined">
+    <RadzenStack Gap="1rem">
+
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                     JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap" Gap="0.5rem">
+            <RadzenText TextStyle="TextStyle.H6" class="rz-m-0">
+                <RadzenIcon Icon="groups" class="rz-mr-1" />Ortaklık bilgileri
+            </RadzenText>
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                <RadzenButton Text="Ortak ekle" Icon="person_add" Size="ButtonSize.Small"
+                              ButtonStyle="ButtonStyle.Light" Click="@Ekle" />
+                <RadzenButton Text="Kaydet" Icon="save" Size="ButtonSize.Small"
+                              Disabled="@kaydediyor" Click="@Kaydet" />
+            </RadzenStack>
+        </RadzenStack>
+
+        @if (ortaklar.Count == 0)
+        {
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary rz-m-0">
+                Ortak kaydı yok. "Ortak ekle" ile satır açabilirsiniz.
+            </RadzenText>
+        }
+        else
+        {
+            <div style="overflow-x:auto">
+                <table class="fb-tablo">
+                    <thead>
+                        <tr>
+                            <th style="min-width:220px">Ortak Adı</th>
+                            <th style="width:150px">TCKN / VKN</th>
+                            <th style="width:150px">Pay Tutarı</th>
+                            <th style="width:120px">Pay Oranı (%)</th>
+                            <th style="width:160px">Başlangıç</th>
+                            <th style="min-width:160px">Not</th>
+                            <th style="width:50px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var ortak in ortaklar)
+                        {
+                            <tr>
+                                <td><RadzenTextBox @bind-Value="ortak.Ad" Style="width:100%" /></td>
+                                <td><RadzenTextBox @bind-Value="ortak.TcknVkn" MaxLength="11" Style="width:100%" /></td>
+                                <td><RadzenNumeric @bind-Value="ortak.PayTutari" Format="n2" Min="0" Style="width:100%" /></td>
+                                <td><RadzenNumeric @bind-Value="ortak.PayOrani" Format="n2" Min="0" Max="100" Style="width:100%" /></td>
+                                <td>
+                                    <RadzenDatePicker @bind-Value="ortak.BaslangicTarihi" DateFormat="dd.MM.yyyy"
+                                                      ShowTime="false" AllowClear="true" Style="width:100%" />
+                                </td>
+                                <td><RadzenTextBox @bind-Value="ortak.Not" Style="width:100%" /></td>
+                                <td>
+                                    <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger"
+                                                  Variant="Variant.Text" Click="@(() => Sil(ortak))" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2" style="text-align:right">Toplam</td>
+                            <td>@Para(ortaklar.Sum(o => o.PayTutari))</td>
+                            <td class="@(YuzdeUyarisi ? "fb-uyari" : "")">@ToplamOran.ToString("n2", Tr)</td>
+                            <td colspan="3"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            @if (YuzdeUyarisi)
+            {
+                <RadzenAlert AlertStyle="AlertStyle.Warning" Shade="Shade.Lighter" AllowClose="false">
+                    Toplam pay oranı <b>%@ToplamOran.ToString("n2", Tr)</b> — %100 değil.
+                    Kayıt engellenmiyor, ama pay dağılımı eksik ya da fazla görünüyor.
+                </RadzenAlert>
+            }
+        }
+
+        @if (!string.IsNullOrWhiteSpace(hata))
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false">@hata</RadzenAlert>
+        }
+    </RadzenStack>
+</RadzenCard>
+
+<style>
+    .fb-tablo { width:100%; border-collapse:collapse; font-size:13px; }
+    .fb-tablo th, .fb-tablo td { border:1px solid #e2e8f0; padding:4px 6px; vertical-align:middle; }
+    .fb-tablo thead th { background:#f7fafc; font-weight:600; text-align:left; }
+    .fb-tablo tfoot td { background:#f7fafc; font-weight:600; }
+    .fb-tablo .fb-uyari { color:#b7791f; }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+
+    private static readonly CultureInfo Tr = new("tr-TR");
+
+    private List<FirmaOrtakDto> ortaklar = new();
+    private bool kaydediyor;
+    private string? hata;
+
+    /// <summary>Ekrandaki anlık toplam; kaydetmeyi beklemeden uyarı verebilmek için.</summary>
+    private decimal ToplamOran => ortaklar.Sum(o => o.PayOrani);
+
+    /// <summary>Ortak yoksa uyarı yok: boş tabloda "toplam %0" anlamsız bir alarm olurdu.</summary>
+    private bool YuzdeUyarisi => ortaklar.Count > 0 && Math.Abs(ToplamOran - 100m) > 0.01m;
+
+    protected override async Task OnParametersSetAsync() => await Yukle();
+
+    private async Task Yukle()
+    {
+        var sonuc = await Api.OrtaklarGetAsync(FirmaId);
+        ortaklar = sonuc?.Ortaklar ?? new();
+        hata = sonuc is null ? "Ortaklık bilgileri okunamadı." : null;
+    }
+
+    private void Ekle() => ortaklar.Add(new FirmaOrtakDto());
+
+    private void Sil(FirmaOrtakDto ortak) => ortaklar.Remove(ortak);
+
+    private static string Para(decimal tutar) => tutar.ToString("n2", Tr);
+
+    private async Task Kaydet()
+    {
+        kaydediyor = true;
+        hata = null;
+
+        try
+        {
+            var (sonuc, mesaj) = await Api.OrtaklarKaydetAsync(FirmaId, ortaklar);
+
+            if (sonuc is null)
+            {
+                hata = mesaj ?? "Kaydedilemedi.";
+                return;
+            }
+
+            ortaklar = sonuc.Ortaklar;
+
+            if (sonuc.PayOraniUyarisi)
+                Notif.Notify(NotificationSeverity.Warning, "Kaydedildi",
+                    $"Toplam pay oranı %{sonuc.ToplamPayOrani.ToString("n2", Tr)} — %100 değil.");
+            else
+                Notif.Notify(NotificationSeverity.Success, "Ortaklık bilgileri kaydedildi");
+        }
+        finally
+        {
+            kaydediyor = false;
+        }
+    }
+}

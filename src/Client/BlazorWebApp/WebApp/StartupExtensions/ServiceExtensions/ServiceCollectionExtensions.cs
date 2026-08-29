@@ -144,6 +144,20 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             services.AddScoped<IDeclarationApiService>(sp =>
     new DeclarationApiService(sp.GetRequiredService<HttpClient>()));
 
+            // Beyanname özeti (firma × tür matrisi) ve beyanname belgeleri.
+            services.AddScoped<IBeyannameOzetApiService>(sp =>
+                new BeyannameOzetApiService(sp.GetRequiredService<HttpClient>()));
+
+            // Firma Bilgileri (sicil / ortaklık / imza yetkilileri / belgeler).
+            services.AddScoped<IFirmaBilgiApiClient>(sp =>
+                new FirmaBilgiApiClient(sp.GetRequiredService<HttpClient>()));
+
+            // Anasayfa kartları + "son kullanılan firmalar" (tarayıcıda tutulur).
+            services.AddScoped<IAnasayfaApiClient>(sp =>
+                new AnasayfaApiClient(sp.GetRequiredService<HttpClient>()));
+            services.AddScoped<ISonFirmalarStore>(sp =>
+                new SonFirmalarStore(sp.GetRequiredService<Blazored.LocalStorage.ILocalStorageService>()));
+
 
             services.AddScoped<ITaxPaymentClient>(sp =>new TaxPaymentClient(sp.GetRequiredService<HttpClient>()));
 

@@ -1,0 +1,19 @@
+@page "/beyanname-takip"
+
+@inject NavigationManager Nav
+
+@*
+    Beyanname Takip'in eski adresi. Ekran artık Beyannameler sayfasının bir sekmesi;
+    kayıtlı bağlantılar ve tarayıcı yer imleri kırılmasın diye rota duruyor, içerik yok —
+    yalnız yeni adrese yönlendiriyor.
+
+    Yönlendirme bir açık kapı DEĞİL: hedef sayfa [Authorize] taşıyor ve Takip sekmesi
+    kendi yetki kontrolünü yapmaya devam ediyor.
+
+    replace: true — geri düğmesi eski adrese dönüp sonsuz yönlendirme kurmasın.
+*@
+
+@code {
+    protected override void OnInitialized()
+        => Nav.NavigateTo(BeyannameSekmesi.Varsayilan.Yol, forceLoad: false, replace: true);
+}

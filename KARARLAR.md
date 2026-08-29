@@ -1839,3 +1839,226 @@ Bu tur Muhasebe tarafı **bilerek değiştirilmedi** (kapsam değişikliği fiş
 merkezi ve hesap planının tamamını ilgilendirir; ayrı bir iş). İleride Banka
 Otomasyon'daki mekanizmaya taşınmalı: kapsam istekten (`?firmaId=`) gelir, sorgularda
 görünür yazılır, `SaveChanges` boş kapsamı reddeder.
+
+## 85. Üç yeni banka: tek kütüphane yetmedi, okuyucu zinciri kuruldu
+
+**Karar:** Ekstre dosyası artık tek bir Excel kütüphanesiyle değil, imzaya bakan bir
+**okuyucu zinciriyle** açılıyor (`EkstreTabloOkuyucu`). OLE2 imzalı dosya NPOI/HSSF ile,
+zip imzalı dosya sırayla ClosedXML → NPOI/XSSF → ham XML (`HamXlsxOkuyucu`) ile denenir.
+Tanınmayan imza anlaşılır hata verir.
+
+**Neden:** Üç bankanın üç ayrı hastalığı var ve hiçbiri tek okuyucuyla geçilmiyor:
+
+| Banka | Sorun | Çözen yol |
+|---|---|---|
+| İş Bankası | Dosya **eski `.xls`** (OLE2 kabı), xlsx değil | NPOI/HSSF |
+| Akbank | Bazı okuyucular satırı **tek hücre** görüyor, hata da vermiyor | Kullanılabilirlik denetimi + sıradaki okuyucu |
+| Ziraat | `styles.xml` **bozuk**; biçim tablosunu okuyan her kütüphane patlıyor | Zip içindeki XML'i doğrudan okuyan yedek yol |
+
+Hata vermeyen ama işe yaramaz sonuç (Akbank) sessizce "başarılı" sayılmasın diye zincirde
+bir de **kullanılabilirlik** denetimi var: hiçbir satırda iki dolu hücre yoksa sıradaki
+okuyucuya geçilir. Yedek yola düşüldüğünde hangi okuyucunun neden başarısız olduğu
+`Uyarilar`'a yazılır — sessizce düşülmez.
+
+**Bedeli:** Ham XML yolunda hücrenin tarih biçimli olup olmadığı bilinemiyor (biçim tablosu
+zaten bozuk). Tarih kolonundaki sayısal değerler Excel seri numarası aralığıyla
+(1950–2079) ayrılıyor; bu yorum yalnız tarih kolonunda yapılıyor, tutarda değil.
+
+**Vakıfbank ayrıştırıcısı bu iskelete taşınmadı.** Çalışıyor ve gerçek dosyayla
+doğrulanmış durumda; taşımak kazanç değil risk olurdu.
+
+## 86. İşlem tipi kolonu olmayan bankada uydurma işlem tipi türetilmedi
+
+**Karar:** Akbank ve Ziraat ekstrelerinde işlem tipi kolonu yok; `IslemTipi` **boş**
+bırakıldı. Bu iki bankanın şablonları `İçerir` eşleşmesiyle **ham açıklamadan**, sabit
+kuralları da `KuralKapsami.Aciklama` ile tanımlandı.
+
+**Neden:** Açıklamanın önekinden bir işlem tipi türetmek ("7777/MBL-" → `MBL`) kolaydı ama
+tehlikeli: unvan çıkarılamayan satırların öğrenme anahtarı `ISLEM:<işlem tipi>` oluyor ve
+uydurulmuş bir tip ilk onaydan sonra aynı kanaldan geçen **ilgisiz** satırları da aynı
+hesaba çözerdi. `AciklamaUretici.SablonBul` zaten önce ham açıklamayı tarıyor (§ Vakıfbank
+"Hesaplar Arası EFT" düzeltmesi), yani boş işlem tipi şablon eşleşmesini engellemiyor.
+
+**Yan etki:** Şablonu tutmayan satırlarda açıklama üretimi eskiden yalnız işlem tipine
+düşüyordu ve boş tiple metin `- Unvan` diye başlıyordu. Sıra artık işlem tipi → unvan →
+bankanın kendi açıklaması (kırpılmış). Uydurma yok; en kötü ihtimalle bankanın metni.
+
+## 87. Yön ve kredi numarası şablon tablosuna kolon eklenerek değil, yer tutucuyla çözüldü
+
+**Karar:** `AciklamaUretici`'ye iki yer tutucu eklendi: `{YON}` (Gelen/Giden) ve `{KREDI}`
+(açıklamadaki kredi hesap numarası). Şablon tablosuna yön kolonu **eklenmedi**.
+
+**Neden:** İş Bankası aynı işlem tipini iki yönde de kullanıyor ("EFT" 242 satırın hem
+tahsilat hem ödeme tarafı). Vakıfbank'ta bu sorun yoktu; orada yön zaten işlem tipinin
+adında ("Gelen EFT Otomatik Yatan" / "Hesaba giden EFT"). Şablona `Yon` kolonu eklemek
+tabloyu, DTO'yu, ekranı ve eşleşme sırasını birden değiştirirdi; yer tutucu aynı sonucu
+veriden üretiyor ve şablon ekranında kendiliğinden görünüyor (liste tek yerde:
+`AciklamaUretici.YerTutucular`).
+
+`{KREDI}` ile öğrenme anahtarı **aynı kaynaktan** okunuyor (`Normalizasyon.KrediAnahtar`):
+açıklamada yazan numara ile anahtardaki numara ayrışırsa kullanıcı iki farklı krediyi aynı
+sanır. Aynı fonksiyon İş Bankası'nın yazımını da tanıyacak şekilde genişletildi
+("KREDİ NO: 10080844268"; Vakıfbank'ta "… kredi hesap numaralı").
+
+## 88. Banka referansı saklanıyor, otomatik mükerrer elemesi yazılmadı
+
+**Karar:** `EkstreSatiri.Referans` alanı eklendi (İş Bankası "Referans", Akbank
+"Fiş/Dekont No", Ziraat "Fiş No"); ayrıştırıcılar dolduruyor, hiçbir mantık **okumuyor**.
+
+**Neden:** Referans bankanın kendi tekil anahtarı ve aynı dönemin ikinci kez yüklendiğini
+görmenin en sağlam yolu. Ama satırı sessizce düşüren bir otomatik eleme, referansın tekil
+olmadığı durumlarda (iptal/düzeltme kayıtları, bankanın numarayı tekrar kullanması) gerçek
+satırları kaybettirirdi. Alan önce saklanıp gözlenecek; eleme kararı veriden sonra.
+
+Migration: `20260828204703_BankaEkstreSatirReferansi` — tek kolon, `nvarchar(100)`, null
+kabul eder.
+
+## 89. İş Bankası'nda unvanın başta mı sonda mı olduğu işlem tipiyle değil veriyle ayrılıyor
+
+**Karar:** İş Bankası açıklaması yıldızla ayrılmış alanlardan oluşuyor
+(`UNVAN*0111*GÖVDE*REFERANS*KANAL`) ama "Havale" tipinde unvan **sonda**
+(`2. FATURA BEDELİ ÖDEMESİ*OPAT OTOMOTİV …`). Baştaki unvanı yakalayan desen, ikinci alanın
+**dört haneli banka kodu** olmasını şart koşuyor: `^([^*]{4,}?)\*\d{4}(?:\*|$)`.
+
+**Neden:** Desen tablosunda deseni işlem tipine bağlayan bir alan yok; "Havale'de şu deseni
+önce dene" demek için tabloya kolon, servise filtre ve ekrana alan eklemek gerekirdi. Banka
+kodu çıpası aynı ayrımı **veriden** yapıyor: havale gövdesinde ikinci alan kod değil metin,
+o yüzden baştaki desen hiç tutmuyor ve sıradaki (sondaki unvan) deseni kazanıyor.
+
+Sondaki unvan deseni en az **iki kelime** arıyor: tek kelimelik kuyruklar ("FAST",
+"8792586") unvan değil.
+
+## 90. Ziraat'te IBAN'ın önündeki ad unvan sayılmadı
+
+**Karar:** `Enpara Bank A.Ş./TR38…-BURAK GÜNEL/…` kalıbında yalnız IBAN'dan **sonraki** ad
+için desen tanımlandı; IBAN'dan önceki ad için desen **yazılmadı**.
+
+**Neden:** Oradaki ad karşı tarafın **bankası**, karşı tarafın kendisi değil. Desen
+yazılsaydı yakalama sırayla ilk denenen olur ve her ödeme banka adına eşleşmeye çalışırdı;
+banka isimli kayıtlar zaten benzersiz önek indeksine alınmıyor (`CariOnekIndeksi`), yani
+satır hiç çözülmeden onaya düşerdi. IBAN'dan sonraki ad gerçek karşı tarafı veriyor.
+
+## 91. Belge saklama: yeni mekanizma kurulmadı, repodaki kalıp izlendi
+
+**Karar:** Beyanname belgeleri (tahakkuk/beyanname/dekont) ve firma belgeleri (imza
+sirküleri, vergi levhası…) **FileApiService**'te saklanıyor; CatalogService'te yalnız
+`FileId` + metadata (`FileName`, `ContentType`, `Length`, `CreatedAt`, yükleyen) duruyor.
+
+**Neden:** Prompt "önce mevcut altyapıyı incele, yeni mekanizma icat etme" dedi; incelendi:
+
+| Yer | Ne yapıyor |
+|---|---|
+| `TicaretSicilEk` | Kalıbın kaynağı: dosya FileApiService'te, kayıtta `FileId` |
+| `JobAttachment` | Aynı kalıp, iş eklerinde |
+| `IFileApiService.UploadGenericAsync(file, folder)` | `POST /uploads` → `{ Id, Key, FileName, ContentType, Length }` |
+| `IFileApiService.GetDownloadAsync(id)` | `presignedUrl` → iframe ile tarayıcı içinde açılıyor |
+| `IFileApiService.DeleteAsync(id)` | Yetim dosyayı silmek için |
+
+Akış üç adım ve **telafi silmesi** de kalıbın parçası (`AddAppointmentPage`'teki gibi):
+dosya yüklenir → metadata kaydedilir → kayıt başarısızsa yüklenen dosya silinir.
+CatalogService'in FileApiService'e giden bir istemcisi yok; bu yüzden "artık sahipsiz
+kalan dosya" bilgisi yanıtta `artikFileId` olarak istemciye dönüyor ve silmeyi o yapıyor.
+
+Görüntüleme **indirme değil**: presigned URL bir `iframe`'e veriliyor
+(`PdfGoruntuleyiciDialog`), indirme yalnız kullanıcı isterse. Aynı bileşen KDV
+modülündeki `FaturaPdfDialog`'un genelleştirilmiş hâli; iki özellik de onu kullandığı
+için `Pages` altında değil `Shared/Components` altında duruyor.
+
+Doğrulama iki yerde: istemcide hızlı geri bildirim, sunucuda kesin karar (yalnız PDF,
+0 < boyut ≤ 20 MB). İstemcideki kontrol atlanabilir olduğu için kayıt kuralı sunucuda.
+
+## 92. Beyanname türleri sabit listeden tabloya taşındı; saklanan metin korundu
+
+**Karar:** `catalog.BeyannameTurleri` (global tablo) eklendi. Özet matrisinin kolonları ve
+Takip ekranının tür listesi buradan geliyor. Tablo üç alan taşıyor: **Deger** (kayıtlarda
+saklanan metin), **Kod** (vergi kodu), **Ad** (okunur ad).
+
+**Neden:** Liste `DeclarationFollow.razor` içinde `List<string>` olarak duruyordu
+("0015 KDV-1", "SGK" …). Matris kolonlarını da oradan almak aynı listeyi iki ekranda ayrı
+ayrı yaşatırdı; yeni bir tür eklemek de kod değişikliği demekti.
+
+**Kritik ayrıntı — `Deger` aynen korundu.** Kurulu veritabanlarındaki kayıtlar
+`Declaration.DeclarationType` alanına eski listedeki metni yazmış durumda; tanım tablosu o
+metni taşımasaydı hiçbir mevcut kayıt matriste bir kolona düşmezdi.
+
+Eşleştirme üç adımlı (`BeyannameTuruEsleyici`): tam değer → baştaki dört haneli vergi kodu
+→ okunur ad. Hiçbiri tutmazsa **tahmin edilmez**: metin `EslesmeyenTurler` ile raporlanır
+ve ekran "bu türler tanımlarda yok" uyarısı verir. Sessizce düşseydi kayıt matriste hiç
+görünmez, kullanıcı da eksiği fark etmezdi.
+
+Karşılaştırma Türkçe sadeleştirmeden geçiyor: invariant kültür 'ı' → 'I' ve 'i' → 'İ'
+dönüşümünü yapmadığı için "GECİCİ" ile "gecici" `OrdinalIgnoreCase` altında bile
+ayrışıyordu (aynı tuzak Banka Otomasyon'da başlık aramasını bozmuştu).
+
+**Bilinen sınır:** `Declaration` tablosunda tenant query filter **yok** (modül baştan böyle
+kurulmuş); `CustomerCompany`'de var. Özet matrisi satırlarını `CustomerCompany`'den
+kurduğu ve yalnız görünen firmaların kayıtlarını topladığı için dışarıdan kayıt sızmıyor.
+Beyanname tablosunun kendi kapsamı bu turda **bilerek değiştirilmedi** — Takip ekranı ve
+yıllık özetler aynı tabloyu filtresiz okuyor, kapsam değişikliği ayrı bir iş.
+
+## 93. Firma sicil alanları iki tabloya kopyalanmadı
+
+**Karar:** Unvan, VKN, vergi dairesi, ticaret sicil no, e-posta ve telefon
+`catalog.Firmalar`'da kalıyor; MERSİS, kuruluş tarihi, adres, NACE ve sermaye yeni
+`FirmaSicilBilgileri` tablosunda. Ekran ikisini tek formda gösteriyor, **kaydetme ikisini
+de yazıyor**.
+
+**Neden:** Alanları yeni tabloya kopyalamak iki kaynaklı gerçek üretirdi: birini
+güncelleyip diğerini unutmak an meselesi. Ayrı tablo tutmamak da olmazdı — `Firma`
+kaydı kataloğun her yerinde kullanılıyor ve MERSİS/NACE gibi alanlar oraya ait değil.
+
+Sicil kaydı firma başına tek (`FirmaId` benzersiz); ikinci kaydetme yeni satır açmıyor.
+
+## 94. Firma Bilgileri kapsamı için ikinci bir mekanizma kurulmadı
+
+**Karar:** Firma Bilgileri uç noktaları Banka Otomasyon'un `BankaFirmaFiltresi` +
+`IBankaFirmaKapsami` ikilisini **doğrudan** kullanıyor: `?firmaId=` zorunlu, parametre
+doğrulanıyor, kapsam her sorguda görünür yazılıyor, global query filter yok.
+
+**Neden:** Prompt "kapsam Banka Otomasyon'daki mekanizmayla aynı olsun" dedi. Aynı işi
+yapan ikinci bir filtre + arayüz yazmak, iki mekanizmanın zamanla ayrışması demekti
+(§68–§72'deki kararların yalnız birinde uygulanması gibi). Arayüzün adındaki "Banka"
+tarihsel; içinde bankaya özel hiçbir şey yok.
+
+Kapsam ayarlanmadan yapılan okuma **hata veriyor**, boş liste dönmüyor: kapsamsız bir
+istek "hiç kayıt yok" gibi görünüp kullanıcıyı yanıltırdı.
+
+## 95. Anasayfa kendi hesabını yapmıyor
+
+**Karar:** Anasayfa kartlarının sayıları, tıklanınca gidilecek sayfanın **kendi
+servisinden** geliyor: banka satırları Banka Otomasyon'un firma seçim ekranını besleyen
+`IFirmaOzetService`'ten, beyanname sayıları `catalog.Declarations`'tan. `AnasayfaService`
+yalnız üç kaynağı tek çağrıda topluyor; kuralları saf bir fonksiyon
+(`AnasayfaOzetKurucu`) uyguluyor.
+
+**Neden:** Anasayfa kendi sorgusunu yazsaydı, aynı sayı iki ekranda farklı çıktığında
+sebebin veri mi yoksa iki ayrı hesap mı olduğu anlaşılmazdı.
+
+İki ayrıntı kayda değer:
+- **Firma kapsamı yok.** Kullanıcı sekiz firmayı birlikte yönetiyor ve açılışta hepsinin
+  durumunu görmek istiyor — Banka Otomasyon'un firma seçim ekranıyla aynı gerekçe (§69).
+- **Yaklaşan ödemeler ay değil tarih aralığı sorguluyor.** Ağustos beyannamesinin vadesi
+  eylülde; ay sorgusu o satırı hiç göstermezdi.
+- "Bekleyen" = **ödemesi tamamlanmamış**. Beyanname hazırlanmış, hatta onaylanmış olabilir;
+  kullanıcının anasayfada aradığı sayı paranın çıkıp çıkmadığı.
+
+"Son kullanılan firmalar" **tarayıcıda** (localStorage) tutuluyor: kullanıcının kendi
+gezinme geçmişi, sunucuya yazılacak bir veri değil. Liste gerçek kullanımdan besleniyor —
+firma bilgileri ekranı açıldığında ve anasayfadan bir firmaya gidildiğinde yazılıyor.
+
+## 96. Sol menü teması: renkler tek yerde, ayrım yalnız renkle değil
+
+**Karar:** Sol menü koyu (`#1f2733` — saf siyah değil, yumuşak koyu lacivert-gri); başlık
+ve içerik alanı açık kaldı. Bütün renk değerleri `app.css`'te tek bir `:root` bloğunda
+CSS değişkeni olarak duruyor, kural blokları yalnız o değişkenleri kullanıyor.
+
+**Neden:** Renk kodları kural bloklarına dağılsaydı tema değişikliği dosya taraması
+gerektirirdi. Değişken bloğu aynı zamanda kontrast belgesi: seçilen değerlerin WCAG
+oranları yorumda yazılı (metin 12:1, soluk metin 6.6:1, seçili satır 5.9:1).
+
+Seçili satır **yalnız renkle** ayrılmıyor; sol kenarında bir çubuk var (`inset box-shadow`)
+ve yazı kalınlaşıyor. Renk körü kullanıcıda seçim yine ayırt edilebilsin diye. Aynı
+gerekçeyle klavye odağı da görünür (`:focus-visible` konturu).
+
+`index.html`'deki `app.css?v=` sürümü artırıldı; aksi hâlde tarayıcı eski dosyayı
+önbellekten verir ve menü beyaz kalırdı.

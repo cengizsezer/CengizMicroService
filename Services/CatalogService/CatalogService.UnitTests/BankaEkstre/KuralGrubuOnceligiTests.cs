@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre;
+﻿using CatalogService.Api.Features.BankaEkstre;
 using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Services;
@@ -344,8 +344,10 @@ namespace CatalogService.UnitTests.BankaEkstre
             using var db = BankaEkstreTestOrtami.YeniContext();
             await BankaEkstreSeed.SeedAsync(db);
 
+            // Yalnız Vakıfbank: avans kuralları bu bankaya ait ve aynı desen ("SGK")
+            // başka bankalarda da tanımlı olduğu için sözlük parser bazlı kurulur.
             var kurallar = db.EkstreSabitKurallar
-                .Where(k => k.Kapsam == KuralKapsami.Aciklama)
+                .Where(k => k.Kapsam == KuralKapsami.Aciklama && k.ParserTipi == VakifbankVadesizParser.Tip)
                 .ToDictionary(k => k.IslemTipiDeseni, k => k);
 
             var genel = kurallar["Avans"];
@@ -361,8 +363,10 @@ namespace CatalogService.UnitTests.BankaEkstre
             using var db = BankaEkstreTestOrtami.YeniContext();
             await BankaEkstreSeed.SeedAsync(db);
 
+            // Yalnız Vakıfbank: avans kuralları bu bankaya ait ve aynı desen ("SGK")
+            // başka bankalarda da tanımlı olduğu için sözlük parser bazlı kurulur.
             var kurallar = db.EkstreSabitKurallar
-                .Where(k => k.Kapsam == KuralKapsami.Aciklama)
+                .Where(k => k.Kapsam == KuralKapsami.Aciklama && k.ParserTipi == VakifbankVadesizParser.Tip)
                 .ToDictionary(k => k.IslemTipiDeseni, k => k);
 
             Assert.Equal("195, 196", kurallar["Avans"].AnaGruplar);

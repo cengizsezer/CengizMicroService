@@ -1,0 +1,269 @@
+@using CatalogService.Api.Features.Declarations.Dtos
+@using CatalogService.Api.Features.Declarations.Entities
+@using Microsoft.AspNetCore.Components.Forms
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Components
+
+@inject IBeyannameOzetApiService BeyannameApi
+@inject IFileApiService FileApi
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+@*
+    Bir beyannamenin belgeleri: tahakkuk, beyanname ve (yalnız ödendiyse) dekont.
+
+    Akış repodaki mevcut kalıp (JobAttachment / TicaretSicilEk):
+      1) dosya FileApiService'e yüklenir  → Id döner
+      2) Id + metadata CatalogService'e kaydedilir
+      3) kayıt başarısızsa yüklenen dosya telafi olarak silinir (yetim dosya kalmasın)
+
+    Doğrulama iki yerde: burada kullanıcıya hızlı geri bildirim için, sunucuda ise
+    kaydın doğruluğu için (BeyannameEkService).
+*@
+
+<RadzenStack Gap="0.75rem">
+
+    @if (Yukleniyor)
+    {
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+    }
+
+    @foreach (var tur in Turler)
+    {
+        var ek = Ekler.FirstOrDefault(e => e.Tur == tur);
+        var kilitli = tur == BeyannameEkTuru.Dekont && !Odendi;
+
+        <RadzenCard Variant="Variant.Outlined" class="rz-p-3">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                         JustifyContent="JustifyContent.SpaceBetween" Gap="0.75rem" Wrap="FlexWrap.Wrap">
+
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                    <RadzenIcon Icon="picture_as_pdf"
+                                Style="@($"font-size:22px; color:{(ek is null ? "#cbd5e0" : "#c53030")}")" />
+                    <RadzenStack Gap="0">
+                        <RadzenText TextStyle="TextStyle.Body1" class="rz-m-0"><b>@Ad(tur)</b></RadzenText>
+                        <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">
+                            @if (ek is not null)
+                            {
+                                @($"{ek.FileName} · {Boyut(ek.Length)}")
+                            }
+                            else if (kilitli)
+                            {
+                                @("Dekont yalnız ödendi işaretli beyannameye eklenebilir.")
+                            }
+                            else
+                            {
+                                @("Belge yok")
+                            }
+                        </RadzenText>
+                    </RadzenStack>
+                </RadzenStack>
+
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="0.4rem" AlignItems="AlignItems.Center">
+                    @if (ek is not null)
+                    {
+                        <RadzenButton Icon="visibility" Text="Görüntüle" Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Light" Click="@(() => Goruntule(ek))" />
+                        <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger"
+                                      Variant="Variant.Text" Click="@(() => Sil(ek))" />
+                    }
+
+                    @if (!kilitli)
+                    {
+                        <label class="by-yukle @(Yukleniyor ? "pasif" : "")">
+                            <RadzenIcon Icon="upload_file" Style="font-size:16px" />
+                            <span>@(ek is null ? "Yükle" : "Değiştir")</span>
+                            <InputFile accept="application/pdf,.pdf" disabled="@Yukleniyor"
+                                       OnChange="@(e => Yukle(tur, e))" style="display:none" />
+                        </label>
+                    }
+                </RadzenStack>
+            </RadzenStack>
+        </RadzenCard>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Hata))
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false">@Hata</RadzenAlert>
+    }
+</RadzenStack>
+
+<style>
+    .by-yukle { display:inline-flex; align-items:center; gap:6px; cursor:pointer;
+                border:1px solid #cbd5e0; border-radius:4px; padding:4px 10px;
+                font-size:13px; color:#2b6cb0; background:#fff; }
+    .by-yukle:hover { background:#edf5ff; }
+    .by-yukle.pasif { opacity:.5; pointer-events:none; }
+</style>
+
+@code {
+    /// <summary>Belgeleri yönetilen beyanname kaydı.</summary>
+    [Parameter, EditorRequired] public int DeclarationId { get; set; }
+
+    /// <summary>Kayıt ödendi mi? Dekont yalnız ödendiyse eklenebilir.</summary>
+    [Parameter] public bool Odendi { get; set; }
+
+    /// <summary>Belge listesi değiştiğinde tetiklenir; matris kendini tazelesin diye.</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    /// <summary>Tek belge için üst sınır; sunucudaki sınırla aynı (BeyannameEkService.EnFazlaBayt).</summary>
+    public const long EnFazlaBayt = 20 * 1024 * 1024;
+
+    private static readonly BeyannameEkTuru[] Turler =
+    {
+        BeyannameEkTuru.Tahakkuk, BeyannameEkTuru.Beyanname, BeyannameEkTuru.Dekont
+    };
+
+    private List<BeyannameEkDto> Ekler = new();
+    private bool Yukleniyor;
+    private string? Hata;
+
+    protected override async Task OnInitializedAsync() => await Tazele();
+
+    private async Task Tazele()
+    {
+        Ekler = await BeyannameApi.EkleriGetAsync(DeclarationId);
+    }
+
+    public static string Ad(BeyannameEkTuru tur) => tur switch
+    {
+        BeyannameEkTuru.Tahakkuk => "Tahakkuk",
+        BeyannameEkTuru.Beyanname => "Beyanname",
+        BeyannameEkTuru.Dekont => "Dekont",
+        _ => tur.ToString()
+    };
+
+    private static string Boyut(long bayt)
+        => bayt < 1024 ? $"{bayt} B"
+         : bayt < 1024 * 1024 ? $"{bayt / 1024.0:0.#} KB"
+         : $"{bayt / (1024.0 * 1024):0.#} MB";
+
+    private async Task Yukle(BeyannameEkTuru tur, InputFileChangeEventArgs e)
+    {
+        var dosya = e.File;
+        if (dosya is null) return;
+
+        Hata = null;
+
+        // Uzantı ve boyut önce burada elenir: 20 MB'lik bir dosyayı sunucuya gönderip
+        // orada reddettirmenin kullanıcıya faydası yok.
+        if (!dosya.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            Hata = "Yalnız PDF belge eklenebilir.";
+            return;
+        }
+
+        if (dosya.Size <= 0 || dosya.Size > EnFazlaBayt)
+        {
+            Hata = $"Dosya boş ya da {EnFazlaBayt / (1024 * 1024)} MB sınırını aşıyor.";
+            return;
+        }
+
+        Yukleniyor = true;
+        int? yuklenenFileId = null;
+
+        try
+        {
+            var yukleme = await FileApi.UploadGenericAsync(dosya, "beyanname");
+            if (yukleme is null || yukleme.Id <= 0)
+            {
+                Hata = "Dosya yüklenemedi. Dosya servisi yanıt vermiyor olabilir.";
+                return;
+            }
+
+            yuklenenFileId = yukleme.Id;
+
+            var sonuc = await BeyannameApi.EkEkleAsync(DeclarationId, new BeyannameEkOlusturDto
+            {
+                Tur = tur,
+                FileId = yukleme.Id,
+                FileName = string.IsNullOrWhiteSpace(yukleme.FileName) ? dosya.Name : yukleme.FileName,
+                ContentType = "application/pdf",
+                Length = yukleme.Length > 0 ? yukleme.Length : dosya.Size
+            });
+
+            if (sonuc?.Ek is null)
+            {
+                Hata = "Belge kaydedilemedi.";
+                return;
+            }
+
+            // Kayıt tuttu: telafi silmesi yapılmayacak.
+            yuklenenFileId = null;
+
+            // Aynı türden eski belge değiştiyse o dosya artık sahipsiz; silinmezse
+            // dosya servisinde yetim kalırdı.
+            if (sonuc.ArtikFileId is int artik && artik > 0)
+            {
+                try { await FileApi.DeleteAsync(artik); } catch { /* yetim dosya kritik değil */ }
+            }
+
+            await Tazele();
+            await Degisti.InvokeAsync();
+
+            NotificationService.Notify(NotificationSeverity.Success, "Belge eklendi", Ad(tur));
+        }
+        catch (Exception ex)
+        {
+            Hata = "Belge eklenirken hata: " + ex.Message;
+        }
+        finally
+        {
+            // Yükleme başarılı ama kayıt başarısızsa dosya yetim kalmasın.
+            if (yuklenenFileId is int fid && fid > 0)
+            {
+                try { await FileApi.DeleteAsync(fid); } catch { }
+            }
+
+            Yukleniyor = false;
+        }
+    }
+
+    private async Task Sil(BeyannameEkDto ek)
+    {
+        var onay = await DialogService.Confirm($"{Ad(ek.Tur)} belgesi silinsin mi?", "Belge sil",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+
+        if (onay != true) return;
+
+        Yukleniyor = true;
+
+        try
+        {
+            var fileId = await BeyannameApi.EkSilAsync(DeclarationId, ek.Id);
+            if (fileId is null)
+            {
+                Hata = "Belge silinemedi.";
+                return;
+            }
+
+            if (fileId > 0)
+            {
+                try { await FileApi.DeleteAsync(fileId.Value); } catch { }
+            }
+
+            await Tazele();
+            await Degisti.InvokeAsync();
+        }
+        finally
+        {
+            Yukleniyor = false;
+        }
+    }
+
+    private async Task Goruntule(BeyannameEkDto ek)
+    {
+        var dosya = await FileApi.GetDownloadAsync(ek.FileId);
+
+        await DialogService.OpenAsync<PdfGoruntuleyiciDialog>(
+            Ad(ek.Tur),
+            new Dictionary<string, object>
+            {
+                { nameof(PdfGoruntuleyiciDialog.PresignedUrl), dosya?.PresignedUrl ?? string.Empty },
+                { nameof(PdfGoruntuleyiciDialog.Baslik), $"{Ad(ek.Tur)} · {ek.FileName}" }
+            },
+            new DialogOptions { Width = "min(1100px, 96vw)", Height = "88vh", Resizable = true, Draggable = true });
+    }
+}

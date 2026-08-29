@@ -1,0 +1,245 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Components
+@using WebApp.Shared.Dto.FirmaBilgileri
+
+@inject IFirmaBilgiApiClient Api
+@inject IFileApiService FileApi
+@inject DialogService DialogService
+@inject NotificationService Notif
+
+@*
+    Firma belgeleri (imza sirküleri, vergi levhası, faaliyet belgesi…).
+
+    Beyanname ekleriyle AYNI altyapı: dosya FileApiService'e yüklenir, CatalogService'te
+    yalnız FileId + metadata durur, görüntüleme presigned URL ile tarayıcı içinde olur.
+    Tek fark: burada aynı türden birden çok belge olabilir — vergi levhası her yıl
+    yenileniyor ve eskisi kayıtta kalmalı.
+*@
+
+<RadzenCard Variant="Variant.Outlined">
+    <RadzenStack Gap="1rem">
+
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                     JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap" Gap="0.5rem">
+            <RadzenText TextStyle="TextStyle.H6" class="rz-m-0">
+                <RadzenIcon Icon="folder" class="rz-mr-1" />Belgeler
+            </RadzenText>
+
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+                <RadzenDropDown @bind-Value="secilenTur" Data="@TurSecenekleri"
+                                TextProperty="Ad" ValueProperty="Deger" Style="width:200px" />
+                <RadzenTextBox @bind-Value="aciklama" Placeholder="Açıklama (ör. 2026 yılı)" Style="width:200px" />
+                <label class="fb-yukle @(yukleniyor ? "pasif" : "")">
+                    <RadzenIcon Icon="upload_file" Style="font-size:16px" />
+                    <span>PDF yükle</span>
+                    <InputFile accept="application/pdf,.pdf" disabled="@yukleniyor"
+                               OnChange="@Yukle" style="display:none" />
+                </label>
+            </RadzenStack>
+        </RadzenStack>
+
+        @if (belgeler.Count == 0)
+        {
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary rz-m-0">
+                Belge yok. Tür seçip PDF yükleyebilirsiniz.
+            </RadzenText>
+        }
+        else
+        {
+            <div style="overflow-x:auto">
+                <table class="fb-tablo">
+                    <thead>
+                        <tr>
+                            <th style="width:200px">Tür</th>
+                            <th style="min-width:220px">Dosya</th>
+                            <th style="min-width:160px">Açıklama</th>
+                            <th style="width:150px">Eklenme</th>
+                            <th style="width:130px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var belge in belgeler)
+                        {
+                            <tr>
+                                <td>
+                                    <RadzenIcon Icon="picture_as_pdf" Style="font-size:16px;color:#c53030" />
+                                    @Ad(belge.Tur)
+                                </td>
+                                <td>@belge.FileName <span class="rz-color-secondary">· @Boyut(belge.Length)</span></td>
+                                <td>@belge.Aciklama</td>
+                                <td>@belge.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>
+                                    <RadzenButton Icon="visibility" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light"
+                                                  class="rz-mr-1" Click="@(() => Goruntule(belge))" />
+                                    <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger"
+                                                  Variant="Variant.Text" Click="@(() => Sil(belge))" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(hata))
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false">@hata</RadzenAlert>
+        }
+    </RadzenStack>
+</RadzenCard>
+
+<style>
+    .fb-yukle { display:inline-flex; align-items:center; gap:6px; cursor:pointer;
+                border:1px solid #cbd5e0; border-radius:4px; padding:6px 12px;
+                font-size:13px; color:#2b6cb0; background:#fff; }
+    .fb-yukle:hover { background:#edf5ff; }
+    .fb-yukle.pasif { opacity:.5; pointer-events:none; }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+
+    private sealed record TurSecenegi(FirmaBelgeTuru Deger, string Ad);
+
+    private static readonly TurSecenegi[] TurSecenekleri =
+    {
+        new(FirmaBelgeTuru.ImzaSirkuleri, "İmza sirküleri"),
+        new(FirmaBelgeTuru.VergiLevhasi, "Vergi levhası"),
+        new(FirmaBelgeTuru.FaaliyetBelgesi, "Faaliyet belgesi"),
+        new(FirmaBelgeTuru.TicaretSicilGazetesi, "Ticaret sicil gazetesi"),
+        new(FirmaBelgeTuru.Diger, "Diğer")
+    };
+
+    /// <summary>Sunucudaki sınırla aynı (FirmaBilgiService.EnFazlaBayt).</summary>
+    private const long EnFazlaBayt = 20 * 1024 * 1024;
+
+    private List<FirmaBelgesiDto> belgeler = new();
+    private FirmaBelgeTuru secilenTur = FirmaBelgeTuru.ImzaSirkuleri;
+    private string? aciklama;
+    private bool yukleniyor;
+    private string? hata;
+
+    protected override async Task OnParametersSetAsync() => await Tazele();
+
+    private async Task Tazele() => belgeler = await Api.BelgelerGetAsync(FirmaId);
+
+    private static string Ad(FirmaBelgeTuru tur)
+        => TurSecenekleri.FirstOrDefault(t => t.Deger == tur)?.Ad ?? tur.ToString();
+
+    private static string Boyut(long bayt)
+        => bayt < 1024 ? $"{bayt} B"
+         : bayt < 1024 * 1024 ? $"{bayt / 1024.0:0.#} KB"
+         : $"{bayt / (1024.0 * 1024):0.#} MB";
+
+    private async Task Yukle(InputFileChangeEventArgs e)
+    {
+        var dosya = e.File;
+        if (dosya is null) return;
+
+        hata = null;
+
+        if (!dosya.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            hata = "Yalnız PDF belge eklenebilir.";
+            return;
+        }
+
+        if (dosya.Size <= 0 || dosya.Size > EnFazlaBayt)
+        {
+            hata = $"Dosya boş ya da {EnFazlaBayt / (1024 * 1024)} MB sınırını aşıyor.";
+            return;
+        }
+
+        yukleniyor = true;
+        int? yuklenenFileId = null;
+
+        try
+        {
+            var yukleme = await FileApi.UploadGenericAsync(dosya, "firma-belge");
+            if (yukleme is null || yukleme.Id <= 0)
+            {
+                hata = "Dosya yüklenemedi. Dosya servisi yanıt vermiyor olabilir.";
+                return;
+            }
+
+            yuklenenFileId = yukleme.Id;
+
+            var (sonuc, mesaj) = await Api.BelgeEkleAsync(FirmaId, new FirmaBelgesiOlusturDto
+            {
+                Tur = secilenTur,
+                FileId = yukleme.Id,
+                FileName = string.IsNullOrWhiteSpace(yukleme.FileName) ? dosya.Name : yukleme.FileName,
+                ContentType = "application/pdf",
+                Length = yukleme.Length > 0 ? yukleme.Length : dosya.Size,
+                Aciklama = aciklama
+            });
+
+            if (sonuc is null)
+            {
+                hata = mesaj ?? "Belge kaydedilemedi.";
+                return;
+            }
+
+            // Kayıt tuttu: telafi silmesi yapılmayacak.
+            yuklenenFileId = null;
+            aciklama = null;
+
+            await Tazele();
+            Notif.Notify(NotificationSeverity.Success, "Belge eklendi", Ad(sonuc.Tur));
+        }
+        catch (Exception ex)
+        {
+            hata = "Belge eklenirken hata: " + ex.Message;
+        }
+        finally
+        {
+            // Yükleme başarılı ama kayıt başarısızsa dosya yetim kalmasın.
+            if (yuklenenFileId is int fid && fid > 0)
+            {
+                try { await FileApi.DeleteAsync(fid); } catch { }
+            }
+
+            yukleniyor = false;
+        }
+    }
+
+    private async Task Sil(FirmaBelgesiDto belge)
+    {
+        var onay = await DialogService.Confirm($"{Ad(belge.Tur)} belgesi silinsin mi?", "Belge sil",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+
+        if (onay != true) return;
+
+        var fileId = await Api.BelgeSilAsync(FirmaId, belge.Id);
+        if (fileId is null)
+        {
+            hata = "Belge silinemedi.";
+            return;
+        }
+
+        if (fileId > 0)
+        {
+            try { await FileApi.DeleteAsync(fileId.Value); } catch { }
+        }
+
+        await Tazele();
+    }
+
+    private async Task Goruntule(FirmaBelgesiDto belge)
+    {
+        var dosya = await FileApi.GetDownloadAsync(belge.FileId);
+
+        await DialogService.OpenAsync<PdfGoruntuleyiciDialog>(
+            Ad(belge.Tur),
+            new Dictionary<string, object>
+            {
+                { nameof(PdfGoruntuleyiciDialog.PresignedUrl), dosya?.PresignedUrl ?? string.Empty },
+                { nameof(PdfGoruntuleyiciDialog.Baslik), $"{Ad(belge.Tur)} · {belge.FileName}" }
+            },
+            new DialogOptions { Width = "min(1100px, 96vw)", Height = "88vh", Resizable = true, Draggable = true });
+    }
+}

@@ -1,7 +1,16 @@
-﻿@page "/beyanname-takip"
+﻿@*
+    Beyannameler > Takip sekmesi.
+
+    Kendi @page rotası YOK: rotayı üst sayfa (BeyannamelerPage) yönetiyor ve bu bileşeni
+    DynamicComponent ile basıyor — Hesaplamalar sayfasındaki kalıbın aynısı (KARARLAR §79).
+    Eski adres /beyanname-takip yönlendirme olarak duruyor (EskiRotaYonlendirme.razor).
+
+    Ekranın içeriği değişmedi.
+*@
 @using System.Globalization
 @using CatalogService.Api.Features.Declarations.Dtos
 @using CatalogService.Api.Features.Declarations.Entities
+@using WebApp.Pages.Beyannameler.Components
 @using Microsoft.AspNetCore.Authorization
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Manager
@@ -151,6 +160,15 @@
                         </RadzenDataGridColumn>
 
                         <RadzenDataGridColumn Property="Note" Title="Not" />
+
+                        @* Tahakkuk / beyanname / dekont: belge varsa ikon dolu, yoksa soluk.
+                           Matristeki ikonlarla aynı bileşen. *@
+                        <RadzenDataGridColumn Title="Belgeler" Width="110px" Sortable="false" Filterable="false">
+                            <Template Context="item">
+                                <BeyannameBelgeHucresi DeclarationId="@item.Id"
+                                                       Odendi="@(item.PaymentStatus == PaymentStatus.Paid)" />
+                            </Template>
+                        </RadzenDataGridColumn>
 
                         <RadzenDataGridColumn Title="İşlem" Width="150px">
                             <Template Context="item">

@@ -1,0 +1,270 @@
+@using System.Globalization
+@using CatalogService.Api.Features.Declarations.Dtos
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Pages.Beyannameler.Components
+
+@inject IBeyannameOzetApiService BeyannameApi
+@inject DialogService DialogService
+
+@*
+    Beyannameler > Özet: firma × beyanname türü matrisi.
+
+    Kolonlar SABİT DEĞİL — beyanname türü tanımlarından geliyor (catalog.BeyannameTurleri).
+    Kullanıcının Excel'de elle tuttuğu tablonun karşılığı: satır firma, kolon tür,
+    kesişimde durum; satır sonunda firma toplamı, sütun sonunda tür toplamı.
+
+    Matrisi sunucu kuruyor (BeyannameOzetKurucu); burada yalnız çizim ve tıklama var.
+*@
+
+<style>
+    .by-matris { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; }
+    .by-matris th, .by-matris td { border: 1px solid #e2e8f0; padding: 6px 8px; }
+    .by-matris thead th { background: #f7fafc; font-weight: 600; text-align: center; vertical-align: bottom; }
+    .by-matris thead th.by-firma { text-align: left; min-width: 220px; }
+    .by-matris .by-kod { display: block; font-weight: 400; font-size: 11px; color: #718096; }
+    .by-matris td.by-firma { text-align: left; white-space: nowrap; }
+    .by-matris td.by-vkn { text-align: left; color: #718096; font-variant-numeric: tabular-nums; }
+    .by-matris td.by-hucre { text-align: center; cursor: pointer; }
+    .by-matris td.by-hucre:hover { outline: 2px solid #90cdf4; outline-offset: -2px; }
+    .by-matris tfoot td { background: #f7fafc; font-weight: 600; text-align: center; }
+    .by-matris td.by-toplam { text-align: center; font-weight: 600; background: #fafcff; }
+
+    /* Durum ayrımı hem RENK hem İŞARET taşır: yalnız renkle ayrılan bir tablo
+       renk körü kullanıcıda okunmaz olur. */
+    .by-d-yok        { color: #cbd5e0; }
+    .by-d-hazir      { background: #fffaf0; color: #b7791f; }
+    .by-d-onay       { background: #ebf8ff; color: #2b6cb0; }
+    .by-d-odendi     { background: #f0fff4; color: #276749; }
+
+    .by-hucre-ic { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .by-tutar { font-size: 11px; color: #718096; font-variant-numeric: tabular-nums; }
+</style>
+
+<RadzenStack Gap="1rem">
+
+    <RadzenCard Variant="Variant.Outlined">
+        <RadzenRow Gap="1rem" AlignItems="AlignItems.End">
+            <RadzenColumn Size="12" SizeMD="3">
+                <RadzenFormField Text="Yıl" Style="width:100%">
+                    <RadzenDropDown @bind-Value="yil" Data="@yillar" Style="width:100%" />
+                </RadzenFormField>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeMD="3">
+                <RadzenFormField Text="Ay" Style="width:100%">
+                    <RadzenDropDown @bind-Value="ay" Data="@aylar" TextProperty="Ad" ValueProperty="No"
+                                    Style="width:100%" />
+                </RadzenFormField>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeMD="2">
+                <RadzenButton Text="Getir" Icon="search" Click="@Yukle" Style="width:100%" />
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">
+                    Hücreye tıklayınca beyannamenin detayı ve belgeleri açılır.
+                </RadzenText>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenCard>
+
+    @if (yukleniyor)
+    {
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else if (ozet is null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning" Shade="Shade.Lighter" AllowClose="false">
+            Özet alınamadı. Sunucuya ulaşılamıyor olabilir; "Getir" ile tekrar deneyin.
+        </RadzenAlert>
+    }
+    else if (ozet.Turler.Count == 0)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Info" Shade="Shade.Lighter" AllowClose="false">
+            Beyanname türü tanımı yok. Matrisin kolonları tanımlardan üretiliyor; tanımlar
+            yüklenmeden tablo çizilemez.
+        </RadzenAlert>
+    }
+    else if (ozet.Satirlar.Count == 0)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Info" Shade="Shade.Lighter" AllowClose="false">
+            Firma kaydı yok. Matrisin satırları firmalardan geliyor.
+        </RadzenAlert>
+    }
+    else
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="1.5rem" Wrap="FlexWrap.Wrap">
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0">
+                <b>@ozet.ToplamBeyanname</b> beyanname · toplam <b>@Para(ozet.ToplamTutar)</b>
+            </RadzenText>
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.75rem" AlignItems="AlignItems.Center">
+                <span class="by-d-hazir" style="padding:2px 8px;border-radius:4px;">◐ hazırlandı</span>
+                <span class="by-d-onay" style="padding:2px 8px;border-radius:4px;">✓ onaylandı</span>
+                <span class="by-d-odendi" style="padding:2px 8px;border-radius:4px;">₺ ödendi</span>
+            </RadzenStack>
+        </RadzenStack>
+
+        @if (ozet.EslesmeyenTurler.Count > 0)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Warning" Shade="Shade.Lighter" AllowClose="false">
+                Şu beyanname türleri tanımlarda yok, bu yüzden matriste kolonları da yok:
+                <b>@string.Join(", ", ozet.EslesmeyenTurler)</b>.
+                Kayıtlar duruyor; tanım eklenince kolonlarına düşerler.
+            </RadzenAlert>
+        }
+
+        <div style="overflow-x:auto">
+            <table class="by-matris">
+                <thead>
+                    <tr>
+                        <th style="width:40px">#</th>
+                        <th class="by-firma">Firma Adı</th>
+                        <th style="min-width:120px">Vergi Kimlik No</th>
+                        @foreach (var tur in ozet.Turler)
+                        {
+                            <th>
+                                @tur.Ad
+                                @if (!string.IsNullOrWhiteSpace(tur.Kod))
+                                {
+                                    <span class="by-kod">@tur.Kod</span>
+                                }
+                            </th>
+                        }
+                        <th style="width:70px">Toplam</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var satir in ozet.Satirlar)
+                    {
+                        <tr>
+                            <td style="text-align:center;color:#718096">@satir.Sira</td>
+                            <td class="by-firma">@satir.FirmaAdi</td>
+                            <td class="by-vkn">@satir.VergiKimlikNo</td>
+
+                            @foreach (var tur in ozet.Turler)
+                            {
+                                var hucre = satir.Hucreler.FirstOrDefault(h => h.TuruId == tur.Id);
+                                <td class="by-hucre @Sinif(hucre)" title="@Ipucu(hucre)"
+                                    @onclick="@(() => HucreAc(satir, tur, hucre))">
+                                    <span class="by-hucre-ic">
+                                        <span>@Isaret(hucre)</span>
+                                        @if (hucre is not null && hucre.Tutar != 0)
+                                        {
+                                            <span class="by-tutar">@Para(hucre.Tutar)</span>
+                                        }
+                                        @if (hucre is not null && hucre.Ekler.Count > 0)
+                                        {
+                                            <BeyannameEkIkonlari Ekler="@hucre.Ekler" Durdur="false" />
+                                        }
+                                    </span>
+                                </td>
+                            }
+
+                            <td class="by-toplam">@satir.DoluHucreSayisi</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" style="text-align:right">Tür toplamı</td>
+                        @foreach (var tur in ozet.Turler)
+                        {
+                            var toplam = ozet.KolonToplamlari.FirstOrDefault(k => k.TuruId == tur.Id);
+                            <td title="@Para(toplam?.ToplamTutar ?? 0)">@(toplam?.DoluHucreSayisi ?? 0)</td>
+                        }
+                        <td>@ozet.ToplamBeyanname</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    }
+</RadzenStack>
+
+@code {
+    private static readonly CultureInfo Tr = new("tr-TR");
+
+    private sealed record AySecenegi(int No, string Ad);
+
+    private int yil = DateTime.Now.Year;
+    private int ay = DateTime.Now.Month;
+
+    private List<int> yillar = new();
+    private List<AySecenegi> aylar = new();
+
+    private BeyannameOzetDto? ozet;
+    private bool yukleniyor;
+
+    protected override async Task OnInitializedAsync()
+    {
+        yillar = Enumerable.Range(DateTime.Now.Year - 3, 6).ToList();
+
+        aylar = Enumerable.Range(1, 12)
+            .Select(a => new AySecenegi(a, Tr.DateTimeFormat.GetMonthName(a)))
+            .ToList();
+
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        try
+        {
+            ozet = await BeyannameApi.OzetGetAsync(yil, ay);
+        }
+        finally
+        {
+            yukleniyor = false;
+        }
+    }
+
+    private static string Para(decimal tutar) => tutar.ToString("N2", Tr) + " ₺";
+
+    /// <summary>Durumun görsel sınıfı; boş hücre de ayrı bir sınıf alır.</summary>
+    private static string Sinif(BeyannameOzetHucreDto? hucre) => hucre?.Durum switch
+    {
+        BeyannameHucreDurum.Hazirlandi => "by-d-hazir",
+        BeyannameHucreDurum.Onaylandi => "by-d-onay",
+        BeyannameHucreDurum.Odendi => "by-d-odendi",
+        _ => "by-d-yok"
+    };
+
+    /// <summary>Renk tek başına yeterli değil; her durumun bir de işareti var.</summary>
+    private static string Isaret(BeyannameOzetHucreDto? hucre) => hucre?.Durum switch
+    {
+        BeyannameHucreDurum.Hazirlandi => "◐",
+        BeyannameHucreDurum.Onaylandi => "✓",
+        BeyannameHucreDurum.Odendi => "₺",
+        _ => "–"
+    };
+
+    private static string Ipucu(BeyannameOzetHucreDto? hucre) => hucre?.Durum switch
+    {
+        BeyannameHucreDurum.Hazirlandi => "Hazırlandı, onay bekliyor",
+        BeyannameHucreDurum.Onaylandi => "Onaylandı, ödeme bekliyor",
+        BeyannameHucreDurum.Odendi => "Ödendi",
+        _ => "Beyanname yok"
+    };
+
+    private async Task HucreAc(BeyannameOzetSatirDto satir, BeyannameTuruDto tur, BeyannameOzetHucreDto? hucre)
+    {
+        var donem = $"{Tr.DateTimeFormat.GetMonthName(ay)} {yil}";
+
+        var sonuc = await DialogService.OpenAsync<BeyannameHucreDialog>(
+            "Beyanname detayı",
+            new Dictionary<string, object?>
+            {
+                { nameof(BeyannameHucreDialog.FirmaAdi), satir.FirmaAdi },
+                { nameof(BeyannameHucreDialog.TurAdi), tur.Ad },
+                { nameof(BeyannameHucreDialog.Donem), donem },
+                { nameof(BeyannameHucreDialog.Hucre), hucre }
+            }!,
+            new DialogOptions { Width = "min(820px, 96vw)", Resizable = true, Draggable = true });
+
+        // Belge eklendiyse ikonların dolması için matris tazelenir.
+        if (sonuc is true) await Yukle();
+    }
+}

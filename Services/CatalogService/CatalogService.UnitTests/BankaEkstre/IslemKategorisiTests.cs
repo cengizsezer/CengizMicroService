@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre;
+﻿using CatalogService.Api.Features.BankaEkstre;
 using CatalogService.Api.Features.BankaEkstre.Domain;
 using CatalogService.Api.Features.BankaEkstre.Dtos;
 using CatalogService.Api.Features.BankaEkstre.Services;
@@ -29,13 +29,13 @@ namespace CatalogService.UnitTests.BankaEkstre
         // ---- Seed ----
 
         [Fact]
-        public async Task Onyedi_kategori_tohumlanir()
+        public async Task Ondokuz_kategori_tohumlanir()
         {
             using var db = await SeedliContextAsync();
 
             var kategoriler = db.EkstreIslemKategorileri.OrderBy(k => k.Sira).ToList();
 
-            Assert.Equal(17, kategoriler.Count);
+            Assert.Equal(19, kategoriler.Count);
             Assert.Equal("Hesaplar arası", kategoriler[0].Ad);
             Assert.Equal("102", kategoriler[0].VarsayilanAnaGrup);
             Assert.Contains(kategoriler, k => k.Ad == "Personel iş avansı" && k.VarsayilanAnaGrup == "195");
@@ -48,7 +48,7 @@ namespace CatalogService.UnitTests.BankaEkstre
             using var db = await SeedliContextAsync();
             await BankaEkstreSeed.SeedAsync(db);
 
-            Assert.Equal(17, db.EkstreIslemKategorileri.Count());
+            Assert.Equal(19, db.EkstreIslemKategorileri.Count());
         }
 
         [Fact]
@@ -103,8 +103,8 @@ namespace CatalogService.UnitTests.BankaEkstre
 
             var ozet = await Servis(db).KapsamAsync(BankaEkstreTestOrtami.ParserTipi);
 
-            Assert.Equal(17, ozet.Toplam);
-            Assert.InRange(ozet.Tanimli, 1, 17);
+            Assert.Equal(19, ozet.Toplam);
+            Assert.InRange(ozet.Tanimli, 1, 19);
             Assert.True(ozet.Tanimli < ozet.Toplam, "Ölçülen seed tüm kategorileri doldurmuyor; eksikler kırmızı gösterilecek.");
 
             var bankaGideri = ozet.Kategoriler.First(k => k.Ad == "Banka gideri");
@@ -124,9 +124,10 @@ namespace CatalogService.UnitTests.BankaEkstre
         {
             using var db = await SeedliContextAsync();
 
-            var ozet = await Servis(db).KapsamAsync("ZIRAAT_VADESIZ");
+            var ozet = await Servis(db).KapsamAsync("BASKA_BANKA_VADESIZ");
 
-            // Vakıfbank'a özel kurallar sayılmaz; global tablolar (vergi kodları) sayılır.
+            // Seed'i olmayan bir banka: bankaya özel kurallar sayılmaz, global tablolar
+            // (vergi kodları) sayılır.
             var toplamKural = ozet.Kategoriler.Sum(k => k.KuralSayisi);
             var vergiler = ozet.Kategoriler.SelectMany(k => k.Kurallar)
                                            .Count(k => k.Mekanizma == IslemKategorisiService.Mekanizmalar.VergiKodu);

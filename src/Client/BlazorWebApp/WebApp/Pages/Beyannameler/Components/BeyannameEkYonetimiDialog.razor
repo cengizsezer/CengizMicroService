@@ -1,0 +1,23 @@
+@using Radzen
+@using Radzen.Blazor
+@inject DialogService DialogService
+
+@*
+    Belge yönetiminin pencere kabuğu. İçerik BeyannameEkYonetimi'nde; kabuk yalnız
+    başlık ve kapatma düğmesi ekliyor ki bileşen hem pencerede hem satır içinde
+    (hücre detayında) kullanılabilsin.
+*@
+
+<RadzenStack Gap="1rem">
+    <BeyannameEkYonetimi DeclarationId="@DeclarationId" Odendi="@Odendi" />
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End">
+        <RadzenButton Text="Kapat" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                      Click="@(() => DialogService.Close())" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter, EditorRequired] public int DeclarationId { get; set; }
+    [Parameter] public bool Odendi { get; set; }
+}

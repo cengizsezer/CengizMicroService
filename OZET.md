@@ -1451,3 +1451,229 @@ Veritabanı, DTO ve istemci değişmedi; indirme düğmesi ve uç noktası aynı
 - **Sayfa adı sabit** ("Ekstre"); ORKA sayfa adına bakıyorsa ayarlanması gerekebilir.
 - **Kaynak dosya hâlâ saklanıyor** (`DosyaIcerik`). Düzeltilmiş ekstre artık kullanmıyor ama
   yeniden işleme/inceleme için duruyor; temizlenmedi.
+
+---
+
+# Üç yeni banka: İş Bankası, Akbank, Ziraat
+
+Modül dört bankayı okuyor. Eşleştirme mantığı — katman sırası, eşikler (0.85 / 0.05 / 0.40),
+benzersiz önek algoritması — **değişmedi**; eklenen şey üç ayrıştırıcı, onların yapılandırma
+satırları ve dosya biçimlerini karşılayan ortak bir okuma katmanı.
+
+## Dosya yapıları (gerçek 7 aylık ekstrelerden ölçüldü)
+
+| Banka | Biçim | Başlık satırı | Yön nereden | İşlem tipi |
+|---|---|---|---|---|
+| Vakıfbank | xlsx | 7 | B/A kolonu | var |
+| İş Bankası | **eski .xls** | 16 | tutarın işareti | var (11 tip) |
+| Akbank | xlsx | 10 | Borç/Alacak kolonu (+ işaretle çapraz doğrulama) | **yok** |
+| Ziraat | xlsx (**bozuk styles.xml**) | 12 | tutarın işareti | **yok** |
+
+Üç dosyanın üç ayrı hastalığı tek kütüphaneyle geçilmiyordu; dosya artık imzasına bakan bir
+**okuyucu zinciriyle** açılıyor: OLE2 → NPOI/HSSF, zip → ClosedXML → NPOI/XSSF → ham XML.
+Yedek yola düşülürse hangi okuyucunun neden başarısız olduğu uyarıya yazılır. Ayrıntı ve
+gerekçe: KARARLAR §85.
+
+İş Bankası'nda tarih hücresi `26/08/2026-14:58:47` — saat **tireyle** ayrılmış; boşluk
+bekleyen bir ayrıştırıcı bu kolonu hiç okuyamaz.
+
+## Yapılandırma satırları (seed)
+
+| Banka | Şablon | Unvan deseni | Sabit kural |
+|---|---|---|---|
+| Vakıfbank | 17 | 9 | 13 |
+| İş Bankası | 11 | 3 | 17 |
+| Akbank | 9 | 3 | 5 |
+| Ziraat | 5 | 3 | 3 |
+
+Vakıfbank satırları aynen korundu (test: `Vakifbank_satirlari_degismedi`).
+
+Yeni kategoriler: **Menkul kıymet (118)** ve **Alınan çekler (101)** — toplam 19.
+Diğerleri (780 finansman gideri, 361 SGK, 309 kredi kartı, 300 kredi) listede zaten vardı,
+bu turda kural kazandılar.
+
+İki yeni yer tutucu: `{YON}` (aynı işlem tipi hem gelen hem giden olabiliyor) ve `{KREDI}`
+(kredi hesap numarası). Şablon tablosuna yön kolonu eklenmedi — KARARLAR §87.
+
+## Eşleştirmeye dokunulmayan yerler
+
+- Katman sırası, eşikler ve ORKA kod formatı (boşluklu) aynı.
+- Akbank/Ziraat'te **uydurma işlem tipi türetilmedi**; şablon ve kural açıklamadan eşleşiyor
+  (KARARLAR §86). Uydurulsaydı unvansız satırların öğrenme anahtarı ilgisiz satırları da
+  çözerdi.
+- Bankalar arası satırlara (hesap açılışı, virman, hesaplar arası EFT) **açıklama kuralı
+  yazılmadı**: açıklama kuralları tüm katmanlardan önce çalışıp satırı kapatıyor, karşı
+  hesabı banka kayıt defteri bulmalı.
+- DBS satırları bankalar arası **değil**, tedarikçi ödemesi (§81 ile aynı karar, bu kez
+  Akbank tarafında).
+
+## Değişen dosyalar
+
+| Dosya | Değişiklik |
+|---|---|
+| `Services/Parsing/EkstreTablosu.cs` | **yeni** — okuyucudan bağımsız tablo modeli + tarih/tutar okuma |
+| `Services/Parsing/EkstreTabloOkuyucu.cs` | **yeni** — imzaya bakan okuyucu zinciri |
+| `Services/Parsing/HamXlsxOkuyucu.cs` | **yeni** — zip içindeki XML'i doğrudan okuyan yedek yol |
+| `Services/Parsing/TabloBaslik.cs` | **yeni** — başlığı isimle bulma, bulunamazsa sabit indeks + uyarı |
+| `Services/Parsing/TabloParserTemeli.cs` | **yeni** — ortak ayrıştırma iskeleti |
+| `Services/Parsing/IsBankasiVadesizParser.cs` | **yeni** |
+| `Services/Parsing/AkbankVadesizParser.cs` | **yeni** |
+| `Services/Parsing/ZiraatVadesizParser.cs` | **yeni** |
+| `Services/Parsing/IEkstreParser.cs` | `AyrilanSatir.Referans` alanı |
+| `Services/Normalizasyon.cs` | `KrediAnahtar` İş Bankası yazımını da tanıyor; IBAN çıkarımı yıldızla ayrılmış alanlarda IBAN'ı artık kaçırmıyor |
+| `Services/AciklamaUretici.cs` | `{YON}` + `{KREDI}` yer tutucuları; şablonsuz satırda taban sırası işlem tipi → unvan → banka açıklaması |
+| `BankaEkstreSeed.cs` | Dört banka; her bankanın satırları kendi metodunda, ekleme mantığı ortak |
+| `Domain/EkstreSatiri.cs` + entity config | `Referans` kolonu |
+| `Services/EkstreService.cs` | Referans satıra yazılıyor |
+| `Program.cs` | Üç yeni `IEkstreParser` kaydı |
+| `Migrations/…_BankaEkstreSatirReferansi` | Tek kolon, nullable |
+| `CatalogService.Api.csproj` | NPOI 2.7.1 (eski .xls için) |
+
+## Testler
+
+Yeni: `UcBankaTestOrtami`, `IsBankasiParserTests`, `AkbankParserTests`, `ZiraatParserTests`,
+`UcBankaSeedTests`, `TabloDegerTests`. Ham açıklamalar gerçek ekstrelerden birebir.
+
+Kapsanan sekiz madde: başlığın isimle bulunması (uyarısız), satırların ayrışması, tarih ve
+yön (Akbank'ta B/A ile işaretin çapraz doğrulanması), her bankadan en az üç gerçek satırda
+unvan çıkarma, İş Bankası "Havale" satırında unvanın sondan alınması, Akbank DBS satırının
+banka kayıt defterine düşmeyip cari katmanına gitmesi, Ziraat'in bozuk `styles.xml`'ine
+rağmen okunması ve İş Bankası'nın `.xls` biçiminin okunması.
+
+`CatalogService.UnitTests` **600** (öncesi 541), `WebApp.UnitTests` **62** — hepsi geçiyor.
+
+## Ne eksik kaldı
+
+- **Gerçek dosyalarla satır sayıları doğrulanamadı.** Vakıfbank ekstresinin aksine üç
+  bankanın dosyaları depoda yok; ölçülen 418 / 186 / 356 satır bu yüzden test edilemedi.
+  Testler yapıyı (başlık, kolon yerleşimi, dosya biçimi, atlanan satır) sınıyor. Dosyalar
+  depoya konursa `VakifbankGercekDosyaTests` kalıbıyla üç test daha yazılmalı.
+- **Ziraat alt hesap numaraları** (`62286065-5010` → vadeli kasa, `-5022` → günlük kazanan)
+  firmaya özel; seed'e yazılamaz. Tanımlar > Banka hesapları'nda ilgili hesabın
+  **eşleştirme anahtarları** alanına girilmeli, yoksa 356 satırın 173'ü onaya düşer.
+- **Muavin kodları PKF Aday ölçümünden** (`102 1 5 04`, `102 1 5 07`, `102 1 7 06`,
+  `770 03 005`). Hesap planı farklı olan firmada Tanımlar'dan düzeltilmeli; seed mevcut
+  kayıtların üzerine yazmaz.
+- **Mükerrer yükleme elemesi yok.** Referans saklanıyor ama okunmuyor (KARARLAR §88).
+- **Gerçek ekstrelerle uçtan uca çalıştırılmadı**; kaç satırın şablon/kural eşleşmesi
+  bulduğu ofiste ölçülecek.
+
+---
+
+# Birikmiş işler turu: Beyannameler, Anasayfa, Firma Bilgileri, Tema
+
+`birikmis-isler-beyanname-anasayfa-firma.md`'deki dört bölümün tamamı.
+
+## 1. Beyannameler → Takip + Özet
+
+`Beyanname Takip` ve `Beyannameler` ayrı menü satırlarıydı; artık tek üst sayfanın
+sekmeleri:
+
+```
+Beyannameler  (/beyannameler)
+  ├── Takip   (/beyannameler/takip)  — eski ekran, içeriği değişmedi
+  └── Özet    (/beyannameler/ozet)   — yeni: firma × beyanname türü matrisi
+```
+
+Sekmeler `BeyannameSekmesi.Hepsi` listesinden üretiliyor (Hesaplamalar'daki kalıp,
+KARARLAR §79): yeni sekme = bir bileşen + listeye bir satır. Eski `/beyanname-takip`
+adresi yönlendirme olarak duruyor.
+
+**Özet matrisi.** Satır firma, kolon beyanname türü, kesişimde durum; satır sonunda firma
+toplamı, sütun sonunda tür toplamı — kullanıcının Excel'de elle tuttuğu tablonun
+karşılığı. Kolonlar **sabit yazılmadı**, `catalog.BeyannameTurleri` tanımlarından geliyor
+(kolon başlığında tür adı, altında vergi kodu). Hücre durumu dört değerli: yok /
+hazırlandı / onaylandı / ödendi — her biri renk **ve** işaret taşıyor. Hücreye tıklamak
+beyannamenin detayını ve belgelerini açıyor. Tanımlarda karşılığı olmayan bir tür varsa
+kayıt sessizce düşmüyor, ekran uyarıyor.
+
+**PDF belgeler.** Her beyannameye tahakkuk, beyanname ve (yalnız ödendi işaretliyse)
+dekont bağlanabiliyor. Matriste ve takip listesinde üç küçük PDF ikonu: belge varsa dolu,
+yoksa soluk. Tıklanınca dosya **tarayıcı içinde** açılıyor (indirme zorunlu değil).
+Saklama repodaki mevcut altyapı: dosya FileApiService'te, kayıtta yalnız `FileId` +
+metadata (KARARLAR §91). Yalnız PDF, en fazla 20 MB — doğrulama hem istemcide hem
+sunucuda.
+
+## 2. Anasayfa
+
+Giriş sonrası varsayılan rota artık `/anasayfa` (eskiden doğrudan Takvim açılıyordu).
+Dört kart, hepsi tıklanabilir:
+
+| Kart | Ne gösteriyor | Nereye götürüyor |
+|---|---|---|
+| Bu ay bekleyen beyanname | Ödemesi tamamlanmamış kayıt sayısı + toplam vergi | Beyannameler > Özet |
+| Onay bekleyen ekstre satırı | Firma bazlı sayaç, en çok bekleyen üstte | Banka Otomasyon |
+| Yaklaşan son ödeme tarihleri | 15 günlük pencere; gecikmişler kırmızı | Beyannameler > Takip |
+| Son kullanılan firmalar | Tarayıcıda tutulan kısayollar | Firma Bilgileri |
+
+Sayıların hepsi mevcut servislerden geliyor; anasayfa kendi hesabını yapmıyor
+(KARARLAR §95). Veri yoksa kart boş kalmıyor, ne olduğunu yazıyor.
+
+## 3. Firma Bilgileri
+
+`Yönetim > Firmalarım` satırındaki yeni düğme →
+`/yonetim/firmalar/{firmaId}/bilgiler`. Dört bölüm, **her biri ayrı kaydediliyor**:
+
+- **Sicil** — unvan, VKN, vergi dairesi, ticaret sicil no, MERSİS, kuruluş tarihi, adres,
+  NACE, e-posta, telefon, sermaye. `catalog.Firmalar`'daki alanlar oraya, yeni alanlar
+  modülün kendi tablosuna yazılıyor; kopyalanmadı (KARARLAR §93).
+- **Ortaklık** — ad, TCKN/VKN, pay tutarı, pay oranı, başlangıç. Tablo bütün olarak
+  kaydediliyor (ekrandan silinen satır sunucuda da siliniyor). Toplam pay oranı %100
+  değilse **uyarı** var, kayıt engeli yok.
+- **İmza yetkilileri** — ad, TCKN, görev, temsil şekli (münferit/müşterek), yetki
+  başlangıç/bitiş. Süresi dolmuş yetkili silinmiyor, görsel olarak ayrılıyor; "süresi
+  doldu" kararı sunucuda veriliyor.
+- **Belgeler** — imza sirküleri, vergi levhası, faaliyet belgesi, ticaret sicil gazetesi.
+  1. bölümdeki PDF altyapısının aynısı, tek farkla: aynı türden **birden çok** belge
+  olabiliyor (vergi levhası her yıl yenileniyor).
+
+Kapsam Banka Otomasyon'daki mekanizmanın aynısı: `?firmaId=`, her sorguda görünür
+(KARARLAR §94).
+
+## 4. Sol menü teması
+
+Sol menü koyu (`#1f2733`), metin açık, seçili satır hem renkle hem sol kenar çubuğuyla
+belirgin. Başlık ve içerik alanı açık kaldı. Bütün renk değerleri `app.css`'te tek bir
+`:root` bloğunda; kontrast oranları yorumda yazılı (KARARLAR §96).
+
+## Değişen ve eklenen dosyalar
+
+| Alan | Dosya |
+|---|---|
+| Beyanname (API) | `Features/Declarations/Entities/BeyannameTuru.cs`, `BeyannameEk.cs`; `Dtos/BeyannameOzetDtos.cs`, `BeyannameEkDtos.cs`; `Services/BeyannameTuruEsleyici.cs`, `BeyannameOzetKurucu.cs`, `BeyannameOzetService.cs`, `BeyannameEkService.cs`, `BeyannameKuralException.cs`; `Controllers/BeyannameOzetController.cs`; `BeyannameTuruSeed.cs` |
+| Beyanname (istemci) | `Pages/Beyannameler/*` (üst sayfa, sekme kaydı, Özet sekmesi, eski rota), `Pages/Beyannameler/Components/*`, `Shared/Components/PdfGoruntuleyiciDialog.razor`, `Application/Services/BeyannameOzetApiService.cs` |
+| Firma Bilgileri (API) | `Features/FirmaBilgileri/*` (domain, dto, servis, controller) |
+| Firma Bilgileri (istemci) | `Pages/Yonetim/FirmaBilgileri/*`, `Application/Services/FirmaBilgiApiClient.cs` |
+| Anasayfa | `Features/Anasayfa/*` (API), `Pages/Anasayfa/AnasayfaPage.razor`, `Application/Services/AnasayfaApiClient.cs` (+ `SonFirmalarStore`) |
+| Tema | `wwwroot/css/app.css` (koyu menü bloğu), `wwwroot/index.html` (sürüm) |
+| Ortak | `CatalogContext` (7 yeni DbSet), iki yeni entity configuration dosyası, `Program.cs` (DI + seed), `MainLayout.razor` (menü), `LoginPage`/`FirmSelectDialog` (varsayılan rota), `DeclarationFollow.razor` (rota kaldırıldı + Belgeler kolonu), `Yonetim/Firmalar.razor` (Bilgiler düğmesi) |
+
+Migration: `BeyannameTurleriVeEkleri`, `FirmaBilgileri` — ikisi de üretildi ve uygulandı.
+
+## Testler
+
+`CatalogService.UnitTests` **682** (öncesi 600), `WebApp.UnitTests` **62** — hepsi geçiyor.
+Yeni testler:
+
+- `Beyannameler/BeyannameTuruEsleyiciTests` — yazım çeşitleri, Türkçe harf tuzağı, kod
+  eşleşmesi, tanınmayan tür
+- `Beyannameler/BeyannameOzetKurucuTests` — kolon üretimi, durum türetimi, aynı hücrede
+  iki kayıt, satır/sütun toplamları, eşleşmeyen tür raporu
+- `Beyannameler/BeyannameEkServiceTests` — PDF/boyut doğrulaması, dekontun ödeme şartı,
+  aynı türden ikinci belgenin eskisinin yerine geçmesi, seed
+- `FirmaBilgileri/FirmaBilgiServiceTests` — kapsam izolasyonu, sicil çift tablo yazımı,
+  pay oranı uyarısı, süresi dolmuş yetkili, belge kuralları
+- `Anasayfa/AnasayfaOzetKurucuTests` — bekleyen sayımı, firma sıralaması ve kırpma,
+  yaklaşan ödemelerin sıralanması ve gün hesabı
+
+## Ne eksik kaldı
+
+- **Ekranlar tarayıcıda denenmedi.** Sunucu tarafı testli, istemci derleniyor; görsel
+  doğrulama (koyu menü kontrastı, matrisin geniş ekranda görünümü, PDF iframe'i) ofiste
+  yapılacak.
+- **Beyanname tablosunun kapsamı** hâlâ filtresiz (KARARLAR §92); bu turda bilerek
+  değiştirilmedi.
+- **Tür tanımları için ekran yok**: `catalog.BeyannameTurleri` seed ile doluyor, yeni tür
+  eklemek için şimdilik kayıt eklemek gerekiyor. Tanımlar ekranı istenirse ayrı bir iş.
+- **Ortaklık ve imza yetkilisi geçmişi tutulmuyor**: kayıt güncelleniyor, eski hâli
+  saklanmıyor. Pay devri geçmişi gerekirse ayrı bir tablo ister.

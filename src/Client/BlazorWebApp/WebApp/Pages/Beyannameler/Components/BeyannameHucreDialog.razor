@@ -1,0 +1,106 @@
+@using System.Globalization
+@using CatalogService.Api.Features.Declarations.Dtos
+@using CatalogService.Api.Features.Declarations.Entities
+@using Radzen
+@using Radzen.Blazor
+
+@inject DialogService DialogService
+@inject NavigationManager Nav
+
+@*
+    Matris hücresinin detayı: o firmanın o dönemdeki o türden beyannamesi ve belgeleri.
+
+    Ayrı bir "beyanname detay sayfası" açılmadı: kayıtlar matrisle birlikte geliyor,
+    kullanıcı da hücreden bir tıkla aynı yerde görüp belgesini ekleyebiliyor. Kaydın
+    kendisini düzenlemek Takip sekmesinin işi; pencerede oraya bağlantı var.
+*@
+
+<RadzenStack Gap="1rem">
+
+    <RadzenStack Gap="0">
+        <RadzenText TextStyle="TextStyle.H6" class="rz-m-0">@FirmaAdi</RadzenText>
+        <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">
+            @TurAdi · @Donem
+        </RadzenText>
+    </RadzenStack>
+
+    @if (Hucre is null || Hucre.Kayitlar.Count == 0)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Info" Shade="Shade.Lighter" AllowClose="false">
+            Bu dönemde bu türden beyanname kaydı yok. Kayıt Takip sekmesinden açılır;
+            belge ancak kayıt açıldıktan sonra eklenebilir.
+        </RadzenAlert>
+
+        <RadzenButton Text="Takip sekmesine git" Icon="receipt_long" Size="ButtonSize.Small"
+                      Click="@TakibeGit" />
+    }
+    else
+    {
+        @foreach (var kayit in Hucre.Kayitlar)
+        {
+            <RadzenCard Variant="Variant.Outlined">
+                <RadzenStack Gap="0.75rem">
+
+                    <RadzenRow Gap="1rem">
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">Tutar</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-m-0"><b>@Para(kayit.Amount)</b></RadzenText>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">Son ödeme</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-m-0">@kayit.DueDate.ToString("dd.MM.yyyy")</RadzenText>
+                        </RadzenColumn>
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">Durum</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-m-0">
+                                @kayit.DeclarationStatus · @OdemeAdi(kayit.PaymentStatus)
+                            </RadzenText>
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    @if (!string.IsNullOrWhiteSpace(kayit.Note))
+                    {
+                        <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">@kayit.Note</RadzenText>
+                    }
+
+                    <BeyannameEkYonetimi DeclarationId="@kayit.Id"
+                                         Odendi="@(kayit.PaymentStatus == PaymentStatus.Paid)"
+                                         Degisti="@BelgeDegisti" />
+                </RadzenStack>
+            </RadzenCard>
+        }
+    }
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+        <RadzenButton Text="Kapat" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                      Click="@(() => DialogService.Close(degisti))" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter] public string FirmaAdi { get; set; } = string.Empty;
+    [Parameter] public string TurAdi { get; set; } = string.Empty;
+    [Parameter] public string Donem { get; set; } = string.Empty;
+    [Parameter] public BeyannameOzetHucreDto? Hucre { get; set; }
+
+    private static readonly CultureInfo Tr = new("tr-TR");
+
+    private bool degisti;
+
+    private static string Para(decimal tutar) => tutar.ToString("N2", Tr) + " ₺";
+
+    private static string OdemeAdi(PaymentStatus durum) => durum switch
+    {
+        PaymentStatus.Paid => "Ödendi",
+        PaymentStatus.Planned => "Planlandı",
+        _ => "Bekliyor"
+    };
+
+    private void BelgeDegisti() => degisti = true;
+
+    private void TakibeGit()
+    {
+        DialogService.Close(degisti);
+        Nav.NavigateTo(BeyannameSekmesi.Hepsi[0].Yol);
+    }
+}

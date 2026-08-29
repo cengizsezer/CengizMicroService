@@ -1,0 +1,262 @@
+@page "/anasayfa"
+
+@using System.Globalization
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto.Anasayfa
+
+@attribute [Authorize]
+
+@inject IAnasayfaApiClient Api
+@inject ISonFirmalarStore SonFirmalar
+@inject NavigationManager Nav
+
+@*
+    Anasayfa — giriş sonrası varsayılan sayfa.
+
+    Kartlardaki sayıların hepsi, tıklanınca gidilecek sayfanın kendi servisinden geliyor:
+    beyanname sayıları catalog.Declarations'tan, banka satırları Banka Otomasyon'un firma
+    seçim ekranını besleyen sayaçtan. Anasayfa kendi hesabını yapmıyor — iki ekran farklı
+    sayı gösterirse sebebi veri olur, iki ayrı hesap değil.
+
+    Her kart tıklanabilir ve ilgili sayfaya götürür. Veri yoksa kart boş kalmaz, ne
+    olduğunu söyler.
+*@
+
+<PageTitle>Anasayfa</PageTitle>
+
+<style>
+    .as-kartlar { display:grid; gap:1rem; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); }
+    .as-kart { cursor:pointer; height:100%; }
+    .as-kart:hover { box-shadow:0 2px 12px rgba(0,0,0,.10); }
+    .as-buyuk { font-size:32px; font-weight:700; line-height:1.1; }
+    .as-alt { font-size:12px; color:#718096; }
+    .as-satir { display:flex; justify-content:space-between; align-items:center;
+                padding:5px 0; border-bottom:1px solid #edf2f7; cursor:pointer; }
+    .as-satir:last-child { border-bottom:none; }
+    .as-satir:hover { background:#f7fafc; }
+    .as-gecikmis { color:#c53030; font-weight:600; }
+    .as-yakin { color:#b7791f; }
+    .as-rozet { display:inline-block; min-width:26px; text-align:center;
+                background:#ebf8ff; color:#2b6cb0; border-radius:999px; padding:1px 8px; font-size:12px; }
+    .as-firma { display:inline-flex; align-items:center; gap:6px; border:1px solid #e2e8f0;
+                border-radius:999px; padding:4px 12px; font-size:13px; background:#fff;
+                cursor:pointer; text-decoration:none; color:#2d3748; }
+    .as-firma:hover { background:#edf5ff; }
+    .as-bos { color:#a0aec0; font-size:13px; }
+</style>
+
+<RadzenStack Gap="1rem">
+
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                 JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap" Gap="0.5rem">
+        <RadzenStack Gap="0">
+            <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">Anasayfa</RadzenText>
+            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">
+                @DonemAdi dönemi
+            </RadzenText>
+        </RadzenStack>
+
+        <RadzenButton Icon="refresh" Text="Yenile" Size="ButtonSize.Small"
+                      ButtonStyle="ButtonStyle.Light" Click="@Yukle" Disabled="@yukleniyor" />
+    </RadzenStack>
+
+    @if (yukleniyor)
+    {
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else if (ozet is null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning" Shade="Shade.Lighter" AllowClose="false">
+            Özet alınamadı. Sunucuya ulaşılamıyor olabilir; "Yenile" ile tekrar deneyin.
+        </RadzenAlert>
+    }
+    else
+    {
+        <div class="as-kartlar">
+
+            @* 1) Bu ay bekleyen beyanname *@
+            <RadzenCard Variant="Variant.Outlined" class="as-kart" @onclick="GitBeyannameOzet">
+                <RadzenStack Gap="0.4rem">
+                    <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0 rz-color-secondary">
+                        <RadzenIcon Icon="description" class="rz-mr-1" />Bu ay bekleyen beyanname
+                    </RadzenText>
+
+                    <div class="as-buyuk">@ozet.BekleyenBeyannameSayisi</div>
+
+                    <RadzenText TextStyle="TextStyle.Body1" class="rz-m-0">
+                        Toplam vergi <b>@Para(ozet.BekleyenVergiTutari)</b>
+                    </RadzenText>
+
+                    <div class="as-alt">
+                        @if (ozet.ToplamBeyannameSayisi == 0)
+                        {
+                            <span>Bu dönemde hiç beyanname kaydı yok.</span>
+                        }
+                        else
+                        {
+                            <span>Dönemdeki @ozet.ToplamBeyannameSayisi beyannamenin toplamı @Para(ozet.ToplamVergiTutari)</span>
+                        }
+                    </div>
+                </RadzenStack>
+            </RadzenCard>
+
+            @* 2) Onay bekleyen banka ekstresi satırı (firma bazlı) *@
+            <RadzenCard Variant="Variant.Outlined" class="as-kart" @onclick="GitBankaOtomasyon">
+                <RadzenStack Gap="0.4rem">
+                    <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0 rz-color-secondary">
+                        <RadzenIcon Icon="account_balance_wallet" class="rz-mr-1" />Onay bekleyen ekstre satırı
+                    </RadzenText>
+
+                    <div class="as-buyuk">@ozet.BankaOnayBekleyenToplam</div>
+
+                    @if (ozet.BankaOnayBekleyen.Count == 0)
+                    {
+                        <div class="as-bos">Onay bekleyen satır yok.</div>
+                    }
+                    else
+                    {
+                        @foreach (var firma in ozet.BankaOnayBekleyen)
+                        {
+                            <div class="as-satir" @onclick:stopPropagation
+                                 @onclick="@(() => FirmayaGit(firma))">
+                                <span>@firma.FirmaAdi</span>
+                                <span class="as-rozet">@firma.OnayBekleyen</span>
+                            </div>
+                        }
+                    }
+                </RadzenStack>
+            </RadzenCard>
+
+            @* 3) Yaklaşan son ödeme tarihleri *@
+            <RadzenCard Variant="Variant.Outlined" class="as-kart" @onclick="GitBeyannameTakip">
+                <RadzenStack Gap="0.4rem">
+                    <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0 rz-color-secondary">
+                        <RadzenIcon Icon="event" class="rz-mr-1" />Yaklaşan son ödeme tarihleri
+                    </RadzenText>
+
+                    @if (ozet.YaklasanOdemeler.Count == 0)
+                    {
+                        <div class="as-bos">
+                            Önümüzdeki @ozet.OdemePenceresiGun günde ödemesi gereken beyanname yok.
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var odeme in ozet.YaklasanOdemeler)
+                        {
+                            <div class="as-satir">
+                                <span>
+                                    <b>@odeme.FirmaAdi</b>
+                                    <span class="as-alt"> · @odeme.BeyannameTuru</span>
+                                </span>
+                                <span class="@OdemeSinifi(odeme)">
+                                    @odeme.SonOdemeTarihi.ToString("dd.MM") · @GunMetni(odeme.GunKaldi)
+                                </span>
+                            </div>
+                        }
+                    }
+                </RadzenStack>
+            </RadzenCard>
+
+            @* 4) Hızlı erişim: son kullanılan firmalar *@
+            <RadzenCard Variant="Variant.Outlined">
+                <RadzenStack Gap="0.6rem">
+                    <RadzenText TextStyle="TextStyle.Body2" class="rz-m-0 rz-color-secondary">
+                        <RadzenIcon Icon="history" class="rz-mr-1" />Son kullanılan firmalar
+                    </RadzenText>
+
+                    @if (sonFirmalar.Count == 0)
+                    {
+                        <div class="as-bos">
+                            Henüz firma açmadınız. Bir firmanın bilgilerine ya da banka otomasyonuna
+                            girdiğinizde burada kısayolu çıkar.
+                        </div>
+                        <RadzenButton Text="Firmalarım" Icon="business" Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Light" Click="GitFirmalar" />
+                    }
+                    else
+                    {
+                        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                            @foreach (var firma in sonFirmalar)
+                            {
+                                var yol = $"/yonetim/firmalar/{firma.FirmaId}/bilgiler";
+                                <span class="as-firma" @onclick="@(() => Git(yol))">
+                                    <RadzenIcon Icon="business" Style="font-size:15px" />
+                                    @firma.Ad
+                                </span>
+                            }
+                        </div>
+                    }
+                </RadzenStack>
+            </RadzenCard>
+        </div>
+    }
+</RadzenStack>
+
+@code {
+    private static readonly CultureInfo Tr = new("tr-TR");
+
+    private AnasayfaOzetDto? ozet;
+    private List<SonFirmaDto> sonFirmalar = new();
+    private bool yukleniyor = true;
+
+    private string DonemAdi => ozet is null
+        ? Tr.DateTimeFormat.GetMonthName(DateTime.Today.Month) + " " + DateTime.Today.Year
+        : Tr.DateTimeFormat.GetMonthName(ozet.Ay) + " " + ozet.Yil;
+
+    protected override async Task OnInitializedAsync() => await Yukle();
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        try
+        {
+            ozet = await Api.OzetAsync();
+            sonFirmalar = await SonFirmalar.GetAsync();
+        }
+        finally
+        {
+            yukleniyor = false;
+        }
+    }
+
+    private static string Para(decimal tutar) => tutar.ToString("N2", Tr) + " ₺";
+
+    /// <summary>Gecikmiş kırmızı, üç günden yakın sarı; kalanı nötr.</summary>
+    private static string OdemeSinifi(AnasayfaOdemeDto odeme)
+        => odeme.Gecikmis ? "as-gecikmis" : odeme.GunKaldi <= 3 ? "as-yakin" : string.Empty;
+
+    /// <summary>
+    /// Kalan gün metni. switch ifadesinin ilişkisel deseni (&lt; 0) kullanılmadı: Razor,
+    /// kod bloğunda satır başındaki "&lt;" karakterini etiket başlangıcı sanıyor.
+    /// </summary>
+    private static string GunMetni(int gun)
+    {
+        if (gun < 0) return $"{Math.Abs(gun)} gün gecikti";
+        if (gun == 0) return "bugün";
+        if (gun == 1) return "yarın";
+        return $"{gun} gün";
+    }
+
+    private void Git(string yol) => Nav.NavigateTo(yol);
+
+    // Razor öznitelik değerinin içine çift tırnaklı bir dize yazılamıyor; kart
+    // tıklamaları bu yüzden adlandırılmış işleyicilerden geçiyor.
+    private void GitBeyannameOzet() => Git("/beyannameler/ozet");
+    private void GitBeyannameTakip() => Git("/beyannameler/takip");
+    private void GitBankaOtomasyon() => Git("/banka-otomasyon");
+    private void GitFirmalar() => Git("/yonetim/firmalar");
+
+    /// <summary>
+    /// Firmaya giderken hızlı erişim listesi de güncellenir; "son kullanılan" gerçekten
+    /// kullanımdan besleniyor.
+    /// </summary>
+    private async Task FirmayaGit(AnasayfaBankaSatiriDto firma)
+    {
+        await SonFirmalar.KaydetAsync(firma.FirmaId, firma.FirmaAdi, DateTime.Now);
+        Nav.NavigateTo("/banka-otomasyon");
+    }
+}

@@ -107,6 +107,21 @@ builder.Services.AddScoped<IAccountPlanService, AccountPlanService>();
 builder.Services.AddScoped<IDeclarationQueryService, DeclarationQueryService>();
 builder.Services.AddScoped<IDeclarationCommandService, DeclarationCommandService>();
 builder.Services.AddScoped<ICustomerCompanyQueryService, CustomerCompanyQueryService>();
+
+// Beyanname özeti (firma × tür matrisi) ve beyanname belgeleri.
+builder.Services.AddScoped<CatalogService.Api.Features.Declarations.Services.IBeyannameOzetService,
+                           CatalogService.Api.Features.Declarations.Services.BeyannameOzetService>();
+builder.Services.AddScoped<CatalogService.Api.Features.Declarations.Services.IBeyannameEkService,
+                           CatalogService.Api.Features.Declarations.Services.BeyannameEkService>();
+
+// Firma Bilgileri (sicil / ortaklık / imza yetkilileri / belgeler). Kapsam Banka
+// Otomasyon'daki mekanizmanın aynısı: ?firmaId= → BankaFirmaFiltresi → IBankaFirmaKapsami.
+builder.Services.AddScoped<CatalogService.Api.Features.FirmaBilgileri.Services.IFirmaBilgiService,
+                           CatalogService.Api.Features.FirmaBilgileri.Services.FirmaBilgiService>();
+
+// Anasayfa: mevcut servislerin sayaçlarını tek çağrıda toplar.
+builder.Services.AddScoped<CatalogService.Api.Features.Anasayfa.Services.IAnasayfaService,
+                           CatalogService.Api.Features.Anasayfa.Services.AnasayfaService>();
 builder.Services.AddScoped<IFirmaService, FirmaService>();
 builder.Services.AddScoped<IKdvBeyannameQueryService, KdvBeyannameQueryService>();
 builder.Services.AddScoped<IDuzenleyenService, DuzenleyenService>();
@@ -147,6 +162,12 @@ builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Kapsam.BankaF
 // Parser'lar durumsuz → Singleton; yeni banka eklemek için buraya bir IEkstreParser kaydı yeter.
 builder.Services.AddSingleton<CatalogService.Api.Features.BankaEkstre.Services.Parsing.IEkstreParser,
                               CatalogService.Api.Features.BankaEkstre.Services.Parsing.VakifbankVadesizParser>();
+builder.Services.AddSingleton<CatalogService.Api.Features.BankaEkstre.Services.Parsing.IEkstreParser,
+                              CatalogService.Api.Features.BankaEkstre.Services.Parsing.IsBankasiVadesizParser>();
+builder.Services.AddSingleton<CatalogService.Api.Features.BankaEkstre.Services.Parsing.IEkstreParser,
+                              CatalogService.Api.Features.BankaEkstre.Services.Parsing.AkbankVadesizParser>();
+builder.Services.AddSingleton<CatalogService.Api.Features.BankaEkstre.Services.Parsing.IEkstreParser,
+                              CatalogService.Api.Features.BankaEkstre.Services.Parsing.ZiraatVadesizParser>();
 builder.Services.AddSingleton<CatalogService.Api.Features.BankaEkstre.Services.Parsing.IEkstreParserSecici,
                               CatalogService.Api.Features.BankaEkstre.Services.Parsing.EkstreParserSecici>();
 builder.Services.AddSingleton<CatalogService.Api.Features.BankaEkstre.Services.IUnvanCikarici,
@@ -544,6 +565,10 @@ IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf')
             // Banka ekstresi şablon/desen/kural tabloları: banka bazlı referans, tenant'tan bağımsız.
             logger.LogInformation("🏦 Banka ekstresi yapılandırması seed uygulanıyor...");
             await CatalogService.Api.Features.BankaEkstre.BankaEkstreSeed.SeedAsync(ctxOnce);
+
+            // Beyanname türü tanımları: ülke çapında aynı, tenant'tan bağımsız.
+            logger.LogInformation("🧾 Beyanname türleri seed uygulanıyor...");
+            await CatalogService.Api.Features.Declarations.BeyannameTuruSeed.SeedAsync(ctxOnce);
 
             // Kurumlar vergisi beyanname kalemleri: katalog firmadan bağımsız, bir kez yüklenir.
             logger.LogInformation("🧾 Vergi kalemleri seed uygulanıyor...");

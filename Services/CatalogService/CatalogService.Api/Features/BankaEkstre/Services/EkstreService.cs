@@ -243,6 +243,7 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
                 KarsiIban = karsiIban,
                 KarsiVkn = ayrilan.KarsiVkn,
                 Kanal = Normalizasyon.Kirp(ayrilan.Kanal, 100) is { Length: > 0 } k ? k : null,
+                Referans = Normalizasyon.Kirp(ayrilan.Referans, 100) is { Length: > 0 } r ? r : null,
                 UretilenAciklama = aciklama,
                 CikarilanUnvan = baglam.Unvan,
                 AnahtarCekirdek = Normalizasyon.Kirp(cekirdek, 200) is { Length: > 0 } c ? c : null,

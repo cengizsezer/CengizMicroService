@@ -57,6 +57,13 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         private static readonly Regex KrediHesapDeseni =
             new(@"(\d{6,})\s+KREDI HESAP NUMARALI", RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexZamanAsimi);
 
+        /// <summary>
+        /// İş Bankası'nın yazımı: "KREDİ NO: 10080844268 ANAPARA TAHSİLAT". Normalize
+        /// metinde iki nokta boşluğa döndüğü için desen "KREDI NO (numara)" olur.
+        /// </summary>
+        private static readonly Regex KrediNoDeseni =
+            new(@"KREDI NO\s+(\d{6,})", RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexZamanAsimi);
+
         private static readonly Regex BosluklarDeseni =
             new(@"\s+", RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexZamanAsimi);
 
@@ -148,6 +155,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
         ///
         /// Karşılaştırma normalize metin üzerinden yapılır: "numaralı" yazımındaki Türkçe
         /// karakter ve çift boşluklar burada sadeleşir.
+        ///
+        /// Her banka kredi numarasını başka türlü yazıyor; iki yazım da aynı anahtarı
+        /// üretir (Vakıfbank "… kredi hesap numaralı", İş Bankası "KREDİ NO: …").
         /// </summary>
         public static string KrediAnahtar(string? hamAciklama)
         {
@@ -155,6 +165,9 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             if (metin.Length == 0) return string.Empty;
 
             var eslesme = KrediHesapDeseni.Match(metin);
+            if (eslesme.Success) return "KREDI:" + eslesme.Groups[1].Value;
+
+            eslesme = KrediNoDeseni.Match(metin);
             return eslesme.Success ? "KREDI:" + eslesme.Groups[1].Value : string.Empty;
         }
 
@@ -239,13 +252,34 @@ namespace CatalogService.Api.Features.BankaEkstre.Services
             foreach (Match eslesme in IbanDeseni.Matches(metin))
             {
                 var ham = eslesme.Value.Replace(" ", string.Empty);
-                if (ham.Contains('*')) continue;
 
-                var rakamlar = new string(ham.Where(char.IsDigit).ToArray());
-                // TR IBAN: 2 harf + 24 rakam.
-                if (rakamlar.Length < 24) continue;
+                // TR IBAN: 2 harf + 24 rakam. Rakamlar soldan toplanır ve 24'e ulaşınca
+                // durulur; yıldıza bu sayı tamamlanmadan rastlanırsa yazım maskelidir ve
+                // anahtar olamaz.
+                //
+                // Bütün eşleşmede yıldız aramak yetmiyordu: İş Bankası açıklamaları alanları
+                // yıldızla ayırıyor ("…*TR400001500158007298490100*VAKIFBANK*…") ve desen
+                // yıldızı da yuttuğu için sapasağlam bir IBAN maskeli sanılıp eleniyordu.
+                var rakamlar = new StringBuilder(24);
+                var maskeli = false;
 
-                var iban = "TR" + rakamlar[..24];
+                foreach (var ch in ham)
+                {
+                    if (char.IsDigit(ch))
+                    {
+                        rakamlar.Append(ch);
+                        if (rakamlar.Length == 24) break;
+                    }
+                    else if (ch == '*')
+                    {
+                        maskeli = true;
+                        break;
+                    }
+                }
+
+                if (maskeli || rakamlar.Length < 24) continue;
+
+                var iban = "TR" + rakamlar;
                 if (!bulunanlar.Contains(iban, StringComparer.Ordinal)) bulunanlar.Add(iban);
             }
 

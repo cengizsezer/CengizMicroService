@@ -1,0 +1,149 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto.FirmaBilgileri
+
+@inject IFirmaBilgiApiClient Api
+@inject NotificationService Notif
+
+@*
+    Sicil bilgileri. Unvan, VKN, vergi dairesi, ticaret sicil no, e-posta ve telefon
+    catalog.Firmalar'da; MERSİS, kuruluş tarihi, adres, NACE ve sermaye bu modülün
+    kendi tablosunda. Kullanıcı ikisini tek formda görüyor, kaydetme ikisini de yazıyor
+    (KARARLAR §93) — alanlar iki tabloya kopyalanmadı.
+*@
+
+<RadzenCard Variant="Variant.Outlined">
+    <RadzenStack Gap="1rem">
+
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                     JustifyContent="JustifyContent.SpaceBetween">
+            <RadzenText TextStyle="TextStyle.H6" class="rz-m-0">
+                <RadzenIcon Icon="apartment" class="rz-mr-1" />Sicil bilgileri
+            </RadzenText>
+            <RadzenButton Text="Kaydet" Icon="save" Size="ButtonSize.Small"
+                          Disabled="@(model is null || kaydediyor)" Click="@Kaydet" />
+        </RadzenStack>
+
+        @if (model is null)
+        {
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+        }
+        else
+        {
+            <RadzenRow Gap="1rem">
+                <RadzenColumn Size="12" SizeMD="6">
+                    <RadzenFormField Text="Unvan" Style="width:100%">
+                        <RadzenTextBox @bind-Value="model.Unvan" Style="width:100%" />
+                    </RadzenFormField>
+                </RadzenColumn>
+                <RadzenColumn Size="12" SizeMD="3">
+                    <RadzenFormField Text="Vergi Kimlik No" Style="width:100%">
+                        <RadzenTextBox @bind-Value="model.VergiKimlikNo" MaxLength="11" Style="width:100%" />
+                    </RadzenFormField>
+                </RadzenColumn>
+                <RadzenColumn Size="12" SizeMD="3">
+                    <RadzenFormField Text="Vergi Dairesi" Style="width:100%">
+                        <RadzenTextBox @bind-Value="model.VergiDairesi" Style="width:100%" />
+                    </RadzenFormField>
+                </RadzenColumn>
+
+                <RadzenColumn Size="12" SizeMD="3">
+                    <RadzenFormField Text="Ticaret Sicil No" Style="width:100%">
+                        <RadzenTextBox @bind-Value="model.TicaretSicilNo" Style="width:100%" />
+                    </RadzenFormField>
+                </RadzenColumn>
+                <RadzenColumn Size="12" SizeMD="3">
+                    <RadzenFormField Text="MERSİS No" Style="width:100%">
+                        <RadzenTextBox @bind-Value="model.MersisNo" Style="width:100%" />
+                    </RadzenFormField>
+                </RadzenColumn>
+                <RadzenColumn Size="12" SizeMD="3">
+                    <RadzenFormField Text="Kuruluş Tarihi" Style="width:100%">
+                        <RadzenDatePicker @bind-Value="model.KurulusTarihi" DateFormat="dd.MM.yyyy"
+                                          ShowTime="false" AllowClear="true" Style="width:100%" />
+                    </RadzenFormField>
+                </RadzenColumn>
+                <RadzenColumn Size="12" SizeMD="3">
+                    <RadzenFormField Text="NACE Kodu" Style="width:100%">
+                        <RadzenTextBox @bind-Value="model.NaceKodu" Style="width:100%" />
+                    </RadzenFormField>
+                </RadzenColumn>
+
+                <RadzenColumn Size="12" SizeMD="6">
+                    <RadzenFormField Text="Adres" Style="width:100%">
+                        <RadzenTextArea @bind-Value="model.Adres" Rows="2" Style="width:100%" />
+                    </RadzenFormField>
+                </RadzenColumn>
+                <RadzenColumn Size="12" SizeMD="3">
+                    <RadzenFormField Text="E-posta" Style="width:100%">
+                        <RadzenTextBox @bind-Value="model.Email" Style="width:100%" />
+                    </RadzenFormField>
+                </RadzenColumn>
+                <RadzenColumn Size="12" SizeMD="3">
+                    <RadzenFormField Text="Telefon" Style="width:100%">
+                        <RadzenTextBox @bind-Value="model.Telefon" Style="width:100%" />
+                    </RadzenFormField>
+                </RadzenColumn>
+
+                <RadzenColumn Size="12" SizeMD="3">
+                    <RadzenFormField Text="Sermaye" Style="width:100%">
+                        <RadzenNumeric @bind-Value="model.Sermaye" Format="n2" Min="0" Style="width:100%" />
+                    </RadzenFormField>
+                </RadzenColumn>
+                <RadzenColumn Size="12" SizeMD="2">
+                    <RadzenFormField Text="Para Birimi" Style="width:100%">
+                        <RadzenDropDown @bind-Value="model.SermayeParaBirimi"
+                                        Data="@(new[] { "TRY", "USD", "EUR" })" Style="width:100%" />
+                    </RadzenFormField>
+                </RadzenColumn>
+            </RadzenRow>
+
+            @if (!string.IsNullOrWhiteSpace(hata))
+            {
+                <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false">@hata</RadzenAlert>
+            }
+        }
+    </RadzenStack>
+</RadzenCard>
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+
+    private FirmaSicilDto? model;
+    private bool kaydediyor;
+    private string? hata;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        model = await Api.SicilGetAsync(FirmaId);
+        hata = model is null ? "Sicil bilgileri okunamadı." : null;
+    }
+
+    private async Task Kaydet()
+    {
+        if (model is null) return;
+
+        kaydediyor = true;
+        hata = null;
+
+        try
+        {
+            var (sonuc, mesaj) = await Api.SicilKaydetAsync(FirmaId, model);
+
+            if (sonuc is null)
+            {
+                // Sunucunun kural mesajı olduğu gibi gösterilir; istemci kendi tahminini yazmaz.
+                hata = mesaj ?? "Kaydedilemedi.";
+                return;
+            }
+
+            model = sonuc;
+            Notif.Notify(NotificationSeverity.Success, "Sicil bilgileri kaydedildi");
+        }
+        finally
+        {
+            kaydediyor = false;
+        }
+    }
+}
