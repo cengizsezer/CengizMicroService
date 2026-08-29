@@ -1819,8 +1819,26 @@ kaldırıldı, artık kaynağın kendisi conf dosyası).
    halde `close`). `conf.d/*.conf` doğrudan `http` bağlamına dahil edildiği için
    `map` burada geçerli; `nginx.conf`'a dokunulmadı.
 2. `dijitalmasraf.com` 443 server bloğunda, `location /catalog/`'un hemen
-   altında `location /agenthub` — `proxy_pass http://catalogservice.api:5004;`
-   (URI'siz), 3600 sn timeout, `proxy_buffering off`.
+   altında `location /agenthub` — hedef **değişkene alınmış** olarak
+   `resolver 127.0.0.11` + `set $agenthub_upstream http://catalogservice.api:5004;`
+   + `proxy_pass $agenthub_upstream;` (URI'siz), 3600 sn timeout,
+   `proxy_buffering off`.
+
+> ⚠️ **nginx'te konteyner adını doğrudan `proxy_pass`'e yazmayın.** nginx,
+> `proxy_pass`'teki sabit host adını **başlangıçta** çözer. Hedef container
+> nginx'ten sonra ayağa kalkarsa çözemez ve
+> `[emerg] host not found in upstream "catalogservice.api"` ile **hiç
+> başlamaz** — yalnız o yol değil, **tüm site düşer**. Mevcut blokların hepsi
+> `web.apigateway` kullandığı için bu risk şimdiye kadar görünmedi; `/agenthub`
+> gateway'i baypas ettiği için ilk kez burada patladı.
+>
+> Çözüm: host adını bir değişkene alın ve Docker'ın gömülü DNS'ini
+> (`127.0.0.11`) resolver olarak tanımlayın. `proxy_pass` değişken içerdiğinde
+> nginx çözümlemeyi **istek anına** erteler; başlangıçta hata vermez, container
+> geç kalırsa yalnız o istek 502 olur. Değişkenli `proxy_pass`'te URI kısmı
+> yazılmadığı için istek URI'si olduğu gibi aktarılır — SignalR el sıkışması
+> (`/agenthub/negotiate?...`) bozulmaz. Bundan sonra gateway dışı bir container'a
+> doğrudan proxy yazan **her yeni blok** aynı kalıbı kullanmalı.
 
 > **Aynı bloğu ikinci kez eklemeyin.** nginx tekrar eden `location`'ı
 > `duplicate location` hatasıyla reddeder ve o an ayağa kalkmaz. Aynısı `map`
