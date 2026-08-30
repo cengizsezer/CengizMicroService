@@ -1,0 +1,116 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Yonetim
+
+@inject IAjanApiClient Api
+@inject DialogService Dialog
+@inject NotificationService Notif
+@inject IJSRuntime JS
+
+@if (_uretilen is null)
+{
+    <RadzenTemplateForm TItem="YeniAjanRequest" Data="@_model" Submit="@Olustur">
+        <RadzenStack Gap="0.75rem">
+
+            <RadzenText TextStyle="TextStyle.Body2" class="rz-text-muted">
+                Ajan, ofisteki makinede çalışan PkfRobot. Anahtar o makinede saklanacak;
+                kullanıcı parolası ya da kullanıcı token'ı orada tutulmuyor.
+            </RadzenText>
+
+            <RadzenFormField Text="Ajan adı" Variant="Variant.Outlined">
+                <RadzenTextBox Name="Ad" @bind-Value="_model.Ad" Style="width:100%" MaxLength="120"
+                               Placeholder="Örn: Ofis Banka PC" />
+            </RadzenFormField>
+            <RadzenRequiredValidator Component="Ad" Text="Ajan adı zorunlu" />
+
+            <RadzenFormField Text="Geçerlilik bitişi (boş bırakılırsa süresiz)" Variant="Variant.Outlined">
+                <RadzenDatePicker Name="Bitis" @bind-Value="_model.GecerlilikBitisi"
+                                  DateFormat="dd.MM.yyyy" Style="width:100%" ShowTime="false" />
+            </RadzenFormField>
+
+            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light"
+                              Click="@(() => Dialog.Close(false))" Disabled="@_busy" />
+                <RadzenButton Text="Anahtarı üret" Icon="vpn_key" ButtonStyle="ButtonStyle.Primary"
+                              ButtonType="ButtonType.Submit" IsBusy="@_busy" Disabled="@_busy" />
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenTemplateForm>
+}
+else
+{
+    <RadzenStack Gap="0.75rem">
+
+        <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" AllowClose="false">
+            <strong>Bu anahtarı şimdi kopyalayın. Bir daha gösterilmeyecek.</strong>
+            Sunucuda yalnız anahtarın şifrelenmiş özeti duruyor; kaybolursa geri getirilemez,
+            yeni bir ajan oluşturmak gerekir.
+        </RadzenAlert>
+
+        <RadzenFormField Text="@($"{_uretilen.Ad} — ajan anahtarı")" Variant="Variant.Outlined">
+            <RadzenTextArea Value="@_uretilen.Anahtar" ReadOnly="true" Rows="2" Style="width:100%; font-family:monospace;" />
+        </RadzenFormField>
+
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+            <RadzenButton Text="Panoya kopyala" Icon="content_copy" ButtonStyle="ButtonStyle.Secondary"
+                          Click="@Kopyala" />
+            <RadzenButton Text="Kopyaladım, kapat" Icon="check" ButtonStyle="ButtonStyle.Primary"
+                          Click="@(() => Dialog.Close(true))" />
+        </RadzenStack>
+    </RadzenStack>
+}
+
+@code {
+    readonly YeniAjanRequest _model = new();
+    YeniAjanResponse? _uretilen;
+    bool _busy;
+
+    async Task Olustur()
+    {
+        _busy = true;
+        try
+        {
+            _uretilen = await Api.OlusturAsync(_model);
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Ajan oluşturulamadı",
+                Detail = ex.Message,
+                Duration = 6000
+            });
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    async Task Kopyala()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _uretilen!.Anahtar);
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Kopyalandı",
+                Duration = 2000
+            });
+        }
+        catch
+        {
+            // Pano izni yoksa metin ekranda zaten duruyor; elle seçilebilir.
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Panoya kopyalanamadı",
+                Detail = "Anahtarı kutudan elle seçip kopyalayın.",
+                Duration = 6000
+            });
+        }
+    }
+}

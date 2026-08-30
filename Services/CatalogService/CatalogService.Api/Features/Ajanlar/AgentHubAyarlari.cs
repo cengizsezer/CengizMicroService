@@ -24,5 +24,13 @@ namespace CatalogService.Api.Features.Ajanlar
         /// tek bir kaçan atışta ajanı listeden düşürmeyecek kadar geniş tutuldu.
         /// </summary>
         public int KalpAtisiZamanAsimiSaniye { get; set; } = 90;
+
+        /// <summary>
+        /// Bu süre boyunca ilerleme bildirmeyen iş zaman aşımına uğrar. Ajanın
+        /// takıldığı (ORKA bir soru penceresi açtı, ekran kilitlendi) durumda işin
+        /// sonsuza kadar "çalışıyor" görünmesini engelliyor; ajanı da sonsuza kadar
+        /// meşgul saymamak için.
+        /// </summary>
+        public int IsZamanAsimiDakika { get; set; } = 15;
     }
 }

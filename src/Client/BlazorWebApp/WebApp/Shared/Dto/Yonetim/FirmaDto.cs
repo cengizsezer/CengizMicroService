@@ -1,4 +1,4 @@
-namespace WebApp.Shared.Dto.Yonetim
+﻿namespace WebApp.Shared.Dto.Yonetim
 {
     public class FirmaDto
     {
@@ -14,6 +14,9 @@ namespace WebApp.Shared.Dto.Yonetim
 
         // KDV Beyannamesi (BDP) için ek alanlar — opsiyonel.
         public string? VergiDairesiKodu { get; set; }
+
+        /// <summary>Firmanın ORKA'daki kodu; PkfRobot aktarımı için.</summary>
+        public string? OrkaFirmaKodu { get; set; }
         public string? YetkiliAdi { get; set; }
         public string? YetkiliSoyadi { get; set; }
         public string? TelefonAlanKodu { get; set; }

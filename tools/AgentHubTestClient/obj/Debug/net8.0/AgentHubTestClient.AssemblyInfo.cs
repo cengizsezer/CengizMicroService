@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AgentHubTestClient")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b9045c0344d18d5b677c439605fba3d08311a5b3")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8e9d875d26c45ad69f92c11bf25fb29935539720")]
 [assembly: System.Reflection.AssemblyProductAttribute("AgentHubTestClient")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AgentHubTestClient")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

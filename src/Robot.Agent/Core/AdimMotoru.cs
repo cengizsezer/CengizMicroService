@@ -18,15 +18,21 @@ public class AdimMotoru
     private readonly UIA3Automation _automation;
     private readonly PencereBekleyici _bekleyici;
     private readonly Dictionary<string, string> _degiskenler;
+    private readonly GridDoldurVerisi? _gridVerisi;
+    private readonly Action<Adim>? _adimBasladi;
 
     public AdimMotoru(RobotConfig cfg, AdimLogger log, UIA3Automation automation,
-                      Dictionary<string, string>? degiskenler = null)
+                      Dictionary<string, string>? degiskenler = null,
+                      GridDoldurVerisi? gridVerisi = null,
+                      Action<Adim>? adimBasladi = null)
     {
         _cfg = cfg;
         _log = log;
         _automation = automation;
         _bekleyici = new PencereBekleyici(automation, log, cfg);
         _degiskenler = degiskenler ?? new Dictionary<string, string>();
+        _gridVerisi = gridVerisi;
+        _adimBasladi = adimBasladi;
 
         Klavye.VarsayilanBeklemeMs = cfg.Zamanlama.TusBeklemeMs;
     }
@@ -41,6 +47,7 @@ public class AdimMotoru
         {
             try
             {
+                _adimBasladi?.Invoke(adim);
                 AdimiYurut(adim);
             }
             catch (Exception ex)
@@ -113,6 +120,10 @@ public class AdimMotoru
 
             case "tikla":
                 Tikla(adim, deger);
+                break;
+
+            case "griddoldur":
+                GridDoldur(adim);
                 break;
 
             case "bekle":
@@ -323,6 +334,61 @@ public class AdimMotoru
         return adim.Adet;
     }
 
+    /// <summary>
+    /// ORKA gridine karsi hesap kodlarini yazar.
+    ///
+    /// <b>Neden korlemesine yaziliyor:</b> ORKA'nin gridi (TcxGridSite) UI
+    /// Automation'a kapali tek bir blok -- satir/hucre okunamiyor (bkz. OKUBENI).
+    /// Yazilan degerin dogru satira gittigini robot ekrandan DOGRULAYAMIYOR.
+    /// Bu yuzden guvence yazmadan once aliniyor: satir sayisi sunucuda, indirilen
+    /// dosyada ve kod listesinde ayni olmadan is hic baslamiyor
+    /// (bkz. OrkayaAktarCalistirici).
+    ///
+    /// <b>Kaydet'e basilmiyor.</b> Bu adim yalnizca hucrelere yaziyor; kaydetme
+    /// kullanicinin isi ve oyle kalacak.
+    /// </summary>
+    private void GridDoldur(Adim adim)
+    {
+        if (_gridVerisi is null || _gridVerisi.Satirlar.Count == 0)
+            throw new InvalidOperationException(
+                "GridDoldur adimi icin veri verilmedi. Bu adim yalnizca ORKA aktarim " +
+                "isinde, kod listesiyle birlikte calisir.");
+
+        var satirlar = _gridVerisi.Satirlar;
+        _log.Adim("GridDoldur", $"{satirlar.Count} satir");
+
+        // Ilk hucreye konumlanmak gorev JSON'unun isi (Tikla); burada yalnizca
+        // odagin ORKA'da oldugundan emin olunuyor.
+        OdakGuvence("GridDoldur");
+        _log.EkranAl("griddoldur-oncesi", zorla: true);
+
+        for (var i = 0; i < satirlar.Count; i++)
+        {
+            var satir = satirlar[i];
+
+            if (string.IsNullOrWhiteSpace(satir.KarsiHesapKodu))
+                throw new InvalidOperationException(
+                    $"Satir {satir.SiraNo} icin karsi hesap kodu bos ({satir.Aciklama}). " +
+                    $"{_gridVerisi.YazilanSatir} satir yazildi, devam edilmiyor.");
+
+            OdakGuvence("GridDoldur");
+            Klavye.TemizleVeYaz(satir.KarsiHesapKodu);
+
+            // ENTER hucreyi onaylayip bir alt satira geciyor: ORKA gridinde
+            // gezinmenin klavyeyle calisan tek yolu.
+            Klavye.Tus("ENTER", 1);
+
+            _gridVerisi.YazilanSatir = i + 1;
+            _gridVerisi.SatirYazildi?.Invoke(i + 1, satirlar.Count);
+
+            Thread.Sleep(_cfg.Zamanlama.TusBeklemeMs);
+        }
+
+        _log.EkranAl("griddoldur-sonrasi", zorla: true);
+        _log.Bilgi($"GridDoldur bitti: {_gridVerisi.YazilanSatir}/{satirlar.Count} satir yazildi. " +
+                   "KAYDET'E BASILMADI.");
+    }
+
     /// <summary>{firmaKodu}, {hesapKodu}, {dosyaYolu} gibi degiskenleri yerine koyar.</summary>
     private string DegiskenleriCoz(string metin)
     {
@@ -338,10 +404,11 @@ public class AdimMotoru
     {
         // Sifre gibi hassas alanlar log'a duz yazilmasin.
         // Sadece {sifre} aramak yetmiyordu: {firmaSifre} iceren adimlar log'a
-        // duz yaziliyordu. Artik "sifre" gecen her Deger maskeleniyor.
-        if (adim.Not.Contains("sifre", StringComparison.OrdinalIgnoreCase) ||
-            adim.Deger.Contains("sifre", StringComparison.OrdinalIgnoreCase))
-            return "***";
-        return deger;
+        // duz yaziliyordu. Artik hassas sayilan bir sozcuk gecen her Deger
+        // maskeleniyor -- listede "sifre"nin yaninda ajan anahtarini ve
+        // token'i tarif eden sozcukler de var.
+        return Hassas.Iceriyor(adim.Not) || Hassas.Iceriyor(adim.Deger)
+            ? "***"
+            : deger;
     }
 }

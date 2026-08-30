@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace CatalogService.Api.Features.Firmalar.Dtos
 {
@@ -32,6 +32,9 @@ namespace CatalogService.Api.Features.Firmalar.Dtos
         // KDV Beyannamesi (BDP) için ek alanlar — hepsi opsiyonel.
         [StringLength(10)]
         public string? VergiDairesiKodu { get; set; }
+
+        /// <summary>Firmanın ORKA'daki kodu (ör. "0001"); PkfRobot aktarımı için.</summary>
+        public string? OrkaFirmaKodu { get; set; }
 
         [StringLength(100)]
         public string? YetkiliAdi { get; set; }

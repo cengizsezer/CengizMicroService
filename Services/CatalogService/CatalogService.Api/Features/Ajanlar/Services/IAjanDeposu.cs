@@ -29,6 +29,20 @@ namespace CatalogService.Api.Features.Ajanlar.Services
         bool KalpAtisi(string connectionId);
 
         /// <summary>
+        /// Verilen ajan kimliğine ait <b>en son</b> bağlantı; yoksa null. İş
+        /// gönderirken hedef bağlantıyı bulmak için: aynı anahtar iki makinede
+        /// kullanılıyorsa iş yalnız birine gitsin.
+        /// </summary>
+        AjanKaydi? AjanaGoreBul(string ajanId);
+
+        /// <summary>
+        /// Verilen ajan kimliğine ait bütün kayıtları çıkarır ve geri verir.
+        /// Anahtarı iptal edilen ajanın açık bağlantısını düşürmek için: iptal
+        /// IdentityService'te oluyor, o an ayakta duran soket burada.
+        /// </summary>
+        IReadOnlyList<AjanKaydi> AjanaGoreCikar(string ajanId);
+
+        /// <summary>
         /// Zaman aşımına uğramamış kayıtlar. Süresi geçenler bu okuma sırasında
         /// depodan da düşer.
         /// </summary>

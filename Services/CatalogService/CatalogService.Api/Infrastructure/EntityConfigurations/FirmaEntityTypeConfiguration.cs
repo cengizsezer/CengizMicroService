@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.Firmalar.Domain;
+﻿using CatalogService.Api.Features.Firmalar.Domain;
 using CatalogService.Api.Features.KdvBeyanname.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -36,6 +36,9 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
 
             builder.Property(x => x.VergiDairesi)
                 .HasMaxLength(100);
+
+            // ORKA firma kodu; giris zincirinde kullanilan kisa kod ("0001").
+            builder.Property(x => x.OrkaFirmaKodu).HasMaxLength(20);
 
             builder.Property(x => x.VergiDairesiKodu)
                 .HasMaxLength(10);

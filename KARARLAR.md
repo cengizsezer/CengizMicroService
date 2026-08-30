@@ -2297,11 +2297,15 @@ yanıt verirdi. Bozuk yazılmış bir **asgari sürüm ayarı** ise kontrolü at
 kimseyi dışarıda bırakmıyor: tek bir yapılandırma yazım hatasının bütün ofisi
 bağlantısız bırakması, korumanın kendisinden büyük bir risk.
 
-**Kaydın sahibi token'daki kullanıcı.** `MakineId` istekle geliyor ve ajanın
-kendi beyanı — ona güvenilmiyor. `KullaniciId` `sub` claim'inden alınıyor ve
-kayıtta saklanıyor; "kim hangi makineye iş gönderebilir" kuralı buna dayanacak.
-Bu turda kural yazılmadı (iş emri henüz yok), ama alan doldurulmadan bırakılsaydı
+**Kaydın sahibi token'dan alınıyor.** `MakineId` istekle geliyor ve ajanın kendi
+beyanı — ona güvenilmiyor. Sahip alanı `sub` claim'inden okunup kayıtta
+saklanıyor; "kim hangi makineye iş gönderebilir" kuralı buna dayanacak. Bu turda
+kural yazılmadı (iş emri henüz yok), ama alan doldurulmadan bırakılsaydı
 sonradan geriye dönük doldurulamazdı.
+
+> Bu alan §104'te **`AjanId`** oldu: kayıt artık bir kullanıcıya değil ajanın
+> kendi kimliğine bağlı. Ajanı hangi kullanıcının oluşturduğu IdentityService'teki
+> `Ajanlar` tablosunda duruyor.
 
 **Token WebSocket'te sorgu dizesinden okunuyor** — ama yalnız `/agenthub`
 yolunda. WebSocket el sıkışmasında tarayıcı `Authorization` başlığı
@@ -2310,3 +2314,424 @@ Bunu bütün uçlarda kabul etmek, token'ın adres çubuğunda ve nginx erişim
 kayıtlarında dolaşması demek olurdu; `OnMessageReceived` bu yüzden yol kontrolü
 yapıyor. Yerelde doğrulandı: `/agenthub/negotiate?access_token=…` → 200,
 `/api/catalog/agent/baglilar?access_token=…` → hâlâ 401.
+
+## 104. Ajanın kendi kimliği var; ofis makinesinde kullanıcı sırrı durmuyor
+
+Ajan (PkfRobot) ofisteki makinede **günlerce** bağlı kalacak. Kullanıcı token'ı
+20 dakika yaşıyor (prod'da ölçüldü: `nbf`/`exp` farkı 1200 saniye), yani o
+token'la bağlanan bir ajan yirmi dakikada bir düşerdi.
+
+Akla gelen üç yoldan ikisi elendi:
+
+- **Kullanıcı token'ının ömrünü uzatmak** — bütün kullanıcıları etkiler, üstelik
+  ofis makinesinde uzun ömürlü bir *insan* yetkisi bırakır.
+- **Refresh token'ı ajana vermek** — makinede duran şey yine kullanıcının
+  kimliği olur; o makine fiziksel olarak erişilebilir bir yerde.
+
+Kalan ve seçilen: **ajana özel, kullanıcıdan bağımsız bir kimlik.** Yönetim
+ekranında anahtar üretiliyor, ajan onu saklıyor, `POST /auth/agent/token` ile 8
+saatlik bir *ajan token'ına* çeviriyor. Anahtar iptal edilebilir; iptal edilince
+o ajan bir daha token alamaz.
+
+**Neden 8 saat, süresiz değil:** iptal edilen bir ajanın elinde duran token'ın
+bir ömrü olmalı. 8 saat, "günde bir kez token al" ile "iptal en geç bir mesai
+içinde etkisini gösterir" arasındaki denge. Ajan token'ı kullanıcı token'ıyla
+**aynı imza / issuer / audience** taşıyor — onu doğrulayan servisler bunu da
+doğrulayabilsin diye; ayrım imzada değil claim'lerde.
+
+## 105. Anahtar bir paroladır: aynı hasher, önek yalnız aday daraltır
+
+Anahtar 32 bayt kriptografik rastgele, `pkfr_` önekiyle. Önek bilerek var: bir
+yapılandırma dosyasına ya da sohbete yapıştırıldığında ne olduğu okunsun,
+sızdığında aranabilsin.
+
+**Ham anahtar hiçbir yerde saklanmıyor.** Veritabanında yalnız hash'i var ve hash
+ASP.NET Identity'nin `IPasswordHasher<T>`'ı (PBKDF2) ile üretiliyor — repoda
+parolalar da (UserManager üzerinden) onunla tutuluyor, yani tuz/iterasyon kararı
+tek yerde kalıyor. Düz SHA256 bilerek kullanılmadı: anahtar bir paroladır ve
+hızlı hash tam da denenebilir olmasını sağlar. Repoda `BCrypt.Net-Next` paketi
+duruyor ama hiçbir yerde kullanılmıyor; ikinci bir hash ailesi açmak yerine
+kullanılan aileye bağlı kalındı.
+
+Anahtar **bir kez** gösteriliyor. Kaybolursa geri getirilemez — yeni ajan
+oluşturulur, eskisi iptal edilir. Bu bir eksiklik değil, tasarımın kendisi.
+
+`AnahtarOnEki` (ilk 8 karakter) iki iş yapıyor: listede hangi satırın hangi
+anahtar olduğunu göstermek, ve token isteğinde **hash doğrulamasına girecek
+adayları daraltmak**. Kararı önek vermiyor — öneki tutan ama gövdesi tutmayan bir
+anahtar reddediliyor (`Oneki_tutan_ama_govdesi_tutmayan_anahtar_reddediliyor`).
+Önek üzerindeki indeks bu yüzden tekil değil.
+
+Ham anahtarın loglanmadığı ayrıca sınanıyor: `AjanAnahtariSizmiyorTests`
+kabul / ret / iptal yollarının hepsini dolaşıp yazılan bütün log satırlarında —
+biçimlenmiş metinde **ve** yapılandırılmış alanlarda — anahtarın geçmediğini
+doğruluyor. Başarısız denemede loglanan tek şey önek.
+
+## 106. Ajan ve insan token'ları politikayla ayrıldı; ayrım `ajan_id`'ye dayanıyor
+
+Hub `[Authorize]` iken kullanıcı token'ını da kabul ediyordu; artık
+`[Authorize(Policy = AjanPolitikalari.YalnizAjan)]`. Tersi de kondu: durum ucu
+(`/catalog/agent/baglilar`) yalnız **insan** token'ını kabul ediyor. İkisi
+birbirinin tersi ve bilerek öyle — ajan olmayan bir istemci ajan gibi kaydolup iş
+emri bekleyemesin, ajan da diğer ajanların listesini okumasın.
+
+Token `typ: agent` claim'i taşıyor ama **karar `ajan_id`'ye bakıyor**. Sebebi:
+JwtBearer gelen kısa claim adlarının bir kısmını uzun URI'lere çeviriyor
+(`MapInboundClaims`), bu eşleme kütüphane sürümüyle değişebiliyor ve `typ` ayrıca
+JWS başlığında da anlamı olan bir ad. `ajan_id` bize ait, eşleme tablosunda yeri
+yok ve bir kullanıcı token'ında hiç bulunmuyor.
+
+Bu varsayılmadı, sınandı: `AjanPolitikalariTests` token'ı IdentityService'teki
+gibi basıp .NET 8 JwtBearer'ın kullandığı `JsonWebTokenHandler` ile doğruluyor ve
+`ajan_id`'nin adı değişmeden çıktığını gösteriyor.
+
+> **Çözümdeki mayın:** `System.IdentityModel.Tokens.Jwt` 7.0.3 ile
+> `Microsoft.IdentityModel.*` 8.14 yan yana geliyor. Bu eşleşmede eski
+> `JwtSecurityTokenHandler` **okuma** yaparken `iss` / `exp` / `nbf` alanlarını
+> düşürüyor — onunla yapılan her doğrulama sessizce çöker. Token **basmak**
+> etkilenmiyor (IdentityService bunu kullanıyor, ürettiği token doğru). Üretimde
+> okuma yoluna hiç girilmiyor: .NET 8'de JwtBearer varsayılan olarak
+> `JsonWebTokenHandler` kullanıyor. Bir yere `JwtSecurityTokenHandler.ValidateToken`
+> yazacak olursanız önce paket sürümlerini hizalayın. Bu tuzağa bu turda bir kez
+> düşüldü; test o yüzden `JsonWebTokenHandler` kullanıyor.
+
+`AjanKaydi.KullaniciId` → `AjanId` oldu. Ajanı hangi kullanıcının oluşturduğu
+hub'da kopyalanmıyor; o bilgi `Ajanlar` tablosunda duruyor ve yönetim ekranı iki
+listeyi `AjanId` üzerinden eşleştiriyor. Aynı gerçeği iki yerde tutmamak için.
+
+## 107. İptalde açık bağlantıyı düşüren şey yönetim ekranı, event bus değil
+
+İptal IdentityService'te oluyor, açık soket CatalogService'te. İkisini bağlamanın
+iki yolu vardı:
+
+- **RabbitMQ integration event** — repoda kalıbı var (IdentityService yayınlıyor,
+  NotificationService dinliyor). Ama CatalogService bugün hiçbir olayı
+  dinlemiyor; ilk aboneliği eklemek, RabbitMQ erişilemediğinde CatalogService'in
+  ayağa kalkışını riske atan yeni bir başlangıç bağımlılığı demekti.
+- **Yönetim ekranının iptalden hemen sonra CatalogService'i çağırması** —
+  `POST /catalog/agent/{ajanId}/dusur`. Seçilen bu.
+
+Bedeli açık ve kabul edildi: iptal yönetim ekranı dışından yapılırsa bağlantı
+kendiliğinden düşmez, en geç ajan token'ının ömrü (8 saat) dolunca düşer. Anahtar
+o an zaten geçersiz olduğu için ajan yeniden token alamaz — yani kapı kapalı,
+yalnız içeridekinin çıkması gecikiyor.
+
+Düşürme ucu ajan bağlı değilken de başarılı dönüyor: "bu ajan bağlı değil"
+istenen sonucun ta kendisi, hata değil.
+
+## 108. Yeni uçlar mevcut gateway kurallarının altına yerleştirildi
+
+Ocelot ve nginx yapılandırması **değişmedi**. Uç adresleri bunun için seçildi:
+
+| Uç | Yol | Geçtiği kural |
+|---|---|---|
+| Ajan token'ı | `POST /auth/agent/token` | `/auth/{everything}` — kimlik istemiyor |
+| Ajan yönetimi | `/auth/admin/agents` | `/auth/admin/{everything}` — `role: Admin` şart |
+| Bağlantı düşürme | `POST /catalog/agent/{id}/dusur` | `/catalog/{everything}` |
+
+Görev metnindeki `/api/identity/agent/token` yolu kullanılmadı: karşılığı olan
+bir gateway kuralı yok, eklenseydi kabul kriterindeki "gateway değişmedi" şartı
+düşerdi. Adresler testle sabitlendi (`AjanUclariTests`) — ön ek değişirse test
+düşer.
+
+Token ucu `[AllowAnonymous]` olmak zorunda (ajanın elinde token yok, anahtar
+var), bu yüzden **IP başına dakikada 10 istek** sınırı kondu. Sınırın amacı
+anahtarı tahmin etmeyi engellemek değil — 256 bitlik anahtar zaten tahmin
+edilemez — servisin bir deneme selinde her istek için bir PBKDF2 hesabı yaparak
+boğulmasını engellemek. Gerçek trafiğin sınıra yaklaşma ihtimali yok: ofisteki
+ajan 8 saatte bir token alıyor.
+
+## 109. Ajanın kimliği publish klasöründe değil, `%AppData%` altında ve şifreli
+
+Ajan anahtarı `%AppData%\PkfRobot\agent.dat` içinde, **Windows DPAPI**
+(`CurrentUser` kapsamı) ile şifreli duruyor. İki ayrı karar var, ikisinin de
+gerekçesi ayrı:
+
+**Neden publish klasörü değil.** Publish klasörü her güncellemede üzerine
+yazılıyor. Anahtar orada dursaydı her yeni sürümde kaybolur, ofiste yeniden
+girilmesi gerekirdi — `appsettings.json` disiplininin (bkz. OKUBENI) aynı
+gerekçesi. `makine.dat` de aynı yerde: makine kimliği de güncellemede
+kaybolmamalı.
+
+**Neden DPAPI.** O makine fiziksel olarak erişilebilir bir yerde duruyor.
+`CurrentUser` kapsamı, dosyayı başka bir makineye ya da başka bir Windows
+kullanıcısına kopyalayanın okuyamaması demek — kopyalanan dosya işe yaramaz.
+Çözülemeyen dosya hata vermiyor, `null` dönüyor: ajan anahtarı yeniden sorup
+devam ediyor, bozuk bir dosya yüzünden takılıp kalmıyor.
+
+**`MakineId` = makine adı + kalıcı GUID.** Her açılışta yeni bir kimlik
+üretilseydi sunucudaki listede aynı makineden hayalet kayıtlar birikirdi: eski
+kayıt ancak kalp atışı zaman aşımıyla (90 sn) düşüyor, yani her yeniden başlatma
+bir buçuk dakikalık bir çift görüntü bırakırdı. Makine adı tek başına da
+yetmiyor — iki ofiste aynı ada sahip iki PC olabilir.
+
+## 110. `WithAutomaticReconnect` kullanılmadı; yeniden bağlanma elde yazıldı
+
+SignalR'ın kendi yeniden bağlanması elindeki token'ı **aynen tekrar kullanıyor**.
+Ajan token'ı 8 saat yaşıyor; gece kopan bir bağlantı, token bayatladıktan sonra
+sabaha kadar susmadan başarısız denemeler yapardı ve kimse fark etmezdi.
+
+Buradaki döngü sırayı tersine çeviriyor: önce token tazeliği (gerekiyorsa
+yenileme), sonra bağlantı. Aralıklar 5s → 10s → 30s → 60s, sonra 60s sabit ve
+sonsuz deneme. Tavan var çünkü gece ağ koparsa sabah bağlı olması gerekiyor;
+ilk adımlar kısa çünkü kopuşların çoğu saniyelik. Başarılı bağlantıdan sonra
+aralık sıfırlanıyor — bir gün önceki kopuş, bugünkü kopuşta bir dakika
+beklemeyi gerektirmez.
+
+**Kopuş kalp atışında fark ediliyor**, ayrı bir dinleyiciyle değil: kapalı bir
+bağlantıda `KalpAtisi` çağrısı zaten patlıyor ve döngü yeniden bağlanmaya
+düşüyor. Bedeli, kopuşun en geç bir kalp atışı aralığı (30 sn) kadar geç fark
+edilmesi. Sunucu tarafı kopuşu anında görüyor (soket kapanınca ajan listeden
+düşüyor), yani bu gecikme yalnız yeniden bağlanmayı geciktiriyor.
+
+**401 kalıcı, 429 geçici.** Anahtar iptal edilmişse yeniden denemenin anlamı
+yok: döngü duruyor ve "Yönetim > Ajanlar ekranından yeni anahtar üretin"
+diyor. Hız sınırında ise sunucunun söylediği `Retry-After` kadar beklenip bir
+kez daha deneniyor; başlık yoksa 60 saniyeye düşülüyor — sınıra takılmışken
+hemen tekrar denemek aynı duvara çarpmak olurdu.
+
+## 111. ORKA durumu ayrı bir çağrıyla değil, `Kaydol`'un tekrarıyla bildiriliyor
+
+Sunucuda "durum bildir" diye bir hub metodu yok; ORKA alanı kayıt paketinin
+kendisinde. Yeni bir metot eklemek yerine, durum değiştiğinde aynı bağlantıdan
+ikinci kez `Kaydol` çağrılıyor. Sunucu tarafı bunu zaten **bilgi tazeleme**
+sayıyor, düşürme değil (`AjanDeposu.Kaydet`, aynı `ConnectionId` için eski
+kaydı düşürülmüş saymıyor) — yani sözleşmeye dokunmadan çalışıyor.
+
+Bildirim **yalnız değişimde**: her kalp atışında kayıt göndermek, 30 saniyede bir
+gereksiz bir yazma demek olurdu. Değişimin kendisi süreç listesinden okunuyor
+(`OrkaWinIceberg.64`), pencere başlığından değil — başlık ORKA'nın sürümüne göre
+değişiyor (bkz. OKUBENI), süreç adı değişmiyor.
+
+ORKA'nın kapalı olması bağlantı için engel değil: ajan ORKA kapalıyken de bağlı
+kalıyor, yalnızca durumu bildiriyor. Bu turda ajanın yaptığı iş zaten ORKA'ya
+dokunmuyor.
+
+## 112. Ajan log'u `AdimLogger` değil; maskeleme desenle yapılıyor
+
+`AdimLogger` bir görev çalıştırması için klasör açıp ekran görüntüsü
+biriktiriyor — ömrü dakikalarla ölçülen bir iş için doğru. Ajan **günlerce**
+ayakta duruyor: her açılışta yeni klasör açmak ve tek dosyayı sınırsız
+büyütmek aynı şey değil. Bu yüzden `%AppData%\PkfRobot\logs\ajan-<tarih>.log`,
+günlük dosya, 14 günden eskiler siliniyor. Yeni kütüphane eklenmedi; biçim
+(`saat [seviye] mesaj`) `AdimLogger` ile aynı.
+
+**Maskeleme iki katmanlı.** Görev adımlarında alan **adına** bakılıyor:
+`Hassas.Sozcukler` listesine `sifre` yanına `anahtar`, `token`, `agent`
+eklendi — yeni bir sır alanı eklerken yapılacak tek şey ona doğru adı vermek.
+Ajan log'unda ise **değerin kendisine** bakılıyor: `pkfr_…` ve üç parçalı JWT
+desenleri yazılmadan önce eleniyor. İkincisi bir ağ, birincinin unutulduğu
+durumu yakalamak için: anahtar zaten hiçbir yere yazılmıyor, ama ileride biri
+hata mesajına koyarsa diske düz metin düşmesin.
+
+Bu iddia denendi, varsayılmadı: yerel çalıştırmadan sonra hem
+`%AppData%\PkfRobot\logs\ajan-2026-08-30.log` hem konsol çıktısı gerçek anahtara
+karşı tarandı — `pkfr_` hiç geçmiyor. `agent.dat` de düz metin değil.
+
+## 113. Test projesi Robot.Agent klasörünün *içinde* değil
+
+`PkfRobot.UnitTests` önce `src/Robot.Agent/PkfRobot.UnitTests/` altına kondu ve
+derleme kırıldı: `PkfRobot.csproj` varsayılan `**/*.cs` taramasıyla test
+dosyalarını da kendi derlemesine alıyor, xunit referansı olmadığı için de
+patlıyor. Proje `src/Robot.Agent.UnitTests/` olarak dışarı taşındı —
+`Compile Remove` ile istisna yazmaktansa iç içe geçmeyi kaldırmak daha az
+sürprizli.
+
+Test projesi **çözüme eklendi**, `PkfRobot`'un kendisi hâlâ eklenmedi;
+referans üzerinden derleniyor. Bunun bir sonucu var: `dotnet build`/`dotnet test`
+artık `SmartExpenseSystem.sln` üzerinden `PkfRobot`'u da derliyor ve o proje
+`net8.0-windows`/`win-x64` — **çözüm Linux'ta derlenmez oldu**. Kabul edildi:
+CI zaten çözümü değil docker-compose'u derliyor, geliştirme de Windows'ta
+yapılıyor.
+
+`SelfContained` exe'ye proje referansı vermenin sorun çıkarabileceği
+düşünülmüştü; denendi, çıkarmadı — ayrı bir kütüphane projesine bölmek
+gerekmedi.
+
+**Neyin test edilebildiği:** bağlantı mantığı `IHubBaglantisi` arkasında, token
+alma gerçek `HttpMessageHandler` sahtesiyle (401/429/`Retry-After` gerçek HTTP
+anlamlarıyla), beklemeler `Func<TimeSpan, CancellationToken, Task>` ile — testler
+gerçekten beklemiyor, ne kadar bekleneceğini doğruluyor. UI otomasyonu ve
+gerçek soket test edilmiyor; onların yeri ofisteki çalıştırma.
+
+## 114. İşler veritabanında, ajan listesi bellekte
+
+Bağlı ajanlar listesi bir bağlantının ömrü kadar yaşıyor ve kaybolması zararsız
+(§102). **İşler öyle değil:** "bu ekstre ORKA'ya aktarıldı mı" sorusunun yanıtı
+sunucu yeniden başlayınca da durmalı, geçmiş görülebilmeli. `catalog.AjanIsleri`
+bu yüzden kalıcı ve kapsam kolonu `FirmaId` — banka otomasyonundaki diğer
+tablolarla aynı, `SaveChangesAsync` kapsamsız kaydı ayrıca reddediyor (§68).
+
+**Kimlik `Guid`, artan sayı değil.** Kimliği sunucu üretiyor ve ajan geri
+bildiriyor; artan bir sayı olsaydı ajan komşu işlerin kimliğini tahmin
+edebilirdi. Sahiplik kontrolü zaten var, ama tahmin edilemez kimlik bedava bir
+katman.
+
+**Zaman aşımı okuma anında işaretleniyor**, `BackgroundService` ile değil —
+§102'deki yaklaşımın aynısı. Takılmış bir işin varlığı ancak birinin ona
+bakmasıyla ya da aynı ajana yeni iş açılmasıyla önem kazanıyor; ikisi de aynı
+süzgeçten geçiyor. Eşik `BaslamaZamani`'na değil `SonIlerlemeZamani`'na bakıyor:
+uzun ama düzenli ilerleyen bir işi zaman aşımına uğratmak yanlış olurdu.
+
+## 115. Aynı ajana tek iş — kural iki tarafta da var
+
+Robot tek ORKA penceresiyle çalışıyor; paralel iş anlamsız. Sunucu ikinci isteği
+**409** ile reddediyor ve çalışan işi yanıtta bildiriyor, böylece ekran "hangi
+iş" diye ikinci bir sorgu atmıyor.
+
+Ajan tarafında aynı kural **bir kez daha** var. İkisi de olmasaydı sunucunun
+yanıldığı (ya da iki sunucu kopyasının aynı anda gönderdiği) durumda robot iki
+işi birden ORKA'ya yazmaya kalkardı. Ajandaki kontrol sunucununkini yedekliyor,
+onun yerine geçmiyor.
+
+**Bekleyen iş bağlanınca gönderiliyor.** Ajan yokken açılan iş `Bekliyor`
+kalıyor; `Kaydol` kabul edildikten **sonra** sıradan alınıyor — sürümü tutmayan
+ajana iş vermenin anlamı yok.
+
+Kuyruk üç noktada ilerliyor: bağlanmada, iş bitince ve iptalde. İlk yazımda
+yalnız bağlanmada ilerliyordu ve sırada bekleyen ikinci iş, ajan bağlı ve boşta
+dururken bir sonraki bağlanmaya kadar öylece kalıyordu. Her seferinde yalnız en
+eski bekleyen gönderiliyor — ajan zaten tek iş yürütüyor.
+
+## 116. Hedef ajan sorulmuyor, sunucu buluyor
+
+Aktar ekranı "hangi ajana göndereyim" diye sormuyor: ofiste tek ayrılmış banka
+bilgisayarı var ve bu soru kullanıcı için gürültü olurdu. `AjanId` boş
+gelirse sunucu tek adayı kendisi buluyor — önce bağlı ajanlar, yoksa geçmiş
+işlerdeki ajanlar.
+
+Birden çok aday varsa istek **reddediliyor** ve alan zorunlu hâle geliyor:
+yanlış makineye iş göndermek sessiz bir hata olurdu. Hiç aday yoksa mesaj ne
+yapılacağını söylüyor ("ofisteki makinede PkfRobot'u --ajan ile başlatın").
+
+## 117. Tarayıcı işi yoklayarak izliyor, SignalR ile değil
+
+Durum kartı 2 saniyede bir `GET /catalog/agent/is/{id}` çağırıyor. Tarayıcıya
+SignalR eklemek ikinci bir hub, Blazor WASM istemcisi ve ek nginx yapılandırması
+demek; izlenen şey tek bir işin ilerlemesi ve yoklama bitince duruyor —
+tamamlanmış bir işi saniyede bir sormanın karşılığı yok. Kazanç bu aşamada
+maliyeti karşılamıyor, sonra eklenebilir.
+
+## 118. CatalogService'in varsayılan politikası artık "insan"
+
+A adımında yalnız hub ve durum ucu işaretlenmişti; geri kalan her `[Authorize]`
+"kimliği doğrulanmış olsun" diyordu ve **ajan token'ı hepsinden geçiyordu**.
+Ofisteki makinede duran bir anahtar, servisin bütün uçlarını açık tutuyordu.
+
+`AuthorizationOptions.DefaultPolicy` artık "kimliği doğrulanmış **ve** ajan
+değil". Ajanın girebileceği yerler tek tek `YalnizAjan` ile işaretleniyor: hub,
+ve işin iki dosya ucu. Kapı varsayılan olarak kapalı, açılan yerler görünür.
+
+Yerelde doğrulandı: ajan token'ıyla `/api/catalog/banka-ekstre/ekstre` → **403**,
+`/api/catalog/agent/isler` → **403**; aynı uçlar kullanıcı token'ıyla 200.
+
+## 119. Ajan dosyaları işine bağlı uçlardan indiriyor
+
+D adımının görev metni "şu iki Banka Otomasyon ucunu ajana da aç" diyordu. Öyle
+yapılmadı: o uçlarda dosya `?firmaId=` ile isteniyor ve ajan **her firmanın her
+ekstresini** alabilirdi.
+
+Yerine iki yeni uç: `GET /catalog/agent/is/{isId}/ekstre` ve `/kod-listesi`.
+İkisi de ajanın **o an atanmış** işine bağlı — iş kimliği token'daki ajana ait
+değilse 404, iş bitmişse 409. Firma kapsamı isteğin parametresinden değil işin
+kendisinden kuruluyor. Ofisteki makinede duran anahtarın erişebildiği alan, o
+anda yapmakta olduğu işten ibaret.
+
+Yerelde doğrulandı: başka bir işin kimliğiyle 404, kullanıcı token'ıyla 403.
+
+## 120. `OrkayaAktar` yükünü sunucu kuruyor
+
+Firma kodu, banka hesabının ORKA kodu ve satır sayısı tarayıcıdan gelseydi robot,
+doğruluğunu kimsenin denetlemediği değerlerle ORKA'ya yazardı. İstemci yalnız
+`EkstreYuklemeId` gönderiyor; gerisini `OrkaAktarimYuku` veritabanından
+dolduruyor.
+
+Eksik bir şey varsa iş **hiç oluşmuyor** ve mesaj ne yapılacağını söylüyor
+(firmanın ORKA kodu yok → "Yönetim > Firmalarım"). Ajanı yola çıkarıp orada
+durdurmaktansa burada durmak.
+
+Satır sayısı `EkstreYukleme.SatirSayisi`'ndan değil **dışa aktarımın kendi
+sonucundan** geliyor: "diğer bankada" işaretli satırlar ORKA'ya gitmiyor ve iki
+dosyada da yoklar. Yanlış sayıyı ajana vermek, ajanın doğrulamasını da yanlış
+yapardı.
+
+**`Firma.OrkaFirmaKodu` eklendi.** ORKA giriş zincirinde firmanın açıldığı kod
+(ör. "0001") hiçbir yerde tutulmuyordu. Alan nullable: ORKA'ya aktarım
+yapılmayan firmalarda gerekmiyor, gerektiğinde iş anlaşılır bir mesajla
+reddediliyor.
+
+## 121. Grid körlemesine dolduruluyor; güvence yazmadan önce alınıyor
+
+ORKA'nın gridi (`TcxGridSite`) UI Automation'a kapalı tek bir blok — satır/hücre
+okunamıyor (bkz. OKUBENI). Robot yazdığı değerin doğru satıra gittiğini
+**ekrandan göremiyor**. Bu yüzden bütün güvence yazmadan önce alınıyor ve
+doğrulamalardan biri tutmazsa iş **hiç başlamıyor**:
+
+1. İki dosya da indi mi, ekstre boyutu makul mü
+2. Kod listesi satır sayısı = iş paketindeki satır sayısı
+3. Düzeltilmiş ekstrenin **veri satırı** sayısı (başlık hariç) = aynı sayı
+4. Her satırda açıklama ve karşı hesap kodu dolu mu
+
+Üçüncüsü en tehlikeli durumu yakalıyor: kodlar bir satır kayarsa her kayıt yanlış
+hesaba gider ve bunu kimse fark etmez.
+
+Satır sayısını okumak için **ClosedXML** eklendi. Dosyayı sunucu da ClosedXML ile
+yazıyor; aynı kütüphaneyle okumak "kaç satır var" sorusuna iki tarafta aynı
+yanıtı veriyor. Zip'i elle açıp `<row>` saymak bağımlılık eklemezdi ama paylaşılan
+metin tablosu, birden çok sayfa ve başlık satırı derdi getirirdi.
+
+**Kaydet'e basılmıyor.** `GridDoldur` yalnızca hücrelere yazıyor; kaydetme
+kullanıcının işi. Kural bir testle sabitlendi: `gorevler/orkaya-aktar.json`
+içinde `OnayGerekir` adımı yok ve tuşa basan hiçbir adımda "Kaydet"/"ALT+K"
+geçmiyor.
+
+## 122. Tek yeni adım tipi: `GridDoldur`
+
+Görev metni "yeni adım tipi yazma" diyordu ama adı geçen `GridDoldur` adımı
+motorda yoktu. İkisi birden mümkün olmadığı için ortası seçildi: akışın tamamı
+mevcut adım tipleriyle JSON'da (`gorevler/orkaya-aktar.json`), yalnız görev
+metninin kendi adlandırdığı `GridDoldur` eklendi.
+
+Adım **veriyi JSON'dan almıyor**: satırlar sunucudan indirilen kod listesinden
+geliyor ve motora `GridDoldurVerisi` olarak veriliyor. Böylece iş akışı JSON'da
+kalırken veri koda da JSON'a da gömülmüyor.
+
+**İlerleme kilometre taşları da JSON'da:** adımlara `Yuzde` alanı eklendi. Akışın
+hangi noktasının "%25" olduğu akışın kendi bilgisi; akış değişince yüzdeler aynı
+dosyada değişiyor. Kod yalnız "adım `Yuzde` taşıyorsa bildir" diyor.
+
+## 123. Hata ekranı FileApiService'e, mevcut kalıpla
+
+Hata anındaki ekran görüntüsü ajandan **doğrudan FileApiService'e**
+(`POST /file/v1/uploads`) yükleniyor, dönen kimlik `IsBitti` ile sunucuya
+geçiyor ve `AjanIsleri.HataEkraniDosyaId`'ye yazılıyor. Repodaki kalıp bu:
+CatalogService dosyaları tutmuyor, istemci yükleyip kimliği veriyor (bkz.
+Beyanname ekleri).
+
+Not: FileApiService'in ajan/insan ayrımı yok, ajan token'ını kabul ediyor.
+CatalogService'teki varsayılan politika (§118) oraya uygulanmadı — ayrı servis
+ve bu turda kapsam dışı. Yüklenen tek şey bir hata ekranı görüntüsü.
+
+Yükleme başarısız olursa iş sonucu **yine de** bildiriliyor: ekran görüntüsü bir
+yardımcı, işin sonucunu bildirmeyi engellememeli.
+
+## 124. Ajanın iş dosyaları `%AppData%` altında, başarısızlar 7 gün duruyor
+
+İndirilen iki dosya `%AppData%\PkfRobot\isler\{isId}\` altına yazılıyor. Başarılı
+işte klasör siliniyor; **başarısız işte duruyor** — ofiste "ne indirildi, ne
+yazıldı" sorusunun yanıtı orada. 7 günden eskiler bir sonraki iş başlarken
+temizleniyor: inceleme penceresi var ama disk sonsuza kadar dolmuyor.
+
+## 125. Ajan kapanırken işi bir kez bildiriyor
+
+Ctrl+C ile kapanan ajan, çalışan işi için `IsBitti(basarili: false)` gönderiyor —
+yoksa iş, sunucunun zaman aşımına uğratmasına kadar (15 dk) "çalışıyor"
+görünürdü.
+
+İlk sürümde bu bildirim **iki kez** gidiyordu: çalıştırıcı kendi iptal
+mesajını, kapanış yordamı da kendi mesajını gönderiyordu. Sunucu tarafında
+zararsızdı (ilk biten hâl kalıyor) ama log ve geçmiş bulanıyordu, üstelik
+kullanıcı "iptal edildi" yazısını görüyordu — oysa iptal eden yoktu. Şimdi
+kapanış yordamı önce işin kendi bildirimini bekliyor (3 sn) ve yalnız gelmezse
+kendi sözünü söylüyor. Durdurma sebebi de ayrı tutuluyor: "iptal edildi" ile
+"ajan kapatıldı" farklı şeyler.

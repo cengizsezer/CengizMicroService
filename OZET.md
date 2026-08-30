@@ -1885,11 +1885,21 @@ curl -s -H "Authorization: Bearer $TOKEN" https://dijitalmasraf.com/catalog/agen
 ```
 
 Son adım: `tools/AgentHubTestClient` yayındaki adrese karşı bağlanmalı.
+**Prod test komutu** (`--durum-yolu` şart, aşağıdaki nota bakın):
 
 ```bash
 dotnet run --project tools/AgentHubTestClient -- --api https://dijitalmasraf.com \
-    --hub https://dijitalmasraf.com/agenthub --token <jwt>
+    --hub https://dijitalmasraf.com/agenthub --durum-yolu /catalog/agent/baglilar \
+    --token <jwt>
 ```
+
+Bu komut yayında çalıştırıldı: hub bağlantısı kuruldu, eski sürüm reddedildi,
+geçerli sürümle kayıt kabul edildi. Tek kırılan adım durum ucuydu — istemci
+`/api/catalog/agent/baglilar` deniyor ve 404 alıyordu. Dışarıda nginx `/catalog/`
+önekini gateway'e veriyor, `/api/catalog/`'a çeviren **gateway** oluyor; yani
+dışarıdan doğru yol `/catalog/agent/baglilar`. Bunun için `--durum-yolu`
+eklendi. Varsayılanı `/api/catalog/agent/baglilar` olarak kaldı — yerelde
+CatalogService'e doğrudan gidildiği için orada `/api/...` doğru yol.
 
 
 ## Test istemcisi
@@ -1901,32 +1911,27 @@ istemci**. FlaUI, ORKA, iş kuyruğu yok.
 # CatalogService ayakta olsun (yerelde 5004)
 dotnet run --project tools/AgentHubTestClient -- --api http://localhost:5004
 
-# yayındaki sunucuya karşı
+# yayındaki sunucuya karşı — durum ucunun yolu nginx yüzünden farklı
 dotnet run --project tools/AgentHubTestClient -- --api https://dijitalmasraf.com \
-    --hub https://dijitalmasraf.com/agenthub --token <jwt>
+    --hub https://dijitalmasraf.com/agenthub --durum-yolu /catalog/agent/baglilar \
+    --token <jwt>
 ```
+
+`--durum-yolu` yalnız durum ucunun yolunu değiştirir (varsayılan
+`/api/catalog/agent/baglilar`); hub adresi ondan bağımsız, `--hub` ile veriliyor.
 
 Token verilmezse istemci Development imza anahtarıyla kendi token'ını üretir —
-doğrulama için IdentityService'i ayağa kaldırmak gerekmiyor. Çalıştığında sekiz
-adımı sırayla sınıyor ve başarısızlıkta 1 ile çıkıyor. **Gerçek çıktı** (yerelde,
-`ASPNETCORE_ENVIRONMENT=Development`, `http://localhost:5004`):
+doğrulama için IdentityService'i ayağa kaldırmak gerekmiyor. Çalıştığında adımları
+sırayla sınıyor ve başarısızlıkta 1 ile çıkıyor.
 
-```
-[ OK ] Durum ucu token'sız istekte 401 dönüyor
-[ OK ] Token'sız hub bağlantısı reddediliyor
-[ OK ] Eski sürümle kayıt reddediliyor, mesaj anlaşılır
-       sunucu mesajı: Ajan sürümü 0.0.1 desteklenmiyor; en az 1.0.0 gerekiyor.
-                      Lütfen PkfRobot'u güncelleyin.
-[ OK ] Geçerli sürümle kayıt kabul ediliyor
-[ OK ] Ajan 'baglilar' ucunda görünüyor
-       TEST-ISTEMCI / 1.0.0 / Microsoft Windows NT 10.0.26200.0 / kullanıcı test-istemci
-[ OK ] Kalp atışı son atış zamanını ilerletiyor
-[ OK ] Aynı MakineId ile ikinci bağlantı eskisini düşürüyor
-[ OK ] Bağlantı kopunca ajan listeden siliniyor
-8 geçti, 0 kaldı. Hub doğrulandı.
-```
+> **Bu bölüm o günkü hâli anlatıyor: sekiz adım, tek token.** Ajan kimliği
+> turundan sonra istemci **iki token** taşıyor (hub yalnız ajan token'ını, durum
+> ucu yalnız kullanıcı token'ını kabul ediyor) ve **on adım** sınıyor. Güncel
+> kullanım, bayraklar ve gerçek çıktı için "Ajan Kimliği — uzun ömürlü anahtar"
+> bölümündeki *Test istemcisi (güncel)* başlığına bakın.
 
-Ayrıca elle: ajan yokken `GET /api/catalog/agent/baglilar` → `[]`;
+Ayrıca elle: ajan yokken `GET /api/catalog/agent/baglilar` (yayında
+`GET /catalog/agent/baglilar`) → `[]`;
 `?access_token=` sorgu parametresi yalnız `/agenthub` yolunda kabul ediliyor
 (sıradan uçta hâlâ 401), Bearer başlığıyla 200.
 
@@ -1984,12 +1989,849 @@ testtir.
   SignalR bilmiyor; `Kaydol`/`KalpAtisi` çağıran bağlantı yönetimi, yeniden
   bağlanma ve `MakineId`'nin yerelde saklanması o turda gelecek.
 - **Blazor durum göstergesi yok (C adımı).** `baglilar` ucu hazır, ekran yok.
+  (Sonraki turda **Yönetim → Ajanlar** ekranı geldi; bağlı ajanları da orada
+  gösteriyor.)
 - **İş emri gönderimi yok.** Bu turda hub'ın ajana bir şey göndermesi
   tasarlanmadı; kanal açık, sözleşme (hangi metot, hangi paket) B adımının konusu.
 - **Ajan listesi tek container'a özgü.** CatalogService birden fazla kopya olarak
   çalıştırılırsa her kopya kendi listesini tutar; ajan yalnız bağlandığı kopyadan
   görünür. Tek makine senaryosunda sorun değil, ölçeklenirse backplane
   (Redis) ya da kalıcı kayıt gerekir.
-- **Kimlik yalnız saklanıyor, henüz bir kural kurmuyor.** `KullaniciId` kayıtta
+- **Kimlik yalnız saklanıyor, henüz bir kural kurmuyor.** Sahip alanı kayıtta
   duruyor ama "kim hangi makineye iş gönderebilir" kontrolü yazılmadı — iş emri
-  gelmeden dayanacağı bir şey yok.
+  gelmeden dayanacağı bir şey yok. (Bu alan sonraki turda `AjanId` oldu; bkz.
+  "Ajan Kimliği — uzun ömürlü anahtar".)
+
+# Ajan Kimliği — uzun ömürlü anahtar
+
+## Sorun
+
+Kullanıcı token'ı **20 dakika** ömürlü (prod'da ölçüldü: `nbf`/`exp` farkı 1200
+saniye). Ajan (PkfRobot) ofisteki makinede günlerce bağlı kalacak; kullanıcı
+token'ıyla bağlansa yirmi dakikada bir düşerdi. Ayrıca o makine fiziksel olarak
+erişilebilir bir yerde — orada kullanıcı parolası ya da uzun ömürlü kullanıcı
+token'ı tutmak, bir insanın bütün yetkisini masaüstüne bırakmak demek.
+
+## Çözüm
+
+Ajana özel, kullanıcıdan bağımsız bir kimlik: sunucuda anahtar üretilir, **bir
+kez** gösterilir, ajan saklar. Ajan bu anahtarı 8 saatlik bir *ajan token'ına*
+çevirip hub'a onunla bağlanır. Anahtar iptal edilebilir.
+
+Neden böyle olduğu (ve elenen alternatifler) `KARARLAR.md` §104–§108'de.
+
+## Veritabanı: `Ajanlar` (IdentityService)
+
+Migration: `20260829232848_AjanKimligi` — yalnız yeni tablo, başka hiçbir tabloya
+dokunmuyor. Yerel geliştirme veritabanına uygulandı;
+`dotnet ef migrations has-pending-model-changes` → *No changes*.
+
+| Sütun | Not |
+|---|---|
+| `Id` | |
+| `Ad` | Kullanıcının verdiği ad: "Ofis Banka PC" |
+| `AnahtarHash` | Ham anahtar **saklanmıyor**; PBKDF2 (`IPasswordHasher<Ajan>`) |
+| `AnahtarOnEki` | İlk 8 karakter — listede tanımak ve hash adaylarını daraltmak için (tekil değil) |
+| `OlusturanKullaniciId` | |
+| `OlusturmaZamani` / `SonKullanim` / `GecerlilikBitisi` | Hepsi **UTC**; `GecerlilikBitisi` null ise süresiz |
+| `Aktif` / `IptalZamani` / `IptalNedeni` | |
+
+## Uçlar
+
+Gateway ve nginx yapılandırması **değişmedi** — adresler mevcut kuralların
+altına yerleştirildi (§108).
+
+| Uç | Yetki | İş |
+|---|---|---|
+| `POST /auth/agent/token` | anonim + hız sınırı | `{ AjanAnahtari }` → ajan token'ı (8 saat) |
+| `GET /auth/admin/agents` | `role: Admin` | Ajan listesi (ham anahtar dönmez) |
+| `POST /auth/admin/agents` | `role: Admin` | Yeni ajan; **ham anahtar yalnız bu yanıtta** |
+| `POST /auth/admin/agents/{id}/iptal` | `role: Admin` | `{ Neden }` |
+| `GET /catalog/agent/baglilar` | kullanıcı token'ı | Bağlı ajanlar (ajan token'ıyla **403**) |
+| `POST /catalog/agent/{ajanId}/dusur` | `role: Admin` | Açık bağlantıyı düşürür |
+
+Hız sınırı: IP başına dakikada 10 istek, aşınca **429** + `Retry-After`.
+Başarısız her deneme loglanıyor (anahtar değil, öneki).
+
+## Kimin token'ı nereye giriyor
+
+| | Hub `/agenthub` | Durum ucu `/catalog/agent/baglilar` |
+|---|---|---|
+| Token yok | 401 | 401 |
+| Kullanıcı token'ı | **reddedilir** | çalışır |
+| Ajan token'ı | çalışır | **403** |
+
+Ajan token'ı kullanıcı token'ıyla aynı imza/issuer/audience taşıyor; ayrım
+claim'lerde: `sub = ajan-<id>`, `typ = agent`, `ajan_id = <id>`. Politika kararı
+**`ajan_id`**'ye bakıyor (nedeni §106; `typ`'a güvenmemenin gerekçesi de orada).
+
+## Yönetim ekranı
+
+**Yönetim → Ajanlar** (`/yonetim/ajanlar`, yalnız Admin). Menü satırı da
+Admin'e görünüyor.
+
+- Liste: ad, anahtar öneki, durum (Aktif / İptal / Süresi doldu), **bağlı mı**
+  (hub'daki listeyle `AjanId` üzerinden eşleştirilir), oluşturan, oluşturma, son
+  kullanım, geçerlilik.
+- İptal edilen ve süresi dolan satırlar soluk gösteriliyor.
+- **Yeni Ajan** → ad (+ istenirse geçerlilik bitişi) → anahtar üretilir ve bir kez
+  gösterilir: "Bu anahtarı şimdi kopyalayın, bir daha gösterilmeyecek."
+- **İptal** → neden zorunlu. İptalden hemen sonra ekran
+  `POST /catalog/agent/{id}/dusur` çağırıp açık bağlantıyı düşürüyor.
+
+Hub okunamazsa liste yine geliyor, tepede uyarı çıkıyor ve "Bağlı" sütununun
+güvenilir olmadığı söyleniyor — iki kaynak iki ayrı serviste.
+
+## Anahtar nasıl üretilip ajana verilir (elle yapılacak)
+
+1. Yayındaki panele **Admin** yetkisiyle girin.
+2. **Yönetim → Ajanlar → Yeni Ajan**.
+3. Ada makineyi tanıtan bir şey yazın: `Ofis Banka PC`. Geçerlilik bitişini boş
+   bırakırsanız anahtar süresiz olur; bir tarih verirseniz o tarihte kendiliğinden
+   geçersizleşir.
+4. **Anahtarı üret** → ekranda `pkfr_…` ile başlayan anahtar çıkar.
+   **Kopyala.** Bu ekran kapandıktan sonra anahtar hiçbir yerden okunamaz —
+   sunucuda yalnız özeti var.
+5. Anahtarı ofis makinesine taşıyın ve ajanın yapılandırmasına koyun. Sohbete,
+   e-postaya, ortak dosyaya bırakmayın; bırakıldıysa ajanı iptal edip yenisini
+   üretin.
+6. Doğrulama — anahtarın gerçekten çalıştığını görmek için (bkz. Test istemcisi):
+
+   ```bash
+   dotnet run --project tools/AgentHubTestClient -- --api https://dijitalmasraf.com \
+       --hub https://dijitalmasraf.com/agenthub \
+       --durum-yolu /catalog/agent/baglilar \
+       --token-ucu https://dijitalmasraf.com/auth/agent/token \
+       --ajan-anahtari pkfr_... --token <kullanici-jwt>
+   ```
+
+7. **Ajanlar** ekranını yenileyin: satırda "Son kullanım" dolmuş olmalı.
+
+Anahtar sızdıysa ya da makine değiştiyse: aynı ekrandan **İptal** → neden yazın.
+Anahtar o an geçersizleşir ve ajanın açık bağlantısı düşürülür.
+
+## Test istemcisi (güncel)
+
+`tools/AgentHubTestClient` artık **iki token** taşıyor: hub yalnız ajan
+token'ını, durum ucu yalnız kullanıcı token'ını kabul ettiği için.
+
+```bash
+# Yerelde: CatalogService 5004'te ayakta olsun. Hiçbir bayrak vermezseniz istemci
+# Development imza anahtarıyla iki token'ı da kendi üretir; IdentityService
+# gerekmez.
+dotnet run --project tools/AgentHubTestClient -- --api http://localhost:5004
+
+# Yayında: ajan token'ı gerçek anahtarla alınır, insan token'ı dışarıdan verilir.
+dotnet run --project tools/AgentHubTestClient -- --api https://dijitalmasraf.com \
+    --hub https://dijitalmasraf.com/agenthub \
+    --durum-yolu /catalog/agent/baglilar \
+    --token-ucu https://dijitalmasraf.com/auth/agent/token \
+    --ajan-anahtari pkfr_... --token <kullanici-jwt>
+```
+
+Yeni bayraklar: `--ajan-anahtari` (anahtarı token'a çevirir), `--token-ucu`
+(varsayılan `<api>/api/auth/agent/token`), `--ajan-token` (hazır ajan token'ı),
+`--ajan-id` (yerelde üretilen ajan token'ının kimliği).
+
+**Gerçek çıktı** (yerelde, `ASPNETCORE_ENVIRONMENT=Development`,
+`http://localhost:5004`, gerçek CatalogService'e karşı):
+
+```
+Hub        : http://localhost:5004/agenthub
+Durum ucu  : http://localhost:5004/api/catalog/agent/baglilar
+Makine     : TEST-ISTEMCI (TEST-8be776fc)
+Ajan token : yerelde üretildi
+İnsan token: yerelde üretildi
+------------------------------------------------------------------------
+[ OK ] Durum ucu token'sız istekte 401 dönüyor
+      (beklenen hata: HttpRequestException)
+[ OK ] Token'sız hub bağlantısı reddediliyor
+      (beklenen hata: HttpRequestException)
+[ OK ] Hub kullanıcı token'ını kabul etmiyor
+[ OK ] Durum ucu ajan token'ını kabul etmiyor
+      sunucu mesajı: Ajan sürümü 0.0.1 desteklenmiyor; en az 1.0.0 gerekiyor.
+                     Lütfen PkfRobot'u güncelleyin.
+      sunucu 1.0.0 / asgari ajan 1.0.0
+[ OK ] Eski sürümle kayıt reddediliyor, mesaj anlaşılır
+[ OK ] Geçerli sürümle kayıt kabul ediliyor
+      TEST-ISTEMCI / 1.0.0 / Microsoft Windows NT 10.0.26200.0 / ajan 9999 / ORKA: bilinmiyor
+[ OK ] Ajan 'baglilar' ucunda görünüyor
+[ OK ] Kalp atışı son atış zamanını ilerletiyor
+[ OK ] Aynı MakineId ile ikinci bağlantı eskisini düşürüyor
+[ OK ] Bağlantı kopunca ajan listeden siliniyor
+------------------------------------------------------------------------
+10 geçti, 0 kaldı. Hub doğrulandı.
+```
+
+(Adım adlarının hemen üstünde görünen girintili satırlar, o adımın kendi
+çıktısı — konsol satır sırası böyle.)
+
+## Değişen ve eklenen dosyalar
+
+| Yer | Dosyalar |
+|---|---|
+| IdentityService — kayıt | `Domain/Entities/Ajan.cs`, `Domain/EntityConfigurations/AjanEntityTypeConfiguration.cs`, `Persistence/IdentityDbContext.cs` (DbSet + config), `Migrations/20260829232848_AjanKimligi.*` |
+| IdentityService — servis | `Application/Services/Agent/AjanAnahtari.cs`, `AjanClaimleri.cs`, `AjanHizSiniri.cs`, `IAjanKimlikServisi.cs`, `AjanKimlikServisi.cs`, `Application/Models/Agent/AjanModelleri.cs` |
+| IdentityService — uçlar | `Controllers/AgentAuthController.cs`, `Controllers/AdminAgentController.cs`, `Program.cs` (hasher + servis + `AddRateLimiter` + `UseRateLimiter`) |
+| CatalogService | `Features/Ajanlar/AjanKimligi.cs` (yeni: claim'ler + politikalar), `AgentHub.cs`, `Controllers/AgentController.cs` (+ `dusur`), `Domain/AjanKaydi.cs`, `Dtos/AjanDtos.cs`, `Services/IAjanDeposu.cs` + `AjanDeposu.cs` (`AjanaGoreCikar`), `Program.cs` (`AddAuthorization(AjanPolitikalari.Ekle)`) |
+| Blazor | `Pages/Yonetim/Ajanlar.razor`, `AjanOlusturDialog.razor`, `AjanIptalDialog.razor`, `Application/Services/Yonetim/IAjanApiClient.cs` + `AjanApiClient.cs`, `Shared/Dto/Yonetim/AjanDtos.cs`, `Layout/MainLayout.razor` (menü), `StartupExtensions/.../ServiceCollectionExtensions.cs` (DI) |
+| Test istemcisi | `tools/AgentHubTestClient/Program.cs` |
+| Testler | `Services/IdentityService/IdentityService.UnitTests/**` (yeni proje, `.sln`'e eklendi), `CatalogService.UnitTests/Ajanlar/AjanPolitikalariTests.cs` (yeni) + mevcut ajan testleri |
+
+**Değişmeyenler:** `ocelot.json` / `ocelot.Development.json` / `ocelot.Docker.json`,
+`Nginx/**`, `deploy/nginx-agenthub.conf`, `docker-compose*.yml`.
+
+## Testler
+
+| Proje | Önce | Sonra |
+|---|---|---|
+| `CatalogService.UnitTests` | 745 | **748** |
+| `IdentityService.UnitTests` | — (yoktu) | **24** |
+| `WebApp.UnitTests` | 60 | 60 |
+
+Hepsi geçiyor. Yeni testler:
+
+- `IdentityService.UnitTests/Ajanlar/AjanKimlikServisiTests` — anahtar üretimi ve
+  yalnız hash'in saklanması, her anahtarın farklı olması, geçerli anahtarla token
+  (claim'ler + 8 saatlik ömür), aynı imza/issuer/audience ile doğrulanabilirlik,
+  geçersiz anahtar reddi, **öneki tutan ama gövdesi tutmayan anahtarın reddi**,
+  iptal edilmiş anahtar, ikinci iptalin ilk kaydı bozmaması, olmayan ajanın iptal
+  edilememesi, süresi dolmuş anahtar, süresiz anahtar, **aynı anahtarla iki kez
+  token** (yeniden bağlanma), `SonKullanim` ilerlemesi, liste durumları, listenin
+  ham anahtar döndürmemesi, boş adın reddi
+- `IdentityService.UnitTests/Ajanlar/AjanAnahtariSizmiyorTests` — kabul/ret/iptal
+  yollarının hiçbirinde ham anahtarın **ve hash'inin** log satırlarına
+  (biçimlenmiş metin *ve* yapılandırılmış alanlar) girmediği
+- `IdentityService.UnitTests/Ajanlar/AjanUclariTests` — uç adreslerinin gateway
+  kurallarına uyması, token ucunun anonim olması ve hız sınırı taşıması, yönetim
+  ucunun Admin istemesi
+- `CatalogService.UnitTests/Ajanlar/AjanPolitikalariTests` — iki politikanın
+  gerçek `IAuthorizationService` ile davranışı, kimliksiz isteğin ikisinden de
+  geçememesi, ve **basılıp doğrulanmış** token'da `ajan_id`'nin adının değişmeden
+  çıkması
+- `CatalogService.UnitTests/Ajanlar/AgentControllerTests` — düşürme ucunun
+  yetkisi, ajanın açık bağlantısını kapatması, başka ajana dokunmaması
+
+## Ne eksik kaldı
+
+- ~~**Ajanın kendisi hâlâ yazılmadı (B adımı).**~~ Sonraki turda yazıldı:
+  `PkfRobot.exe --ajan` anahtarı okuyup token alıyor ve hub'a bağlanıyor.
+  Bkz. "PkfRobot Ajan Bağlantısı (B adımı)".
+- **Prod'da denenmedi.** Yeni uçlar ve ekran yayına çıkmadı; yukarıdaki adım adım
+  yönerge ilk çalıştırmada izlenecek. Migration prod veritabanına
+  uygulanmalı (servis açılışta `MigrateDbContext` ile kendisi uyguluyor).
+
+  **Dağıtım sırası: önce IdentityService, sonra CatalogService.** CatalogService
+  yeni hâliyle hub'a yalnız ajan token'ı alıyor; token'ı basan uç ise
+  IdentityService'te. Ters sırada dağıtılırsa hub'a hiç kimse bağlanamayacağı bir
+  aralık doğar. Bugün gerçek bir ajan bağlanmadığı için (B adımı yazılmadı) bu
+  aralığın pratik bir bedeli yok, ama sıra yine de doğru olsun.
+- **İptal yönetim ekranı dışından yapılırsa bağlantı hemen düşmez** — en geç ajan
+  token'ının ömrü (8 saat) dolunca düşer. Gerekçe §107.
+- **"Kim hangi makineye iş gönderebilir" kuralı hâlâ yok.** `AjanId` kayıtta
+  duruyor ama iş emri olmadan dayanacağı bir şey yok.
+- **Ajan listesi tek container'a özgü** (önceki turdan devam): CatalogService
+  ölçeklenirse backplane gerekir.
+
+# PkfRobot Ajan Bağlantısı (B adımı)
+
+## Kapsam
+
+Bu tur **yalnız bağlantı**: ajan hub'a bağlanıyor, kendini tanıtıyor, kalp atışı
+gönderiyor, ORKA durumunu bildiriyor. **İş alma ve çalıştırma yok** — `GridDoldur`,
+iş kuyruğu, ilerleme bildirimi C adımında. JSON adım motoruna dokunulmadı.
+
+Kararlar ve elenen alternatifler `KARARLAR.md` §109–§113'te.
+
+## Nereye yerleşti
+
+`--ajan`, `--probe` / `--kalibre` / `--gorev` gibi ayrı bir **mod**. ORKA'ya
+dokunmuyor, görev JSON'u istemiyor, `UIA3Automation` açmıyor.
+
+```
+PkfRobot.exe --ajan                    # bagla ve bagli kal (Ctrl+C ile dur)
+PkfRobot.exe --anahtari-sifirla        # kayitli anahtari sil, yenisini sor
+```
+
+| Dosya | İş |
+|---|---|
+| `Ajan/AjanKimlikDeposu.cs` | Anahtar (DPAPI) + kalıcı `MakineId`, `%AppData%\PkfRobot` |
+| `Ajan/AjanTokenSaglayici.cs` | Anahtar → 8 saatlik token; erken yenileme, 401/429 |
+| `Ajan/HubBaglantisi.cs` | `IHubBaglantisi` + SignalR sarmalayıcı, `ws→http` çevirisi |
+| `Ajan/AjanServisi.cs` | Bağlan, `Kaydol`, kalp atışı, ORKA bildirimi, yeniden bağlanma |
+| `Ajan/GeriCekilme.cs` | 5s → 10s → 30s → 60s → 60s… |
+| `Ajan/OrkaDurumu.cs` | `OrkaWinIceberg.64` süreci ayakta mı |
+| `Ajan/AjanLog.cs` | Günlük log dosyası + `pkfr_`/JWT maskesi |
+| `Ajan/AjanCalistirici.cs` | `--ajan` modunun giriş noktası, ilk kurulum sorusu |
+| `Core/Hassas.cs` | Maskelenecek alan adları (`sifre`, `anahtar`, `token`, `agent`) |
+
+## Ayarlar (`appsettings.json` > `Ajan`)
+
+Kaynak dosya güncellendi — publish'te ezilmez.
+
+```json
+"Ajan": {
+  "TokenUcu": "https://www.dijitalmasraf.com/auth/agent/token",
+  "HubAdresi": "https://www.dijitalmasraf.com/agenthub",
+  "KalpAtisiSaniye": 30,
+  "TokenYenilemeEsigiDakika": 30,
+  "LogSaklamaGun": 14,
+  "OrkaSurecAdi": "OrkaWinIceberg.64"
+}
+```
+
+`HubAdresi`'ne `wss://` de yazılabilir; istemci `https://`'e çeviriyor (SignalR
+önce HTTP ile "negotiate" yapıyor). **Ajan anahtarı burada değil** — ilk
+çalıştırmada sorulup `%AppData%\PkfRobot\agent.dat` içine şifreli yazılıyor.
+
+## Diskte ne duruyor
+
+```
+%AppData%\PkfRobot\
+  agent.dat                  ajan anahtari (DPAPI, CurrentUser) -- duz metin DEGIL
+  makine.dat                 kalici GUID; MakineId = <makine adi>-<guid>
+  logs\ajan-<tarih>.log      gunluk log, 14 gunden eskiler silinir
+```
+
+Publish klasörü değil, `%AppData%`: publish üzerine yazıldığında kaybolmasın
+(§109).
+
+## İlk kurulum — adım adım
+
+### 1. Sunucudan anahtar al
+
+1. Panele **Admin** yetkisiyle gir → **Yönetim → Ajanlar → Yeni Ajan**.
+2. Ada makineyi tanıtan bir şey yaz: `Ofis Banka PC`.
+3. **Anahtarı üret** → `pkfr_…` ile başlayan anahtar bir kez gösterilir.
+   **Kopyala.** Bu ekran kapandıktan sonra hiçbir yerden okunamaz.
+
+### 2. Publish'i ofis makinesine kopyala
+
+Ev PC'sinde:
+
+```
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+```
+
+`bin\Release\net8.0-windows\win-x64\publish\` klasörünü olduğu gibi kopyala
+(`.pdb` gerekmez). Ofiste .NET SDK kurulmasına gerek yok. Önerilen yer:
+
+```
+C:\PkfRobot\
+```
+
+Yeni sürüm gönderirken bu klasörün üzerine yazmak yeterli — anahtar ve makine
+kimliği `%AppData%` altında olduğu için kaybolmaz.
+
+### 3. Anahtarı bir kez gir
+
+Ofis makinesinde bir komut satırı aç:
+
+```
+cd C:\PkfRobot
+PkfRobot.exe --ajan
+```
+
+İlk çalıştırmada anahtarı sorar. **Yapıştır ve Enter.** Anahtar ekranda
+yıldızla görünür, diske şifreli yazılır, bir daha sorulmaz. Ardından:
+
+```
+[BILGI] Ajan anahtari kaydedildi: C:\Users\...\AppData\Roaming\PkfRobot\agent.dat (DPAPI ile sifreli).
+[BILGI] Ajan token'i alindi: Ofis Banka PC (#3), bitis ... UTC.
+[BILGI] Hub'a baglanildi: BANKA-PC (BANKA-PC-<guid>), surum 1.0.0, ORKA: acik.
+```
+
+Panelde **Yönetim → Ajanlar** ekranını yenile: satırda **Bağlı** rozetini ve
+makine adını görmelisin.
+
+Anahtar yanlış girilirse ya da sonradan iptal edilirse ajan susmadan denemeye
+devam etmez; şunu yazıp durur:
+
+```
+Ajan anahtari gecersiz veya iptal edilmis. Yonetim > Ajanlar ekranindan yeni
+anahtar uretin ve PkfRobot.exe --ajan --anahtari-sifirla ile girin.
+```
+
+### 4. Windows açılışında kendiliğinden çalışsın
+
+Ajan **oturum açık** çalışmalı (robotun geri kalanı UI Automation kullanıyor ve
+kilitli oturumda çalışmıyor), o yüzden Windows servisi değil, **oturum açılışında
+başlayan görev** doğru olan.
+
+**Görev Zamanlayıcı ile (önerilen)** — yönetici komut satırında tek satır:
+
+```
+schtasks /Create /TN "PkfRobot Ajan" /TR "C:\PkfRobot\PkfRobot.exe --ajan" ^
+  /SC ONLOGON /RL LIMITED /F
+```
+
+- `/SC ONLOGON` → kullanıcı oturum açınca başlar.
+- `/RL LIMITED` → yönetici olarak çalıştırmaz. DPAPI anahtarı **kullanıcıya**
+  bağlı olduğu için, ajanı anahtarı giren kullanıcıyla aynı hesapta çalıştır;
+  başka bir hesapta `agent.dat` çözülemez ve anahtar yeniden sorulur.
+- Görevin özelliklerinden **"Görev başarısız olursa yeniden başlat"**ı açmak
+  iyi olur; ajan zaten kendi içinde sonsuz yeniden bağlanıyor, bu yalnız
+  sürecin kendisi çökerse işe yarar.
+
+**Alternatif (daha basit):** `PkfRobot.exe`'ye sağ tık → kısayol oluştur,
+kısayolun hedefine ` --ajan` ekle ve kısayolu şuraya at:
+
+```
+%AppData%\Microsoft\Windows\Start Menu\Programs\Startup
+```
+
+### 5. Çalıştığını nereden anlarsın
+
+- Panel: **Yönetim → Ajanlar** → satırda "Bağlı" rozeti, makine adı ve sürüm.
+- Makinede: `%AppData%\PkfRobot\logs\ajan-<tarih>.log`
+
+Bağlantı durumu, kalp atışı, token yenileme ve hatalar bu dosyaya düşüyor.
+**Ajan anahtarı log'a hiç düşmüyor** — düşse bile `pkfr_***` olarak maskeleniyor.
+
+### Sorun çıkarsa
+
+| Belirti | Bak |
+|---|---|
+| "Ajan anahtari gecersiz veya iptal edilmis" | Panelde ajan iptal mi? Yeni anahtar üret, `--anahtari-sifirla` ile gir |
+| "Sunucuya ulasilamiyor" tekrar ediyor | Ağ / `appsettings.json > Ajan.HubAdresi`; ajan kendiliğinden denemeye devam eder |
+| "Sunucu kaydi reddetti … guncellenmeden" | Sürüm eski; yeni publish'i kopyala |
+| Panelde görünmüyor ama log'da "Hub'a baglanildi" var | Panelde yanlış ajana bakıyor olabilirsin; log'daki `#<id>` ile satırı eşleştir |
+| Anahtar soruluyor ama girmiştin | Ajan farklı bir Windows kullanıcısıyla çalışıyor; DPAPI kullanıcıya bağlı |
+
+## Gerçek doğrulama (ev PC'si, yerel sunucular)
+
+Ajan **gerçekten çalıştırıldı**: IdentityService (5005) ve CatalogService (5004)
+yerelde ayağa kaldırıldı, anahtar gerçek yönetim ucundan
+(`POST /api/auth/admin/agents`) üretildi, ajan `--ajan` ile başlatıldı.
+Denemede kalp atışı aralığı 5 saniyeye çekildi (varsayılan 30) — beklemeler
+kısalsın diye; başka hiçbir ayar değişmedi. ORKA yok, dolayısıyla `ORKA: kapali`.
+
+**1) Bağlanma ve `baglilar` ucunda görünme**
+
+```
+[BILGI] Ajan anahtari kaydedildi: C:\Users\...\AppData\Roaming\PkfRobot\agent.dat (DPAPI ile sifreli).
+[BILGI] PkfRobot ajan modu. Surum 1.0.0.
+[BILGI] Makine  : DESKTOP-I290HP6 (DESKTOP-I290HP6-ad9e26be8a644d02b1a5f1141a3e7c46)
+[BILGI] Ajan token'i alindi: Ev PC (B adimi) (#2), bitis 2026-08-30 08:38 UTC.
+[BILGI] Hub'a baglanildi: DESKTOP-I290HP6 (...), surum 1.0.0, ORKA: kapali.
+```
+
+```
+GET /api/catalog/agent/baglilar
+[ { "makineId": "DESKTOP-I290HP6-ad9e26be8a644d02b1a5f1141a3e7c46",
+    "makineAdi": "DESKTOP-I290HP6", "ajanSurumu": "1.0.0",
+    "ajanId": "2", "orkaCalisiyorMu": false,
+    "baglantiZamani": "...00:38:43", "sonKalpAtisi": "...00:39:08" } ]
+```
+
+Son kalp atışı bağlantı zamanından 25 saniye sonra: atışlar gerçekten gidiyor.
+
+**2) Sunucu düşüp geri gelince kendiliğinden bağlanma** — CatalogService süreci
+öldürüldü, sonra yeniden başlatıldı:
+
+```
+03:39:28 [UYARI] Baglanti hatasi: The 'InvokeCoreAsync' method cannot be called if the connection is not active
+03:39:28 [BILGI] 5 sn sonra yeniden baglanilacak.
+03:39:37 [UYARI] Baglanti hatasi: No connection could be made because the target machine actively refused it. (localhost:5004)
+03:39:37 [BILGI] 10 sn sonra yeniden baglanilacak.
+03:39:52 [UYARI] Baglanti hatasi: No connection could be made because the target machine actively refused it. (localhost:5004)
+03:39:52 [BILGI] 30 sn sonra yeniden baglanilacak.
+03:40:22 [BILGI] Hub'a baglanildi: DESKTOP-I290HP6 (...), surum 1.0.0, ORKA: kapali.
+```
+
+Geri çekilme 5 → 10 → 30 diye açıldı, sunucu gelince bağlandı. Ardından
+`baglilar` **tek** kayıt döndü — `MakineId` sabit kaldığı için hayalet kayıt yok.
+
+**3) Kapatılınca listeden düşme:** ajan süreci durduruldu, `baglilar` → `[]`.
+
+**4) İkinci çalıştırma:** anahtar sorulmadı, `MakineId` birebir aynı geldi
+(`DESKTOP-I290HP6-ad9e26be8a644d02b1a5f1141a3e7c46`).
+
+**5) Anahtar sızıntısı:** çalıştırma sonrası hem log dosyası hem konsol çıktısı
+gerçek anahtara karşı tarandı — anahtar yok, `pkfr_` hiç geçmiyor. `agent.dat`
+düz metin değil.
+
+**6) Publish:** `dotnet publish -c Release -r win-x64 --self-contained true
+-p:PublishSingleFile=true` → tek `PkfRobot.exe` (~164 MB) + `appsettings.json` +
+`gorevler\`. Exe'nin yanında ayrı DLL çıkmıyor; SignalR ve DPAPI paketleri de
+gömülü. Yayınlanan exe `--yardim` ile çalıştırıldı, `--ajan` bölümü göründü.
+
+> **Denenmeyen:** ORKA durum değişiminin gerçek ORKA ile bildirilmesi. Ev
+> PC'sinde ORKA yok ve sahte bir süreçle taklit edilmedi — kural birim testinde
+> sınandı, gerçeği ofiste görülecek.
+
+## Testler
+
+`src/Robot.Agent.UnitTests` (yeni proje, çözüme eklendi; `PkfRobot`'un kendisi
+hâlâ çözümde değil, referansla derleniyor) — **49 test**, hepsi geçiyor.
+
+| Konu | Ne sınanıyor |
+|---|---|
+| `AjanTokenSaglayiciTests` | İlk alma, taze token varken ağa çıkmama, **eşiğin altına inince yenileme**, eşik aşılmadan yenilememe, **401'de yeniden denememe ve mesajın anlaşılır olması**, **429'da `Retry-After` kadar bekleme**, başlık yoksa 60 sn, 500'ün geçici sayılması, anahtarın log'a düşmemesi |
+| `AjanServisiTests` | Kendini tanıtma alanları, her turda kalp atışı, **ORKA durumunun yalnız değişimde bildirilmesi**, ORKA kapalıyken bağlı kalma, eski sürüm reddinin kalıcı sayılması ve döngünün durması, anahtar geçersizse durma, **geri çekilmenin 5→10→30 açılması**, başarılı bağlantıdan sonra **sıfırlanması** |
+| `AjanKimlikDeposuTests` | Anahtarın yazılıp okunması, **diske düz metin yazılmaması**, silme, bozuk dosyanın `null` dönmesi, **`MakineId`'nin iki çalıştırmada aynı kalması**, farklı klasörde farklı olması |
+| `AjanLogMaskesiTests` / `HassasTests` | `pkfr_` ve JWT maskeleme, sıradan metne dokunmama; alan adına göre maskeleme listesi |
+| `AjanDosyaLogTests` | Günlük dosyaya yazma + maskeleme, 14 günden eskilerin silinmesi |
+| `GeriCekilmeTests` | 5/10/30/60 ve 60'ta kalma, sıfırlama |
+| `HubAdresiTests` | `wss://`→`https://`, `ws://`→`http://`; sürümün derlemeden okunması |
+
+Çözümdeki diğer testler aynen geçiyor: CatalogService 748, IdentityService 24,
+WebApp 60, Sovos 1.
+
+## Değişen ve eklenen dosyalar
+
+| Yer | Dosyalar |
+|---|---|
+| Ajan (yeni) | `src/Robot.Agent/Ajan/AjanKimlikDeposu.cs`, `AjanTokenSaglayici.cs`, `HubBaglantisi.cs`, `AjanServisi.cs`, `GeriCekilme.cs`, `OrkaDurumu.cs`, `AjanLog.cs`, `AjanCalistirici.cs` |
+| Ajan (değişen) | `Program.cs` (`--ajan`, `--anahtari-sifirla`, yardım), `Config/RobotConfig.cs` (`AjanAyar`), `Core/AdimMotoru.cs` (maskeleme), `Core/Hassas.cs` (yeni), `appsettings.json` (`Ajan` bölümü), `PkfRobot.csproj` (SignalR + ProtectedData paketleri, `<Version>1.0.0</Version>`) |
+| Testler | `src/Robot.Agent.UnitTests/**` (yeni), `SmartExpenseSystem.sln` |
+
+**Değişmeyenler:** sunucu tarafı (CatalogService, IdentityService), gateway,
+nginx, JSON adım motoru ve `gorevler\*.json`.
+
+## Ne eksik kaldı
+
+- **Ofiste denenmedi.** Ev PC'sinde ORKA yok; ORKA durum bildirimi yalnız birim
+  testinde doğrulandı. İlk ofis çalıştırmasında ORKA açıkken/kapalıyken panelde
+  durumun değiştiği görülmeli.
+- ~~**İş alma yok (C adımı).**~~ Sonraki turlarda geldi: iş kuyruğu, ilerleme ve
+  gerçek ORKA aktarımı için bkz. "İş Gönderme ve ORKA Aktarımı (C ve D adımları)".
+- **Sürüm elle artırılıyor.** `AjanSurumu` derlemeden okunuyor ama `<Version>`'ı
+  yükseltmek hâlâ insanın işi; sunucudaki asgari sürümü yükseltmeden önce yeni
+  publish'in ofise gitmiş olması gerekiyor.
+- **Kopuş en geç bir kalp atışı aralığı (30 sn) sonra fark ediliyor.** Sunucu
+  tarafı kopuşu anında görüyor, bu gecikme yalnız yeniden bağlanmayı geciktiriyor.
+- **Çözüm artık Linux'ta derlenmiyor** (§113): test projesi `.sln`'e eklendiği
+  için `PkfRobot` da referansla derlemeye giriyor, o da `net8.0-windows`. CI
+  docker-compose kullandığından etkilenmiyor.
+
+# İş Gönderme ve ORKA Aktarımı (C ve D adımları)
+
+C adımı iş akışını ORKA'ya dokunmadan uçtan uca kurdu; D adımı sahte işin yerine
+gerçek ORKA aktarımını koydu. Bağlantı katmanı (B adımı) değişmedi.
+
+Kararlar ve elenen alternatifler `KARARLAR.md` §114–§125'te.
+
+## Akışın tamamı
+
+```
+Aktar ekrani                 CatalogService                  PkfRobot (ofis)
+------------                 --------------                  ---------------
+"ORKA'ya Aktar"  ── POST /catalog/agent/is ──▶ AjanIsleri (Bekliyor)
+                                │  yuku SUNUCU kurar
+                                │  ajan bagliysa ──── IsGonder ────▶ is alinir
+                                                                      │
+                             IsBasladi ◀──────────────────────────────┤
+                                                                      │ 2 dosya indirilir
+                                                                      │ on dogrulamalar
+                             IsIlerleme ◀─────────────────────────────┤ ORKA surulur
+  2 sn'de bir GET  ◀── durum ──┤                                      │ GridDoldur
+                             IsBitti ◀────────────────────────────────┘ (Kaydet YOK)
+```
+
+## Veritabanı
+
+| Migration | Ne |
+|---|---|
+| `20260830081607_AjanIsleri` | `catalog.AjanIsleri` — işin tamamı; kapsam `FirmaId` |
+| `20260830085616_FirmaOrkaKodu` | `catalog.Firmalar.OrkaFirmaKodu` (nullable, 20) |
+
+İkisi de yerel geliştirme veritabanına uygulandı;
+`dotnet ef migrations has-pending-model-changes` → *No changes*.
+
+`AjanIsleri` sütunları: `Id (Guid)`, `AjanId`, `FirmaId`, `IsTipi`, `Yuk (JSON)`,
+`Durum`, `IlerlemeYuzde`, `IlerlemeMesaji`, `ToplamAdim`, `TamamlananAdim`,
+`OlusturanKullaniciId`, `OlusturmaZamani`, `GonderimZamani`, `BaslamaZamani`,
+`BitisZamani`, `SonIlerlemeZamani`, `HataMesaji`, `SonucOzeti (JSON)`,
+`HataEkraniDosyaId`.
+
+Durumlar: `Bekliyor → Gonderildi → Calisiyor → Tamamlandi | Basarisiz |
+IptalEdildi | ZamanAsimi`.
+
+## Uçlar
+
+Gateway ve nginx yapılandırması **değişmedi**; hepsi `/catalog/{everything}`
+kuralından geçiyor.
+
+| Uç | Yetki | İş |
+|---|---|---|
+| `POST /catalog/agent/is` | insan | İş oluştur + gönder. Ajan meşgulse **409** |
+| `GET /catalog/agent/is/{id}` | insan | Durum (ekran 2 sn'de bir yokluyor) |
+| `GET /catalog/agent/isler` | insan | Liste (`firmaId`, `durum`, `ajanId` süzgeçli) |
+| `POST /catalog/agent/is/{id}/iptal` | insan | İptal + ajana bildir |
+| `GET /catalog/agent/is/{id}/ekstre` | **ajan** | Düzeltilmiş ekstre (xlsx) |
+| `GET /catalog/agent/is/{id}/kod-listesi` | **ajan** | Karşı hesap kodları (JSON) |
+
+Hub'a eklenen metotlar — sunucu→ajan: `IsGonder`, `IsIptal`; ajan→sunucu:
+`IsBasladi`, `IsIlerleme`, `IsBitti`.
+
+**Ajanın dosya uçları işine bağlı** (§119): iş kimliği token'daki ajana ait
+değilse 404, iş bitmişse 409. Firma kapsamı istekten değil işten kuruluyor.
+
+## Kimin token'ı nereye giriyor (güncel)
+
+CatalogService'in **varsayılan** politikası artık "insan" (§118): politika
+yazılmamış her `[Authorize]` ajan token'ını reddediyor.
+
+| | Ajan token'ı | Kullanıcı token'ı |
+|---|---|---|
+| `/agenthub` | ✔ | ✘ 403 |
+| `/catalog/agent/baglilar`, `/isler`, `/is/...` | ✘ 403 | ✔ |
+| `/catalog/agent/is/{id}/ekstre` ve `/kod-listesi` | ✔ (kendi işi) | ✘ 403 |
+| Diğer bütün catalog uçları | ✘ 403 | ✔ |
+
+## Kurallar
+
+- **Aynı ajana tek iş** — ikinci istek 409, çalışan iş yanıtta. Kural ajan
+  tarafında bir kez daha var (§115).
+- **Ajan bağlı değilse** iş `Bekliyor` kalıyor; ajan bağlanıp kaydı kabul
+  edilince sıradan alınıyor. Sıradaki bekleyen iş, önceki iş bittiğinde ya da
+  iptal edildiğinde de kendiliğinden gönderiliyor.
+- **Yalnız kendi işini bildirebilir** — sahiplik sorgunun içinde, başka ajanın
+  işi hiç yüklenmiyor.
+- **Tekrarlanan bildirim zararsız** — yüzde geriye gitmiyor, bitmiş işin durumu
+  bir daha değişmiyor.
+- **Zaman aşımı** varsayılan 15 dk (`AgentHub:IsZamanAsimiDakika`), son ilerleme
+  bildirimine bakıyor, okuma anında işaretleniyor.
+- **Bağlantı koparsa** çalışan iş `Basarisiz` — mesajda "ORKA'da kaydedilmemiş
+  giriş kalmış olabilir".
+- **Kaydet'e ASLA basılmıyor.**
+
+## Ekranlar
+
+**Banka Otomasyon → Aktar:** çözülmüş her yükleme satırında **"ORKA'ya Aktar"**
+düğmesi. Düğmenin rengi ve ipucu ajanın bağlı olup olmadığını söylüyor; bağlı
+değilken de basılabiliyor (iş sıraya girer). Basınca durum kartı açılıyor:
+ilerleme çubuğu, yüzde, mesaj, geçen süre, **İptal**. Bitince sonuç özeti —
+başarılıysa *"175 satır yazıldı. ORKA'da kontrol edip Kaydet'e basın."*,
+başarısızsa hata mesajı.
+
+**Yönetim → Ajanlar:** ajan listesinin altına **Son işler** tablosu (tarih, tip,
+ajan, durum, ilerleme, not).
+
+## Ajan tarafı
+
+`IIsCalistirici` arayüzü ve iki uygulaması:
+
+| Tip | Ne yapar |
+|---|---|
+| `SahteAktarim` | ORKA'ya dokunmadan 10 adım, adım başına 1 sn (C adımı) |
+| `OrkayaAktar` | Gerçek aktarım (D adımı) |
+
+Bağlantı katmanı iş tipini tanımıyor; D adımında **yalnız** ikinci uygulama
+eklendi.
+
+### `OrkayaAktar` akışı
+
+1. İş paketi çözülür (`EkstreYuklemeId`, `FirmaKodu`, `BankaHesabiOrkaKodu`,
+   `SatirSayisi` — hepsini sunucu doldurdu)
+2. İki dosya `%AppData%\PkfRobot\isler\{isId}\` altına indirilir
+3. **Ön doğrulamalar** — biri tutmazsa ORKA'ya hiç dokunulmaz (§121)
+4. `gorevler/orkaya-aktar.json` çalıştırılır; `GridDoldur` kod listesini yazar
+5. Sonuç: `{ YazilanSatir, ToplamSatir, SureSaniye, KaydetBasilmadi: true }`
+6. Başarılıysa klasör silinir; başarısızsa 7 gün durur (§124)
+
+Hata durumunda ekran görüntüsü FileApiService'e yüklenir ve kimliği işe yazılır;
+mesajın sonunda *"ORKA'da yarım kalmış giriş olabilir; KAYDETMEDEN ekranı
+kapatın."*
+
+### Yeni ayarlar (`appsettings.json > Ajan`)
+
+```json
+"IsUcuKoku": "https://www.dijitalmasraf.com/catalog/agent",
+"DosyaYuklemeUcu": "https://www.dijitalmasraf.com/file/v1/uploads"
+```
+
+## Gerçek doğrulama (ev PC'si, yerel sunucular)
+
+### C adımı — uçtan uca çalıştırıldı
+
+IdentityService (5005) + CatalogService (5004) yerelde, anahtar gerçek yönetim
+ucundan, ajan `--ajan` ile. Denemede kalp atışı 5 sn'ye çekildi (varsayılan 30).
+
+**1) İş gönderildi ve çalıştı:**
+
+```
+HTTP 200 | İş ajana gönderildi.
+isId: 9108e729-… | durum: Gönderildi
+  Çalışıyor    %10   Sahte adim 1/10
+  Çalışıyor    %20   Sahte adim 2/10
+  …
+  Tamamlandı   %100  Sahte adim 10/10
+  ozet: {"Adim":10,"Sahte":true,"KaydetBasilmadi":true}
+```
+
+**2) Aynı ajana ikinci iş:**
+
+```
+HTTP 409 | Bu ajanda hâlâ süren bir iş var. Bitmesini bekleyin ya da iptal edin.
+cakisan is: adb3a54b-… Çalışıyor
+```
+
+**3) İptal:** `HTTP 200 | durum: İptal edildi` — ajan log'unda
+`[UYARI] Is iptal edildi: adb3a54b-…`
+
+**4) Ajan kapalıyken iş:**
+
+```
+HTTP 200 | Ajan şu anda bağlı değil. İş sıraya alındı; ajan bağlanınca çalışacak.
+isId: 28390e81-… | durum: Bekliyor
+```
+
+Ajan başlatıldı → iş kendiliğinden gönderildi, %10'dan %100'e ilerleyip
+tamamlandı.
+
+**5) Ajan iş ortasında öldürüldü:**
+
+```
+Başarısız    %30   Sahte adim 3/10
+hata: Ajan bağlantısı koptu; iş yarım kaldı. ORKA'da kaydedilmemiş giriş
+      kalmış olabilir, kaydetmeden kontrol edin.
+```
+
+### D adımı — sunucu tarafı çalıştırıldı, ORKA akışı çalıştırılmadı
+
+**İş paketi doğrulamaları** (canlı, gerçek uçtan):
+
+```
+OrkayaAktar + olmayan ekstre  → HTTP 400 | Ekstre yüklemesi bulunamadı.
+OrkayaAktar + ekstresiz istek → HTTP 400 | Aktarılacak ekstre seçilmedi.
+```
+
+**Yetki sınırları** (canlı):
+
+```
+ajan  -> /agent/isler                : 403
+ajan  -> /agent/baglilar             : 403
+insan -> /agent/is/<id>/ekstre       : 403
+ajan  -> /agent/is/<baskasinin>/ekstre: 404
+ajan  -> /api/catalog/banka-ekstre/ekstre : 403   (varsayilan politika)
+insan -> /api/catalog/banka-ekstre/ekstre : 200
+```
+
+> **Çalıştırılmayan:** ORKA'nın kendisi. Ev PC'sinde ORKA yok ve sahte bir
+> pencereyle taklit edilmedi. `GridDoldur`, giriş zinciri ve Veri Transferi
+> koordinatları **ofiste** doğrulanacak — kontrol listesi aşağıda.
+
+## Ofis doğrulama kontrol listesi (D adımı)
+
+Sırayla, **test firmasında** ve önce **tek satırlık** bir ekstreyle.
+
+### Hazırlık
+
+- [ ] Firmanın ORKA kodu girildi mi? **Yönetim → Firmalarım → firma → ORKA Firma
+      Kodu** (ör. `0001`). Boşsa iş oluşturulmaz, ekranda söylenir.
+- [ ] Banka hesabının ORKA kodu dolu mu? (Banka Otomasyon → Tanımlar)
+- [ ] Ofis makinesinde yeni publish var mı, `PkfRobot.exe --ajan` çalışıyor mu?
+- [ ] Panelde **Yönetim → Ajanlar** satırında "Bağlı" rozeti görünüyor mu?
+- [ ] `appsettings.json > Giris.Sifre` / `FirmaSifresi` dolu mu (ya da
+      `ORKA_SIFRE` / `ORKA_FIRMA_SIFRE` ortam değişkenleri)?
+
+### İlk çalıştırma
+
+- [ ] Bir ekstre yükleyip **bütün satırları çözün** (onay bekleyen kalmasın).
+      Kalırsa iş oluşturulmaz: *"… satır onay bekliyor"*.
+- [ ] **ORKA'ya Aktar** → durum kartı açılmalı, yüzde ilerlemeli.
+- [ ] Robot çalışırken makineyi kullanmayın: robot ORKA penceresini öne
+      getiriyor ve tuşlar oraya gidiyor.
+
+### Akış adım adım — nerede durursa ne bakılacak
+
+| Yüzde | Beklenen | Durursa |
+|---|---|---|
+| %5 | ORKA açılıyor / zaten açık | `OrkaPath` doğru mu |
+| %15 | Giriş + F7 + firma kodu + firma şifresi | `--probe` ile pencere başlıklarına bak |
+| %25 | Veri Transferi ekranı | Modül gezinme tuş sayısı (`RIGHT×3`, `DOWN×1`) firmaya göre değişebilir |
+| %35 | Dosya seçim diyaloğu, dosya yolu yazılıyor | Diyalog başlığı `Transfer Edilecek Excel` mi |
+| %45 | Ekran doğrulaması | Hâlâ Veri Transferi ekranında mıyız |
+| %50–95 | Kodlar yazılıyor | **Hemen durdurun**, aşağıya bakın |
+| %100 | Bitti | — |
+
+- [ ] **%50'den sonra ilk üç satırı gözle kontrol edin:** kodlar doğru satıra mı
+      gidiyor? Kaymışsa **İptal**'e basın ve ORKA'yı **kaydetmeden** kapatın.
+- [ ] Koordinatlar tutmuyorsa (`Tikla` yanlış yere basıyorsa)
+      `PkfRobot.exe --kalibre` ile ölçüp `gorevler/orkaya-aktar.json` içindeki
+      `X`/`Y` değerlerini düzeltin. Kod değişmez.
+- [ ] Bitince ekranda *"… satır yazıldı. ORKA'da kontrol edip Kaydet'e basın."*
+      yazmalı. **Kaydet'e robot basmaz; siz basarsınız.**
+- [ ] ORKA'da satırları gözle geçirin, sonra Kaydet.
+
+### Sonrasında
+
+- [ ] Log: `%AppData%\PkfRobot\logs\ajan-<tarih>.log` ve `C:\RobotLog\<tarih>_orka…\`
+      (adım adım + ekran görüntüleri).
+- [ ] Başarısız olduysa iş klasörü `%AppData%\PkfRobot\isler\{isId}\` altında
+      7 gün duruyor; indirilen iki dosya orada.
+- [ ] Hata ekranının görüntüsü sunucuya yüklendi mi (iş kaydında
+      `HataEkraniDosyaId`)?
+
+### Ölçülecek/doğrulanacak değerler
+
+- [ ] Modül gezinme: `RIGHT` sayısı 3 mü? (yetkiye göre değişir)
+- [ ] Sol panel "Banka Ekstresi" oranı `X: 0.125, Y: 0.300`
+- [ ] Dosya seç düğmesi oranı `X: 0.500, Y: 0.120`
+- [ ] Grid ilk satır / karşı hesap kolonu oranı `X: 0.400, Y: 0.420`
+- [ ] Grid'de ENTER bir alt satıra geçiyor mu? Geçmiyorsa `GridDoldur` içindeki
+      tuş değişmeli (kod değişikliği gerekir, JSON yetmez).
+
+## Testler
+
+| Proje | Önce | Sonra |
+|---|---|---|
+| `CatalogService.UnitTests` | 748 | **777** |
+| `PkfRobot.UnitTests` | 49 | **74** |
+| `IdentityService.UnitTests` | 24 | 24 |
+| `WebApp.UnitTests` | 60 | 60 |
+
+Hepsi geçiyor. Yeni testler:
+
+- `CatalogService.UnitTests/Ajanlar/AjanIsServisiTests` (21) — bağlı ajana
+  gönderme, ajan yokken `Bekliyor`, bağlanınca gönderme, ikinci işin 409'u,
+  başka ajanın işini güncelleyememe, tekrarlanan bildirimin zararsızlığı, geciken
+  eski ilerlemenin çubuğu geri sarmaması, bitmiş işe gelen geç bildirim, zaman
+  aşımı ve ilerleme geldikçe ertelenmesi, zaman aşımına uğrayan işin ajanı meşgul
+  bırakmaması, bağlantı kopunca `Basarisiz`, iptalin ajana bildirilmesi, bitmiş
+  işin iptal edilememesi, **iş bitince sıradakinin gönderilmesi**, firmasız iş,
+  hedef ajanın seçilmesi/reddedilmesi, liste süzgeçleri
+- `CatalogService.UnitTests/Ajanlar/OrkaAktarimYukuTests` (8) — yükün sunucuda
+  kurulması, satır sayısının dışa aktarımdan gelmesi, ORKA firma/hesap kodu
+  eksikse işin oluşmaması, çözülemeyen satır, aktarılacak satır yokluğu
+- `PkfRobot.UnitTests/Ajan/IsCalistirmaTests` (7) — sahte işin 10 adımı, artan
+  yüzdeler, aynı anda ikinci işin reddi, tanınmayan iş tipi, iptal, başka işin
+  iptalinin etkisizliği, ajan kapanırken bildirimi
+- `PkfRobot.UnitTests/Ajan/OrkayaAktarTests` (18) — satır sayısı uyuşmazlığı
+  (kod listesi ve xlsx), boş kod/açıklama, boş liste, xlsx satır sayımı, bozuk
+  xlsx, başarılı aktarımın özeti, ilerleme sırası, grid yüzdelerinin 50–95
+  aralığında kalması, dosya indirilememesi, doğrulama tutmazsa ORKA'ya hiç
+  dokunulmaması, hata ekranının yüklenmesi, bozuk iş paketi, **görev JSON'unda
+  Kaydet adımı olmaması** ve ilerleme kilometre taşları
+
+## Değişen ve eklenen dosyalar
+
+| Yer | Dosyalar |
+|---|---|
+| CatalogService — iş | `Features/Ajanlar/Domain/AjanIsi.cs`, `Dtos/AjanIsDtos.cs`, `Services/IAjanIsServisi.cs` + `AjanIsServisi.cs`, `Services/AjanIsGondericisi.cs`, `Services/OrkaAktarimYuku.cs`, `Controllers/AgentIsController.cs`, `Controllers/AgentDosyaController.cs`, `Infrastructure/EntityConfigurations/AjanIsiEntityTypeConfiguration.cs` |
+| CatalogService — değişen | `AgentHub.cs` (iş metotları), `AgentHubAyarlari.cs` (`IsZamanAsimiDakika`), `AjanKimligi.cs` (varsayılan politika), `Services/IAjanDeposu.cs` + `AjanDeposu.cs` (`AjanaGoreBul`), `Infrastructure/Context/CatalogContext.cs`, `Program.cs`, `Features/Firmalar/**` + `FirmaEntityTypeConfiguration` (`OrkaFirmaKodu`) |
+| Ajan — iş | `Ajan/IsCalistirici.cs` (arayüz + sahte), `Ajan/IsDosyalari.cs`, `Ajan/OrkaSurucusu.cs`, `Ajan/OrkayaAktarCalistirici.cs`, `Core/GridDoldurVerisi.cs`, `gorevler/orkaya-aktar.json` |
+| Ajan — değişen | `Ajan/HubBaglantisi.cs`, `Ajan/AjanServisi.cs`, `Ajan/AjanCalistirici.cs`, `Core/AdimMotoru.cs` (`GridDoldur` + adım geri çağrısı), `Config/Gorev.cs` (`Yuzde`), `Config/RobotConfig.cs`, `appsettings.json`, `PkfRobot.csproj` (ClosedXML) |
+| Blazor | `Pages/BankaEkstre/AktarPage.razor`, `Pages/BankaEkstre/Bolumler/AjanIsKarti.razor` (yeni), `Pages/Yonetim/Ajanlar.razor`, `Pages/Yonetim/FirmaDialog.razor`, `Application/Services/Yonetim/AjanIsApi.cs` (yeni), `Shared/Dto/Yonetim/AjanIsDtos.cs` (yeni) + `Firma*Dto` |
+
+**Değişmeyenler:** `ocelot*.json`, `Nginx/**`, `docker-compose*.yml`,
+IdentityService (ajan kimliği tarafı), JSON adım motorunun mevcut adım tipleri.
+
+## Ne eksik kaldı
+
+- **ORKA akışı ofiste denenmedi.** Yukarıdaki kontrol listesi ilk çalıştırmada
+  izlenecek; koordinatlar ve tuş sayıları orada ölçülecek.
+- **Mükerrer aktarım kontrolü yok.** Aynı ekstre iki kez gönderilirse robot iki
+  kez yazar. Sunucuda "bu yükleme zaten aktarıldı mı" kontrolü yok — Kaydet'e
+  kullanıcı bastığı için bugün zararı sınırlı, ama canlı kullanımdan önce
+  eklenmeli.
+- **Grid'e yazılan doğrulanamıyor.** ORKA'nın gridi okunamadığı için güvence
+  yazmadan önceki sayı kontrolleriyle sınırlı (§121). Gözle kontrol şart.
+- **Tarayıcı yoklamayla güncelleniyor** (§117); SignalR sonra eklenebilir.
+- **FileApiService ajan/insan ayrımı yapmıyor** (§123): ajan token'ı orada
+  geçerli. Bu turda kapsam dışı bırakıldı.
+- **Kuyruk tek tek ilerliyor:** ajan aynı anda tek iş yürüttüğü için bekleyenler
+  sırayla gidiyor — bağlanmada, iş bitince ve iptalde bir sonraki gönderiliyor.
+  Öncelik ya da sıra değiştirme yok; sıra oluşturma zamanına göre.

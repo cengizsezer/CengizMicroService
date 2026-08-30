@@ -19,11 +19,16 @@ namespace CatalogService.Api.Features.Ajanlar.Domain
         public string? IsletimSistemi { get; set; }
 
         /// <summary>
-        /// Kaydın sahibi: <b>token'daki</b> kullanıcı. İstekle gelen
+        /// Kaydın sahibi: <b>token'daki</b> ajan kimliği. İstekle gelen
         /// <see cref="MakineId"/>'ye güvenilmiyor — "kim hangi makineye iş
-        /// gönderebilir" kuralı ileride buna dayanacak.
+        /// gönderebilir" kuralı buna dayanacak.
+        ///
+        /// Ajanı hangi kullanıcının oluşturduğu burada tutulmuyor: o bilgi
+        /// IdentityService'teki <c>Ajanlar</c> tablosunda duruyor ve bu kimlikle
+        /// okunuyor. Hub'ın onu kopyalaması, iki yerde yaşayan tek bir gerçek
+        /// olurdu.
         /// </summary>
-        public string KullaniciId { get; set; } = string.Empty;
+        public string AjanId { get; set; } = string.Empty;
 
         public DateTimeOffset BaglantiZamani { get; set; }
         public DateTimeOffset SonKalpAtisi { get; set; }

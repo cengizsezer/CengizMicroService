@@ -5,6 +5,7 @@ using CatalogService.Api.Features.Ajanlar.Dtos;
 using CatalogService.Api.Features.Ajanlar.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Reflection;
 
 namespace CatalogService.UnitTests.Ajanlar
@@ -14,7 +15,7 @@ namespace CatalogService.UnitTests.Ajanlar
         private static (AgentController Controller, AjanDeposu Depo) Kur(SahteSaat saat)
         {
             var depo = new AjanDeposu(new SabitAyar<AgentHubAyarlari>(AjanTestVerisi.Ayarlar()), saat);
-            return (new AgentController(depo), depo);
+            return (new AgentController(depo, NullLogger<AgentController>.Instance), depo);
         }
 
         private static List<BagliAjanDto> Liste(ActionResult<List<BagliAjanDto>> sonuc)
@@ -40,7 +41,7 @@ namespace CatalogService.UnitTests.Ajanlar
                 MakineAdi = "BANKA-PC",
                 AjanSurumu = "1.0.0",
                 IsletimSistemi = "Windows 11",
-                KullaniciId = "smmm-42",
+                AjanId = "7",
                 OrkaCalisiyorMu = false
             });
 
@@ -50,7 +51,7 @@ namespace CatalogService.UnitTests.Ajanlar
             Assert.Equal("BANKA-PC", satir.MakineAdi);
             Assert.Equal("1.0.0", satir.AjanSurumu);
             Assert.Equal("Windows 11", satir.IsletimSistemi);
-            Assert.Equal("smmm-42", satir.KullaniciId);
+            Assert.Equal("7", satir.AjanId);
             Assert.Equal(saat.GetUtcNow(), satir.BaglantiZamani);
             Assert.Equal(saat.GetUtcNow(), satir.SonKalpAtisi);
             Assert.False(satir.OrkaCalisiyorMu);
@@ -69,9 +70,57 @@ namespace CatalogService.UnitTests.Ajanlar
         }
 
         [Fact]
-        public void Uc_yetkilendirme_istiyor()
+        public void Uc_yalniz_insan_tokenini_kabul_ediyor()
         {
-            Assert.NotNull(typeof(AgentController).GetCustomAttribute<AuthorizeAttribute>());
+            // Durum ucu yönetim ekranının kaynağı; ajanın kendi listesini okuması
+            // için bir neden yok. Politikanın adı burada sabitleniyor, davranışı
+            // AjanPolitikalariTests'te.
+            var yetki = typeof(AgentController).GetCustomAttribute<AuthorizeAttribute>();
+            Assert.Equal(AjanPolitikalari.YalnizInsan, yetki!.Policy);
+        }
+
+        [Fact]
+        public void Dusurme_ucu_admin_ve_insan_tokeni_istiyor()
+        {
+            var yetki = typeof(AgentController)
+                .GetMethod(nameof(AgentController.Dusur))!
+                .GetCustomAttribute<AuthorizeAttribute>();
+
+            Assert.Equal(AjanPolitikalari.YalnizInsan, yetki!.Policy);
+            Assert.Equal("Admin", yetki.Roles);
+        }
+
+        [Fact]
+        public void Dusurme_ajanin_acik_baglantisini_kapatiyor()
+        {
+            var (controller, depo) = Kur(new SahteSaat());
+            var kesildi = false;
+            depo.Kaydet(new AjanKaydi
+            {
+                MakineId = "MAK-1",
+                ConnectionId = "c1",
+                MakineAdi = "BANKA-PC",
+                AjanId = "7",
+                BaglantiyiKes = () => kesildi = true
+            });
+
+            var kac = Assert.IsType<OkObjectResult>(controller.Dusur("7").Result).Value;
+
+            Assert.Equal(1, kac);
+            Assert.True(kesildi);
+            Assert.Empty(Liste(controller.Baglilar()));
+        }
+
+        [Fact]
+        public void Dusurme_baska_ajanin_baglantisina_dokunmuyor()
+        {
+            var (controller, depo) = Kur(new SahteSaat());
+            depo.Kaydet(new AjanKaydi { MakineId = "MAK-1", ConnectionId = "c1", MakineAdi = "A", AjanId = "7" });
+
+            var kac = Assert.IsType<OkObjectResult>(controller.Dusur("8").Result).Value;
+
+            Assert.Equal(0, kac);
+            Assert.Single(Liste(controller.Baglilar()));
         }
 
         [Fact]

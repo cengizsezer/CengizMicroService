@@ -22,6 +22,58 @@ namespace IdentityService.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("IdentityService.Domain.Entities.Ajan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<bool>("Aktif")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("AnahtarHash")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<string>("AnahtarOnEki")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<DateTime?>("GecerlilikBitisi")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IptalNedeni")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("IptalZamani")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("OlusturanKullaniciId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("OlusturmaZamani")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SonKullanim")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnahtarOnEki");
+
+                    b.ToTable("Ajanlar", (string)null);
+                });
+
             modelBuilder.Entity("IdentityService.Domain.Entities.Permission", b =>
                 {
                     b.Property<int>("Id")

@@ -1,0 +1,303 @@
+@page "/yonetim/ajanlar"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Yonetim
+
+@inject IAjanApiClient Api
+@inject IAjanIsApi IsApi
+@inject DialogService Dialog
+@inject NotificationService Notif
+
+<RadzenCard class="rz-p-3">
+
+    <div class="rz-display-flex rz-align-items-center rz-mb-3" style="justify-content:space-between;">
+        <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">
+            Ajanlar <span class="rz-text-muted" style="font-size:0.85rem;">(@_satirlar.Count)</span>
+        </RadzenText>
+        <div style="display:flex; gap:0.5rem;">
+            <RadzenButton Text="Yenile" Icon="refresh" ButtonStyle="ButtonStyle.Light" Click="@Yukle" />
+            <RadzenButton Text="Yeni Ajan" Icon="vpn_key" ButtonStyle="ButtonStyle.Primary" Click="@Olustur" />
+        </div>
+    </div>
+
+    <RadzenText TextStyle="TextStyle.Body2" class="rz-text-muted rz-mb-3">
+        Ajan, ofisteki makinede çalışan PkfRobot. Kendi anahtarıyla kimlik alıyor — kullanıcı
+        parolası ya da 20 dakikalık kullanıcı token'ı o makinede tutulmuyor. Anahtar üretilirken
+        <strong>bir kez</strong> gösteriliyor; sunucuda yalnız özeti duruyor.
+    </RadzenText>
+
+    @if (_hubHatasi is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" AllowClose="false" class="rz-mb-3">
+            Bağlı ajan listesi okunamadı (@_hubHatasi). Kayıtlar aşağıda, "Bağlı" sütunu
+            güvenilir değil.
+        </RadzenAlert>
+    }
+
+    <RadzenDataGrid TItem="Satir"
+                    Data="@_satirlar"
+                    AllowPaging="true" PageSize="20"
+                    AllowSorting="true"
+                    IsLoading="@_yukleniyor"
+                    RowRender="@SatirBiciminiVer"
+                    EmptyText="Kayıtlı ajan yok.">
+        <Columns>
+            <RadzenDataGridColumn TItem="Satir" Property="Ajan.Ad" Title="Ad" />
+
+            <RadzenDataGridColumn TItem="Satir" Title="Anahtar" Width="130px" Sortable="false">
+                <Template Context="s">
+                    <span style="font-family:monospace;">@s.Ajan.AnahtarOnEki…</span>
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="Satir" Title="Durum" Width="150px" Property="Ajan.Durum">
+                <Template Context="s">
+                    <RadzenBadge BadgeStyle="@DurumRengi(s.Ajan.Durum)" Text="@s.Ajan.Durum" />
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="Satir" Title="Bağlı" Width="220px" Sortable="false">
+                <Template Context="s">
+                    @if (s.Bagli is not null)
+                    {
+                        <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Bağlı" class="rz-mr-2" />
+                        <span class="rz-text-muted">
+                            @s.Bagli.MakineAdi (@s.Bagli.AjanSurumu)
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="rz-text-muted">—</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="Satir" Title="Oluşturan" Width="150px" Sortable="false">
+                <Template Context="s">
+                    @(string.IsNullOrWhiteSpace(s.Ajan.OlusturanKullaniciAdi)
+                        ? $"#{s.Ajan.OlusturanKullaniciId}"
+                        : s.Ajan.OlusturanKullaniciAdi)
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="Satir" Property="Ajan.OlusturmaZamani" Title="Oluşturma" Width="150px"
+                                  FormatString="{0:dd.MM.yyyy HH:mm}" />
+
+            <RadzenDataGridColumn TItem="Satir" Title="Son kullanım" Width="150px" Property="Ajan.SonKullanim">
+                <Template Context="s">
+                    @(s.Ajan.SonKullanim is { } t ? t.ToLocalTime().ToString("dd.MM.yyyy HH:mm") : "—")
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="Satir" Title="Geçerlilik" Width="130px" Sortable="false">
+                <Template Context="s">
+                    @(s.Ajan.GecerlilikBitisi is { } t ? t.ToLocalTime().ToString("dd.MM.yyyy") : "süresiz")
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="Satir" Title="İşlemler" Width="120px" Sortable="false">
+                <Template Context="s">
+                    @if (s.Ajan.Aktif)
+                    {
+                        <RadzenButton Icon="block" Text="İptal" Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Danger"
+                                      Click="@(async _ => await IptalEt(s.Ajan))" />
+                    }
+                    else
+                    {
+                        <span class="rz-text-muted" title="@s.Ajan.IptalNedeni">@s.Ajan.IptalNedeni</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+
+</RadzenCard>
+
+<RadzenCard class="rz-p-3 rz-mt-3">
+
+    <RadzenText TextStyle="TextStyle.H6" class="rz-mb-2">
+        Son işler <span class="rz-text-muted" style="font-size:0.85rem;">(@_isler.Count)</span>
+    </RadzenText>
+
+    <RadzenText TextStyle="TextStyle.Body2" class="rz-text-muted rz-mb-3">
+        Ajana gönderilen işler. Bir işin ilerlemesi Banka Otomasyon &gt; Aktar ekranında
+        canlı izleniyor; burada geçmiş duruyor.
+    </RadzenText>
+
+    <RadzenDataGrid TItem="AjanIsDto"
+                    Data="@_isler"
+                    AllowPaging="true" PageSize="10"
+                    AllowSorting="true"
+                    IsLoading="@_yukleniyor"
+                    EmptyText="Henüz iş gönderilmedi.">
+        <Columns>
+            <RadzenDataGridColumn TItem="AjanIsDto" Property="OlusturmaZamani" Title="Oluşturma" Width="150px"
+                                  FormatString="{0:dd.MM.yyyy HH:mm}" />
+
+            <RadzenDataGridColumn TItem="AjanIsDto" Property="IsTipi" Title="Tip" Width="130px" />
+
+            <RadzenDataGridColumn TItem="AjanIsDto" Title="Ajan" Width="120px" Sortable="false">
+                <Template Context="i">@AjanAdi(i.AjanId)</Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="AjanIsDto" Title="Durum" Width="150px" Property="Durum">
+                <Template Context="i">
+                    <RadzenBadge BadgeStyle="@IsDurumRengi(i.Durum)" Text="@i.DurumAdi" />
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="AjanIsDto" Title="İlerleme" Width="110px" Sortable="false">
+                <Template Context="i">@(i.Bitti ? "—" : $"%{i.IlerlemeYuzde}")</Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="AjanIsDto" Title="Not" Sortable="false">
+                <Template Context="i">
+                    @if (!string.IsNullOrWhiteSpace(i.HataMesaji))
+                    {
+                        <span style="color:#c53030">@i.HataMesaji</span>
+                    }
+                    else
+                    {
+                        <span class="rz-text-muted">@i.IlerlemeMesaji</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+
+</RadzenCard>
+
+@code {
+    List<Satir> _satirlar = new();
+    List<AjanIsDto> _isler = new();
+    string? _hubHatasi;
+    bool _yukleniyor;
+
+    protected override async Task OnInitializedAsync() => await Yukle();
+
+    async Task Yukle()
+    {
+        _yukleniyor = true;
+        _hubHatasi = null;
+        try
+        {
+            var kayitlar = await Api.ListeleAsync();
+
+            // Hub ayakta olmasa da kayıtlar gösterilebilmeli: iki kaynak ayrı
+            // servislerde ve biri diğerini bekletmemeli.
+            List<BagliAjanDto> baglilar = new();
+            try
+            {
+                baglilar = await Api.BaglilarAsync();
+            }
+            catch (Exception ex)
+            {
+                _hubHatasi = ex.Message;
+            }
+
+            var bagliyaGore = baglilar
+                .Where(b => !string.IsNullOrWhiteSpace(b.AjanId))
+                .GroupBy(b => b.AjanId)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            _satirlar = kayitlar
+                .Select(a => new Satir
+                {
+                    Ajan = a,
+                    Bagli = bagliyaGore.TryGetValue(a.Id.ToString(), out var b) ? b : null
+                })
+                .ToList();
+
+            try
+            {
+                _isler = await IsApi.ListeleAsync(enFazla: 30);
+            }
+            catch
+            {
+                // İş listesi sayfanın yan bilgisi; okunamazsa ajan listesi yine gelsin.
+                _isler = new();
+            }
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Ajanlar yüklenemedi",
+                Detail = ex.Message,
+                Duration = 6000
+            });
+        }
+        finally
+        {
+            _yukleniyor = false;
+        }
+    }
+
+    async Task Olustur()
+    {
+        var sonuc = await Dialog.OpenAsync<AjanOlusturDialog>("Yeni Ajan",
+            options: new DialogOptions { Width = "560px", CloseDialogOnOverlayClick = false });
+
+        if (sonuc is true) await Yukle();
+    }
+
+    async Task IptalEt(AjanDto ajan)
+    {
+        var sonuc = await Dialog.OpenAsync<AjanIptalDialog>("Ajanı iptal et",
+            new Dictionary<string, object> { [nameof(AjanIptalDialog.Ajan)] = ajan },
+            new DialogOptions { Width = "520px" });
+
+        if (sonuc is true)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "İptal edildi",
+                Detail = $"{ajan.Ad} artık token alamaz.",
+                Duration = 4000
+            });
+            await Yukle();
+        }
+    }
+
+    // Süresi dolan ve iptal edilen satırlar listede görsel olarak ayrışsın.
+    void SatirBiciminiVer(RowRenderEventArgs<Satir> args)
+    {
+        if (!args.Data.Ajan.Aktif || args.Data.Ajan.Durum == "Süresi doldu")
+            args.Attributes["style"] = "opacity:0.55;";
+    }
+
+    /// <summary>İş satırında ajanın adı; kaydı silinmişse kimliği yazılıyor.</summary>
+    string AjanAdi(string ajanId)
+    {
+        var satir = _satirlar.FirstOrDefault(s => s.Ajan.Id.ToString() == ajanId);
+        return satir is null ? $"#{ajanId}" : satir.Ajan.Ad;
+    }
+
+    static BadgeStyle IsDurumRengi(AjanIsDurumu durum) => durum switch
+    {
+        AjanIsDurumu.Tamamlandi => BadgeStyle.Success,
+        AjanIsDurumu.Basarisiz or AjanIsDurumu.ZamanAsimi => BadgeStyle.Danger,
+        AjanIsDurumu.IptalEdildi => BadgeStyle.Light,
+        AjanIsDurumu.Bekliyor => BadgeStyle.Warning,
+        _ => BadgeStyle.Info
+    };
+
+    static BadgeStyle DurumRengi(string durum) => durum switch
+    {
+        "Aktif" => BadgeStyle.Success,
+        "İptal" => BadgeStyle.Danger,
+        _ => BadgeStyle.Warning
+    };
+
+    public class Satir
+    {
+        public AjanDto Ajan { get; set; } = default!;
+        public BagliAjanDto? Bagli { get; set; }
+    }
+}

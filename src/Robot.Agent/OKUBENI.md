@@ -55,6 +55,84 @@ Ofis PC'sinde **derleme yapma** — .NET SDK kurmaya gerek yok.
 
 ---
 
+## Ajan modu (`--ajan`) — sunucuya bağlı kalma
+
+ORKA otomasyonundan **ayrı** bir mod: sunucuya bağlanır ve bağlı kalır. Kalp
+atışı gönderir, ORKA'nın açık olup olmadığını bildirir. Bu modda ORKA'ya
+dokunmaz, görev çalıştırmaz.
+
+```
+PkfRobot.exe --ajan
+```
+
+**İlk çalıştırmada ajan anahtarını sorar.** Anahtarı panelden alırsın:
+**Yönetim → Ajanlar → Yeni Ajan**. `pkfr_` ile başlar ve **bir kez** gösterilir —
+o ekran kapandıktan sonra hiçbir yerden okunamaz, kaybolursa yenisini üretip
+eskisini iptal edersin.
+
+Girilen anahtar `%AppData%\PkfRobot\agent.dat` içine **Windows DPAPI ile
+şifreli** yazılır; publish klasörüne değil, çünkü publish her güncellemede
+üzerine yazılıyor. Bir daha sorulmaz.
+
+| Dosya | Ne |
+|---|---|
+| `%AppData%\PkfRobot\agent.dat` | Ajan anahtarı, şifreli. Başka kullanıcı/makine okuyamaz. |
+| `%AppData%\PkfRobot\makine.dat` | Makine kimliği (GUID). Her açılışta aynı kalsın diye saklanıyor. |
+| `%AppData%\PkfRobot\logs\ajan-<tarih>.log` | Günlük log, 14 günden eskiler silinir. |
+
+Anahtarı değiştirmek gerekirse:
+
+```
+PkfRobot.exe --anahtari-sifirla
+```
+
+**Sunucu adresleri** `appsettings.json > Ajan` bölümünde; Notepad ile
+değiştirilebilir, derleme gerekmez.
+
+### Ağ koparsa
+
+Ajan kendiliğinden yeniden bağlanır: 5 sn, 10 sn, 30 sn, sonra dakikada bir,
+sonsuza kadar. Gece ağ koparsa sabah bağlı olur. Log'a şu düşer:
+
+```
+[UYARI] Baglanti hatasi: ...
+[BILGI] 5 sn sonra yeniden baglanilacak.
+[BILGI] Hub'a baglanildi: BANKA-PC (...), surum 1.0.0, ORKA: acik.
+```
+
+Anahtar **iptal edilmişse** yeniden denemez, şunu yazıp durur:
+
+```
+Ajan anahtari gecersiz veya iptal edilmis. Yonetim > Ajanlar ekranindan yeni
+anahtar uretin ve PkfRobot.exe --ajan --anahtari-sifirla ile girin.
+```
+
+Sunucu **sürümü eski** bulursa da denemez; yeni publish'i kopyalaman gerekir.
+
+### Windows açılışında otomatik başlatma
+
+Ajan oturum açıkken çalışmalı, o yüzden servis değil, **oturum açılışında
+başlayan görev**. Yönetici komut satırında:
+
+```
+schtasks /Create /TN "PkfRobot Ajan" /TR "C:\PkfRobot\PkfRobot.exe --ajan" ^
+  /SC ONLOGON /RL LIMITED /F
+```
+
+Görevi **anahtarı giren kullanıcıyla aynı hesapta** çalıştır — DPAPI kullanıcıya
+bağlı, başka hesapta `agent.dat` çözülemez ve anahtar yeniden sorulur.
+
+Daha basiti: exe'ye kısayol oluştur, hedefine ` --ajan` ekle, kısayolu
+`%AppData%\Microsoft\Windows\Start Menu\Programs\Startup` içine at.
+
+### Anahtar log'a düşmez
+
+Ajan anahtarı hiçbir log satırına yazılmaz; yazılsa bile `pkfr_***` olarak
+maskelenir. Aynısı ajan token'ı için de geçerli. Görev adımlarında ise adında
+`sifre`, `anahtar`, `token` ya da `agent` geçen her değer `***` olarak yazılır.
+
+---
+
 ## İlk çalıştırma sırası
 
 ### 1. Probe — hiçbir tuşa basmaz
@@ -121,6 +199,9 @@ PkfRobot.exe --gorev ... --canli
 
 | Ayar | Ne işe yarar |
 |---|---|
+| `Ajan.TokenUcu` / `Ajan.HubAdresi` | `--ajan` modunun bağlandığı sunucu (anahtar burada değil) |
+| `Ajan.KalpAtisiSaniye` | Canlılık bildirimi aralığı — varsayılan 30 |
+| `Ajan.OrkaSurecAdi` | ORKA açık mı kontrolü için süreç adı (`OrkaPath`'teki exe'nin uzantısız hâli) |
 | `OrkaPath` | ORKA exe'sinin yolu |
 | `DryRun` | `true` iken Kaydet adımları atlanır |
 | `OtomatikOneGetir` | Tuş göndermeden önce ORKA'yı öne getirir — varsayılan `true`, kapatma |

@@ -1,4 +1,7 @@
 using CatalogService.Api.Features.Ajanlar;
+using CatalogService.Api.Features.Ajanlar.Domain;
+using CatalogService.Api.Features.Ajanlar.Dtos;
+using CatalogService.Api.Features.Ajanlar.Services;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
@@ -41,12 +44,17 @@ namespace CatalogService.UnitTests.Ajanlar
     {
         private readonly ClaimsPrincipal? _kullanici;
 
-        public SahteHubBaglami(string connectionId, string? kullaniciId = "kullanici-1")
+        public SahteHubBaglami(string connectionId, string? ajanId = "7")
         {
             ConnectionId = connectionId;
-            _kullanici = kullaniciId is null
+            _kullanici = ajanId is null
                 ? null
-                : new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim("sub", kullaniciId) }, "Test"));
+                : new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(AjanKimligi.TipClaim, AjanKimligi.AjanTipi),
+                    new Claim(AjanKimligi.AjanIdClaim, ajanId),
+                    new Claim("sub", $"ajan-{ajanId}")
+                }, "Test"));
         }
 
         public bool Kesildi { get; private set; }
@@ -59,6 +67,54 @@ namespace CatalogService.UnitTests.Ajanlar
         public override CancellationToken ConnectionAborted => CancellationToken.None;
 
         public override void Abort() => Kesildi = true;
+    }
+
+    /// <summary>
+    /// Hub'ın kayıt kurallarını sınayan testler için iş servisi yerine geçen boş
+    /// uygulama. İş akışının kendisi <c>AjanIsServisiTests</c>'te sınanıyor;
+    /// buradaki testlerin konusu kayıt kabul/ret kararı.
+    /// </summary>
+    public class IssizIsServisi : IAjanIsServisi
+    {
+        public List<string> BekleyenSorulanAjanlar { get; } = new();
+        public List<string> KopanAjanlar { get; } = new();
+
+        public Task<AjanIsiOlusturSonucuDto> OlusturAsync(YeniAjanIsiDto istek, string kullaniciId, CancellationToken ct = default)
+            => Task.FromResult(new AjanIsiOlusturSonucuDto());
+
+        public Task<AjanIsDto?> GetirAsync(Guid id, CancellationToken ct = default)
+            => Task.FromResult<AjanIsDto?>(null);
+
+        public Task<List<AjanIsDto>> ListeleAsync(int? firmaId, AjanIsDurumu? durum, string? ajanId,
+                                                  int enFazla = 50, CancellationToken ct = default)
+            => Task.FromResult(new List<AjanIsDto>());
+
+        public Task<AjanIsDto?> IptalAsync(Guid id, CancellationToken ct = default)
+            => Task.FromResult<AjanIsDto?>(null);
+
+        public Task<bool> BasladiAsync(string ajanId, Guid isId, CancellationToken ct = default)
+            => Task.FromResult(true);
+
+        public Task<bool> IlerlemeAsync(string ajanId, Guid isId, int yuzde, string? mesaj,
+                                        int? tamamlananAdim, CancellationToken ct = default)
+            => Task.FromResult(true);
+
+        public Task<bool> BittiAsync(string ajanId, Guid isId, bool basarili, string? hataMesaji,
+                                     string? sonucOzetiJson, string? hataEkraniDosyaId = null,
+                                     CancellationToken ct = default)
+            => Task.FromResult(true);
+
+        public Task BekleyenleriGonderAsync(string ajanId, CancellationToken ct = default)
+        {
+            BekleyenSorulanAjanlar.Add(ajanId);
+            return Task.CompletedTask;
+        }
+
+        public Task BaglantiKoptuAsync(string ajanId, CancellationToken ct = default)
+        {
+            KopanAjanlar.Add(ajanId);
+            return Task.CompletedTask;
+        }
     }
 
     public static class AjanTestVerisi

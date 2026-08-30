@@ -164,6 +164,9 @@ namespace CatalogService.Api.Infrastructure.Context
         /// </summary>
         public DbSet<Features.BankaEkstre.Domain.IslemKategorisi> EkstreIslemKategorileri => Set<Features.BankaEkstre.Domain.IslemKategorisi>();
 
+        // Ajan isleri: bagli ajan listesi bellekte, ISLER veritabaninda (bkz. KARARLAR).
+        public DbSet<Features.Ajanlar.Domain.AjanIsi> AjanIsleri => Set<Features.Ajanlar.Domain.AjanIsi>();
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -251,6 +254,9 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new VergiKoduEslemesiEntityTypeConfiguration());
             builder.ApplyConfiguration(new KisiYonlendirmeEntityTypeConfiguration());
             builder.ApplyConfiguration(new IslemKategorisiEntityTypeConfiguration());
+
+            // Ajan isleri
+            builder.ApplyConfiguration(new AjanIsiEntityTypeConfiguration());
 
 
             SetBuilderPKFConfiguration(builder);

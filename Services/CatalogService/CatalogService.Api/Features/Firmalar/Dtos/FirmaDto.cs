@@ -1,4 +1,4 @@
-namespace CatalogService.Api.Features.Firmalar.Dtos
+﻿namespace CatalogService.Api.Features.Firmalar.Dtos
 {
     public class FirmaDto
     {
@@ -17,6 +17,9 @@ namespace CatalogService.Api.Features.Firmalar.Dtos
         public string? YetkiliAdi { get; set; }
         public string? YetkiliSoyadi { get; set; }
         public string? TelefonAlanKodu { get; set; }
+
+        /// <summary>Firmanın ORKA'daki kodu; PkfRobot aktarımı için.</summary>
+        public string? OrkaFirmaKodu { get; set; }
 
         // Bu firmanın KDV beyannamesini düzenleyen SMMM/YMM.
         public int? DuzenleyenId { get; set; }

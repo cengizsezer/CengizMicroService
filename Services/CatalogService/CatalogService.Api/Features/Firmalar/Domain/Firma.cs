@@ -1,4 +1,4 @@
-namespace CatalogService.Api.Features.Firmalar.Domain
+﻿namespace CatalogService.Api.Features.Firmalar.Domain
 {
     public class Firma
     {
@@ -20,6 +20,14 @@ namespace CatalogService.Api.Features.Firmalar.Domain
         public string? YetkiliAdi { get; set; }
         public string? YetkiliSoyadi { get; set; }
         public string? TelefonAlanKodu { get; set; }
+
+        /// <summary>
+        /// Firmanın ORKA'daki kodu (ör. "0001"). ORKA giriş zincirinde firma bu
+        /// kodla açılıyor; PkfRobot aktarım işini alırken sunucudan bu değeri
+        /// istiyor. Boş olabilir: ORKA'ya aktarım yapılmayan firmalarda gerekmez,
+        /// aktarım istendiğinde iş anlaşılır bir mesajla reddedilir.
+        /// </summary>
+        public string? OrkaFirmaKodu { get; set; }
 
         // Bu firmanın KDV beyannamesini hangi SMMM/YMM düzenliyor — FK to Duzenleyenler.
         // ON DELETE SET NULL: düzenleyen silinirse firma kaydı korunur, FK temizlenir.

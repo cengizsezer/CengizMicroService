@@ -44,6 +44,8 @@ public class Adim
     ///   EkranGoruntusu  - Isimli ekran goruntusu al
     ///   Dogrula         - Aktif pencere basligi 'Deger' iceriyor mu, icermiyorsa hata
     ///   OnayGerekir     - DryRun ise ATLA, degilse devam (Kaydet adimlari icin)
+    ///   GridDoldur      - ORKA gridine karsi hesap kodlarini yazar (veri disaridan
+    ///                     verilir; yalnizca ORKA aktarim isinde calisir)
     ///   Log             - Log dosyasina not dus
     ///
     /// BeklePencere/Dogrula/Tikla adimlarinda 'Deger' icine '|' ile birden fazla
@@ -75,6 +77,15 @@ public class Adim
     /// 0.0 = ust kenar, 1.0 = alt kenar. Piksel DEGIL.
     /// </summary>
     public double Y { get; set; }
+
+    /// <summary>
+    /// Bu adim baslarken sunucuya bildirilecek ilerleme yuzdesi.
+    ///
+    /// Ilerleme kilometre taslari JSON'da duruyor, kodda degil: akisin hangi
+    /// noktasinin "%25" oldugu akisin kendi bilgisi ve akis degistiginde
+    /// yuzdeler de ayni dosyada degisiyor.
+    /// </summary>
+    public int? Yuzde { get; set; }
 
     /// <summary>
     /// Bu adima ozel pencere bekleme suresi (saniye).

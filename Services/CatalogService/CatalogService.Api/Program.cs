@@ -89,6 +89,9 @@ builder.Services.Configure<CatalogSettings>(configuration.GetSection("CatalogSet
 builder.Services.Configure<AgentHubAyarlari>(configuration.GetSection(AgentHubAyarlari.Bolum));
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IAjanDeposu, AjanDeposu>();
+builder.Services.AddSingleton<IAjanIsGondericisi, HubIsGondericisi>();
+builder.Services.AddScoped<IAjanIsServisi, AjanIsServisi>();
+builder.Services.AddScoped<IOrkaAktarimYuku, OrkaAktarimYuku>();
 builder.Services.AddSignalR();
 builder.Services.ConfigureDbContext(configuration);
 builder.Services.AddHealthChecks()
@@ -112,7 +115,9 @@ builder.Services.AddScoped<IJobService, JobService>();
 builder.Services.AddScoped<CatalogService.Api.Features.PersonnelEmails.Service.IPersonnelEmailService, CatalogService.Api.Features.PersonnelEmails.Service.PersonnelEmailService>();
 builder.Services.AddScoped<IHttpCurrentUser, HttpCurrentUser>();
 builder.Services.AddTransient<AuthForwardingHandler>();
-builder.Services.AddAuthorization();
+// Ajan ve insan token'ları aynı imzayı taşıyor; ayrımı politikalar yapıyor
+// (hub'a yalnız ajan, durum ucuna yalnız insan).
+builder.Services.AddAuthorization(AjanPolitikalari.Ekle);
 builder.Services.AddScoped<IAccountPlanService, AccountPlanService>();
 builder.Services.AddScoped<IDeclarationQueryService, DeclarationQueryService>();
 builder.Services.AddScoped<IDeclarationCommandService, DeclarationCommandService>();

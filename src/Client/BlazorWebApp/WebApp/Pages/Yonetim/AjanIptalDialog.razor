@@ -1,0 +1,67 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Yonetim
+
+@inject IAjanApiClient Api
+@inject DialogService Dialog
+@inject NotificationService Notif
+
+<RadzenTemplateForm TItem="Model" Data="@_model" Submit="@IptalEt">
+    <RadzenStack Gap="0.75rem">
+
+        <RadzenText TextStyle="TextStyle.Body2">
+            <strong>@Ajan.Ad</strong> (@Ajan.AnahtarOnEki…) iptal edilecek. Anahtarla artık
+            token alınamaz ve ajanın açık bağlantısı varsa hemen düşürülür.
+        </RadzenText>
+
+        <RadzenFormField Text="İptal nedeni" Variant="Variant.Outlined">
+            <RadzenTextBox Name="Neden" @bind-Value="_model.Neden" Style="width:100%" MaxLength="500"
+                           Placeholder="Örn: Makine değişti / anahtar sızdı" />
+        </RadzenFormField>
+        <RadzenRequiredValidator Component="Neden" Text="Neden zorunlu" />
+
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+            <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light"
+                          Click="@(() => Dialog.Close(false))" Disabled="@_busy" />
+            <RadzenButton Text="İptal et" Icon="block" ButtonStyle="ButtonStyle.Danger"
+                          ButtonType="ButtonType.Submit" IsBusy="@_busy" Disabled="@_busy" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public AjanDto Ajan { get; set; } = default!;
+
+    readonly Model _model = new();
+    bool _busy;
+
+    async Task IptalEt()
+    {
+        _busy = true;
+        try
+        {
+            await Api.IptalEtAsync(Ajan.Id, _model.Neden);
+            Dialog.Close(true);
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "İptal edilemedi",
+                Detail = ex.Message,
+                Duration = 6000
+            });
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    public class Model
+    {
+        public string Neden { get; set; } = "";
+    }
+}

@@ -21,7 +21,7 @@ namespace CatalogService.UnitTests.Ajanlar
             ConnectionId = connectionId,
             MakineAdi = makineAdi,
             AjanSurumu = "1.0.0",
-            KullaniciId = "kullanici-1",
+            AjanId = "7",
             BaglantiyiKes = kes
         };
 

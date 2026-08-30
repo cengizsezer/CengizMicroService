@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using FlaUI.Core.Input;
 using FlaUI.UIA3;
+using PkfRobot.Ajan;
 using PkfRobot.Config;
 using PkfRobot.Core;
 
@@ -25,6 +26,10 @@ public static class Program
 
             var cfgYolu = p.ConfigYolu ?? Path.Combine(AppContext.BaseDirectory, "appsettings.json");
             var cfg = RobotConfig.Yukle(cfgYolu);
+
+            // --- AJAN MODU: hub'a bagli kal. ORKA'ya dokunmaz, gorev calistirmaz. ---
+            if (p.Ajan)
+                return AjanCalistir(cfg, p);
 
             // Komut satiri config'i ezer
             if (p.FirmaKodu != null) cfg.Firma.Kod = p.FirmaKodu;
@@ -98,6 +103,25 @@ public static class Program
             Console.WriteLine(ex.ToString());
             return 1;
         }
+    }
+
+    /// <summary>
+    /// Ajan modu: hub'a baglanip bagli kalir. Ctrl+C ile duzgun kapanir --
+    /// sureci aniden oldurmek, sunucuda kalp atisi zaman asimina kadar duracak
+    /// hayalet bir kayit birakmak demek.
+    /// </summary>
+    private static int AjanCalistir(RobotConfig cfg, Parametreler p)
+    {
+        using var iptal = new CancellationTokenSource();
+
+        Console.CancelKeyPress += (_, e) =>
+        {
+            e.Cancel = true;   // sureci hemen kapatma, dongu kendisi cikacak
+            iptal.Cancel();
+        };
+
+        return AjanCalistirici.CalistirAsync(cfg, p.AnahtariSifirla, iptal.Token)
+                              .GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -251,12 +275,19 @@ public static class Program
 PkfRobot - ORKA masaustu otomasyon ajani
 
 KULLANIM:
+  PkfRobot.exe --ajan
   PkfRobot.exe --gorev gorevler\01-orka-ac-firma-sec.json --sifre GIZLI
   PkfRobot.exe --probe
   PkfRobot.exe --kalibre
   PkfRobot.exe --gorev ... --firma 0004 --canli
 
 PARAMETRELER:
+  --ajan              Sunucuya baglanir ve bagli kalir (kalp atisi + ORKA durumu).
+                      Ilk calistirmada ajan anahtarini sorar ve DPAPI ile
+                      %AppData%\PkfRobot\agent.dat icine sifreli kaydeder.
+                      Ctrl+C ile durur. ORKA'ya dokunmaz, gorev calistirmaz.
+  --anahtari-sifirla  Kayitli ajan anahtarini siler, yenisini sorar
+                      (ajan modunu kendisi acar)
   --gorev <yol>       Calistirilacak gorev JSON dosyasi
   --config <yol>      Ayar dosyasi (varsayilan: appsettings.json)
   --firma <kod>       Firma kodunu ez (or: 0001)
@@ -280,6 +311,12 @@ SIFRELER (oncelik sirasi yukaridan asagiya):
     set ORKA_FIRMA_SIFRE=yyy
     PkfRobot.exe --gorev gorevler\01-orka-ac-firma-sec.json
 
+AJAN MODU:
+  Anahtar DijitalMasraf > Yonetim > Ajanlar ekranindan alinir (pkfr_ ile baslar).
+  Bir kez girilir; %AppData%\PkfRobot altinda sifreli durur, publish uzerine
+  yazildiginda kaybolmaz. Log: %AppData%\PkfRobot\logs\ajan-<tarih>.log
+  Sunucu adresleri appsettings.json > Ajan bolumunde.
+
 NOTLAR:
   * Varsayilan olarak DryRun aciktir, Kaydet adimlari atlanir.
   * Her calistirma C:\RobotLog altinda ayri klasor acar (log + ekran goruntusu).
@@ -297,6 +334,8 @@ public class Parametreler
     public string? Sifre { get; set; }
     public bool Probe { get; set; }
     public bool Kalibre { get; set; }
+    public bool Ajan { get; set; }
+    public bool AnahtariSifirla { get; set; }
     public bool CanliMod { get; set; }
     public bool Yardim { get; set; }
     public Dictionary<string, string> EkDegiskenler { get; } = new();
@@ -319,6 +358,11 @@ public class Parametreler
                 case "--sifre":     p.Sifre = Sonraki(); break;
                 case "--probe":     p.Probe = true; break;
                 case "--kalibre":   p.Kalibre = true; break;
+                case "--ajan":      p.Ajan = true; break;
+                case "--anahtari-sifirla":
+                    p.AnahtariSifirla = true;
+                    p.Ajan = true;   // tek basina anlami yok; ajan modunu kendisi acar
+                    break;
                 case "--canli":     p.CanliMod = true; break;
                 case "--yardim":
                 case "--help":

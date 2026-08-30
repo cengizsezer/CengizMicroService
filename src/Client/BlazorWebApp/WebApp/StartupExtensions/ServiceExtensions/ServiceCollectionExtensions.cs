@@ -190,6 +190,16 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             services.AddScoped<IUserAdminService>(sp =>
                 new UserAdminService(sp.GetRequiredService<HttpClient>()));
 
+            // Ajanlar: kayıtlar IdentityService'te, "bağlı mı" CatalogService'te;
+            // istemci ikisini de aynı gateway üzerinden okuyor.
+            services.AddScoped<IAjanApiClient>(sp =>
+                new AjanApiClient(sp.GetRequiredService<HttpClient>()));
+
+            // Ajan isleri: Aktar ekranindaki "ORKA'ya Aktar" ve Ajanlar sayfasindaki
+            // son isler listesi ayni istemciyi kullaniyor.
+            services.AddScoped<IAjanIsApi>(sp =>
+                new AjanIsApi(sp.GetRequiredService<HttpClient>()));
+
             services.AddScoped<ISovosAdminService>(sp =>
                 new SovosAdminService(
                     sp.GetRequiredService<IHttpClientFactory>().CreateClient("SovosAdminLong")));

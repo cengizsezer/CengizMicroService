@@ -1,0 +1,237 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Yonetim
+
+@implements IDisposable
+@inject IAjanIsApi Api
+@inject NotificationService Notif
+
+@*
+    Ajana gönderilen işin canlı durumu.
+
+    DURUM YOKLAMAYLA güncelleniyor (2 saniyede bir), tarayıcıya SignalR eklenerek
+    değil: ikinci bir hub, Blazor WASM istemcisi ve ek nginx yapılandırması demek
+    olurdu ve bu ekranda tek bir işin ilerlemesi izleniyor. Sonra eklenebilir.
+*@
+
+@if (_is is null)
+{
+    <div class="ajan-is-karti bekliyor">İş durumu okunuyor…</div>
+}
+else
+{
+    <div class="ajan-is-karti @DurumSinifi">
+        <div class="ajan-is-baslik">
+            <RadzenBadge BadgeStyle="@DurumRengi" Text="@_is.DurumAdi" />
+            <span class="ajan-is-sure">@GecenSure</span>
+
+            @if (!_is.Bitti)
+            {
+                <RadzenButton Text="İptal" Icon="cancel" ButtonStyle="ButtonStyle.Light"
+                              Size="ButtonSize.ExtraSmall" Disabled="@_iptalEdiliyor"
+                              Click="@IptalEt" />
+            }
+            else
+            {
+                <RadzenButton Icon="close" title="Kartı kapat" ButtonStyle="ButtonStyle.Light"
+                              Size="ButtonSize.ExtraSmall" Click="@Kapat" />
+            }
+        </div>
+
+        @if (!_is.Bitti)
+        {
+            <RadzenProgressBar Value="@_is.IlerlemeYuzde" ShowValue="true" Style="width:100%; margin-top:6px;" />
+        }
+
+        <div class="ajan-is-mesaj">
+            @if (!string.IsNullOrWhiteSpace(_is.HataMesaji))
+            {
+                <span class="kotu">@_is.HataMesaji</span>
+            }
+            else if (_is.Durum == AjanIsDurumu.Tamamlandi)
+            {
+                <span class="iyi">@BasariMesaji</span>
+            }
+            else if (_is.Durum == AjanIsDurumu.Bekliyor)
+            {
+                <span>Ajan bağlı değil. İş sıraya alındı; ajan bağlanınca çalışacak.</span>
+            }
+            else
+            {
+                @(_is.IlerlemeMesaji ?? "Ajana iletildi, başlaması bekleniyor…")
+            }
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>İzlenecek iş.</summary>
+    [Parameter, EditorRequired] public Guid IsId { get; set; }
+
+    /// <summary>Her yoklamada; ana ekran listesini tazelemek isteyebilir.</summary>
+    [Parameter] public EventCallback<AjanIsDto> Degisti { get; set; }
+
+    /// <summary>Kullanıcı kartı kapattı.</summary>
+    [Parameter] public EventCallback Kapandi { get; set; }
+
+    private static readonly TimeSpan YoklamaAraligi = TimeSpan.FromSeconds(2);
+
+    private AjanIsDto? _is;
+    private bool _iptalEdiliyor;
+    private CancellationTokenSource? _yoklama;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Durdur();
+        _is = null;
+
+        _yoklama = new CancellationTokenSource();
+        await OkuAsync(_yoklama.Token);
+        _ = YoklamaDongusu(IsId, _yoklama.Token);
+    }
+
+    /// <summary>
+    /// İş bitene kadar yokluyor. Bitince duruyor: tamamlanmış bir işi saniyede bir
+    /// sormanın karşılığı yok.
+    /// </summary>
+    private async Task YoklamaDongusu(Guid isId, CancellationToken ct)
+    {
+        try
+        {
+            while (!ct.IsCancellationRequested && _is?.Bitti != true)
+            {
+                await Task.Delay(YoklamaAraligi, ct);
+                if (ct.IsCancellationRequested) return;
+
+                await OkuAsync(ct);
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Kart kapandı ya da başka bir iş izlenmeye başladı.
+        }
+    }
+
+    private async Task OkuAsync(CancellationToken ct)
+    {
+        try
+        {
+            var okunan = await Api.GetirAsync(IsId, ct);
+            if (okunan is null) return;
+
+            _is = okunan;
+            if (Degisti.HasDelegate) await Degisti.InvokeAsync(okunan);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            // Geçici ağ hatası yoklamayı durdurmasın; bir sonraki turda yine denenir.
+        }
+    }
+
+    private async Task IptalEt()
+    {
+        _iptalEdiliyor = true;
+        try
+        {
+            var sonuc = await Api.IptalAsync(IsId);
+            if (sonuc is not null) _is = sonuc;
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "İptal edilemedi", ex.Message, 5000);
+        }
+        finally
+        {
+            _iptalEdiliyor = false;
+        }
+    }
+
+    private async Task Kapat()
+    {
+        Durdur();
+        if (Kapandi.HasDelegate) await Kapandi.InvokeAsync();
+    }
+
+    private void Durdur()
+    {
+        _yoklama?.Cancel();
+        _yoklama?.Dispose();
+        _yoklama = null;
+    }
+
+    public void Dispose() => Durdur();
+
+    private string GecenSure
+    {
+        get
+        {
+            if (_is is null) return string.Empty;
+
+            var bitis = _is.BitisZamani ?? DateTime.UtcNow;
+            var sure = bitis - (_is.BaslamaZamani ?? _is.OlusturmaZamani);
+            if (sure < TimeSpan.Zero) sure = TimeSpan.Zero;
+
+            return sure.TotalMinutes >= 1
+                ? $"{(int)sure.TotalMinutes} dk {sure.Seconds} sn"
+                : $"{sure.Seconds} sn";
+        }
+    }
+
+    /// <summary>
+    /// Sonuç özeti sunucudan JSON geliyor; ekranda ham JSON göstermek yerine
+    /// bilinen alanlar okunuyor, bilinmeyen tipte özet olduğu gibi yazılıyor.
+    /// </summary>
+    private string BasariMesaji
+    {
+        get
+        {
+            var ozet = _is?.SonucOzeti;
+            if (string.IsNullOrWhiteSpace(ozet)) return "Tamamlandı.";
+
+            try
+            {
+                using var belge = System.Text.Json.JsonDocument.Parse(ozet);
+                var kok = belge.RootElement;
+
+                if (kok.TryGetProperty("YazilanSatir", out var yazilan))
+                {
+                    var toplam = kok.TryGetProperty("ToplamSatir", out var t) ? t.GetInt32() : yazilan.GetInt32();
+                    return $"{yazilan.GetInt32()}/{toplam} satır yazıldı. " +
+                           "ORKA'da kontrol edip Kaydet'e basın — robot Kaydet'e basmadı.";
+                }
+
+                if (kok.TryGetProperty("Sahte", out var sahte) && sahte.GetBoolean())
+                    return "Sahte aktarım tamamlandı (ORKA'ya dokunulmadı).";
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                // Özet beklenen biçimde değil; ham hâli göstermek yanıltıcı olur.
+            }
+
+            return "Tamamlandı.";
+        }
+    }
+
+    private string DurumSinifi => _is?.Durum switch
+    {
+        AjanIsDurumu.Tamamlandi => "iyi",
+        AjanIsDurumu.Basarisiz or AjanIsDurumu.ZamanAsimi => "kotu",
+        AjanIsDurumu.IptalEdildi => "notr",
+        _ => "calisiyor"
+    };
+
+    private BadgeStyle DurumRengi => _is?.Durum switch
+    {
+        AjanIsDurumu.Tamamlandi => BadgeStyle.Success,
+        AjanIsDurumu.Basarisiz or AjanIsDurumu.ZamanAsimi => BadgeStyle.Danger,
+        AjanIsDurumu.IptalEdildi => BadgeStyle.Light,
+        AjanIsDurumu.Bekliyor => BadgeStyle.Warning,
+        _ => BadgeStyle.Info
+    };
+}

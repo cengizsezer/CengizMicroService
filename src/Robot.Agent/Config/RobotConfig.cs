@@ -25,6 +25,9 @@ public class RobotConfig
     public PencereAyar Pencereler { get; set; } = new();
     public List<string> BeklenmeyenPencereler { get; set; } = new();
 
+    /// <summary>Hub baglantisi (--ajan modu). ORKA otomasyonundan bagimsiz.</summary>
+    public AjanAyar Ajan { get; set; } = new();
+
     public static RobotConfig Yukle(string yol)
     {
         if (!File.Exists(yol))
@@ -75,6 +78,46 @@ public class EkranGoruntusuAyar
 {
     public bool HerAdimda { get; set; } = true;
     public bool HataDurumunda { get; set; } = true;
+}
+
+/// <summary>
+/// Ajanin sunucuya baglanma ayarlari.
+///
+/// Adresler koda gomulmedi: yayin adresi degistiginde ya da bir seyi yerelde
+/// denemek gerektiginde Notepad yetsin, yeniden derleme gerekmesin -- projedeki
+/// appsettings disiplininin ayni gerekcesi.
+/// </summary>
+public class AjanAyar
+{
+    /// <summary>Anahtari token'a ceviren uc.</summary>
+    public string TokenUcu { get; set; } = "https://www.dijitalmasraf.com/auth/agent/token";
+
+    /// <summary>Hub adresi. wss:// yazilabilir; istemci https://'e cevirir.</summary>
+    public string HubAdresi { get; set; } = "https://www.dijitalmasraf.com/agenthub";
+
+    /// <summary>
+    /// Kalp atisi araligi. Sunucunun zaman asimi 90 saniye; 30 saniye, tek bir
+    /// kacan atisin ajani listeden dusurmemesi icin secildi.
+    /// </summary>
+    public int KalpAtisiSaniye { get; set; } = 30;
+
+    /// <summary>Token'in kalan omru bunun altina inince yenilenir.</summary>
+    public int TokenYenilemeEsigiDakika { get; set; } = 30;
+
+    /// <summary>Ajan log dosyalari bu gunden eskiyse silinir.</summary>
+    public int LogSaklamaGun { get; set; } = 14;
+
+    /// <summary>ORKA'nin surec adi (uzantisiz). OrkaPath ile ayni exe olmali.</summary>
+    public string OrkaSurecAdi { get; set; } = "OrkaWinIceberg.64";
+
+    /// <summary>
+    /// Is dosyalarinin indirildigi kok (<c>{kok}/is/{isId}/ekstre</c> ve
+    /// <c>/kod-listesi</c>). Ajan yalnizca kendi isinin dosyalarini alabiliyor.
+    /// </summary>
+    public string IsUcuKoku { get; set; } = "https://www.dijitalmasraf.com/catalog/agent";
+
+    /// <summary>Hata ekraninin yuklendigi uc (FileApiService, genel yukleme).</summary>
+    public string DosyaYuklemeUcu { get; set; } = "https://www.dijitalmasraf.com/file/v1/uploads";
 }
 
 public class PencereAyar

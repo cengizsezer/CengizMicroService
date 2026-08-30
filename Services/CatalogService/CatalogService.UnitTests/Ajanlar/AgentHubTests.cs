@@ -25,13 +25,16 @@ namespace CatalogService.UnitTests.Ajanlar
 
         private static (AgentHub Hub, AjanDeposu Depo, SahteHubBaglami Baglam) Kur(
             AgentHubAyarlari? ayar = null, SahteSaat? saat = null,
-            string connectionId = "c1", string? kullaniciId = "kullanici-1")
+            string connectionId = "c1", string? ajanId = "7")
         {
             ayar ??= AjanTestVerisi.Ayarlar();
             var izleyici = new SabitAyar<AgentHubAyarlari>(ayar);
             var depo = new AjanDeposu(izleyici, saat ?? new SahteSaat());
-            var baglam = new SahteHubBaglami(connectionId, kullaniciId);
-            var hub = new AgentHub(depo, izleyici, NullLogger<AgentHub>.Instance) { Context = baglam };
+            var baglam = new SahteHubBaglami(connectionId, ajanId);
+            var hub = new AgentHub(depo, izleyici, new IssizIsServisi(), NullLogger<AgentHub>.Instance)
+            {
+                Context = baglam
+            };
             return (hub, depo, baglam);
         }
 
@@ -103,15 +106,15 @@ namespace CatalogService.UnitTests.Ajanlar
         }
 
         [Fact]
-        public async Task Kaydin_sahibi_token_daki_kullanici()
+        public async Task Kaydin_sahibi_token_daki_ajan()
         {
-            // İstekte kullanıcı alanı yok; olsaydı da ona güvenilmezdi. "Kim hangi
+            // İstekte kimlik alanı yok; olsaydı da ona güvenilmezdi. "Kim hangi
             // makineye iş gönderebilir" kuralı bu alana dayanacak.
-            var (hub, depo, _) = Kur(kullaniciId: "smmm-42");
+            var (hub, depo, _) = Kur(ajanId: "42");
 
             await hub.Kaydol(Istek());
 
-            Assert.Equal("smmm-42", Assert.Single(depo.Baglilar()).KullaniciId);
+            Assert.Equal("42", Assert.Single(depo.Baglilar()).AjanId);
         }
 
         [Fact]
@@ -122,11 +125,17 @@ namespace CatalogService.UnitTests.Ajanlar
             var depo = new AjanDeposu(izleyici, new SahteSaat());
 
             var eskiBaglam = new SahteHubBaglami("c1");
-            var eskiHub = new AgentHub(depo, izleyici, NullLogger<AgentHub>.Instance) { Context = eskiBaglam };
+            var eskiHub = new AgentHub(depo, izleyici, new IssizIsServisi(), NullLogger<AgentHub>.Instance)
+            {
+                Context = eskiBaglam
+            };
             await eskiHub.Kaydol(Istek());
 
             var yeniBaglam = new SahteHubBaglami("c2");
-            var yeniHub = new AgentHub(depo, izleyici, NullLogger<AgentHub>.Instance) { Context = yeniBaglam };
+            var yeniHub = new AgentHub(depo, izleyici, new IssizIsServisi(), NullLogger<AgentHub>.Instance)
+            {
+                Context = yeniBaglam
+            };
             await yeniHub.Kaydol(Istek());
 
             Assert.True(eskiBaglam.Kesildi);
@@ -170,11 +179,13 @@ namespace CatalogService.UnitTests.Ajanlar
         }
 
         [Fact]
-        public void Hub_yetkilendirme_istiyor()
+        public void Hub_yalniz_ajan_tokenini_kabul_ediyor()
         {
             // Token'sız bağlantı reddi taşıma katmanında gerçekleşiyor; burada
-            // sınanan, o kapının hiç konmadan unutulmamış olması.
-            Assert.NotNull(typeof(AgentHub).GetCustomAttribute<AuthorizeAttribute>());
+            // sınanan, o kapının hiç konmadan unutulmamış olması ve kapının
+            // kullanıcı token'ına da kapalı olması.
+            var yetki = typeof(AgentHub).GetCustomAttribute<AuthorizeAttribute>();
+            Assert.Equal(AjanPolitikalari.YalnizAjan, yetki!.Policy);
         }
 
         [Fact]

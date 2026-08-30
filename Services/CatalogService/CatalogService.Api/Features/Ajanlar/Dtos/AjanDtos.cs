@@ -33,7 +33,13 @@ namespace CatalogService.Api.Features.Ajanlar.Dtos
         public string MakineAdi { get; set; } = string.Empty;
         public string AjanSurumu { get; set; } = string.Empty;
         public string? IsletimSistemi { get; set; }
-        public string KullaniciId { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Bağlantıyı kuran ajan kimliği. Yönetim ekranı bu alanla, IdentityService'ten
+        /// gelen ajan listesini hub'daki bağlı listesiyle eşleştiriyor.
+        /// </summary>
+        public string AjanId { get; set; } = string.Empty;
+
         public DateTimeOffset BaglantiZamani { get; set; }
         public DateTimeOffset SonKalpAtisi { get; set; }
         public bool? OrkaCalisiyorMu { get; set; }

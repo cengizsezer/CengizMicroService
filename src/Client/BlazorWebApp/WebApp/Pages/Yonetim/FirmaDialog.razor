@@ -1,4 +1,4 @@
-@using System.Net
+﻿@using System.Net
 @using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services.KdvBeyanname
@@ -65,6 +65,14 @@
                 </HeaderTemplate>
                 <ChildContent>
                     <RadzenStack Gap="0.75rem">
+
+                        <RadzenFormField Text="ORKA Firma Kodu" Variant="Variant.Outlined">
+                            <RadzenTextBox Name="OrkaFirmaKodu"
+                                           @bind-Value="Model.OrkaFirmaKodu"
+                                           Style="width:100%"
+                                           MaxLength="20"
+                                           Placeholder="Örn: 0001 — PkfRobot'un ORKA girişinde kullandığı kod" />
+                        </RadzenFormField>
 
                         <RadzenFormField Text="Vergi Dairesi Kodu" Variant="Variant.Outlined">
                             <RadzenTextBox Name="VergiDairesiKodu"
@@ -168,6 +176,7 @@
                 TicaretSicilNo = Existing.TicaretSicilNo,
                 VergiDairesi = Existing.VergiDairesi,
                 VergiDairesiKodu = Existing.VergiDairesiKodu,
+                OrkaFirmaKodu = Existing.OrkaFirmaKodu,
                 YetkiliAdi = Existing.YetkiliAdi,
                 YetkiliSoyadi = Existing.YetkiliSoyadi,
                 TelefonAlanKodu = Existing.TelefonAlanKodu,
@@ -213,6 +222,7 @@
                     TicaretSicilNo = Model.TicaretSicilNo.Trim(),
                     VergiDairesi = Model.VergiDairesi.Trim(),
                     VergiDairesiKodu = Model.VergiDairesiKodu?.Trim(),
+                    OrkaFirmaKodu = Model.OrkaFirmaKodu?.Trim(),
                     YetkiliAdi = Model.YetkiliAdi?.Trim(),
                     YetkiliSoyadi = Model.YetkiliSoyadi?.Trim(),
                     TelefonAlanKodu = Model.TelefonAlanKodu?.Trim(),

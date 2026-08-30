@@ -6,10 +6,13 @@
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Domain.Models.User
 @using WebApp.Manager
+@using WebApp.Application.Services.Yonetim
 @using WebApp.Pages.BankaEkstre.Bolumler
 @using WebApp.Shared.Dto.BankaEkstre
+@using WebApp.Shared.Dto.Yonetim
 
 @inject IBankaEkstreApi Api
+@inject IAjanIsApi AjanIsleri
 @inject NotificationService Notif
 @inject DialogService Dialog
 @inject NavigationManager Nav
@@ -89,6 +92,20 @@
     .is-birak { text-align: center; padding: 18px 8px; color: #a0aec0; font-size: 12px;
                 border: 1px dashed #cbd5e0; border-radius: 6px; }
     .is-aksiyon { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+
+    /* Ajan isi durum karti (AjanIsKarti bileseni) */
+    .ajan-is-karti { border: 1px solid #cbd5e0; border-left-width: 4px; border-radius: 6px;
+                     padding: 10px 12px; margin: 12px 0; background: #fff; font-size: 12px; }
+    .ajan-is-karti.calisiyor { border-left-color: #3182ce; }
+    .ajan-is-karti.iyi       { border-left-color: #38a169; }
+    .ajan-is-karti.kotu      { border-left-color: #e53e3e; }
+    .ajan-is-karti.notr      { border-left-color: #a0aec0; }
+    .ajan-is-karti.bekliyor  { color: #718096; }
+    .ajan-is-baslik { display: flex; align-items: center; gap: 8px; }
+    .ajan-is-sure { color: #718096; margin-right: auto; }
+    .ajan-is-mesaj { margin-top: 6px; color: #4a5568; }
+    .ajan-is-mesaj .iyi  { color: #276749; font-weight: 600; }
+    .ajan-is-mesaj .kotu { color: #c53030; }
     .is-bos { padding: 30px; text-align: center; color: #a0aec0; }
 </style>
 
@@ -287,6 +304,15 @@ else
                                     <RadzenButton Text="Dışa aktar" Icon="download" ButtonStyle="ButtonStyle.Secondary"
                                                   Size="ButtonSize.ExtraSmall"
                                                   Click="@(() => Nav.NavigateTo($"/banka-otomasyon/onay/{yukleme.Id}"))" />
+
+                                    <RadzenButton Text="ORKA'ya Aktar" Icon="smart_toy"
+                                                  ButtonStyle="@(AjanBagliMi ? ButtonStyle.Success : ButtonStyle.Warning)"
+                                                  Size="ButtonSize.ExtraSmall"
+                                                  Disabled="@_isGonderiliyor"
+                                                  title="@(AjanBagliMi
+                                                            ? $"Ajan bağlı: {BagliMakineAdi}"
+                                                            : "Ajan bağlı değil — iş sıraya alınır, ajan bağlanınca çalışır")"
+                                                  Click="@(() => OrkayaAktarAsync(yukleme))" />
                                 }
 
                                 <RadzenButton Icon="delete" title="Yüklemeyi sil" ButtonStyle="ButtonStyle.Light"
@@ -296,6 +322,13 @@ else
                     </div>
                 }
             </div>
+        }
+
+        @if (_izlenenIsId is { } izlenen)
+        {
+            <AjanIsKarti IsId="@izlenen"
+                         Degisti="@IsDegistiAsync"
+                         Kapandi="@(() => { _izlenenIsId = null; return Task.CompletedTask; })" />
         }
 
         @if (GizliHesapSayisi > 0)
@@ -341,6 +374,14 @@ else
 
     private bool _yukleniyor = true;
     private bool _isleniyor;
+
+    // ---- ORKA'ya aktarma (ajan işi) ----
+    private List<BagliAjanDto> _bagliAjanlar = new();
+    private Guid? _izlenenIsId;
+    private bool _isGonderiliyor;
+
+    private bool AjanBagliMi => _bagliAjanlar.Count > 0;
+    private string BagliMakineAdi => _bagliAjanlar.FirstOrDefault()?.MakineAdi ?? string.Empty;
 
     private int _yil = DateTime.Today.Year;
     private int _ay = DateTime.Today.Month;
@@ -413,7 +454,13 @@ else
         if (sorgu.TryGetValue("firmaId", out var ham) && int.TryParse(ham.ToString(), out var id) && id > 0)
             _firmaId = id;
 
-        return YukleAsync();
+        return IlkYuklemeAsync();
+    }
+
+    private async Task IlkYuklemeAsync()
+    {
+        await YukleAsync();
+        await BagliAjanlariOkuAsync();
     }
 
     /// <summary>
@@ -564,6 +611,72 @@ else
         }
 
         _yuklemeler = await Api.GetYuklemelerAsync(_firmaId);
+    }
+
+    /// <summary>
+    /// Ekstreyi ORKA'ya aktarması için ajana iş gönderir.
+    ///
+    /// Ajan bağlı değilse de gönderiliyor: iş <c>Bekliyor</c> kalır ve ajan
+    /// bağlandığında sunucu onu sıradan alır. Kullanıcı düğmeye bastığında
+    /// robotun açık olup olmadığını bilmek zorunda değil.
+    /// </summary>
+    private async Task OrkayaAktarAsync(EkstreYuklemeDto yukleme)
+    {
+        _isGonderiliyor = true;
+        try
+        {
+            // İşin firması yüklemenin kendisinden; ekrandaki filtre "tümü" olabilir.
+            var sonuc = await AjanIsleri.OlusturAsync(new YeniAjanIsiRequest
+            {
+                FirmaId = yukleme.FirmaId,
+                IsTipi = AjanIsTipleri.OrkayaAktar,
+                Yuk = System.Text.Json.JsonSerializer.Serialize(new { EkstreYuklemeId = yukleme.Id })
+            });
+
+            if (sonuc.Is is null)
+            {
+                // Çakışma ya da hedef bulunamadı: sunucunun mesajı olduğu gibi gösteriliyor.
+                Notif.Notify(NotificationSeverity.Warning, "Gönderilemedi", sonuc.Mesaj, 7000);
+
+                if (sonuc.CakisanIs is not null) _izlenenIsId = sonuc.CakisanIs.Id;
+                return;
+            }
+
+            _izlenenIsId = sonuc.Is.Id;
+            Notif.Notify(
+                sonuc.Is.AjanBagliydi ? NotificationSeverity.Success : NotificationSeverity.Info,
+                sonuc.Is.AjanBagliydi ? "Ajana gönderildi" : "Sıraya alındı",
+                sonuc.Mesaj, 5000);
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(NotificationSeverity.Error, "Gönderilemedi", ex.Message, 7000);
+        }
+        finally
+        {
+            _isGonderiliyor = false;
+        }
+    }
+
+    /// <summary>İş bitince ajan listesi tazeleniyor: ORKA durumu değişmiş olabilir.</summary>
+    private async Task IsDegistiAsync(AjanIsDto guncel)
+    {
+        if (!guncel.Bitti) return;
+        await BagliAjanlariOkuAsync();
+    }
+
+    private async Task BagliAjanlariOkuAsync()
+    {
+        try
+        {
+            _bagliAjanlar = await AjanIsleri.BaglilarAsync();
+        }
+        catch
+        {
+            // Ajan durumu ekranın yan bilgisi; okunamazsa "bağlı değil" gibi
+            // davranılıyor ve ekranın kalanı çalışmaya devam ediyor.
+            _bagliAjanlar = new();
+        }
     }
 
     /// <summary>Onay ve bildirim metinlerinde geçen firma adı — boşsa da bir şey yazsın.</summary>

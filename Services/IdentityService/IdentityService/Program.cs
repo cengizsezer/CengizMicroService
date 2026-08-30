@@ -5,6 +5,7 @@ using HealthChecks.UI.Client;
 using IdentityService.Application.ConsulRegistration;
 using IdentityService.Application.DbRegistration;
 using IdentityService.Application.Services;
+using IdentityService.Application.Services.Agent;
 using IdentityService.Domain.Entities;
 using IdentityService.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -139,6 +140,16 @@ try
 
     builder.Services.AddScoped<IIdentityService, IdentityService.Application.Services.IdentityService>();
 
+    // Ajan kimliği: uzun ömürlü anahtar -> 8 saatlik ajan token'ı.
+    // Anahtar hash'i parolayla aynı hasher'dan geçiyor (PBKDF2); ayrı bir
+    // algoritma seçmemek için Identity'nin kendi hasher'ı kaydediliyor.
+    builder.Services.AddSingleton(TimeProvider.System);
+    builder.Services.AddScoped<IPasswordHasher<Ajan>, PasswordHasher<Ajan>>();
+    builder.Services.AddScoped<IAjanKimlikServisi, AjanKimlikServisi>();
+
+    // Ajan token ucu anonim; anahtar denemesine karşı hız sınırı var.
+    builder.Services.AddRateLimiter(AjanHizSiniri.Ekle);
+
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(c =>
@@ -267,6 +278,7 @@ try
    
     //app.UseHttpsRedirection();
     app.UseRouting();
+    app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
 

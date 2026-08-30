@@ -70,6 +70,35 @@ namespace CatalogService.Api.Features.Ajanlar.Services
             return true;
         }
 
+        public AjanKaydi? AjanaGoreBul(string ajanId)
+        {
+            if (string.IsNullOrWhiteSpace(ajanId)) return null;
+
+            // Zaman aşımına uğramış kayıt "bağlı" sayılmamalı; Baglilar() üzerinden
+            // gidiliyor, böylece süzme kuralı tek yerde kalıyor.
+            return Baglilar()
+                .Where(a => string.Equals(a.AjanId, ajanId, StringComparison.Ordinal))
+                .OrderByDescending(a => a.BaglantiZamani)
+                .FirstOrDefault();
+        }
+
+        public IReadOnlyList<AjanKaydi> AjanaGoreCikar(string ajanId)
+        {
+            if (string.IsNullOrWhiteSpace(ajanId)) return Array.Empty<AjanKaydi>();
+
+            var cikanlar = new List<AjanKaydi>();
+            foreach (var kayit in _makineyeGore.Values)
+            {
+                if (!string.Equals(kayit.AjanId, ajanId, StringComparison.Ordinal)) continue;
+
+                // Karşılaştırmalı çıkarma: araya yeni bir kayıt girdiyse ona dokunma.
+                if (_makineyeGore.TryRemove(new KeyValuePair<string, AjanKaydi>(kayit.MakineId, kayit)))
+                    cikanlar.Add(kayit);
+            }
+
+            return cikanlar;
+        }
+
         public IReadOnlyList<AjanKaydi> Baglilar()
         {
             var simdi = _saat.GetUtcNow();

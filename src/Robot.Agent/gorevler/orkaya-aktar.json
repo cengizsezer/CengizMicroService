@@ -1,0 +1,172 @@
+{
+  "Ad": "ORKA'ya banka ekstresi aktarimi",
+  "Aciklama": "Sunucudan gelen isle calisir. Firma kodu ve dosya yolu degisken olarak gecer: {firmaKodu}, {firmaSifre}, {dosyaYolu}, {hesapKodu}. KAYDET ADIMI YOKTUR VE EKLENMEYECEKTIR - kullanici gozle kontrol edip kendisi kaydeder.",
+  "Adimlar": [
+    {
+      "Tip": "Log",
+      "Deger": "ORKA aktarimi basliyor. Kaydet'e BASILMAYACAK."
+    },
+    {
+      "Tip": "OrkaBaslat",
+      "Not": "ORKA baslatiliyor",
+      "Yuzde": 5
+    },
+    {
+      "Tip": "BeklePencere",
+      "Deger": "Orka SQL",
+      "Not": "Giris ekrani"
+    },
+    {
+      "Tip": "Yaz",
+      "Deger": "{sifre}",
+      "Not": "giris sifresi"
+    },
+    {
+      "Tip": "Tus",
+      "Deger": "ENTER",
+      "Adet": 1
+    },
+    {
+      "Tip": "Kisayol",
+      "Deger": "F7",
+      "Not": "Giris yapiliyor, firma aciliyor",
+      "Yuzde": 15
+    },
+    {
+      "Tip": "TemizleYaz",
+      "Deger": "{firmaKodu}",
+      "Not": "ORKA firma kodu"
+    },
+    {
+      "Tip": "Tus",
+      "Deger": "ENTER",
+      "Adet": 2
+    },
+    {
+      "Tip": "BeklePencere",
+      "Deger": "Giriniz",
+      "Not": "Firma sifresi popup'i"
+    },
+    {
+      "Tip": "Yaz",
+      "Deger": "{firmaSifre}",
+      "Not": "firma sifresi"
+    },
+    {
+      "Tip": "Kisayol",
+      "Deger": "ALT+T"
+    },
+    {
+      "Tip": "Tus",
+      "Deger": "ENTER",
+      "Adet": 1
+    },
+    {
+      "Tip": "BeklePencere",
+      "Deger": "ORKA_",
+      "Not": "Ana ekran"
+    },
+    {
+      "Tip": "EkranGoruntusu",
+      "Deger": "firma-acildi"
+    },
+    {
+      "Tip": "Tus",
+      "Deger": "RIGHT",
+      "Adet": 3,
+      "Not": "Modul gezinme"
+    },
+    {
+      "Tip": "Tus",
+      "Deger": "DOWN",
+      "Adet": 1,
+      "Not": "TRANSFERLER"
+    },
+    {
+      "Tip": "Tus",
+      "Deger": "ENTER",
+      "Adet": 1
+    },
+    {
+      "Tip": "BeklePencere",
+      "Deger": "Veri Transferi|Transfer Islemleri",
+      "TimeoutSn": 60,
+      "Yuzde": 25,
+      "Not": "Veri Transferi ekrani aciliyor"
+    },
+    {
+      "Tip": "EkranGoruntusu",
+      "Deger": "veri-transferi"
+    },
+    {
+      "Tip": "Tikla",
+      "X": 0.125,
+      "Y": 0.3,
+      "Not": "Sol panel - Banka Ekstresi"
+    },
+    {
+      "Tip": "Bekle",
+      "Sayi": 800
+    },
+    {
+      "Tip": "Tikla",
+      "X": 0.5,
+      "Y": 0.12,
+      "Not": "Dosya sec dugmesi"
+    },
+    {
+      "Tip": "BeklePencere",
+      "Deger": "Transfer Edilecek Excel",
+      "Not": "Ekstre dosyasi yukleniyor",
+      "Yuzde": 35
+    },
+    {
+      "Tip": "TemizleYaz",
+      "Deger": "{dosyaYolu}",
+      "Not": "Duzeltilmis ekstre dosyasi"
+    },
+    {
+      "Tip": "Tus",
+      "Deger": "ENTER",
+      "Adet": 1
+    },
+    {
+      "Tip": "Bekle",
+      "Sayi": 2000,
+      "Not": "Dosya okunuyor"
+    },
+    {
+      "Tip": "Dogrula",
+      "Deger": "Veri Transferi|Transfer Islemleri",
+      "Not": "Ekran dogrulaniyor",
+      "Yuzde": 45
+    },
+    {
+      "Tip": "EkranGoruntusu",
+      "Deger": "dosya-yuklendi"
+    },
+    {
+      "Tip": "Tikla",
+      "X": 0.4,
+      "Y": 0.42,
+      "Not": "Grid ilk satir, karsi hesap kolonu"
+    },
+    {
+      "Tip": "Bekle",
+      "Sayi": 500
+    },
+    {
+      "Tip": "GridDoldur",
+      "Not": "Karsi hesap kodlari; satirlar sunucudan gelen kod listesinden",
+      "Yuzde": 50
+    },
+    {
+      "Tip": "EkranGoruntusu",
+      "Deger": "aktarim-bitti"
+    },
+    {
+      "Tip": "Log",
+      "Deger": "Aktarim bitti. KAYDET'E BASILMADI - kontrol edip siz kaydedin."
+    }
+  ]
+}

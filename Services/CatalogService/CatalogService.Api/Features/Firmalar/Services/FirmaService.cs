@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.Firmalar.Domain;
+﻿using CatalogService.Api.Features.Firmalar.Domain;
 using CatalogService.Api.Features.Firmalar.Dtos;
 using CatalogService.Api.Infrastructure.Context;
 using CatalogService.Api.Infrastructure.Exceptions;
@@ -39,6 +39,7 @@ namespace CatalogService.Api.Features.Firmalar.Services
                     TicaretSicilNo     = f.TicaretSicilNo,
                     VergiDairesi       = f.VergiDairesi,
                     VergiDairesiKodu   = f.VergiDairesiKodu,
+                    OrkaFirmaKodu      = f.OrkaFirmaKodu,
                     YetkiliAdi         = f.YetkiliAdi,
                     YetkiliSoyadi      = f.YetkiliSoyadi,
                     TelefonAlanKodu    = f.TelefonAlanKodu,
@@ -91,6 +92,7 @@ namespace CatalogService.Api.Features.Firmalar.Services
                 TicaretSicilNo = dto.TicaretSicilNo.Trim(),
                 VergiDairesi = dto.VergiDairesi.Trim(),
                 VergiDairesiKodu = dto.VergiDairesiKodu?.Trim(),
+                OrkaFirmaKodu = dto.OrkaFirmaKodu?.Trim(),
                 YetkiliAdi = dto.YetkiliAdi?.Trim(),
                 YetkiliSoyadi = dto.YetkiliSoyadi?.Trim(),
                 TelefonAlanKodu = dto.TelefonAlanKodu?.Trim(),
@@ -134,6 +136,7 @@ namespace CatalogService.Api.Features.Firmalar.Services
             firma.TicaretSicilNo = dto.TicaretSicilNo.Trim();
             firma.VergiDairesi = dto.VergiDairesi.Trim();
             firma.VergiDairesiKodu = dto.VergiDairesiKodu?.Trim();
+            firma.OrkaFirmaKodu = dto.OrkaFirmaKodu?.Trim();
             firma.YetkiliAdi = dto.YetkiliAdi?.Trim();
             firma.YetkiliSoyadi = dto.YetkiliSoyadi?.Trim();
             firma.TelefonAlanKodu = dto.TelefonAlanKodu?.Trim();
@@ -180,6 +183,7 @@ namespace CatalogService.Api.Features.Firmalar.Services
             TicaretSicilNo = f.TicaretSicilNo,
             VergiDairesi = f.VergiDairesi,
             VergiDairesiKodu = f.VergiDairesiKodu,
+            OrkaFirmaKodu = f.OrkaFirmaKodu,
             YetkiliAdi = f.YetkiliAdi,
             YetkiliSoyadi = f.YetkiliSoyadi,
             TelefonAlanKodu = f.TelefonAlanKodu,

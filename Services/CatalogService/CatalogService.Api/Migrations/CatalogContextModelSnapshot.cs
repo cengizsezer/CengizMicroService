@@ -67,6 +67,84 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("AccountNodes", "catalog");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.Ajanlar.Domain.AjanIsi", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AjanId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime?>("BaslamaZamani")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("BitisZamani")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Durum")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FirmaId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("GonderimZamani")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("HataEkraniDosyaId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("HataMesaji")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("IlerlemeMesaji")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("IlerlemeYuzde")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IsTipi")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("OlusturanKullaniciId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("OlusturmaZamani")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SonIlerlemeZamani")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SonucOzeti")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TamamlananAdim")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ToplamAdim")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Yuk")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AjanId", "Durum");
+
+                    b.HasIndex("FirmaId", "OlusturmaZamani");
+
+                    b.ToTable("AjanIsleri", "catalog");
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.Banka.Domain.Hesap", b =>
                 {
                     b.Property<int>("Id")
@@ -2097,6 +2175,10 @@ namespace CatalogService.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OrkaFirmaKodu")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("Telefon")
                         .IsRequired()

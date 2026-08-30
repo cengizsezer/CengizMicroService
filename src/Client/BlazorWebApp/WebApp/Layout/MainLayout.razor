@@ -222,6 +222,13 @@
                     <RadzenPanelMenuItem Text="Mükellefler" Icon="groups"   Path="/yonetim/mukellefler" />
                     <RadzenPanelMenuItem Text="Düzenleyen Bilgileri" Icon="badge" Path="/yonetim/duzenleyen" />
                     <RadzenPanelMenuItem Text="Personel Mailleri" Icon="mail" Path="/yonetim/personel-mailleri" />
+                    <AuthorizeView Roles="Admin">
+                        <Authorized>
+                            @* Ajan anahtarları yalnız Admin'e açık; sayfanın kendisi de
+                               [Authorize(Roles="Admin")] taşıyor. *@
+                            <RadzenPanelMenuItem Text="Ajanlar" Icon="smart_toy" Path="/yonetim/ajanlar" />
+                        </Authorized>
+                    </AuthorizeView>
                 </RadzenPanelMenuItem>
 
                 <AuthorizeView Roles="Admin">

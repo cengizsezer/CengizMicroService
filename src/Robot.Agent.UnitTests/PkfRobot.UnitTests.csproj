@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- PkfRobot net8.0-windows; DPAPI ve surec okuma zaten Windows'a bagli. -->
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="xunit" Version="2.5.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- PkfRobot cozume dahil DEGIL; test projesi ona dosya yolundan bagli.
+         Referans ediliyor olmasi onu cozume sokmuyor. Test projesi Robot.Agent
+         klasorunun ICINDE degil: orada olsaydi PkfRobot'un varsayilan **/*.cs
+         taramasi test dosyalarini da derlemeye alirdi. -->
+    <ProjectReference Include="..\Robot.Agent\PkfRobot.csproj" />
+  </ItemGroup>
+
+</Project>
