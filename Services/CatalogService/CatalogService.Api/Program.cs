@@ -141,6 +141,10 @@ builder.Services.AddScoped<CatalogService.Api.Features.FirmaBilgileri.Services.I
 // Anasayfa: mevcut servislerin sayaçlarını tek çağrıda toplar.
 builder.Services.AddScoped<CatalogService.Api.Features.Anasayfa.Services.IAnasayfaService,
                            CatalogService.Api.Features.Anasayfa.Services.AnasayfaService>();
+
+// Anasayfa firma paneli: tüm firmaların künyesi + uyarıları tek çağrıda.
+builder.Services.AddScoped<CatalogService.Api.Features.Anasayfa.Services.IFirmaPaneliService,
+                           CatalogService.Api.Features.Anasayfa.Services.FirmaPaneliService>();
 builder.Services.AddScoped<IFirmaService, FirmaService>();
 builder.Services.AddScoped<IKdvBeyannameQueryService, KdvBeyannameQueryService>();
 builder.Services.AddScoped<IDuzenleyenService, DuzenleyenService>();

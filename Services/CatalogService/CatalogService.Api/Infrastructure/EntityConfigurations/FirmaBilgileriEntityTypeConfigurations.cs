@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.FirmaBilgileri.Domain;
+﻿using CatalogService.Api.Features.FirmaBilgileri.Domain;
 using CatalogService.Api.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -23,6 +23,7 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             entity.Property(x => x.NaceKodu).HasMaxLength(20);
             entity.Property(x => x.SermayeParaBirimi).HasMaxLength(3);
             entity.Property(x => x.Sermaye).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.MukellefiyetTurleri).HasMaxLength(300);
 
             // Firma başına tek sicil kaydı.
             entity.HasIndex(x => x.FirmaId).IsUnique();

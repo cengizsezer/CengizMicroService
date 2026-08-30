@@ -1,0 +1,42 @@
+@*
+    TCKN / VKN gösterimi: varsayılan MASKELİ, tıklanınca açılır.
+
+    Değer sunucudan tam geliyor ve maskeleme ekranda yapılıyor. Aynı kullanıcı bu
+    kimlikleri Firma Bilgileri ekranında zaten düz metin olarak görüyor ve düzenliyor —
+    maskeleme yeni bir yetki sınırı değil, "omuz üstünden bakılan ekranda kimlik numarası
+    durmasın" tedbiri. Sunucuda maskeleyip açmak için ikinci bir uç açmak, kazanç
+    getirmeden bir uç daha demek olurdu.
+*@
+
+@if (string.IsNullOrWhiteSpace(Deger))
+{
+    <span class="fp-bos">—</span>
+}
+else
+{
+    <span class="fp-kimlik" role="button" title="@(acik ? "Gizlemek için tıklayın" : "Göstermek için tıklayın")"
+          @onclick="Degistir" @onclick:stopPropagation>
+        @(acik ? Deger : Maskele(Deger))
+    </span>
+}
+
+@code {
+    [Parameter] public string? Deger { get; set; }
+
+    private bool acik;
+
+    private void Degistir() => acik = !acik;
+
+    /// <summary>
+    /// Baştan 4, sondan 3 hane açık; arası yıldız (11 hanede <c>1234****901</c>).
+    /// Kısa/biçimsiz değerler olduğu gibi bırakılıyor: yarım maskelenmiş bir metin
+    /// kullanıcıya "veri bozuk" izlenimi verirdi.
+    /// </summary>
+    public static string Maskele(string deger)
+    {
+        var temiz = deger.Trim();
+        if (temiz.Length < 8) return temiz;
+
+        return temiz[..4] + new string('*', temiz.Length - 7) + temiz[^3..];
+    }
+}

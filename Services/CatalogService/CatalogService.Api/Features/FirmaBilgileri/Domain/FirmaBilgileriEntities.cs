@@ -1,4 +1,4 @@
-namespace CatalogService.Api.Features.FirmaBilgileri.Domain
+﻿namespace CatalogService.Api.Features.FirmaBilgileri.Domain
 {
     /// <summary>
     /// Firmanın sicil bilgilerinden <b>catalog.Firmalar'da olmayanlar</b>.
@@ -30,6 +30,26 @@ namespace CatalogService.Api.Features.FirmaBilgileri.Domain
         public decimal? Sermaye { get; set; }
 
         public string? SermayeParaBirimi { get; set; } = "TRY";
+
+        /// <summary>
+        /// Mükellefiyet türleri, serbest metin: "Kurumlar, KDV, Muhtasar".
+        ///
+        /// Kod listesi yapılmadı — türler firmaya göre değişiyor ve kullanıcı listeye
+        /// olmayanı yazamazsa alanı boş bırakır; boş alan yanlış alandan beterdir.
+        /// </summary>
+        public string? MukellefiyetTurleri { get; set; }
+
+        /// <summary>e-Fatura mükellefi mi? <c>null</c> = bilinmiyor; ekran "—" gösterir.</summary>
+        public bool? EFatura { get; set; }
+
+        /// <summary>e-Defter mükellefi mi? <c>null</c> = bilinmiyor.</summary>
+        public bool? EDefter { get; set; }
+
+        /// <summary>
+        /// Vergi dairesine işe başlama tarihi. <see cref="KurulusTarihi"/> ile aynı şey
+        /// değil: şirket kurulup aylar sonra mükellefiyet açtırabiliyor.
+        /// </summary>
+        public DateTime? IseBaslamaTarihi { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime? UpdatedAt { get; set; }

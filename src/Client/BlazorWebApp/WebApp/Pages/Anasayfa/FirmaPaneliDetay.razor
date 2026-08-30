@@ -1,0 +1,297 @@
+@using System.Globalization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Components
+@using WebApp.Shared.Dto.Anasayfa
+@using WebApp.Shared.Dto.FirmaBilgileri
+
+@inject NavigationManager Nav
+@inject IFileApiService FileApi
+@inject DialogService DialogService
+
+@*
+    Seçili firmanın künyesi: mükellefiyet, sicil, ortaklık, imza yetkilileri, belgeler.
+
+    Ekran OKUMA odaklı. Her bölümün "Düzenle" bağlantısı mevcut Firma Bilgileri
+    ekranına götürüyor; buraya ikinci bir düzenleme yüzeyi konmadı — aynı alanı iki
+    formdan yazmak, birini doğrulayıp diğerini unutmanın kapısıdır.
+
+    Boş alan gizlenmiyor, "—" yazılıyor: eksik olduğunun görünmesi bu ekranın işi.
+*@
+
+<RadzenStack Gap="0.75rem">
+
+    @if (Detay.Uyarilar.Count > 0)
+    {
+        <div class="fp-uyari-kutu">
+            @foreach (var uyari in Detay.Uyarilar)
+            {
+                <div class="fp-uyari-satir">
+                    <RadzenIcon Icon="@Simge(uyari.Tur)" Style="font-size:16px" />
+                    <span>@uyari.Mesaj</span>
+                </div>
+            }
+        </div>
+    }
+
+    @* ---- Mükellefiyet ---- *@
+    <RadzenCard Variant="Variant.Outlined" class="fp-bolum">
+        @Baslik("badge", "Mükellefiyet")
+
+        <div class="fp-alanlar">
+            @Alan("Vergi dairesi", Detay.Mukellefiyet.VergiDairesi)
+            @Alan("Vergi kimlik no", Detay.Mukellefiyet.VergiKimlikNo)
+            @Alan("Mükellefiyet türleri", Detay.Mukellefiyet.MukellefiyetTurleri)
+            @Alan("İşe başlama", Tarih(Detay.Mukellefiyet.IseBaslamaTarihi))
+            @Alan("NACE kodu", Detay.Mukellefiyet.NaceKodu)
+            <div class="fp-alan">
+                <div class="fp-etiket">e-Fatura / e-Defter</div>
+                <div class="fp-deger">
+                    @Rozet("e-Fatura", Detay.Mukellefiyet.EFatura)
+                    @Rozet("e-Defter", Detay.Mukellefiyet.EDefter)
+                </div>
+            </div>
+        </div>
+    </RadzenCard>
+
+    @* ---- Sicil ---- *@
+    <RadzenCard Variant="Variant.Outlined" class="fp-bolum">
+        @Baslik("apartment", "Sicil")
+
+        <div class="fp-alanlar">
+            @Alan("Ticaret sicil no", Detay.Sicil.TicaretSicilNo)
+            @Alan("MERSİS no", Detay.Sicil.MersisNo)
+            @Alan("Sermaye", Sermaye())
+            @Alan("Kuruluş tarihi", Tarih(Detay.Sicil.KurulusTarihi))
+        </div>
+
+        <div class="fp-alan fp-genis">
+            <div class="fp-etiket">Adres</div>
+            <div class="fp-deger">@(Bos(Detay.Sicil.Adres) ? "—" : Detay.Sicil.Adres)</div>
+        </div>
+    </RadzenCard>
+
+    @* ---- Ortaklık ---- *@
+    <RadzenCard Variant="Variant.Outlined" class="fp-bolum">
+        @Baslik("groups", "Ortaklık")
+
+        @if (Detay.Ortaklik.Ortaklar.Count == 0)
+        {
+            <div class="fp-bos-satir">Ortak kaydı yok.</div>
+        }
+        else
+        {
+            <div class="fp-tablo-kutu">
+                <table class="fp-tablo">
+                    <thead>
+                        <tr>
+                            <th>Ad</th>
+                            <th style="width:150px">TCKN / VKN</th>
+                            <th style="width:150px" class="fp-sag">Pay tutarı</th>
+                            <th style="width:110px" class="fp-sag">Pay oranı</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var ortak in Detay.Ortaklik.Ortaklar)
+                        {
+                            <tr>
+                                <td>@ortak.Ad</td>
+                                <td class="fp-mono"><MaskeliKimlik Deger="@ortak.TcknVkn" /></td>
+                                <td class="fp-sag fp-mono">@Para(ortak.PayTutari)</td>
+                                <td class="fp-sag fp-mono">@Yuzde(ortak.PayOrani)</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="@(Detay.Ortaklik.PayOraniUyarisi ? "fp-toplam fp-hatali" : "fp-toplam")">
+                            <td colspan="2">Toplam</td>
+                            <td class="fp-sag fp-mono">@Para(Detay.Ortaklik.ToplamPayTutari)</td>
+                            <td class="fp-sag fp-mono">@Yuzde(Detay.Ortaklik.ToplamPayOrani)</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        }
+    </RadzenCard>
+
+    @* ---- İmza yetkilileri ---- *@
+    <RadzenCard Variant="Variant.Outlined" class="fp-bolum">
+        @Baslik("draw", "İmza yetkilileri")
+
+        @if (Detay.Yetkililer.Count == 0)
+        {
+            <div class="fp-bos-satir">İmza yetkilisi kaydı yok.</div>
+        }
+        else
+        {
+            <div class="fp-tablo-kutu">
+                <table class="fp-tablo">
+                    <thead>
+                        <tr>
+                            <th>Ad</th>
+                            <th style="width:190px">Görev / unvan</th>
+                            <th style="width:110px">Temsil</th>
+                            <th style="width:210px">Yetki bitişi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var yetkili in Detay.Yetkililer)
+                        {
+                            <tr class="@YetkiliSinifi(yetkili)">
+                                <td>@yetkili.Ad</td>
+                                <td>@(Bos(yetkili.Gorev) ? "—" : yetkili.Gorev)</td>
+                                <td>@(yetkili.TemsilSekli == TemsilSekli.Musterek ? "Müşterek" : "Münferit")</td>
+                                <td>
+                                    @if (yetkili.YetkiBitis is null)
+                                    {
+                                        <span class="fp-bos">Süresiz</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="fp-mono">@yetkili.YetkiBitis.Value.ToString("dd.MM.yyyy")</span>
+                                        <span class="fp-kalan"> · @KalanMetni(yetkili)</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </RadzenCard>
+
+    @* ---- Belgeler ---- *@
+    <RadzenCard Variant="Variant.Outlined" class="fp-bolum">
+        @Baslik("folder", "Belgeler")
+
+        <div class="fp-belgeler">
+            @foreach (var tur in BelgeTurleri)
+            {
+                var mevcut = Detay.Belgeler.Where(b => b.Tur == tur.Deger).ToList();
+
+                @if (mevcut.Count == 0)
+                {
+                    <span class="fp-belge fp-belge-yok" role="button" @onclick="Duzenle"
+                          title="@(tur.Ad + " eklemek için Firma Bilgileri ekranına gidin")">
+                        <RadzenIcon Icon="add" Style="font-size:15px" />
+                        @tur.Ad
+                    </span>
+                }
+                else
+                {
+                    @foreach (var belge in mevcut)
+                    {
+                        <span class="fp-belge" role="button" @onclick="@(() => Goruntule(belge, tur.Ad))"
+                              title="@belge.FileName">
+                            <RadzenIcon Icon="picture_as_pdf" Style="font-size:15px;color:#c53030" />
+                            @tur.Ad
+                            @if (!Bos(belge.Aciklama))
+                            {
+                                <span class="fp-belge-not">@belge.Aciklama</span>
+                            }
+                        </span>
+                    }
+                }
+            }
+        </div>
+    </RadzenCard>
+
+</RadzenStack>
+
+@code {
+    [Parameter, EditorRequired] public FirmaPaneliDetayDto Detay { get; set; } = new();
+
+    private static readonly CultureInfo Tr = new("tr-TR");
+
+    private sealed record BelgeTuruSecenegi(FirmaBelgeTuru Deger, string Ad);
+
+    /// <summary>Firma Bilgileri ekranındaki türlerle aynı sıra ve adlar.</summary>
+    private static readonly BelgeTuruSecenegi[] BelgeTurleri =
+    {
+        new(FirmaBelgeTuru.ImzaSirkuleri, "İmza sirküleri"),
+        new(FirmaBelgeTuru.VergiLevhasi, "Vergi levhası"),
+        new(FirmaBelgeTuru.FaaliyetBelgesi, "Faaliyet belgesi"),
+        new(FirmaBelgeTuru.TicaretSicilGazetesi, "Ticaret sicil gazetesi"),
+        new(FirmaBelgeTuru.Diger, "Diğer")
+    };
+
+    private static bool Bos(string? metin) => string.IsNullOrWhiteSpace(metin);
+
+    private static string Tarih(DateTime? tarih) => tarih?.ToString("dd.MM.yyyy") ?? string.Empty;
+
+    private static string Para(decimal tutar) => tutar.ToString("N2", Tr);
+
+    private static string Yuzde(decimal oran) => "%" + oran.ToString("0.##", Tr);
+
+    private string Sermaye()
+        => Detay.Sicil.Sermaye is { } tutar
+            ? $"{Para(tutar)} {Detay.Sicil.SermayeParaBirimi ?? "TRY"}"
+            : string.Empty;
+
+    private static string Simge(FirmaUyariTuru tur) => tur switch
+    {
+        FirmaUyariTuru.ImzaYetkisiBitiyor => "event_busy",
+        FirmaUyariTuru.PayOraniTutmuyor => "percent",
+        _ => "help_outline"
+    };
+
+    /// <summary>Süresi dolan sarı, dolmuş kırmızımsı; kalanı nötr.</summary>
+    private static string YetkiliSinifi(FirmaPaneliYetkiliDto yetkili)
+    {
+        if (yetkili.SuresiDoldu) return "fp-yetki-doldu";
+        return yetkili.KalanGun is { } kalan && kalan < 60 ? "fp-yetki-yakin" : string.Empty;
+    }
+
+    private static string KalanMetni(FirmaPaneliYetkiliDto yetkili)
+    {
+        if (yetkili.KalanGun is not { } kalan) return string.Empty;
+        if (kalan < 0) return $"{Math.Abs(kalan)} gün önce doldu";
+        if (kalan == 0) return "bugün doluyor";
+        return $"{kalan} gün kaldı";
+    }
+
+    private RenderFragment Baslik(string simge, string metin) => __builder =>
+    {
+        <div class="fp-bolum-basi">
+            <span class="fp-bolum-ad">
+                <RadzenIcon Icon="@simge" Style="font-size:17px" />
+                @metin
+            </span>
+            <span class="fp-duzenle" role="button" @onclick="Duzenle">Düzenle</span>
+        </div>
+    };
+
+    private RenderFragment Alan(string etiket, string? deger) => __builder =>
+    {
+        <div class="fp-alan">
+            <div class="fp-etiket">@etiket</div>
+            <div class="fp-deger">@(Bos(deger) ? "—" : deger)</div>
+        </div>
+    };
+
+    /// <summary>Üç hâl: evet / hayır / bilinmiyor. Boş bırakılmış alan "hayır" değildir.</summary>
+    private RenderFragment Rozet(string ad, bool? durum) => __builder =>
+    {
+        <span class="@(durum is null ? "fp-rozet fp-rozet-bos" : durum.Value ? "fp-rozet fp-rozet-var" : "fp-rozet fp-rozet-yok")">
+            @ad: @(durum is null ? "—" : durum.Value ? "var" : "yok")
+        </span>
+    };
+
+    private void Duzenle() => Nav.NavigateTo($"/yonetim/firmalar/{Detay.FirmaId}/bilgiler");
+
+    /// <summary>Belge görüntüleme Firma Bilgileri ekranıyla aynı altyapı: presigned URL + PDF diyaloğu.</summary>
+    private async Task Goruntule(FirmaBelgesiDto belge, string turAdi)
+    {
+        var dosya = await FileApi.GetDownloadAsync(belge.FileId);
+
+        await DialogService.OpenAsync<PdfGoruntuleyiciDialog>(
+            turAdi,
+            new Dictionary<string, object>
+            {
+                { nameof(PdfGoruntuleyiciDialog.PresignedUrl), dosya?.PresignedUrl ?? string.Empty },
+                { nameof(PdfGoruntuleyiciDialog.Baslik), $"{turAdi} · {belge.FileName}" }
+            },
+            new DialogOptions { Width = "min(1100px, 96vw)", Height = "88vh", Resizable = true, Draggable = true });
+    }
+}

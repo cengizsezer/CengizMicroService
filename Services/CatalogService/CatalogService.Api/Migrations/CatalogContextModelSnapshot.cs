@@ -1681,8 +1681,17 @@ namespace CatalogService.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool?>("EDefter")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("EFatura")
+                        .HasColumnType("bit");
+
                     b.Property<int>("FirmaId")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("IseBaslamaTarihi")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("KurulusTarihi")
                         .HasColumnType("datetime2");
@@ -1690,6 +1699,10 @@ namespace CatalogService.Api.Migrations
                     b.Property<string>("MersisNo")
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("MukellefiyetTurleri")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<string>("NaceKodu")
                         .HasMaxLength(20)

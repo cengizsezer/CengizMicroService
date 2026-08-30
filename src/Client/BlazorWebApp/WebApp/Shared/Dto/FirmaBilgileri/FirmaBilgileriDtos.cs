@@ -1,4 +1,4 @@
-namespace WebApp.Shared.Dto.FirmaBilgileri
+﻿namespace WebApp.Shared.Dto.FirmaBilgileri
 {
     /// <summary>Yetkilinin firmayı tek başına mı yoksa birlikte mi temsil ettiği.</summary>
     public enum TemsilSekli : byte
@@ -38,6 +38,12 @@ namespace WebApp.Shared.Dto.FirmaBilgileri
         public string? NaceKodu { get; set; }
         public decimal? Sermaye { get; set; }
         public string? SermayeParaBirimi { get; set; } = "TRY";
+
+        // Mükellefiyet alanları — anasayfadaki firma paneli okur, düzenleme burada.
+        public string? MukellefiyetTurleri { get; set; }
+        public bool? EFatura { get; set; }
+        public bool? EDefter { get; set; }
+        public DateTime? IseBaslamaTarihi { get; set; }
     }
 
     public class FirmaOrtakDto

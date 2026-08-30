@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.FirmaBilgileri.Domain;
+﻿using CatalogService.Api.Features.FirmaBilgileri.Domain;
 
 namespace CatalogService.Api.Features.FirmaBilgileri.Dtos
 {
@@ -26,6 +26,13 @@ namespace CatalogService.Api.Features.FirmaBilgileri.Dtos
         public string? NaceKodu { get; set; }
         public decimal? Sermaye { get; set; }
         public string? SermayeParaBirimi { get; set; } = "TRY";
+
+        // Mükellefiyet alanları — anasayfadaki firma paneli bunları okuyor, düzenleme
+        // burada yapılıyor (KARARLAR §126).
+        public string? MukellefiyetTurleri { get; set; }
+        public bool? EFatura { get; set; }
+        public bool? EDefter { get; set; }
+        public DateTime? IseBaslamaTarihi { get; set; }
     }
 
     public class FirmaOrtakDto

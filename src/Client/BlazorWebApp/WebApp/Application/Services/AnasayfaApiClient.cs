@@ -1,4 +1,4 @@
-using Blazored.LocalStorage;
+﻿using Blazored.LocalStorage;
 using WebApp.Extensions;
 using WebApp.Shared.Dto.Anasayfa;
 
@@ -7,6 +7,12 @@ namespace WebApp.Application.Services
     public interface IAnasayfaApiClient
     {
         Task<AnasayfaOzetDto?> OzetAsync(int? yil = null, int? ay = null, CancellationToken ct = default);
+
+        /// <summary>
+        /// Firma paneli: tüm firmaların satırları + seçili firmanın ayrıntısı, tek çağrı.
+        /// <paramref name="firmaId"/> boşsa sunucu ilk firmayı seçer.
+        /// </summary>
+        Task<FirmaPaneliDto?> FirmaPaneliAsync(int? firmaId = null, CancellationToken ct = default);
     }
 
     /// <inheritdoc cref="IAnasayfaApiClient"/>
@@ -26,6 +32,18 @@ namespace WebApp.Application.Services
 
             var yol = sorgu.Count == 0 ? $"{Prefix}/ozet" : $"{Prefix}/ozet?{string.Join("&", sorgu)}";
             return _http.GetResponseAsync<AnasayfaOzetDto?>(yol);
+        }
+
+        /// <inheritdoc />
+        public Task<FirmaPaneliDto?> FirmaPaneliAsync(int? firmaId = null, CancellationToken ct = default)
+        {
+            // Firma kapsamı Banka Otomasyon'daki gibi ?firmaId= ile gidiyor; parametre
+            // yoksa sunucu ilk firmayı seçiyor, istemci varsayılan uydurmuyor.
+            var yol = firmaId is > 0
+                ? $"{Prefix}/firma-paneli?firmaId={firmaId}"
+                : $"{Prefix}/firma-paneli";
+
+            return _http.GetResponseAsync<FirmaPaneliDto?>(yol);
         }
     }
 

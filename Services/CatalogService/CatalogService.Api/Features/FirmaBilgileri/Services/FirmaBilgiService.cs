@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.BankaEkstre.Kapsam;
+﻿using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.FirmaBilgileri.Domain;
 using CatalogService.Api.Features.FirmaBilgileri.Dtos;
 using CatalogService.Api.Infrastructure.Context;
@@ -91,7 +91,11 @@ namespace CatalogService.Api.Features.FirmaBilgileri.Services
                 Adres = sicil?.Adres,
                 NaceKodu = sicil?.NaceKodu,
                 Sermaye = sicil?.Sermaye,
-                SermayeParaBirimi = sicil?.SermayeParaBirimi ?? "TRY"
+                SermayeParaBirimi = sicil?.SermayeParaBirimi ?? "TRY",
+                MukellefiyetTurleri = sicil?.MukellefiyetTurleri,
+                EFatura = sicil?.EFatura,
+                EDefter = sicil?.EDefter,
+                IseBaslamaTarihi = sicil?.IseBaslamaTarihi
             };
         }
 
@@ -135,6 +139,10 @@ namespace CatalogService.Api.Features.FirmaBilgileri.Services
             sicil.NaceKodu = Bos(dto.NaceKodu);
             sicil.Sermaye = dto.Sermaye;
             sicil.SermayeParaBirimi = Bos(dto.SermayeParaBirimi) ?? "TRY";
+            sicil.MukellefiyetTurleri = Bos(dto.MukellefiyetTurleri);
+            sicil.EFatura = dto.EFatura;
+            sicil.EDefter = dto.EDefter;
+            sicil.IseBaslamaTarihi = dto.IseBaslamaTarihi;
             sicil.UpdatedAt = DateTime.Now;
 
             await _db.SaveChangesAsync(ct);
