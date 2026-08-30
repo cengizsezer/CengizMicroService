@@ -16,6 +16,11 @@
 @*
     Anasayfa — giriş sonrası varsayılan sayfa.
 
+    Ana içerik FIRMA PANELİ (master-detail): kullanıcı sabah uygulamayı açtığında
+    sorumlu olduğu firmaların künyesine anında ulaşıyor. Sayaç kartları kaldırılmadı,
+    panelin ALTINA daha kompakt biçimde alındı — günlük iş "hangi firmada ne var"
+    sorusuyla başlıyor, sayaçlar o sorunun yanıtını beklerken kaybolmasın.
+
     Kartlardaki sayıların hepsi, tıklanınca gidilecek sayfanın kendi servisinden geliyor:
     beyanname sayıları catalog.Declarations'tan, banka satırları Banka Otomasyon'un firma
     seçim ekranını besleyen sayaçtan. Anasayfa kendi hesabını yapmıyor — iki ekran farklı
@@ -28,10 +33,14 @@
 <PageTitle>Anasayfa</PageTitle>
 
 <style>
-    .as-kartlar { display:grid; gap:1rem; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); }
+    /* Sayaçlar artık ikincil içerik: daha dar kolonlar, daha küçük rakam. */
+    .as-kartlar { display:grid; gap:.75rem; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); }
     .as-kart { cursor:pointer; height:100%; }
     .as-kart:hover { box-shadow:0 2px 12px rgba(0,0,0,.10); }
-    .as-buyuk { font-size:32px; font-weight:700; line-height:1.1; }
+    .as-buyuk { font-size:22px; font-weight:700; line-height:1.1; }
+    .as-bolum-basi { display:flex; align-items:center; gap:8px; margin-top:.25rem;
+                     font-size:12px; color:#718096; text-transform:uppercase; letter-spacing:.03em; }
+    .as-bolum-cizgi { flex:1; height:1px; background:#e2e8f0; }
     .as-alt { font-size:12px; color:#718096; }
     .as-satir { display:flex; justify-content:space-between; align-items:center;
                 padding:5px 0; border-bottom:1px solid #edf2f7; cursor:pointer; }
@@ -60,8 +69,16 @@
         </RadzenStack>
 
         <RadzenButton Icon="refresh" Text="Yenile" Size="ButtonSize.Small"
-                      ButtonStyle="ButtonStyle.Light" Click="@Yukle" Disabled="@yukleniyor" />
+                      ButtonStyle="ButtonStyle.Light" Click="@Yenile" Disabled="@yukleniyor" />
     </RadzenStack>
+
+    @* Ana içerik: firma bilgi paneli. Kendi verisini TEK çağrıda alıyor. *@
+    <FirmaPaneli @ref="firmaPaneli" />
+
+    <div class="as-bolum-basi">
+        <span>Dönem özeti</span>
+        <span class="as-bolum-cizgi"></span>
+    </div>
 
     @if (yukleniyor)
     {
@@ -207,7 +224,20 @@
         ? Tr.DateTimeFormat.GetMonthName(DateTime.Today.Month) + " " + DateTime.Today.Year
         : Tr.DateTimeFormat.GetMonthName(ozet.Ay) + " " + ozet.Yil;
 
+    private FirmaPaneli? firmaPaneli;
+
     protected override async Task OnInitializedAsync() => await Yukle();
+
+    /// <summary>
+    /// "Yenile" ikisini birden tazeler. Firma paneli kendi verisini kendi çağrısıyla
+    /// alıyor — sayaçlarla tek uca sıkıştırılsaydı firma değiştirmek bütün sayfayı
+    /// yeniden yükletirdi.
+    /// </summary>
+    private async Task Yenile()
+    {
+        await Yukle();
+        if (firmaPaneli is not null) await firmaPaneli.Tazele();
+    }
 
     private async Task Yukle()
     {

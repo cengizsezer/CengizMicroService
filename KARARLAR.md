@@ -2735,3 +2735,91 @@ kullanıcı "iptal edildi" yazısını görüyordu — oysa iptal eden yoktu. Ş
 kapanış yordamı önce işin kendi bildirimini bekliyor (3 sn) ve yalnız gelmezse
 kendi sözünü söylüyor. Durdurma sebebi de ayrı tutuluyor: "iptal edildi" ile
 "ajan kapatıldı" farklı şeyler.
+
+
+## 126. Firma paneli yeni tablo açmadı, eksik alanları mevcut tabloya ekledi
+
+Anasayfadaki firma panelinin gösterdiği her şey — sicil, ortaklık, imza
+yetkilileri, belgeler — Firma Bilgileri modülünün tablolarında zaten duruyordu.
+Panel için ikinci bir "firma künyesi" tablosu açmak, aynı bilgiyi iki yerde
+tutmak ve birini güncelleyip diğerini unutmak demekti.
+
+Eksik olan yalnız **mükellefiyet** bölümüydü. Dört alan `FirmaSicilBilgileri`'ne
+nullable olarak eklendi: `MukellefiyetTurleri`, `EFatura`, `EDefter`,
+`IseBaslamaTarihi`. Düzenleme de aynı yerde — mevcut Sicil formunda; panel yeni
+bir düzenleme yüzeyi açmadı.
+
+`IseBaslamaTarihi` ayrı bir alan: `KurulusTarihi` ile aynı şey değil, şirket
+kurulup aylar sonra mükellefiyet açtırabiliyor.
+
+**e-Fatura/e-Defter üç hâlli** (`bool?`): var / yok / **bilinmiyor**. `bool`
+seçilseydi hiç doldurulmamış firma "e-fatura mükellefi değil" görünürdü — panelin
+tam olarak önlemeye çalıştığı sessiz yanlış.
+
+## 127. Master-detail, kart ızgarası değil; sayaçlar kalıyor ama küçülüyor
+
+Sekiz-on firmanın dördü beş bölümlü kartlarla gösterilseydi ekran sürekli
+kaydırma isterdi ve kullanıcının aradığı tek bilgi ("Citadel'in vergi dairesi
+ne") sayfayı taramayı gerektirirdi. Solda sabit firma listesi, sağda tek firmanın
+künyesi: liste hep görünür, sağ panel odaklı.
+
+Mevcut sayaç kartları (bekleyen beyanname, onay bekleyen ekstre, yaklaşan
+ödemeler, son firmalar) **kaldırılmadı**; panelin altına "Dönem özeti" başlığıyla
+kompaktlaştırılarak alındı. Günlük iş "hangi firmada ne var" ile başlıyor,
+sayaçlar o sorunun altında duruyor.
+
+**Panel kendi çağrısını yapıyor, sayaçlarınkine eklenmedi.** İkisi tek uca
+sıkıştırılsaydı listede başka bir firmaya tıklamak beyanname ve banka sayaçlarını
+da yeniden hesaplatırdı. Panelin kendi ucu tek çağrıda bütün firmaların
+satırlarını ve seçili firmanın ayrıntısını veriyor; firma başına ayrı istek yok.
+
+Seçili firma verilmezse sunucu **ilk firmayı** seçiyor. İstemcinin "önce listeyi
+al, sonra ilkini seçip ikinci istek at" yapması, ekranın tek istekle açılması
+kuralını ilk saniyede bozardı.
+
+## 128. Uyarı kuralları sunucuda ve bilerek dar tutuldu
+
+Üç uyarı da `FirmaPaneliKurucu`'da, saf fonksiyonda: sol listedeki simge ile sağ
+paneldeki kutu aynı kuraldan besleniyor, iki yerde ayrışamıyor.
+
+**Pay oranı uyarısı düzenleme ekranıyla tek kaynaktan**: panel kendi
+karşılaştırmasını yazmıyor, `FirmaBilgiService.Ortaklik`'i çağırıyor. Aynı firma
+için iki ekranın farklı şey söylemesi mümkün değil.
+
+**İmza uyarısı firmanın en geç biten yetkisine bakıyor**, tek tek satırlara
+değil. Süresi dolan yetkili kaydı silinmiyor (geçmişe dönük belge kontrolü için
+duruyor); "herhangi biri dolmuşsa uyar" deseydik, yürürlükteki sirküleri olan
+firma sonsuza kadar alarm verir ve kullanıcı simgeyi görmezden gelmeyi öğrenirdi.
+Sorulan soru şu: *bu firmayı bugün kim imzalayabiliyor ve ne kadar süreyle?*
+Bedeli şu: iki müşterek yetkiliden birinin süresi dolduysa firma fiilen
+imzalanamaz ama uyarı çıkmaz — temsil şekli hesaba katılmıyor.
+
+**Mükellefiyet alanları zorunlu listesine konmadı.** Yeni eklendikleri için her
+firmada boşlar; zorunlu sayılsalardı panel ilk gün baştan aşağı uyarı gösterir ve
+simge anlamını yitirirdi. Zorunlu liste dörtte kaldı: vergi dairesi, ticaret
+sicil no, MERSİS no, adres.
+
+Eşik **60 gün** ve tam 60 uyarı vermiyor, 59 veriyor — sınır bir testle sabit.
+
+## 129. TCKN maskesi ekranda, sunucuda değil
+
+Kimlik numaraları sunucudan tam geliyor; maskeyi (`1234****901`) ekran koyuyor ve
+tıklayınca açılıyor.
+
+Sunucuda maskeleyip açmak için ikinci bir uç açmak, hiçbir şey kazandırmazdı: aynı
+kullanıcı bu numaraları Firma Bilgileri ekranında zaten düz metin olarak görüyor ve
+düzenliyor. Maskeleme yeni bir yetki sınırı değil, "omuz üstünden bakılan ekranda
+kimlik numarası durmasın" tedbiri.
+
+## 130. Arama istemcide ve Türkçe harfe takılmıyor
+
+Bütün firmalar zaten tek çağrıda geldi; her harfte sunucuya gitmek listeyi
+hızlandırmaz. Süzme `FirmaPaneliArama`'da, saf fonksiyonda ve testli.
+
+`ToLowerInvariant` tek başına yetmedi: "İ" onun için iki kod noktasına ("i" +
+birleşen nokta) dönüşüyor ve **"citadel" araması CİTADEL'i bulamıyordu**.
+Karşılaştırma biçimi Türkçe harfleri ASCII karşılığına indiriyor (ç→c, ğ→g,
+ı/i/İ/I→i, ö→o, ş→s, ü→u); böylece "sti" ŞTİ.'yi, "ahsap" AHŞAP'ı buluyor.
+
+VKN aramasında yalnız rakamlar karşılaştırılıyor — kullanıcının yapıştırdığı
+numarada boşluk ya da nokta olması aramayı bozmuyor.

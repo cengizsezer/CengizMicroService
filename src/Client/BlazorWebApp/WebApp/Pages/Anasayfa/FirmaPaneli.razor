@@ -1,0 +1,250 @@
+﻿@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto.Anasayfa
+
+@inject IAnasayfaApiClient Api
+
+@*
+    Anasayfanın ana içeriği: solda firma listesi, sağda seçili firmanın bilgileri.
+
+    Kart ızgarası yapılmadı — on firma × beş bölüm ekrana sığmıyor ve kullanıcı aradığı
+    tek bilgiyi ("Citadel'in vergi dairesi ne") bulmak için sayfayı taramak zorunda
+    kalırdı. Master-detail'de sol liste hep görünür, sağ panel tek firmaya odaklı.
+
+    Ekran TEK istekle açılıyor: sunucu bütün firmaların satırlarını (uyarılarıyla) ve
+    seçili firmanın ayrıntısını birlikte veriyor. Firma başına ayrı çağrı yok; başka bir
+    firmaya geçmek aynı uca yapılan tek bir istek.
+
+    Arama istemcide süzüyor (bkz. FirmaPaneliArama): liste zaten elimizde, her harfte
+    sunucuya gitmenin karşılığı yok.
+*@
+
+<div class="fp-kok">
+
+    @* ---- Sol: firma listesi ---- *@
+    <div class="fp-liste">
+        <div class="fp-arama">
+            <RadzenIcon Icon="search" Style="font-size:17px;color:#a0aec0" />
+            <input type="text" placeholder="Firma adı veya VKN" class="fp-arama-kutu"
+                   value="@arama" @oninput="AramaDegisti" />
+            @if (!string.IsNullOrWhiteSpace(arama))
+            {
+                <RadzenIcon Icon="close" Style="font-size:16px;cursor:pointer;color:#a0aec0"
+                            @onclick="AramayiTemizle" />
+            }
+        </div>
+
+        @if (yukleniyor)
+        {
+            <div class="fp-liste-bos">Yükleniyor…</div>
+        }
+        else if (Suzulmus.Count == 0)
+        {
+            <div class="fp-liste-bos">
+                @(panel.Firmalar.Count == 0
+                    ? "Firma kaydı yok. Yönetim → Firmalarım'dan ekleyebilirsiniz."
+                    : "Aramaya uyan firma yok.")
+            </div>
+        }
+        else
+        {
+            @foreach (var firma in Suzulmus)
+            {
+                <div class="@(firma.FirmaId == SeciliId ? "fp-satir fp-secili" : "fp-satir")"
+                     @onclick="@(() => Sec(firma.FirmaId))">
+                    <div class="fp-satir-metin">
+                        <div class="fp-satir-ad">@firma.Ad</div>
+                        <div class="fp-satir-vkn">@firma.VergiKimlikNo</div>
+                    </div>
+
+                    @if (firma.UyariVar)
+                    {
+                        <span class="fp-uyari" title="@string.Join("\n", firma.Uyarilar.Select(u => u.Mesaj))">
+                            <RadzenIcon Icon="warning" Style="font-size:17px" />
+                        </span>
+                    }
+                </div>
+            }
+        }
+    </div>
+
+    @* ---- Sağ: seçili firma ---- *@
+    <div class="fp-detay">
+        @if (yukleniyor)
+        {
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate"
+                                       Size="ProgressBarCircularSize.Small" />
+        }
+        else if (hata is not null)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Warning" Shade="Shade.Lighter" AllowClose="false">@hata</RadzenAlert>
+        }
+        else if (panel.Secili is null)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Info" Shade="Shade.Lighter" AllowClose="false">
+                Gösterilecek firma yok.
+            </RadzenAlert>
+        }
+        else
+        {
+            <div class="@(detayYukleniyor ? "fp-detay-govde fp-solgun" : "fp-detay-govde")">
+                <div class="fp-detay-basi">
+                    <div>
+                        <div class="fp-detay-ad">@panel.Secili.Ad</div>
+                        <div class="fp-detay-unvan">@panel.Secili.Unvan</div>
+                    </div>
+                </div>
+
+                <FirmaPaneliDetay Detay="@panel.Secili" />
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .fp-kok { display:grid; grid-template-columns:260px minmax(0,1fr); gap:1rem; align-items:start; }
+    @@media (max-width: 900px) { .fp-kok { grid-template-columns:1fr; } }
+
+    /* ---- sol liste ---- */
+    .fp-liste { border:1px solid #e2e8f0; border-radius:6px; background:#fff; overflow:hidden;
+                position:sticky; top:8px; max-height:calc(100vh - 120px); overflow-y:auto; }
+    .fp-arama { display:flex; align-items:center; gap:6px; padding:8px 10px;
+                border-bottom:1px solid #edf2f7; position:sticky; top:0; background:#fff; z-index:1; }
+    .fp-arama-kutu { border:none; outline:none; flex:1; font-size:13px; min-width:0; background:transparent; }
+    .fp-liste-bos { padding:14px 12px; font-size:12.5px; color:#a0aec0; }
+
+    .fp-satir { display:flex; align-items:center; gap:8px; padding:7px 10px 7px 8px;
+                border-left:3px solid transparent; border-bottom:1px solid #f2f5f9; cursor:pointer; }
+    .fp-satir:last-child { border-bottom:none; }
+    .fp-satir:hover { background:#f7fafc; }
+    .fp-secili { background:#edf5ff; border-left-color:#3182ce; }
+    .fp-secili:hover { background:#e6f0fd; }
+    .fp-satir-metin { flex:1; min-width:0; }
+    .fp-satir-ad { font-size:13px; font-weight:600; color:#2d3748; overflow:hidden;
+                   text-overflow:ellipsis; white-space:nowrap; }
+    .fp-satir-vkn { font-size:11.5px; color:#a0aec0;
+                    font-family:Consolas,"Courier New",monospace; }
+    .fp-uyari { color:#d69e2e; display:flex; align-items:center; }
+
+    /* ---- sağ panel ---- */
+    .fp-detay-basi { display:flex; justify-content:space-between; align-items:flex-start;
+                     gap:1rem; margin-bottom:.6rem; }
+    .fp-detay-ad { font-size:17px; font-weight:700; color:#2d3748; line-height:1.2; }
+    .fp-detay-unvan { font-size:12px; color:#718096; }
+    .fp-solgun { opacity:.5; pointer-events:none; }
+
+    .fp-bolum { padding:.7rem .9rem !important; }
+    .fp-bolum-basi { display:flex; justify-content:space-between; align-items:center;
+                     margin-bottom:.5rem; }
+    .fp-bolum-ad { display:inline-flex; align-items:center; gap:6px;
+                   font-size:13.5px; font-weight:700; color:#2d3748; }
+    .fp-duzenle { font-size:12px; color:#3182ce; cursor:pointer; }
+    .fp-duzenle:hover { text-decoration:underline; }
+
+    /* Bilgi yoğunluğu: dar satır aralığı, çok kolon. Bu bir muhasebeci aracı. */
+    .fp-alanlar { display:grid; gap:.4rem 1.2rem;
+                  grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); }
+    .fp-alan { min-width:0; }
+    .fp-genis { margin-top:.4rem; }
+    .fp-etiket { font-size:11px; color:#a0aec0; text-transform:uppercase; letter-spacing:.02em; }
+    .fp-deger { font-size:13px; color:#2d3748; word-break:break-word; }
+    .fp-bos { color:#cbd5e0; }
+    .fp-bos-satir { font-size:12.5px; color:#a0aec0; }
+
+    .fp-rozet { display:inline-block; font-size:11.5px; border-radius:999px;
+                padding:1px 8px; margin-right:5px; }
+    .fp-rozet-var { background:#e6fffa; color:#276749; }
+    .fp-rozet-yok { background:#fff5f5; color:#9b2c2c; }
+    .fp-rozet-bos { background:#f7fafc; color:#a0aec0; }
+
+    .fp-tablo-kutu { overflow-x:auto; }
+    .fp-tablo { width:100%; border-collapse:collapse; font-size:12.5px; }
+    .fp-tablo th { text-align:left; font-weight:600; color:#718096; font-size:11px;
+                   text-transform:uppercase; border-bottom:1px solid #e2e8f0; padding:4px 6px; }
+    .fp-tablo td { padding:4px 6px; border-bottom:1px solid #f2f5f9; color:#2d3748; }
+    .fp-tablo tbody tr:last-child td { border-bottom:none; }
+    .fp-sag { text-align:right; }
+    .fp-mono { font-family:Consolas,"Courier New",monospace; }
+    .fp-kimlik { font-family:Consolas,"Courier New",monospace; cursor:pointer;
+                 border-bottom:1px dotted #cbd5e0; }
+    .fp-toplam td { border-top:1px solid #e2e8f0; font-weight:700; }
+    .fp-hatali td { color:#c53030; }
+    .fp-yetki-doldu td { background:#fffaf0; }
+    .fp-yetki-yakin td { background:#fffff0; }
+    .fp-kalan { color:#718096; font-size:11.5px; }
+
+    .fp-uyari-kutu { border:1px solid #f6e05e; background:#fffff0; border-radius:6px; padding:.5rem .7rem; }
+    .fp-uyari-satir { display:flex; align-items:center; gap:6px; font-size:12.5px; color:#744210; }
+
+    .fp-belgeler { display:flex; flex-wrap:wrap; gap:6px; }
+    .fp-belge { display:inline-flex; align-items:center; gap:5px; font-size:12.5px;
+                border:1px solid #e2e8f0; border-radius:4px; padding:4px 10px;
+                background:#fff; cursor:pointer; color:#2d3748; }
+    .fp-belge:hover { background:#f7fafc; }
+    .fp-belge-not { color:#a0aec0; font-size:11.5px; }
+    .fp-belge-yok { border:1px dashed #cbd5e0; color:#a0aec0; background:transparent; }
+    .fp-belge-yok:hover { border-color:#3182ce; color:#3182ce; }
+</style>
+
+@code {
+    private FirmaPaneliDto panel = new();
+    private string? arama;
+    private bool yukleniyor = true;
+    private bool detayYukleniyor;
+    private string? hata;
+
+    private int SeciliId => panel.Secili?.FirmaId ?? 0;
+
+    private List<FirmaPaneliOzetDto> Suzulmus => FirmaPaneliArama.Suz(panel.Firmalar, arama);
+
+    protected override async Task OnInitializedAsync() => await Yukle(null, ilk: true);
+
+    /// <summary>
+    /// Dışarıdan (anasayfanın "Yenile" düğmesi) tazeleme. Olay üst bileşende
+    /// gerçekleştiği için yeniden çizimi burada elle istemek gerekiyor.
+    /// </summary>
+    public async Task Tazele()
+    {
+        await Yukle(SeciliId > 0 ? SeciliId : null, ilk: true);
+        StateHasChanged();
+    }
+
+    private async Task Sec(int firmaId)
+    {
+        if (firmaId == SeciliId) return;
+        await Yukle(firmaId, ilk: false);
+    }
+
+    private async Task Yukle(int? firmaId, bool ilk)
+    {
+        if (ilk) yukleniyor = true; else detayYukleniyor = true;
+        hata = null;
+
+        try
+        {
+            var sonuc = await Api.FirmaPaneliAsync(firmaId);
+
+            if (sonuc is null)
+            {
+                hata = "Firma bilgileri alınamadı. Sunucuya ulaşılamıyor olabilir.";
+                return;
+            }
+
+            panel = sonuc;
+        }
+        catch
+        {
+            hata = "Firma bilgileri alınamadı. Sunucuya ulaşılamıyor olabilir.";
+        }
+        finally
+        {
+            yukleniyor = false;
+            detayYukleniyor = false;
+        }
+    }
+
+    private void AramaDegisti(ChangeEventArgs e) => arama = e.Value?.ToString();
+
+    private void AramayiTemizle() => arama = null;
+}

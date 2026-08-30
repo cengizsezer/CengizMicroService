@@ -2835,3 +2835,151 @@ IdentityService (ajan kimliği tarafı), JSON adım motorunun mevcut adım tiple
 - **Kuyruk tek tek ilerliyor:** ajan aynı anda tek iş yürüttüğü için bekleyenler
   sırayla gidiyor — bağlanmada, iş bitince ve iptalde bir sonraki gönderiliyor.
   Öncelik ya da sıra değiştirme yok; sıra oluşturma zamanına göre.
+
+
+# Anasayfa — Firma Bilgi Paneli
+
+## Kapsam
+
+Uygulama açılınca sorumlu olunan firmaların künyesine anında erişilen bir ekran.
+Aranan şey tek bir bilgi: *"Citadel'in vergi dairesi ne", "Progroup'ta kim imza
+atabilir", "şu firmanın MERSİS no"*.
+
+Yeni tablo açılmadı. Veriler Firma Bilgileri modülünün kendi tablolarından
+geliyor; o modüle yalnız **mükellefiyet alanları** eklendi.
+
+## Düzen
+
+```
+┌──────────────┬────────────────────────────────────────────┐
+│ arama kutusu │  ALPHA AHŞAP SANAYİ A.Ş.                   │
+│              │  ┌──────────────────────────────────────┐  │
+│ ▸ ALPHA      │  │ Mükellefiyet            [Düzenle]    │  │
+│   772147…    │  │ Sicil                   [Düzenle]    │  │
+│ ▸ CİTADEL ⚠  │  │ Ortaklık (tablo + toplam)            │  │
+│   728062…    │  │ İmza yetkilileri (tablo)             │  │
+│ ▸ PROGROUP ⚠ │  │ Belgeler (chip'ler)                  │  │
+└──────────────┴────────────────────────────────────────────┘
+        Dönem özeti ────────────────────────────────
+   [beyanname] [ekstre] [ödemeler] [son firmalar]   ← eskisi, kompakt
+```
+
+Kart ızgarası yapılmadı: on firma × beş bölüm ekrana sığmıyor (KARARLAR §127).
+**Mevcut sayaç kartları kaldırılmadı**, panelin altına "Dönem özeti" başlığıyla
+daha kompakt biçimde alındı — rakam 32px'ten 22px'e, kolon genişliği 300px'ten
+240px'e indi.
+
+## Uyarı göstergesi
+
+Sol listede firma satırının sağında sarı ⚠. Kullanıcı firmaya tıklamadan sorunu
+görebiliyor; simgenin üstüne gelince uyarı metni çıkıyor. Üç kural (hepsi
+sunucuda, `FirmaPaneliKurucu`):
+
+| Uyarı | Kural |
+|---|---|
+| İmza yetkisi bitiyor | Firmanın **en geç biten** yetkisine 60 günden az kaldıysa (ya da dolmuşsa). Süresiz yetkili varsa uyarı yok |
+| Pay oranı tutmuyor | Ortak varsa ve toplam pay oranı %100 değilse (0,01 tolerans) — düzenleme ekranıyla **aynı hesap** |
+| Eksik sicil alanı | Vergi dairesi, ticaret sicil no, MERSİS no, adres — biri boşsa |
+
+Mükellefiyet alanları bilerek zorunlu listesinde **değil**: yeni eklendikleri için
+her firmada boşlar ve panel ilk gün baştan aşağı uyarı gösterirdi (§128).
+
+## Veri
+
+**Yeni alanlar** (`catalog.FirmaSicilBilgileri`, hepsi nullable):
+
+| Alan | Tip | Not |
+|---|---|---|
+| `MukellefiyetTurleri` | `nvarchar(300)` | Serbest metin: "Kurumlar, KDV, Muhtasar" |
+| `EFatura` | `bit` | Üç hâl: var / yok / bilinmiyor (`null`) |
+| `EDefter` | `bit` | Aynı |
+| `IseBaslamaTarihi` | `datetime2` | `KurulusTarihi` ile aynı şey değil |
+
+Migration: `20260830202237_AnasayfaFirmaPaneliMukellefiyet`. Yerelde uygulandı;
+serviste `HostExtension` açılışta `Database.Migrate()` çağırdığı için yayında
+kendiliğinden geçiyor.
+
+Düzenleme tek yerde: **Yönetim → Firmalarım → firma → Bilgiler → Sicil bilgileri**.
+Paneldeki her bölümün "Düzenle" bağlantısı oraya götürüyor; panel okuma odaklı.
+
+## Uç
+
+| Uç | Yetki | Döndürdüğü |
+|---|---|---|
+| `GET /api/catalog/anasayfa/firma-paneli?firmaId=` | insan | **Tüm** firmaların satırları (uyarılarıyla) + seçili firmanın ayrıntısı |
+
+Tek çağrı, firma başına ayrı istek yok: sol listedeki uyarı bütün firmaların
+ortak/yetkili kayıtlarını gerektiriyor, bunlar tek `IN (...)` sorgusuyla okunup
+bellekte gruplanıyor (beş sorgu, on firma için de kırk firma için de).
+
+Kapsam Banka Otomasyon'daki mekanizmanın aynısı: `?firmaId=` → `BankaFirmaFiltresi`
+→ `IBankaFirmaKapsami`. Parametre yoksa sunucu **ilk firmayı** seçiyor (ilk açılışta
+sağ panel boş kalmasın); tanınmayan firma değeri filtreden 400 dönüyor.
+
+Rota `api/catalog/*` altında olduğu için **gateway değişmedi**.
+
+## Ayrıntılar
+
+- **TCKN/VKN maskeli**: `1234****901`, tıklanınca açılıyor. Maskeleme ekranda;
+  aynı kullanıcı bu kimlikleri düzenleme ekranında zaten düz görüyor (§129).
+- **Boş alan gizlenmiyor**, "—" yazıyor: eksik olduğunun görünmesi bu ekranın işi.
+- **e-Fatura/e-Defter üç hâlli**: boş bırakılmış alan "yok" demek değil.
+- **Belgeler**: var olan belge dolu PDF ikonuyla (tıklanınca mevcut PDF
+  görüntüleyicide açılıyor), olmayan tür kesikli çerçeveli düğmeyle — tıklanınca
+  Firma Bilgileri ekranına götürüyor.
+- **Arama** istemcide süzüyor ve Türkçe harfe takılmıyor: "citadel" → CİTADEL,
+  "sti" → ŞTİ., "ahsap" → AHŞAP. VKN aramasında yalnız rakamlar karşılaştırılıyor,
+  araya konan boşluk/nokta bozmuyor.
+- Yetki bitişi yaklaşan satır sarı zeminde, kalan gün sayısıyla; dolmuş olan
+  daha koyu sarıda.
+
+## Testler
+
+| Proje | Önce | Sonra |
+|---|---|---|
+| `CatalogService.UnitTests` | 777 | **796** |
+| `WebApp.UnitTests` | 60 | **68** |
+| `PkfRobot.UnitTests` | 74 | 74 |
+| `IdentityService.UnitTests` | 24 | 24 |
+
+Hepsi geçiyor. Yeni testler:
+
+- `CatalogService.UnitTests/Anasayfa/FirmaPaneliTests` (19) — listenin tüm
+  firmaları döndürmesi, pasif firmanın düşmesi, firma seçilmemişse ilk firmanın
+  gelmesi, firma yokken boş panel; üç uyarının doğru çıkması ve **çıkmaması
+  gereken yerlerde çıkmaması** (künyesi tam firma, tam 60 gün eşiği, süresi
+  dolmuşun yanında geçerli yetkili, süresiz yetkili, ortak yokluğu, boş
+  mükellefiyet alanları); detayın seçili firmanın ortak/yetkili/belge
+  kayıtlarından kurulması (kapsam izolasyonu), sicili olmayan firma, listede
+  olmayan firmaId, kalan günün sunucuda hesaplanması
+- `WebApp.UnitTests/Anasayfa/FirmaPaneliAramaTests` (8) — ad ve unvanla süzme,
+  Türkçe harf duyarsızlığı, VKN ile süzme, ayıraçlı VKN, boş arama, uymayan
+  arama, TCKN maskeleme biçimi
+
+## Değişen ve eklenen dosyalar
+
+| Yer | Dosyalar |
+|---|---|
+| CatalogService — yeni | `Features/Anasayfa/Dtos/FirmaPaneliDtos.cs`, `Features/Anasayfa/Services/FirmaPaneliKurucu.cs`, `Features/Anasayfa/Services/FirmaPaneliService.cs`, `Migrations/20260830202237_AnasayfaFirmaPaneliMukellefiyet.cs` |
+| CatalogService — değişen | `Features/Anasayfa/Controllers/AnasayfaController.cs`, `Features/FirmaBilgileri/Domain/FirmaBilgileriEntities.cs`, `Features/FirmaBilgileri/Dtos/FirmaBilgileriDtos.cs`, `Features/FirmaBilgileri/Services/FirmaBilgiService.cs`, `Infrastructure/EntityConfigurations/FirmaBilgileriEntityTypeConfigurations.cs`, `Program.cs` |
+| Blazor — yeni | `Pages/Anasayfa/FirmaPaneli.razor`, `Pages/Anasayfa/FirmaPaneliDetay.razor`, `Pages/Anasayfa/MaskeliKimlik.razor`, `Pages/Anasayfa/FirmaPaneliArama.cs`, `Shared/Dto/Anasayfa/FirmaPaneliDtos.cs` |
+| Blazor — değişen | `Pages/Anasayfa/AnasayfaPage.razor`, `Pages/Yonetim/FirmaBilgileri/SicilBolumu.razor`, `Application/Services/AnasayfaApiClient.cs`, `Shared/Dto/FirmaBilgileri/FirmaBilgileriDtos.cs` |
+
+**Değişmeyenler:** `ocelot*.json`, `Nginx/**`, `docker-compose*.yml`, Firma
+Bilgileri ekranının kendi uçları ve tabloları (alan eklendi, mekanizma aynı).
+
+## Ne eksik kaldı
+
+- **Ekranda görülmedi.** Derleme, testler ve migration yerelde doğrulandı; panelin
+  gerçek verideki görünümü (bilgi yoğunluğu, sütun genişlikleri, on firmalık
+  listede kaydırma) tarayıcıda denenmedi.
+- **Mükellefiyet türleri serbest metin.** Kod listesi yok; "Kurumlar" ile
+  "kurumlar" ayrı yazılabiliyor. Raporlanacak bir alan hâline gelirse listeye
+  çevrilmeli.
+- **İmza uyarısı temsil şeklini gözetmiyor.** İki müşterek yetkiliden birinin
+  süresi dolduysa firma fiilen imzalanamaz ama uyarı çıkmaz (§128'deki kural
+  firmanın en geç biten yetkisine bakıyor).
+- **Belge eklemek panelden yapılamıyor**; kesikli düğme Firma Bilgileri ekranına
+  götürüyor. Ekran okuma odaklı kaldı.
+- **Sayaçlar ayrı çağrıda.** Panel bir istek, dönem özeti bir istek. İkisi tek uca
+  sıkıştırılsaydı firma değiştirmek bütün sayfayı yeniden yükletirdi (§127).
