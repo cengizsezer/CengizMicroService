@@ -34,7 +34,10 @@ public sealed class ArayuzBaglami : IDisposable
         Log = new CiftYonluLog();
 
         Kopru = new AjanKoprusu(cfg, Log, Izleyici, anahtarSor);
-        Orka = new OrkaPenceresi(cfg.Ajan.OrkaSurecAdi);
+        // Ana pencere basligi da veriliyor: kalibrasyonda oranin paydasi
+        // ORKA'nin ANA penceresi olmali ve AdimMotoru.Tikla ayni basliktan
+        // buluyor. Ikisi ayri pencereyi olcerse kaydedilen oran sessizce kayar.
+        Orka = new OrkaPenceresi(cfg.Ajan.OrkaSurecAdi, cfg.Pencereler.AnaEkran);
     }
 
     public RobotConfig Config { get; }

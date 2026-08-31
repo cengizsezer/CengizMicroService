@@ -3116,9 +3116,9 @@ Aşağıdakiler ofiste, ORKA açıkken yapılır. Ev PC'sinde ORKA olmadığı i
 ölçüm yapılamaz.
 
 1. **ORKA'yı aç ve tam ekran yap.** Koordinatlar pencereye oranla saklanıyor
-   (piksel değil); robot da tıklamadan önce pencereyi büyütüyor. ORKA tam ekran
-   değilken ölçülen oran kayar — uygulama bunu uyarı olarak söylüyor ama
-   düzeltmiyor.
+   (piksel değil). Tam ekran **şart değil** — oran pencerenin o anki ölçüsünden
+   hesaplanıyor ve ölçüm engellenmiyor; ama pencereyi sonradan yeniden
+   boyutlandırırsan oran kayar. Uygulama bunu uyarı olarak söylüyor.
 2. **Kalibre edilecek ekrana ORKA içinde elle git.** Örneğin "Veri Transferi >
    Banka Ekstreleri". Robotun tıklayacağı nokta o an ekranda görünüyor olmalı.
 3. **PkfRobot.exe'yi argümansız çalıştır**, "Kalibrasyon" sekmesine geç.
@@ -3129,8 +3129,13 @@ Aşağıdakiler ofiste, ORKA açıkken yapılır. Ev PC'sinde ORKA olmadığı i
 5. **ORKA'da hedefe tıkla.** Tıklama **ORKA'ya ulaşmaz** — yutuluyor, yani o
    düğmeye gerçekten basılmıyor, menü açılmıyor, kayıt değişmiyor. Vazgeçmek
    için Esc ya da sağ tık.
-6. Nokta ORKA penceresine göre orana çevrilip kaydedilir. ORKA dışı bir
-   pencereye tıklandıysa **kaydedilmez**, sebebi yazılır.
+6. Nokta ORKA **ana** penceresine göre orana çevrilip kaydedilir. ORKA'nın alt
+   pencerelerine (Veri Transferi ekranı, diyaloglar, firma şifresi popup'ı)
+   tıklamak serbest — hepsi aynı süreç — ama oran her zaman ana pencereye göre
+   hesaplanır, çünkü `Tikla` adımı da tıklamayı ana pencereye oranla uyguluyor.
+   Başka bir uygulamaya tıklandıysa **kaydedilmez**. Ret mesajı üç şeyi yazar:
+   hangi denetim tetiklendi, hangi pencereye tıklandı (başlık + süreç adı + pid),
+   ne bekleniyordu. Aynı satır uygulamanın log ekranına da düşer.
 7. **"Dene"ye bas.** Bu sefer ORKA'ya **gerçekten tıklanır** (önce onay sorar).
    Ardından ekran görüntüsü alınır ve tıklanan noktaya nişan çizilerek
    gösterilir. Nişan doğru yerdeyse koordinat tamam; değilse 4. adıma dön.

@@ -172,28 +172,55 @@ public sealed class KalibrasyonPaneli : UserControl
         var durum = _baglam.Orka.Durum();
         if (!durum.Bulundu)
         {
-            Uyar("ORKA acik degil. Kalibre edilecek ekrana kadar ORKA'da elle gidin, " +
-                 "sonra Sec'e basin.");
+            // Iki ayri durum, iki ayri cumle: ORKA hic acik degil mi, yoksa
+            // acik ama olculecek ANA pencere mi bulunamiyor? Ikisi "ORKA acik
+            // degil" diye ayni cumleye sikistirilirsa kullanici bosuna ORKA'yi
+            // yeniden acar.
+            var mesaj = durum.Surecler.Count == 0
+                ? $"ORKA calismiyor ('{_baglam.Config.Ajan.OrkaSurecAdi}' sureci bulunamadi). " +
+                  "Kalibre edilecek ekrana kadar ORKA'da elle gidin, sonra Sec'e basin."
+                : $"ORKA calisiyor (pid {string.Join(", ", durum.Surecler)}) ama olculecek ANA " +
+                  $"penceresi bulunamadi. Beklenen baslik: '{_baglam.Config.Pencereler.AnaEkran}'. " +
+                  "Ana pencere simge durumunda olabilir; gorev cubugundan geri acip yeniden deneyin.";
+
+            _baglam.Log.Uyari($"Koordinat secimi baslatilamadi: {mesaj}");
+            Uyar(mesaj + TeshisEki());
             return;
         }
 
-        if (!durum.TamEkran)
-        {
-            var cevap = MessageBox.Show(this,
-                "ORKA tam ekran degil. Koordinatlar pencereye oranla olculuyor ve robot " +
-                "tiklamadan once pencereyi buyutuyor; simdi olculen deger kayabilir.\n\n" +
-                "Yine de devam edilsin mi?",
-                "PkfRobot", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+        // Tam ekran degilse UYARILIR, ENGELLENMEZ: oran pencerenin o anki
+        // olcusunden hesaplaniyor, maximize olmamasi matematigi bozmuyor. Asil
+        // risk pencerenin sonradan yeniden boyutlandirilmasi -- o da uyari
+        // konusu. Burada onceden Evet/Hayir soran bir kutu vardi ve secimi
+        // fiilen engelliyordu.
+        var tamEkranNotu = durum.TamEkran
+            ? string.Empty
+            : "  ·  ORKA tam ekran degil (olcum yine de alinir)";
 
-            if (cevap != DialogResult.Yes) return;
-        }
+        if (!durum.TamEkran)
+            _baglam.Log.Uyari(
+                $"Koordinat secimi '{kayit.Etiket}': ORKA tam ekran degil " +
+                $"(pencere {durum.Olcu.Genislik}x{durum.Olcu.Yukseklik}). Olcum engellenmiyor; " +
+                "pencere sonradan yeniden boyutlandirilirsa oran kayar.");
+
+        // Secim baslarken ekrandan ne okundugu log'a giriyor: ret olursa
+        // "neye gore olculecekti" sorusunun cevabi burada duruyor.
+        _baglam.Log.Bilgi(
+            $"Koordinat secimi basladi: '{kayit.Etiket}' · beklenen surec " +
+            $"{_baglam.Config.Ajan.OrkaSurecAdi} · ana pencere '{durum.Baslik}' " +
+            $"[sol={durum.Olcu.Sol} ust={durum.Olcu.Ust} genislik={durum.Olcu.Genislik} " +
+            $"yukseklik={durum.Olcu.Yukseklik}] · ORKA surecleri " +
+            $"[{string.Join(", ", durum.Surecler)}]");
 
         var form = FindForm();
         form?.Hide();
 
         OrkaPenceresi.OneGetir(durum.Tutamac);
 
-        _serit = new BilgiSeridi($"{kayit.Etiket}  ·  Hedefe tiklayin  ·  Iptal icin Esc");
+        _serit = new BilgiSeridi(
+            $"{kayit.Etiket}  ·  Hedefe tiklayin (ORKA'nin alt pencereleri de olur)" +
+            $"  ·  Iptal icin Esc{tamEkranNotu}");
+        if (!durum.TamEkran) _serit.Uyar();
         _serit.Show();
 
         _yakalayici = new TiklamaYakalayici();
@@ -213,11 +240,26 @@ public sealed class KalibrasyonPaneli : UserControl
     private void Yakalandi(KoordinatKaydi kayit, Label deger, int x, int y)
     {
         var form = FindForm();
-        var sonuc = KoordinatSecimi.Degerlendir(_baglam.Orka.Ortam(x, y));
+        var ortam = _baglam.Orka.Ortam(x, y);
+        var sonuc = KoordinatSecimi.Degerlendir(ortam);
+
+        // Karar her zaman log'a yaziliyor -- kabul de ret de. "Secici tiklamayi
+        // kabul etmiyor" denildiginde bakilacak yer burasi: hangi pencereye
+        // tiklandi, hangi denetim tetiklendi, oranin paydasi hangi pencereydi.
+        var satir = KoordinatSecimi.Gunluk(ortam, sonuc);
+        if (sonuc.Kabul) _baglam.Log.Bilgi(satir);
+        else _baglam.Log.Uyari(satir);
 
         if (!sonuc.Kabul)
         {
-            Bitir(form, sonuc.Mesaj);
+            // Pencere bulunamadi ya da olcusu alinamadiysa teshis dokumu de
+            // eklenir; diger retlerde (baska uygulama, ana pencere disi) sorun
+            // pencere taramasinda degil, dokum kalabalik yapardi.
+            var ek = sonuc.Sebep is RedSebebi.OrkaKapali or RedSebebi.PencereOlcusuOkunamadi
+                ? TeshisEki()
+                : string.Empty;
+
+            Bitir(form, sonuc.Mesaj + ek);
             return;
         }
 
@@ -269,7 +311,8 @@ public sealed class KalibrasyonPaneli : UserControl
         var durum = _baglam.Orka.Durum();
         if (!durum.Bulundu)
         {
-            Uyar("ORKA acik degil. Denemek icin ORKA'yi acip kalibre edilen ekrana gidin.");
+            Uyar("ORKA acik degil. Denemek icin ORKA'yi acip kalibre edilen ekrana gidin."
+                 + TeshisEki());
             return;
         }
 
@@ -296,7 +339,7 @@ public sealed class KalibrasyonPaneli : UserControl
             if (!olcu.Gecerli)
             {
                 form?.Show();
-                Uyar("ORKA penceresinin olculeri okunamadi.");
+                Uyar("ORKA penceresinin olculeri okunamadi." + TeshisEki());
                 return;
             }
 
@@ -384,4 +427,39 @@ public sealed class KalibrasyonPaneli : UserControl
 
     private void Uyar(string mesaj)
         => MessageBox.Show(this, mesaj, "PkfRobot", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+    // ---- GECICI TESHIS ----
+
+    /// <summary>
+    /// Olcu alinamadiginda hata kutusuna eklenen pencere dokumu.
+    ///
+    /// Ayni dokum bir dosyaya da yaziliyor: basliklar uzun, mesaj kutusuna
+    /// sigmiyor. Kutuda dosyanin yolu gosteriliyor.
+    ///
+    /// <b>Gecici:</b> AnaPencereBul'un neden bos dondugu anlasilinca bu metot ve
+    /// cagrilari, OrkaPenceresi'ndeki teshis blogu ile birlikte silinecek.
+    /// </summary>
+    private string TeshisEki()
+    {
+        try
+        {
+            var dokum = _baglam.Orka.Teshis();
+            var yol = OrkaPenceresi.TeshisKaydet(_baglam.Config.LogKlasoru, dokum);
+
+            // Log paneline de dusuyor: kutu kapatildiktan sonra da elde kalsin.
+            _baglam.Log.Uyari(dokum);
+
+            var yolSatiri = yol is null
+                ? "Dokum dosyaya YAZILAMADI (log klasorune erisilemedi)."
+                : $"Bu dokum su dosyaya da yazildi:{Environment.NewLine}{yol}";
+
+            return Environment.NewLine + Environment.NewLine +
+                   dokum + Environment.NewLine + yolSatiri;
+        }
+        catch (Exception ex)
+        {
+            return Environment.NewLine + Environment.NewLine +
+                   $"(Teshis dokumu alinamadi: {ex.Message})";
+        }
+    }
 }

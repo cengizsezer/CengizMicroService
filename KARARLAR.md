@@ -2991,7 +2991,12 @@ değişkende kalsalar çöp toplayıcı onları toplar ve Windows olmayan bir ad
 
 **Bilgi şeridi odak almıyor** (`ShowWithoutActivation`). Odağı alsaydı ORKA
 arkaya düşer, kullanıcı önce ORKA'ya tıklayıp onu öne getirmek zorunda kalır ve
-o ilk tıklama ölçüm olarak yakalanırdı.
+o ilk tıklama ölçüm olarak yakalanırdı. Şerit ayrıca **tıklama geçirgen**
+(`WS_EX_TRANSPARENT`): ekranın en üstünde tam genişlikte duruyor, yani ORKA tam
+ekranken menü ve araç çubuğunun tam üzerinde. Geçirgen olmasaydı oraya yapılan
+ölçüm tıklamasında `WindowFromPoint` ORKA'yı değil şeridi döndürür, seçim
+"tıklanan pencere ORKA değil" diye reddedilir ve kullanıcı PkfRobot'un kendi
+şeridine takıldığını göremezdi.
 
 **Hedef pencere ORKA değilse kaydedilmiyor.** Kontrol başlıkla değil **süreçle**
 yapılıyor: ORKA'nın pencere başlığı sürüme ve açık firmaya göre değişiyor
@@ -2999,10 +3004,14 @@ yapılıyor: ORKA'nın pencere başlığı sürüme ve açık firmaya göre değ
 gerekçe. Tıklanan noktadaki pencere `WindowFromPoint` + `GA_ROOT` ile bulunup
 süreç kimliği karşılaştırılıyor. Süreç **okunamadığında da** reddediliyor:
 "bilmiyorum" durumunda kabul etmek, yanlış koordinatın sessizce kaydedilmesine
-açık kapı bırakırdı.
+açık kapı bırakırdı. Süreç kontrolü ORKA'nın **bütün** pencerelerini kapsıyor —
+bkz. §142.
 
-**ORKA tam ekran değilken uyarı var, engel yok.** Robot tıklamadan önce
-pencereyi büyütüyor, yani şimdi ölçülen oran kayabilir. Karar kullanıcının.
+**ORKA tam ekran değilken uyarı var, engel yok.** Oran pencerenin o anki
+ölçüsünden hesaplanıyor; maximize olmaması matematiği bozmuyor. Risk, pencerenin
+sonradan yeniden boyutlandırılması: ORKA'nın iç yerleşimi orantılı büyümediği
+için oran kayar. Bu yüzden uyarı. (Önceden burada "Devam edilsin mi?" diye soran
+bir kutu vardı ve pratikte seçimi engelliyordu; kaldırıldı.)
 
 ## 136. "Dene" olmadan kalibrasyon kör bir iş
 
@@ -3095,3 +3104,37 @@ zaman aşımına kadar (varsayılan 15 dk) "çalışıyor" görünecek bir iş b
 Tepsi simgeleri kodda çiziliyor; projede `.ico` dosyası yok ve gereken tek şey
 durum rengi. Dört simge bir kez üretilip saklanıyor: her saniye yeni bir
 `HICON` üretmek tutamaç sızdırırdı.
+
+## 142. Koordinat seçici ORKA'nın alt pencerelerini kabul ediyor, reddi anlatıyor
+
+Kalibrasyona asıl ihtiyaç duyulan yerler ORKA'nın **ana penceresi değil**: Veri
+Transferi ekranı, modal diyaloglar, "Firma Şifresini Giriniz." popup'ı. Bunlar
+ayrı pencereler ama **aynı süreç**. Yetki kontrolü zaten süreçle yapıldığı için
+alt pencereler kapsama girdi; şart "tıklanan pencere ORKA sürecinin herhangi
+bir penceresi olsun".
+
+**Oran yine de ANA pencereye göre hesaplanıyor**, tıklanan alt pencereye göre
+değil. Sebep: `AdimMotoru.Tikla` hedef pencereyi `Pencereler.AnaEkran`
+başlığından buluyor ve tıklamayı ona oranla uyguluyor. Ölçüm alt pencereye,
+uygulama ana pencereye göre yapılsaydı kaydedilen değer çalışma anında bambaşka
+bir noktaya düşerdi. Bu yüzden `TiklamaOrtami` iki pencereyi ayrı taşıyor:
+tıklanan pencere yalnız *yetki* için, `OrkaAnaPenceresi` oranın paydası.
+
+**Ana pencere `Process.MainWindowHandle` ile değil başlıkla bulunuyor.** O
+özellik sürecin ilk görünür ve sahipsiz penceresini döndürüyor; ORKA sahipsiz
+bir diyalog açtığında ana pencere yerine o diyalog seçilebiliyor ve oranın
+paydası sessizce yanlış pencere oluyordu. Artık `EnumWindows` ile ORKA'nın
+görünür + sahipsiz üst seviye pencereleri taranıp `Pencereler.AnaEkran`
+başlığını içeren seçiliyor — `Tikla` adımının bulduğu pencerenin aynısı.
+Başlık tutmazsa (giriş ekranı, sürüm değişikliği) `MainWindowHandle`'a düşülüyor.
+
+**Ret artık sebebini söylüyor.** `KoordinatSecimSonucu` cümlenin yanında bir de
+`RedSebebi` taşıyor; hangi denetimin tetiklendiği cümleden ayrı bir alan, çünkü
+cümleyi değiştiren biri log'u ve testi bozmamalı. Kullanıcıya gösterilen mesaj
+üç şeyi birden yazıyor: hangi denetim (`pencere süreci ORKA değil`, `pencere
+süreci okunamadı`, `pencere ölçüsü alınamadı`, `ORKA penceresi yok`, `nokta ana
+pencerenin dışında`), **hangi pencereye tıklandı** (başlık + süreç adı + pid) ve
+**ne bekleniyordu** (ORKA süreç adı + açık pid'ler). Aynı bilgi
+`KoordinatSecimi.Gunluk` ile tek satır olarak log'a da yazılıyor — kabul de ret
+de. Ofiste "seçici tıklamayı kabul etmiyor" denildiğinde bakılacak yer orası;
+öncesinde kullanıcının elinde hiçbir şey yoktu.

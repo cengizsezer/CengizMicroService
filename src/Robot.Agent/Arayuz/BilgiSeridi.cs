@@ -38,6 +38,25 @@ public sealed class BilgiSeridi : Form
     /// <summary>Tiklama yakalayici calisirken serit odak almamali.</summary>
     protected override bool ShowWithoutActivation => true;
 
+    /// <summary>
+    /// Serit <b>tiklama gecirgen</b>: <c>WS_EX_TRANSPARENT</c>.
+    ///
+    /// Neden sart: serit ekranin en ustunde, tam genislikte duruyor -- ORKA tam
+    /// ekranken menu ve arac cubugunun tam uzerinde. Gecirgen olmasaydi oraya
+    /// yapilan olcum tiklamasinda <c>WindowFromPoint</c> ORKA'yi degil bu seridi
+    /// dondururdu; secim "tiklanan pencere ORKA degil" diye reddedilir ve
+    /// kullanici PkfRobot'un kendi seridine takildigini goremezdi.
+    /// </summary>
+    protected override CreateParams CreateParams
+    {
+        get
+        {
+            var p = base.CreateParams;
+            p.ExStyle |= Win32.WS_EX_TRANSPARENT | Win32.WS_EX_NOACTIVATE;
+            return p;
+        }
+    }
+
     public string Mesaj
     {
         get => _metin.Text;

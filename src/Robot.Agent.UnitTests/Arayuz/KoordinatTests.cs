@@ -100,9 +100,14 @@ public class KoordinatSecimiTests
         bool orkaVar = true,
         int? tiklananSurec = OrkaSureci,
         bool tamEkran = true,
-        int[]? orkaSurecleri = null)
+        int[]? orkaSurecleri = null,
+        string tiklananBaslik = "ORKA_0001_2026",
+        string tiklananSurecAdi = "OrkaWinIceberg.64")
         => new(x, y, orkaVar ? pencere ?? Orka : null, tiklananSurec,
-               orkaSurecleri ?? new[] { OrkaSureci }, tamEkran);
+               orkaSurecleri ?? new[] { OrkaSureci }, tamEkran,
+               tiklananBaslik, tiklananSurecAdi,
+               BeklenenSurecAdi: "OrkaWinIceberg.64",
+               OrkaAnaPencereBasligi: "ORKA_0001_2026");
 
     [Fact]
     public void Orka_penceresine_tiklama_kabul_ediliyor()
@@ -113,6 +118,39 @@ public class KoordinatSecimiTests
         Assert.Equal(0.125, sonuc.OranX, 3);
         Assert.Equal(0.300, sonuc.OranY, 3);
         Assert.False(sonuc.Uyari);
+        Assert.Equal(RedSebebi.Yok, sonuc.Sebep);
+    }
+
+    [Fact]
+    public void Orkanin_alt_penceresine_tiklama_kabul_ediliyor()
+    {
+        // Veri Transferi ekrani, dialoglar ve firma sifresi popup'i ORKA'nin
+        // AYRI pencereleri ama AYNI sureci. Kalibrasyona asil bu ekranlarda
+        // ihtiyac var; "yalniz ana pencere" sarti onlari olculemez yapardi.
+        var sonuc = KoordinatSecimi.Degerlendir(
+            Ortam(tiklananBaslik: "Veri Transferi"));
+
+        Assert.True(sonuc.Kabul);
+        Assert.Equal(RedSebebi.Yok, sonuc.Sebep);
+    }
+
+    [Fact]
+    public void Alt_pencereye_tiklansa_da_oran_ana_pencereye_gore_hesaplaniyor()
+    {
+        // Kritik ayrim: yetki denetimi TIKLANAN pencereye, oran ANA pencereye
+        // bakar. AdimMotoru.Tikla da tiklamayi ana pencereye (Pencereler.
+        // AnaEkran) oranla uyguluyor; alt pencereye gore olculen bir oran
+        // calisma aninda bambaska bir noktaya duserdi.
+        var ana = new PencereOlcusu(Sol: 100, Ust: 50, Genislik: 1000, Yukseklik: 800);
+
+        // Nokta ana pencerenin ortasi; ustundeki modal diyalog kucuk ve kaymis
+        // olsun -- sonuca girmemeli, cunku hesaba yalniz ana pencere giriyor.
+        var sonuc = KoordinatSecimi.Degerlendir(
+            Ortam(x: 600, y: 450, pencere: ana, tiklananBaslik: "Firma Sifresini Giriniz."));
+
+        Assert.True(sonuc.Kabul);
+        Assert.Equal(0.5, sonuc.OranX, 3);
+        Assert.Equal(0.5, sonuc.OranY, 3);
     }
 
     [Fact]
@@ -120,10 +158,26 @@ public class KoordinatSecimiTests
     {
         // Baska bir pencerede olculen oran ORKA'ya uygulandiginda bambaska bir
         // noktaya duser. Sayi makul gorundugu icin de kimse fark etmez.
-        var sonuc = KoordinatSecimi.Degerlendir(Ortam(tiklananSurec: 9999));
+        var sonuc = KoordinatSecimi.Degerlendir(
+            Ortam(tiklananSurec: 9999, tiklananBaslik: "Adsiz - Paint", tiklananSurecAdi: "mspaint"));
 
         Assert.False(sonuc.Kabul);
-        Assert.Contains("ORKA degil", sonuc.Mesaj);
+        Assert.Equal(RedSebebi.BaskaUygulama, sonuc.Sebep);
+    }
+
+    [Fact]
+    public void Ret_mesaji_hangi_pencereye_tiklandigini_ve_beklenen_yaziyor()
+    {
+        var sonuc = KoordinatSecimi.Degerlendir(
+            Ortam(tiklananSurec: 9999, tiklananBaslik: "Adsiz - Paint", tiklananSurecAdi: "mspaint"));
+
+        // Kullanicinin ekranda gormesi gereken uc sey: hangi denetim tetiklendi,
+        // hangi pencereye tiklandi, ne bekleniyordu.
+        Assert.Contains("pencere sureci ORKA degil", sonuc.Mesaj);
+        Assert.Contains("Adsiz - Paint", sonuc.Mesaj);
+        Assert.Contains("mspaint", sonuc.Mesaj);
+        Assert.Contains("9999", sonuc.Mesaj);
+        Assert.Contains("OrkaWinIceberg.64", sonuc.Mesaj);
     }
 
     [Fact]
@@ -134,6 +188,8 @@ public class KoordinatSecimiTests
         var sonuc = KoordinatSecimi.Degerlendir(Ortam(tiklananSurec: null));
 
         Assert.False(sonuc.Kabul);
+        Assert.Equal(RedSebebi.PencereSureciOkunamadi, sonuc.Sebep);
+        Assert.Contains("sureci okunamadi", sonuc.Mesaj);
     }
 
     [Fact]
@@ -142,31 +198,60 @@ public class KoordinatSecimiTests
         var sonuc = KoordinatSecimi.Degerlendir(Ortam(orkaVar: false));
 
         Assert.False(sonuc.Kabul);
-        Assert.Contains("ORKA penceresi bulunamadi", sonuc.Mesaj);
+        Assert.Equal(RedSebebi.OrkaKapali, sonuc.Sebep);
+        Assert.Contains("ANA penceresi bulunamadi", sonuc.Mesaj);
+    }
+
+    [Fact]
+    public void Orka_sureci_hic_yoksa_reddediliyor()
+    {
+        var sonuc = KoordinatSecimi.Degerlendir(Ortam(orkaSurecleri: Array.Empty<int>()));
+
+        Assert.False(sonuc.Kabul);
+        Assert.Equal(RedSebebi.OrkaKapali, sonuc.Sebep);
+        Assert.Contains("ORKA calismiyor", sonuc.Mesaj);
     }
 
     [Fact]
     public void Ana_pencerenin_disina_tiklama_reddediliyor()
     {
-        // Surec ORKA'nin ama nokta ana pencerenin disinda: ORKA'nin bir
-        // diyaloguna tiklanmis olabilir. Oran 0..1 disina cikar ve Tikla adimi
-        // bu degeri zaten reddederdi; burada durmak daha erken.
+        // Surec ORKA'nin ama nokta ana pencerenin disinda: oran 0..1 disina
+        // cikar ve AdimMotoru.Tikla bu degeri zaten reddederdi; burada durmak
+        // hem daha erken hem sebebi soylenebilir olan yer.
         var sonuc = KoordinatSecimi.Degerlendir(Ortam(x: 2400, y: 324));
 
         Assert.False(sonuc.Kabul);
+        Assert.Equal(RedSebebi.AnaPencereDisinda, sonuc.Sebep);
         Assert.Contains("disinda", sonuc.Mesaj);
     }
 
     [Fact]
     public void Tam_ekran_olmayan_orkada_uyari_veriliyor_ama_kaydediliyor()
     {
-        // Robot tiklamadan once pencereyi buyutuyor; simdi olculen deger
-        // kayabilir. Karar kullanicinin, engel degil uyari.
+        // Oran pencerenin o anki olcusunden hesaplaniyor; maximize olmamasi
+        // matematigi bozmuyor. Risk pencerenin sonradan yeniden
+        // boyutlandirilmasi -- uyari konusu, ret konusu degil.
         var sonuc = KoordinatSecimi.Degerlendir(Ortam(tamEkran: false));
 
         Assert.True(sonuc.Kabul);
         Assert.True(sonuc.Uyari);
+        Assert.Equal(RedSebebi.Yok, sonuc.Sebep);
+        Assert.Equal(0.125, sonuc.OranX, 3);
         Assert.Contains("tam ekran", sonuc.Mesaj);
+    }
+
+    [Fact]
+    public void Gunluk_satiri_karari_ve_pencereleri_yaziyor()
+    {
+        // Ofiste "secici kabul etmiyor" denildiginde bakilacak satir bu.
+        var ortam = Ortam(tiklananSurec: 9999, tiklananBaslik: "Adsiz - Paint",
+                          tiklananSurecAdi: "mspaint");
+        var satir = KoordinatSecimi.Gunluk(ortam, KoordinatSecimi.Degerlendir(ortam));
+
+        Assert.Contains("RET", satir);
+        Assert.Contains("pencere sureci ORKA degil", satir);
+        Assert.Contains("mspaint", satir);
+        Assert.Contains("ORKA_0001_2026", satir);
     }
 
     [Fact]
@@ -175,6 +260,7 @@ public class KoordinatSecimiTests
         var sonuc = KoordinatSecimi.Degerlendir(Ortam(pencere: new PencereOlcusu(0, 0, 0, 0)));
 
         Assert.False(sonuc.Kabul);
-        Assert.Contains("olculeri okunamadi", sonuc.Mesaj);
+        Assert.Equal(RedSebebi.PencereOlcusuOkunamadi, sonuc.Sebep);
+        Assert.Contains("olculeri alinamadi", sonuc.Mesaj);
     }
 }

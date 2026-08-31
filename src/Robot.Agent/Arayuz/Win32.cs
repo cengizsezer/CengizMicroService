@@ -63,7 +63,17 @@ internal static class Win32
 
     internal const uint GA_ROOT = 2;
 
+    internal const uint GW_OWNER = 4;
+
+    // Serit "tiklama gecirgen" olsun diye: WindowFromPoint bu stile sahip
+    // pencereyi atlar ve altindaki ORKA penceresini dondurur.
+    internal const int GWL_EXSTYLE = -20;
+    internal const int WS_EX_TRANSPARENT = 0x20;
+    internal const int WS_EX_NOACTIVATE = 0x08000000;
+
     internal delegate IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+    internal delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
     [DllImport("user32.dll", SetLastError = true)]
     internal static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
@@ -88,6 +98,39 @@ internal static class Win32
 
     [DllImport("user32.dll")]
     internal static extern IntPtr GetAncestor(IntPtr hWnd, uint gaFlags);
+
+    [DllImport("user32.dll")]
+    internal static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+
+    [DllImport("user32.dll")]
+    internal static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    internal static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    internal static extern int GetWindowTextLength(IntPtr hWnd);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    internal static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    internal static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    internal static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+    /// <summary>Pencerenin basligi; okunamazsa bos dizge.</summary>
+    internal static string Baslik(IntPtr hWnd)
+    {
+        if (hWnd == IntPtr.Zero) return string.Empty;
+
+        var uzunluk = GetWindowTextLength(hWnd);
+        if (uzunluk <= 0) return string.Empty;
+
+        var tampon = new System.Text.StringBuilder(uzunluk + 1);
+        return GetWindowText(hWnd, tampon, tampon.Capacity) > 0 ? tampon.ToString() : string.Empty;
+    }
 
     [DllImport("user32.dll")]
     internal static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
