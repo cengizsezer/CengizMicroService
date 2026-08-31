@@ -3072,3 +3072,137 @@ birlikte düzeltilmeli.
 
 Ekranın tarayıcıdaki görünümü doğrulanmadı: menü satırı ve sayfa aynı `perm`
 claim'ine bakıyor, o claim'in token'da olduğu yukarıda görüldü.
+
+
+
+# PkfRobot — Windows arayüzü ve koordinat kalibrasyonu
+
+## Kapsam
+
+PkfRobot bugüne kadar yalnız konsol uygulamasıydı: koordinatlar ve yollar
+`appsettings.json` ile `gorevler\*.json` içine Notepad ile yazılıyordu. Makine
+değiştiğinde ya da ORKA'nın ekran düzeni bozulduğunda dosya düzenlemek
+gerekiyordu.
+
+Bu turda küçük bir masaüstü uygulaması eklendi. **Adım motoruna, görev JSON
+şemasına ve ajanın bağlantı mantığına dokunulmadı**; eklenen şey arayüz ve ayar
+yönetimi.
+
+- Argümansız çalıştırma artık arayüzü açıyor. `--ajan`, `--gorev`, `--probe`,
+  `--kalibre`, `--yardim` aynen duruyor.
+- Pencere küçük (470×620), "her zaman üstte" seçeneği var, kapatma düğmesi
+  sistem tepsisine indiriyor; çıkış tepsi menüsünden. Tepsi simgesi bağlantı
+  durumuna göre renk değiştiriyor (yeşil bağlı, sarı bağlanıyor, kırmızı kopuk,
+  gri kapalı).
+
+## Ekranlar
+
+**Durum** — hub bağlantısı, son kalp atışı (kaç saniye önce), ORKA açık mı,
+çalışan işin tipi/ilerlemesi/mesajı, son beş işin özeti (tarih, sonuç, süre) ve
+canlı log penceresi. "Baglan / Durdur" düğmesi ajanı arayüzden başlatıp
+durduruyor; log ve görev logu klasörleri iki düğmeyle açılıyor.
+
+**Ayarlar** — ORKA exe yolu, indirilen iş dosyaları klasörü, log klasörü
+(hepsi gezginle seçiliyor, olmayan yol kırmızı/sarı uyarı veriyor); ORKA firma
+kodu ve kullanıcı kodu; ORKA şifresi ve firma şifresi (yıldızlı, DPAPI ile ayrı
+dosyada). "Yedekle / Geri yükle" ayarları tek dosyaya çıkarıp geri alıyor.
+
+**Kalibrasyon** — görev JSON'larındaki her `Tikla` adımı için bir satır: ad,
+mevcut değer, **Seç** ve **Dene**.
+
+## Kalibrasyon — adım adım (ofiste yapılacak)
+
+Aşağıdakiler ofiste, ORKA açıkken yapılır. Ev PC'sinde ORKA olmadığı için
+ölçüm yapılamaz.
+
+1. **ORKA'yı aç ve tam ekran yap.** Koordinatlar pencereye oranla saklanıyor
+   (piksel değil); robot da tıklamadan önce pencereyi büyütüyor. ORKA tam ekran
+   değilken ölçülen oran kayar — uygulama bunu uyarı olarak söylüyor ama
+   düzeltmiyor.
+2. **Kalibre edilecek ekrana ORKA içinde elle git.** Örneğin "Veri Transferi >
+   Banka Ekstreleri". Robotun tıklayacağı nokta o an ekranda görünüyor olmalı.
+3. **PkfRobot.exe'yi argümansız çalıştır**, "Kalibrasyon" sekmesine geç.
+   Satırlar görev dosyalarından geliyor; hangi koordinat hangi görevde
+   kullanılıyorsa o satır listede.
+4. **İlgili satırda "Seç"e bas.** Pencere gizlenir, ORKA öne gelir ve ekranın
+   üstünde ince bir şerit çıkar: "Hedefe tıklayın · İptal için Esc".
+5. **ORKA'da hedefe tıkla.** Tıklama **ORKA'ya ulaşmaz** — yutuluyor, yani o
+   düğmeye gerçekten basılmıyor, menü açılmıyor, kayıt değişmiyor. Vazgeçmek
+   için Esc ya da sağ tık.
+6. Nokta ORKA penceresine göre orana çevrilip kaydedilir. ORKA dışı bir
+   pencereye tıklandıysa **kaydedilmez**, sebebi yazılır.
+7. **"Dene"ye bas.** Bu sefer ORKA'ya **gerçekten tıklanır** (önce onay sorar).
+   Ardından ekran görüntüsü alınır ve tıklanan noktaya nişan çizilerek
+   gösterilir. Nişan doğru yerdeyse koordinat tamam; değilse 4. adıma dön.
+   Ölçümü gözle doğrulamanın başka yolu yok: ORKA'nın gridi UI Automation'a
+   kapalı, robot yazdığı yeri ekrandan göremiyor.
+8. Ölçüm hem `%AppData%\PkfRobot\ayarlar.json` içine hem de görev JSON'una
+   yazılır. "Görevlere uygula" düğmesi bunu elle de yapıyor; uygulama her
+   açılışta zaten kendiliğinden yapıyor.
+9. Yanlış ölçtüysen "Ölçümü sil" kayıtlı ölçümleri siler; görev
+   dosyalarındaki değerler olduğu gibi kalır.
+
+**Makine değiştirirken:** Ayarlar > "Yedekle" ile tek dosya al, yeni makinede
+"Geri yükle". Kalibrasyon aynen gelir. **Şifreler yedeğe girmez** — DPAPI ile
+şifrelenen değer başka makinede zaten çözülemez; yedeğe düz metin koymak
+şifreleri bir dosyaya dökmek olurdu. Yeni makinede şifreler ve ajan anahtarı
+elle girilir.
+
+## Ayarlar nerede duruyor
+
+| Dosya | İçerik |
+|---|---|
+| `%AppData%\PkfRobot\ayarlar.json` | Yollar, firma/kullanıcı kodu, kalibrasyon. Düz metin. |
+| `%AppData%\PkfRobot\sifreler.dat` | ORKA ve firma şifresi. DPAPI (CurrentUser) ile şifreli. |
+| `%AppData%\PkfRobot\agent.dat` | Ajan anahtarı (bu turda değişmedi). |
+| `gorevler\*.json` | Koordinatların **çalışan** kopyası; motor buradan okuyor. |
+
+Publish klasörü her yayında üzerine yazılıyor; asıl kopya bu yüzden
+`%AppData%` altında. Uygulama her açılışta kayıtlı kalibrasyonu görev
+dosyalarına geri yazıyor, yani yayın sonrası kalibrasyon kendiliğinden geliyor.
+
+## Testler
+
+Arayüz test edilmiyor; **kural** test ediliyor. PkfRobot birim testleri
+115/115 geçiyor (önceki 74 aynen duruyor, 41 yeni):
+
+- Mutlak koordinat → oran çevrimi (1920×1080, 1366×768, 2560×1440); oran →
+  mutlak çevrimi tersini veriyor; ölçüsüz pencere reddediliyor; oran Türkçe
+  locale'de de nokta ile yazılıyor.
+- ORKA dışı pencereye tıklama reddediliyor; süreç okunamadığında da
+  reddediliyor; ana pencerenin dışı reddediliyor; ORKA tam ekran değilken
+  uyarı veriliyor ama kaydediliyor.
+- Koordinat listesi görev JSON'larından türetiliyor; `Tikla` dışı adımlar
+  girmiyor; bozuk bir dosya listeyi düşürmüyor; araya adım eklenmesi
+  kalibrasyonu bozmuyor.
+- Kalibrasyon görev dosyasına yazılıyor ve JSON'daki `"// KULLANIM"` gibi
+  anahtarlar korunuyor; aynı değer yeniden yazılmıyor; adım açıklaması
+  değiştiyse ölçüm **uygulanmıyor**; oran üç haneye yuvarlanıyor.
+- Ayarlar kaydedilip okunuyor; bozuk ayar dosyası arayüzü kilitlemiyor;
+  şifreler diskte düz metin durmuyor ve `ayarlar.json` içinde geçmiyor; yedek
+  alınıp geri yüklenince ayarlar aynı; yedekte şifre yok.
+
+## Değişen ve eklenen dosyalar
+
+Yeni: `src/Robot.Agent/Ayarlar/` (OranDonusturucu, KoordinatSecimi,
+KoordinatKesfi, KalibrasyonUygulama, RobotAyarlari, AyarDeposu, SifreDeposu,
+AyarTanimlari) ve `src/Robot.Agent/Arayuz/` (AnaForm, DurumPaneli,
+AyarlarPaneli, KalibrasyonPaneli, AjanKoprusu, IsIzleme, TiklamaYakalayici,
+BilgiSeridi, EkranYakalama, OrkaPenceresi, Win32).
+
+Değişen: `Program.cs` (argümansız → arayüz, `[STAThread]`),
+`PkfRobot.csproj` (`UseWindowsForms`), `Ajan/AjanCalistirici.cs` (isteğe bağlı
+kancalar), `Ajan/AjanServisi.cs` (yalnız okunan `SonKalpAtisi` damgası).
+
+`Core/AdimMotoru.cs` ve `gorevler/*.json` **değişmedi**.
+
+## Ne eksik kaldı
+
+Arayüz ofiste çalıştırılmadı. Ev PC'sinde ORKA yok; tıklama yakalama, ORKA'yı
+öne getirme, "Dene" ekran görüntüsü ve tepsi davranışı **ölçülemedi** —
+derleme, publish ve birim testleri yapıldı. Kalibrasyonun ilk gerçek denemesi
+ofiste yapılacak.
+
+Ajan anahtarı hâlâ yalnız ilk bağlantı denemesinde soruluyor; Ayarlar
+ekranında "anahtarı değiştir" düğmesi yok. Anahtar değiştirmek için
+`PkfRobot.exe --anahtari-sifirla` duruyor.

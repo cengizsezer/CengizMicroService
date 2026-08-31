@@ -3,6 +3,7 @@ using System.Text;
 using FlaUI.Core.Input;
 using FlaUI.UIA3;
 using PkfRobot.Ajan;
+using PkfRobot.Arayuz;
 using PkfRobot.Config;
 using PkfRobot.Core;
 
@@ -10,6 +11,12 @@ namespace PkfRobot;
 
 public static class Program
 {
+    /// <summary>
+    /// STA sart: WinForms diyaloglari (dosya secici, klasor secici, pano)
+    /// yalniz tek is parcacikli apartmanda dogru calisiyor. Konsol modlari
+    /// bundan etkilenmiyor.
+    /// </summary>
+    [STAThread]
     public static int Main(string[] args)
     {
         Console.OutputEncoding = Encoding.UTF8;
@@ -26,6 +33,10 @@ public static class Program
 
             var cfgYolu = p.ConfigYolu ?? Path.Combine(AppContext.BaseDirectory, "appsettings.json");
             var cfg = RobotConfig.Yukle(cfgYolu);
+
+            // --- ARAYUZ: argumansiz calistirma. Konsol modlari aynen duruyor. ---
+            if (p.Arayuz)
+                return ArayuzCalistir(cfg);
 
             // --- AJAN MODU: hub'a bagli kal. ORKA'ya dokunmaz, gorev calistirmaz. ---
             if (p.Ajan)
@@ -102,6 +113,51 @@ public static class Program
             Console.WriteLine("Detay:");
             Console.WriteLine(ex.ToString());
             return 1;
+        }
+    }
+
+    /// <summary>
+    /// Masaustu arayuzu. Argumansiz calistirmanin karsiligi.
+    ///
+    /// Konsol penceresi gizleniyor: exe konsol alt sisteminde derlendigi icin
+    /// (kasitli -- <c>--ajan</c> ciktisi gorunsun diye) arayuzun arkasinda bos
+    /// bir siyah pencere kalirdi.
+    /// </summary>
+    private static int ArayuzCalistir(RobotConfig cfg)
+    {
+        KonsoluGizle();
+
+        ApplicationConfiguration.Initialize();
+
+        var kok = AjanKimlikDeposu.VarsayilanKlasor;
+        var gorevler = Path.Combine(AppContext.BaseDirectory, "gorevler");
+
+        // Anahtar sorusu ajanin arka plan is parcacigindan geliyor; pencere
+        // acmadan once arayuz is parcacigina gecmek zorunlu.
+        Form? pencere = null;
+        string? AnahtarSor(string klasor)
+            => pencere is { IsHandleCreated: true } p
+                ? (string?)p.Invoke(new Func<string?>(() => AnahtarFormu.Sor(klasor)))
+                : AnahtarFormu.Sor(klasor);
+
+        using var baglam = new ArayuzBaglami(cfg, kok, gorevler, AnahtarSor);
+        using var form = new AnaForm(baglam);
+
+        pencere = form;
+        Application.Run(form);
+        return 0;
+    }
+
+    private static void KonsoluGizle()
+    {
+        try
+        {
+            var konsol = Arayuz.KonsolPenceresi.Tutamac();
+            if (konsol != IntPtr.Zero) Arayuz.KonsolPenceresi.Gizle(konsol);
+        }
+        catch (Exception)
+        {
+            // Konsol yoksa (baska bir surecten baslatilmis) yapacak bir sey yok.
         }
     }
 
@@ -275,6 +331,7 @@ public static class Program
 PkfRobot - ORKA masaustu otomasyon ajani
 
 KULLANIM:
+  PkfRobot.exe                        (argumansiz: masaustu arayuzunu acar)
   PkfRobot.exe --ajan
   PkfRobot.exe --gorev gorevler\01-orka-ac-firma-sec.json --sifre GIZLI
   PkfRobot.exe --probe
@@ -298,6 +355,12 @@ PARAMETRELER:
   --canli             DryRun'i KAPATIR, gercek kayit yapar. DIKKAT.
   --degisken ad=deger Goreve ekstra degisken gecer (birden fazla olabilir)
   --yardim            Bu ekran
+
+ARAYUZ:
+  Argumansiz calistirildiginda kucuk bir pencere acilir: baglanti durumu,
+  calisan is, son bes is, log; ayarlar (yollar, ORKA giris bilgileri, sifreler)
+  ve koordinat kalibrasyonu. Kapatma dugmesi tepsiye indirir, cikis tepsi
+  menusunden. Ayarlar %AppData%\PkfRobot\ayarlar.json icinde durur.
 
 SIFRELER (oncelik sirasi yukaridan asagiya):
   1. --sifre parametresi                        (firma sifresi: --degisken firmaSifre=xxx)
@@ -336,6 +399,9 @@ public class Parametreler
     public bool Kalibre { get; set; }
     public bool Ajan { get; set; }
     public bool AnahtariSifirla { get; set; }
+
+    /// <summary>Arguman verilmedi: masaustu arayuzu acilir.</summary>
+    public bool Arayuz { get; set; }
     public bool CanliMod { get; set; }
     public bool Yardim { get; set; }
     public Dictionary<string, string> EkDegiskenler { get; } = new();
@@ -343,7 +409,11 @@ public class Parametreler
     public static Parametreler Coz(string[] args)
     {
         var p = new Parametreler();
-        if (args.Length == 0) { p.Yardim = true; return p; }
+
+        // Argumansiz calistirma artik yardim degil ARAYUZ aciyor: kullanicinin
+        // exe'ye cift tiklamasi en dogal davranis ve karsiliginda bir yardim
+        // metni gormesi anlamsizdi. Yardim icin --yardim duruyor.
+        if (args.Length == 0) { p.Arayuz = true; return p; }
 
         for (int i = 0; i < args.Length; i++)
         {

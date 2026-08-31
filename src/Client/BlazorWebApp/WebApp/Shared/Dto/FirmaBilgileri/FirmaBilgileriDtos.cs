@@ -32,6 +32,9 @@
         public string? Email { get; set; }
         public string? Telefon { get; set; }
 
+        /// <summary>ORKA giriş zincirinde F7 sonrası girilen firma kodu (ör. "0001").</summary>
+        public string? OrkaFirmaKodu { get; set; }
+
         public string? MersisNo { get; set; }
         public DateTime? KurulusTarihi { get; set; }
         public string? Adres { get; set; }

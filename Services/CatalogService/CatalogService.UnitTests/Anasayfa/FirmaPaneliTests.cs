@@ -40,6 +40,7 @@ namespace CatalogService.UnitTests.Anasayfa
                     VergiKimlikNo = "7721471008",
                     VergiDairesi = "Maslak",
                     TicaretSicilNo = "123456-5",
+                    OrkaFirmaKodu = "0001",
                     Aktif = true
                 },
                 new Firma
@@ -360,6 +361,16 @@ namespace CatalogService.UnitTests.Anasayfa
             Assert.Equal(new DateTime(2014, 4, 1), detay.Mukellefiyet.IseBaslamaTarihi);
             Assert.Equal("16.23.01", detay.Mukellefiyet.NaceKodu);
             Assert.Equal("Maslak", detay.Mukellefiyet.VergiDairesi);
+        }
+
+        [Fact]
+        public async Task Detay_sicil_bolumunde_orka_firma_kodu_geliyor()
+        {
+            // Panel okuma odaklı; kodun eksik olduğu firmada boş görünmesi de bilgi.
+            using var db = Context();
+
+            Assert.Equal("0001", (await Panel(db, FirmaA)).Secili!.Sicil.OrkaFirmaKodu);
+            Assert.Null((await Panel(db, FirmaC)).Secili!.Sicil.OrkaFirmaKodu);
         }
 
         [Fact]

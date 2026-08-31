@@ -49,6 +49,7 @@ namespace WebApp.Shared.Dto.Anasayfa
         public string? SermayeParaBirimi { get; set; }
         public DateTime? KurulusTarihi { get; set; }
         public string? Adres { get; set; }
+        public string? OrkaFirmaKodu { get; set; }
     }
 
     public class FirmaPaneliYetkiliDto

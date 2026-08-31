@@ -113,7 +113,24 @@ namespace CatalogService.UnitTests.Ajanlar
 
             Assert.Null(yuk);
             Assert.Contains("ORKA firma kodu", hata);
+
+            // Mesaj hangi firmada eksik olduğunu ve alanın adını söylüyor: eski hâli
+            // kullanıcıyı formda var olmayan bir alana yolluyordu.
+            Assert.Contains("ORNEK", hata);
             Assert.Contains("Firmalarım", hata);
+            Assert.Contains("ORKA Firma Kodu", hata);
+        }
+
+        [Fact]
+        public async Task Orka_kodu_bosluktan_ibaretse_de_is_olusmuyor()
+        {
+            using var db = Db();
+            var yuklemeId = await VeriKurAsync(db, orkaFirmaKodu: "   ");
+
+            var (yuk, hata) = await Servis(db, new SahteEkstreServisi()).HazirlaAsync(yuklemeId);
+
+            Assert.Null(yuk);
+            Assert.Contains("ORKA firma kodu", hata);
         }
 
         [Fact]

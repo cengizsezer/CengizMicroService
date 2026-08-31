@@ -19,6 +19,12 @@ namespace CatalogService.Api.Features.FirmaBilgileri.Dtos
         public string? Email { get; set; }
         public string? Telefon { get; set; }
 
+        /// <summary>
+        /// ORKA giriş zincirinde F7 sonrası girilen firma kodu (ör. "0001").
+        /// <c>catalog.Firmalar</c>'da; ORKA'ya aktarım işi bunsuz kurulmuyor.
+        /// </summary>
+        public string? OrkaFirmaKodu { get; set; }
+
         // FirmaSicilBilgisi
         public string? MersisNo { get; set; }
         public DateTime? KurulusTarihi { get; set; }

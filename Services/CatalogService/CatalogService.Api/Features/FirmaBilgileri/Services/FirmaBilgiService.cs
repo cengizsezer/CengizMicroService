@@ -86,6 +86,7 @@ namespace CatalogService.Api.Features.FirmaBilgileri.Services
                 TicaretSicilNo = firma.TicaretSicilNo,
                 Email = firma.Email,
                 Telefon = firma.Telefon,
+                OrkaFirmaKodu = firma.OrkaFirmaKodu,
                 MersisNo = sicil?.MersisNo,
                 KurulusTarihi = sicil?.KurulusTarihi,
                 Adres = sicil?.Adres,
@@ -124,6 +125,8 @@ namespace CatalogService.Api.Features.FirmaBilgileri.Services
             firma.TicaretSicilNo = dto.TicaretSicilNo?.Trim() ?? string.Empty;
             firma.Email = dto.Email?.Trim() ?? string.Empty;
             firma.Telefon = dto.Telefon?.Trim() ?? string.Empty;
+            // Nullable kalıyor: ORKA'ya aktarım yapılmayan firmalarda gerekmiyor.
+            firma.OrkaFirmaKodu = Bos(dto.OrkaFirmaKodu);
             firma.UpdatedAt = DateTime.Now;
 
             var sicil = await _db.FirmaSicilBilgileri.FirstOrDefaultAsync(s => s.FirmaId == firmaId, ct);

@@ -9,6 +9,12 @@
     <RootNamespace>PkfRobot</RootNamespace>
     <InvariantGlobalization>false</InvariantGlobalization>
 
+    <!-- Argumansiz calistirilinca WinForms arayuzu aciliyor. OutputType yine Exe
+         (konsol alt sistemi): WinExe yapilsaydi ajan, probe ve kalibre
+         modlarinin ciktisi hicbir yere yazilmazdi. Arayuz acilirken konsol
+         penceresi gizleniyor. -->
+    <UseWindowsForms>true</UseWindowsForms>
+
     <!-- Sunucu asgari surum kontrolu yapiyor; AjanSurumu bu degerden okunuyor.
          Sozlesme degistiren her yayin oncesi artir. -->
     <Version>1.0.0</Version>

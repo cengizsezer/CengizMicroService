@@ -93,6 +93,16 @@ public sealed class AjanServisi : IAsyncDisposable
     /// <summary>Su an bagli miyiz?</summary>
     public bool Bagli => _baglanti?.Bagli == true;
 
+    /// <summary>
+    /// Sunucuya en son ne zaman canlilik bildirildi.
+    ///
+    /// Yalniz <b>okunan</b> bir damga; baglanti mantigina karismiyor. Arayuz
+    /// "bagli" yazmakla yetinemez: kopmus ama henuz fark edilmemis bir
+    /// baglantida da "bagli" gorunurdu. Son atisin uzerinden gecen sure, o
+    /// durumu ekranda goren tek isaret.
+    /// </summary>
+    public DateTime? SonKalpAtisi { get; private set; }
+
     /// <summary>Token al, bagla, kendini tanit. Kabul edilirse true.</summary>
     public async Task<bool> BaglanVeKaydolAsync(CancellationToken ct = default)
     {
@@ -126,6 +136,7 @@ public sealed class AjanServisi : IAsyncDisposable
         }
 
         _sonBildirilenOrka = orkaSuAn;
+        SonKalpAtisi = DateTime.Now;
         _log.Bilgi($"Hub'a baglanildi: {_kimlik.MakineAdi} ({_kimlik.MakineId}), " +
                    $"surum {_kimlik.AjanSurumu}, ORKA: {(orkaSuAn ? "acik" : "kapali")}.");
         return true;
@@ -141,6 +152,7 @@ public sealed class AjanServisi : IAsyncDisposable
             throw new InvalidOperationException("Baglanti kurulmadan nabiz atilamaz.");
 
         await _baglanti.KalpAtisiAsync(ct);
+        SonKalpAtisi = DateTime.Now;
 
         // Token'i bayatlamadan tazele: yenileme, baglanti koptugu ana denk
         // gelmesin diye kopusu beklemiyor.

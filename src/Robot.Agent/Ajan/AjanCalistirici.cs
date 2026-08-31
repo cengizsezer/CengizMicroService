@@ -4,8 +4,32 @@ using PkfRobot.Config;
 namespace PkfRobot.Ajan;
 
 /// <summary>
+/// Ajan calistirilirken disaridan takilabilen kancalar.
+///
+/// <b>Neden var:</b> arayuz ayni ajani calistirmak istiyor ama log satirlarini
+/// ekranda gostermek, isleri izlemek ve anahtari konsol yerine bir pencereden
+/// sormak zorunda. Bunun icin ikinci bir kurulum yazilsaydi iki nesne grafigi
+/// olur ve biri degistiginde digeri sessizce eskirdi. Hepsi bos birakilirsa
+/// davranis konsol modundaki ile birebir ayni.
+/// </summary>
+public sealed class AjanKancalari
+{
+    /// <summary>Log agzini sarmalar (ornegin ekrana da yazan bir kopya).</summary>
+    public Func<IAjanLog, IAjanLog>? LogSarmala { get; init; }
+
+    /// <summary>Her is calistiriciyi sarmalar (ornegin ilerlemeyi izlemek icin).</summary>
+    public Func<IIsCalistirici, IIsCalistirici>? IsSarmala { get; init; }
+
+    /// <summary>Anahtar yoksa nereden sorulacak. Parametre: ayar klasoru.</summary>
+    public Func<string, string?>? AnahtarSor { get; init; }
+
+    /// <summary>Servis kurulduktan sonra cagrilir; arayuz durumu buradan okuyor.</summary>
+    public Action<AjanServisi>? ServisHazir { get; init; }
+}
+
+/// <summary>
 /// <c>--ajan</c> modunun giris noktasi: anahtari kurar, servisi ayaga kaldirir,
-/// Ctrl+C'ye kadar bagli tutar.
+/// Ctrl+C'ye (arayuzde "Durdur" dugmesine) kadar bagli tutar.
 ///
 /// Baglanti ORKA'dan bagimsiz: ajan ORKA kapaliyken de bagli kalir ve gorev
 /// calistirmadan bekler. ORKA yalnizca <c>OrkayaAktar</c> isi geldiginde
@@ -14,10 +38,12 @@ namespace PkfRobot.Ajan;
 [SupportedOSPlatform("windows")]
 public static class AjanCalistirici
 {
-    public static async Task<int> CalistirAsync(RobotConfig cfg, bool anahtariSifirla, CancellationToken ct)
+    public static async Task<int> CalistirAsync(RobotConfig cfg, bool anahtariSifirla, CancellationToken ct,
+                                                AjanKancalari? kancalar = null)
     {
         var kok = AjanKimlikDeposu.VarsayilanKlasor;
-        using var log = new AjanDosyaLog(Path.Combine(kok, "logs"), cfg.Ajan.LogSaklamaGun);
+        using var dosyaLog = new AjanDosyaLog(Path.Combine(kok, "logs"), cfg.Ajan.LogSaklamaGun);
+        IAjanLog log = kancalar?.LogSarmala?.Invoke(dosyaLog) ?? dosyaLog;
 
         var depo = new AjanKimlikDeposu(kok);
 
@@ -30,7 +56,7 @@ public static class AjanCalistirici
         var anahtar = depo.AnahtarOku();
         if (anahtar is null)
         {
-            anahtar = AnahtariSor(kok);
+            anahtar = kancalar?.AnahtarSor is { } sor ? sor(kok) : AnahtariSor(kok);
             if (anahtar is null)
             {
                 log.Hata("Ajan anahtari girilmedi. Baglanti kurulamaz.");
@@ -47,7 +73,7 @@ public static class AjanCalistirici
         log.Bilgi($"Makine  : {kimlik.MakineAdi} ({kimlik.MakineId})");
         log.Bilgi($"Hub     : {cfg.Ajan.HubAdresi}");
         log.Bilgi($"Token   : {cfg.Ajan.TokenUcu}");
-        log.Bilgi($"Log     : {log.Klasor}");
+        log.Bilgi($"Log     : {dosyaLog.Klasor}");
         log.Bilgi("Durdurmak icin Ctrl+C.");
 
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
@@ -80,6 +106,9 @@ public static class AjanCalistirici
                 Path.Combine(kok, "isler"))
         };
 
+        if (kancalar?.IsSarmala is { } sarmala)
+            calistiricilar = calistiricilar.Select(sarmala).ToList();
+
         await using var servis = new AjanServisi(
             new SignalRHubFabrikasi(),
             tokenSaglayici,
@@ -89,6 +118,8 @@ public static class AjanCalistirici
             TimeSpan.FromSeconds(cfg.Ajan.KalpAtisiSaniye),
             log,
             calistiricilar: calistiricilar);
+
+        kancalar?.ServisHazir?.Invoke(servis);
 
         await servis.CalistirAsync(ct);
 

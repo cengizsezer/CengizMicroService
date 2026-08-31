@@ -95,6 +95,42 @@ namespace CatalogService.UnitTests.FirmaBilgileri
         }
 
         [Fact]
+        public async Task Sicil_orka_firma_kodunu_kaydeder_ve_okur()
+        {
+            // Alan catalog.Firmalar'da; "ORKA'ya Aktar" işi bunu okuyor.
+            using var db = Context();
+            var servis = Servis(db);
+
+            var dto = await servis.SicilGetAsync();
+            Assert.Null(dto.OrkaFirmaKodu);
+
+            dto.OrkaFirmaKodu = "  0001  ";
+            var sonuc = await servis.SicilKaydetAsync(dto);
+
+            Assert.Equal("0001", sonuc.OrkaFirmaKodu);
+            Assert.Equal("0001", db.Firmalar.Single(f => f.Id == FirmaA).OrkaFirmaKodu);
+        }
+
+        [Fact]
+        public async Task Sicil_bos_orka_kodunu_null_yazar()
+        {
+            // Boş bırakmak alanı temizliyor: nullable kalması işin reddedilme
+            // kuralının (boş kod = iş yok) tek anlamlı olmasını sağlıyor.
+            using var db = Context();
+            var servis = Servis(db);
+
+            var dto = await servis.SicilGetAsync();
+            dto.OrkaFirmaKodu = "0001";
+            await servis.SicilKaydetAsync(dto);
+
+            dto.OrkaFirmaKodu = "   ";
+            var sonuc = await servis.SicilKaydetAsync(dto);
+
+            Assert.Null(sonuc.OrkaFirmaKodu);
+            Assert.Null(db.Firmalar.Single(f => f.Id == FirmaA).OrkaFirmaKodu);
+        }
+
+        [Fact]
         public async Task Sicil_ikinci_kayitta_yeni_satir_acmaz()
         {
             using var db = Context();

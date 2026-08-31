@@ -2896,3 +2896,202 @@ zaten reddediyor; düğmenin durması kullanıcıya çalışmayacak bir yol gös
 ve iş uçları `YalnizInsan` olarak bırakıldı: Banka Otomasyon > Aktar ekranı da
 onları çağırıyor ve o ekranın kullanıcısının ajan yönetimi izni olmak zorunda
 değil.
+
+
+## 132. ORKA firma kodu iki ekranda birden görünür yerde
+
+§120 "Firmalarım ekranından giriliyor" diyordu ama alan **katlanmış** bir
+`RadzenFieldset`'in ("BDP Beyanname Bilgileri — KDV beyannamesi XML üretimi
+için") içindeydi. Kullanıcı formu açıp alanı göremiyor, "ORKA'ya Aktar" düğmesi
+de onu var olmayan bir alana yolluyordu. Alanın KDV beyannamesiyle zaten hiçbir
+ilgisi yok: BDP kutusundan çıkarılıp ana alanların arasına, Vergi Dairesi'nin
+altına alındı.
+
+**Firma Bilgileri > Sicil bölümüne de kondu.** İki giriş noktası ama **tek
+sütun** (`catalog.Firmalar.OrkaFirmaKodu`): unvan, VKN, vergi dairesi ve ticaret
+sicil no zaten iki formdan da yazılıyor (§93), alan o kalıba uydu — kopyalanan
+bir veri yok. Kullanıcı firmanın künyesini düzenlerken oradan, hızlı düzeltme
+yaparken Firmalarım'dan giriyor.
+
+**Boş bırakmak alanı `null` yapıyor**, boş metin değil: işin reddedilme kuralı
+("kod yoksa iş yok") tek anlamlı kalsın diye.
+
+**Anasayfa firma paneli sicil bölümünde okunuyor.** Panel okuma odaklı (§127) ve
+boş alanı gizlemiyor, "—" yazıyor: kodun eksik olduğu firma, aktarımı denemeden
+önce listede görülüyor.
+
+**Hata mesajı hangi firmada eksik olduğunu söylüyor.** Aktar ekranında birden
+çok firmanın yüklemesi listelenebiliyor; "Firmanın ORKA firma kodu tanımlı
+değil" cümlesi kullanıcıya hepsini tek tek açtırıyordu. Mesaj artık firmanın
+kısa adını, alanın **ekrandaki adını** ve kodun ORKA'da nereden geldiğini
+(F7 sonrası) yazıyor. Düğme yine tıklanabilir: eksikliği düğmeyi kilitleyerek
+değil, denenince anlaşılır biçimde söyleyerek bildiriyor.
+
+## 133. Arayüz eklendi, konsol modları kaldı
+
+Görev metni "argümansız çalıştırılırsa arayüz açılsın, mevcut konsol modları
+aynen kalsın" diyordu. Bunun için `OutputType` **`Exe` bırakıldı**, `WinExe`
+yapılmadı: `WinExe` konsol alt sistemini kapatır ve `--ajan`, `--probe`,
+`--kalibre` çıktıları hiçbir yere yazılmazdı — hata ayıklarken kullanılan tek
+şey o çıktı. Bedeli, arayüz açılırken arkada boş bir konsol penceresi kalması;
+o pencere `ShowWindow(SW_HIDE)` ile gizleniyor, **kapatılmıyor** (kapatmak
+süreci de sonlandırırdı).
+
+`Main`'e `[STAThread]` eklendi. Dosya/klasör seçici ve pano yalnız tek iş
+parçacıklı apartmanda doğru çalışıyor; konsol modları bundan etkilenmiyor.
+
+**Argümansız çalıştırma artık yardım yazmıyor.** Exe'ye çift tıklayan birinin
+karşılığında bir yardım metni görmesi anlamsızdı; yardım `--yardim` ile duruyor.
+
+**Publish 163 MB'tan ~173 MB'a çıktı.** WinForms'un native kütüphaneleri de
+exe'ye gömülüyor (`IncludeNativeLibrariesForSelfExtract`). Tek dosya kuralı
+bozulmadı: exe'nin yanında hâlâ ayrı DLL çıkmıyor.
+
+## 134. Kalibrasyon iki yerde saklanıyor, ikisi de gerekli
+
+Adım motoru koordinatı görev JSON'undan okuyor ve motora dokunulmadı. Ama görev
+dosyaları publish klasöründe ve **her yayında üzerine yazılıyor** — ofiste
+kalibre edilen değerler orada dursa her güncellemede silinirdi. Ajan anahtarının
+`%AppData%`'da durmasının gerekçesi de bu (bkz. §109).
+
+Çözüm: asıl kopya `%AppData%\PkfRobot\ayarlar.json` içinde, çalışan kopya görev
+JSON'unda. Uygulama **her açılışta** kayıtlı kalibrasyonu görev dosyalarına geri
+yazıyor; yayın sonrası kalibrasyon kendiliğinden geri geliyor ve kimsenin bir
+şey yapması gerekmiyor.
+
+**Anahtar adım indeksi değil `Tikla` sırası:** `orkaya-aktar.json#0`. Göreve
+araya bir `Bekle` ya da `EkranGoruntusu` adımı eklemek kalibrasyonu
+düşürmemeli.
+
+**Kayıt yalnız adım açıklaması (`Not`) hâlâ aynıysa uygulanıyor.** Görev akışı
+değiştiğinde eski bir oranın yeni bir adıma sessizce yazılması, robotun yanlış
+yere tıklamasının en sinsi yolu olurdu: sayı makul görünür, kimse fark etmez.
+Açıklama tutmuyorsa koordinat uygulanmıyor ve kullanıcıya "yeniden ölçün"
+deniyor.
+
+**Görev dosyası `JsonNode` ile, yerinde güncelleniyor.** Nesneye deserialize
+edip yeniden yazmak `"// KULLANIM"` gibi açıklama anahtarlarını silerdi — o
+anahtarlar dosyanın kullanım kılavuzu. Yalnız gerçekten değişen dosya yazılıyor:
+her açılışta bütün görev dosyalarının tarihini değiştirmek "neyi ne zaman
+elledim" sorusunu cevapsız bırakırdı. Oran üç haneye yuvarlanıyor; ham `double`
+dosyaya `0.30000000000000004` düşürürdü.
+
+## 135. Tıklama yakalanıyor ve ORKA'ya ulaşmıyor
+
+Koordinat seçerken kullanıcı ORKA'nın üstüne tıklıyor. O tıklama ORKA'ya
+giderse menü açılır, bir kayıt değişir, ölçüm yapan kişi farkında olmadan veri
+değiştirmiş olur. Bu yüzden dünya çapında düşük seviye fare kancası
+(`WH_MOUSE_LL`) kuruluyor ve ilk sol tık **yutuluyor** (kanca 1 döndürüyor).
+Esc ve sağ tık iptal ediyor; onlar da yutuluyor.
+
+Kanca mesaj döngüsü olan bir iş parçacığında kurulmalı — WinForms'un ana iş
+parçacığı bunu sağlıyor. Kanca temsilcileri **alan olarak** tutuluyor; yerel
+değişkende kalsalar çöp toplayıcı onları toplar ve Windows olmayan bir adrese
+çağrı yapardı.
+
+**Bilgi şeridi odak almıyor** (`ShowWithoutActivation`). Odağı alsaydı ORKA
+arkaya düşer, kullanıcı önce ORKA'ya tıklayıp onu öne getirmek zorunda kalır ve
+o ilk tıklama ölçüm olarak yakalanırdı.
+
+**Hedef pencere ORKA değilse kaydedilmiyor.** Kontrol başlıkla değil **süreçle**
+yapılıyor: ORKA'nın pencere başlığı sürüme ve açık firmaya göre değişiyor
+(`ORKA_0001_2026`), süreç adı sabit — ajanın "ORKA açık mı" kontrolüyle aynı
+gerekçe. Tıklanan noktadaki pencere `WindowFromPoint` + `GA_ROOT` ile bulunup
+süreç kimliği karşılaştırılıyor. Süreç **okunamadığında da** reddediliyor:
+"bilmiyorum" durumunda kabul etmek, yanlış koordinatın sessizce kaydedilmesine
+açık kapı bırakırdı.
+
+**ORKA tam ekran değilken uyarı var, engel yok.** Robot tıklamadan önce
+pencereyi büyütüyor, yani şimdi ölçülen oran kayabilir. Karar kullanıcının.
+
+## 136. "Dene" olmadan kalibrasyon kör bir iş
+
+ORKA'nın gridi UI Automation'a kapalı tek bir blok (bkz. §121, OKUBENI): robot
+yazdığı değerin doğru yere gittiğini ekrandan **göremiyor**. Aynı sebeple
+kalibrasyonu doğrulamanın da tek yolu göz: "Dene" ORKA'yı öne getirip
+koordinata gerçekten tıklıyor, ekran görüntüsü alıyor ve tıklanan noktaya nişan
+çizip gösteriyor.
+
+Bu tıklama **gerçek**; ORKA'da bir şey açabilir. O yüzden önce onay soruluyor
+ve mesajda "önce test firmasında deneyin" yazıyor — `04-tikla-kalibrasyon.json`
+dosyasındaki uyarının aynısı.
+
+Pencere ölçüsü **öne getirdikten sonra** okunuyor: pencere simge durumundan
+döndüyse eski dikdörtgen yanlış noktaya götürürdü.
+
+## 137. Oran çevrimi tek yerde ve testli
+
+`AdimMotoru.Tikla` mutlak koordinatı orandan hesaplıyor; seçici aynı hesabı ters
+yönde yapıyor. İki taraf ayrılırsa kullanıcının seçtiği yer ile robotun
+tıkladığı yer **sessizce** ayrışır. Bu yüzden çevrim `OranDonusturucu` içinde
+tek yerde ve aynı yuvarlamayı kullanıyor.
+
+Çevrim FlaUI'nin ya da WinForms'un dikdörtgen tipine bağlanmadı; kendi
+`PencereOlcusu` kaydı kullanılıyor. Test bu iki dünyayı kurmadan çalışabilsin
+diye — arayüz test edilemiyor, **kural** ediliyor.
+
+## 138. Ayar tanımları listede, arayüz listeden üretiliyor
+
+Yeni bir ayar eklemek forma elle kutu koymayı gerektirmesin diye ayarlar
+`AyarTanimlari` içinde bir listede duruyor: ad, etiket, tip, açıklama,
+varsayılan ve okuma/yazma işlevleri. Panel bu listeyi gezip kutuları,
+"Gözat..." düğmelerini ve uyarı satırlarını kendisi üretiyor.
+
+Listede durmasının ikinci sebebi: her alanın **açıklaması** tanımın yanında.
+Altı ay sonra "bu kutuya ne yazılıyordu" sorusunun cevabı ekranda, koda
+bakmadan görünüyor.
+
+**Yol uyarısı kaydetmeyi engellemiyor.** ORKA henüz kurulmamış bir makinede
+ayarları önceden girmek meşru; olmayan dosya kırmızı, olmayan klasör sarı
+(kaydedince açılıyor).
+
+## 139. Şifreler ayrı dosyada ve yedeğe girmiyor
+
+`ayarlar.json` düz metin ve yedeklenip başka makineye taşınabiliyor. Şifre orada
+dursa yedek dosyası bir şifre listesine dönerdi. Bu yüzden şifreler
+`%AppData%\PkfRobot\sifreler.dat` içinde, DPAPI `CurrentUser` kapsamıyla —
+dosyayı başka bir makineye ya da başka bir Windows kullanıcısına kopyalayan onu
+çözemez; ajan anahtarındaki kalıbın aynısı.
+
+**Yedekte şifre yok** ve bu kullanıcıya yedek alırken söyleniyor. DPAPI ile
+şifrelenen değer başka makinede zaten çözülemez; yedeğe düz metin koymak
+"makine değiştirmek" için şifreleri bir dosyaya dökmek olurdu. Yeni makinede
+şifreler ve ajan anahtarı elle giriliyor, kalibrasyon yedekten geliyor.
+
+Ekrana giden log kopyası da maskeden geçiyor (`AjanLogMaskesi`): sır log
+dosyasında görünmüyorsa pencerede de görünmemeli.
+
+## 140. Arayüz ajanı sarmalıyor, ikinci bir kopyasını kurmuyor
+
+Arayüzün ajanı çalıştırması için ikinci bir nesne grafiği yazılsaydı, biri
+değiştiğinde diğeri sessizce eskirdi. Bunun yerine `AjanCalistirici` üç
+**isteğe bağlı** kanca aldı: log ağzını sarmala, iş çalıştırıcıyı sarmala,
+anahtarı başka yerden sor. Hepsi boş bırakılırsa davranış konsol modundaki ile
+birebir aynı; konsol yolu değişmedi.
+
+Son beş iş ve ilerleme, `IIsCalistirici`'yi sarmalayan bir katmandan geliyor
+(`IzlenenCalistirici`). `AjanServisi`'ne "son beş işi sakla" diye bir alan
+eklemek, bağlantı katmanına arayüz işi yüklemek olurdu.
+
+**`AjanServisi`'ne tek bir şey eklendi:** yalnız okunan `SonKalpAtisi` damgası.
+Arayüz "bağlı" yazmakla yetinemez — kopmuş ama henüz fark edilmemiş bir
+bağlantıda da "bağlı" görünürdü; son atışın üzerinden geçen süre o durumu
+ekranda gösteren tek işaret. Bağlantı mantığı değişmedi.
+
+**Log dosyası iki kez açılmıyor.** Ekrana giden kopya (`CiftYonluLog`) kendi
+dosyasını açmıyor; ajan başlarken kendi günlük dosyasını onun arkasına takıyor.
+İkinci bir `StreamWriter` aynı dosyayı açamaz ve ajan hiç başlamazdı.
+
+## 141. Kapatma düğmesi kapatmıyor
+
+Ajanın işi gün boyu bağlı kalmak. Pencereyi kapatan birinin robotu da
+kapatması beklenmez ve bunun farkına ancak sunucudan iş gönderilemediğinde
+varılırdı. Kapatma düğmesi tepsiye indiriyor, çıkış tepsi menüsünden.
+
+Çıkışta ajan **önce düzgün durduruluyor**: süreci aniden bırakmak, sunucuda
+zaman aşımına kadar (varsayılan 15 dk) "çalışıyor" görünecek bir iş bırakırdı —
+`AjanServisi`'nin kapanırken çalışan işi bildirmesinin gerekçesiyle aynı.
+
+Tepsi simgeleri kodda çiziliyor; projede `.ico` dosyası yok ve gereken tek şey
+durum rengi. Dört simge bir kez üretilip saklanıyor: her saniye yeni bir
+`HICON` üretmek tutamaç sızdırırdı.

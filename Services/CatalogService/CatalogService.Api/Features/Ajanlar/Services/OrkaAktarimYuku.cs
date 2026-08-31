@@ -67,14 +67,26 @@ namespace CatalogService.Api.Features.Ajanlar.Services
                 return (null, "Banka hesabının ORKA kodu tanımlı değil; " +
                               "Banka Otomasyon > Tanımlar ekranından girin.");
 
-            var firmaKodu = await _db.Firmalar.AsNoTracking()
+            // Ad da okunuyor: ekranda birden çok firma listelenebiliyor, mesaj hangi
+            // firmada eksik olduğunu söylemezse kullanıcı hepsini tek tek açmak zorunda.
+            var firma = await _db.Firmalar.AsNoTracking()
                 .Where(f => f.Id == yukleme.FirmaId)
-                .Select(f => f.OrkaFirmaKodu)
+                .Select(f => new { f.OrkaFirmaKodu, f.KisaAd, f.Unvan })
                 .FirstOrDefaultAsync(ct);
 
-            if (string.IsNullOrWhiteSpace(firmaKodu))
-                return (null, "Firmanın ORKA firma kodu tanımlı değil; " +
-                              "Yönetim > Firmalarım ekranından girin.");
+            if (firma is null)
+                return (null, "Ekstrenin firması bulunamadı.");
+
+            if (string.IsNullOrWhiteSpace(firma.OrkaFirmaKodu))
+            {
+                var ad = string.IsNullOrWhiteSpace(firma.KisaAd) ? firma.Unvan : firma.KisaAd;
+
+                return (null, $"\"{ad}\" firmasının ORKA firma kodu girilmemiş. " +
+                              "Yönetim > Firmalarım ekranında firmayı düzenleyip " +
+                              "\"ORKA Firma Kodu\" alanına ORKA girişinde F7'den sonra " +
+                              "yazdığınız kodu (ör. 0001) girin. Aynı alan " +
+                              "Firma Bilgileri > Sicil bölümünde de var.");
+            }
 
             // Satır sayısı dışa aktarımın kendi mantığından geliyor: "diğer bankada"
             // işaretli satırlar ORKA'ya gitmiyor ve iki dosyada da yoklar.
@@ -100,7 +112,7 @@ namespace CatalogService.Api.Features.Ajanlar.Services
                 EkstreYuklemeId = ekstreYuklemeId,
                 FirmaId = yukleme.FirmaId,
                 BankaHesabiOrkaKodu = hesapKodu!,
-                FirmaKodu = firmaKodu!,
+                FirmaKodu = firma.OrkaFirmaKodu!,
                 SatirSayisi = aktarim.SatirSayisi
             };
 

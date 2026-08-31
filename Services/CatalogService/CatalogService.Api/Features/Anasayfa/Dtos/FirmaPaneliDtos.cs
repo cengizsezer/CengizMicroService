@@ -61,6 +61,12 @@ namespace CatalogService.Api.Features.Anasayfa.Dtos
         public string? SermayeParaBirimi { get; set; }
         public DateTime? KurulusTarihi { get; set; }
         public string? Adres { get; set; }
+
+        /// <summary>
+        /// ORKA giriş zincirinde F7 sonrası girilen firma kodu. Panelde okunuyor;
+        /// ORKA'ya aktarım işi bunsuz kurulmadığı için eksikliği burada da görülsün diye.
+        /// </summary>
+        public string? OrkaFirmaKodu { get; set; }
     }
 
     /// <summary>

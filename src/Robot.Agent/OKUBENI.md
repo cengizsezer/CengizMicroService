@@ -39,7 +39,7 @@ bin\Release\net8.0-windows\win-x64\publish\
 
 | Dosya | Boyut | Ofise kopyala? |
 |---|---|---|
-| `PkfRobot.exe` | ~163 MB | **Evet** — .NET runtime ve native DLL'ler içinde gömülü |
+| `PkfRobot.exe` | ~173 MB | **Evet** — .NET runtime ve native DLL'ler içinde gömülü |
 | `appsettings.json` | ~1 KB | **Evet** — ayarlar buradan okunur |
 | `gorevler\` | 4 JSON | **Evet** — görev tanımları |
 | `PkfRobot.pdb` | ~20 KB | Hayır — sadece hata ayıklama sembolleri |
@@ -456,3 +456,27 @@ Firma bazlı ayarlanabilir olmalı.
 - `adim-NN-*.png` — her adımın ekran görüntüsü
 
 Bu klasör hangi adımda ne olduğunu görmek için yeterli olmalı.
+
+---
+
+## Masaustu arayuzu (argumansiz calistirma)
+
+`PkfRobot.exe` argumansiz calistirilirsa kucuk bir pencere acilir: baglanti
+durumu, calisan is, son bes is, log; ayarlar (yollar, ORKA giris bilgileri,
+sifreler) ve **koordinat kalibrasyonu**. Kapatma dugmesi tepsiye indirir, cikis
+tepsi menusunden. Konsol modlari (`--ajan`, `--gorev`, `--probe`,
+`--kalibre`) aynen calisir.
+
+Ayarlar `%AppData%\PkfRobotyarlar.json` icinde, sifreler
+`sifreler.dat` icinde DPAPI ile sifreli durur; publish uzerine yazdiginda
+kaybolmazlar.
+
+**Koordinat kalibrasyonunun adim adim anlatimi OZET.md > “PkfRobot — Windows
+arayuzu ve koordinat kalibrasyonu” bolumunde.** Ozetle: ORKA’yi tam ekran ac,
+kalibre edilecek ekrana elle git, Kalibrasyon sekmesinde ilgili satirda
+“Sec”e bas, ORKA’da hedefe tikla (tiklama ORKA’ya ULASMAZ), sonra “Dene” ile
+gozle dogrula.
+
+Kalibrasyon hem `%AppData%` altina hem gorev JSON’una yazilir; uygulama her
+acilista kayitli olcumu gorev dosyalarina geri uygular, yani yayin sonrasi
+kalibrasyon kendiliginden geri gelir.

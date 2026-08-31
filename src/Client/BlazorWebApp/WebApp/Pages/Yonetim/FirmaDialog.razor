@@ -52,6 +52,21 @@
                 <RadzenTextBox Name="VergiDairesi" @bind-Value="Model.VergiDairesi" Style="width:100%" MaxLength="100" />
             </RadzenFormField>
 
+            @* ORKA firma kodu görünür alanlarda: "ORKA'ya Aktar" bunsuz çalışmıyor ve
+               hata mesajı kullanıcıyı buraya yolluyor. Katlanan BDP kutusunun içindeyken
+               kimse bulamıyordu; alanın KDV beyannamesiyle de ilgisi yok. *@
+            <RadzenFormField Text="ORKA Firma Kodu" Variant="Variant.Outlined">
+                <RadzenTextBox Name="OrkaFirmaKodu"
+                               @bind-Value="Model.OrkaFirmaKodu"
+                               Style="width:100%"
+                               MaxLength="20"
+                               Placeholder="Örn: 0001" />
+            </RadzenFormField>
+            <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary rz-mt-0">
+                ORKA girişinde F7'den sonra girilen firma kodu. Boşsa bu firmada
+                "ORKA'ya Aktar" işi oluşturulamaz.
+            </RadzenText>
+
             @* ── KDV Beyannamesi (BDP) için ek alanlar — opsiyonel ─── *@
             <RadzenFieldset AllowCollapse="true" Collapsed="@_bdpCollapsed">
                 <HeaderTemplate>
@@ -65,14 +80,6 @@
                 </HeaderTemplate>
                 <ChildContent>
                     <RadzenStack Gap="0.75rem">
-
-                        <RadzenFormField Text="ORKA Firma Kodu" Variant="Variant.Outlined">
-                            <RadzenTextBox Name="OrkaFirmaKodu"
-                                           @bind-Value="Model.OrkaFirmaKodu"
-                                           Style="width:100%"
-                                           MaxLength="20"
-                                           Placeholder="Örn: 0001 — PkfRobot'un ORKA girişinde kullandığı kod" />
-                        </RadzenFormField>
 
                         <RadzenFormField Text="Vergi Dairesi Kodu" Variant="Variant.Outlined">
                             <RadzenTextBox Name="VergiDairesiKodu"

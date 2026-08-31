@@ -70,6 +70,19 @@
                     </RadzenFormField>
                 </RadzenColumn>
 
+                @* ORKA firma kodu catalog.Firmalar'da; Firmalarım ekranındaki formda da
+                   düzenleniyor — aynı sütun, iki giriş noktası. "ORKA'ya Aktar" işi
+                   bunsuz kurulmuyor, o yüzden okunur bir yerde duruyor. *@
+                <RadzenColumn Size="12" SizeMD="3">
+                    <RadzenFormField Text="ORKA Firma Kodu" Style="width:100%">
+                        <RadzenTextBox @bind-Value="model.OrkaFirmaKodu" MaxLength="20"
+                                       Placeholder="Örn: 0001" Style="width:100%" />
+                    </RadzenFormField>
+                    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary">
+                        ORKA girişinde F7'den sonra girilen kod; "ORKA'ya Aktar" bunu kullanıyor.
+                    </RadzenText>
+                </RadzenColumn>
+
                 <RadzenColumn Size="12" SizeMD="6">
                     <RadzenFormField Text="Adres" Style="width:100%">
                         <RadzenTextArea @bind-Value="model.Adres" Rows="2" Style="width:100%" />

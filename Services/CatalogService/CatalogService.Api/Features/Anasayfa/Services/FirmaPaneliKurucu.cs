@@ -196,7 +196,8 @@ namespace CatalogService.Api.Features.Anasayfa.Services
                     Sermaye = seciliSicil?.Sermaye,
                     SermayeParaBirimi = seciliSicil?.SermayeParaBirimi,
                     KurulusTarihi = seciliSicil?.KurulusTarihi,
-                    Adres = seciliSicil?.Adres
+                    Adres = seciliSicil?.Adres,
+                    OrkaFirmaKodu = secili.OrkaFirmaKodu
                 },
 
                 Ortaklik = FirmaBilgiService.Ortaklik(
