@@ -136,7 +136,7 @@ try
     });
 
 
-    builder.Services.AddAuthorization();
+    builder.Services.AddAuthorization(AjanYetkileri.Ekle);
 
     builder.Services.AddScoped<IIdentityService, IdentityService.Application.Services.IdentityService>();
 

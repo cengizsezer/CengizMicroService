@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 
 namespace CatalogService.Api.Features.Ajanlar
@@ -46,6 +46,24 @@ namespace CatalogService.Api.Features.Ajanlar
         public const string YalnizAjan = "AjanTokeni";
         public const string YalnizInsan = "KullaniciTokeni";
 
+        /// <summary>
+        /// Ajan yönetimi izni; ekranı açan kullanıcının token'ında aranan
+        /// <c>perm</c> claim'i. Anahtarlar IdentityService'te
+        /// <c>Application/Services/Agent/AjanYetkileri.cs</c>'de de yazılı —
+        /// iki servis arasında paylaşılan kütüphane yok, birlikte değişmeli
+        /// (bkz. KARARLAR §131).
+        /// </summary>
+        public const string IzinClaim = "perm";
+        public const string AjanYonetimiGoruntule = "AjanYonetimi.View";
+        public const string AjanYonetimiDuzenle = "AjanYonetimi.Edit";
+
+        /// <summary>
+        /// İnsan + ajan yönetimi düzenleme izni. Bağlantı düşürme buna bağlı:
+        /// ajanı iptal eden kullanıcı soketi de kapatabilmeli, ama "ajanlar bağlı
+        /// mı" diye bakan herkes kapatabilmemeli.
+        /// </summary>
+        public const string YonetimiDuzenle = "AjanYonetimiDuzenle";
+
         public static void Ekle(AuthorizationOptions o)
         {
             o.AddPolicy(YalnizAjan, p => p
@@ -55,6 +73,11 @@ namespace CatalogService.Api.Features.Ajanlar
             o.AddPolicy(YalnizInsan, p => p
                 .RequireAuthenticatedUser()
                 .RequireAssertion(ctx => !AjanKimligi.AjanMi(ctx.User)));
+
+            o.AddPolicy(YonetimiDuzenle, p => p
+                .RequireAuthenticatedUser()
+                .RequireAssertion(ctx => !AjanKimligi.AjanMi(ctx.User))
+                .RequireClaim(IzinClaim, AjanYonetimiDuzenle));
 
             // Politika yazılmamış her [Authorize] varsayılan olarak İNSAN ister.
             //

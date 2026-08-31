@@ -10,6 +10,73 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "IdentityService.Controllers.AdminAgentController",
+    "Method": "Listele",
+    "RelativePath": "api/auth/admin/agents",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[IdentityService.Application.Models.Agent.AjanListeSatiri, IdentityService, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "IdentityService.Controllers.AdminAgentController",
+    "Method": "Olustur",
+    "RelativePath": "api/auth/admin/agents",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "istek",
+        "Type": "IdentityService.Application.Models.Agent.YeniAjanIstegi",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "IdentityService.Application.Models.Agent.YeniAjanYaniti",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "IdentityService.Controllers.AdminAgentController",
+    "Method": "IptalEt",
+    "RelativePath": "api/auth/admin/agents/{id}/iptal",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "istek",
+        "Type": "IdentityService.Application.Models.Agent.AjanIptalIstegi",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "IdentityService.Controllers.AdminController",
     "Method": "GetFirms",
     "RelativePath": "api/auth/admin/firms",
@@ -320,6 +387,32 @@
       }
     ],
     "ReturnTypes": []
+  },
+  {
+    "ContainingType": "IdentityService.Controllers.AgentAuthController",
+    "Method": "Token",
+    "RelativePath": "api/auth/agent/token",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "istek",
+        "Type": "IdentityService.Application.Models.Agent.AjanTokenIstegi",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "IdentityService.Application.Models.Agent.AjanTokenYaniti",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
   },
   {
     "ContainingType": "IdentityService.Controllers.AuthController",

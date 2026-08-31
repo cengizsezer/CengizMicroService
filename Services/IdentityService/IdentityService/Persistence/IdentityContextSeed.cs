@@ -1,4 +1,5 @@
-﻿using IdentityService.Domain.Entities;
+﻿using IdentityService.Application.Services.Agent;
+using IdentityService.Domain.Entities;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -94,6 +95,17 @@ namespace IdentityService.Persistence
     "FaturaKontrol.View",
     "Sovos fatura kontrol sayfasını görme");
 
+            // Yönetim > Ajanlar. Rol değil izin: ekran Admin'e kilitliyken pkf
+            // kullanıcıları göremiyordu (bkz. KARARLAR §131). Anahtar adları
+            // IdentityService.Application.Services.Agent.AjanYetkileri'nde sabit.
+            var pAjanYonetimiView = await GetOrCreatePermAsync(
+    AjanYetkileri.Goruntule,
+    "Ajan listesini ve durumunu görme");
+
+            var pAjanYonetimiEdit = await GetOrCreatePermAsync(
+    AjanYetkileri.Duzenle,
+    "Ajan anahtarı üretme, ajan iptal etme, bağlantı düşürme");
+
             // === 2) Roles (custom) ===
             var rAdmin = await GetOrCreateRoleAsync("Admin");
             var rPersonel = await GetOrCreateRoleAsync("Personel");
@@ -113,6 +125,8 @@ namespace IdentityService.Persistence
             await LinkRolePermAsync(rIlkyardim, pIlkyardimView);
             await LinkRolePermAsync(pkf, pCalendarpageView);
             await LinkRolePermAsync(pkf, pFaturaKontrolView);
+            await LinkRolePermAsync(pkf, pAjanYonetimiView);
+            await LinkRolePermAsync(pkf, pAjanYonetimiEdit);
 
             // Personel temel görüntüleyebilir (istersen ekle/çıkar)
             await LinkRolePermAsync(rPersonel, pExpenseView);

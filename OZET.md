@@ -2983,3 +2983,92 @@ Bilgileri ekranının kendi uçları ve tabloları (alan eklendi, mekanizma ayn�
   götürüyor. Ekran okuma odaklı kaldı.
 - **Sayaçlar ayrı çağrıda.** Panel bir istek, dönem özeti bir istek. İkisi tek uca
   sıkıştırılsaydı firma değiştirmek bütün sayfayı yeniden yükletirdi (§127).
+
+# Yönetim > Ajanlar — rol yerine izin
+
+Ekran menüde görünmüyordu. **Yayın eksikliği değildi**: sayfa, uçları ve
+testleriyle birlikte kodda duruyordu (A adımıyla geldi, `c16b2a7`,
+2026-08-30). Sebep yetkiydi — dört ayrı yerde `Admin` rolü aranıyordu ve
+`pkfadmin` kullanıcısının token'ında yalnız `role: pkf` var. Teşhisin ayrıntısı
+KARARLAR §131'de.
+
+## Ne değişti
+
+| Yer | Önce | Sonra |
+|---|---|---|
+| Menü satırı (`MainLayout.razor`) | `<AuthorizeView Roles="Admin">` | `@if (canViewAjanlar)` → `AjanYonetimi.View` |
+| Sayfa (`Ajanlar.razor`) | `[Authorize(Roles = "Admin")]` | `[Authorize]` + `PermissionService` kontrolü |
+| Kayıt uçları | `api/auth/admin/agents`, `[Authorize(Roles="Admin")]` | `api/auth/agents`, izin politikaları |
+| `/catalog/agent/{id}/dusur` | `YalnizInsan` + `Roles="Admin"` | `YonetimiDuzenle` (insan + `AjanYonetimi.Edit`) |
+
+İki yeni izin, repodaki `Vehicle.View` / `BeyannameTakip.View` kalıbıyla aynı:
+
+- `AjanYonetimi.View` — ekranı ve listeyi görme
+- `AjanYonetimi.Edit` — anahtar üretme, iptal, bağlantı düşürme
+
+İkisi de seed'de `pkf` rolüne bağlandı; Admin zaten "bütün izinleri Admin'e bağla"
+döngüsünden alıyor. Yeni rol mekanizması kurulmadı, `pkf` rolüne Admin verilmedi,
+gateway yapılandırması değişmedi (`/auth/{everything}` kuralı yeni yolu zaten
+karşılıyor). Diğer sayfaların yetkilendirmesine dokunulmadı;
+`/catalog/agent/baglilar` ve iş uçları `YalnizInsan` olarak kaldı — Banka
+Otomasyon > Aktar ekranı da onları çağırıyor.
+
+## Yayın notu
+
+Değişiklik **iki tarafı birden** ilgilendiriyor, ikisi de yayınlanmadan ekran
+açılmaz:
+
+1. **IdentityService yeniden yayınlanmalı.** İzinler `IdentityContextSeed`'de
+   üretiliyor ve seed servis açılışında koşuyor; yeni sürüm çalışmadan
+   `AjanYonetimi.*` satırları veritabanına düşmez ve kimsenin token'ında
+   görünmez. Migration gerekmiyor, tablo yapısı değişmedi.
+2. **Blazor uygulaması yeniden yayınlanmalı.** Menü satırı ve sayfanın izin
+   sorgusu istemci tarafında.
+
+Sıra önemli değil ama ikisi de gerekiyor: eski Blazor + yeni Identity → menüde
+hâlâ görünmez (satır `Roles="Admin"` içinde); yeni Blazor + eski Identity →
+menü yine görünmez (token'da izin yok) ve `/auth/agents` 404 döner.
+
+Kullanıcının **yeniden giriş yapması gerekiyor**: izinler token'a giriş anında
+basılıyor, elindeki 20 dakikalık token'da `AjanYonetimi.*` yok.
+
+## Doğrulama (yerel, gateway zinciri üstünden)
+
+Consul host'ta çalışıyordu; CatalogService (:5004), IdentityService (:5005) ve
+gateway (:5000) ayağa kaldırılıp gerçek `pkfadmin` girişiyle sınandı. Derlemeye
+ve teste ek olarak uçlar gerçekten çağrıldı:
+
+`pkfadmin` (token: `role: pkf`, Admin yok; `perm`: … `AjanYonetimi.View`,
+`AjanYonetimi.Edit`)
+
+| Çağrı | Sonuç |
+|---|---|
+| `GET /auth/agents` | 200, 4 kayıt |
+| `POST /auth/agents` (anahtar üret) | 200, `pkfr_0VU6…`, oluşturan `pkfadmin` (#19) |
+| `POST /auth/agents/1003/iptal` | 204, listede "İptal" |
+| `GET /catalog/agent/baglilar` | 200 |
+| `POST /catalog/agent/999/dusur` | 200 |
+| `GET /catalog/agent/isler` | 200 |
+| `GET /auth/admin/agents` (eski yol) | 404 |
+
+`cengiz.sezer` (MaliIsler; ajan izni yok): `/auth/agents` GET ve POST 403,
+`dusur` 403; `baglilar` 200 (bilerek açık).
+
+Elle basılmış, yalnız `AjanYonetimi.View` taşıyan token: `GET /auth/agents` 200,
+`POST /auth/agents` 403, `iptal` 403, `dusur` 403 — iki iznin ayrı durması
+gerçekten işliyor.
+
+Regresyon: `admin` kullanıcısı (rol `Admin`) seed döngüsünden iki izni de alıyor,
+`GET /auth/agents` 200.
+
+Birim testleri: IdentityService 28/28, CatalogService (Ajanlar) 85/85 geçti.
+
+## Ne eksik kaldı
+
+`/unauthorized` adresinde sayfa yok; izni olmayan kullanıcı 404 görüyor. Bu eksik
+bu ekranla gelmedi — `DeclarationFollow`, `Vehicles`, `TaxPayments`,
+`Companies`, `CalendarPage` de aynı adrese yolluyor. Düzeltilecekse hepsi
+birlikte düzeltilmeli.
+
+Ekranın tarayıcıdaki görünümü doğrulanmadı: menü satırı ve sayfa aynı `perm`
+claim'ine bakıyor, o claim'in token'da olduğu yukarıda görüldü.

@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.Ajanlar.Dtos;
+﻿using CatalogService.Api.Features.Ajanlar.Dtos;
 using CatalogService.Api.Features.Ajanlar.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -55,7 +55,7 @@ namespace CatalogService.Api.Features.Ajanlar.Controllers
         /// Kayıt yoksa da başarılı: "bu ajan bağlı değil" istenen sonucun ta kendisi.
         /// </summary>
         [HttpPost("{ajanId}/dusur")]
-        [Authorize(Policy = AjanPolitikalari.YalnizInsan, Roles = "Admin")]
+        [Authorize(Policy = AjanPolitikalari.YonetimiDuzenle)]
         public ActionResult<int> Dusur(string ajanId)
         {
             var dusenler = _depo.AjanaGoreCikar(ajanId);

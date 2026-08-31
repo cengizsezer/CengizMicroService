@@ -1,0 +1,29 @@
+2026-08-31 19:34:46.053 +03:00 [INF] Executed DbCommand (27ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-08-31 19:34:46.175 +03:00 [INF] Executed DbCommand (21ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-08-31 19:34:46.185 +03:00 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1
+2026-08-31 19:34:46.192 +03:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT OBJECT_ID(N'[__EFMigrationsHistory]');
+2026-08-31 19:34:46.223 +03:00 [INF] Executed DbCommand (5ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [MigrationId], [ProductVersion]
+FROM [__EFMigrationsHistory]
+ORDER BY [MigrationId];
+2026-08-31 19:34:46.342 +03:00 [INF] No migrations were applied. The database is already up to date.
+2026-08-31 19:34:46.701 +03:00 [INF] InvoiceCheckWorker başladı. InitialDelay=30sn
+2026-08-31 19:34:46.962 +03:00 [WRN] Overriding address(es) 'http://localhost:5011'. Binding to endpoints defined via IConfiguration and/or UseKestrel() instead.
+2026-08-31 19:34:46.983 +03:00 [INF] Now listening on: http://localhost:5011
+2026-08-31 19:34:47.090 +03:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-08-31 19:34:47.094 +03:00 [INF] Hosting environment: Development
+2026-08-31 19:34:47.095 +03:00 [INF] Content root path: C:\GitHub\CengizMicroService\Sovos\Sovos.InvoiceWorker
+2026-08-31 19:35:16.746 +03:00 [INF] === ScheduledChecks BAŞLADI ===
+2026-08-31 19:35:17.058 +03:00 [INF] Executed DbCommand (21ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT [s].[Id], [s].[CompanyCode], [s].[EncryptedPassword], [s].[FirmaId], [s].[IsActive], [s].[LastErrorMessage], [s].[LastFailedRunAt], [s].[LastSuccessfulRunAt], [s].[Name], [s].[NotificationEmails], [s].[ScheduleHour], [s].[ScheduleMode], [s].[Username]
+FROM [SovosCompanies] AS [s]
+WHERE [s].[IsActive] = CAST(1 AS bit)
+2026-08-31 19:35:17.136 +03:00 [INF] 🧮 IsDue "Daily" | Id=1 nowHour=19 schedHour=22 lastDate=2026-08-13 nowDate=2026-08-31 → false
+2026-08-31 19:35:17.142 +03:00 [INF] 🧮 IsDue "Daily" | Id=2 nowHour=19 schedHour=9 lastDate=2026-08-13 nowDate=2026-08-31 → true
+2026-08-31 19:35:17.144 +03:00 [INF] 🧮 IsDue "Manual" | Id=3 nowHour=19 schedHour=9 lastDate=NULL nowDate=2026-08-31 → false
+2026-08-31 19:35:17.147 +03:00 [INF] ScheduledChecks: 3 aktif firma, 1 tanesi şu an taranacak
+2026-08-31 19:35:17.163 +03:00 [INF] Firma PKF SMMM: Tarama başlıyor (aralık 31.07.2026 - 31.08.2026)

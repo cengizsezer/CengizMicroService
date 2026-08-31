@@ -1,8 +1,9 @@
-@page "/yonetim/ajanlar"
-@attribute [Authorize(Roles = "Admin")]
+﻿@page "/yonetim/ajanlar"
+@attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
 @using Radzen
 @using Radzen.Blazor
+@using WebApp.Application.Services.Interfaces
 @using WebApp.Application.Services.Yonetim
 @using WebApp.Shared.Dto.Yonetim
 
@@ -10,6 +11,15 @@
 @inject IAjanIsApi IsApi
 @inject DialogService Dialog
 @inject NotificationService Notif
+@inject IPermissionService PermissionService
+@inject NavigationManager Navigation
+
+@*
+    Yetki rolde değil izinde (KARARLAR §131): sayfa AjanYonetimi.View, anahtar
+    üreten/iptal eden düğmeler AjanYonetimi.Edit istiyor. Sunucu ikisini de
+    ayrıca sınıyor; buradaki kontrol yalnız kullanıcıya çalışmayacak yol
+    göstermemek için.
+*@
 
 <RadzenCard class="rz-p-3">
 
@@ -19,7 +29,10 @@
         </RadzenText>
         <div style="display:flex; gap:0.5rem;">
             <RadzenButton Text="Yenile" Icon="refresh" ButtonStyle="ButtonStyle.Light" Click="@Yukle" />
-            <RadzenButton Text="Yeni Ajan" Icon="vpn_key" ButtonStyle="ButtonStyle.Primary" Click="@Olustur" />
+            @if (_yonetebilir)
+            {
+                <RadzenButton Text="Yeni Ajan" Icon="vpn_key" ButtonStyle="ButtonStyle.Primary" Click="@Olustur" />
+            }
         </div>
     </div>
 
@@ -100,11 +113,15 @@
 
             <RadzenDataGridColumn TItem="Satir" Title="İşlemler" Width="120px" Sortable="false">
                 <Template Context="s">
-                    @if (s.Ajan.Aktif)
+                    @if (s.Ajan.Aktif && _yonetebilir)
                     {
                         <RadzenButton Icon="block" Text="İptal" Size="ButtonSize.Small"
                                       ButtonStyle="ButtonStyle.Danger"
                                       Click="@(async _ => await IptalEt(s.Ajan))" />
+                    }
+                    else if (s.Ajan.Aktif)
+                    {
+                        <span class="rz-text-muted">—</span>
                     }
                     else
                     {
@@ -177,7 +194,21 @@
     string? _hubHatasi;
     bool _yukleniyor;
 
-    protected override async Task OnInitializedAsync() => await Yukle();
+    /// <summary>AjanYonetimi.Edit — anahtar üretme ve iptal.</summary>
+    bool _yonetebilir;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await PermissionService.HasPermissionAsync("AjanYonetimi.View"))
+        {
+            Navigation.NavigateTo("/unauthorized");
+            return;
+        }
+
+        _yonetebilir = await PermissionService.HasPermissionAsync("AjanYonetimi.Edit");
+
+        await Yukle();
+    }
 
     async Task Yukle()
     {

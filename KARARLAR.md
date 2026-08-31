@@ -2823,3 +2823,76 @@ Karşılaştırma biçimi Türkçe harfleri ASCII karşılığına indiriyor (ç
 
 VKN aramasında yalnız rakamlar karşılaştırılıyor — kullanıcının yapıştırdığı
 numarada boşluk ya da nokta olması aramayı bozmuyor.
+
+## 131. Ajanlar ekranı Admin rolünden izne (perm) taşındı
+
+**Teşhis.** Sayfa eksik değildi, dört ayrı yerde Admin rolüne bağlıydı ve
+`pkfadmin` kullanıcısının token'ında yalnız `role: pkf` var (seed:
+`EnsureUserTenantRole(pkfadmin, t500, pkf)` — Admin ataması yok):
+
+1. **Menü satırı vardı.** `MainLayout.razor` Yönetim grubunun altında
+   `Ajanlar → /yonetim/ajanlar` satırı duruyordu ama `<AuthorizeView Roles="Admin">`
+   sarmalının içindeydi; rol tutmadığı için satır hiç basılmıyordu.
+2. **Sayfa adres çubuğundan da açılmıyordu.** `Ajanlar.razor` üstünde
+   `@attribute [Authorize(Roles = "Admin")]` vardı; `AuthorizeRouteView`'un
+   `NotAuthorized` dalı `RedirectToLogin` olduğu için /yonetim/ajanlar yazan
+   kullanıcı "yetkiniz yok" bile görmüyor, login'e atılıyordu.
+3. **Kayıt uçları iki kez Admin istiyordu.** `AdminAgentController`
+   (`api/auth/admin/agents`) `[Authorize(Roles = "Admin")]` taşıyordu; üstelik
+   yolu gateway'in `/auth/admin/{everything}` kuralına düşüyordu ve o kuralda
+   `RouteClaimsRequirement: { "role": "Admin" }` var. Yani controller'daki
+   attribute kaldırılsa bile istek gateway'de 403 olurdu.
+4. **Hub uçlarından biri.** `/catalog/agent/{ajanId}/dusur`
+   `[Authorize(Policy = YalnizInsan, Roles = "Admin")]` idi.
+   `/catalog/agent/baglilar` ve iş uçları yalnız `YalnizInsan` istiyordu — onlar
+   zaten pkf'ye açıktı.
+
+**Karar: rol yerine izin.** Repoda zaten `perm` claim'ine dayanan bir yapı var
+(`Vehicle.View`, `BeyannameTakip.View`, `TaxPayment.View`; token'a
+`GenerateJwtToken` basıyor, istemci `PermissionService.HasPermissionAsync` ile
+okuyor). Ajan yönetimi de aynı kalıba bağlandı; yeni bir rol mekanizması
+kurulmadı, `pkf` rolüne Admin verilmedi.
+
+İki izin açıldı — mevcut `.View` / `.Edit` ikilisinin aynısı:
+
+- `AjanYonetimi.View` — ekranı ve ajan listesini görme (GET uçları)
+- `AjanYonetimi.Edit` — yeni ajan anahtarı üretme, ajan iptal etme, bağlantı düşürme
+
+İkisi de `pkf` rolüne bağlandı; Admin zaten seed'in sonundaki "bütün izinleri
+Admin'e bağla" döngüsünden alıyor.
+
+**Anahtar üretimi ayrı izinde durmalı.** `AjanYonetimi.Edit`, ofisteki makineye
+kimlik veren uzun ömürlü bir anahtarı basıyor. Listeyi görmekle anahtar üretmek
+aynı izne konsaydı, ileride "ajanlar bağlı mı" diye bakması gereken bir kullanıcıya
+izin vermek anahtar üretme hakkını da verirdi.
+
+**Uç `/auth/admin/` altından çıktı: `api/auth/agents`.** Gateway'in
+`/auth/admin/{everything}` kuralı yolun kendisine `role: Admin` şartı koyuyor;
+uç orada kaldığı sürece controller'da ne yazarsa yazsın pkf geçemezdi. İki seçenek
+vardı: gateway'e `/auth/admin/agents` için daha dar bir kural eklemek, ya da ucu
+o önekin dışına almak. İkincisi seçildi — Ocelot kuralları sırayla eşleşiyor ve
+`{everything}` yakalayıcısının önüne dar kural koymak, `/auth/admin/*` altındaki
+bütün diğer uçların yetkisini kazara gevşetme riski taşıyor. Yeni yol zaten var
+olan `/auth/{everything}` kuralından geçiyor: **gateway dosyaları değişmedi.**
+`api/auth/agent` (ajanın kendi token ucu, anonim) ile karıştırılmasın: o tekil,
+bu çoğul.
+
+**İzin anahtarları iki serviste ayrı ayrı yazılı.** IdentityService ile
+CatalogService arasında paylaşılan kütüphane yok (aynı gerekçe `AjanKimligi`
+dosyasındaki claim sözleşmesi için de geçerli). `AjanYetkileri` sabitleri iki
+tarafta da duruyor; biri değişirse ikisi birlikte değişmeli.
+
+**İstemci tarafı kalıba uydu.** Sayfa `[Authorize]` (yalnız oturum) taşıyor,
+izni `OnInitializedAsync` içinde `PermissionService` ile sorup yetkisizi
+`/unauthorized`'a yolluyor — `DeclarationFollow`, `Vehicles`, `TaxPayments`
+sayfalarındaki davranışın aynısı. (Not: `/unauthorized` adresinde bir sayfa yok,
+kullanıcı 404 görüyor. Bu eksik bu ekranla gelmedi, beş sayfada birden var;
+düzeltilecekse hepsi birlikte düzeltilmeli.)
+
+**Yeni ajan / iptal düğmeleri `AjanYonetimi.Edit` yoksa basılmıyor.** Sunucu
+zaten reddediyor; düğmenin durması kullanıcıya çalışmayacak bir yol gösterirdi.
+
+**Diğer sayfaların yetkilendirmesine dokunulmadı.** `/catalog/agent/baglilar`
+ve iş uçları `YalnizInsan` olarak bırakıldı: Banka Otomasyon > Aktar ekranı da
+onları çağırıyor ve o ekranın kullanıcısının ajan yönetimi izni olmak zorunda
+değil.

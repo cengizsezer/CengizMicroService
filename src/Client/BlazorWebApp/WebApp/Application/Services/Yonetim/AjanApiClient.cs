@@ -1,13 +1,17 @@
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using WebApp.Shared.Dto.Yonetim;
 
 namespace WebApp.Application.Services.Yonetim
 {
     public class AjanApiClient : IAjanApiClient
     {
-        // Gateway kuralları: /auth/admin/{everything} -> IdentityService,
+        // Gateway kuralları: /auth/{everything} -> IdentityService,
         // /catalog/{everything} -> CatalogService. İkisi de zaten vardı.
-        private const string KayitBase = "/auth/admin/agents";
+        //
+        // Kayıt ucu bilerek /auth/admin/ altında değil: o önekteki gateway kuralı
+        // yola role=Admin şartı koyuyor, ajan yönetimi ise izne bağlı
+        // (AjanYonetimi.View / .Edit — bkz. KARARLAR §131).
+        private const string KayitBase = "/auth/agents";
         private const string HubBase = "/catalog/agent";
 
         private readonly HttpClient _http;

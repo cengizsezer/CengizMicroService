@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.Ajanlar;
+﻿using CatalogService.Api.Features.Ajanlar;
 using CatalogService.Api.Features.Ajanlar.Controllers;
 using CatalogService.Api.Features.Ajanlar.Domain;
 using CatalogService.Api.Features.Ajanlar.Dtos;
@@ -80,14 +80,16 @@ namespace CatalogService.UnitTests.Ajanlar
         }
 
         [Fact]
-        public void Dusurme_ucu_admin_ve_insan_tokeni_istiyor()
+        public void Dusurme_ucu_rol_degil_ajan_yonetimi_izni_istiyor()
         {
+            // Rol değil izin (KARARLAR §131): pkf kullanıcısının Admin rolü yok.
+            // Politikanın davranışı AjanPolitikalariTests'te sınanıyor.
             var yetki = typeof(AgentController)
                 .GetMethod(nameof(AgentController.Dusur))!
                 .GetCustomAttribute<AuthorizeAttribute>();
 
-            Assert.Equal(AjanPolitikalari.YalnizInsan, yetki!.Policy);
-            Assert.Equal("Admin", yetki.Roles);
+            Assert.Equal(AjanPolitikalari.YonetimiDuzenle, yetki!.Policy);
+            Assert.Null(yetki.Roles);
         }
 
         [Fact]

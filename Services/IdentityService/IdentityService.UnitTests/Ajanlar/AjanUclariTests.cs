@@ -1,4 +1,4 @@
-using IdentityService.Application.Services.Agent;
+﻿using IdentityService.Application.Services.Agent;
 using IdentityService.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,9 +9,9 @@ namespace IdentityService.UnitTests.Ajanlar
 {
     /// <summary>
     /// Uçların adresi ve kapıları. Adresler gateway yapılandırmasına bağlı:
-    /// <c>/auth/{everything}</c> ve <c>/auth/admin/{everything}</c> kuralları zaten
-    /// varken bu ön ekler seçildiği için Ocelot'a yeni satır eklemek gerekmedi.
-    /// Ön ek değişirse bu testler düşer — düşmesi de doğrusu.
+    /// <c>/auth/{everything}</c> kuralı zaten varken bu ön ek seçildiği için
+    /// Ocelot'a yeni satır eklemek gerekmedi. Ön ek değişirse bu testler düşer —
+    /// düşmesi de doğrusu.
     /// </summary>
     public class AjanUclariTests
     {
@@ -43,13 +43,44 @@ namespace IdentityService.UnitTests.Ajanlar
         }
 
         [Fact]
-        public void Yonetim_ucu_admin_istiyor_ve_admin_kuralindan_geciyor()
+        public void Yonetim_ucu_admin_onekinin_disinda()
         {
-            var rota = typeof(AdminAgentController).GetCustomAttribute<RouteAttribute>();
-            var yetki = typeof(AdminAgentController).GetCustomAttribute<AuthorizeAttribute>();
+            // /auth/admin/{everything} gateway kuralı yola role=Admin şartı koyuyor;
+            // uç orada kalsaydı izin tabanlı yetki hiç konuşulmadan 403 olurdu.
+            var rota = typeof(AgentYonetimController).GetCustomAttribute<RouteAttribute>();
 
-            Assert.Equal("api/auth/admin/agents", rota!.Template);
-            Assert.Equal("Admin", yetki!.Roles);
+            Assert.Equal("api/auth/agents", rota!.Template);
+        }
+
+        [Fact]
+        public void Yonetim_ucu_rol_degil_izin_istiyor()
+        {
+            var yetki = typeof(AgentYonetimController).GetCustomAttribute<AuthorizeAttribute>();
+
+            Assert.Null(yetki!.Roles);
+            Assert.Equal(AjanYetkileri.GoruntulePolitikasi, yetki.Policy);
+        }
+
+        [Theory]
+        [InlineData(nameof(AgentYonetimController.Olustur))]
+        [InlineData(nameof(AgentYonetimController.IptalEt))]
+        public void Anahtar_ureten_ve_iptal_eden_uclar_ayri_izin_istiyor(string metot)
+        {
+            // Listeyi görmek anahtar üretme hakkı vermiyor: yazan uçlar Edit izninde.
+            var yetki = typeof(AgentYonetimController)
+                .GetMethod(metot)!
+                .GetCustomAttribute<AuthorizeAttribute>();
+
+            Assert.Equal(AjanYetkileri.DuzenlePolitikasi, yetki!.Policy);
+        }
+
+        [Fact]
+        public void Izin_anahtarlari_catalog_tarafiyla_ayni()
+        {
+            // İki serviste ayrı ayrı yazılı; adlar birlikte değişmeli.
+            Assert.Equal("AjanYonetimi.View", AjanYetkileri.Goruntule);
+            Assert.Equal("AjanYonetimi.Edit", AjanYetkileri.Duzenle);
+            Assert.Equal("perm", AjanYetkileri.IzinClaim);
         }
     }
 }

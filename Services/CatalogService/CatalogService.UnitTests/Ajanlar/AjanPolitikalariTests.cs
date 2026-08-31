@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.Ajanlar;
+﻿using CatalogService.Api.Features.Ajanlar;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -43,13 +43,19 @@ namespace CatalogService.UnitTests.Ajanlar
                 new Claim(AjanKimligi.AjanIdClaim, ajanId)
             }, "Test"));
 
-        private static ClaimsPrincipal Kullanici() =>
-            new(new ClaimsIdentity(new[]
+        private static ClaimsPrincipal Kullanici(params string[] izinler)
+        {
+            var claimler = new List<Claim>
             {
-                new Claim("sub", "42"),
-                new Claim(ClaimTypes.NameIdentifier, "42"),
-                new Claim("tn", "0001")
-            }, "Test"));
+                new("sub", "42"),
+                new(ClaimTypes.NameIdentifier, "42"),
+                new("tn", "0001")
+            };
+
+            claimler.AddRange(izinler.Select(i => new Claim(AjanPolitikalari.IzinClaim, i)));
+
+            return new ClaimsPrincipal(new ClaimsIdentity(claimler, "Test"));
+        }
 
         [Fact]
         public async Task Hub_politikasi_ajan_tokenini_geciriyor()
@@ -81,6 +87,58 @@ namespace CatalogService.UnitTests.Ajanlar
         public async Task Durum_ucu_ajan_tokenini_reddediyor()
         {
             var sonuc = await Yetkilendirme().AuthorizeAsync(Ajan(), null, AjanPolitikalari.YalnizInsan);
+
+            Assert.False(sonuc.Succeeded);
+        }
+
+        [Fact]
+        public async Task Yonetim_politikasi_izinli_kullaniciyi_geciriyor()
+        {
+            var sonuc = await Yetkilendirme().AuthorizeAsync(
+                Kullanici(AjanPolitikalari.AjanYonetimiDuzenle), null, AjanPolitikalari.YonetimiDuzenle);
+
+            Assert.True(sonuc.Succeeded);
+        }
+
+        [Fact]
+        public async Task Yonetim_politikasi_yalniz_gorme_iznini_reddediyor()
+        {
+            // Listeyi görmek bağlantı düşürme hakkı vermiyor.
+            var sonuc = await Yetkilendirme().AuthorizeAsync(
+                Kullanici(AjanPolitikalari.AjanYonetimiGoruntule), null, AjanPolitikalari.YonetimiDuzenle);
+
+            Assert.False(sonuc.Succeeded);
+        }
+
+        [Fact]
+        public async Task Yonetim_politikasi_admin_rolunu_izin_yerine_saymiyor()
+        {
+            // Yetki artık rolde değil izinde: rol adı tek başına kapıyı açmıyor.
+            var admin = new ClaimsPrincipal(new ClaimsIdentity(new[]
+            {
+                new Claim("sub", "42"),
+                new Claim("role", "Admin"),
+                new Claim(ClaimTypes.Role, "Admin")
+            }, "Test"));
+
+            var sonuc = await Yetkilendirme().AuthorizeAsync(admin, null, AjanPolitikalari.YonetimiDuzenle);
+
+            Assert.False(sonuc.Succeeded);
+        }
+
+        [Fact]
+        public async Task Yonetim_politikasi_izinli_ajan_tokenini_reddediyor()
+        {
+            // Ajan token'ı bu claim'i hiç taşımıyor ama taşısa bile geçmemeli:
+            // politika insan şartını da koşuyor.
+            var ajanAmaIzinli = new ClaimsPrincipal(new ClaimsIdentity(new[]
+            {
+                new Claim(AjanKimligi.TipClaim, AjanKimligi.AjanTipi),
+                new Claim(AjanKimligi.AjanIdClaim, "7"),
+                new Claim(AjanPolitikalari.IzinClaim, AjanPolitikalari.AjanYonetimiDuzenle)
+            }, "Test"));
+
+            var sonuc = await Yetkilendirme().AuthorizeAsync(ajanAmaIzinli, null, AjanPolitikalari.YonetimiDuzenle);
 
             Assert.False(sonuc.Succeeded);
         }

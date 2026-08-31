@@ -568,6 +568,180 @@
         }
       }
     },
+    "/api/auth/admin/agents": {
+      "get": {
+        "tags": [
+          "AdminAgent"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AjanListeSatiri"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AjanListeSatiri"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AjanListeSatiri"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "AdminAgent"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/YeniAjanIstegi"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/YeniAjanIstegi"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/YeniAjanIstegi"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/YeniAjanYaniti"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/YeniAjanYaniti"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/YeniAjanYaniti"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/admin/agents/{id}/iptal": {
+      "post": {
+        "tags": [
+          "AdminAgent"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AjanIptalIstegi"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AjanIptalIstegi"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AjanIptalIstegi"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/auth/agent/token": {
+      "post": {
+        "tags": [
+          "AgentAuth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AjanTokenIstegi"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AjanTokenIstegi"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AjanTokenIstegi"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AjanTokenYaniti"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AjanTokenYaniti"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AjanTokenYaniti"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/Auth/login": {
       "post": {
         "tags": [
@@ -775,6 +949,104 @@
   },
   "components": {
     "schemas": {
+      "AjanIptalIstegi": {
+        "type": "object",
+        "properties": {
+          "neden": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AjanListeSatiri": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ad": {
+            "type": "string",
+            "nullable": true
+          },
+          "anahtarOnEki": {
+            "type": "string",
+            "nullable": true
+          },
+          "olusturanKullaniciId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "olusturanKullaniciAdi": {
+            "type": "string",
+            "nullable": true
+          },
+          "olusturmaZamani": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sonKullanim": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "gecerlilikBitisi": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "aktif": {
+            "type": "boolean"
+          },
+          "iptalZamani": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "iptalNedeni": {
+            "type": "string",
+            "nullable": true
+          },
+          "durum": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AjanTokenIstegi": {
+        "type": "object",
+        "properties": {
+          "ajanAnahtari": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AjanTokenYaniti": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "nullable": true
+          },
+          "gecerlilikBitisiUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ajanId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ajanAdi": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "FirmDto": {
         "type": "object",
         "properties": {
@@ -1048,6 +1320,43 @@
             "items": {
               "$ref": "#/components/schemas/UserListItemDto"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "YeniAjanIstegi": {
+        "type": "object",
+        "properties": {
+          "ad": {
+            "type": "string",
+            "nullable": true
+          },
+          "gecerlilikBitisi": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "YeniAjanYaniti": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ad": {
+            "type": "string",
+            "nullable": true
+          },
+          "anahtar": {
+            "type": "string",
+            "nullable": true
+          },
+          "anahtarOnEki": {
+            "type": "string",
             "nullable": true
           }
         },

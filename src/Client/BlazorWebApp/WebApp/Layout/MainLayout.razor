@@ -222,13 +222,13 @@
                     <RadzenPanelMenuItem Text="Mükellefler" Icon="groups"   Path="/yonetim/mukellefler" />
                     <RadzenPanelMenuItem Text="Düzenleyen Bilgileri" Icon="badge" Path="/yonetim/duzenleyen" />
                     <RadzenPanelMenuItem Text="Personel Mailleri" Icon="mail" Path="/yonetim/personel-mailleri" />
-                    <AuthorizeView Roles="Admin">
-                        <Authorized>
-                            @* Ajan anahtarları yalnız Admin'e açık; sayfanın kendisi de
-                               [Authorize(Roles="Admin")] taşıyor. *@
-                            <RadzenPanelMenuItem Text="Ajanlar" Icon="smart_toy" Path="/yonetim/ajanlar" />
-                        </Authorized>
-                    </AuthorizeView>
+                    @if (canViewAjanlar)
+                    {
+                        @* Ajan yönetimi rolde değil izinde: pkf kullanıcılarının Admin
+                           rolü yok ve satır bu yüzden hiç basılmıyordu (KARARLAR §131).
+                           Sayfa da aynı izni kendi başına sorguluyor. *@
+                        <RadzenPanelMenuItem Text="Ajanlar" Icon="smart_toy" Path="/yonetim/ajanlar" />
+                    }
                 </RadzenPanelMenuItem>
 
                 <AuthorizeView Roles="Admin">
@@ -388,6 +388,7 @@
     private bool canViewSettings;
     private bool canViewCalendar;
     private bool canViewFaturaKontrol;
+    private bool canViewAjanlar;
 
 
     protected override async Task OnInitializedAsync()
@@ -413,6 +414,7 @@
         canViewSettings = await PermissionService.HasPermissionAsync("Settings.View");
         canViewCalendar = await PermissionService.HasPermissionAsync("Calendarpage.View");
         canViewFaturaKontrol = await PermissionService.HasPermissionAsync("FaturaKontrol.View");
+        canViewAjanlar = await PermissionService.HasPermissionAsync("AjanYonetimi.View");
     }
 
     private async void OnAppStateChanged(AppStateEvent ev)
