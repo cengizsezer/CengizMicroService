@@ -1,5 +1,6 @@
 using System.Text;
 using FlaUI.Core.Capturing;
+using PkfRobot.Arayuz;
 
 namespace PkfRobot.Core;
 
@@ -49,7 +50,10 @@ public class AdimLogger : IDisposable
         Console.WriteLine(satir);
     }
 
-    /// <summary>Tum ekranin goruntusunu alir. Hata olursa sessizce gecer.</summary>
+    /// <summary>
+    /// ORKA ana penceresinin goruntusunu alir; ORKA bulunamazsa butun
+    /// monitorleri kapsayan sanal masaustunu. Hata olursa sessizce gecer.
+    /// </summary>
     public void EkranAl(string ad, bool zorla = false)
     {
         if (!_ekranGoruntusuAktif && !zorla) return;
@@ -57,7 +61,10 @@ public class AdimLogger : IDisposable
         try
         {
             var dosya = Path.Combine(_klasor, $"adim-{_adimNo:D2}-{Temizle(ad)}.png");
-            Capture.Screen().ToFile(dosya);
+            // Capture.Screen() BIRINCIL monitoru cekiyordu. ORKA ikinci
+            // monitorde calisiyor (ana pencere Sol=2390) ve gorev goruntuleri
+            // ORKA'nin hic gorunmedigi ekrani gosteriyordu.
+            Capture.Rectangle(YakalamaAlani.Alan()).ToFile(dosya);
         }
         catch (Exception ex)
         {

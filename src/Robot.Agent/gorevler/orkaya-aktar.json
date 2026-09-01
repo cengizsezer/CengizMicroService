@@ -1,6 +1,33 @@
 {
+  "// UYARI": [
+    "Sablon satiri KOORDINATLA seciliyor. ORKA'da yeni bir banka sablonu eklenirse hedef satir KAYAR ve robot YANLIS sablonla calisir. Sekme adi UIA'ya kapali oldugu icin otomatik yakalanamaz. sablon-secildi.png her calistirmada kontrol edilmeli.",
+    "Kaydet adimi YOKTUR ve EKLENMEYECEKTIR."
+  ],
+
   "Ad": "ORKA'ya banka ekstresi aktarimi",
   "Aciklama": "Sunucudan gelen isle calisir. Firma kodu ve dosya yolu degisken olarak gecer: {firmaKodu}, {firmaSifre}, {dosyaYolu}, {hesapKodu}. KAYDET ADIMI YOKTUR VE EKLENMEYECEKTIR - kullanici gozle kontrol edip kendisi kaydeder.",
+
+  "// KULLANIM": [
+    "Degiskenler (OrkayaAktarCalistirici tarafindan doldurulur):",
+    "  {firmaKodu}   - ORKA firma kodu",
+    "  {sifre}       - ORKA giris sifresi",
+    "  {firmaSifre}  - firma sifresi",
+    "  {dosyaYolu}   - duzeltilmis ekstre dosyasinin tam yolu",
+    "  {hesapKodu}   - banka hesabinin ORKA hesap kodu (Hesap Plani ekraninda aranir)",
+    "  {donem}       - yyyyMM",
+    "  {sablonAdi}   - secilecek banka sablonunun adi. SU AN YALNIZ NOT AMACLI:",
+    "                  calistirici bu degiskeni henuz gecmiyor ve hicbir Deger",
+    "                  alaninda kullanilmiyor; sablon satiri koordinatla seciliyor.",
+    "",
+    "GERCEK AKIS (ekran goruntuleriyle dogrulandi):",
+    "  Veri Transferi SEKMESI (pencere degil!)",
+    "    -> sol panel Banka Ekstreleri",
+    "    -> sag grid'den sablon satiri sec",
+    "    -> Transfere Basla -> Excel dosya diyalogu",
+    "    -> Hesap Plani PENCERESI -> hesap kodu -> Enter Enter",
+    "    -> Belgeler Listesi grid -> karsi hesap kodlari -> Kaydet YOK"
+  ],
+
   "Adimlar": [
     {
       "Tip": "Log",
@@ -87,17 +114,24 @@
       "Deger": "ENTER",
       "Adet": 1
     },
+
     {
-      "Tip": "BeklePencere",
-      "Deger": "Veri Transferi|Transfer Islemleri",
-      "TimeoutSn": 60,
-      "Yuzde": 25,
-      "Not": "Veri Transferi ekrani aciliyor"
+      "// yorum": "Veri Transferi bir SEKME, top-level pencere DEGIL. Burada 'Veri Transferi' basligini bekleyen bir BeklePencere adimi vardi ve HER ZAMAN timeout'a dusuyordu; UIA'da boyle bir pencere hic acilmiyor. Yerine sabit bekleme + ekran goruntusu kondu, dogrulama ana pencere basligindan yapiliyor.",
+      "Tip": "Bekle",
+      "Sayi": 3000,
+      "Not": "Veri Transferi sekmesi aciliyor"
     },
     {
       "Tip": "EkranGoruntusu",
       "Deger": "veri-transferi"
     },
+    {
+      "Tip": "Dogrula",
+      "Deger": "ORKA_",
+      "Not": "ORKA ana penceresi ayakta mi",
+      "Yuzde": 25
+    },
+
     {
       "Tip": "Tikla",
       "X": 0.125,
@@ -110,9 +144,25 @@
     },
     {
       "Tip": "Tikla",
+      "X": 0.4,
+      "Y": 0.25,
+      "Not": "Sablon satiri - {sablonAdi} - KOORDINAT SABIT, sablon listesine yeni kayit eklenirse KAYAR"
+    },
+    {
+      "Tip": "Bekle",
+      "Sayi": 500
+    },
+    {
+      "Tip": "EkranGoruntusu",
+      "Deger": "sablon-secildi"
+    },
+
+    {
+      "// yorum": "Ofiste ONCE 'Kisayol' + 'ALT+T' denenecek (03-banka-transferi.json'da boyle calisiyor). Kisayol calisirsa bu Tikla adimi SILINECEK - koordinat bakimi gerektirmeyen tek yol o.",
+      "Tip": "Tikla",
       "X": 0.5,
       "Y": 0.12,
-      "Not": "Dosya sec dugmesi"
+      "Not": "Transfere Basla"
     },
     {
       "Tip": "BeklePencere",
@@ -136,14 +186,64 @@
       "Not": "Dosya okunuyor"
     },
     {
-      "Tip": "Dogrula",
-      "Deger": "Veri Transferi|Transfer Islemleri",
-      "Not": "Ekran dogrulaniyor",
-      "Yuzde": 45
+      "Tip": "EkranGoruntusu",
+      "Deger": "dosya-yuklendi"
+    },
+
+    {
+      "// yorum": "HESAP PLANI: 03-banka-transferi.json'daki sirayla - o dosya ofiste test edildi. Hesap Plani bir PENCERE (sekme degil), odak dogrudan arama kutusunda aciliyor.",
+      "Tip": "BeklePencere",
+      "Deger": "Hesap Plan",
+      "Not": "Hesap Plani penceresi"
     },
     {
       "Tip": "EkranGoruntusu",
-      "Deger": "dosya-yuklendi"
+      "Deger": "hesap-plani"
+    },
+    {
+      "Tip": "TemizleYaz",
+      "Deger": "{hesapKodu}",
+      "Not": "Ctrl+A sonra yaz - yoksa 102102... olur"
+    },
+    {
+      "Tip": "Bekle",
+      "Sayi": 1200
+    },
+    {
+      "Tip": "EkranGoruntusu",
+      "Deger": "hesap-arandi"
+    },
+    {
+      "Tip": "Tus",
+      "Deger": "ENTER",
+      "Adet": 1,
+      "Not": "1. Enter"
+    },
+    {
+      "Tip": "Bekle",
+      "Sayi": 800
+    },
+    {
+      "Tip": "Tus",
+      "Deger": "ENTER",
+      "Adet": 1,
+      "Not": "2. Enter - hesap secildi"
+    },
+    {
+      "Tip": "Bekle",
+      "Sayi": 3000
+    },
+    {
+      "Tip": "Dogrula",
+      "Deger": "ORKA_",
+      "Not": "Hesap secimi sonrasi ORKA ayakta mi",
+      "Yuzde": 45
+    },
+
+    {
+      "Tip": "EkranGoruntusu",
+      "Deger": "belgeler-listesi",
+      "Not": "Hesap secimi sonrasi Belgeler Listesi alt sekmesine otomatik gecilip gecilmedigi DOGRULANMADI; gecilmiyorsa buraya bir Tikla adimi gerekecek."
     },
     {
       "Tip": "Tikla",

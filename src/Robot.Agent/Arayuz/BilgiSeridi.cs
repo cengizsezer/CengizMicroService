@@ -69,11 +69,24 @@ public sealed class BilgiSeridi : Form
         _metin.BackColor = BackColor;
     }
 
+    /// <summary>
+    /// Serit ORKA'nin bulundugu MONITORUN ustune konumlanir.
+    ///
+    /// Neden: kullanici olcum yaparken ORKA'ya bakiyor ve ORKA ikinci monitorde
+    /// calisiyor. Serit birincil monitore aciliyordu; "Hedefe tiklayin · Iptal
+    /// icin Esc" yazisi kullanicinin bakmadigi ekranda kaliyordu.
+    ///
+    /// ORKA bulunamazsa birincil monitor kullaniliyor -- serit icin dogru
+    /// varsayilan bu; ekran goruntusu icin DEGIL (bkz. <see cref="YakalamaAlani"/>).
+    /// </summary>
     private void Yerlestir()
     {
-        var ekran = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1280, 720);
-        Width = ekran.Width;
+        var tutamac = YakalamaAlani.OrkaTutamaci();
+        var ekran = tutamac != IntPtr.Zero ? Screen.FromHandle(tutamac) : Screen.PrimaryScreen;
+
+        var alan = (ekran ?? Screen.PrimaryScreen)?.WorkingArea ?? new Rectangle(0, 0, 1280, 720);
+        Width = alan.Width;
         Height = 34;
-        Location = new Point(ekran.Left, ekran.Top);
+        Location = new Point(alan.Left, alan.Top);
     }
 }

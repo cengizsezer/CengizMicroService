@@ -335,7 +335,7 @@ public sealed class KalibrasyonPaneli : UserControl
 
             // Olcu one getirdikten SONRA okunuyor: pencere simge durumundan
             // donduyse eski dikdortgen yanlis noktaya goturur.
-            var olcu = OrkaPenceresi.Olcu(durum.Tutamac);
+            var olcu = OrkaPenceresi.OlcuAl(durum.Tutamac);
             if (!olcu.Gecerli)
             {
                 form?.Show();

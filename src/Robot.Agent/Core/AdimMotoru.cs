@@ -1,7 +1,9 @@
 using System.Diagnostics;
 using System.Globalization;
+using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Input;
 using FlaUI.UIA3;
+using PkfRobot.Arayuz;
 using PkfRobot.Config;
 
 namespace PkfRobot.Core;
@@ -242,22 +244,46 @@ public class AdimMotoru
         _bekleyici.OneGetirVeBuyut(pencere);
         Thread.Sleep(_cfg.Zamanlama.TusBeklemeMs); // buyutme sonrasi olculer otursun
 
-        var r = pencere.BoundingRectangle;
-        if (r.Width <= 0 || r.Height <= 0)
+        // Olcu UIA'nin BoundingRectangle'indan degil, tek olcu kaynagindan
+        // (OrkaPenceresi.OlcuAl -> Win32 GetWindowRect) aliniyor. Iki kaynak ayni
+        // pencere icin farkli dikdortgen dondurebiliyor; kalibrasyon paneli Win32
+        // ile olcup robot UIA ile tikladiginda kaymayi kimse fark etmiyordu.
+        var hwnd = Tutamac(pencere);
+        var r = OrkaPenceresi.OlcuAl(hwnd);
+        if (!r.Gecerli)
             throw new InvalidOperationException(
-                $"'{baslik}' penceresinin olculeri okunamadi (G={r.Width}, Y={r.Height}). " +
-                "Pencere simge durumunda kucultulmus olabilir.");
+                $"'{baslik}' penceresinin olculeri okunamadi (hwnd=0x{hwnd.ToInt64():X}, " +
+                $"G={r.Genislik}, Y={r.Yukseklik}). Pencere simge durumunda kucultulmus " +
+                "ya da UIA elemaninin Win32 tutamaci okunamamis olabilir.");
 
-        var mutlakX = (int)Math.Round(r.X + r.Width * adim.X);
-        var mutlakY = (int)Math.Round(r.Y + r.Height * adim.Y);
+        // Sol/Ust NEGATIF olabilir (ikinci monitor, DWM kenarlik payi); deger
+        // kirpilmadan isaretli aritmetikle tasiniyor.
+        var mutlakX = (int)Math.Round(r.Sol + r.Genislik * adim.X);
+        var mutlakY = (int)Math.Round(r.Ust + r.Yukseklik * adim.Y);
 
-        _log.Bilgi($"Pencere '{pencere.Name}': sol={r.X} ust={r.Y} genislik={r.Width} " +
-                   $"yukseklik={r.Height} -> tiklanan nokta: ({mutlakX}, {mutlakY})");
+        _log.Bilgi($"Pencere '{pencere.Name}': sol={r.Sol} ust={r.Ust} genislik={r.Genislik} " +
+                   $"yukseklik={r.Yukseklik} -> tiklanan nokta: ({mutlakX}, {mutlakY})");
 
         Mouse.MoveTo(mutlakX, mutlakY);
         Thread.Sleep(_cfg.Zamanlama.TusBeklemeMs);
         Mouse.Click(MouseButton.Left);
         Thread.Sleep(_cfg.Zamanlama.TusBeklemeMs);
+    }
+
+    /// <summary>
+    /// UIA elemaninin Win32 pencere tutamaci; okunamazsa <see cref="IntPtr.Zero"/>.
+    /// Olcu bu tutamactan aliniyor (bkz. <see cref="OrkaPenceresi.OlcuAl"/>).
+    /// </summary>
+    private static IntPtr Tutamac(AutomationElement el)
+    {
+        try
+        {
+            return el.Properties.NativeWindowHandle.TryGetValue(out var h) ? h : IntPtr.Zero;
+        }
+        catch (Exception)
+        {
+            return IntPtr.Zero;
+        }
     }
 
     /// <summary>

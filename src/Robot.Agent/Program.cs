@@ -252,16 +252,23 @@ public static class Program
                 sessizTur = 0;
             }
 
-            var r = pencere.BoundingRectangle;
-            if (r.Width <= 0 || r.Height <= 0)
+            // Olcu tek kaynaktan: OrkaPenceresi.OlcuAl (Win32 GetWindowRect).
+            // Kalibre modunun okudugu dikdortgen ile AdimMotoru.Tikla'nin tikladigi
+            // dikdortgen ayni olmali; UIA BoundingRectangle ile ayrisiyordu.
+            var hwnd = pencere.Properties.NativeWindowHandle.TryGetValue(out var h)
+                ? h
+                : IntPtr.Zero;
+            var r = OrkaPenceresi.OlcuAl(hwnd);
+            if (!r.Gecerli)
             {
                 Console.WriteLine("UYARI: Pencere olculeri okunamadi (simge durumunda olabilir).");
                 Thread.Sleep(1000);
                 continue;
             }
 
-            var oranX = (nokta.X - r.X) / (double)r.Width;
-            var oranY = (nokta.Y - r.Y) / (double)r.Height;
+            // Sol/Ust negatif olabilir (ikinci monitor, DWM kenarlik payi).
+            var oranX = (nokta.X - r.Sol) / (double)r.Genislik;
+            var oranY = (nokta.Y - r.Ust) / (double)r.Yukseklik;
             var disarida = oranX is < 0 or > 1 || oranY is < 0 or > 1;
 
             // Ondalik ayrac her zaman NOKTA olmali; Turkce locale'de virgul basar

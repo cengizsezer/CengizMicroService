@@ -61,8 +61,8 @@ public class OrkaPenceresi
     /// <param name="surecAdi">ORKA exe'sinin uzantisiz adi (<c>Ajan.OrkaSurecAdi</c>).</param>
     /// <param name="anaPencereBasligi">
     /// Ana pencere basligindan bir parca (<c>Pencereler.AnaEkran</c>); '|' ile
-    /// birden fazla aday verilebilir. Bos birakilirsa isletim sisteminin
-    /// bildirdigi ana pencere kullanilir.
+    /// birden fazla aday verilebilir. Bos birakilirsa ya da hicbir aday tutmazsa
+    /// ORKA'nin olculebilir EN BUYUK penceresi secilir.
     /// </param>
     public OrkaPenceresi(string surecAdi, string? anaPencereBasligi = null)
     {
@@ -85,7 +85,7 @@ public class OrkaPenceresi
 
         return new OrkaPencereDurumu(
             tutamac,
-            Olcu(tutamac),
+            OlcuAl(tutamac),
             Win32.Baslik(tutamac),
             Win32.IsZoomed(tutamac),
             Win32.IsIconic(tutamac),
@@ -147,53 +147,74 @@ public class OrkaPenceresi
     /// ORKA'nin ANA penceresi.
     ///
     /// <b>Neden <see cref="Process.MainWindowHandle"/> yetmiyor:</b> o, surece
-    /// ait ilk gorunur ve sahipsiz pencereyi dondurur; ORKA bir diyalogu
-    /// sahipsiz actiginda ana pencere yerine o diyalog secilebiliyor. Oranin
-    /// paydasi yanlis pencere olursa kaydedilen deger sessizce kayar. Bu yuzden
-    /// once baslikla araniyor -- <c>AdimMotoru.Tikla</c> de ayni baslikla
-    /// buluyor.
+    /// ait ilk gorunur ve SAHIPSIZ pencereyi dondurur. ORKA'da bu pencere ana
+    /// form degil: ana form gizli bir kabuk pencere tarafindan sahipleniliyor,
+    /// tek sahipsiz pencere ise 0x0 olculu bir kabuk. Yedege dusuldugunde oranin
+    /// paydasi sifir kaliyor.
+    ///
+    /// <b>Neden GW_OWNER filtresi yok:</b> once "sahipli pencere = modal diyalog"
+    /// varsayilip elenmisti; teshis dokumu bunun ORKA'da tersine dondugunu
+    /// gosterdi -- filtre asil ana pencereyi eliyordu. Sahiplik yerine
+    /// <b>olculebilirlik</b> ve <b>baslik</b> eliyor: gorunur, alani sifirdan
+    /// buyuk ve basligi <c>Pencereler.AnaEkran</c> adaylarindan birini iceren
+    /// pencere. Birden fazlasi uyarsa EN BUYUK ALANLI secilir; ana pencere her
+    /// zaman kendi diyaloglarindan buyuk.
     /// </summary>
     private IntPtr AnaPencereBul(IReadOnlyCollection<int> surecler, IntPtr yedek)
     {
         if (surecler.Count == 0) return IntPtr.Zero;
-        if (_anaBaslikAdaylari.Length == 0) return yedek;
 
         var adaylar = UstSeviyePencereler(surecler);
+        var basligaUyan = adaylar.Where(BasligaUyuyor).ToList();
 
-        foreach (var parca in _anaBaslikAdaylari)
-        {
-            foreach (var (tutamac, baslik) in adaylar)
-            {
-                if (baslik.Contains(parca, StringComparison.OrdinalIgnoreCase))
-                    return tutamac;
-            }
-        }
+        // Baslik tutmadiysa sart DUSURULUYOR: ORKA giris ekraninda olabilir,
+        // baslik surumle degismis olabilir ya da AnaEkran hic tanimlanmamis
+        // olabilir. Olculebilir bir ORKA penceresi varsa onu kullanmak hicbir
+        // sey kullanmamaktan iyi.
+        var secilen = EnBuyuk(basligaUyan) ?? EnBuyuk(adaylar);
+        if (secilen is not null) return secilen.Tutamac;
 
-        // Baslik tutmadi: ORKA giris ekraninda olabilir ya da baslik degismis
-        // olabilir. Isletim sisteminin bildirdigi ana pencereye dus; bulunmus
-        // olmasi hicbir seye dusmemekten iyi.
-        return yedek;
+        // Hicbir olculebilir aday yok. Yedege ANCAK kendisi olculebiliyorsa
+        // dusulur: 0x0 bir kabuk pencereyi dondurmek "bulundu" deyip orani
+        // sessizce bozmak olurdu -- asil hata buydu.
+        return OlcuAl(yedek).Gecerli ? yedek : IntPtr.Zero;
     }
 
-    /// <summary>ORKA sureclerine ait gorunur ve sahipsiz ust seviye pencereler.</summary>
-    private static List<(IntPtr Tutamac, string Baslik)> UstSeviyePencereler(IReadOnlyCollection<int> surecler)
+    /// <summary>Basligi <c>Pencereler.AnaEkran</c> adaylarindan birini iceriyor mu?</summary>
+    private bool BasligaUyuyor(PencereAdayi aday)
+        => _anaBaslikAdaylari.Any(p => aday.Baslik.Contains(p, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Alani en buyuk aday; liste bossa null.</summary>
+    private static PencereAdayi? EnBuyuk(IReadOnlyCollection<PencereAdayi> adaylar)
+        => adaylar.Count == 0
+            ? null
+            : adaylar.MaxBy(a => (long)a.Olcu.Genislik * a.Olcu.Yukseklik);
+
+    /// <summary>Ana pencere adayi: ORKA surecine ait, gorunur, olculebilir bir pencere.</summary>
+    private sealed record PencereAdayi(IntPtr Tutamac, string Baslik, PencereOlcusu Olcu);
+
+    /// <summary>
+    /// ORKA sureclerine ait <b>gorunur ve olculebilir</b> ust seviye pencereler.
+    /// Sahiplige BAKILMIYOR (bkz. <see cref="AnaPencereBul"/>); eleme olcuye
+    /// gore: genislik ya da yukseklik sifirsa o pencere oranin paydasi olamaz.
+    /// </summary>
+    private static List<PencereAdayi> UstSeviyePencereler(IReadOnlyCollection<int> surecler)
     {
-        var sonuc = new List<(IntPtr, string)>();
+        var sonuc = new List<PencereAdayi>();
 
         try
         {
             Win32.EnumWindows((tutamac, _) =>
             {
-                if (!Win32.IsWindowVisible(tutamac)) return true;
-
-                // Sahipli pencere = modal diyalog / popup. Ana pencere aranirken
-                // bunlar elenmeli; tiklama denetiminde ise kabul ediliyorlar.
-                if (Win32.GetWindow(tutamac, Win32.GW_OWNER) != IntPtr.Zero) return true;
-
                 Win32.GetWindowThreadProcessId(tutamac, out var pid);
                 if (pid == 0 || !surecler.Contains((int)pid)) return true;
 
-                sonuc.Add((tutamac, Win32.Baslik(tutamac)));
+                if (!Win32.IsWindowVisible(tutamac)) return true;
+
+                var olcu = OlcuAl(tutamac);
+                if (!olcu.Gecerli) return true;
+
+                sonuc.Add(new PencereAdayi(tutamac, Win32.Baslik(tutamac), olcu));
                 return true;
             }, IntPtr.Zero);
         }
@@ -272,12 +293,13 @@ public class OrkaPenceresi
         }
 
         // Sayimlar ORKA'ya ait ham kume uzerinde asama asama yapiliyor. Canli
-        // kodda eleme sirasi gorunur -> sahip -> pid; buradaki siralama sonuc
+        // kodda eleme sirasi pid -> gorunur -> olcu; buradaki siralama sonuc
         // kumesini degistirmiyor, yalnizca "kac tanesi nerede dustu"yu ORKA
-        // penceresi bazinda okunur kiliyor.
+        // penceresi bazinda okunur kiliyor. GW_OWNER sutunu bilgi olarak duruyor
+        // ama ARTIK ELEMIYOR: ana pencere sahipli cikti.
         var gorunurElenen = ham.Count(p => !p.Gorunur);
-        var sahipElenen = ham.Count(p => p.Gorunur && p.Sahip != IntPtr.Zero);
-        var adaylar = ham.Where(p => p.Gorunur && p.Sahip == IntPtr.Zero).ToList();
+        var olcuElenen = ham.Count(p => p.Gorunur && !p.Olcu.Gecerli);
+        var adaylar = ham.Where(p => p.Gorunur && p.Olcu.Gecerli).ToList();
         var eslesenler = adaylar
             .Where(p => _anaBaslikAdaylari.Any(a => p.Baslik.Contains(a, StringComparison.OrdinalIgnoreCase)))
             .ToList();
@@ -286,7 +308,8 @@ public class OrkaPenceresi
         yazi.AppendLine("--- Filtre dokumu ---");
         yazi.AppendLine($"pid filtresi ile elenen (baska surec) : {toplamUstSeviye - ham.Count}");
         yazi.AppendLine($"IsWindowVisible = false ile elenen    : {gorunurElenen}");
-        yazi.AppendLine($"GW_OWNER != 0 (sahipli) ile elenen    : {sahipElenen}");
+        yazi.AppendLine($"olcusu sifir (G ya da Y = 0) ile elenen: {olcuElenen}");
+        yazi.AppendLine($"GW_OWNER (sahiplik)                   : artik ELEMIYOR");
         yazi.AppendLine($"baslik eslesmedigi icin elenen        : {adaylar.Count - eslesenler.Count}");
         yazi.AppendLine($"basliga uyan aday sayisi              : {eslesenler.Count}");
         yazi.AppendLine();
@@ -295,11 +318,11 @@ public class OrkaPenceresi
                         (secilen == IntPtr.Zero ? "  (BULUNAMADI)" : $"  baslik: {Win32.Baslik(secilen)}"));
         yazi.AppendLine($"MainWindowHandle yedegi  : 0x{yedek.ToInt64():X8}" +
                         (yedek == IntPtr.Zero ? "  (yok)" : string.Empty));
-        yazi.AppendLine($"Yedege dusuldu mu        : {(eslesenler.Count == 0 ? "EVET (basliga uyan aday yok)" : "hayir (baslik esletti)")}");
+        yazi.AppendLine($"Yedege dusuldu mu        : {YedekNotu(adaylar.Count, eslesenler.Count, secilen)}");
 
         if (secilen != IntPtr.Zero)
         {
-            var olcu = Olcu(secilen);
+            var olcu = OlcuAl(secilen);
             yazi.AppendLine($"Secilen pencerenin olcusu: ({olcu.Sol}, {olcu.Ust}, {olcu.Genislik}, {olcu.Yukseklik})" +
                             (olcu.Gecerli ? string.Empty : "  <-- GECERSIZ (G ya da Y sifir)"));
             yazi.AppendLine($"IsWindow / IsIconic / IsZoomed: {Win32.IsWindow(secilen)} / " +
@@ -307,6 +330,19 @@ public class OrkaPenceresi
         }
 
         return yazi.ToString();
+    }
+
+    /// <summary>Teshis dokumundeki "yedege dusuldu mu" satirinin metni.</summary>
+    private static string YedekNotu(int adaySayisi, int eslesenSayisi, IntPtr secilen)
+    {
+        if (adaySayisi > 0)
+            return eslesenSayisi > 0
+                ? "hayir (baslik esletti)"
+                : "hayir (baslik tutmadi -> en buyuk olculebilir pencere secildi)";
+
+        return secilen == IntPtr.Zero
+            ? "EVET ama yedek de olculemedi -> BULUNAMADI"
+            : "EVET (olculebilir aday yok, yedegin olcusu gecerli)";
     }
 
     /// <summary>
@@ -355,7 +391,7 @@ public class OrkaPenceresi
                     (int)pid,
                     Win32.IsWindowVisible(tutamac),
                     Win32.GetWindow(tutamac, Win32.GW_OWNER),
-                    Olcu(tutamac),
+                    OlcuAl(tutamac),
                     Win32.Baslik(tutamac)));
 
                 return true;
@@ -381,9 +417,21 @@ public class OrkaPenceresi
         Win32.SetForegroundWindow(tutamac);
     }
 
-    internal static PencereOlcusu Olcu(IntPtr tutamac)
+    /// <summary>
+    /// Bir pencerenin ekrandaki dikdortgeni -- <b>tek olcu kaynagi</b>.
+    /// Oranin paydasi nerede hesaplaniyorsa (adim motoru, kalibre modu,
+    /// kalibrasyon paneli, teshis dokumu) olcuyu buradan alir. Iki ayri
+    /// kaynak -- Win32 GetWindowRect ile UIA BoundingRectangle -- ayni
+    /// pencere icin farkli dikdortgen dondurebiliyor; ikisi karisirsa
+    /// robotun tikladigi yer ile kullanicinin olctugu yer sessizce ayrisir.
+    ///
+    /// Okunamazsa <c>default</c> doner (G=Y=0, yani <c>Gecerli=false</c>).
+    /// Sol/Ust NEGATIF olabilir -- ikinci monitor ve DWM kenarlik payi;
+    /// deger kirpilmaz, isaretli aritmetikle tasinir.
+    /// </summary>
+    public static PencereOlcusu OlcuAl(IntPtr hwnd)
     {
-        if (!Win32.GetWindowRect(tutamac, out var r)) return default;
+        if (!Win32.GetWindowRect(hwnd, out var r)) return default;
         return new PencereOlcusu(r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top);
     }
 
