@@ -132,6 +132,10 @@ public static class AyarTanimlari
             if (!string.IsNullOrWhiteSpace(varsayilan)) tanim.Yaz(ayarlar, varsayilan);
         }
 
+        // Calistir sekmesi de bos gelmesin: banka satirlari ve varsayilan
+        // zamanlama ilk acilista tabloda dursun.
+        ayarlar.Calistirma.VarsayilanlariTamamla();
+
         return ayarlar;
     }
 }

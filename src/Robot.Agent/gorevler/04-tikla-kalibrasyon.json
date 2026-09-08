@@ -4,9 +4,14 @@
 
   "// KULLANIM": [
     "1. ORKA'yi ac, kalibre edilecek ekrana kadar elle git (Veri Transferi gibi).",
-    "2. PkfRobot.exe --probe  calistir, ekran goruntusunu al.",
-    "3. Goruntude hedefin pikselini olc, EKRAN GENISLIGINE bol -> X orani.",
-    "   Ornek: 1920 genislikte 240. piksel -> 240 / 1920 = 0.125",
+    "2. En kolayi: PkfRobot.exe --kalibre  calistir, fareyi hedefin uzerine",
+    "   getir, satirin sonundaki  \"X\": ..., \"Y\": ...  parcasini buraya yapistir.",
+    "3. Ekran goruntusuyle olcecek olursan: PkfRobot.exe --probe calistir,",
+    "   goruntude hedefin pikselini olc ve PENCERE GENISLIGINE bol -> X orani.",
+    "   ORAN EKRANA DEGIL PENCEREYE GORELIDIR: ORKA ikinci monitorde calisiyor,",
+    "   ekran genisligine bolmek yanlis oran verir. Ekran goruntusu artik ORKA",
+    "   ana penceresinin dikdortgeni oldugu icin goruntu genisligi = pencere genisligi.",
+    "   Ornek: 1920 piksel genisligindeki pencerede 240. piksel -> 240 / 1920 = 0.125",
     "4. Asagidaki X/Y degerlerini yaz, calistir:",
     "     PkfRobot.exe --gorev gorevler\\04-tikla-kalibrasyon.json",
     "5. tiklama-sonrasi.png dogru yere basildigini gosteriyorsa oranlari",

@@ -54,9 +54,17 @@ public class AdimLogger : IDisposable
     /// ORKA ana penceresinin goruntusunu alir; ORKA bulunamazsa butun
     /// monitorleri kapsayan sanal masaustunu. Hata olursa sessizce gecer.
     /// </summary>
-    public void EkranAl(string ad, bool zorla = false)
+    /// <returns>
+    /// Yazilan dosyanin yolu; goruntu alinmadiysa (kapali ya da hata) null.
+    ///
+    /// <b>Neden yol donuyor:</b> GridDoldur sonrasi goruntu yalnizca log'a
+    /// bakilmak icin degil, dogrulama katmanina girdi olarak da kullaniliyor.
+    /// Dosyayi klasorde ada gore aramak, adlandirma kuralini iki yere yazmak
+    /// olurdu. Yolu kullanmayan cagiranlar donen degeri yok sayiyor.
+    /// </returns>
+    public string? EkranAl(string ad, bool zorla = false)
     {
-        if (!_ekranGoruntusuAktif && !zorla) return;
+        if (!_ekranGoruntusuAktif && !zorla) return null;
 
         try
         {
@@ -65,10 +73,12 @@ public class AdimLogger : IDisposable
             // monitorde calisiyor (ana pencere Sol=2390) ve gorev goruntuleri
             // ORKA'nin hic gorunmedigi ekrani gosteriyordu.
             Capture.Rectangle(YakalamaAlani.Alan()).ToFile(dosya);
+            return dosya;
         }
         catch (Exception ex)
         {
             Uyari($"Ekran goruntusu alinamadi: {ex.Message}");
+            return null;
         }
     }
 

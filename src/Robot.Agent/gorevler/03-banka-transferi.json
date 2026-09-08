@@ -15,7 +15,8 @@
     { "Tip": "Dogrula", "Deger": "ORKA_", "Not": "ORKA acik mi" },
     { "Tip": "EkranGoruntusu", "Deger": "baslangic" },
 
-    { "Tip": "Kisayol", "Deger": "ALT+T", "Not": "Transfere Basla kisayolu - DOGRULA! Yoksa TAB+ENTER gerekebilir" },
+    { "// yorum": "ALT+T DENENDI, ORKA'da boyle bir kisayol YOK - ne burada ne firma sifresi popup'inda. Transfere Basla klavyeyle gecilemiyor (Tab gecmiyor, Ctrl+F/F6 yok), geriye koordinat kaliyor: orkaya-aktar.json ile ayni oran.",
+      "Tip": "Tikla", "X": 0.5, "Y": 0.12, "Not": "Transfere Basla" },
     { "Tip": "Bekle", "Sayi": 2000 },
 
     { "Tip": "Log", "Not": "--- Dosya secim diyalogu (UIA uyumlu, en saglam adim) ---" },

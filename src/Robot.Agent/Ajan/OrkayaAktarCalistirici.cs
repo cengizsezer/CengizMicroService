@@ -1,4 +1,5 @@
 using ClosedXML.Excel;
+using PkfRobot.Ayarlar;
 using PkfRobot.Config;
 using PkfRobot.Core;
 using System.Text.Json;
@@ -32,7 +33,26 @@ public sealed class OrkayaAktarCalistirici : IIsCalistirici
     private readonly IAjanLog _log;
     private readonly string _islerKlasoru;
     private readonly Func<DateTime> _simdi;
+    private readonly IGridOkuyucu? _gridOkuyucu;
+    private readonly Func<Sifreler> _sifreleriOku;
 
+    /// <param name="gridOkuyucu">
+    /// Grid dolduruldiktan sonra ekrandan okuyup karsilastiran ON ELEME.
+    /// <b>null ise dogrulama hic yapilmaz</b> ve akis bit bit eskisi gibi
+    /// calisir -- ozellik <c>GoruntuDogrulama.Aktif</c> kapaliyken ya da API
+    /// anahtari yokken buraya null geliyor (bkz. AjanCalistirici).
+    /// </param>
+    /// <param name="sifreleriOku">
+    /// Firma bazli sifre deposunu (DPAPI, <c>sifreler.dat</c>) okuyan islev.
+    ///
+    /// <b>Neden her iste yeniden okunuyor, bir kez degil:</b> ajan gunlerce acik
+    /// kaliyor. Kullanici arada arayuzden yeni bir firma ekleyip sifresini
+    /// girdiginde bir sonraki is onu gormeli; onbellege alinsaydi ajani yeniden
+    /// baslatmak gerekirdi.
+    ///
+    /// null ise depo hic okunmaz ve yalnizca <c>appsettings.Giris</c> yedegi
+    /// kalir -- testler bu haliyle calisiyor.
+    /// </param>
     public OrkayaAktarCalistirici(
         RobotConfig cfg,
         IIsDosyalari dosyalar,
@@ -40,7 +60,9 @@ public sealed class OrkayaAktarCalistirici : IIsCalistirici
         IOrkaDurumu orka,
         IAjanLog log,
         string islerKlasoru,
-        Func<DateTime>? simdi = null)
+        Func<DateTime>? simdi = null,
+        IGridOkuyucu? gridOkuyucu = null,
+        Func<Sifreler>? sifreleriOku = null)
     {
         _cfg = cfg;
         _dosyalar = dosyalar;
@@ -49,6 +71,8 @@ public sealed class OrkayaAktarCalistirici : IIsCalistirici
         _log = log;
         _islerKlasoru = islerKlasoru;
         _simdi = simdi ?? (() => DateTime.Now);
+        _gridOkuyucu = gridOkuyucu;
+        _sifreleriOku = sifreleriOku ?? (() => new Sifreler());
     }
 
     public bool Destekliyor(string isTipi) => string.Equals(isTipi, Tip, StringComparison.OrdinalIgnoreCase);
@@ -62,6 +86,11 @@ public sealed class OrkayaAktarCalistirici : IIsCalistirici
         try
         {
             var yuk = YukuCoz(paket.Yuk);
+
+            // --- 0) Sifreler --------------------------------------------------
+            // Dosya indirmeden, ORKA'ya dokunmadan ONCE. Sifre yoksa giris
+            // ekrani gecilemez; indirilen dosyalar ve acilan ORKA bosa gider.
+            var sifreler = SifreleriCoz(yuk.FirmaKodu);
 
             // --- 1) Dosyalar --------------------------------------------------
             await ilerleme.BildirAsync(2, "Is paketi indiriliyor", 0, ct);
@@ -97,8 +126,8 @@ public sealed class OrkayaAktarCalistirici : IIsCalistirici
                 ["firmaKodu"] = yuk.FirmaKodu,
                 ["hesapKodu"] = yuk.BankaHesabiOrkaKodu,
                 ["dosyaYolu"] = ekstreYolu,
-                ["sifre"] = _cfg.Giris.Sifre,
-                ["firmaSifre"] = _cfg.Giris.FirmaSifresi,
+                ["sifre"] = sifreler.Orka.Deger,
+                ["firmaSifre"] = sifreler.Firma.Deger,
                 ["donem"] = _simdi().ToString("yyyyMM")
             });
 
@@ -109,14 +138,20 @@ public sealed class OrkayaAktarCalistirici : IIsCalistirici
                                              CancellationToken.None);
             }, ct);
 
-            // --- 4) Sonuc -----------------------------------------------------
+            // --- 4) Dogrulama (on eleme; robotu DURDURMAZ) --------------------
+            var dogrulama = await DogrulaAsync(grid, ilerleme, ct);
+
+            // --- 5) Sonuc -----------------------------------------------------
             var sure = (int)(_simdi() - basladi).TotalSeconds;
             var ozet = JsonSerializer.Serialize(new
             {
                 YazilanSatir = grid.YazilanSatir,
                 ToplamSatir = grid.Satirlar.Count,
                 SureSaniye = sure,
-                KaydetBasilmadi = true
+                KaydetBasilmadi = true,
+                // Ekranda gorunen sonuc: dogrulama kapaliysa null kaliyor ve
+                // ekran "dogrulanmadi" ile "tuttu" arasindaki farki gorebiliyor.
+                Dogrulama = dogrulama
             });
 
             await ilerleme.BildirAsync(100,
@@ -147,6 +182,114 @@ public sealed class OrkayaAktarCalistirici : IIsCalistirici
 
             _log.Hata($"Aktarim basarisiz: {ex.Message}");
             return IsSonucu.Hata(mesaj, dosyaId);
+        }
+    }
+
+    // ---- grid dogrulamasi (goruntuden okuma) --------------------------------
+
+    /// <summary>
+    /// Grid dolduruldiktan sonra alinan ekran goruntusunu okur ve yazilmasi
+    /// beklenen listeyle karsilastirir.
+    ///
+    /// <b>Neden burada, motorun icinde degil:</b> okuma aga cikiyor ve adim
+    /// motoru aga dokunmuyor. Motor yalnizca goruntunun yolunu birakiyor
+    /// (<see cref="GridDoldurVerisi.GridGoruntusuYolu"/>); butun ag isi zaten
+    /// bu sinifta.
+    ///
+    /// <b>Neden gorevin son adimlarindan SONRA:</b> gorevin GridDoldur'dan
+    /// sonraki adimlari yalnizca bir ekran goruntusu ve bir log satiri; ekran
+    /// degismiyor. Boylece motor senkron ve agsiz kaliyor, dogrulama burada
+    /// await ediliyor.
+    ///
+    /// <b>Hicbir yolu isi basarisiz yapmiyor.</b> Donen deger yalnizca sonuc
+    /// ozetine yaziliyor; uyusmazlik varsa log'da satir satir gorunuyor.
+    /// </summary>
+    /// <returns>Sunucuya gonderilen ozete yazilan kisa metin; dogrulama yapilmadiysa null.</returns>
+    private async Task<string?> DogrulaAsync(GridDoldurVerisi grid, IIsIlerleme ilerleme,
+                                             CancellationToken ct)
+    {
+        if (_gridOkuyucu is null) return null;
+
+        if (grid.GridGoruntusuYolu is not { Length: > 0 } goruntu)
+        {
+            _log.Uyari("Grid dogrulamasi atlandi: GridDoldur ekran goruntusu alinamamis.");
+            return "yapilamadi (ekran goruntusu yok)";
+        }
+
+        await ilerleme.BildirAsync(97, "Grid ekrandan dogrulaniyor", null, ct);
+
+        var okuma = await _gridOkuyucu.OkuAsync(goruntu, ct);
+
+        if (okuma.Satirlar.Count == 0)
+        {
+            // Sebebi okuyucu zaten logladi (ag, kota, zaman asimi, bozuk yanit).
+            return "yapilamadi";
+        }
+
+        var sonuc = GridDogrulama.Karsilastir(grid.Satirlar, okuma.Satirlar, okuma.Kesildi);
+
+        foreach (var satir in GridDogrulama.Satirlar(sonuc))
+        {
+            if (sonuc.TamamTutuyor) _log.Bilgi(satir);
+            else _log.Uyari(satir);
+        }
+
+        return sonuc.TamamTutuyor
+            ? $"{sonuc.Eslesen}/{sonuc.Beklenen} satir eslesti"
+            : $"{sonuc.Eslesen}/{sonuc.Beklenen} eslesti, {sonuc.Farklar.Count} satir TUTMUYOR" +
+              (sonuc.Karsilastirilmayan > 0 ? $", {sonuc.Karsilastirilmayan} satir dogrulanmadi" : string.Empty);
+    }
+
+    // ---- sifreler -----------------------------------------------------------
+
+    /// <summary>
+    /// Bu is HANGI firmanin sifresiyle calisacak.
+    ///
+    /// <b>Neden ajan da firma bazli depoyu okuyor:</b> daha once buraya
+    /// <c>appsettings.Giris</c>'teki TEK alan geliyordu. Birden fazla firmayla
+    /// calisirken bu, her firmaya ayni sifreyi denemek demek -- ve yanlis sifre
+    /// ORKA'yi kilitliyor. Arayuzdeki Calistir sekmesi zaten firma bazli depoyu
+    /// kullaniyordu; iki yol ayni kaynaga baglandi
+    /// (<see cref="PkfRobot.Ayarlar.FirmaSifreCozucu"/>).
+    ///
+    /// <b>Sunucudan sifre GELMIYOR.</b> Is paketinde yalnizca firma KODU var;
+    /// sifreler bu makinede DPAPI ile sifreli duruyor ve hicbir yere
+    /// gonderilmiyor. Bilincli karar.
+    /// </summary>
+    /// <exception cref="IsDogrulamaHatasi">
+    /// Ne firma bazli kayit ne de appsettings yedegi varsa. <b>Is hic baslamiyor:</b>
+    /// ORKA acilmiyor, dosya indirilmiyor -- sifresiz giris ekrani gecilemez ve
+    /// yarim kalan bir ORKA oturumu birakmanin anlami yok.
+    /// </exception>
+    private FirmaSifreCozumu SifreleriCoz(string firmaKodu)
+    {
+        var cozum = FirmaSifreCozucu.Coz(DepoyuOku(), firmaKodu,
+                                         _cfg.Giris.Sifre, _cfg.Giris.FirmaSifresi);
+
+        if (cozum.Eksik)
+        {
+            _log.Hata(cozum.EksikMesaji);
+            throw new IsDogrulamaHatasi(cozum.EksikMesaji);
+        }
+
+        foreach (var satir in cozum.LogSatirlari) _log.Bilgi(satir);
+
+        return cozum;
+    }
+
+    private Sifreler DepoyuOku()
+    {
+        try
+        {
+            return _sifreleriOku();
+        }
+        catch (Exception ex)
+        {
+            // Depo okunamiyorsa (baska kullanici, bozuk dosya) appsettings yedegi
+            // hala devrede; sessiz kalmasin ki "neden eski sifre" sorusu cevaplansin.
+            _log.Uyari($"Firma bazli sifre deposu okunamadi: {ex.Message}. " +
+                       "appsettings.json > Giris yedegine bakilacak.");
+            return new Sifreler();
         }
     }
 

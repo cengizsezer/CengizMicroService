@@ -3138,3 +3138,389 @@ pencerenin dışında`), **hangi pencereye tıklandı** (başlık + süreç adı
 `KoordinatSecimi.Gunluk` ile tek satır olarak log'a da yazılıyor — kabul de ret
 de. Ofiste "seçici tıklamayı kabul etmiyor" denildiğinde bakılacak yer orası;
 öncesinde kullanıcının elinde hiçbir şey yoktu.
+
+
+## 143. Ofis denemesinden çıkan üç bulgu
+
+Bugün ofiste gerçek ORKA ile yapılan denemeden çıkanlar. Üçü de tahmin değil,
+ölçüm; hepsi koda girdi:
+
+- **ORKA ana formu gizli bir kabuk penceresi tarafından sahipleniliyor.** Pencere
+  taramasındaki `GW_OWNER == 0` şartı ("sahipli pencere = modal diyalogtur, ele")
+  ORKA'da tersine dönüyor ve **asıl ana pencereyi eliyordu**; süreçteki tek sahipsiz
+  pencere 0x0 ölçülü bir kabuk. Artık sahiplik elemiyor, **ölçülebilirlik ve başlık**
+  eliyor: görünür, alanı sıfırdan büyük ve başlığı `Pencereler.AnaEkran` adaylarından
+  birini içeren pencerelerin **en büyük alanlısı**. `GW_OWNER` teşhis dökümünde
+  yalnız bilgi sütunu olarak duruyor. Bkz. §142.
+- **ORKA ikinci monitörde çalışıyor** — ana pencerenin rect'i `Sol=2390`'dan başlıyor.
+  `Screen.PrimaryScreen` ve FlaUI'nin `Capture.Screen()` çağrısı birincil monitörü
+  çektiği için görev ekran görüntüleri ORKA'nın hiç görünmediği bir ekranı
+  gösteriyordu: "`sablon-secildi.png`'yi her çalıştırmada kontrol et" talimatı boş bir
+  görüntüye bakıyordu. Yakalama artık **ana pencerenin rect'ini** kullanıyor; ORKA hiç
+  bulunamazsa yedek **sanal masaüstü**, birincil monitöre hiçbir durumda düşülmüyor.
+  Ölçü tıklama oranının paydasıyla aynı kaynaktan (`OrkaPenceresi.OlcuAl`) geliyor.
+- **Şablon satırı çift tık gerektiriyor.** Banka Ekstreleri grid'inde tek tık satırı
+  yalnızca seçili yapıyor, Enter da açmıyor; zincir tam bu adımda duruyordu. `Tikla`
+  adımına `CiftTik` alanı eklendi (varsayılan `false` — mevcut adımların davranışı
+  değişmedi), `orkaya-aktar.json`'da yalnız şablon satırında `true`. Çift tık FlaUI'nin
+  `Mouse.DoubleClick` metoduyla gönderiliyor: iki ayrı `Mouse.Click` arasına kendi
+  beklememizi koysaydık aradaki süre Windows'un `GetDoubleClickTime()` eşiğini aşabilir
+  ve ORKA iki ayrı **tek** tık görürdü. Bayrak adım bazında, çünkü geri kalan bütün
+  `Tikla` adımları tek tık ve öyle kalmalı; kalibrasyonun JSON'u yeniden yazarken
+  bayrağı düşürmediği de testle sabitlendi.
+
+## 144. ORKA'da ALT+T diye bir kısayol yok; firma şifresi ve şube Enter ile geçiliyor
+
+Görev dosyaları başından beri firma şifresi popup'ının Tamam düğmesini `ALT+T` ile
+geçiyordu. Dayanağı bir gözlem değil bir varsayımdı: "Tamam'da T'nin altı çizili, demek
+ki ALT+T çalışır — Enter'dan daha kesin" (01-orka-ac-firma-sec.json'daki ölçüm notu).
+Ofiste denendi: **ORKA'da böyle bir kısayol yok** — ne şifre popup'ında ne şube seçim
+ekranında. İkisi de **Enter** ile geçiliyor.
+
+Üç görev dosyası da düzeltildi ve `Kisayol` + `ALT+T` adımları tamamen kaldırıldı:
+
+- `orkaya-aktar.json`: şifre yazıldıktan sonra Enter → şube ekranı → Enter → `BeklePencere
+  "ORKA_"`. Araya iki ekran görüntüsü kondu (`firma-sifre-yazildi`, `sube-ekrani`): iki
+  Enter'lık kör bir aralıkta hangisinin ıskaladığı ancak görüntüyle anlaşılır.
+- `01-orka-ac-firma-sec.json`: aynı yerde Enter; yanlış ölçüm notu da düzeltildi, yoksa
+  bir sonraki dosyayı yazan aynı varsayımı kopyalardı.
+- `03-banka-transferi.json`: oradaki `ALT+T` şifre popup'ı değil **Transfere Başla**
+  düğmesiydi ve aynı sebeple yanlış. Enter konmadı — o düğme klavyeyle hiç
+  gezilemiyor (Tab geçmiyor, Ctrl+F/F6 yok); `orkaya-aktar.json` ile aynı orana
+  (`X 0.5, Y 0.12`) tıklayan bir `Tikla` adımı kondu. Bu dosya artık kalibrasyon
+  listesinde de görünür (`03-banka-transferi.json#0`) ve ölçülmesi gerekir.
+
+`orkaya-aktar.json`'daki "ofiste önce ALT+T denenecek, çalışırsa bu Tikla adımı
+silinecek" notu da kaldırıldı: denendi, çalışmıyor, adım kalıcı.
+
+**Kalan kısayol iddiası `ALT+K` (Kaydet).** O da doğrulanmadı ve aynı türden bir
+varsayım; ama yalnız `03-banka-transferi.json`'daki `OnayGerekir` adımının içinde ve
+DryRun'da atlandığı için bugüne kadar hiç çalışmadı. `orkaya-aktar.json`'da Kaydet adımı
+zaten yok — kullanıcı gözle kontrol edip kendisi kaydediyor.
+
+## 145. PkfRobot "Çalıştır" sekmesi: bir satır bir banka, döngü arayüzde
+
+Çoklu banka aktarımı için ayrı bir uygulama ya da yeni bir konsol modu değil,
+**mevcut pencereye dördüncü bir sekme**: Durum / Çalıştır / Ayarlar / Kalibrasyon.
+Ayarlar ve kalibrasyon zaten orada; çalıştırmayı başka bir yere koymak kullanıcıyı
+iki pencere arasında gezdirirdi.
+
+**Tabloda bir satır = bir banka.** Her satır kendi hesap kodunu ve kendi ekstre
+dosyasını taşıyor. Klasör taraması ve dosya adından banka tahmini bilerek yok:
+kazancı bir tıklama, riski yanlış bankanın ekstresini doğru görünen bir kodla
+ORKA'ya aktarmak. İşaretli **ve** dosyası seçili satırlar işleniyor; işaretli ama
+dosyasız satır sessizce atlanmıyor, START'ı durduran bir eksik olarak bildiriliyor
+— sessiz atlama ancak iş bittikten sonra fark edilirdi.
+
+**Hesap kodları firma bazlı** (`BankaSatiri.HesapKodlari`: firma kodu → ORKA kodu).
+Hesap planı firmadan firmaya değişiyor; tek alan tutulsaydı firma değiştiren
+kullanıcı her seferinde dört kodu yeniden yazardı. 0001 kodları ekran
+görüntüsünden okundu ve **doğrulanmadı** — tabloda kırmızı uyarı olarak duruyor.
+0336 için kodlar bilerek boş: bilinmeyen bir hesap planına tahmin kod yazmak,
+yanlış hesaba aktarım demek.
+
+**Şifreler de firma bazlı** (`Sifreler.FirmaSifreleri`), yine DPAPI ile
+`sifreler.dat` içinde. Tek alanlık eski `FirmaSifresi` duruyor ve güncelleniyor:
+ajan modu ile konsol görevleri firma seçmiyor, onlar hâlâ oradan okuyor.
+
+**Hız çarpanı görev dosyasına dokunmuyor.** `Hizlandirici.Uygula` yalnızca
+`Bekle` adımlarının `Sayi` değerini ölçekleyen bir **kopya** üretiyor; JSON
+diskte olduğu gibi kalıyor ve `--gorev`, `--kalibre`, `--probe` çarpandan
+etkilenmiyor. Zamanlamanın dört değeri de formda; varsayılanları
+`appsettings.json`'daki çalışan değerler (700 / 150 / 40 / 90), sıfırdan değil.
+Pencere timeout'ları çarpana bağlanmadı — aynı şeyi iki yerden ayarlamak olurdu.
+
+**DURDUR adım ARASINDA duruyor, ortasında değil.** `CalismaDenetimi` adım
+motorunun `adimBasladi` geri çağırmasına takılıyor: DURAKLAT orada bloke oluyor,
+DEVAM kaldığı adımdan sürüyor, kes düğmesi `CalismaDurduruldu` atıyor. Adım
+motoru durdurulabilirliği bilmiyor ve değişmedi. Yarım kalan bir adım ORKA'yı
+bilinmeyen bir ekranda bırakırdı — yazılmakta olan hesap kodunun yarısı gitmiş
+olabilir.
+
+**Bir banka hata verirse kuyruk duruyor**, sonrakine geçmiyor. Görev yarıda
+kaldığında ORKA'nın hangi ekranda kaldığı bilinmiyor; oradan başlayan bir sonraki
+aktarımın ne yaptığını kimse bilemez. Kalanlar "atlandı" işaretleniyor ve log
+ekranı kontrol etmeyi söylüyor.
+
+**Açılış görevi bir kez, banka görevi her satırda.** İki ayrı açılır liste,
+ikisi de `gorevler/*.json`'dan besleniyor; varsayılanlar `01-orka-ac-firma-sec.json`
+ve `03-banka-transferi.json`. Giriş zinciri her banka için tekrarlansaydı ORKA
+ikinci turda giriş ekranını hiç göstermez ve zincir timeout'a düşerdi.
+
+**Yeni bir görev JSON'u yazılmadı.** Döngü için istenen dosya, mevcut iki dosyanın
+arasında kalan parçayı (Veri Transferi sekmesine gidip şablon satırını seçmek)
+içermeli; `orkaya-aktar.json`'ın kopyasını çıkarmak, iki yerde bakım gerektiren ve
+zamanla ayrışan ikinci bir akış bırakırdı. Sekme dosya adına gömülü değil: yeni
+dosya `gorevler/` altına konduğu anda listede çıkıyor ve seçilebiliyor.
+
+**Kalıcılık `%AppData%\PkfRobot\ayarlar.json`'da**: seçili firma, zamanlama, hız
+çarpanı, görev seçimleri, banka satırlarının sırası, işaretleri, dosya yolları ve
+firma bazlı hesap kodları. Publish klasörü her yayında üzerine yazılıyor; bu
+değerler orada dursa ofiste her güncellemede yeniden girilirdi.
+
+## 146. Sekme kapatma adımı görev dosyasında kalıyor, duraklatma DEVAM'a giriyor
+
+`gorevler/tek-dosya-aktar.json` döngü gövdesi: ORKA açık, firma seçili ve
+TRANSFERLER modülündeyken çalışır, giriş/firma/modül adımlarını **içermez** —
+onlar açılış görevinde bir kez çalışıyor. Her banka için baştan çalıştığı için
+giriş adımlarından biri oraya kaçarsa ikinci turda ORKA giriş ekranını hiç
+göstermez ve zincir timeout'a düşer; bu sınır testle sabitlendi.
+
+Dosyanın sonundaki **sekme kapatma tıklaması** bir sıralama sorunu doğuruyordu:
+aktarım bittikten sonra KAYDET'e **kullanıcı** basıyor (robot basmıyor), ama adım
+GridDoldur'un hemen ardından çalışırsa kullanıcı kaydedemeden ekran değişir.
+
+Üç yol vardı:
+
+1. Adımı görev dosyasından çıkarıp DEVAM mantığının içine koymak. **Hayır:**
+   Kalibrasyon sekmesi satırlarını `gorevler/*.json`'daki `Tikla` adımlarından
+   türetiyor. Adım koda taşınsaydı koordinat da koda gömülür, ofiste ölçülemezdi.
+2. Görevi iki dosyaya bölmek. **Hayır:** ikinci dosya tek adımlık olurdu ve var
+   oluş sebebi akış değil zamanlama olurdu; ayrıca her banka için ikinci bir
+   `AdimLogger` klasörü/ikinci bir log açılırdı.
+3. **Seçilen:** adım dosyada kalıyor, `Adim.OnayBekle` bayrağı taşıyor —
+   "bu adımdan ÖNCE dur, kullanıcı DEVAM'a basınca çalış".
+
+Duraklatmayı **adım motoru yapmıyor**: `GorevKosucusu`, motorun zaten var olan
+`adimBasladi` kancasında bayrağı görüp `CalismaDenetimi.Duraklat()` çağırıyor;
+sonraki satırdaki `AdimOncesiBekle()` görev iş parçacığını orada bloke ediyor.
+`AdimMotoru` bayraktan habersiz ve değişmedi — `CiftTik` ile aynı kalıp. Konsol
+modları (`--gorev`) alanı yok sayıyor: orada duraklatacak bir DEVAM düğmesi yok,
+adım beklemeden çalışıyor.
+
+Durdurulmuş bir akış onay yüzünden **yeniden duraklatılmıyor** — kesme isteğini
+yutup görevi askıda bırakırdı.
+
+**Koordinat (0.95, 0.06) placeholder'dır**, ofiste ölçülecek: Kalibrasyon
+sekmesinde `tek-dosya-aktar.json#4` satırı olarak duruyor. Bu dosyanın
+koordinatları `orkaya-aktar.json`'dan kopyalandı ve testle eşitlikleri
+sabitlendi; ama kalibrasyon **dosya bazlı** (`dosya.json#sıra`), yani birinde
+yapılan ölçüm diğerine geçmiyor — ikisi de ayrı ölçülmeli.
+
+Dosya diyaloğuna dosya yolu `Yaz` ile değil **`TemizleYaz`** ile yazılıyor: görev
+her banka için tekrar çalışıyor ve diyalog bir önceki dosya adını hatırlıyor
+olabilir; üzerine yazmak iki yolu birleştirip dosyayı bulunamaz yapardı.
+
+## 147. Öne getirme doğrulanmalı: EnumWindows'a geçerken FlaUI'nin beklemesi düştü
+
+**Karar:** Bir pencere öne getirildikten sonra **gerçekten öne geldiği doğrulanır**;
+`SetForegroundWindow` çağrısı tek başına "oldu" sayılmaz.
+
+**Neden:** Pencere aramanın UIA'dan `EnumWindows`'a taşınması (§bkz. `PencereBekleyici`
+sınıf başlığı) doğru karardı ve sahipli pencerelerin bulunamaması sorununu çözdü. Ama
+aynı değişiklikte öne getirme de FlaUI'den çıplak Win32'ye indi ve **kimsenin fark
+etmediği bir bariyer düştü**:
+
+| | eski (FlaUI) | yeni (çıplak Win32) |
+|---|---|---|
+| çağrı | `el.Focus()` + `el.SetForeground()` | `SetForegroundWindow` |
+| her çağrının ardından | `Wait.UntilResponsive` → `SendMessageTimeout(WM_NULL, ≤1 sn)` + 20 ms | — |
+| dönüş değeri | — | atılıyordu |
+
+`SetForegroundWindow` **asenkrondur**: döndüğünde pencere henüz öne gelmemiş olabilir,
+foreground lock kurallarına takılıp sessizce `false` da dönebilir. FlaUI'nin
+`UntilResponsive` çağrısı pencerenin mesaj kuyruğunun aktivasyonu *işlediğini*
+bekliyordu; o kalkınca aktivasyon ile bir sonraki adımın ilk tuşu arasında hiçbir şey
+kalmadı. Modül ekranında `SAG x3` istenirken **ilk SAG yutuluyordu** — regresyonun
+sebebi buydu.
+
+Üç ayrı eksik aynı kökten geliyordu ve üçü birden kapatıldı:
+
+- **Odak kontrolü SÜREÇ düzeyindeydi.** `OdakOrkadaMi()` "odaktaki elemanın process'i
+  ORKA mı" diye soruyordu; ORKA'nın bütün pencereleri aynı sürece ait olduğu için bu
+  soru modül ekranı ile arkadaki başka bir ORKA penceresini ayırt edemiyor, odak yanlış
+  yerdeyken bile sıfır gecikmeyle "sorun yok" diyordu. Karar artık `OdakKarari` ile
+  **pencere düzeyinde**: hedefin tutamacı ön plandakiyle karşılaştırılıyor.
+  Hedef "ana ekran" değil **son bilerek öne getirilen pencere** — süreç kontrolünün
+  koruduğu tek doğru davranış ("dosya seçim diyaloğundan odağı çalma") böyle korunuyor.
+- **Tuşlar hiç bırakılmıyordu.** `Klavye.Tus`, FlaUI'nin `Keyboard.Press` metodunu
+  kullanıyordu; o **yalnız key-down** gönderir. Tuş işletim sistemi açısından basılı
+  kalıyor, sonraki basışlar hedefe auto-repeat olarak gidiyordu. Artık tek gönderim
+  yolu `IKlavyeSurucusu.TusaBas` ve sözleşmesi "bas ve **bırak**".
+- **Bekleme her basıştan SONRA konuyordu**, ilk basıştan önce hiç yoktu. Aktivasyonun
+  hemen üstüne binen tuş tam olarak buydu.
+
+**Hız çarpanı artık `TusBeklemeMs`'i de ölçekliyor.** Eskiden yalnız `Bekle` adımlarını
+ölçekliyordu; tuşlar arası boşluğa hiç dokunmuyordu. Sonuç: "çarpanı 1.5 yaptım,
+değişmedi" gözlemi hatayı elemiş sayıldı ve teşhis yanıltıldı. Pencere *timeout*'ları
+dışarıda kaldı — onlar "ne kadar bekleyeyim" değil "ne kadar sonra pes edeyim" sorusu.
+
+**Otomatik pencere kapatmadaki ESC artık kör gönderilmiyor.** Diyalog ön plana
+gelmediyse ESC ORKA'nın modül ekranına düşüyor, orada bir seviye geri alıyor ve
+arkasından gelen gezinme bambaşka bir yerde çalışıyordu: görünmeyen bir kapatma
+denemesi, görünür bir gezinme hatasına dönüşüyordu. Ön plan doğrulanamazsa ESC
+**gönderilmiyor**, uyarı loglanıyor ve devam ediliyor.
+
+**Hiçbiri görevi durdurmuyor.** Öne getirme doğrulanamazsa uyarı yazılıp devam edilir —
+amaç davranışı değiştirmek değil, sessizce kaybolan tuşu **log'da görünür kılmak**.
+
+Ekran test edilemez ama karar mantığı edilebilir: `OrkaPenceresi.OneGetirCekirdek`
+bütün Windows çağrılarını dışarıdan alıyor (yoklama sayısı, pes etme, "çağrı reddedildi
+ama pencere yine de geldi" ayrımı test ediliyor), `Klavye` tuşları değiştirilebilir bir
+sürücüye gönderiyor. Projedeki "saf mantığı ekrandan ayır" çizgisinin aynısı.
+
+## 148. Odak ORKA'daysa çalınmaz — §147'nin pencere düzeyi kuralı buradan düzeltilir
+
+**Karar:** Klavye adımlarından önce odak yalnızca **ORKA'nın dışındaysa** düzeltilir.
+Ön plandaki pencere ORKA sürecine aitse odağa **dokunulmaz**, hedef pencere başka biri
+olsa bile. §147'deki "hedefin tutamacı ön plandakiyle karşılaştırılır" kuralı bu kadarıyla
+geçersizdir; §147'nin geri kalanı (öne getirmenin doğrulanması, key-up, ilk tuştan önce
+bekleme, çarpanın `TusBeklemeMs`'i ölçeklemesi, kör ESC yasağı) aynen geçerli.
+
+**Neden:** Görev dosyaları ORKA'nın açtığı her modalı beklemiyor.
+`01-orka-ac-firma-sec.json`'da 14. adım `Tus F7`, 16. adım `TemizleYaz {firmaKodu}` —
+**arada `BeklePencere` yok**. O anda "son öne getirilen pencere" hâlâ 3. adımdaki giriş
+ekranını (`Orka SQL`) gösteriyor; firma henüz açılmadığı için yedek yol da ana ekranı
+başlıktan bulamıyor (`AnaEkran = ORKA_0001_2026`, başlıkta o metin yok). Yalnız pencere
+kimliğine bakan kural odağı "Firma Listesi" diyaloğundan **çalıyor** ve firma kodu hiçbir
+yere yazılmıyordu.
+
+Süreç düzeyindeki eski kontrol bu senaryoyu kazara doğru çözüyordu: diyalog ORKA
+sürecine ait olduğu için "odak yerinde" deyip geri dönüyordu. §147 onu kaldırırken dosya
+seçim diyaloğu senaryosunu `_sonOnPencere` ile korudu ama **hiçbir adımın beklemediği
+modalları** korumasız bıraktı.
+
+**Karar tablosu** (`OdakKarari.Karar`):
+
+| Ön plandaki | Hedef | Karar |
+|---|---|---|
+| = hedef | — | dokunma |
+| ORKA sürecinde | devre dışı | dokunma — üstünde **modal** var (F7, firma şifresi, hesap planı) |
+| ORKA sürecinde | etkin | dokunma — ORKA'nın başka/modelsiz penceresi önde |
+| ORKA dışında | — | **öne getir** (ofis testinde şifrenin cmd'ye gitmesini engelleyen yol) |
+
+Modallik `IsWindowEnabled` ile okunuyor: modal açıkken sahibi devre dışı kalır. İki dal da
+"dokunma" dediği için bu ayrım **davranışı değiştirmiyor, log'u değiştiriyor** — ofiste
+"kutuya neden yazamadı" sorusunun cevabı "modal açıktı" ile "başka ORKA penceresi öndeydi"
+arasında ayrılabilsin diye. `GetClassName`/`EnumChildWindows` hâlâ eklenmedi.
+
+**Ne kaybedildi:** İki ORKA penceresi arasında odak düzeltme yeteneği. Yolda duran ORKA
+diyalogları `OtomatikKapatilacakPencereler` ile kapatılıyor (§147'deki ESC kuralıyla) ve
+kapatılamazsa artık yüksek sesle loglanıyor. Bu, F7 tipi modalları kırmaya değmez.
+
+**Kalıcı çözüm görev dosyasında:** F7'den sonra `BeklePencere "<diyalog başlığı>"` eklemek
+hedefi doğru kurar, kör `Bekle`'yi gerçek sinyalle değiştirir ve diyalog hiç açılmazsa
+ekran görüntüsü + ekrandaki başlık listesiyle **yüksek sesle** düşer. Kod tarafındaki kural
+onun yerine geçmez, **altında durur**: dosyalar ORKA'nın her modalını sayamaz. Diyaloğun
+gerçek başlığı ölçülmedi — `01-orka-ac-firma-sec.json`'un kendi notu "'Firma' diye ARAMA,
+cmd penceresinin başlığında da geçiyor" diyor, o yüzden tahminle yazılmadı.
+## 149. Grid doğrulaması modele karar verdirmiyor, ekrandakini okutuyor
+
+**Karar:** `GridDoldur` bittikten sonra alınan ekran görüntüsündeki **Karşı Hesap Kodu
+kolonu okunur** ve yazılması beklenen kod listesiyle satır satır karşılaştırılır. Modele
+sorulan soru "bu grid doğru mu" **değil**; verilen yönerge yalnızca "ekranda yazanı aktar,
+yorum yapma, emin değilsen tahmin etme — boş bırak" diyor. Doğru/yanlış kararı
+`GridDogrulama.Karsilastir` içinde, **string eşitliğiyle** veriliyor.
+
+**Neden:** Hangi satıra hangi kodun gideceği sunucuda çözülmüş bir muhasebe kararı ve
+robot onu zaten biliyor (kod listesi `/catalog/agent/is/{id}/kod-listesi` ile iniyor).
+Modelden "doğru mu" diye teyit istemek, çözülmüş bir kararı yeniden ve **denetlenemez**
+biçimde açmak olurdu: "evet doğru" yanıtının neye dayandığı görülemez, yanlış bir "doğru"
+sessizce geçer. Okumak ise doğrulanabilir bir iş — okunan değer log'a yazılıyor ve
+beklenenle yan yana duruyor.
+
+Bu ayrım katmanın **yönergesinde** de tutuluyor: "değerlendirme yapma", "eksik gördüğünü
+tamamlama", "emin olmadığın karakteri tahmin etme". Sonuncusu önemli — uydurulmuş bir kod
+tutan bir satır gibi görünüp uyarıyı **susturur**; boş okuma ise `(okunamadi)` olarak
+raporlanıp kullanıcıyı o satıra bakmaya gönderir.
+
+**Sıraya göre eşleşiyor, satır numarasına göre değil.** Okuyucunun verdiği sıra numarasına
+güvenilemez (grid'de o kolon hiç olmayabilir, yanlış okunabilir) ama satırların ekrandaki
+**sırası** kesin ve robot da üstten aşağı yazıyor. `okunan[i]` ile `beklenen[i]`
+karşılaştırılıyor; sıra numarası rapora **beklenen** satırdan alınıyor.
+
+**Toleransın sınırı boşluk.** ORKA kodları boşluklu yazılıyor ("320 01 001") ve görüntüde
+iki boşluğun tek görünmesi gerçek bir fark değil. Rakam, harf ve tirede **tolerans yok** —
+orada tolerans, katmanın varlık sebebini yok ederdi.
+
+**ÖN ELEMEDİR, robotu DURDURMAZ.** Uyuşmazlık `UYARI` olarak log'a düşer, iş **başarılı**
+biter. Kaydet'e zaten kullanıcı basıyor (§121); bu katmanın işi
+kullanıcıya "şu satıra bak" demek. Ağ hatası, kota, zaman aşımı, çözülemeyen yanıt ve
+"ekran görüntüsü alınamadı" hallerinin **hepsi** aynı yere çıkıyor: uyarı loglanır, boş
+okuma dönülür, iş sürer. Sonuç özetine `Dogrulama` alanı olarak yazılıyor; kapalıyken
+`null`, yapılamadıysa `"yapilamadi"`, yapıldıysa `"3/3 satir eslesti"` — ekran bu üçünü
+ayırt edebiliyor.
+
+**"Ekrana sığmadı" ile "yanlış yazıldı" ayrı sayılıyor.** Kırk satırlık bir grid tek ekrana
+sığmayabilir; görüntüde olmayan satırlar fark olarak değil, ayrı bir "N satır DOĞRULANMADI,
+aşağı kaydırıp elle bakın" satırı olarak raporlanıyor. İkisini tek sayıda toplamak uyarıyı
+okunmaz yapardı.
+
+**Neden ajan tarafında, sunucuda değil:** Görüntü zaten robot makinesinde, diskte.
+Sunucu yolu iki tur demek (PNG yükle → id al → doğrulama ucunu çağır) ve CatalogService'e
+yeni bir uç, yeni bir bağımlılık, yeni bir deploy. Karşılaştırmayı sunucuya taşımanın ek
+kazancı da küçük: beklenen liste **zaten sunucudan inmiş**, yani karşılaştırma bugün de
+sunucunun doğrusuna karşı yapılıyor. Okuma işi yine de `IGridOkuyucu` arayüzünün arkasında:
+taşımak gerekirse değişen tek şey o arayüzün uygulaması olur, bağlama noktası ve
+karşılaştırma değişmez.
+
+**Motor ağa dokunmuyor.** `AdimMotoru.GridDoldur` yalnızca görüntünün yolunu
+`GridDoldurVerisi.GridGoruntusuYolu`'na bırakıyor; okuma ve karşılaştırma
+`OrkayaAktarCalistirici` içinde, bütün ağ işinin zaten durduğu yerde `await` ediliyor.
+İlerleme bildiriminin geri çağırmayla dışarı verilmesiyle aynı gerekçe. Doğrulama görevin
+son adımlarından **sonra** çalışıyor — aradaki adımlar bir ekran görüntüsü ve bir log
+satırı, ekran değişmiyor.
+
+**Anahtar `appsettings.json`'da değil:** o dosya publish ile üzerine yazılıyor ve depoya
+giriyor. `%AppData%\PkfRobot\anthropic.dat`, DPAPI/CurrentUser — ajan anahtarıyla aynı yer,
+aynı gerekçe (§124). Girmek için `PkfRobot.exe --anthropic-anahtari-ayarla`;
+boş Enter kayıtlıyı siler. Geliştirmede `ANTHROPIC_API_KEY` ortam değişkeni de okunuyor ve
+dosyadan önceliklidir.
+
+**Varsayılan KAPALI** (`GoruntuDogrulama.Aktif = false`) ve öyle kalmalı. Kapalıyken anahtar
+bile aranmıyor, tek bir API çağrısı yapılmıyor, akış özellik yokmuş gibi çalışıyor.
+
+**Açmak bilinçli bir karar:** açıkken ekran görüntüsü Anthropic API'sine gidiyor ve o
+görüntüde **müşterinin banka hareket açıklamaları** var. Doğrulamayı sunucuya taşımak bunu
+değiştirmez — veri yine dışarı çıkar.
+
+**Yalnız ajan yolunda.** Çalıştır sekmesinden elle koşturmada doğrulama yok; görüntü yolu
+oraya da düşüyor ama okuyan yok. Elle koşu zaten gözle yapılıyor.
+
+**Ölçülmemiş olan:** modelin küçük puntolu ORKA gridini ne doğrulukta okuduğu. Karşılaştırma,
+bağlanma kuralları ve hata yolları testli; istek gövdesinin tel biçimi serileştirilerek
+doğrulandı. Gerçek okuma doğruluğu ancak ofiste ölçülür. Yanlış okumalar bol yanlış uyarı
+üretirse sonraki adım tam ekran yerine **grid bölgesini kırpmak** — kalibrasyon oranları
+zaten var.
+
+## 150. Şifreler firma bazlı ve robot makinesinde kalıyor — sunucuya gönderilmiyor
+
+ORKA giriş şifresi ve firma şifresi `appsettings.json > Giris` içinde **tek alandı**.
+Ofiste tek firmayla çalışılırken yetiyordu; birden fazla firmayla çalışılınca yetmiyor —
+her firmanın kendi ORKA şifresi ve kendi firma şifresi var.
+
+Çalıştır sekmesi bir süredir firma bazlı depoyu (`%AppData%\PkfRobot\sifreler.dat`, DPAPI)
+okuyordu ama **ajan yolu okumuyordu**: sunucudan hangi firma gelirse gelsin `cfg.Giris`
+içindeki aynı şifre deneniyordu. İkinci firmaya birincinin şifresiyle girmeye çalışmak
+demek — ve yanlış şifre ORKA'yı kilitliyor.
+
+**Karar tek yerde:** `FirmaSifreCozucu`. Üç yol da (Çalıştır sekmesi, ajan, `--gorev`
+konsolu) onu çağırıyor. Öncelik: **firma bazlı kayıt > tek alanlık eski kayıt >
+appsettings**. Konsol yolunda `--sifre` / `ORKA_SIFRE` hepsinin üstünde kalıyor: kullanıcı
+açıkça bir şey yazdıysa kastettiği odur. Karar ekrana ve DPAPI'ye dokunmadığı için ORKA
+olmadan test edilebiliyor — `OdakKarari` kalıbının aynısı (§148).
+
+**appsettings alanları silinmedi, YEDEK oldu.** Tek firmayla çalışan kurulum bozulmasın;
+log hangi kaynağın kullanıldığını yazıyor (`firma bazlı kayıt` / `... YEDEK`). Sessizce
+yedeğe düşmek tehlikeli: robot başka bir firmanın şifresiyle giriş dener. Şifrenin kendisi
+log'a **hiç** yazılmıyor, yalnızca kaynağın adı.
+
+**Kayıt yoksa iş HİÇ başlamıyor.** Kontrol akışın en başında, dosya indirmeden ve ORKA'ya
+dokunmadan: `"0001 firmasi icin sifre kaydi yok, PkfRobot arayuzunde Calistir sekmesinden
+girin."` Şifresiz giriş ekranı geçilemez; bir ORKA oturumunu yarım bırakmanın kazancı yok.
+Yalnızca firma şifresi eksikse de aynı: giriş ekranı geçilir ama firma açılamaz.
+
+**Firma listesi artık kullanıcının.** Liste koda gömülüydü (0001, 0336); üçüncü bir firma
+kod değişikliği gerektiriyordu. Liste `ayarlar.json`'a taşındı, Çalıştır sekmesindeki
+"Firma ekle / Firma çıkar" ile yönetiliyor — yeni sekme yok. Hâlâ açılır liste, elle yazılan
+kutu değil: F7'den sonra yazılan şey bu kod ve yanlış kod = yanlış firmaya aktarım. Kod bir
+kez, bilerek, ekleme ekranında yazılıyor. Aynı kod iki kere eklenemiyor (hangi şifrenin
+hangi firmaya ait olduğu belirsiz kalırdı) ve son firma çıkarılamıyor. Firma çıkarılınca
+**şifreleri de siliniyor**; hesap kodları duruyor (yanlışlıkla çıkarıp geri ekleyen elle
+girdiklerini kaybetmesin).
+
+**Şifreler sunucuya gönderilmiyor — bilinçli karar.** DijitalMasraf iş paketinde yalnızca
+firma **kodu** var. Şifreler robot makinesinde, DPAPI/CurrentUser ile şifreli kalıyor;
+dosyayı başka makineye ya da başka bir Windows kullanıcısına kopyalayan çözemez — ajan
+anahtarıyla aynı kalıp (§124). Liste `ayarlar.json`'da (düz metin, yedeklenebilir), şifreler
+`sifreler.dat`'ta; ikisi aynı firma koduyla eşleniyor.

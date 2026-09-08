@@ -90,10 +90,23 @@ public class OrkayaAktarTests : IDisposable
         var surucu = new SahteSurucu { Hata = surucuHatasi, EkranKlasoru = _klasor };
 
         var calistirici = new OrkayaAktarCalistirici(
-            new RobotConfig(), dosyalar, surucu, new SahteOrka(), log,
+            SifreliConfig(), dosyalar, surucu, new SahteOrka(), log,
             Path.Combine(_klasor, "isler"));
 
         return (calistirici, dosyalar, surucu, log);
+    }
+
+    /// <summary>
+    /// Sifresi olan config. Sifre cozulemezse is ORKA'ya HIC dokunmadan duruyor
+    /// (bkz. <see cref="FirmaSifresiAjanTests"/>); buradaki testler o kapinin
+    /// OTESINI olcuyor.
+    /// </summary>
+    private static RobotConfig SifreliConfig()
+    {
+        var cfg = new RobotConfig();
+        cfg.Giris.Sifre = "orka";
+        cfg.Giris.FirmaSifresi = "firma";
+        return cfg;
     }
 
     private static AjanIsPaketi Paket(OrkayaAktarYuku yuk) => new()

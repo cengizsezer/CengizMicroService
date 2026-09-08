@@ -1,6 +1,6 @@
 {
   "Ad": "ORKA Ac ve Firma Sec",
-  "Aciklama": "En temel zincir. Firma secimi IKI Enter ister. Sifre popup'inda ALT+T (Tamam) kullanilir.",
+  "Aciklama": "En temel zincir. Firma secimi IKI Enter ister. Firma sifresi popup'i ve sube secimi de ENTER ile geciliyor.",
 
   "// KULLANIM": [
     "PkfRobot.exe --gorev gorevler\\01-orka-ac-firma-sec.json --sifre Pkf123+ --degisken firmaSifre=pkf03"
@@ -9,7 +9,7 @@
   "// OLCUM NOTLARI": [
     "F7 > kod yaz > ENTER (arama onayi) > ENTER (firmaya gir)",
     "Sonra 'Firma Sifresini Giriniz.' popup'i acilir, icinde Sifre alani ve Tamam butonu var.",
-    "Tamam butonunda T alti cizili => ALT+T kisayolu calisir. Enter'dan daha kesin.",
+    "Tamam ENTER ile geciliyor. ALT+T YOK: ofiste denendi, ORKA'da boyle bir kisayol ne bu popup'ta ne de sube ekraninda var - eski not yanlisti.",
     "'Firma' diye ARAMA - cmd penceresinin basliginda da 'firma' geciyor (dosya adi).",
     "'Giriniz' benzersiz ve Turkce karakter icermiyor."
   ],
@@ -54,8 +54,8 @@
     { "Tip": "Bekle", "Sayi": 500 },
     { "Tip": "EkranGoruntusu", "Deger": "firma-sifre-yazildi" },
 
-    { "Tip": "Log", "Not": "--- ALT+T = Tamam butonu (T alti cizili) ---" },
-    { "Tip": "Kisayol", "Deger": "ALT+T", "Not": "Tamam butonu" },
+    { "Tip": "Log", "Not": "--- ENTER = Tamam (ALT+T diye bir kisayol YOK) ---" },
+    { "Tip": "Tus", "Deger": "ENTER", "Adet": 1, "Not": "Firma sifresi popup'i - Tamam" },
     { "Tip": "Bekle", "Sayi": 3000 },
     { "Tip": "EkranGoruntusu", "Deger": "firma-sifre-sonrasi" },
 
@@ -65,7 +65,7 @@
     { "Tip": "Bekle", "Sayi": 3000 },
 
     { "Tip": "Log", "Not": "--- Modul ekranina gelindi mi kontrol ---" },
-    { "Tip": "Dogrula", "Deger": "ORKA_0001_2026", "Not": "Baslikta firma kodu var mi" },
+    { "Tip": "Dogrula", "Deger": "ORKA_{firmaKodu}_", "Not": "Baslikta SECILI firmanin kodu var mi -- sabit 'ORKA_0001_2026' yaziliydi, 0001 disinda bir firma secilince (0336 SMMM) her zaman patlardi. Yil da atildi: baslik yil donunce degisir." },
     { "Tip": "EkranGoruntusu", "Deger": "modul-ekrani" },
 
     { "Tip": "Log", "Not": "BASARILI: Firma acildi, modul ekranindayiz." }

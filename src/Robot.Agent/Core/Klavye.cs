@@ -4,6 +4,54 @@ using FlaUI.Core.WindowsAPI;
 namespace PkfRobot.Core;
 
 /// <summary>
+/// Klavyeye GERCEKTEN basan katman.
+///
+/// Ayri bir arayuz olmasinin tek sebebi test: SendInput'un ekranda ne yaptigi
+/// dogrulanamaz ama "kac kere basildi, arasinda ne kadar beklendi, tus BIRAKILDI
+/// mi" sorulari dogrulanabilir. Projedeki diger kaliplarla ayni cizgi: karar
+/// mantigi ekrandan ayri durur.
+/// </summary>
+public interface IKlavyeSurucusu
+{
+    /// <summary>
+    /// Tusa basip BIRAKIR (key-down + key-up).
+    ///
+    /// Birakma istege bagli degil: yalniz key-down gonderildiginde tus isletim
+    /// sistemi acisindan basili kalir, sonraki basislar hedefe "auto-repeat"
+    /// olarak gider ve bazi Delphi kontrolleri onlari yok sayar.
+    /// </summary>
+    void TusaBas(VirtualKeyShort tus);
+
+    /// <summary>Metni yazar.</summary>
+    void MetinYaz(string metin);
+
+    /// <summary>Tuslara ayni anda basar (CTRL+A gibi), sonra ters sirada birakir.</summary>
+    void BirlikteBas(IReadOnlyList<VirtualKeyShort> tuslar);
+
+    /// <summary>Verilen sure kadar bekler.</summary>
+    void Bekle(int ms);
+}
+
+/// <summary>Gercek klavye: FlaUI uzerinden SendInput.</summary>
+public sealed class FlaUiKlavyeSurucusu : IKlavyeSurucusu
+{
+    // Keyboard.Type = press + release. Keyboard.Press YALNIZ key-down gonderir
+    // (FlaUI 4.0.0, Keyboard.PressVirtualKeyCode -> SendInput isKeyDown:true) ve
+    // burada onun kullanilmasi tuslarin hic birakilmamasina yol aciyordu.
+    public void TusaBas(VirtualKeyShort tus) => Keyboard.Type(tus);
+
+    public void MetinYaz(string metin) => Keyboard.Type(metin);
+
+    public void BirlikteBas(IReadOnlyList<VirtualKeyShort> tuslar)
+        => Keyboard.TypeSimultaneously(tuslar.ToArray());
+
+    public void Bekle(int ms)
+    {
+        if (ms > 0) Thread.Sleep(ms);
+    }
+}
+
+/// <summary>
 /// ORKA'nin ic kontrolleri UIA'ya kapali oldugu icin tum etkilesim klavyeden.
 /// Iyi haber: Delphi/VCL klavye navigasyonunu iyi destekliyor.
 /// </summary>
@@ -11,35 +59,103 @@ public static class Klavye
 {
     public static int VarsayilanBeklemeMs { get; set; } = 150;
 
+    /// <summary>
+    /// Tuslari gonderen surucu. Robot tek is parcaciginda calistigi icin duz bir
+    /// statik alan yetiyor; testler kendi sahte surucusunu takip
+    /// <see cref="SurucuyuSifirla"/> ile geri aliyor.
+    /// </summary>
+    public static IKlavyeSurucusu Surucu { get; set; } = new FlaUiKlavyeSurucusu();
+
+    /// <summary>Gercek klavyeye geri doner.</summary>
+    public static void SurucuyuSifirla() => Surucu = new FlaUiKlavyeSurucusu();
+
+    // ================ GECICI TESHIS ================
+    // Neden: "SAG x3 + ASAGI x1" gonderildigi halde ORKA'nin TRANSFERLER'e
+    // girmemesi, tuslarin GONDERILMEDIGINI mi yoksa ORKA'nin onlari YUTTUGUNU mu
+    // gosteriyor ayirt edilemiyordu -- adim log'u yalnizca "Tus RIGHT x3" yaziyor,
+    // basislarin arasinda ne oldugunu yazmiyordu. Bu kanca her BASISI ayri satira
+    // dusuruyor: kacinci basis, hangi tus, oncesinde ne kadar beklendi.
+    //
+    // Kanca olarak durmasinin sebebi: Klavye statik ve loglayiciyi tanimiyor;
+    // testler de bu alani bos birakip eskisi gibi calisiyor. Teshis bitince
+    // silinecek.
+    public static Action<string>? Iz { get; set; }
+
+    private static void IzYaz(string satir)
+    {
+        try { Iz?.Invoke(satir); }
+        catch (Exception) { /* teshis satiri gorevi durdurmasin */ }
+    }
+    // ================ GECICI TESHIS SONU ================
+
+    /// <summary>
+    /// Metni yazar.
+    ///
+    /// <b>Iz satiri Tus/Kisayol ile ayni sebeple burada da var.</b> 06.09.2026 22:42
+    /// kosusunda firma sifresi popup'ina hicbir karakter gitmedi ve log'da adimin
+    /// tek izi "Yaz -> ***" satiriydi: metnin SURUCUYE VERILIP verilmedigi, verildiyse
+    /// KAC KARAKTER oldugu okunamiyordu. Iz satiri olmadan "deger bostu" ile "gonderildi
+    /// ama ORKA yuttu" ayirt edilemez ve teshis ofiste her seferinde bastan baslar.
+    ///
+    /// Metnin KENDISI yazilmiyor (sifre olabilir), yalnizca uzunlugu -- o ayrim icin yetiyor.
+    /// </summary>
     public static void Yaz(string metin, int? beklemeMs = null)
     {
-        Keyboard.Type(metin);
-        Thread.Sleep(beklemeMs ?? VarsayilanBeklemeMs);
+        IzYaz(string.IsNullOrEmpty(metin)
+            ? "[TUS-TESHIS] Yaz: metin BOS -- surucuye hicbir karakter verilmedi"
+            : $"[TUS-TESHIS] Yaz: {metin.Length} karakter gonderiliyor");
+
+        Surucu.MetinYaz(metin);
+        Surucu.Bekle(beklemeMs ?? VarsayilanBeklemeMs);
     }
 
+    /// <summary>
+    /// 'tusAdi' tusuna 'adet' kere basar.
+    ///
+    /// <b>Bekleme ILK basistan once de var.</b> Onceden bekleme yalnizca her
+    /// basistan SONRA konuyordu; bu, adimin ilk tusu ile pencerenin daha yeni
+    /// tamamlanan aktivasyonu arasinda hicbir pay birakmiyordu ve modul ekraninda
+    /// "SAG x3" istenirken ilk SAG yutuluyordu. Odak duzeltmesi one getirmeyi
+    /// artik dogruluyor, bu bekleme de onun ustundeki cizim/yerlesme payi.
+    /// </summary>
     public static void Tus(string tusAdi, int adet = 1, int? beklemeMs = null)
     {
         var tus = Cozumle(tusAdi);
+        var bekleme = beklemeMs ?? VarsayilanBeklemeMs;
+
+        Surucu.Bekle(bekleme);
+
         for (int i = 0; i < adet; i++)
         {
-            Keyboard.Press(tus);
-            Thread.Sleep(beklemeMs ?? VarsayilanBeklemeMs);
+            IzYaz($"[TUS-TESHIS] '{tusAdi}' basis {i + 1}/{adet} -- oncesinde {bekleme} ms beklendi");
+            Surucu.TusaBas(tus);
+            Surucu.Bekle(bekleme);
         }
     }
 
-    /// <summary>"CTRL+F", "CTRL+A", "ALT+F4" gibi kombinasyonlar.</summary>
+    /// <summary>
+    /// "CTRL+F", "CTRL+A", "ALT+F4" gibi kombinasyonlar.
+    ///
+    /// Tek tusluk yol da <see cref="IKlavyeSurucusu.TusaBas"/> uzerinden gidiyor:
+    /// burasi eskiden dogrudan key-down gonderiyordu ve tus hic birakilmiyordu.
+    /// </summary>
     public static void Kisayol(string kombinasyon, int? beklemeMs = null)
     {
         var parcalar = kombinasyon.Split('+', StringSplitOptions.RemoveEmptyEntries |
                                             StringSplitOptions.TrimEntries);
         var tuslar = parcalar.Select(Cozumle).ToArray();
+        var bekleme = beklemeMs ?? VarsayilanBeklemeMs;
+
+        Surucu.Bekle(bekleme);
+
+        IzYaz($"[TUS-TESHIS] kisayol '{kombinasyon}' -- oncesinde {bekleme} ms beklendi");
 
         if (tuslar.Length == 1)
-            Keyboard.Press(tuslar[0]);
+            Surucu.TusaBas(tuslar[0]);
         else
-            Keyboard.TypeSimultaneously(tuslar);
+            Surucu.BirlikteBas(tuslar);
 
-        Thread.Sleep(beklemeMs ?? VarsayilanBeklemeMs);
+        Surucu.Bekle(bekleme);
     }
 
     /// <summary>Arama kutusunda mevcut metnin uzerine yazmamak icin: Ctrl+A sonra yaz.</summary>

@@ -31,6 +31,11 @@ public static class Program
                 return 0;
             }
 
+            // Anahtar kaydi config'ten ONCE: anahtari girmek icin appsettings.json'un
+            // okunabilir olmasi gerekmiyor ve ozelligin acik olmasi da gerekmiyor.
+            if (p.AnthropicAnahtariAyarla)
+                return AnthropicAnahtariniAyarla();
+
             var cfgYolu = p.ConfigYolu ?? Path.Combine(AppContext.BaseDirectory, "appsettings.json");
             var cfg = RobotConfig.Yukle(cfgYolu);
 
@@ -49,6 +54,12 @@ public static class Program
             // Sifre oncelik sirasi: parametre > ortam degiskeni > appsettings.json
             // Komut satirindaki sifre cmd penceresinin BASLIGINDA gorunur ve ekran
             // goruntulerine duser. Ortam degiskeni bu yuzden tercih edilmeli.
+            // ACIKCA verilen degerler ayrica tutuluyor: bunlar firma bazli depoyu
+            // da EZMELI. Kullanici --sifre yazdiysa kastettigi sey odur; depodaki
+            // kayit "bu firmanin sifresi" varsayimidir ve acik istegin altinda kalir.
+            var acikOrkaSifresi = SifreCoz(p.Sifre, "ORKA_SIFRE", string.Empty);
+            var acikFirmaSifresi = SifreCoz(null, "ORKA_FIRMA_SIFRE", string.Empty);
+
             cfg.Giris.Sifre = SifreCoz(p.Sifre, "ORKA_SIFRE", cfg.Giris.Sifre);
             cfg.Giris.FirmaSifresi = SifreCoz(null, "ORKA_FIRMA_SIFRE", cfg.Giris.FirmaSifresi);
 
@@ -78,17 +89,30 @@ public static class Program
             log.Bilgi($"Firma : {cfg.Firma.Kod}");
             log.Bilgi($"DryRun: {cfg.DryRun}");
 
-            if (string.IsNullOrEmpty(cfg.Giris.Sifre))
-                log.Uyari("Sifre bos. --sifre parametresi, ORKA_SIFRE ortam degiskeni " +
-                          "veya appsettings.json ile verebilirsin.");
+            // Sifreler firma bazli depodan; appsettings/ortam degiskeni YEDEK.
+            // Ajan yolu ve Calistir sekmesi de ayni cozucuyu kullaniyor: uc yol
+            // ayni firmaya ayni sifreyi denesin (bkz. FirmaSifreCozucu).
+            var sifreCozum = PkfRobot.Ayarlar.FirmaSifreCozucu.Coz(
+                SifreDeposunuOku(log), cfg.Firma.Kod, cfg.Giris.Sifre, cfg.Giris.FirmaSifresi);
+
+            var orkaSifresi = Ustunlu(acikOrkaSifresi, sifreCozum.Orka);
+            var firmaSifresi = Ustunlu(acikFirmaSifresi, sifreCozum.Firma);
+
+            log.Bilgi($"Firma {cfg.Firma.Kod} ORKA giris sifresi: " +
+                      $"{Kaynak(acikOrkaSifresi, sifreCozum.Orka)}.");
+            log.Bilgi($"Firma {cfg.Firma.Kod} firma sifresi: " +
+                      $"{Kaynak(acikFirmaSifresi, sifreCozum.Firma)}.");
+
+            if (orkaSifresi.Length == 0 || firmaSifresi.Length == 0)
+                log.Uyari(sifreCozum.EksikMesaji + " (--sifre / ORKA_SIFRE ile de verilebilir.)");
 
             var degiskenler = new Dictionary<string, string>
             {
                 ["firmaKodu"]  = cfg.Firma.Kod,
                 ["kullanici"]  = cfg.Giris.Kullanici,
                 ["veritabani"] = cfg.Giris.Veritabani,
-                ["sifre"]      = cfg.Giris.Sifre,
-                ["firmaSifre"] = cfg.Giris.FirmaSifresi,
+                ["sifre"]      = orkaSifresi,
+                ["firmaSifre"] = firmaSifresi,
                 ["donem"]      = DateTime.Now.ToString("yyyyMM")
             };
 
@@ -181,6 +205,110 @@ public static class Program
     }
 
     /// <summary>
+    /// Goruntu dogrulamasinin API anahtarini sorar ve DPAPI ile kaydeder.
+    ///
+    /// Ayri bir komut olmasinin sebebi ajan anahtariyla ayni: anahtar
+    /// <c>appsettings.json</c>'a YAZILMIYOR (o dosya publish ile uzerine
+    /// yaziliyor ve depoya giriyor). Girdi ekranda gorunmuyor -- robotun aldigi
+    /// ekran goruntulerine dusmesin.
+    /// </summary>
+    private static int AnthropicAnahtariniAyarla()
+    {
+        var kok = AjanKimlikDeposu.VarsayilanKlasor;
+        var depo = new AnthropicAnahtarDeposu(kok);
+
+        Console.WriteLine();
+        Console.WriteLine("=== Goruntu dogrulama API anahtari ===");
+        Console.WriteLine($"Kaydedilecek yer: {depo.Dosya} (DPAPI ile sifreli)");
+        Console.WriteLine("Anahtar ekranda gorunmeyecek. Bos birakip Enter'a basmak KAYITLIYI SILER.");
+        Console.Write("Anthropic API anahtari: ");
+
+        var anahtar = GizliOku();
+        Console.WriteLine();
+
+        if (string.IsNullOrWhiteSpace(anahtar))
+        {
+            depo.Sil();
+            Console.WriteLine("Anahtar girilmedi; kayitli anahtar silindi. Dogrulama yapilmayacak.");
+            return 0;
+        }
+
+        depo.Yaz(anahtar);
+        Console.WriteLine("Anahtar kaydedildi.");
+        Console.WriteLine("Ozelligi acmak icin appsettings.json > GoruntuDogrulama.Aktif = true yapin.");
+        Console.WriteLine("DIKKAT: acikken ekran goruntusu (musteri hareket aciklamalari dahil) " +
+                          "Anthropic API'sine gonderilir.");
+        return 0;
+    }
+
+    /// <summary>
+    /// Girdiyi ekrana yazmadan okur. <see cref="AjanCalistirici"/> icindeki
+    /// esinin ayrisi: orasi ajan anahtarini kendi akisinda soruyor, burasi
+    /// gorev calistirmayan tek seferlik bir komut.
+    /// </summary>
+    private static string GizliOku()
+    {
+        if (Console.IsInputRedirected)
+            return Console.ReadLine() ?? string.Empty;
+
+        var girilen = new System.Text.StringBuilder();
+
+        while (true)
+        {
+            var tus = Console.ReadKey(intercept: true);
+
+            if (tus.Key == ConsoleKey.Enter) break;
+
+            if (tus.Key == ConsoleKey.Backspace)
+            {
+                if (girilen.Length > 0)
+                {
+                    girilen.Length--;
+                    Console.Write("\b \b");
+                }
+                continue;
+            }
+
+            if (char.IsControl(tus.KeyChar)) continue;
+
+            girilen.Append(tus.KeyChar);
+            Console.Write('*');
+        }
+
+        return girilen.ToString();
+    }
+
+    /// <summary>Acikca verilen deger varsa o, yoksa depodan cozulen.</summary>
+    private static string Ustunlu(string acik, PkfRobot.Ayarlar.SifreDegeri cozulen)
+        => acik.Length > 0 ? acik : cozulen.Deger;
+
+    /// <summary>Log satiri icin kaynak adi; <b>sifrenin kendisi yazilmiyor.</b></summary>
+    private static string Kaynak(string acik, PkfRobot.Ayarlar.SifreDegeri cozulen)
+        => acik.Length > 0 ? "--sifre parametresi / ortam degiskeni" : cozulen.KaynakAdi;
+
+    /// <summary>
+    /// Firma bazli sifre deposu; okunamazsa bos doner ve yalnizca yedekler kalir.
+    ///
+    /// <b>Neden konsol yolu da okuyor:</b> arayuzden girilen sifreler zaten bu
+    /// dosyada. Konsol yolu yalnizca appsettings'e baksaydi ayni makinede
+    /// "arayuzden calisiyor, --gorev ile calismiyor" durumu cikardi.
+    /// </summary>
+    private static PkfRobot.Ayarlar.Sifreler SifreDeposunuOku(AdimLogger log)
+    {
+        try
+        {
+            return new PkfRobot.Ayarlar.SifreDeposu(
+                PkfRobot.Ayarlar.AyarDeposu.VarsayilanKlasor).Oku();
+        }
+        catch (Exception ex)
+        {
+            log.Uyari($"Firma bazli sifre deposu okunamadi: {ex.Message}. " +
+                      "appsettings.json > Giris yedegine bakilacak.");
+            return new PkfRobot.Ayarlar.Sifreler();
+        }
+    }
+
+    /// <summary>
     /// Sifreyi oncelik sirasina gore secer:
     ///   1. Komut satiri parametresi (--sifre)
     ///   2. Ortam degiskeni (ORKA_SIFRE / ORKA_FIRMA_SIFRE)
@@ -247,7 +375,7 @@ public static class Program
 
             if (oncekiPencereYok)
             {
-                Console.WriteLine($"Pencere bulundu: '{pencere.Name}'");
+                Console.WriteLine($"Pencere bulundu: '{pencere.Baslik}'");
                 oncekiPencereYok = false;
                 sessizTur = 0;
             }
@@ -255,10 +383,7 @@ public static class Program
             // Olcu tek kaynaktan: OrkaPenceresi.OlcuAl (Win32 GetWindowRect).
             // Kalibre modunun okudugu dikdortgen ile AdimMotoru.Tikla'nin tikladigi
             // dikdortgen ayni olmali; UIA BoundingRectangle ile ayrisiyordu.
-            var hwnd = pencere.Properties.NativeWindowHandle.TryGetValue(out var h)
-                ? h
-                : IntPtr.Zero;
-            var r = OrkaPenceresi.OlcuAl(hwnd);
+            var r = OrkaPenceresi.OlcuAl(pencere.Tutamac);
             if (!r.Gecerli)
             {
                 Console.WriteLine("UYARI: Pencere olculeri okunamadi (simge durumunda olabilir).");
@@ -318,6 +443,35 @@ public static class Program
         Kontrol(log, bekleyici, "DosyaSecim",  cfg.Pencereler.DosyaSecim);
         Kontrol(log, bekleyici, "HesapPlani",  cfg.Pencereler.HesapPlani);
 
+        // ORKA'nin ic kontrolleri UIA'ya kapali; sekme/modul gecisi ust seviye
+        // pencere ACMIYOR ve baslik da degismiyor. Okunabilen tek yapisal sinyal
+        // alt pencere agaci ve sinif adlari. Bu dokumu IKI kez al -- once modul
+        // ekraninda, sonra Veri Transferi acikken -- ve farki karsilastir: cikan
+        // sinif adi 'AltPencereDogrula' adiminin Deger alanina yazilacak.
+        log.Bilgi("");
+        log.Bilgi("--- ORKA alt pencereleri (gorunur, sinif adina gore) ---");
+
+        var ozet = bekleyici.AltPencereOzeti(60);
+        if (ozet.Count == 0)
+            log.Uyari("Hic alt kontrol okunamadi. ORKA acik degil ya da yonetici modunda calisiyor.");
+
+        foreach (var satir in ozet)
+            log.Bilgi($"  # {satir}");
+
+        log.Bilgi("");
+        log.Bilgi("--- Metni OLAN gorunur alt kontroller (sinif <- metin) ---");
+
+        var metinliler = bekleyici.OrkaAltPencereleri()
+            .Where(a => a.Gorunur && !string.IsNullOrWhiteSpace(a.Baslik))
+            .Take(80)
+            .ToList();
+
+        if (metinliler.Count == 0)
+            log.Bilgi("  (metni okunabilen gorunur kontrol yok)");
+
+        foreach (var a in metinliler)
+            log.Bilgi($"  # d{a.Derinlik,-2} {a.SinifAdi,-32} <- '{a.Baslik}'");
+
         log.EkranAl("probe-ekran", zorla: true);
 
         Console.WriteLine();
@@ -352,11 +506,17 @@ PARAMETRELER:
                       Ctrl+C ile durur. ORKA'ya dokunmaz, gorev calistirmaz.
   --anahtari-sifirla  Kayitli ajan anahtarini siler, yenisini sorar
                       (ajan modunu kendisi acar)
+  --anthropic-anahtari-ayarla
+                      Grid dogrulamasinin API anahtarini sorar ve DPAPI ile
+                      %AppData%\PkfRobot\anthropic.dat icine kaydeder, cikar.
+                      Bos Enter kayitli anahtari siler. Ozelligin kendisi
+                      appsettings.json > GoruntuDogrulama.Aktif ile aciliyor.
   --gorev <yol>       Calistirilacak gorev JSON dosyasi
   --config <yol>      Ayar dosyasi (varsayilan: appsettings.json)
   --firma <kod>       Firma kodunu ez (or: 0001)
   --sifre <sifre>     ORKA giris sifresi
-  --probe             Hicbir tusa basmaz, ekrandaki pencereleri listeler
+  --probe             Hicbir tusa basmaz, ekrandaki pencereleri VE ORKA'nin
+                      alt kontrollerini (sinif adlariyla) listeler
   --kalibre           Fare konumunun ORKA penceresine goreli oranini canli yazar
                       (Tikla adiminin X/Y degerlerini olcmek icin, Ctrl+C ile cikilir)
   --canli             DryRun'i KAPATIR, gercek kayit yapar. DIKKAT.
@@ -387,6 +547,14 @@ AJAN MODU:
   yazildiginda kaybolmaz. Log: %AppData%\PkfRobot\logs\ajan-<tarih>.log
   Sunucu adresleri appsettings.json > Ajan bolumunde.
 
+GRID DOGRULAMA (varsayilan KAPALI):
+  Acikken GridDoldur bittikten sonra ekran goruntusundeki Karsi Hesap Kodu
+  kolonu okunur ve yazilmasi beklenen listeyle satir satir karsilastirilir.
+  Uyusmazlik UYARI olarak log'a yazilir, robot DURDURULMAZ - Kaydet'e zaten
+  kullanici basiyor, bu bir on eleme. Kapaliyken hicbir API cagrisi yapilmaz.
+  Anahtar: --anthropic-anahtari-ayarla. Acmak: GoruntuDogrulama.Aktif = true.
+  DIKKAT: acikken ekran goruntusu Anthropic API'sine gonderilir.
+
 NOTLAR:
   * Varsayilan olarak DryRun aciktir, Kaydet adimlari atlanir.
   * Her calistirma C:\RobotLog altinda ayri klasor acar (log + ekran goruntusu).
@@ -411,6 +579,10 @@ public class Parametreler
     public bool Arayuz { get; set; }
     public bool CanliMod { get; set; }
     public bool Yardim { get; set; }
+
+    /// <summary>Goruntu dogrulamasinin API anahtarini sorup DPAPI ile kaydeder, sonra cikar.</summary>
+    public bool AnthropicAnahtariAyarla { get; set; }
+
     public Dictionary<string, string> EkDegiskenler { get; } = new();
 
     public static Parametreler Coz(string[] args)
@@ -439,6 +611,9 @@ public class Parametreler
                 case "--anahtari-sifirla":
                     p.AnahtariSifirla = true;
                     p.Ajan = true;   // tek basina anlami yok; ajan modunu kendisi acar
+                    break;
+                case "--anthropic-anahtari-ayarla":
+                    p.AnthropicAnahtariAyarla = true;
                     break;
                 case "--canli":     p.CanliMod = true; break;
                 case "--yardim":

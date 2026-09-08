@@ -4,7 +4,7 @@ using PkfRobot.Ayarlar;
 namespace PkfRobot.Arayuz;
 
 /// <summary>
-/// PkfRobot penceresi: durum, ayarlar, kalibrasyon.
+/// PkfRobot penceresi: durum, calistir, ayarlar, kalibrasyon.
 ///
 /// <b>Kapatma dugmesi uygulamayi kapatmiyor</b>, tepsiye indiriyor. Ajanin isi
 /// gun boyu bagli kalmak; pencereyi kapatan birinin robotu da kapatmasi
@@ -16,6 +16,7 @@ public sealed class AnaForm : Form
 {
     private readonly ArayuzBaglami _baglam;
     private readonly DurumPaneli _durum;
+    private readonly CalistirPaneli _calistir;
     private readonly AyarlarPaneli _ayarlar;
     private readonly KalibrasyonPaneli _kalibrasyon;
 
@@ -33,17 +34,20 @@ public sealed class AnaForm : Form
 
         Text = "PkfRobot";
         // Hesap makinesi boyu: masaustunun kosesinde durup yol gostersin,
-        // ekrani kaplamasin.
-        ClientSize = new Size(470, 620);
-        MinimumSize = new Size(430, 470);
+        // ekrani kaplamasin. Calistir sekmesindeki banka tablosu ve log icin
+        // biraz genisletildi; alt sinir yine kucuk, paneller kayar.
+        ClientSize = new Size(620, 760);
+        MinimumSize = new Size(520, 560);
         StartPosition = FormStartPosition.CenterScreen;
 
         _durum = new DurumPaneli(_baglam);
+        _calistir = new CalistirPaneli(_baglam);
         _ayarlar = new AyarlarPaneli(_baglam);
         _kalibrasyon = new KalibrasyonPaneli(_baglam);
 
         var sekmeler = new TabControl { Dock = DockStyle.Fill };
         sekmeler.TabPages.Add(Sekme("Durum", _durum));
+        sekmeler.TabPages.Add(Sekme("Calistir", _calistir));
         sekmeler.TabPages.Add(Sekme("Ayarlar", _ayarlar));
         sekmeler.TabPages.Add(Sekme("Kalibrasyon", _kalibrasyon));
 

@@ -80,15 +80,16 @@
             
             <RadzenPanelMenu class="app-panelmenu"
                  DisplayStyle="@(isCollapsed ? MenuItemDisplayStyle.Icon : MenuItemDisplayStyle.IconAndText)"
-                 ShowArrow="false">
+                 ShowArrow="false"
+                 Multiple="false">
 
                 @* Giriş sonrası varsayılan sayfa; kartları ilgili ekranlara götürüyor. *@
                 <RadzenPanelMenuItem Text="Anasayfa" Icon="dashboard" Path="/anasayfa" />
 
-                <RadzenPanelMenuItem Text="Şirket" Icon="business_center" @bind-Expanded="sirketAcik">
+                <RadzenPanelMenuItem Text="Şirket" Icon="business_center">
                     @if (canViewCalendar)
                     {
-                        <RadzenPanelMenuItem Text="Görevler" Icon="home" @bind-Expanded="gorevlerAcik">
+                        <RadzenPanelMenuItem Text="Görevler" Icon="home">
                             <RadzenPanelMenuItem Text="Takvim" Icon="event" Path="/calendarpage" />
                             <RadzenPanelMenuItem Text="Görevlerim" Icon="event" Path="/AssignedTaskPage" />
                         </RadzenPanelMenuItem>
@@ -354,31 +355,6 @@
 
     void ToggleSidebar() => isCollapsed = !isCollapsed;
 
-    // "Görevler" ve "Şirket" gruplarının açık/kapalı durumu. Radzen, geçerli rotayla
-    // eşleşen alt öğeyi göstermek için üst grubu kendiliğinden açar; giriş sonrası
-    // /calendarpage'e gidildiği ve o da bu grupların altında olduğu için gruplar her
-    // açılışta açık geliyordu.
-    // ("Expanded=false" yazmak işe yaramıyordu: o zaten varsayılan değer.)
-    bool gorevlerAcik;
-    bool sirketAcik;
-    bool gorevlerBaslangicUygulandi;
-
-    /// <summary>
-    /// Başlangıç durumunu bir kez uygular: menü öğesi göründükten sonra gruplar kapatılır.
-    /// İzin sorgusu asenkron olduğu için öğe ilk render'da henüz basılmamış olabiliyor,
-    /// bu yüzden canViewCalendar true olana kadar bekleniyor. Sonrasında kullanıcının
-    /// açma/kapama işlemleri ve sayfa gezinmeleri normal Radzen davranışıyla sürer;
-    /// diğer menü gruplarına dokunulmaz.
-    /// </summary>
-    protected override void OnAfterRender(bool firstRender)
-    {
-        if (gorevlerBaslangicUygulandi || !canViewCalendar) return;
-
-        gorevlerBaslangicUygulandi = true;
-        gorevlerAcik = false;
-        sirketAcik = false;
-        StateHasChanged();
-    }
     private bool canViewBeyannameTakip;
     private bool canViewVergiOdeme;
 

@@ -1,5 +1,6 @@
 using System.Runtime.Versioning;
 using PkfRobot.Config;
+using PkfRobot.Core;
 
 namespace PkfRobot.Ajan;
 
@@ -103,7 +104,13 @@ public static class AjanCalistirici
                 new FlaUiOrkaSurucusu(cfg, log),
                 new OrkaSureci(cfg.Ajan.OrkaSurecAdi),
                 log,
-                Path.Combine(kok, "isler"))
+                Path.Combine(kok, "isler"),
+                gridOkuyucu: GridOkuyucuKur(cfg, kok, log),
+                // Firma bazli sifreler arayuzle AYNI dosyadan okunuyor
+                // (%AppData%\PkfRobot\sifreler.dat, DPAPI). Her iste yeniden:
+                // ajan gunlerce acik kaliyor ve arada eklenen firma gorulmeli.
+                sifreleriOku: () => new PkfRobot.Ayarlar.SifreDeposu(
+                    PkfRobot.Ayarlar.AyarDeposu.VarsayilanKlasor).Oku())
         };
 
         if (kancalar?.IsSarmala is { } sarmala)
@@ -126,6 +133,36 @@ public static class AjanCalistirici
         // Anahtar gecersiz ya da surum eski: durum kodu 0 olmasin ki gorev
         // zamanlayici / baslangic kisayolu "bitti, sorun yok" sanmasin.
         return servis.KayitKaliciReddedildi ? 3 : 0;
+    }
+
+    /// <summary>
+    /// Grid dogrulama okuyucusunu kurar; ozellik kapaliysa ya da anahtar yoksa
+    /// <b>null</b> doner ve dogrulama katmani hic devreye girmez.
+    ///
+    /// <b>Kapaliyken hicbir sey olmuyor:</b> anahtar bile aranmiyor, tek bir
+    /// API cagrisi yapilmiyor, akis ozellik yokmus gibi calisiyor. Sirasi da
+    /// bunun icin: once <c>Aktif</c>, sonra anahtar.
+    ///
+    /// Anahtar eksikse HATA degil UYARI: dogrulama bir on eleme ve yoklugu
+    /// ajanin baglanmasini ya da is yapmasini engellememeli.
+    /// </summary>
+    private static IGridOkuyucu? GridOkuyucuKur(RobotConfig cfg, string kok, IAjanLog log)
+    {
+        if (!cfg.GoruntuDogrulama.Aktif) return null;
+
+        var anahtar = new AnthropicAnahtarDeposu(kok).Oku();
+        if (anahtar is null)
+        {
+            log.Uyari("Goruntu dogrulamasi ACIK ama API anahtari yok; dogrulama yapilmayacak. " +
+                      "Anahtari girmek icin: PkfRobot.exe --anthropic-anahtari-ayarla");
+            return null;
+        }
+
+        log.Bilgi($"Goruntu dogrulamasi acik (model {cfg.GoruntuDogrulama.Model}). " +
+                  "GridDoldur sonrasi ekran goruntusu okunup beklenen listeyle karsilastirilacak. " +
+                  "UYARI verir, robotu DURDURMAZ.");
+
+        return new AnthropicGridOkuyucu(cfg.GoruntuDogrulama, anahtar, log);
     }
 
     /// <summary>

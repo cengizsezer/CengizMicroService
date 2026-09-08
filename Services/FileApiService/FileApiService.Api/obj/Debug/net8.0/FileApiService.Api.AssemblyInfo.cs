@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FileApiService.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ba1ede313100e7e19cc40cdae76ef1ccb3352622")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+027b54c86fc58d85f2dc0954cae9e80a5440cd4e")]
 [assembly: System.Reflection.AssemblyProductAttribute("FileApiService.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FileApiService.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

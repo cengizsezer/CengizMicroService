@@ -1,0 +1,28 @@
+{
+  "Ad": "Acilis (ORKA ac + firmaya gir + TRANSFERLER'e gec)",
+  "Aciklama": "Kuyruk basinda BIR KEZ calisan hazirlik akisi. Kendi adimi YOKTUR: iki mevcut gorevi sirayla birlestirir. Adim KOPYALAMAYIN - AltGorev referansi tek kopyayi korur, modul gezinmesi degisirse yalniz 02 duzeltilir.",
+
+  "// NEDEN VAR": [
+    "01 modul ekranina gelip BITIYORDU, TRANSFERLER'e girmiyordu.",
+    "Modul gezinmesi 02'de duruyordu ama kuyruk yalniz TEK bir acilis gorevi",
+    "calistirabildigi icin 02'yi kimse calistirmiyordu. Sonuc: dongu govdesi",
+    "(tek-dosya-aktar.json) modul ekraninda basliyordu ve AltPencereDogrula",
+    "onu hakli olarak durduruyordu.",
+    "",
+    "Bu dosya o boslugu kapatiyor. Calistir sekmesindeki 'Acilis (bir kez)'",
+    "alaninin varsayilani artik bu."
+  ],
+
+  "// SIRA": [
+    "1) 01-orka-ac-firma-sec.json - ORKA acilir, giris, firma secimi, sube",
+    "                               -> modul ekraninda biter",
+    "2) 02-modul-ve-sekme.json     - SAG x3 + ASAGI x1 + ENTER (TRANSFERLER)",
+    "                               -> Veri Transferi acik; dongu govdesi",
+    "                                  (tek-dosya-aktar.json) buradan devralir"
+  ],
+
+  "Adimlar": [
+    { "Tip": "AltGorev", "Deger": "01-orka-ac-firma-sec.json", "Not": "ORKA ac, firmaya gir" },
+    { "Tip": "AltGorev", "Deger": "02-modul-ve-sekme.json", "Not": "TRANSFERLER > Veri Transferi" }
+  ]
+}

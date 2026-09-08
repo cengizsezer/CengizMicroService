@@ -1,0 +1,272 @@
+{
+  "// UYARI": [
+    "DONGU GOVDESI. ORKA ACIK, FIRMA SECILI ve TRANSFERLER modulundeyken calisir.",
+    "Giris / firma secimi / modul gezinme adimlari BURADA YOKTUR - onlar acilis gorevinde (01-orka-ac-firma-sec.json) bir kez calisir. Bu dosya her banka icin bastan calisir.",
+    "Kaydet adimi YOKTUR ve EKLENMEYECEKTIR: kullanici gozle kontrol edip kendisi kaydeder.",
+    "Koordinatlar orkaya-aktar.json'dan KOPYALANDI. Ikisi ayri dosya oldugu icin kalibrasyon da AYRI: bu dosyanin satirlari Kalibrasyon sekmesinde 'tek-dosya-aktar.json#0..4' olarak gorunur ve ayrica olculmelidir."
+  ],
+
+  "Ad": "Tek dosya aktarimi (dongu govdesi)",
+  "Aciklama": "Bir bankanin ekstresini ORKA'ya aktarir. Calistir sekmesindeki kuyruk bu gorevi her banka satiri icin ayri ayri calistirir. Degiskenler: {dosyaYolu}, {hesapKodu}.",
+
+  "// KULLANIM": [
+    "Degiskenler (Calistir sekmesi doldurur):",
+    "  {dosyaYolu}   - o bankanin duzeltilmis ekstre dosyasinin tam yolu",
+    "  {hesapKodu}   - o bankanin ORKA hesap kodu (Hesap Plani ekraninda aranir)",
+    "",
+    "AKIS:",
+    "  Veri Transferi sekmesi -> sol panel Banka Ekstreleri -> sablon satiri (CIFT TIK)",
+    "  -> Transfere Basla -> Excel dosya diyalogu -> Hesap Plani -> Enter Enter",
+    "  -> Belgeler Listesi grid -> karsi hesap kodlari",
+    "  -> [KULLANICI KAYDEDER] -> sekme kapatma -> sonraki banka"
+  ],
+
+  "Adimlar": [
+    {
+      "// NEDEN ILK ADIM": [
+        "Bu dosya bir DONGU GOVDESI: Veri Transferi ekraninda BASLADIGINI",
+        "varsayiyor. Ilk turdan sonra sekme kapatma calismadiysa (o adim hala",
+        "kalibre edilmemis bir koordinat) sonraki tur YANLIS ekranda baslar ve",
+        "asagidaki Tikla adimlari sessizce yanlis yere gider. Bu adim onu",
+        "ilk anda durduruyor.",
+        "",
+        "TcxDBTreeList = sol panel agaci; --probe ile olculdu (05.09.2026):",
+        "yalnizca Veri Transferi ekraninda var, modul ekraninda YOK",
+        "(modul ekraninda TdxTileControl var). Baslik ikisinde de ayni",
+        "oldugu icin 'Dogrula' bu farki goremiyor."
+      ],
+      "Tip": "AltPencereDogrula",
+      "Deger": "TcxDBTreeList",
+      "Not": "Tur Veri Transferi ekraninda mi basliyor",
+      "TimeoutSn": 10
+    },
+    {
+      "// yorum": "Veri Transferi bir SEKME, top-level pencere DEGIL. 'Veri Transferi' basligini bekleyen bir BeklePencere adimi HER ZAMAN timeout'a dusuyordu; UIA'da boyle bir pencere hic acilmiyor. Yerine sabit bekleme + ekran goruntusu.",
+      "Tip": "Bekle",
+      "Sayi": 3000,
+      "Not": "Veri Transferi sekmesi aciliyor"
+    },
+    {
+      "Tip": "EkranGoruntusu",
+      "Deger": "veri-transferi"
+    },
+    {
+      "Tip": "Dogrula",
+      "Deger": "ORKA_",
+      "Not": "ORKA ana penceresi ayakta mi",
+      "Yuzde": 10
+    },
+    {
+      "Tip": "Tikla",
+      "X": 0.125,
+      "Y": 0.3,
+      "Not": "Sol panel - Banka Ekstresi"
+    },
+    {
+      "Tip": "Bekle",
+      "Sayi": 800
+    },
+    {
+      "Tip": "Tikla",
+      "X": 0.4,
+      "Y": 0.25,
+      "CiftTik": true,
+      "Not": "Sablon satiri - CIFT TIK sart: tek tik satiri yalnizca secili yapiyor, Enter da acmiyor (ofiste olculdu). KOORDINAT SABIT, sablon listesine yeni kayit eklenirse KAYAR"
+    },
+    {
+      "Tip": "Bekle",
+      "Sayi": 500
+    },
+    {
+      "Tip": "EkranGoruntusu",
+      "Deger": "sablon-secildi"
+    },
+    {
+      "// yorum": "ALT+T DENENDI: ORKA'da boyle bir kisayol YOK. Transfere Basla klavyeyle gecilemiyor, koordinat tek yol.",
+      "Tip": "Tikla",
+      "X": 0.5,
+      "Y": 0.12,
+      "Not": "Transfere Basla",
+      "Yuzde": 20
+    },
+    {
+      "Tip": "BeklePencere",
+      "Deger": "Transfer Edilecek Excel",
+      "Not": "Ekstre dosyasi secim diyalogu"
+    },
+    {
+      "// yorum": "TemizleYaz (Ctrl+A sonra yaz) kullaniliyor, duz Yaz DEGIL: bu gorev her banka icin TEKRAR calisiyor ve dosya diyalogu bir onceki dosya adini hatirliyor olabilir. Uzerine yazmak iki yolu birlestirip dosyayi bulunamaz yapardi.",
+      "Tip": "TemizleYaz",
+      "Deger": "{dosyaYolu}",
+      "Not": "Duzeltilmis ekstre dosyasi"
+    },
+    {
+      "Tip": "Tus",
+      "Deger": "ENTER",
+      "Adet": 1
+    },
+    {
+      "// yorum": "Transferin BASLAMASI icin pay. Bitisini beklemiyor: ORKA transferi ARKA PLANDA calistiriyor ve bu ENTER ayni anda Hesap Plani'ni aciyor (olculdu 06.09.2026). Bitis popup'i asagida, hesap secimi SONRASINDA bekleniyor.",
+      "Tip": "Bekle",
+      "Sayi": 3000,
+      "Not": "Transfer basliyor"
+    },
+    {
+      "Tip": "EkranGoruntusu",
+      "Deger": "dosya-yuklendi",
+      "Yuzde": 35
+    },
+    {
+      "Tip": "BeklePencere",
+      "Deger": "Hesap Plan",
+      "Not": "Hesap Plani penceresi - odak dogrudan arama kutusunda aciliyor"
+    },
+    {
+      "Tip": "Bekle",
+      "Sayi": 800,
+      "Not": "Hesap Plani ekrani otursun; arama kutusuna yazmadan once"
+    },
+    {
+      "Tip": "EkranGoruntusu",
+      "Deger": "hesap-plani"
+    },
+    {
+      "Tip": "TemizleYaz",
+      "Deger": "{hesapKodu}",
+      "Not": "Ctrl+A sonra yaz - yoksa 102102... olur"
+    },
+    {
+      "Tip": "Bekle",
+      "Sayi": 1200
+    },
+    {
+      "Tip": "EkranGoruntusu",
+      "Deger": "hesap-arandi"
+    },
+    {
+      "Tip": "Tus",
+      "Deger": "ENTER",
+      "Adet": 1,
+      "Not": "1. Enter"
+    },
+    {
+      "Tip": "Bekle",
+      "Sayi": 800
+    },
+    {
+      "Tip": "Tus",
+      "Deger": "ENTER",
+      "Adet": 1,
+      "Not": "2. Enter - hesap secildi"
+    },
+    {
+      "Tip": "Bekle",
+      "Sayi": 3000
+    },
+    {
+      "// yorum": [
+        "Excel aktariminin BITTIGINI soyleyen tek kesin sinyal. --probe ile",
+        "olculdu 06.09.2026: popup icinde TcxLabel kontrolu",
+        "'Transfer Islemi Tamamlandi.' metnini tasiyor (Turkce harflerle).",
+        "",
+        "NEDEN BURADA (hesap seciminden SONRA, grid'den ONCE):",
+        "ORKA'nin gercek sirasi 06.09.2026 kosusunda olculdu -- dosya yolu",
+        "ENTER'i Hesap Plani'ni HEMEN aciyor, transfer ARKA PLANDA suruyor,",
+        "popup transfer bitince cikiyor. Bu blok once Hesap Plani'ndan ONCE",
+        "duruyordu ve 120 sn timeout'a dusuyordu: o anda ekranda Hesap Plani",
+        "vardi, popup yoktu.",
+        "",
+        "Popup'in tam olarak hesap seciminden sonra ciktigi KESIN DEGIL --",
+        "transfer arka planda oldugu icin herhangi bir anda cikabilir. Bu",
+        "yuzden burada BEKLENIYOR: popup daha once cikmissa dogrulama ilk",
+        "yoklamada gecer. Grid tiklamasindan ONCE olmasi sart -- popup",
+        "acikken tiklarsak tiklama popup'a gider.",
+        "",
+        "Neden BeklePencere degil: popup'in BASLIGI giris ekraniyla ayni,",
+        "baslik bakan arama onu ayirt edemiyor. AltPencereDogrula sinif adina",
+        "VE kontrol metnine bakiyor (Contains, buyuk/kucuk harf duyarsiz).",
+        "",
+        "Deger neden kisaltildi: sondaki 'i.' parcasi atildi. 'i' ile 'I'",
+        "arasindaki Turkce buyuk/kucuk harf farki ve sondaki noktanin",
+        "surumden surume degismesi eslesmeyi bozabilirdi; basi benzersiz.",
+        "",
+        "TimeoutSn 120: buyuk ekstrede transfer uzun surebilir."
+      ],
+      "Tip": "AltPencereDogrula",
+      "Deger": "Transfer İşlemi Tamamland",
+      "TimeoutSn": 120,
+      "Not": "Excel aktarimi bitis popup'i"
+    },
+    {
+      "Tip": "EkranGoruntusu",
+      "Deger": "transfer-bitis-popup"
+    },
+    {
+      "Tip": "Bekle",
+      "Sayi": 750
+    },
+    {
+      "// yorum": "Popup'in Tamam dugmesi '&Tamam', yani T alti cizili ve ALT+T teoride calismali. KULLANILMIYOR: ORKA'da ALT kisayollarinin calismadigi daha once olculdu (firma sifresi popup'inda ve sube ekraninda denendi, ikisinde de yok). ENTER dogrulandi.",
+      "Tip": "Tus",
+      "Deger": "ENTER",
+      "Adet": 1,
+      "Not": "Tamam - Enter ile geciyor (dogrulandi)"
+    },
+    {
+      "Tip": "Bekle",
+      "Sayi": 1000
+    },
+    {
+      "Tip": "Dogrula",
+      "Deger": "ORKA_",
+      "Not": "Hesap secimi sonrasi ORKA ayakta mi",
+      "Yuzde": 50
+    },
+    {
+      "Tip": "EkranGoruntusu",
+      "Deger": "belgeler-listesi",
+      "Not": "Hesap secimi sonrasi Belgeler Listesi alt sekmesine otomatik gecilip gecilmedigi DOGRULANMADI; gecilmiyorsa buraya bir Tikla adimi gerekecek."
+    },
+    {
+      "Tip": "Tikla",
+      "X": 0.764,
+      "Y": 0.338,
+      "Not": "Grid ilk satir, karsi hesap kolonu. 0.04 yanlis olculmustu, grid'in sol kenarina denk geliyordu (06.09.2026)."
+    },
+    {
+      "Tip": "Bekle",
+      "Sayi": 500
+    },
+    {
+      "Tip": "GridDoldur",
+      "Not": "Karsi hesap kodlari; liste bos ise adim atlanir (elle calistirmada normaldir)",
+      "Yuzde": 80
+    },
+    {
+      "Tip": "EkranGoruntusu",
+      "Deger": "aktarim-bitti"
+    },
+    {
+      "Tip": "Log",
+      "Deger": "Aktarim bitti. KAYDET'E BASILMADI - kontrol edip siz kaydedin, sonra DEVAM."
+    },
+    {
+      "// yorum": "OnayBekle: bu adimdan ONCE durulur. Kullanici ORKA'da gozle kontrol edip KAYDET'e basar, sonra arayuzdeki DEVAM dugmesine basar; sekme ancak o zaman kapanir. Duraklatma gorev motorunda degil, Calistir sekmesinin DEVAM mantiginda (GorevKosucusu); konsol modlarinda bu alan yok sayilir ve adim beklemeden calisir.",
+      "Tip": "Tikla",
+      "X": 0.95,
+      "Y": 0.06,
+      "OnayBekle": true,
+      "Not": "Sekme kapatma carpisi - PLACEHOLDER, ofiste kalibre edilecek. Bir banka bitince acilan sekme kapanmali, ekran TRANSFERLER'e donmeli, yoksa sonraki tur baslayamaz.",
+      "Yuzde": 95
+    },
+    {
+      "Tip": "Bekle",
+      "Sayi": 1000
+    },
+    {
+      "Tip": "EkranGoruntusu",
+      "Deger": "sekme-kapandi",
+      "Not": "TRANSFERLER ekranina donuldu mu? Sonraki banka buradan basliyor."
+    }
+  ]
+}

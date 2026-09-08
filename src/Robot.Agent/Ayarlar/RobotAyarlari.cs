@@ -48,6 +48,14 @@ public class RobotAyarlari
     /// <summary>Uygulama acilinca ajan baglantisi kendiliginden baslasin mi?</summary>
     public bool AcilistaBaglan { get; set; } = true;
 
+    // ---- Calistir sekmesi ----
+    /// <summary>
+    /// Coklu banka aktarimi: secili firma, zamanlama, hiz carpani ve banka
+    /// satirlari (hesap kodu + ekstre dosyasi). Ayri bir nesne, cunku bu bolum
+    /// tek bir ekranin hali; yol/giris ayarlariyla karismasin.
+    /// </summary>
+    public CalistirmaAyari Calistirma { get; set; } = new();
+
     // ---- kalibrasyon ----
     public List<KoordinatAyari> Koordinatlar { get; set; } = new();
 

@@ -58,6 +58,11 @@ internal static class Win32
 
     internal const int VK_ESCAPE = 0x1B;
 
+    // Pencerenin mesaj kuyrugu isliyor mu diye sorarken kullaniliyor: WM_NULL
+    // hicbir sey yapmaz, tek isi "cevap verebiliyor musun" sorusunu sormaktir.
+    internal const uint WM_NULL = 0x0000;
+    internal const uint SMTO_ABORTIFHUNG = 0x0002;
+
     internal const int SW_HIDE = 0;
     internal const int SW_RESTORE = 9;
 
@@ -90,6 +95,22 @@ internal static class Win32
     [DllImport("user32.dll")]
     internal static extern bool SetForegroundWindow(IntPtr hWnd);
 
+    /// <summary>
+    /// SU AN on planda olan pencere.
+    ///
+    /// <see cref="SetForegroundWindow"/>'un gercekten tuttugunu dogrulamanin tek
+    /// ucuz yolu bu: o cagri ASENKRON -- dondugunde pencere henuz one gelmemis
+    /// olabilir -- ve foreground lock kurallarina takilip sessizce basarisiz da
+    /// olabilir. Dondurdugu bool "istek kabul edildi" demek, "pencere onde" demek degil.
+    /// </summary>
+    [DllImport("user32.dll")]
+    internal static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    internal static extern IntPtr SendMessageTimeout(
+        IntPtr hWnd, uint Msg, UIntPtr wParam, IntPtr lParam,
+        uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);
+
     [DllImport("user32.dll")]
     internal static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
@@ -105,8 +126,49 @@ internal static class Win32
     [DllImport("user32.dll")]
     internal static extern bool IsWindowVisible(IntPtr hWnd);
 
+    /// <summary>
+    /// Pencere girdi kabul ediyor mu?
+    ///
+    /// Modalligin standart isareti: bir pencere uzerinde modal diyalog acikken
+    /// Windows o pencereyi DEVRE DISI birakir. "ORKA'nin baska bir penceresi onde"
+    /// ile "hedefin ustunde modal var" ayrimini yapmanin -- UIA'ya hic bulasmadan --
+    /// tek ucuz yolu bu.
+    /// </summary>
+    [DllImport("user32.dll")]
+    internal static extern bool IsWindowEnabled(IntPtr hWnd);
+
     [DllImport("user32.dll", SetLastError = true)]
     internal static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    /// <summary>
+    /// Bir pencerenin TUM alt pencereleri (torunlar dahil).
+    ///
+    /// ORKA'nin ic kontrolleri UIA'ya kapali; okunabilen tek yapisal sinyal
+    /// bu agac ve ustundeki <see cref="GetClassName"/>. Sekme degisimi ust
+    /// seviye pencere acmadigi icin baslik bakan dogrulama onu goremiyor.
+    /// </summary>
+    [DllImport("user32.dll", SetLastError = true)]
+    internal static extern bool EnumChildWindows(IntPtr hWndParent, EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    internal static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
+
+    [DllImport("user32.dll")]
+    internal static extern IntPtr GetParent(IntPtr hWnd);
+
+    /// <summary>
+    /// Pencerenin SINIF adi ("TdxRibbonTab", "TPanel"...); okunamazsa bos dizge.
+    ///
+    /// Delphi/VCL sinif adlari kontrolun TURUNU verir ve baslikla birlikte
+    /// "hangi ekrandayiz" sorusunun UIA'ya kapali olan yarisini cevapliyor.
+    /// </summary>
+    internal static string SinifAdi(IntPtr hWnd)
+    {
+        if (hWnd == IntPtr.Zero) return string.Empty;
+
+        var tampon = new System.Text.StringBuilder(256);
+        return GetClassName(hWnd, tampon, tampon.Capacity) > 0 ? tampon.ToString() : string.Empty;
+    }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     internal static extern int GetWindowTextLength(IntPtr hWnd);
@@ -152,6 +214,21 @@ internal static class Win32
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     internal static extern IntPtr GetModuleHandle(string? lpModuleName);
+
+    /// <summary>
+    /// Pencerenin mesaj dongusu ayakta mi?
+    ///
+    /// Donmus bir pencere ON PLANDA olsa bile gonderilen tusu ya da ESC'i yutar.
+    /// Karar burada verilmiyor -- cagiran log'a "yanit vermiyor" satiri dussun diye
+    /// soruyor; teshis edilemeyen tek sey sessizce kaybolan tustu.
+    /// </summary>
+    internal static bool YanitVeriyorMu(IntPtr hWnd, uint zamanAsimiMs)
+    {
+        if (hWnd == IntPtr.Zero) return false;
+
+        return SendMessageTimeout(hWnd, WM_NULL, UIntPtr.Zero, IntPtr.Zero,
+                                  SMTO_ABORTIFHUNG, zamanAsimiMs, out _) != IntPtr.Zero;
+    }
 }
 
 /// <summary>

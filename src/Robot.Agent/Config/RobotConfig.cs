@@ -23,10 +23,32 @@ public class RobotConfig
     public ZamanlamaAyar Zamanlama { get; set; } = new();
     public EkranGoruntusuAyar EkranGoruntusu { get; set; } = new();
     public PencereAyar Pencereler { get; set; } = new();
+    public GridAyar Grid { get; set; } = new();
+
+    /// <summary>
+    /// Bu basliklardan biri ekranda cikarsa robot DURUR.
+    /// Kapatip devam eden liste ayri: <see cref="OtomatikKapatilacakPencereler"/>.
+    /// </summary>
     public List<string> BeklenmeyenPencereler { get; set; } = new();
+
+    /// <summary>
+    /// Cikinca KAPATILIP devam edilecek pencereler.
+    ///
+    /// <b>BeklenmeyenPencereler ile karistirilmamali:</b> o liste robotu DURDURUR
+    /// ("bu ekran ciktiysa bir sey ters gitmis, kor devam etme"), bu liste pencereyi
+    /// KAPATIP DEVAM EDER ("bu ekran zaten cikiyor, isle ilgisi yok").
+    ///
+    /// Gerekce: ORKA'nin yazici baglantisi diyalogu modul ekraninda rastgele cikiyor,
+    /// odagi aliyor ve o anda gonderilen tuslari yutup zinciri kiriyordu. Durmak dogru
+    /// cevap degil -- diyalog isin bir parcasi degil, yalnizca yolda duruyor.
+    /// </summary>
+    public List<KapatilacakPencere> OtomatikKapatilacakPencereler { get; set; } = new();
 
     /// <summary>Hub baglantisi (--ajan modu). ORKA otomasyonundan bagimsiz.</summary>
     public AjanAyar Ajan { get; set; } = new();
+
+    /// <summary>Grid dolduruldiktan sonra ekrandan okuyup karsilastiran on eleme. Varsayilan KAPALI.</summary>
+    public GoruntuDogrulamaAyar GoruntuDogrulama { get; set; } = new();
 
     public static RobotConfig Yukle(string yol)
     {
@@ -45,6 +67,44 @@ public class RobotConfig
                   ?? throw new InvalidOperationException("Ayar dosyasi okunamadi.");
         return cfg;
     }
+
+    /// <summary>
+    /// Tek bir calistirma icin kopya: <see cref="Zamanlama"/> ve <see cref="Giris"/>
+    /// YENIDEN kuruluyor, geri kalan alanlar paylasiliyor.
+    ///
+    /// Sebep: Calistir sekmesi kendi zamanlamasi ve o firmanin sifresiyle
+    /// calisiyor. Paylasilan config uzerinde oynasaydi ayni anda calisan ajan
+    /// isi de o degerlerle calisir ve bunu kimse fark etmezdi.
+    /// </summary>
+    public RobotConfig CalismaKopyasi() => new()
+    {
+        OrkaPath = OrkaPath,
+        LogKlasoru = LogKlasoru,
+        DryRun = DryRun,
+        OtomatikOneGetir = OtomatikOneGetir,
+        Firma = Firma,
+        EkranGoruntusu = EkranGoruntusu,
+        Pencereler = Pencereler,
+        BeklenmeyenPencereler = BeklenmeyenPencereler,
+        OtomatikKapatilacakPencereler = OtomatikKapatilacakPencereler,
+        Ajan = Ajan,
+        GoruntuDogrulama = GoruntuDogrulama,
+
+        Giris = new GirisAyar
+        {
+            Veritabani = Giris.Veritabani,
+            Kullanici = Giris.Kullanici,
+            Sifre = Giris.Sifre,
+            FirmaSifresi = Giris.FirmaSifresi
+        },
+        Zamanlama = new ZamanlamaAyar
+        {
+            AdimBeklemeMs = Zamanlama.AdimBeklemeMs,
+            TusBeklemeMs = Zamanlama.TusBeklemeMs,
+            PencereTimeoutSn = Zamanlama.PencereTimeoutSn,
+            OrkaAcilisTimeoutSn = Zamanlama.OrkaAcilisTimeoutSn
+        }
+    };
 }
 
 public class GirisAyar
@@ -120,6 +180,47 @@ public class AjanAyar
     public string DosyaYuklemeUcu { get; set; } = "https://www.dijitalmasraf.com/file/v1/uploads";
 }
 
+/// <summary>
+/// Kendiliginden kapatilacak bir pencere kurali.
+/// </summary>
+public class KapatilacakPencere
+{
+    /// <summary>Pencere basliginda ARANAN parca (icerir mantigi, buyuk/kucuk harf duyarsiz).</summary>
+    public string Baslik { get; set; } = "";
+
+    /// <summary>
+    /// Basilacak dugmenin yazisi ("Iptal", "Hayir", "Kapat").
+    /// Bos birakilirsa ya da dugme bulunamazsa ESC gonderilir: ORKA'nin diyaloglari
+    /// UIA'ya kapali olabiliyor ve o zaman elde kalan tek yol klavye.
+    /// </summary>
+    public string Dugme { get; set; } = "";
+}
+
+/// <summary>
+/// ORKA gridinde KLAVYEYLE gezinme sayilari.
+///
+/// <b>Neden ayarlanabilir:</b> hedef hucreye kac TAB uzakta olundugu ORKA'nin
+/// kolon duzenine bagli ve o duzen surumle degisebiliyor. Sayilar koda gomulu
+/// olsaydi kolon eklenen bir ORKA guncellemesi yeni bir yayin gerektirirdi;
+/// burada durunca appsettings.json'dan, tek bir adim icin de gorev JSON'undan
+/// duzeltilebiliyor.
+/// </summary>
+public class GridAyar
+{
+    /// <summary>
+    /// Satirin 1. kolonuna donmek icin kac kez SOL ok.
+    ///
+    /// Kolon sayisindan FAZLA olmasi kasitli: sol ok ilk kolonda etkisiz kalir,
+    /// yani fazlasi zararsiz ama eksigi hedefi kaydirir. "Hangi kolondaydik"
+    /// sorusunu sormadan sabit bir baslangica donmenin tek yolu bu -- grid
+    /// UIA'ya kapali, imlecin nerede oldugu okunamiyor.
+    /// </summary>
+    public int SolaGitAdet { get; set; } = 12;
+
+    /// <summary>1. kolondan Karsi Hesap Kodu kolonuna kac TAB (ofiste olculdu).</summary>
+    public int TabAdet { get; set; } = 7;
+}
+
 public class PencereAyar
 {
     public string GirisEkrani { get; set; } = "";
@@ -127,4 +228,36 @@ public class PencereAyar
     public string AnaEkran { get; set; } = "ORKA_";
     public string DosyaSecim { get; set; } = "";
     public string HesapPlani { get; set; } = "";
+}
+
+/// <summary>
+/// GridDoldur'dan sonra ekran goruntusunu okuyup yazilmasi beklenen kod
+/// listesiyle karsilastiran katmanin ayarlari.
+///
+/// <b>Varsayilan KAPALI ve oyle kalmali.</b> Kapaliyken hicbir API cagrisi
+/// yapilmiyor, anahtar aranmiyor, mevcut akis bit bit ayni kaliyor -- ozellik
+/// acilana kadar var olmamis gibi davraniyor. Bu bir ON ELEME: hicbir kosulda
+/// robotu durdurmuyor, yalnizca log'a "su satirlara bak" yaziyor. Kaydet'e
+/// zaten kullanici basiyor.
+///
+/// <b>Goruntudeki veri disari cikiyor:</b> ekran goruntusunde musterinin banka
+/// hareket aciklamalari var ve acikken bu goruntu Anthropic API'sine
+/// gonderiliyor. Ayari acmak bilincli bir karar olmali.
+/// </summary>
+public class GoruntuDogrulamaAyar
+{
+    public bool Aktif { get; set; } = false;
+
+    /// <summary>
+    /// Okumayi yapan model. Istenen sey muhasebe karari degil, ekrandaki metni
+    /// okumak; yine de kucuk puntolu grid'de yanlis okunan bir rakam bosuna
+    /// uyari uretir, o yuzden varsayilan en yetenekli model.
+    /// </summary>
+    public string Model { get; set; } = "claude-opus-5";
+
+    /// <summary>
+    /// Cagri bu surede bitmezse dogrulama atlaniyor. Kisa tutuluyor: robot
+    /// ORKA'yi ekranda bekletiyor ve dogrulama bir yardimci, isin kendisi degil.
+    /// </summary>
+    public int ZamanAsimiSaniye { get; set; } = 60;
 }

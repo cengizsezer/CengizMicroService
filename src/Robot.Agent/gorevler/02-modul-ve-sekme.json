@@ -21,7 +21,14 @@
 
   "Adimlar": [
     { "Tip": "Log", "Not": "--- Modul ekraninda miyiz kontrol ---" },
-    { "Tip": "Dogrula", "Deger": "ORKA_0001_2026", "Not": "Firma acik mi" },
+    {
+      "// yorum": "Baslik degil EKRAN kontrolu: TdxTileControl yalnizca modul ekraninda var (Veri Transferi acilinca kayboluyor, yerine TdxRibbon geliyor). Bu gorev SAG/ASAGI ok gonderiyor; yanlis ekranda calisirsa oklar bilinmeyen bir yere gider. --probe ile olculdu 05.09.2026.",
+      "Tip": "AltPencereDogrula",
+      "Deger": "TdxTileControl",
+      "Not": "Modul ekraninda basliyor olmali",
+      "TimeoutSn": 10
+    },
+    { "Tip": "Dogrula", "Deger": "ORKA_{firmaKodu}_", "Not": "Firma acik mi" },
     { "Tip": "Bekle", "Sayi": 1000 },
     { "Tip": "EkranGoruntusu", "Deger": "01-baslangic" },
 
@@ -52,10 +59,30 @@
     { "Tip": "Bekle", "Sayi": 3000 },
     { "Tip": "EkranGoruntusu", "Deger": "04-transferler-acildi" },
 
+    {
+      "// OLCUM": [
+        "--probe ile olculdu (05.09.2026):",
+        "  modul ekrani     -> TdxTileControl VAR, TdxRibbon YOK",
+        "  Veri Transferi   -> TdxTileControl YOK; TdxRibbon, TdxRibbonStatusBar,",
+        "                      TfrmMenuTab, TcxDBTreeList VAR",
+        "Baslik ikisinde de ayni oldugu icin 'Dogrula' bu farki goremiyor."
+      ],
+      "Tip": "AltPencereDogrula",
+      "Deger": "TdxRibbon",
+      "Not": "Modul ekranindan cikildi mi -- modul ekraninda TdxRibbon YOK, Veri Transferi acilinca geliyor (--probe ile olculdu 05.09.2026)"
+    },
+
     { "Tip": "Log", "Not": "--- VERI TRANSFERI ilk sirada, zaten secili ---" },
     { "Tip": "Tus", "Deger": "ENTER", "Adet": 1 },
     { "Tip": "Bekle", "Sayi": 3000 },
     { "Tip": "EkranGoruntusu", "Deger": "05-veri-transferi-acildi" },
+
+    {
+      "// yorum": "TdxRibbon degil TcxDBTreeList araniyor: ribbon TRANSFERLER acilir acilmaz geliyor, agac ise Veri Transferi ekranina OZEL. Iki adim ayri sinyale bakmasa ikincisi hicbir sey dogrulamazdi.",
+      "Tip": "AltPencereDogrula",
+      "Deger": "TcxDBTreeList",
+      "Not": "Sol panel agaci (BELGELER/KARTLAR) -- yalnizca Veri Transferi ekraninda var"
+    },
 
     { "Tip": "Log", "Not": "BITTI: 03 ve 05 ekran goruntulerine bak, dogru yerde miyiz?" }
   ]

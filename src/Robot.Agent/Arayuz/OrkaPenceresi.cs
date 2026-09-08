@@ -35,6 +35,56 @@ public record TiklananPencere(int? Surec, string Baslik, string SurecAdi)
 }
 
 /// <summary>
+/// Masaustundeki bir ust seviye pencerenin HAM hali: hicbir filtre uygulanmamis.
+/// Tarama tek noktadan (<see cref="OrkaPenceresi.TumUstSeviyePencereler"/>) gelir;
+/// hangi pencerenin elenecegine cagiran karar verir.
+/// </summary>
+/// <param name="Tutamac">Pencerenin Win32 tutamaci.</param>
+/// <param name="Pid">Pencereyi acan surec; okunamadiysa 0.</param>
+/// <param name="Baslik">GetWindowText ciktisi; basliksiz pencerede bos.</param>
+/// <param name="Olcu">Ekrandaki dikdortgen (<see cref="OrkaPenceresi.OlcuAl"/>).</param>
+/// <param name="Gorunur">IsWindowVisible.</param>
+/// <param name="Sahip">GW_OWNER. Bilgi olarak tasiniyor, ELEME OLCUTU DEGIL.</param>
+public sealed record UstSeviyePencere(
+    IntPtr Tutamac,
+    int Pid,
+    string Baslik,
+    PencereOlcusu Olcu,
+    bool Gorunur,
+    IntPtr Sahip)
+{
+    /// <summary>Baslik verilen parcayi iceriyor mu (buyuk/kucuk harf duyarsiz)?</summary>
+    public bool BasligaUyuyor(string? parca)
+        => !string.IsNullOrEmpty(Baslik) &&
+           !string.IsNullOrWhiteSpace(parca) &&
+           Baslik.Contains(parca, StringComparison.OrdinalIgnoreCase);
+}
+
+/// <summary>
+/// Bir pencereyi one getirme denemesinin sonucu.
+///
+/// <b>Neden bool yetmiyor:</b> iki ayri soru var ve ikisi de log'a dusmeli.
+/// <c>SetForegroundWindow</c> "istegi kabul ettim" der (foreground lock kurallarina
+/// takilirsa false doner), pencerenin GERCEKTEN one gelmesi ayri bir olay ve
+/// asenkron. Istek reddedilip pencere yine de one gelebilir; kabul edilip
+/// gelmeyebilir de. Ikisini tek bool'a sikistirmak, kaybolan tusun sebebini
+/// gormeyi imkansiz kilardi.
+/// </summary>
+/// <param name="CagriKabulEdildi">SetForegroundWindow true dondu mu.</param>
+/// <param name="OndeMi">Pencere sure dolmadan gercekten on plana geldi mi.</param>
+/// <param name="ZatenOndeydi">Cagriya hic gerek kalmadi mi.</param>
+/// <param name="GecenMs">Dogrulamanin surdugu sure.</param>
+public readonly record struct OneGetirmeRaporu(
+    bool CagriKabulEdildi,
+    bool OndeMi,
+    bool ZatenOndeydi,
+    int GecenMs)
+{
+    /// <summary>Tutamac yok: hicbir cagri yapilmadi.</summary>
+    public static readonly OneGetirmeRaporu Gecersiz = new(false, false, false, 0);
+}
+
+/// <summary>
 /// ORKA penceresini surec adindan bulur, olcusunu okur, one getirir.
 ///
 /// <b>Neden baslik degil surec:</b> ORKA'nin pencere basligi surume ve acik
@@ -194,27 +244,36 @@ public class OrkaPenceresi
     private sealed record PencereAdayi(IntPtr Tutamac, string Baslik, PencereOlcusu Olcu);
 
     /// <summary>
-    /// ORKA sureclerine ait <b>gorunur ve olculebilir</b> ust seviye pencereler.
-    /// Sahiplige BAKILMIYOR (bkz. <see cref="AnaPencereBul"/>); eleme olcuye
-    /// gore: genislik ya da yukseklik sifirsa o pencere oranin paydasi olamaz.
+    /// Masaustundeki <b>butun</b> ust seviye pencereler -- projedeki TEK pencere
+    /// tarama noktasi. Filtre yok: gorunmeyen, basliksiz, olculemeyen ve sahipli
+    /// pencereler de listede. Eleme kararini cagiran verir.
+    ///
+    /// <b>Neden EnumWindows, neden UIA degil:</b> ORKA'nin pencereleri gizli bir
+    /// kabuk pencere tarafindan SAHIPLENILIYOR (owner != 0) ve UIA bunlari
+    /// <c>GetDesktop().FindAllChildren()</c> altinda listelemiyor. Uctan uca
+    /// denemede "Firma Sifresini Giriniz." popup'i ekranda dururken 40 sn
+    /// timeout'a dusmesinin ve hata mesajindaki "Ekrandakiler" listesinde hic
+    /// gorunmemesinin sebebi buydu. EnumWindows sahiplige bakmadan hepsini
+    /// donduruyor.
     /// </summary>
-    private static List<PencereAdayi> UstSeviyePencereler(IReadOnlyCollection<int> surecler)
+    public static List<UstSeviyePencere> TumUstSeviyePencereler()
     {
-        var sonuc = new List<PencereAdayi>();
+        var sonuc = new List<UstSeviyePencere>();
 
         try
         {
             Win32.EnumWindows((tutamac, _) =>
             {
                 Win32.GetWindowThreadProcessId(tutamac, out var pid);
-                if (pid == 0 || !surecler.Contains((int)pid)) return true;
 
-                if (!Win32.IsWindowVisible(tutamac)) return true;
+                sonuc.Add(new UstSeviyePencere(
+                    tutamac,
+                    (int)pid,
+                    Win32.Baslik(tutamac),
+                    OlcuAl(tutamac),
+                    Win32.IsWindowVisible(tutamac),
+                    Win32.GetWindow(tutamac, Win32.GW_OWNER)));
 
-                var olcu = OlcuAl(tutamac);
-                if (!olcu.Gecerli) return true;
-
-                sonuc.Add(new PencereAdayi(tutamac, Win32.Baslik(tutamac), olcu));
                 return true;
             }, IntPtr.Zero);
         }
@@ -225,6 +284,17 @@ public class OrkaPenceresi
 
         return sonuc;
     }
+
+    /// <summary>
+    /// ORKA sureclerine ait <b>gorunur ve olculebilir</b> ust seviye pencereler.
+    /// Sahiplige BAKILMIYOR (bkz. <see cref="AnaPencereBul"/>); eleme olcuye
+    /// gore: genislik ya da yukseklik sifirsa o pencere oranin paydasi olamaz.
+    /// </summary>
+    private static List<PencereAdayi> UstSeviyePencereler(IReadOnlyCollection<int> surecler)
+        => TumUstSeviyePencereler()
+            .Where(p => p.Pid != 0 && surecler.Contains(p.Pid) && p.Gorunur && p.Olcu.Gecerli)
+            .Select(p => new PencereAdayi(p.Tutamac, p.Baslik, p.Olcu))
+            .ToList();
 
     // ================== GECICI TESHIS ==================
     // Buradan asagisi "AnaPencereBul neden bos donuyor?" sorusunu gormek icin
@@ -374,47 +444,193 @@ public class OrkaPenceresi
     private static List<TeshisPenceresi> HamUstSeviyePencereler(
         IReadOnlyCollection<int> surecler, out int toplamUstSeviye)
     {
-        var sonuc = new List<TeshisPenceresi>();
-        var toplam = 0;
+        var hepsi = TumUstSeviyePencereler();
+        toplamUstSeviye = hepsi.Count;
 
-        try
-        {
-            Win32.EnumWindows((tutamac, _) =>
-            {
-                toplam++;
-
-                Win32.GetWindowThreadProcessId(tutamac, out var pid);
-                if (pid == 0 || !surecler.Contains((int)pid)) return true;
-
-                sonuc.Add(new TeshisPenceresi(
-                    tutamac,
-                    (int)pid,
-                    Win32.IsWindowVisible(tutamac),
-                    Win32.GetWindow(tutamac, Win32.GW_OWNER),
-                    OlcuAl(tutamac),
-                    Win32.Baslik(tutamac)));
-
-                return true;
-            }, IntPtr.Zero);
-        }
-        catch (Exception)
-        {
-            // Tarama patlarsa elde ne varsa o gosterilir.
-        }
-
-        toplamUstSeviye = toplam;
-        return sonuc;
+        return hepsi
+            .Where(p => p.Pid != 0 && surecler.Contains(p.Pid))
+            .Select(p => new TeshisPenceresi(p.Tutamac, p.Pid, p.Gorunur, p.Sahip, p.Olcu, p.Baslik))
+            .ToList();
     }
 
     // ================ GECICI TESHIS SONU ================
 
-    /// <summary>Pencereyi one getirir; simge durumundaysa once geri acar.</summary>
-    public static void OneGetir(IntPtr tutamac)
+    /// <summary>
+    /// Bir ust seviye pencerenin altindaki TEK bir kontrol: sinif adi ekranin
+    /// hangi bolumunun ayakta oldugunu soyluyor.
+    /// </summary>
+    /// <param name="Tutamac">Kontrolun tutamaci.</param>
+    /// <param name="SinifAdi">Delphi/VCL sinif adi ("TdxRibbonTab", "TPanel"...).</param>
+    /// <param name="Baslik">Kontrolun metni; cogu kontrolde bos.</param>
+    /// <param name="Gorunur">WS_VISIBLE. Kapali sekmelerin kontrolleri agacta KALIR,
+    /// yalnizca gorunurlugu duser -- "sekme acik mi" sorusu buradan cevaplaniyor.</param>
+    /// <param name="Derinlik">Kok pencereden kac seviye asagida.</param>
+    public sealed record AltPencere(
+        IntPtr Tutamac,
+        string SinifAdi,
+        string Baslik,
+        bool Gorunur,
+        int Derinlik);
+
+    /// <summary>
+    /// Verilen pencerenin TUM alt kontrolleri (torunlar dahil).
+    ///
+    /// <b>Neden gerekli:</b> ORKA'da modul/sekme gecisleri ust seviye pencere
+    /// ACMIYOR -- baslik da degismiyor. Baslik bakan <c>Dogrula</c> bu yuzden
+    /// "Veri Transferi acildi mi" sorusunu cevaplayamiyor ve robot yanlis
+    /// ekranda devam edebiliyor. Alt pencere agaci UIA'ya kapali ORKA'da
+    /// okunabilen tek yapisal sinyal.
+    ///
+    /// Ekrana dokunmuyor, yalniz okuyor. Derinlik <see cref="Win32.GetParent"/>
+    /// zinciriyle hesaplaniyor; zincir kok'e varmadan biterse sayac
+    /// <paramref name="maxDerinlik"/>'te durur (bozuk agacta sonsuz dongu olmasin).
+    /// </summary>
+    public static List<AltPencere> AltPencereler(IntPtr kok, int maxDerinlik = 12)
     {
-        if (tutamac == IntPtr.Zero) return;
+        var sonuc = new List<AltPencere>();
+        if (kok == IntPtr.Zero) return sonuc;
+
+        Win32.EnumChildWindows(kok, (h, _) =>
+        {
+            sonuc.Add(new AltPencere(
+                h,
+                Win32.SinifAdi(h),
+                Win32.Baslik(h),
+                Win32.IsWindowVisible(h),
+                Derinlik(h, kok, maxDerinlik)));
+            return true;
+        }, IntPtr.Zero);
+
+        return sonuc;
+    }
+
+    private static int Derinlik(IntPtr cocuk, IntPtr kok, int maxDerinlik)
+    {
+        var seviye = 0;
+        var gezen = cocuk;
+
+        while (gezen != IntPtr.Zero && gezen != kok && seviye < maxDerinlik)
+        {
+            gezen = Win32.GetParent(gezen);
+            seviye++;
+        }
+
+        return seviye;
+    }
+
+    /// <summary>On planda olan pencerenin tutamaci.</summary>
+    public static IntPtr OnPencere() => Win32.GetForegroundWindow();
+
+    /// <summary>Tutamac hala yasayan bir pencereyi mi gosteriyor?</summary>
+    public static bool PencereMi(IntPtr tutamac)
+        => tutamac != IntPtr.Zero && Win32.IsWindow(tutamac);
+
+    /// <summary>
+    /// Pencere girdi kabul ediyor mu? Uzerinde modal diyalog acikken false doner --
+    /// odak duzeltmenin "dokunma" karari buna bakiyor.
+    /// </summary>
+    public static bool EtkinMi(IntPtr tutamac)
+        => tutamac != IntPtr.Zero && Win32.IsWindowEnabled(tutamac);
+
+    /// <summary>Pencerenin basligi; okunamazsa bos dizge.</summary>
+    public static string PencereBasligi(IntPtr tutamac) => Win32.Baslik(tutamac);
+
+    /// <summary>Pencereyi acan surecin kimligi; okunamazsa 0.</summary>
+    public static int PencereSureci(IntPtr tutamac)
+    {
+        if (tutamac == IntPtr.Zero) return 0;
+
+        Win32.GetWindowThreadProcessId(tutamac, out var pid);
+        return (int)pid;
+    }
+
+    /// <summary>Pencerenin mesaj dongusu verilen sure icinde cevap veriyor mu?</summary>
+    public static bool YanitVeriyorMu(IntPtr tutamac, int zamanAsimiMs)
+        => Win32.YanitVeriyorMu(tutamac, (uint)Math.Max(0, zamanAsimiMs));
+
+    /// <summary>Dogrulama poll'unun toplam suresi ve arasi.</summary>
+    public const int OneGetirmeZamanAsimiMs = 1500;
+    public const int OneGetirmeAralikMs = 25;
+
+    /// <summary>
+    /// Pencereyi one getirir, ONE GELDIGINI DOGRULAR; simge durumundaysa once geri acar.
+    ///
+    /// <b>Neden dogrulama sart:</b> onceki surum pencereleri FlaUI'nin
+    /// <c>AutomationElement.Focus()/SetForeground()</c> ciftiyle one getiriyordu ve
+    /// FlaUI her cagrinin ardindan <c>Wait.UntilResponsive</c> calistiriyor --
+    /// yani <c>SendMessageTimeout(WM_NULL)</c> ile pencerenin mesaj kuyrugunun
+    /// aktivasyonu ISLEDIGINI bekliyordu. Ciplak <c>SetForegroundWindow</c>'a
+    /// gecerken o bariyer dustu: cagri asenkron oldugu icin bir sonraki adimin ilk
+    /// tusu pencere daha one gelmeden gidiyor ve YUTULUYORDU (modul ekraninda
+    /// "SAG x3" yerine iki adim ilerlemesinin sebebi buydu).
+    ///
+    /// Burada durdurma yok: sure dolsa da rapor dondurulur, karari ve log'u cagiran verir.
+    /// </summary>
+    public static OneGetirmeRaporu OneGetir(IntPtr tutamac)
+    {
+        if (tutamac == IntPtr.Zero) return OneGetirmeRaporu.Gecersiz;
 
         if (Win32.IsIconic(tutamac)) Win32.ShowWindow(tutamac, Win32.SW_RESTORE);
-        Win32.SetForegroundWindow(tutamac);
+
+        var saat = Stopwatch.StartNew();
+
+        return OneGetirCekirdek(
+            tutamac,
+            () => Win32.SetForegroundWindow(tutamac),
+            Win32.GetForegroundWindow,
+            h => FlaUI.Core.Input.Wait.UntilResponsive(h),
+            Thread.Sleep,
+            () => saat.ElapsedMilliseconds);
+    }
+
+    /// <summary>
+    /// One getirmenin EKRANA DOKUNMAYAN cekirdegi: butun Windows cagrilari disaridan
+    /// veriliyor, boylece "kac kere yokladi, ne zaman pes etti, hangi durumu
+    /// raporladi" sorulari ORKA olmadan test edilebiliyor.
+    /// </summary>
+    /// <param name="oneGetir">SetForegroundWindow; dondurdugu deger rapora gecer.</param>
+    /// <param name="onPencere">GetForegroundWindow.</param>
+    /// <param name="yanitBekle">Pencere one geldikten SONRA mesaj kuyrugunu bekleyen bariyer.</param>
+    /// <param name="uyu">Yoklamalar arasi bekleme.</param>
+    /// <param name="saatMs">Gecen sure kaynagi.</param>
+    public static OneGetirmeRaporu OneGetirCekirdek(
+        IntPtr hedef,
+        Func<bool> oneGetir,
+        Func<IntPtr> onPencere,
+        Action<IntPtr> yanitBekle,
+        Action<int> uyu,
+        Func<long> saatMs,
+        int zamanAsimiMs = OneGetirmeZamanAsimiMs,
+        int aralikMs = OneGetirmeAralikMs)
+    {
+        if (hedef == IntPtr.Zero) return OneGetirmeRaporu.Gecersiz;
+
+        var basladi = saatMs();
+
+        // Zaten ondeyse cagri hic yapilmiyor: gereksiz aktivasyon ekrani titretiyor
+        // ve baska bir pencerenin modalini one cekebiliyor. Bariyer yine de
+        // calisiyor -- "onde" olmak "mesajlarini isledi" demek degil.
+        if (onPencere() == hedef)
+        {
+            yanitBekle(hedef);
+            return new OneGetirmeRaporu(true, true, true, (int)(saatMs() - basladi));
+        }
+
+        var kabul = oneGetir();
+
+        while (true)
+        {
+            if (onPencere() == hedef)
+            {
+                yanitBekle(hedef);
+                return new OneGetirmeRaporu(kabul, true, false, (int)(saatMs() - basladi));
+            }
+
+            if (saatMs() - basladi >= zamanAsimiMs)
+                return new OneGetirmeRaporu(kabul, false, false, (int)(saatMs() - basladi));
+
+            uyu(aralikMs);
+        }
     }
 
     /// <summary>
