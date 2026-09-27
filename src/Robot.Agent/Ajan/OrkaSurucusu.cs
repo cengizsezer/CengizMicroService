@@ -1,4 +1,5 @@
 using FlaUI.UIA3;
+using PkfRobot.Ayarlar;
 using PkfRobot.Config;
 using PkfRobot.Core;
 
@@ -32,17 +33,34 @@ public interface IOrkaSurucusu
 ///
 /// Adim motoru ve gorev JSON'u <b>degismedi</b> — bu sinif yalnizca motoru
 /// kuruyor, degiskenleri veriyor ve grid verisini bagliyor. Aktarim akisinin
-/// kendisi <c>gorevler/orkaya-aktar.json</c> icinde.
+/// kendisi <c>gorevler/ajan-aktar.json</c> icinde (acilis + govde; ikisi de
+/// Calistir sekmesinin kostugu dosyalar).
+///
+/// <b>Zamanlama artik formdan geliyor.</b> Bu yol once yalnizca
+/// appsettings.json'daki <c>Zamanlama</c> ile kosuyor ve hiz carpanini hic
+/// kullanmiyordu: Calistir sekmesinden "yavaslat" demek sunucudan gelen ise
+/// hicbir sey yapmiyordu. Degerler her iste yeniden
+/// <see cref="ZamanlamaCozumu.Diskten"/> ile okunuyor (ajan gunlerce acik
+/// kaliyor, arada degistirilen deger gorulmeli) ve log'un basinda ne ile
+/// kosuldugu yaziliyor.
 /// </summary>
 public sealed class FlaUiOrkaSurucusu : IOrkaSurucusu
 {
     private readonly RobotConfig _cfg;
     private readonly IAjanLog _log;
+    private readonly Func<CalistirmaAyari?> _zamanlamaOku;
 
-    public FlaUiOrkaSurucusu(RobotConfig cfg, IAjanLog log)
+    /// <param name="zamanlamaOku">
+    /// Calistir sekmesi ayarlarini veren agiz; null ise diskten okunuyor.
+    /// Disaridan verilebilmesi test icin: ev makinesinde %AppData% altindaki
+    /// gercek ayarlar.json'a bagli bir davranis sinanamaz.
+    /// </param>
+    public FlaUiOrkaSurucusu(RobotConfig cfg, IAjanLog log,
+                             Func<CalistirmaAyari?>? zamanlamaOku = null)
     {
         _cfg = cfg;
         _log = log;
+        _zamanlamaOku = zamanlamaOku ?? (() => ZamanlamaCozumu.Diskten());
     }
 
     public string? SonEkranGoruntusuYolu { get; private set; }
@@ -52,21 +70,43 @@ public sealed class FlaUiOrkaSurucusu : IOrkaSurucusu
     {
         // UI otomasyonu bastan sona senkron; is zaten kendi gorev parcaciginda
         // calisiyor, burada Task.Run ile ikinci bir parcacik acmanin kazanci yok.
-        var gorev = Gorev.Yukle(istek.GorevYolu);
+        var zamanlama = ZamanlamaCozumu.Coz(_cfg, _zamanlamaOku());
+        var cfg = zamanlama.Config;
+
+        // Carpan gorevin Bekle adimlarina da uygulaniyor: elle calistirmada oyle
+        // ve iki yolun ayni gorevi ayni surelerle kosmasi gerekiyor.
+        var gorev = Hizlandirici.Uygula(Gorev.Yukle(istek.GorevYolu), zamanlama.HizCarpani);
 
         using var automation = new UIA3Automation();
-        using var adimLog = new AdimLogger(_cfg.LogKlasoru, gorev.Ad, _cfg.EkranGoruntusu.HerAdimda);
+        using var adimLog = new AdimLogger(cfg.LogKlasoru, gorev.Ad, cfg.EkranGoruntusu.HerAdimda);
 
         SonEkranGoruntusuYolu = adimLog.Klasor;
         _log.Bilgi($"ORKA akisi basliyor: {gorev.Ad} ({gorev.Adimlar.Count} adim). Log: {adimLog.Klasor}");
+        _log.Bilgi($"Zamanlama: {zamanlama.Ozet}");
+        adimLog.Bilgi($"Zamanlama: {zamanlama.Ozet}");
 
-        var motor = new AdimMotoru(_cfg, adimLog, automation, istek.Degiskenler, grid, adim =>
+        // gozetimsiz: bu yolu sunucudan gelen is tetikliyor ve basinda kimse
+        // yok. 'OnayBekle' tasiyan adimlar (sekme kapatma) burada calismiyor;
+        // duraklatacak DEVAM dugmesi olmadigi icin tek dogru davranis atlamak.
+        var motor = new AdimMotoru(cfg, adimLog, automation, istek.Degiskenler, grid, adim =>
         {
             ct.ThrowIfCancellationRequested();
             adimBasladi(adim);
-        });
+        }, gozetimsiz: true);
 
-        motor.Calistir(gorev);
+        try
+        {
+            motor.Calistir(gorev);
+        }
+        finally
+        {
+            // Ozet HATA durumunda da yaziliyor: yarim kalan bir kosunun hangi
+            // adimda zaman yedigi, basarili kosununki kadar ise yariyor.
+            var ozet = AdimSureOzeti.Ozet(motor.Olcumler);
+            if (ozet.Length > 0)
+                _log.Bilgi($"{gorev.Ad} · toplam {SureBicimi.Kisa(motor.GecenSure)} · {ozet}");
+        }
+
         return Task.CompletedTask;
     }
 }

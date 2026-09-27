@@ -24,8 +24,21 @@
         {
             @foreach (var row in renderedRows)
             {
+                var kirilim = KirilimAl(row);
+                var acik = kirilim is not null && acikKirilimlar.Contains(row.Source.Kod);
+
                 <tr class="@RowCssClass(row.Source.Tip)">
-                    <td class="fk-mizan-col-kod">@row.Source.Kod</td>
+                    <td class="fk-mizan-col-kod">
+                        @if (kirilim is not null)
+                        {
+                            @* Etiket kırılımı BİLGİ AMAÇLIDIR — hiçbir toplamı değiştirmez. *@
+                            <button type="button" class="gg-kirilim-dugme"
+                                    aria-expanded="@(acik ? "true" : "false")"
+                                    title="Etiket kırılımını @(acik ? "kapat" : "aç")"
+                                    @onclick="@(() => KirilimDegistir(row.Source.Kod))">@(acik ? "▾" : "▸")</button>
+                        }
+                        @row.Source.Kod
+                    </td>
                     <td class="fk-mizan-col-ad">@row.Source.Ad</td>
                     <td class="fk-mizan-col-num">@FormatNumber(row.OncekiCari)</td>
                     <td class="fk-mizan-col-num">@FormatNumber(row.Cari)</td>
@@ -38,6 +51,23 @@
                         }
                     </td>
                 </tr>
+
+                @if (acik)
+                {
+                    @foreach (var k in kirilim!)
+                    {
+                        <tr class="gg-kirilim-satir @(k.Atanmamis ? "gg-kirilim-atanmamis" : null)">
+                            <td></td>
+                            <td class="gg-kirilim-ad">
+                                <span class="gg-kare" style="@($"background:{(string.IsNullOrWhiteSpace(k.Renk) ? "#CBD5E1" : k.Renk)}")"></span>
+                                @k.Ad
+                            </td>
+                            <td></td>
+                            <td class="fk-mizan-col-num gg-kirilim-tutar">@FormatNumber(k.Tutar)</td>
+                            <td colspan="2" class="gg-kirilim-not">bilgi amaçlı · toplama girmez</td>
+                        </tr>
+                    }
+                }
             }
         }
     </tbody>
@@ -62,7 +92,31 @@
     /// </summary>
     [Parameter] public bool HideTaxRows { get; set; } = true;
 
+    /// <summary>
+    /// İsteğe bağlı etiket kırılımı (ana hesap kodu → etiket satırları). Yalnızca Gelir
+    /// Tablosu sekmesinin YASAL görünümü verir; verilmezse (Dikey Yüzdeler vb.) tablo
+    /// eskisiyle birebir aynıdır. Kırılım ayrı satır olarak çizilir, <see cref="renderedRows"/>
+    /// ve hiçbir toplam değişmez.
+    /// </summary>
+    [Parameter] public IReadOnlyDictionary<string, List<GrupGorunumu.KirilimSatiri>>? EtiketKirilimi { get; set; }
+
     private List<GelirTablosuCalculator.ComputedRow> renderedRows = new();
+
+    private readonly HashSet<string> acikKirilimlar = new(StringComparer.OrdinalIgnoreCase);
+
+    private List<GrupGorunumu.KirilimSatiri>? KirilimAl(GelirTablosuCalculator.ComputedRow row) =>
+        EtiketKirilimi is not null
+        && row.Source.Tip == SatirTipi.Account
+        && !string.IsNullOrEmpty(row.Source.Kod)
+        && EtiketKirilimi.TryGetValue(row.Source.Kod, out var liste)
+        && liste.Count > 0
+            ? liste
+            : null;
+
+    private void KirilimDegistir(string kod)
+    {
+        if (!acikKirilimlar.Remove(kod)) acikKirilimlar.Add(kod);
+    }
 
     protected override void OnParametersSet()
     {

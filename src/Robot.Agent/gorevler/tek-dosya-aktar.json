@@ -1,9 +1,9 @@
 {
   "// UYARI": [
-    "DONGU GOVDESI. ORKA ACIK, FIRMA SECILI ve TRANSFERLER modulundeyken calisir.",
-    "Giris / firma secimi / modul gezinme adimlari BURADA YOKTUR - onlar acilis gorevinde (01-orka-ac-firma-sec.json) bir kez calisir. Bu dosya her banka icin bastan calisir.",
+    "DONGU GOVDESI. ORKA ACIK, FIRMA SECILI ve Veri Transferi ekranindayken calisir.",
+    "Giris / firma secimi / modul gezinme adimlari BURADA YOKTUR - onlar acilis gorevinde (acilis.json = 01 + 02) bir kez calisir. Bu dosya her banka icin bastan calisir.",
     "Kaydet adimi YOKTUR ve EKLENMEYECEKTIR: kullanici gozle kontrol edip kendisi kaydeder.",
-    "Koordinatlar orkaya-aktar.json'dan KOPYALANDI. Ikisi ayri dosya oldugu icin kalibrasyon da AYRI: bu dosyanin satirlari Kalibrasyon sekmesinde 'tek-dosya-aktar.json#0..4' olarak gorunur ve ayrica olculmelidir."
+    "AKTARIMIN TEK KOPYASI BU DOSYA. Ajan da ayni dosyayi kosuyor (ajan-aktar.json = acilis.json + bu dosya); eski orkaya-aktar.json 08.09.2026'da SILINDI. Kalibrasyon tek yerde: 'tek-dosya-aktar.json#0..4'."
   ],
 
   "Ad": "Tek dosya aktarimi (dongu govdesi)",
@@ -251,7 +251,7 @@
       "Deger": "Aktarim bitti. KAYDET'E BASILMADI - kontrol edip siz kaydedin, sonra DEVAM."
     },
     {
-      "// yorum": "OnayBekle: bu adimdan ONCE durulur. Kullanici ORKA'da gozle kontrol edip KAYDET'e basar, sonra arayuzdeki DEVAM dugmesine basar; sekme ancak o zaman kapanir. Duraklatma gorev motorunda degil, Calistir sekmesinin DEVAM mantiginda (GorevKosucusu); konsol modlarinda bu alan yok sayilir ve adim beklemeden calisir.",
+      "// yorum": "OnayBekle: bu adimdan ONCE durulur. Kullanici ORKA'da gozle kontrol edip KAYDET'e basar, sonra arayuzdeki DEVAM dugmesine basar; sekme ancak o zaman kapanir. Duraklatma gorev motorunda degil, Calistir sekmesinin DEVAM mantiginda (GorevKosucusu). AJAN (gozetimsiz) YOLDA BU ADIM HIC CALISMAZ: duraklatacak kimse yok, motor adimi atlayip log'a 'kullanici onayi gerekiyor, gozetimsiz calismada atlandi' yaziyor. Sekme acik kalir - olculmemis koordinata basmaktan iyidir. Konsol (--gorev) elle calistirildigi icin gozetimli sayilir ve adim calisir.",
       "Tip": "Tikla",
       "X": 0.95,
       "Y": 0.06,

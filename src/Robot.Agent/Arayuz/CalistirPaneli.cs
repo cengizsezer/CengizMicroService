@@ -44,6 +44,14 @@ public sealed class CalistirPaneli : UserControl
 
     private readonly NumericUpDown _adimBekleme = SayiKutusu(0, 60000, 50);
     private readonly NumericUpDown _tusBekleme = SayiKutusu(0, 10000, 10);
+
+    /// <summary>
+    /// GridDoldur'un tuslar arasi beklemesi. Ayri kutu, cunku grid'de satir
+    /// basina 5 tus var ve 43 satirlik bir ekstrede ortak deger (150 ms, carpanla
+    /// 225 ms) yalnizca bekleme olarak 48 saniye ediyordu.
+    /// </summary>
+    private readonly NumericUpDown _gridTusBekleme = SayiKutusu(0, 10000, 10);
+
     private readonly NumericUpDown _pencereTimeout = SayiKutusu(1, 600, 5);
     private readonly NumericUpDown _acilisTimeout = SayiKutusu(1, 900, 5);
 
@@ -123,6 +131,31 @@ public sealed class CalistirPaneli : UserControl
 
     private Task? _calisan;
 
+    // ---- canli ilerleme ----
+    // Metni CALISAN IPLIK yazmiyor: her adim icin bir Invoke, uzun bir adim
+    // boyunca da hicbir tazeleme demekti -- "adim 12/38" satiri 45 saniye
+    // kipirdamadan duruyordu ve robotun asili kalip kalmadigi anlasilmiyordu.
+    // Iplik yalnizca "hangi adim, ne zaman basladi" bilgisini birakiyor, sayaci
+    // bu zamanlayici ekranda ilerletiyor.
+    private readonly System.Windows.Forms.Timer _sureSaati = new() { Interval = 200 };
+
+    /// <summary>Calisan adimin baslama ani (UTC tick); 0 = adim yok.</summary>
+    private long _adimBaslangici;
+
+    /// <summary>Kuyrugun baslama ani (UTC tick); 0 = calismiyor.</summary>
+    private long _kosuBaslangici;
+
+    private string _adimMetni = string.Empty;
+    private int _bitenBanka;
+    private int _toplamBanka;
+
+    /// <summary>
+    /// Duraklama/onay gibi durumlarda ilerleme satirinin yerine gecen metin.
+    /// Bos degilse zamanlayici satiri EZMIYOR: "KAYDET bekleniyor" uyarisi,
+    /// sayacin bir sonraki tikinda kaybolurdu.
+    /// </summary>
+    private string _ozelDurum = string.Empty;
+
     public CalistirPaneli(ArayuzBaglami baglam)
     {
         _baglam = baglam;
@@ -132,6 +165,8 @@ public sealed class CalistirPaneli : UserControl
         Controls.Add(Govde());
 
         _denetim.Degisti += () => UiIsle(DugmeDurumu);
+
+        _sureSaati.Tick += (_, _) => IlerlemeyiTazele();
 
         Yukle();
     }
@@ -243,6 +278,8 @@ public sealed class CalistirPaneli : UserControl
         satir.Controls.Add(_adimBekleme);
         satir.Controls.Add(Etiket("Tus (ms):"));
         satir.Controls.Add(_tusBekleme);
+        satir.Controls.Add(Etiket("Grid tus (ms):"));
+        satir.Controls.Add(_gridTusBekleme);
         satir.Controls.Add(Etiket("Pencere (sn):"));
         satir.Controls.Add(_pencereTimeout);
         satir.Controls.Add(Etiket("ORKA acilis (sn):"));
@@ -252,8 +289,10 @@ public sealed class CalistirPaneli : UserControl
 
         var aciklama = new Label
         {
-            Text = "Hiz carpani gorevdeki Bekle surelerini olcekler (2 = iki kati bekleme). " +
-                   "JSON dosyalari degismez.",
+            Text = "Hiz carpani gorevdeki Bekle surelerini ve tus beklemelerini olcekler " +
+                   "(2 = iki kati bekleme). JSON dosyalari degismez. Grid tus, yalnizca " +
+                   "GridDoldur adiminda gecerli; bu degerler ajan (sunucudan gelen is) " +
+                   "yolunda da kullaniliyor.",
             AutoSize = false,
             Width = 520,
             Height = 16,
@@ -262,7 +301,8 @@ public sealed class CalistirPaneli : UserControl
         satir.Controls.Add(aciklama);
 
         foreach (var kutucuk in new NumericUpDown[]
-                 { _adimBekleme, _tusBekleme, _pencereTimeout, _acilisTimeout, _hizCarpani })
+                 { _adimBekleme, _tusBekleme, _gridTusBekleme, _pencereTimeout,
+                   _acilisTimeout, _hizCarpani })
             kutucuk.ValueChanged += (_, _) => AyarlariTopla();
 
         kutu.Controls.Add(satir);
@@ -525,6 +565,7 @@ public sealed class CalistirPaneli : UserControl
 
         _adimBekleme.Value = Sinirla(_adimBekleme, Ayar.AdimBeklemeMs);
         _tusBekleme.Value = Sinirla(_tusBekleme, Ayar.TusBeklemeMs);
+        _gridTusBekleme.Value = Sinirla(_gridTusBekleme, Ayar.GridTusBeklemeMs);
         _pencereTimeout.Value = Sinirla(_pencereTimeout, Ayar.PencereTimeoutSn);
         _acilisTimeout.Value = Sinirla(_acilisTimeout, Ayar.OrkaAcilisTimeoutSn);
         _hizCarpani.Value = Sinirla(_hizCarpani, (decimal)Hizlandirici.Kirp(Ayar.HizCarpani));
@@ -763,6 +804,7 @@ public sealed class CalistirPaneli : UserControl
 
         Ayar.AdimBeklemeMs = (int)_adimBekleme.Value;
         Ayar.TusBeklemeMs = (int)_tusBekleme.Value;
+        Ayar.GridTusBeklemeMs = (int)_gridTusBekleme.Value;
         Ayar.PencereTimeoutSn = (int)_pencereTimeout.Value;
         Ayar.OrkaAcilisTimeoutSn = (int)_acilisTimeout.Value;
         Ayar.HizCarpani = (double)_hizCarpani.Value;
@@ -982,6 +1024,7 @@ public sealed class CalistirPaneli : UserControl
         var cfg = _baglam.Config.CalismaKopyasi();
         cfg.Zamanlama.AdimBeklemeMs = (int)_adimBekleme.Value;
         cfg.Zamanlama.TusBeklemeMs = (int)_tusBekleme.Value;
+        cfg.Grid.GridTusBeklemeMs = (int)_gridTusBekleme.Value;
         cfg.Zamanlama.PencereTimeoutSn = (int)_pencereTimeout.Value;
         cfg.Zamanlama.OrkaAcilisTimeoutSn = (int)_acilisTimeout.Value;
         cfg.Giris.Sifre = orkaSifre;
@@ -1001,6 +1044,13 @@ public sealed class CalistirPaneli : UserControl
         _log.Clear();
         DurumlariSifirla();
         _denetim.Sifirla();
+
+        _bitenBanka = 0;
+        _toplamBanka = isler.Count;
+        _ozelDurum = string.Empty;
+        Volatile.Write(ref _adimBaslangici, 0);
+        Volatile.Write(ref _kosuBaslangici, DateTime.UtcNow.Ticks);
+        _sureSaati.Start();
 
         Yaz($"Baslatiliyor: {firma} · {isler.Count} banka · hiz carpani {hiz:0.##}");
         Yaz("ORKA giris sifresi: " + SifreKaynagi(_orkaSifre.Text, cozum.Orka));
@@ -1072,11 +1122,19 @@ public sealed class CalistirPaneli : UserControl
         var biten = 0;
 
         var kosucu = new GorevKosucusu(cfg, _denetim, hiz, Yaz,
-            adimIlerledi: (adim, adimToplam) =>
-                UiIsle(() => _ilerlemeMetni.Text =
-                    $"{biten}/{isler.Count} banka bitti · adim {adim}/{adimToplam}"),
-            onayBekleniyor: _ => UiIsle(() => _ilerlemeMetni.Text =
-                "KAYDET bekleniyor - ORKA'da kaydedip DEVAM'a basin."));
+            adimIlerledi: ilerleme =>
+            {
+                // Ekrana YAZMIYOR, yalnizca durumu birakiyor: satiri zamanlayici
+                // ciziyor ve canli sayac boylece uzun adimlarda da isliyor.
+                _adimMetni = ilerleme.ToString();
+                _ozelDurum = string.Empty;
+                Volatile.Write(ref _adimBaslangici, DateTime.UtcNow.Ticks);
+            },
+            onayBekleniyor: _ =>
+            {
+                _ozelDurum = "KAYDET bekleniyor - ORKA'da kaydedip DEVAM'a basin.";
+                UiIsle(IlerlemeyiTazele);
+            });
 
         var calistirici = new KuyrukCalistirici(
             _denetim,
@@ -1091,6 +1149,7 @@ public sealed class CalistirPaneli : UserControl
                 kosucu.Calistir(bankaGorevi, degiskenler, GridVerisi(isim));
 
                 biten++;
+                _bitenBanka = biten;
                 UiIsle(() => _ilerleme.Value = Math.Clamp(biten * 100 / toplam, 0, 100));
             },
             acilis: acilisGorevi is null
@@ -1111,18 +1170,28 @@ public sealed class CalistirPaneli : UserControl
         catch (Exception ex)
         {
             Yaz($"Kuyruk beklenmedik sekilde durdu: {ex.Message}");
-            UiIsle(() => { _calisan = null; DugmeDurumu(); });
+            UiIsle(() => { _sureSaati.Stop(); _calisan = null; DugmeDurumu(); });
             return;
         }
 
         Yaz($"Bitti: {ozet.Biten} basarili, {ozet.Hatali} hatali, {ozet.Atlanan} atlandi." +
             (ozet.Durduruldu ? " (kullanici durdurdu)" : string.Empty));
 
+        var gecen = SureBicimi.Kisa(TimeSpan.FromTicks(
+            Math.Max(0, DateTime.UtcNow.Ticks - Volatile.Read(ref _kosuBaslangici))));
+
         UiIsle(() =>
         {
+            // Once zamanlayici duruyor: yoksa asagidaki ozet satiri bir sonraki
+            // tikta canli ilerleme metniyle eziliyordu.
+            _sureSaati.Stop();
+            Volatile.Write(ref _adimBaslangici, 0);
+            _adimMetni = string.Empty;
+
             _ilerleme.Value = ozet.Hatali == 0 && !ozet.Durduruldu ? 100 : _ilerleme.Value;
             _ilerlemeMetni.Text = $"{ozet.Biten}/{isler.Count} banka bitti · " +
-                                  $"{ozet.Hatali} hata · {ozet.Atlanan} atlandi";
+                                  $"{ozet.Hatali} hata · {ozet.Atlanan} atlandi · " +
+                                  $"toplam {gecen}";
             _calisan = null;
             DugmeDurumu();
         });
@@ -1172,7 +1241,43 @@ public sealed class CalistirPaneli : UserControl
         _asagi.Enabled = !calisiyor;
 
         if (calisiyor && _denetim.Hal == CalismaHali.Duraklatildi)
-            _ilerlemeMetni.Text = "DURAKLATILDI - DEVAM'a basin.";
+        {
+            // Ozel durum uzerinden: dogrudan yazilan metin, sayacin bir sonraki
+            // tikinda kaybolurdu.
+            if (_ozelDurum.Length == 0) _ozelDurum = "DURAKLATILDI - DEVAM'a basin.";
+            IlerlemeyiTazele();
+        }
+    }
+
+    /// <summary>
+    /// Ilerleme satirini tazeler: hangi adim, o adim ne kadar surdu, kuyruk ne
+    /// kadardir calisiyor.
+    ///
+    /// <b>Neden zamanlayiciyla:</b> canli sayac icin ekranin adim ICINDE de
+    /// tazelenmesi gerekiyor. Uzun bir <c>AltPencereDogrula</c> boyunca satir
+    /// kipirdamayinca robotun asili kalip kalmadigi anlasilmiyordu.
+    /// </summary>
+    private void IlerlemeyiTazele()
+    {
+        var kosuBasi = Volatile.Read(ref _kosuBaslangici);
+        var toplamSure = kosuBasi == 0
+            ? TimeSpan.Zero
+            : TimeSpan.FromTicks(Math.Max(0, DateTime.UtcNow.Ticks - kosuBasi));
+
+        if (_ozelDurum.Length > 0)
+        {
+            _ilerlemeMetni.Text = $"{_ozelDurum} · toplam {SureBicimi.Kisa(toplamSure)}";
+            return;
+        }
+
+        var adimBasi = Volatile.Read(ref _adimBaslangici);
+        var adimSuresi = adimBasi == 0
+            ? TimeSpan.Zero
+            : TimeSpan.FromTicks(Math.Max(0, DateTime.UtcNow.Ticks - adimBasi));
+
+        _ilerlemeMetni.Text = IlerlemeMetni.Yaz(_bitenBanka, Math.Max(1, _toplamBanka),
+                                                adimBasi == 0 ? null : _adimMetni,
+                                                adimSuresi, toplamSure);
     }
 
     private void DurumlariSifirla()
@@ -1182,6 +1287,12 @@ public sealed class CalistirPaneli : UserControl
 
         _ilerleme.Value = 0;
         _ilerlemeMetni.Text = string.Empty;
+
+        _sureSaati.Stop();
+        _adimMetni = string.Empty;
+        _ozelDurum = string.Empty;
+        Volatile.Write(ref _adimBaslangici, 0);
+        Volatile.Write(ref _kosuBaslangici, 0);
     }
 
     private void SatirDurumu(BankaIsi isim, IsDurumu durum, string? mesaj)
@@ -1227,6 +1338,21 @@ public sealed class CalistirPaneli : UserControl
     }
 
     /// <summary>Arka plan ipliginden ekrana dokunmanin tek yolu.</summary>
+    /// <summary>
+    /// Sayac zamanlayicisi <see cref="Control.Controls"/> icinde degil; pencere
+    /// kapanirken kendiliginden durmaz ve kapali bir kontrole tik gonderirdi.
+    /// </summary>
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _sureSaati.Stop();
+            _sureSaati.Dispose();
+        }
+
+        base.Dispose(disposing);
+    }
+
     private void UiIsle(Action is_)
     {
         if (IsDisposed || !IsHandleCreated) return;

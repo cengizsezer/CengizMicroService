@@ -13,6 +13,7 @@ public class AdimLogger : IDisposable
     private readonly string _klasor;
     private readonly StreamWriter _log;
     private int _adimNo;
+    private string? _sonAdimSatiri;
     private readonly bool _ekranGoruntusuAktif;
 
     public string Klasor => _klasor;
@@ -40,7 +41,28 @@ public class AdimLogger : IDisposable
     public void Adim(string tip, string detay)
     {
         _adimNo++;
-        Yaz("ADIM ", $"[{_adimNo:D2}] {tip} -> {detay}");
+        _sonAdimSatiri = $"[{_adimNo:D2}] {tip} -> {detay}";
+        Yaz("ADIM ", _sonAdimSatiri);
+    }
+
+    /// <summary>
+    /// Biten adimin SURESINI, adim satirinin aynisini tekrarlayarak yazar:
+    /// <c>[ADIM ] [12] BeklePencere -> Hesap Plani (3.2 sn)</c>
+    ///
+    /// <b>Neden satir tekrarlaniyor:</b> uzun bir adimin basi ile sonu arasinda
+    /// onlarca [TUS-TESHIS] satiri olabiliyor; yalnizca "(3.2 sn)" yazmak, hangi
+    /// adimin suresi oldugunu bulmak icin yukari kaydirmayi gerektirirdi.
+    ///
+    /// <b>Adim numarasi artmiyor:</b> bu ikinci bir adim degil, ayni adimin
+    /// kapanis satiri. Adim hic loglanmadiysa (bilinmeyen tip) sessizce
+    /// geciliyor -- eksik bir sure satiri icin gorev durmamali.
+    /// </summary>
+    public void AdimBitti(TimeSpan sure)
+    {
+        if (_sonAdimSatiri is null) return;
+
+        Yaz("ADIM ", $"{_sonAdimSatiri} ({SureBicimi.Kisa(sure)})");
+        _sonAdimSatiri = null;
     }
 
     private void Yaz(string seviye, string mesaj)

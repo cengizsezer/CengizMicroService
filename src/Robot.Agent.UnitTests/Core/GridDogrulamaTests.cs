@@ -116,7 +116,232 @@ public class GridDogrulamaTests
 
         Assert.Empty(sonuc.Farklar);
         Assert.False(sonuc.TamamTutuyor);
-        Assert.Contains("FAZLA satir okundu", string.Join("\n", GridDogrulama.Satirlar(sonuc)));
+        Assert.Equal(1, sonuc.EslesmeyenOkunan);
+
+        var metin = string.Join("\n", GridDogrulama.Satirlar(sonuc));
+        Assert.Contains("eslesmedi", metin);
+        Assert.Contains("FAZLA satir", metin);
+    }
+
+    // ---- kaydirma: aciklamaya gore eslestirme -------------------------------
+
+    /// <summary>
+    /// 08.09.2026 kosusunun aynisi: GridDoldur bittiginde grid ASAGI kaydirilmis
+    /// kaliyor, goruntudeki ilk satir listenin ilk satiri degil. Sira bazli
+    /// karsilastirma "0/48 eslesti, 27 satir tutmuyor" diyordu -- oysa okunan
+    /// kodlarin HEPSI dogruydu.
+    /// </summary>
+    [Fact]
+    public void Kaydirilmis_grid_aciklamaya_gore_dogru_eslesiyor()
+    {
+        var beklenen = new[]
+        {
+            new GridSatiri(1, "POS HESABINA VIRMAN",   "102 1 1 04"),
+            new GridSatiri(2, "KOMISYON KESINTISI",    "770 01"),
+            new GridSatiri(3, "EFT GIDEN HAVALE",      "320 A01"),
+            new GridSatiri(4, "MASRAF KESINTISI",      "770 02"),
+            new GridSatiri(5, "KREDI KARTI TAHSILATI", "360 02 002")
+        };
+
+        // Ekranda gorunen ilk satir 5. satir; 1-4 yukarida kalmis.
+        var okunan = new[]
+        {
+            new OkunanGridSatiri(1, "KREDI KARTI TAHSILATI", "360 02 002"),
+            new OkunanGridSatiri(2, "POS HESABINA VIRMAN",   "102 1 1 04")
+        };
+
+        var sonuc = GridDogrulama.Karsilastir(beklenen, okunan, kesildi: true);
+
+        Assert.Equal(EslestirmeYolu.Aciklama, sonuc.Yol);
+        Assert.Empty(sonuc.Farklar);
+        Assert.Equal(2, sonuc.Eslesen);
+        Assert.Equal(0, sonuc.EslesmeyenOkunan);
+        Assert.Equal(3, sonuc.Karsilastirilmayan);
+
+        // Sahte uyari YOK: tutmayan satir olmadigi soyleniyor, eksik kalanlar
+        // ayri satirda "DOGRULANMADI" olarak.
+        var metin = string.Join("\n", GridDogrulama.Satirlar(sonuc));
+        Assert.DoesNotContain("DOGRULAMA UYARISI", metin);
+        Assert.Contains("tutmayan satir yok", metin);
+        Assert.Contains("3 satir goruntude yoktu", metin);
+    }
+
+    [Fact]
+    public void Kaydirilmis_gridde_GERCEK_hata_yine_yakalaniyor()
+    {
+        // Kaymayi tolere etmek, yanlis kodu tolere etmek DEGIL.
+        var beklenen = new[]
+        {
+            new GridSatiri(1, "POS HESABINA VIRMAN", "102 1 1 04"),
+            new GridSatiri(2, "KOMISYON KESINTISI",  "770 01"),
+            new GridSatiri(3, "EFT GIDEN HAVALE",    "320 A01")
+        };
+
+        var okunan = new[]
+        {
+            new OkunanGridSatiri(1, "EFT GIDEN HAVALE",    "320 A01"),
+            new OkunanGridSatiri(2, "POS HESABINA VIRMAN", "102 1 1 09")   // yanlis
+        };
+
+        var sonuc = GridDogrulama.Karsilastir(beklenen, okunan);
+
+        var fark = Assert.Single(sonuc.Farklar);
+        Assert.Equal(1, fark.SiraNo);                 // EKSTREDEKI sira, ekrandaki degil
+        Assert.Equal("102 1 1 04", fark.Beklenen);
+        Assert.Equal("102 1 1 09", fark.Okunan);
+        Assert.Contains("DOGRULAMA UYARISI", string.Join("\n", GridDogrulama.Satirlar(sonuc)));
+    }
+
+    [Fact]
+    public void Ayni_aciklamali_satirlar_ekrandaki_siraya_gore_paylastiriliyor()
+    {
+        // Ekstrelerde ayni aciklama tekrar edebiliyor. Aciklama ayirt etmiyorsa
+        // davranis eski sira bazli eslestirmenin aynisi olmali.
+        var beklenen = new[]
+        {
+            new GridSatiri(1, "HAVALE", "320 A01"),
+            new GridSatiri(2, "HAVALE", "320 A02"),
+            new GridSatiri(3, "HAVALE", "320 A03")
+        };
+
+        var okunan = new[]
+        {
+            new OkunanGridSatiri(1, "HAVALE", "320 A01"),
+            new OkunanGridSatiri(2, "HAVALE", "320 A02"),
+            new OkunanGridSatiri(3, "HAVALE", "320 A03")
+        };
+
+        Assert.True(GridDogrulama.Karsilastir(beklenen, okunan).TamamTutuyor);
+    }
+
+    [Fact]
+    public void Ekranda_kesilmis_aciklama_on_ekle_eslesiyor()
+    {
+        // Aciklama kolonu dar; uzun metin ekranda kesiliyor.
+        var beklenen = new[] { new GridSatiri(1, "KREDI KARTI TAHSILATI 15/08", "360 02 002") };
+        var okunan = new[] { new OkunanGridSatiri(1, "KREDI KARTI TAH", "360 02 002") };
+
+        Assert.True(GridDogrulama.Karsilastir(beklenen, okunan).TamamTutuyor);
+    }
+
+    [Fact]
+    public void Belirsiz_on_ek_eslestirilmiyor()
+    {
+        // Iki aday varsa hangisi oldugu BILINMIYOR demektir; yanlis satiri
+        // "dogrulanmis" saymaktansa dogrulamamak yeglenir.
+        var beklenen = new[]
+        {
+            new GridSatiri(1, "KREDI KARTI TAHSILATI 15/08", "360 02 002"),
+            new GridSatiri(2, "KREDI KARTI TAHSILATI 16/08", "360 02 003")
+        };
+
+        var okunan = new[] { new OkunanGridSatiri(1, "KREDI KARTI TAH", "360 02 002") };
+
+        var sonuc = GridDogrulama.Karsilastir(beklenen, okunan);
+
+        Assert.Equal(0, sonuc.Eslesen);
+        Assert.Empty(sonuc.Farklar);
+        Assert.Equal(1, sonuc.EslesmeyenOkunan);
+    }
+
+    [Fact]
+    public void Bosluk_noktalama_ve_Turkce_harf_farki_eslesmeyi_bozmuyor()
+    {
+        // Aciklama bir ESLESTIRME ANAHTARI, dogrulanan deger degil: burada
+        // tolerans dogru karar. Kodda tolerans YOK.
+        var beklenen = new[] { new GridSatiri(1, "Ödeme - İstanbul Şubesi", "320 A01") };
+        var okunan = new[] { new OkunanGridSatiri(1, "ODEME  ISTANBUL SUBESI", "320 A01") };
+
+        Assert.True(GridDogrulama.Karsilastir(beklenen, okunan).TamamTutuyor);
+    }
+
+    [Fact]
+    public void Sayilar_tutsa_bile_satirlar_eslesmiyorsa_TamamTutuyor_degil()
+    {
+        // Tuzak: okunan 1 = beklenen 1 ve fark listesi bos, ama satirlar
+        // BIRBIRINI tutmuyor. Yalniz sayilara bakan bir kontrol bunu "tamam"
+        // gosterirdi.
+        var beklenen = new[] { new GridSatiri(1, "POS HESABINA VIRMAN", "102 1 1 04") };
+        var okunan = new[] { new OkunanGridSatiri(1, "BILINMEYEN SATIR", "999 99") };
+
+        var sonuc = GridDogrulama.Karsilastir(beklenen, okunan);
+
+        Assert.Equal(1, sonuc.Beklenen);
+        Assert.Equal(1, sonuc.Okunan);
+        Assert.Empty(sonuc.Farklar);
+        Assert.False(sonuc.TamamTutuyor);
+        Assert.Equal(1, sonuc.EslesmeyenOkunan);
+        Assert.Equal(1, sonuc.Karsilastirilmayan);
+    }
+
+    // ---- yedek yol: aciklama okunamadiginda ---------------------------------
+
+    [Fact]
+    public void Aciklama_okunamazsa_siraya_dusuluyor_ve_bu_SOYLENIYOR()
+    {
+        // Model aciklama kolonunu hic okuyamamis. Sessizce siraya dusmek,
+        // dogrulamanin en pahali kirilma sekli olurdu: grid kaydirilmissa bu
+        // olcut her satiri "tutmuyor" gosterir.
+        var beklenen = new[]
+        {
+            new GridSatiri(1, "POS HESABINA VIRMAN", "102 1 1 04"),
+            new GridSatiri(2, "KOMISYON KESINTISI",  "770 01")
+        };
+
+        var okunan = new[]
+        {
+            new OkunanGridSatiri(1, "", "102 1 1 04"),
+            new OkunanGridSatiri(2, "", "770 01")
+        };
+
+        var sonuc = GridDogrulama.Karsilastir(beklenen, okunan);
+
+        Assert.Equal(EslestirmeYolu.Sira, sonuc.Yol);
+        Assert.True(sonuc.TamamTutuyor);
+    }
+
+    [Fact]
+    public void Sira_yedegine_dusuldugu_raporda_yaziyor()
+    {
+        var beklenen = new[] { new GridSatiri(1, "POS HESABINA VIRMAN", "102 1 1 04") };
+        var okunan = new[] { new OkunanGridSatiri(1, "", "102 1 1 09") };
+
+        var metin = string.Join("\n", GridDogrulama.Satirlar(GridDogrulama.Karsilastir(beklenen, okunan)));
+
+        Assert.Contains("EKRANDAKI SIRAYA gore", metin);
+        Assert.Contains("kaydirilmis", metin);
+    }
+
+    [Fact]
+    public void Aciklamalarin_biri_okunduysa_yedege_dusulmuyor()
+    {
+        // Tek bir satirin aciklamasi okunamadi diye butun olcutu degistirmek,
+        // kaydirma korumasini bir OCR hatasiyla kaybetmek olurdu.
+        var beklenen = new[]
+        {
+            new GridSatiri(1, "POS HESABINA VIRMAN", "102 1 1 04"),
+            new GridSatiri(2, "KOMISYON KESINTISI",  "770 01")
+        };
+
+        var okunan = new[]
+        {
+            new OkunanGridSatiri(1, "KOMISYON KESINTISI", "770 01"),
+            new OkunanGridSatiri(2, "", "102 1 1 04")
+        };
+
+        var sonuc = GridDogrulama.Karsilastir(beklenen, okunan);
+
+        Assert.Equal(EslestirmeYolu.Aciklama, sonuc.Yol);
+        Assert.Equal(1, sonuc.Eslesen);
+        Assert.Equal(1, sonuc.EslesmeyenOkunan);
+    }
+
+    [Fact]
+    public void Aciklama_anahtari_bos_metinleri_ayni_saymiyor()
+    {
+        Assert.Equal(string.Empty, GridDogrulama.AciklamaAnahtari(null));
+        Assert.Equal(string.Empty, GridDogrulama.AciklamaAnahtari("   -  "));
+        Assert.Equal("ODEMEISTANBUL", GridDogrulama.AciklamaAnahtari("Ödeme İstanbul"));
     }
 
     [Fact]

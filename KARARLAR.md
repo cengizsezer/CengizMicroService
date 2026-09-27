@@ -3524,3 +3524,297 @@ firma **kodu** var. Şifreler robot makinesinde, DPAPI/CurrentUser ile şifreli 
 dosyayı başka makineye ya da başka bir Windows kullanıcısına kopyalayan çözemez — ajan
 anahtarıyla aynı kalıp (§124). Liste `ayarlar.json`'da (düz metin, yedeklenebilir), şifreler
 `sifreler.dat`'ta; ikisi aynı firma koduyla eşleniyor.
+
+
+## 151. Zamanlama tek yerden çözülüyor; ilerleme "hangi adım, ne kadar" diyor
+
+**Karar:** Çalıştır sekmesindeki zamanlama değerleri ve hız çarpanı **ajan yolunda da**
+geçerli. Öncelik: **`ayarlar.json` > `appsettings.json`**. Çözüm tek yerde —
+`ZamanlamaCozumu` — ve her çalıştırmanın başında hangi değerlerle koşulduğu tek satır
+olarak log'a yazılıyor.
+
+**Neden:** Form değerleri yalnızca `GorevKosucusu`'nda (elle çalıştırma) devredeydi.
+`FlaUiOrkaSurucusu` (ajan yolu) `Hizlandirici`'yi hiç kullanmıyor, doğrudan
+`appsettings.json > Zamanlama` ile koşuyordu. Sunucudan gelen işte formdaki ayarların
+yansımaması için bir sebep yok; üstelik bu **hiçbir yerde görünmüyordu** — "yavaşlattım,
+değişmedi" gözlemi ekranda doğrulanamıyordu. Ayar dosyası **yoksa** appsettings aynen
+geçerli: boş bir ayar nesnesinin varsayılanları appsettings'i sessizce ezmesin diye
+dosyanın varlığına bakılıyor. Değerler **her işte yeniden** okunuyor; ajan günlerce açık
+kalıyor ve arada formdan değiştirilen değer bir sonraki işte görülmeli (firma şifrelerinin
+her işte yeniden okunmasıyla aynı gerekçe, §150).
+
+**İlerleme artık adımı ve süresini gösteriyor.** Formda "2/4 banka bitti · adım 12/38"
+vardı; 45 saniye duran bir `AltPencereDogrula` ile 4 saniyelik bir `Bekle` ekranda birebir
+aynı görünüyordu ve hangi beklemenin kısaltılacağı bilinemiyordu. Satır artık çalışan
+adımın adını/tipini, o adımın **canlı** süresini ve koşunun toplam süresini taşıyor.
+Sayacı çalışan iplik değil bir zamanlayıcı çiziyor: adım başına tek `Invoke`, uzun bir adım
+boyunca hiç tazeleme demekti ve satır kıpırdamayınca robotun asılı kalıp kalmadığı
+anlaşılmıyordu. Etiket **maskeleniyor** — ilerleme satırı ekranda duruyor ve ekran
+görüntüsü alınıyor, şifre oraya düşmemeli.
+
+**Log'da her adımın süresi, görev sonunda en yavaş 5 adım.** Süre satırı adım satırının
+aynısını tekrarlıyor (`[ADIM ] [12] BeklePencere -> Hesap Plani (3.2 sn)`): uzun bir adımın
+başı ile sonu arasında onlarca `[TUS-TESHIS]` satırı olabiliyor ve yalnız "(3.2 sn)" yazmak
+yukarı kaydırmayı gerektirirdi. Özet hata durumunda da yazılıyor — yarım kalan koşunun
+hangi adımda zaman yediği, başarılı koşununki kadar iş görüyor.
+
+**Grid'in tuşlar arası beklemesi ayrı ayar oldu (`Grid.GridTusBeklemeMs`, varsayılan 80).**
+Ortak `Zamanlama.TusBeklemeMs` modül gezinmesi için seçilmiş bir değer; grid'de ise satır
+başına **5 tuş** düşüyor ve 43 satırlık bir ekstrede 215 bekleme ediyor — 150 ms'te (çarpanla
+225 ms) yalnızca bekleme 48 saniye. Ortak değer, modül gezinmesini de kısaltmadan grid'i
+hızlandırmayı imkânsız kılıyordu. Grid'de beklenecek bir pencere/modül yok, o yüzden
+varsayılan da daha kısa. **Hız çarpanı buna da uygulanıyor** (§147'nin `TusBeklemeMs`
+kararının aynı gerekçesi): "yavaş gün" düğmesi görevin en çok tuş gönderen adımını dışarıda
+bırakmamalı.
+
+**Yan düzeltme:** `RobotConfig.CalismaKopyasi` `Grid`'i hiç kopyalamıyordu — kopya
+varsayılanlarla (12/7) geliyor ve `appsettings.json`'da değiştirilen kolon sayıları Çalıştır
+sekmesinde sessizce yok sayılıyordu. Varsayılanlar appsettings'teki değerlerle aynı olduğu
+için görünmüyordu.
+
+
+## 152. Aktarımın tek kopyası kaldı: ajan da kuyruğun görev dosyalarını koşuyor
+
+**Karar:** `gorevler/orkaya-aktar.json` **silindi**. Ajan artık
+`gorevler/ajan-aktar.json` koşuyor ve o dosyanın kendi adımı yok — yalnız iki
+`AltGorev` referansı: `acilis.json` (= 01 + 02) ve `tek-dosya-aktar.json`.
+Aktarım adımları tek yerde (`tek-dosya-aktar.json`), giriş adımları tek yerde
+(01/02); ajan yolu ile Çalıştır sekmesi **aynı dosyaları** koşuyor.
+
+**Neden:** aynı aktarım iki dosyada duruyordu ve birinde düzeltilen diğerinde
+eksik kalıyordu. Ölçülen ayrışma (08.09.2026):
+
+- **Modül gezinmesi:** `orkaya-aktar.json` SAĞ×3 + AŞAĞI×1 + **ENTER×1**
+  gönderiyordu; `02-modul-ve-sekme.json` **ENTER×2** gönderiyor (önce
+  TRANSFERLER açılıyor, sonra Veri Transferi tile'ı). Ajan bir ENTER eksik
+  gönderiyordu.
+- **Ekran guard'ı:** ajan tarafında `TdxRibbon|TcxDBTreeList` (VEYA). `TdxRibbon`
+  TRANSFERLER açılır açılmaz geldiği için guard, **Veri Transferi hiç
+  açılmamışken de tutuyordu** — yani eksik ENTER'ı yakalamıyor, sonraki
+  `Tikla` adımı yanlış ekrana gidiyordu. 02'de iki ayrı doğrulama var:
+  önce `TdxRibbon`, sonra Veri Transferi'ne özel `TcxDBTreeList`.
+- **Başlık doğrulaması:** ajan tarafında hâlâ sabit `ORKA_`; 01 içinde bu
+  `ORKA_{firmaKodu}_` olarak düzeltilmişti (§ sabit `ORKA_0001` hatası).
+- 01'deki giriş ekranı oturma payı (1500 ms) ve `AdetDegisken` desteği
+  (`modulSag`/`modulAsagi`) ajan tarafında hiç yoktu.
+
+Gövde (sol panel → şablon → Transfere Başla → Excel → Hesap Planı → bitiş
+popup'ı → grid) neredeyse birebir aynıydı; onu bir test zorla eşit tutuyordu
+(`Koordinatlar_orkaya_aktar_ile_ayni`). Yani bakım yükü **koda da** yazılmıştı.
+
+**Neden sarmalayıcı dosya, "iki görevi peş peşe koşan" kod değil:** `Gorev.Yukle`
+`AltGorev` adımlarını **yükleme anında** açıyor (§ `acilis.json` kararı), motor
+düz TEK liste görüyor. Böylece tek `AdimLogger` klasörü, tek ilerleme sayacı ve
+tek hata ekranı kalıyor — iki ayrı `CalistirAsync` olsaydı
+`HataEkraniniYukleAsync` hangi klasöre bakacağını bilemezdi. Kalibrasyon keşfi
+ham JSON'u dosya dosya okuduğu ve `AltGorev` açmadığı için sarmalayıcı,
+Kalibrasyon sekmesine **hiç satır eklemiyor**: ölçülecek noktalar hâlâ yalnız
+`tek-dosya-aktar.json#0..4`.
+
+### `OnayBekle` gözetimsiz koşuda ATLANIYOR — §146'nın düzeltmesi
+
+§146'da "konsol modları alanı yok sayar, adım beklemeden çalışır" yazıyordu. Ajan
+yolu birleşmeden önce bu adımı hiç içermiyordu; artık içeriyor ve **yok saymak
+yanlış cevap**: sekme kapatma tıklaması, kullanıcı KAYDET'e basmadan ve **ofiste
+henüz ölçülmemiş** (0.95, 0.06) placeholder koordinatına yapılırdı.
+
+`AdimMotoru` yeni bir `gozetimsiz` bayrağı alıyor (`FlaUiOrkaSurucusu` `true`
+veriyor). Bayrak açıkken `OnayBekle` taşıyan adım **çalıştırılmıyor, atlanıyor**
+ve log'a *"kullanıcı onayı gerekiyor, gözetimsiz çalışmada atlandı"* düşüyor.
+Karar `AdimMotoru.GozetimsizAtlamaNotu` içinde, statik ve sınanabilir —
+`GorevKosucusu.OnayGerekiyorsaDuraklat` ile aynı kalıp (motorun kendisi UI
+Automation'a bağlı, ev makinesinde ayağa kalkmıyor).
+
+**Neden atlanıyor, durdurulmuyor:** aktarım bu adımdan önce bitmiş oluyor — grid
+dolu, ekran kullanıcının kontrol edeceği halde. Hata saymak bitmiş bir işi
+başarısız göstermek olurdu. Atlamanın bedeli yalnız ORKA'da açık kalan bir sekme.
+Konsol (`--gorev`) elle ve başında biriyle çalıştırıldığı için gözetimli sayılıyor,
+adım orada çalışmaya devam ediyor.
+
+### İlerleme yüzdeleri açılışa da bölüştürüldü
+
+01 ve 02'de hiç `Yuzde` yoktu; birleşmiş akışta sunucu, ORKA açılıp firmaya
+girilene kadar **%2'de takılı** görünüyordu ve uzun bir açılış "ajan takıldı" gibi
+okunuyordu. Bölüşme: **01 → %3-7, 02 → %8-9, `tek-dosya-aktar.json` %10'dan
+devam**. Arayüz `Yuzde`'yi kullanmıyor (adım sayacı gösteriyor), o yüzden elle
+çalıştırma etkilenmedi. Yüzde taşıyan adımların `Not` alanı sunucuya **mesaj
+olarak** gidiyor; bu yüzden o adımlara kısa ve okunur notlar yazıldı.
+
+### Kalibrasyon anahtarları taşındı, silinmedi
+
+Ölçümler görev dosyasında değil `%AppData%\PkfRobot\ayarlar.json` içinde ve
+anahtar "dosya adı + kaçıncı `Tikla`" (`orkaya-aktar.json#0`). Dosya silinince o
+kayıtlar yetim kalır ve `KalibrasyonUygulama` her açılışta "AdimYok" satırı
+üretirdi. `KalibrasyonGocu` bir kez çalışıp `orkaya-aktar.json#N` →
+`tek-dosya-aktar.json#N` taşıyor (ilk dört `Tikla` adımı aynı sırada ve aynı
+oranlardaydı, birebir karşılık geliyor). Yeni anahtarda ölçüm **zaten varsa** eski
+kayıt siliniyor — yeni dosyanın kendi ölçümü daha günceldir. Göç `ArayuzBaglami`
+kurulurken çalışıyor ve bir şey taşındıysa ayarlar **hemen** diske yazılıyor:
+yalnız bellekte kalsaydı kullanıcı ayarları kaydetmeden kapattığında uyarı her
+açılışta yeniden çıkardı.
+
+### Çözülmeyen: ajan her işte açılışı baştan koşuyor
+
+`ajan-aktar.json` her iş için `acilis.json`'u da koşuyor. `OrkaBaslat` idempotent
+(ORKA açıksa yeniden başlatmıyor) ama **giriş tuşları değil**: ORKA açık ve firma
+seçiliyken ikinci bir iş gelirse `{sifre}` yazan adım bilinmeyen bir ekrana tuş
+gönderir. Bu **birleşmeden önce de böyleydi** (`orkaya-aktar.json` da her işte
+`OrkaBaslat` + giriş zinciri koşuyordu), yani regresyon değil — ama birleşme bunu
+çözmüyor ve "artık ajan da kuyruk gibi çalışıyor" sanılmamalı: kuyruk açılışı bir
+kez koşuyor, ajan her işte.
+
+Gerçek çözüm ayrı bir iş ve iki adayı var: (a) koşullu adım tipi — "ekranda şu
+kontrol sınıfı varsa bu adımı atla", (b) ajanın `IOrkaDurumu.CalisiyorMu()`
+sonucuna göre sarmalayıcı seçmesi. (b) tek başına yetmiyor: ORKA açık olabilir ama
+**hangi ekranda** olduğu bilinmiyor; doğrusu (a) ve `AltPencereDogrula`'nın
+zaten ölçtüğü kontrol sınıflarına bakması.
+
+**Ofiste doğrulanacak:** ajan artık 02'nin çift ENTER'ini, `TcxDBTreeList`
+guard'ını ve `ORKA_{firmaKodu}_` doğrulamasını kullanıyor. Hepsi düzeltme, ama
+ajan yolu bu haliyle hiç koşmadı — bir kez uçtan uca koşulmalı.
+
+
+## 153. ORKA'nın kutuları CTRL'süz temizleniyor — yanlış firmaya girmenin kök sebebi
+
+**Olay (08.09.2026 koşusu):** robot `0001` yerine **1187** firmasına girdi
+(`ORKA_1187_2026` — "Pkf Risk Yönetimi…") ve aktarımın geri kalanını orada yaptı.
+
+**Kök sebep:** F7 firma arama kutusu bir **otomatik tamamlama** alanı ve içinde
+önceki değer duruyor. `TemizleYaz` onu **CTRL+A** ile seçmeye çalışıyordu; ama
+**ORKA'da CTRL kombinasyonları çalışmıyor** — ALT için aynısı §144'te ölçülmüştü.
+Seçim oluşmayınca yeni kod eskisinin *üzerine* değil *yanına* yazılıyor, otomatik
+tamamlama başka bir firma buluyor ve robot orada çalışmaya devam ediyor.
+
+**Hata neden sessiz:** sonraki adımların hepsi "bir firma açıldı" diyor. Ekran
+görüntüleri de dolu geliyor; yalnızca başlıktaki kodu okuyan biri farkeder.
+
+**Karar:** `Adim.Temizleme` alanı eklendi — `"CtrlA"` (varsayılan) veya
+`"SecVeSil"`. `SecVeSil`, `Klavye.SecVeSilVeYaz` ile **END → SHIFT+HOME →
+DELETE → yaz** sırasını gönderiyor. Üçü de kombinasyonsuz; SHIFT bir *modifier*
+ve Delphi/VCL kutularında çalışıyor. END'in başta olması şart: imleç ortadaysa
+SHIFT+HOME yalnız solu seçer ve metnin sağı kutuda kalır.
+
+**Mevcut `TemizleVeYaz` değiştirilmedi.** `{dosyaYolu}` ve `{hesapKodu}` adımları
+Windows'un **dosya seçim diyaloğunda** ve orada CTRL+A çalışıyor; sınanmış yolu
+düzeltme uğruna bozmanın bedeli, düzeltilen hatanın kendisi kadar. Bu yüzden yol
+**adım bazında** seçiliyor: cevap ekrana göre değişiyor. Şu an yalnız
+`01-orka-ac-firma-sec.json`'daki firma kodu adımı `SecVeSil` (dosya `acilis.json`
+ve `ajan-aktar.json` içinden de aynı tek kopya olarak koşuyor, §152).
+
+**Tanınmayan `Temizleme` değeri HATA veriyor**, sessizce varsayılana düşmüyor:
+bir yazım hatası (`"sec-ve-sil"`) tam da düzeltilen sessiz kırılmayı geri
+getirirdi. Yol adım çalışmadan **önce** çözülüyor — hatalı değerde kutuya hiçbir
+şey yazılmıyor.
+
+**`GridDoldur`a dokunulmadı.** Grid hücresinde END'in ne yaptığı **ölçülmedi**
+(hücre içi mi, satır sonu mu, kolon atlar mı); oraya yayılması ayrı bir karar ve
+ofiste ölçüm ister.
+
+**İkinci savunma zaten yerinde:** 01/02'deki `Dogrula` adımı `ORKA_{firmaKodu}_`
+arıyor (§152'de sabit `ORKA_`'dan buna geçilmişti). Yani temizleme yine tutmazsa
+görev **yanlış firmada durur**, sessizce devam etmez. Bu koşuda hatanın fark
+edilmesinin sebebi de buydu.
+
+**Sınanan:** tuş sırası (END/SHIFT+HOME/DELETE/yaz), `SecVeSil` yolunda hiç
+CTRL/ALT gönderilmediği, dağıtıcının doğru yolu seçtiği, mevcut `TemizleVeYaz`
+davranışının bit bit aynı kaldığı, `Temizleme` alanının çözümü (boş → CtrlA,
+büyük/küçük harf duyarsız `SecVeSil`, tanınmayan değer → hata) ve görev
+dosyalarındaki sınır: firma kodu `SecVeSil`, dosya yolu/hesap kodu `CtrlA`,
+`GridDoldur` alansız.
+
+**Ofiste bakılacak:** Hesap Planı arama kutusu da ORKA'nın kendi penceresi ve
+`{hesapKodu}` adımı hâlâ CTRL+A kullanıyor. Bugüne kadar sorun çıkarmadı ("yoksa
+102102… olur" notu o adımın çalıştığını gösteriyor) ama aynı sınıf bir sessiz
+kırılmaya açık; bir koşuda `hesap-arandi.png` görüntüsüne bakıp kutuda tek kod mu
+duruyor doğrulanmalı.
+
+
+## 154. Kapatma durdurmadan öncelikli; grid doğrulaması sıraya değil açıklamaya bakıyor
+
+İki ayrı kırılma, ikisi de 08.09.2026 koşusundan.
+
+### "Uyari Tanimlamalari" penceresi robotu durduruyordu
+
+ORKA firma açılırken bazen bu pencere çıkıyor ve aktarım yarıda kalıyordu.
+Sebep tam da şüphelenilen şeydi: başlığı `BeklenmeyenPencereler`'deki genel
+**"Uyari"** kaydına uyuyor, yani robot **duruyordu**.
+
+Kritik ayrıntı **sıra**: otomatik kapatma her adımdan **ÖNCE** bakıyor,
+beklenmeyen pencere kontrolü adımdan **SONRA**. Pencere adımın ortasında
+açıldığında önce durdurma kontrolü çalışıyor ve robot, kapatma kuralı dururken
+duruyordu — kural **hiç denenmeden**. Yani listeye eklemek tek başına yetmezdi.
+
+**Karar:** `SurprizPencereKontrol` durmadan önce `OtomatikKapatilacakPencereler`
+içinde eşleşen bir kural arıyor; varsa pencereyi kapatmayı deniyor ve pencere
+gerçekten kalktıysa göreve **devam ediyor**. Kalkmadıysa eski davranış: ekran
+görüntüsü + durdurma. Karar `AdimMotoru.KapatmaKurali` içinde — statik ve
+sınanabilir; kapatmanın ekranda ne yaptığı sınanamaz, önceliğin kendisi sınanır.
+
+**Örtüşme artık ayar hatası değil.** `CakisanPencereBasliklari` eskiden "AYAR
+ÇELİŞKİSİ" diye uyarıyordu; şimdi *tanımlı öncelik* olarak bilgi satırı. Örtüşme
+burada kaçınılmaz: "Uyari" kaydını daraltmak ORKA'nın gerçek hata pencerelerini
+kaçırmak olurdu. `"Uyari Tanimlamalari"` kuralı `"Kapat"` düğmesiyle eklendi;
+düğme ofiste doğrulanmadı, bulunamazsa mevcut ESC yedeği devrede (pencere ön
+plana gelmediyse ESC gönderilmiyor — o koruma §143'ten duruyor).
+
+### Grid doğrulaması kaydırma yüzünden hizalanmıyordu
+
+Log: *"Grid okundu: 27 satır (tablo ekrana sığmamış)"*, *"0/48 satır eşleşti, 27
+satır tutmuyor"*. Oysa okunan kodların **hepsi doğruydu**; beklenen 1. satır
+(`102 1 1 04`) okunan listede 6., beklenen 5. satır (`360 02 002`) okunan listede
+1. sıradaydı. `GridDoldur` son satıra kadar AŞAĞI ok gönderdiği için iş bittiğinde
+grid **kaydırılmış** kalıyor ve görüntüdeki ilk satır listenin ilk satırı değil.
+
+Karşılaştırma `okunan[i] ~ beklenen[i]` idi. Sonuç: **27 sahte uyarı** — doğru
+yazılmış bir grid için "yanlış kod yazıldı" diyen bir rapor. Yanlış alarm
+uyarının kendisini değersizleştirir; bir sonraki *gerçek* kayma da aynı görünürdü.
+
+**Seçilen: açıklamaya göre eşleştirme.** Üç seçenek vardı:
+
+1. **Açıklama metnine göre eşleştir.** Veri iki tarafta da zaten var (`GridSatiri.Aciklama`
+   ve `OkunanGridSatiri.Aciklama`), model yönergesi açıklamayı zaten istiyordu.
+   **ORKA'ya hiç dokunmuyor.**
+2. **Grid'i başa döndürüp öyle görüntü al.** ORKA'da CTRL yok, yani UP okuna N kez
+   basmak ya da ilk satıra tıklamak gerekir — yani **grid dolduktan, kullanıcı
+   kaydetmeden önce** ORKA'ya ek tuş/tık göndermek. En riskli anda en riskli
+   müdahale ve hücrede UP'ın ne yaptığı ölçülmedi. Üstelik 48 satır yine tek
+   ekrana sığmaz: hizayı düzeltir, kapsamı düzeltmez.
+3. **Birden fazla görüntü (oku → sayfa aşağı → oku).** Tam kapsama verir ama (2)'nin
+   ORKA riskini taşır (kaydırma yine tuş demek), N kat maliyet/süre ekler ve
+   sayfalar arası tekrarları ayıklamak için yine bir eşleştirme anahtarı ister —
+   yani **(1)'in üstüne kurulur, alternatifi değil.**
+
+(1) uygulandı. (3) ileride istenirse artık ucuz: dedup anahtarı yerinde.
+
+**Kapsama açığı bilerek duruyor.** (1) hizayı düzeltiyor, "21 satır görüntüde
+yoktu"yu düzeltmiyor — o satırlar hâlâ **doğrulanmadı** olarak raporlanıyor ve
+doğrusu da bu: doğrulanmamış bir satırı "tamam" göstermek, doğrulamanın var oluş
+sebebini yok ederdi.
+
+**Ayrıntılar:**
+
+- **Eşleştirme:** her okunan satır, açıklaması tutan ilk **kullanılmamış** beklenen
+  satırla eşleşiyor. Aynı açıklama tekrar ediyorsa ("HAVALE") ekrandaki sıraya göre
+  paylaştırılıyor — yani açıklamalar ayırt etmediğinde davranış eski sıra bazlı
+  eşleştirmenin aynısına dönüyor ve daha iyisi yok.
+- **Açıklama anahtarı kodlardan daha serbest:** boşluk, noktalama ve Türkçe harf
+  farkları atılıyor (`Ödeme - İstanbul` = `ODEME ISTANBUL`). Açıklama bir
+  *eşleştirme anahtarı*, doğrulanan değer değil: yanlış eşleşmenin bedeli bir
+  satırın karşılaştırılmaması, fazla katılığın bedeli hiçbir satırın eşleşmemesi.
+  **Kod karşılaştırması bu toleransı almıyor** — orada rakam farkı gerçek hata.
+- **Kesilmiş açıklama** ön ek eşleşmesiyle yakalanıyor (grid'in açıklama kolonu
+  dar). Ön ek yalnız **tek aday** varsa kabul ediliyor: iki aday varsa hangisi
+  olduğu bilinmiyor demektir ve yanlış satırı "doğrulanmış" saymaktansa
+  doğrulamamak yeğlenir.
+- **Sıra hâlâ yedek:** açıklama iki tarafta da okunamazsa eski davranışa
+  düşülüyor ama rapor bunu **söylüyor** (`EslestirmeYolu`). Sessizce yanıltıcı bir
+  ölçüte düşmek, doğrulamanın en pahalı kırılma şekli olurdu.
+- **`TamamTutuyor` artık `EslesmeyenOkunan == 0` de istiyor.** Açıklamaya göre
+  eşleştirmede "okunan 5 = beklenen 5" olup satırların birbirini tutmaması mümkün
+  (bir okunan eşleşmez, bir beklenen açıkta kalır); yalnız sayılara bakmak o
+  durumu "tamam" gösterirdi.
+- **Rapor dili düzeltildi:** tutmayan satır yokken "DOĞRULAMA UYARISI … 0 satır
+  tutmuyor" yazılmıyor artık. Kaydırılmış grid'de normal durum bu ve o satır,
+  gerçek uyarılarla aynı görünüp onları değersizleştiriyordu.
+- **Model yönergesi:** açıklama artık taşıyıcı, dekoratif değil — "her satır için
+  mutlaka yaz, ekranda kesilmişse görüneni yaz, tamamlama" eklendi.

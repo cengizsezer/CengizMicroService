@@ -326,7 +326,7 @@ public class OrkayaAktarTests : IDisposable
     {
         // Kural pazarlik konusu degil: akis JSON'da durdugu icin bu test onu
         // dosyanin kendisi uzerinden sabitliyor.
-        var yol = Path.Combine(AppContext.BaseDirectory, "gorevler", "orkaya-aktar.json");
+        var yol = Path.Combine(AppContext.BaseDirectory, "gorevler", OrkayaAktarCalistirici.GorevDosyasi);
         Assert.True(File.Exists(yol), $"Gorev dosyasi publish ciktisinda yok: {yol}");
 
         var gorev = Gorev.Yukle(yol);
@@ -351,13 +351,36 @@ public class OrkayaAktarTests : IDisposable
     [Fact]
     public void Gorev_json_i_ilerleme_kilometre_taslarini_tasiyor()
     {
-        var gorev = Gorev.Yukle(Path.Combine(AppContext.BaseDirectory, "gorevler", "orkaya-aktar.json"));
+        var gorev = Gorev.Yukle(Path.Combine(AppContext.BaseDirectory, "gorevler", OrkayaAktarCalistirici.GorevDosyasi));
 
         var yuzdeler = gorev.Adimlar.Where(a => a.Yuzde is not null).Select(a => a.Yuzde!.Value).ToList();
 
         Assert.Equal(yuzdeler.OrderBy(y => y), yuzdeler);
-        Assert.Contains(5, yuzdeler);
         Assert.Contains(50, yuzdeler);
+    }
+
+    [Fact]
+    public void Giris_boyunca_da_ilerleme_bildiriliyor()
+    {
+        // Acilis ile govde ayri dosyalara bolununce giris adimlarinda hic Yuzde
+        // kalmamisti: sunucu, ORKA acilip firmaya girilene kadar %2'de takili
+        // goruyordu ve uzun bir acilis "ajan takildi" gibi okunuyordu.
+        // Bolusme: 01 -> %3-7, 02 -> %8-9, govde %10'dan devam ediyor.
+        var gorev = Gorev.Yukle(Path.Combine(AppContext.BaseDirectory, "gorevler", OrkayaAktarCalistirici.GorevDosyasi));
+
+        var girisYuzdeleri = gorev.Adimlar
+            .Where(a => a.Yuzde is > 0 and < 10)
+            .Select(a => a.Yuzde!.Value)
+            .ToList();
+
+        Assert.NotEmpty(girisYuzdeleri);
+
+        // Giris kilometre taslari GOVDEDEN once gelmeli; yoksa ilerleme geri sayar.
+        var ilkGovdeAdimi = gorev.Adimlar.FindIndex(a => a.Yuzde >= 10);
+        var sonGirisAdimi = gorev.Adimlar.FindLastIndex(a => a.Yuzde is > 0 and < 10);
+
+        Assert.True(sonGirisAdimi < ilkGovdeAdimi,
+                    "Giris yuzdeleri govde yuzdelerinden sonra geliyor.");
     }
 
     // ---- sahteler -----------------------------------------------------------

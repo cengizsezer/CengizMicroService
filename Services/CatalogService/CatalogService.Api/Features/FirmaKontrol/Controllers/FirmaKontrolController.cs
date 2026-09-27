@@ -1,6 +1,7 @@
 using CatalogService.Api.Features.FirmaKontrol.Dtos;
 using CatalogService.Api.Features.FirmaKontrol.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Runtime.CompilerServices;
 
 namespace CatalogService.Api.Features.FirmaKontrol.Controllers
 {
@@ -12,17 +13,23 @@ namespace CatalogService.Api.Features.FirmaKontrol.Controllers
         private readonly IFirmaKontrolMizanService _mizan;
         private readonly IFirmaKontrolVergiService _vergi;
         private readonly IMizanNotuService _mizanNotu;
+        private readonly IEtiketService _etiket;
+        private readonly ILogger<FirmaKontrolController> _log;
 
         public FirmaKontrolController(
             IFirmaKontrolMaddeService service,
             IFirmaKontrolMizanService mizan,
             IFirmaKontrolVergiService vergi,
-            IMizanNotuService mizanNotu)
+            IMizanNotuService mizanNotu,
+            IEtiketService etiket,
+            ILogger<FirmaKontrolController> log)
         {
             _service = service;
             _mizan = mizan;
             _vergi = vergi;
             _mizanNotu = mizanNotu;
+            _etiket = etiket;
+            _log = log;
         }
 
         // ── Durum satırları (şablon durumları + özel maddeler) ──────────────
@@ -142,6 +149,20 @@ namespace CatalogService.Api.Features.FirmaKontrol.Controllers
             CancellationToken ct)
         {
             var list = await _mizan.GetSatirlarAsync(firmaId, yil, ct);
+            return Ok(list);
+        }
+
+        // Kırılım ağacı ham satırların yanında saklanır; ayrı uç, çünkü /mizan yanıtının
+        // şekli (List<FirmaKontrolMizanSatirDto>) değişmemeli. Ağacı olmayan dönemler
+        // yanıtta yer almaz — eski yüklemelerde ağaç bulunmaması hata değildir.
+        [HttpGet("{firmaId:int}/mizan/agac")]
+        [ProducesResponseType(typeof(List<FirmaKontrolMizanAgacDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<FirmaKontrolMizanAgacDto>>> GetMizanAgac(
+            int firmaId,
+            [FromQuery] int yil,
+            CancellationToken ct)
+        {
+            var list = await _mizan.GetAgaclarAsync(firmaId, yil, ct);
             return Ok(list);
         }
 
@@ -362,5 +383,123 @@ namespace CatalogService.Api.Features.FirmaKontrol.Controllers
                 return NotFound(new { mesaj = ex.Message });
             }
         }
+
+        // ── Etiket tanımları (boyut / değer / kural) ────────────────────────
+        // Hangi hesaba hangi etiketin düştüğü BURADA hesaplanmaz ve saklanmaz;
+        // kural motoru istemcide, çalışma zamanında çalışır.
+
+        [HttpGet("{firmaId:int}/etiket/boyutlar")]
+        [ProducesResponseType(typeof(List<EtiketBoyutuDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<EtiketBoyutuDto>>> GetEtiketBoyutlar(int firmaId, CancellationToken ct)
+        {
+            try
+            {
+                return Ok(await _etiket.GetBoyutlarAsync(firmaId, ct));
+            }
+            catch (Exception ex)
+            {
+                EtiketHatasiYaz(nameof(GetEtiketBoyutlar), firmaId, ex);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { mesaj = $"Etiket tanımları okunamadı: {ex.GetType().Name} — {ex.Message}" });
+            }
+        }
+
+        [HttpPost("{firmaId:int}/etiket/boyutlar")]
+        [ProducesResponseType(typeof(EtiketBoyutuDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<EtiketBoyutuDto>> EtiketBoyutEkle(
+            int firmaId, [FromBody] EtiketBoyutuYazDto dto, CancellationToken ct)
+            => await Calistir(() => _etiket.BoyutEkleAsync(firmaId, dto, ct));
+
+        [HttpPut("{firmaId:int}/etiket/boyutlar/{boyutId:int}")]
+        public async Task<IActionResult> EtiketBoyutGuncelle(
+            int firmaId, int boyutId, [FromBody] EtiketBoyutuYazDto dto, CancellationToken ct)
+            => await Calistir(() => _etiket.BoyutGuncelleAsync(firmaId, boyutId, dto, ct));
+
+        [HttpDelete("{firmaId:int}/etiket/boyutlar/{boyutId:int}")]
+        public async Task<IActionResult> EtiketBoyutSil(int firmaId, int boyutId, CancellationToken ct)
+            => await Calistir(() => _etiket.BoyutSilAsync(boyutId, ct));
+
+        [HttpPost("{firmaId:int}/etiket/boyutlar/{boyutId:int}/degerler")]
+        [ProducesResponseType(typeof(EtiketDegeriDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<EtiketDegeriDto>> EtiketDegerEkle(
+            int firmaId, int boyutId, [FromBody] EtiketDegeriYazDto dto, CancellationToken ct)
+            => await Calistir(() => _etiket.DegerEkleAsync(boyutId, dto, ct));
+
+        [HttpPut("{firmaId:int}/etiket/degerler/{degerId:int}")]
+        public async Task<IActionResult> EtiketDegerGuncelle(
+            int firmaId, int degerId, [FromBody] EtiketDegeriYazDto dto, CancellationToken ct)
+            => await Calistir(() => _etiket.DegerGuncelleAsync(degerId, dto, ct));
+
+        [HttpDelete("{firmaId:int}/etiket/degerler/{degerId:int}")]
+        public async Task<IActionResult> EtiketDegerSil(int firmaId, int degerId, CancellationToken ct)
+            => await Calistir(() => _etiket.DegerSilAsync(degerId, ct));
+
+        [HttpPost("{firmaId:int}/etiket/boyutlar/{boyutId:int}/kurallar")]
+        [ProducesResponseType(typeof(EtiketKuraliDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<EtiketKuraliDto>> EtiketKuralEkle(
+            int firmaId, int boyutId, [FromBody] EtiketKuraliYazDto dto, CancellationToken ct)
+            => await Calistir(() => _etiket.KuralEkleAsync(boyutId, dto, ct));
+
+        [HttpPut("{firmaId:int}/etiket/kurallar/{kuralId:long}")]
+        public async Task<IActionResult> EtiketKuralGuncelle(
+            int firmaId, long kuralId, [FromBody] EtiketKuraliYazDto dto, CancellationToken ct)
+            => await Calistir(() => _etiket.KuralGuncelleAsync(kuralId, dto, ct));
+
+        [HttpDelete("{firmaId:int}/etiket/kurallar/{kuralId:long}")]
+        public async Task<IActionResult> EtiketKuralSil(int firmaId, long kuralId, CancellationToken ct)
+            => await Calistir(() => _etiket.KuralSilAsync(kuralId, ct));
+
+        [HttpPut("{firmaId:int}/etiket/boyutlar/{boyutId:int}/kural-sira")]
+        public async Task<IActionResult> EtiketKuralSira(
+            int firmaId, int boyutId, [FromBody] List<EtiketKuralSiraDto> siralar, CancellationToken ct)
+            => await Calistir(() => _etiket.KuralSiraGuncelleAsync(boyutId, siralar, ct));
+
+        // Etiket uçlarının ortak hata çevirisi. Beklenmeyen hatalar YUTULMAZ: tipi ve
+        // mesajı hem ILogger'a hem konsola yazılır, istemciye okunur bir mesaj döner.
+        // (Daha önce bu uçlar sessizce 500 dönüyordu ve sebebi hiçbir yerde görünmüyordu.)
+        private async Task<IActionResult> Calistir(Func<Task> is_, [CallerMemberName] string uc = "")
+        {
+            try
+            {
+                await is_();
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { mesaj = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { mesaj = ex.Message }); }
+            catch (Exception ex)
+            {
+                EtiketHatasiYaz(uc, null, ex);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { mesaj = $"{ex.GetType().Name} — {ex.Message}" });
+            }
+        }
+
+        private async Task<ActionResult<T>> Calistir<T>(Func<Task<T>> is_, [CallerMemberName] string uc = "")
+        {
+            try
+            {
+                return Ok(await is_());
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { mesaj = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { mesaj = ex.Message }); }
+            catch (Exception ex)
+            {
+                EtiketHatasiYaz(uc, null, ex);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { mesaj = $"{ex.GetType().Name} — {ex.Message}" });
+            }
+        }
+
+        /// <summary>Etiket ucundaki beklenmeyen hatayı tipiyle birlikte görünür kılar.</summary>
+        private void EtiketHatasiYaz(string uc, int? firmaId, Exception ex)
+        {
+            var ic = ex.InnerException is null ? string.Empty : $" | iç: {ex.InnerException.GetType().Name} — {ex.InnerException.Message}";
+            var mesaj = $"[EtiketUc HATA] {uc} firmaId={firmaId?.ToString() ?? "-"} : {ex.GetType().Name} — {ex.Message}{ic}";
+
+            _log.LogError(ex, "{Mesaj}", mesaj);
+            Console.WriteLine(mesaj);
+            Console.WriteLine(ex.ToString());
+        }
+
     }
 }

@@ -1726,6 +1726,117 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("FirmaSicilBilgileri", "catalog");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.FirmaKontrol.Domain.EtiketBoyutu", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("FirmaId")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("Kapsam")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("KapsamHesaplari")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<int>("Sira")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FirmaId", "Sira");
+
+                    b.ToTable("EtiketBoyutlari", (string)null);
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.FirmaKontrol.Domain.EtiketDegeri", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("BoyutId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("FirmaId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Renk")
+                        .HasMaxLength(9)
+                        .HasColumnType("nvarchar(9)");
+
+                    b.Property<int>("Sira")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FirmaId");
+
+                    b.HasIndex("BoyutId", "Ad")
+                        .IsUnique();
+
+                    b.HasIndex("BoyutId", "Sira");
+
+                    b.ToTable("EtiketDegerleri", (string)null);
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.FirmaKontrol.Domain.EtiketKurali", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("BoyutId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DegerId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Desen")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<byte>("EslesmeTipi")
+                        .HasColumnType("tinyint");
+
+                    b.Property<int?>("FirmaId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Sira")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DegerId");
+
+                    b.HasIndex("FirmaId");
+
+                    b.HasIndex("BoyutId", "Sira");
+
+                    b.ToTable("EtiketKurallari", (string)null);
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.FirmaKontrol.Domain.FirmaKontrolMadde", b =>
                 {
                     b.Property<long>("Id")
@@ -1780,6 +1891,41 @@ namespace CatalogService.Api.Migrations
                         .HasFilter("[MaddeKey] IS NOT NULL");
 
                     b.ToTable("FirmaKontrolMaddeler", (string)null);
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.FirmaKontrol.Domain.FirmaKontrolMizanAgac", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Donem")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DugumSayisi")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DugumlerJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("FirmaId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Yil")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FirmaId", "Donem", "Yil")
+                        .IsUnique();
+
+                    b.ToTable("FirmaKontrolMizanAgaclari", (string)null);
                 });
 
             modelBuilder.Entity("CatalogService.Api.Features.FirmaKontrol.Domain.FirmaKontrolMizanSatir", b =>
@@ -3913,7 +4059,58 @@ namespace CatalogService.Api.Migrations
                     b.Navigation("Expense");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.FirmaKontrol.Domain.EtiketBoyutu", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.Firmalar.Domain.Firma", "Firma")
+                        .WithMany()
+                        .HasForeignKey("FirmaId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Firma");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.FirmaKontrol.Domain.EtiketDegeri", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.FirmaKontrol.Domain.EtiketBoyutu", "Boyut")
+                        .WithMany("Degerler")
+                        .HasForeignKey("BoyutId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Boyut");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.FirmaKontrol.Domain.EtiketKurali", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.FirmaKontrol.Domain.EtiketBoyutu", "Boyut")
+                        .WithMany("Kurallar")
+                        .HasForeignKey("BoyutId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CatalogService.Api.Features.FirmaKontrol.Domain.EtiketDegeri", "Deger")
+                        .WithMany()
+                        .HasForeignKey("DegerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Boyut");
+
+                    b.Navigation("Deger");
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.FirmaKontrol.Domain.FirmaKontrolMadde", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.Firmalar.Domain.Firma", "Firma")
+                        .WithMany()
+                        .HasForeignKey("FirmaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Firma");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.FirmaKontrol.Domain.FirmaKontrolMizanAgac", b =>
                 {
                     b.HasOne("CatalogService.Api.Features.Firmalar.Domain.Firma", "Firma")
                         .WithMany()
@@ -4180,6 +4377,13 @@ namespace CatalogService.Api.Migrations
             modelBuilder.Entity("CatalogService.Api.Features.Expenses.Domain.ReceiptItem", b =>
                 {
                     b.Navigation("ProductDetails");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.FirmaKontrol.Domain.EtiketBoyutu", b =>
+                {
+                    b.Navigation("Degerler");
+
+                    b.Navigation("Kurallar");
                 });
 
             modelBuilder.Entity("CatalogService.Api.Features.FirmaKontrol.Domain.VergiHesaplama", b =>

@@ -1,0 +1,418 @@
+@using System.Globalization
+@using Radzen
+@using WebApp.Application.Services
+@using WebApp.Application.Services.FirmaKontrol
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Domain.Models.FirmaKontrol
+@using WebApp.Shared.Dto.FirmaKontrol
+
+@inject IEtiketApiClient EtiketApi
+@inject IFirmaKontrolService FirmaKontrolService
+@inject DialogService Dialog
+
+@*
+    GRUP GÖRÜNÜMÜ — "kim ne getirdi" matrisi (PROMPT 3B madde 4).
+
+    Satır = kimin defteri · sütun = gelir gerçekte kime ait. Satırlar: bakılan firma + seçili
+    boyutun değerlerinde FirmaId'si dolu olan firmalar; başka firma çekilmez.
+
+    YALNIZCA EKRAN: hiçbir resmi çıktıya girmez. Diğer firmaların ağacını okuduğu için
+    YALNIZCA sekmeye girildiğinde (Aktif = true) yüklenir, sayfa açılışında değil.
+    Her firma ayrı korunur; bir satır patlarsa o satır "ulaşılamadı" der, tablo bozulmaz,
+    global hata toast'ı çıkmaz.
+*@
+
+<div class="gg-grup">
+    <div class="gg-arac">
+        <span class="gg-baslik">GRUP GÖRÜNÜMÜ</span>
+        <span class="gg-arac-not">satır = kimin defteri · sütun = gelir gerçekte kime ait · yalnızca ekran</span>
+        <span class="gg-bosluk"></span>
+
+        @if (_boyutlar.Count > 0)
+        {
+            <label class="gg-boyut-secici">
+                <span>Boyut</span>
+                <select class="gg-girdi" value="@_seciliBoyutId" @onchange="BoyutDegistiAsync">
+                    @foreach (var b in _boyutlar)
+                    {
+                        <option value="@b.Id">@b.Ad</option>
+                    }
+                </select>
+            </label>
+            <button type="button" class="gg-dugme" disabled="@_yukleniyor" @onclick="MatrisiYukleAsync">Yenile</button>
+        }
+    </div>
+
+    @if (!_ilkYuklemeYapildi || _yukleniyor)
+    {
+        @* İskelet: sekmeye girildi, veriler okunuyor. *@
+        <div class="gg-kart" aria-busy="true">
+            @for (var i = 0; i < 5; i++)
+            {
+                <div class="gg-iskelet-satir"><span class="gg-iskelet"></span></div>
+            }
+        </div>
+    }
+    else if (_etiketHatasi is not null)
+    {
+        <div class="gg-kart gg-hesap-not gg-hesap-not-uyari">
+            Etiket servisine ulaşılamadı; grup görünümü şu an hesaplanamıyor. Sayfanın geri kalanı
+            normal çalışıyor.
+            <button type="button" class="gg-bag" @onclick="TumunuYukleAsync">Yeniden dene</button>
+        </div>
+    }
+    else if (SeciliBoyut is null)
+    {
+        <div class="gg-kart gg-hesap-not">
+            Tanımlı etiket boyutu yok. Etiketler sekmesinden bir boyut ve değerlerini tanımlayın.
+        </div>
+    }
+    else if (_matris is { } m)
+    {
+        var degerler = Degerler;
+
+        @if (m.CiftSayimVar)
+        {
+            <div class="gg-kirmizi" role="alert">
+                <span aria-hidden="true">⛔</span>
+                Satır toplamları (@Tutar(m.SatirToplamlariToplami)) ile sütun toplamları
+                (@Tutar(m.SutunToplamlariToplami)) eşit değil: bir hesap iki kurala birden uymuş
+                ya da bir tutar iki kez sayılmış demektir. Kuralları kontrol edin.
+            </div>
+        }
+
+        @if (!degerler.Any(d => d.FirmaId is not null))
+        {
+            <div class="gg-hesap-not">
+                Bu boyutun hiçbir değeri bir firmaya bağlı değil; yalnızca bu firmanın defteri
+                gösteriliyor. Etiketler sekmesinde değerlere firma atayabilirsiniz.
+            </div>
+        }
+
+        <div class="gg-tablo-kap">
+            <table class="gg-tablo">
+                <thead>
+                    <tr>
+                        <th class="gg-t-defter">Kimin defteri</th>
+                        @foreach (var d in degerler)
+                        {
+                            <th class="gg-t-num">
+                                <span class="gg-cip">
+                                    <span class="gg-kare" style="@KareStili(d.Renk)"></span>@d.Ad
+                                </span>
+                            </th>
+                        }
+                        <th class="gg-t-num gg-t-atanmamis">Atanmamış</th>
+                        <th class="gg-t-num gg-t-toplam">Satır toplamı</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in m.Satirlar)
+                    {
+                        <tr class="@(s.Defter.FirmaId == FirmaId ? "gg-t-kendi" : null)">
+                            <td class="gg-t-defter">
+                                @s.Defter.FirmaAd
+                                @if (s.Defter.FirmaId == FirmaId)
+                                {
+                                    <span class="gg-t-etiket">bu firma</span>
+                                }
+                                @if (s.Defter.Not is not null)
+                                {
+                                    <div class="gg-t-not">@s.Defter.Not</div>
+                                }
+                            </td>
+
+                            @if (s.Defter.Bekleniyor)
+                            {
+                                @* Aşamalı çizim: bu satırın verisi henüz gelmedi. *@
+                                <td colspan="@(degerler.Count + 2)" aria-busy="true">
+                                    <span class="gg-iskelet"></span>
+                                </td>
+                            }
+                            else if (s.Defter.Yuklu)
+                            {
+                                @foreach (var d in degerler)
+                                {
+                                    <td class="gg-t-num">@Tutar(s.Hucreler.GetValueOrDefault(d.Id))</td>
+                                }
+                                <td class="gg-t-num gg-t-atanmamis">@Tutar(s.Atanmamis)</td>
+                                <td class="gg-t-num gg-t-toplam">@Tutar(s.SatirToplami)</td>
+                            }
+                            else if (s.Defter.Durum == HesapAgaciDurumu.Ulasilamadi)
+                            {
+                                <td class="gg-t-bilinmiyor" colspan="@(degerler.Count + 2)">
+                                    Bu firmanın verisine ulaşılamadı.
+                                    <button type="button" class="gg-bag" @onclick="MatrisiYukleAsync">Yeniden dene</button>
+                                </td>
+                            }
+                            else
+                            {
+                                <td class="gg-t-bilinmiyor" colspan="@(degerler.Count + 2)">
+                                    Bu defterdeki dağılım bilinmiyor
+                                    @(s.Defter.Durum == HesapAgaciDurumu.AgacYok ? "(mizanda kırılım ağacı yok)" : "(mizan yüklenmedi)").
+                                    <button type="button" class="gg-bag" @onclick="@(() => MizanYukleAsync(s.Defter))">Mizan yükle</button>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td class="gg-t-defter">Sütun toplamı</td>
+                        @foreach (var d in degerler)
+                        {
+                            <td class="gg-t-num">@Tutar(m.SutunToplamlari.GetValueOrDefault(d.Id))</td>
+                        }
+                        <td class="gg-t-num gg-t-atanmamis">@Tutar(m.AtanmamisToplami)</td>
+                        <td class="gg-t-num gg-t-toplam">@Tutar(m.SutunToplamlariToplami)</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        @if (m.Satirlar.Any(s => s.Defter.Bekleniyor))
+        {
+            <div class="gg-hesap-not">
+                Diğer defterler okunuyor (firma başına en fazla @GrupDefterYukleyici.Zamanasimi.TotalSeconds.ToString("0") sn);
+                toplamlar geldikçe güncellenir.
+            </div>
+        }
+        else if (m.Satirlar.Any(s => !s.Defter.Yuklu))
+        {
+            <div class="gg-hesap-not gg-hesap-not-uyari">
+                Toplamlar EKSİK: dağılımı bilinmeyen defterler toplamlara girmedi.
+            </div>
+        }
+
+        @* ── Etikete göre ciro payı ── *@
+        <div class="gg-kart gg-pay">
+            <div class="gg-baslik">ETİKETE GÖRE CİRO PAYI</div>
+
+            @{
+                var parcalar = PayParcalari(m, degerler);
+                var pozitifToplam = parcalar.Where(p => p.Tutar > 0m).Sum(p => p.Tutar);
+            }
+
+            @if (pozitifToplam <= 0m)
+            {
+                <div class="gg-hesap-not">Gösterilecek ciro yok.</div>
+            }
+            else
+            {
+                <div class="gg-yigin" role="img" aria-label="Etikete göre ciro payı">
+                    @foreach (var p in parcalar.Where(p => p.Tutar > 0m))
+                    {
+                        <span class="gg-yigin-p @(p.Atanmamis ? "gg-yigin-atanmamis" : null)"
+                              style="@($"{Genislik(Yuzde(p.Tutar, pozitifToplam))}{(p.Atanmamis ? "" : $";background:{Renk(p.Renk)}")}")"
+                              title="@p.Ad"></span>
+                    }
+                </div>
+
+                @* Renk tek başına anlam taşımasın: her parça için kare + ad + yüzde. *@
+                <div class="gg-lejant">
+                    @foreach (var p in parcalar)
+                    {
+                        <span class="gg-lejant-oge">
+                            <span class="gg-kare @(p.Atanmamis ? "gg-kare-atanmamis" : null)"
+                                  style="@(p.Atanmamis ? null : KareStili(p.Renk))"></span>
+                            <span>@p.Ad</span>
+                            <strong>@YuzdeMetni(Yuzde(p.Tutar, pozitifToplam))</strong>
+                        </span>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+
+    /// <summary>Sekme şu an seçili mi. Veri YALNIZCA ilk kez true olduğunda okunur.</summary>
+    [Parameter] public bool Aktif { get; set; }
+
+    private static readonly CultureInfo Tr = new("tr-TR");
+
+    private List<EtiketBoyutuDto> _boyutlar = new();
+    private int _seciliBoyutId;
+    private string? _etiketHatasi;
+
+    private Dictionary<int, string> _firmaAdlari = new();
+    private GrupGorunumu.Matris? _matris;
+
+    private bool _ilkYuklemeYapildi;
+    private bool _yukleniyor;
+
+    private int _yuklenenYil;
+    private int _yuklenenFirmaId;
+
+    private EtiketBoyutuDto? SeciliBoyut => _boyutlar.FirstOrDefault(b => b.Id == _seciliBoyutId);
+
+    private List<EtiketDegeriDto> Degerler =>
+        SeciliBoyut?.Degerler.OrderBy(d => d.Sira).ThenBy(d => d.Id).ToList() ?? new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Aktif) return;
+
+        var yil = FirmaKontrolService.AktifDonemYili;
+        var degisti = yil != _yuklenenYil || FirmaId != _yuklenenFirmaId;
+
+        if (_ilkYuklemeYapildi && !degisti) return;
+
+        _yuklenenYil = yil;
+        _yuklenenFirmaId = FirmaId;
+
+        await TumunuYukleAsync();
+    }
+
+    private async Task TumunuYukleAsync()
+    {
+        _yukleniyor = true;
+        _ilkYuklemeYapildi = true;
+        StateHasChanged();
+
+        try
+        {
+            _boyutlar = await EtiketApi.GetBoyutlarAsync(FirmaId);
+            if (SeciliBoyut is null) _seciliBoyutId = _boyutlar.FirstOrDefault()?.Id ?? 0;
+            _etiketHatasi = null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GrupGorunumu etiket HATA] {ex.Message}");
+            _boyutlar = new();
+            _seciliBoyutId = 0;
+            _etiketHatasi = ex.Message;
+            _matris = null;
+            _yukleniyor = false;
+            return;
+        }
+
+        try
+        {
+            var firmalar = await FirmaKontrolService.GetFirmsAsync();
+            _firmaAdlari = firmalar.ToDictionary(f => f.Id, f => f.Ad);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GrupGorunumu firma HATA] {ex.Message}");
+        }
+
+        await MatrisiHesaplaAsync();
+        _yukleniyor = false;
+    }
+
+    private Task MatrisiYukleAsync() => MatrisiHesaplaAsync();
+
+    // Aşamalı çizim: satırlar bu listede tutulur, her defter geldikçe yerine konur.
+    private List<GrupGorunumu.Defter> _defterler = new();
+
+    // Boyut değişir / yenilenirse eski yüklemenin geç gelen sonuçları yok sayılır.
+    private int _yuklemeNo;
+
+    /// <summary>
+    /// Önce bütün satırlar "bekleniyor" olarak çizilir (tablo hemen görünür, iskelet yalnızca
+    /// gelmemiş satırlarda). Firmalar paralel okunur; her biri geldikçe kendi satırı dolar ve
+    /// toplamlar yeniden hesaplanır. Bakılan firmanın defteri bellekte olduğu için ilk o gelir.
+    /// </summary>
+    private async Task MatrisiHesaplaAsync()
+    {
+        if (SeciliBoyut is not { } boyut)
+        {
+            _matris = null;
+            _yukleniyor = false;
+            return;
+        }
+
+        var no = ++_yuklemeNo;
+
+        try
+        {
+            var firmalar = GrupGorunumu.IlgiliFirmalar(FirmaId, boyut.Degerler);
+            _defterler = firmalar.Select(id => GrupGorunumu.BekleyenDefter(id, FirmaAdi(id))).ToList();
+            MatrisiYenile();
+
+            _yukleniyor = false;     // tablo iskeleti kalkar; satır iskeletleri kalır
+            StateHasChanged();
+
+            await GrupDefterYukleyici.YukleAsync(
+                FirmaKontrolService, EtiketApi, FirmaId, boyut, firmalar, FirmaAdi,
+                defter =>
+                {
+                    if (no != _yuklemeNo) return;   // eski yükleme
+
+                    var i = _defterler.FindIndex(d => d.FirmaId == defter.FirmaId);
+                    if (i >= 0) _defterler[i] = defter;
+
+                    MatrisiYenile();
+                    _ = InvokeAsync(StateHasChanged);
+                });
+        }
+        catch (Exception ex)
+        {
+            // Yükleyici firma bazında zaten korunaklı; buraya düşen beklenmedik hata da
+            // yalnızca bu sekmeyi etkiler.
+            Console.WriteLine($"[GrupGorunumu matris HATA] {ex}");
+            _matris = null;
+            _etiketHatasi = ex.Message;
+        }
+        finally
+        {
+            if (no == _yuklemeNo) _yukleniyor = false;
+        }
+    }
+
+    private void MatrisiYenile() => _matris = GrupGorunumu.MatrisOlustur(_defterler, Degerler);
+
+    private async Task BoyutDegistiAsync(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var id)) return;
+
+        _seciliBoyutId = id;
+        await MatrisiYukleAsync();
+    }
+
+    private async Task MizanYukleAsync(GrupGorunumu.Defter defter)
+    {
+        var sonuc = await Dialog.OpenAsync<MizanUploadDialog>(
+            $"{defter.FirmaAd} – Cari Dönem Mizan Yükle",
+            new() { ["FirmaId"] = defter.FirmaId, ["Donem"] = Donem.Cari },
+            new DialogOptions { Width = "640px", CloseDialogOnOverlayClick = false });
+
+        if (sonuc is true) await MatrisiYukleAsync();
+    }
+
+    private string FirmaAdi(int firmaId) =>
+        _firmaAdlari.TryGetValue(firmaId, out var ad) ? ad : $"Firma #{firmaId} (bulunamadı)";
+
+    // ── Ciro payı ──
+
+    private sealed record PayParcasi(string Ad, string? Renk, decimal Tutar, bool Atanmamis);
+
+    private static List<PayParcasi> PayParcalari(GrupGorunumu.Matris m, List<EtiketDegeriDto> degerler)
+    {
+        var liste = degerler
+            .Select(d => new PayParcasi(d.Ad, d.Renk, m.SutunToplamlari.GetValueOrDefault(d.Id), false))
+            .ToList();
+
+        liste.Add(new PayParcasi("Atanmamış", null, m.AtanmamisToplami, true));
+        return liste;
+    }
+
+    private static double Yuzde(decimal tutar, decimal toplam) =>
+        toplam == 0m ? 0d : (double)(tutar / toplam) * 100d;
+
+    // ── Biçim ──
+
+    private static string Renk(string? hex) => string.IsNullOrWhiteSpace(hex) ? "#CBD5E1" : hex!;
+
+    private static string KareStili(string? hex) => $"background:{Renk(hex)}";
+
+    private static string Genislik(double yuzde) =>
+        $"width:{Math.Round(Math.Clamp(yuzde, 0d, 100d), 2).ToString(CultureInfo.InvariantCulture)}%";
+
+    private static string Tutar(decimal deger) => deger.ToString("N2", Tr);
+
+    private static string YuzdeMetni(double yuzde) => "%" + yuzde.ToString("N2", Tr);
+}

@@ -232,6 +232,7 @@ builder.Services.AddScoped<CatalogService.Api.Features.BankaEkstre.Services.IBan
                            CatalogService.Api.Features.BankaEkstre.Services.BankaTemizlikService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolMaddeService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolMaddeService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolMizanService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolMizanService>();
+builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IEtiketService, CatalogService.Api.Features.FirmaKontrol.Services.EtiketService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IMizanNotuService, CatalogService.Api.Features.FirmaKontrol.Services.MizanNotuService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IFirmaKontrolVergiService, CatalogService.Api.Features.FirmaKontrol.Services.FirmaKontrolVergiService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaKontrol.Services.IVergiBeyannameService, CatalogService.Api.Features.FirmaKontrol.Services.VergiBeyannameService>();

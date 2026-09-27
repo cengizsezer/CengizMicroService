@@ -98,6 +98,17 @@ namespace CatalogService.Api.Infrastructure.Context
         // Firma Kontrol / Raporlar modülü — ham mizan satırları (firma + dönem + yıl bazında)
         public DbSet<Features.FirmaKontrol.Domain.FirmaKontrolMizanSatir> FirmaKontrolMizanSatirlari => Set<Features.FirmaKontrol.Domain.FirmaKontrolMizanSatir>();
 
+        // Firma Kontrol / Raporlar modülü — mizan hesap kırılım ağacı (firma + dönem + yıl;
+        // düğümler tek JSON listesi hâlinde, ham satırların yanında). Hiçbir toplama girmez.
+        public DbSet<Features.FirmaKontrol.Domain.FirmaKontrolMizanAgac> FirmaKontrolMizanAgaclari => Set<Features.FirmaKontrol.Domain.FirmaKontrolMizanAgac>();
+
+        // Firma Kontrol / Etiket sistemi — boyut / değer / kural TANIMLARI.
+        // Dönemden bağımsızdır (Yil kolonu yok) ve türetilmiş veri saklanmaz:
+        // hangi düğüme hangi etiketin düştüğü çalışma zamanında hesaplanır.
+        public DbSet<Features.FirmaKontrol.Domain.EtiketBoyutu> EtiketBoyutlari => Set<Features.FirmaKontrol.Domain.EtiketBoyutu>();
+        public DbSet<Features.FirmaKontrol.Domain.EtiketDegeri> EtiketDegerleri => Set<Features.FirmaKontrol.Domain.EtiketDegeri>();
+        public DbSet<Features.FirmaKontrol.Domain.EtiketKurali> EtiketKurallari => Set<Features.FirmaKontrol.Domain.EtiketKurali>();
+
         // Firma Kontrol / Raporlar modülü — mizan hesap satırlarına yazılan gerekçe notları
         public DbSet<Features.FirmaKontrol.Domain.MizanNotu> MizanNotlari => Set<Features.FirmaKontrol.Domain.MizanNotu>();
 
@@ -211,6 +222,10 @@ namespace CatalogService.Api.Infrastructure.Context
             // Firma Kontrol / Raporlar modülü
             builder.ApplyConfiguration(new FirmaKontrolMaddeEntityTypeConfiguration());
             builder.ApplyConfiguration(new FirmaKontrolMizanSatirEntityTypeConfiguration());
+            builder.ApplyConfiguration(new FirmaKontrolMizanAgacEntityTypeConfiguration());
+            builder.ApplyConfiguration(new EtiketBoyutuEntityTypeConfiguration());
+            builder.ApplyConfiguration(new EtiketDegeriEntityTypeConfiguration());
+            builder.ApplyConfiguration(new EtiketKuraliEntityTypeConfiguration());
             builder.ApplyConfiguration(new MizanNotuEntityTypeConfiguration());
             builder.ApplyConfiguration(new FirmaKontrolVergiEntityTypeConfiguration());
             builder.ApplyConfiguration(new VergiKalemiEntityTypeConfiguration());

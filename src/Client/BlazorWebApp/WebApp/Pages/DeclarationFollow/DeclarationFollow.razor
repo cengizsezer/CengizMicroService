@@ -87,44 +87,20 @@
         </RadzenRow>
     </RadzenCard>
 
-    <RadzenRow Gap="1rem">
-        <RadzenColumn Size="12" SizeMD="3">
-            <RadzenCard class="rz-p-3">
-                <RadzenText Text="Bu Ay Toplam Vergi" TextStyle="TextStyle.Body1" />
-                <RadzenText Text="@monthlyTotal.ToString("C", trCulture)" TextStyle="TextStyle.H5" />
-            </RadzenCard>
-        </RadzenColumn>
+    @* Üstteki dört özet kartı (Bu Ay Toplam Vergi / Ödenen / Bekleyen, Bu Yıl Toplam
+       Vergi) kaldırıldı. Yıllık kart tek başına ayrı bir sorgu çektiriyordu
+       (yearly-summary); kart gidince o çağrı da gitti. *@
 
-        <RadzenColumn Size="12" SizeMD="3">
-            <RadzenCard class="rz-p-3">
-                <RadzenText Text="Bu Ay Ödenen" TextStyle="TextStyle.Body1" />
-                <RadzenText Text="@monthlyPaid.ToString("C", trCulture)" TextStyle="TextStyle.H5" />
-            </RadzenCard>
-        </RadzenColumn>
-
-        <RadzenColumn Size="12" SizeMD="3">
-            <RadzenCard class="rz-p-3">
-                <RadzenText Text="Bu Ay Bekleyen" TextStyle="TextStyle.Body1" />
-                <RadzenText Text="@monthlyPending.ToString("C", trCulture)" TextStyle="TextStyle.H5" />
-            </RadzenCard>
-        </RadzenColumn>
-
-        <RadzenColumn Size="12" SizeMD="3">
-            <RadzenCard class="rz-p-3">
-                <RadzenText Text="Bu Yıl Toplam Vergi" TextStyle="TextStyle.Body1" />
-                <RadzenText Text="@(yearlySummary?.TotalAmount.ToString("C", trCulture) ?? "₺0,00")"
-                            TextStyle="TextStyle.H5" />
-            </RadzenCard>
-        </RadzenColumn>
-    </RadzenRow>
-
+    @* ExpandMode Single -> Multiple: satırlar varsayılan olarak AÇIK geliyor ve
+       Single modda aynı anda yalnız bir satır açık kalabildiği için hepsini açmak
+       mümkün değildi. Açma işi OnAfterRenderAsync'te, ilk render'dan sonra. *@
     <RadzenDataGrid @ref="grid"
                     Data="@(monthlyData ?? new List<CompanyMonthlySummaryDto>())"
                     TItem="CompanyMonthlySummaryDto"
                     AllowPaging="true"
                     PageSize="10"
                     AllowSorting="true"
-                    ExpandMode="DataGridExpandMode.Single"
+                    ExpandMode="DataGridExpandMode.Multiple"
                     RowRender="@RowRender">
 
         <Template Context="company">
@@ -221,7 +197,6 @@
     private RadzenDataGrid<CompanyMonthlySummaryDto>? grid;
    
     private List<CompanyMonthlySummaryDto> monthlyData = new();
-    private YearlyTaxSummaryDto? yearlySummary;
     [Inject] IAppSessionManager SessionManager { get; set; } = default!;
     private int selectedYear = DateTime.Now.Year;
     private int selectedMonth = DateTime.Now.Month;
@@ -245,9 +220,14 @@
     private static TurSecenegi Secenek(BeyannameTuruDto tur)
         => new(tur.Deger, string.IsNullOrWhiteSpace(tur.Kod) ? tur.Ad : $"{tur.Kod} {tur.Ad}");
 
-    private decimal monthlyTotal => monthlyData?.Sum(x => x.TotalAmount) ?? 0;
-    private decimal monthlyPaid => monthlyData?.Sum(x => x.PaidAmount) ?? 0;
-    private decimal monthlyPending => monthlyData?.Sum(x => x.PendingAmount) ?? 0;
+    /// <summary>
+    /// Veri yenilendi, satırlar bir sonraki render'dan sonra açılacak.
+    ///
+    /// Neden bayrak: <see cref="LoadData"/> ilk kez <c>OnInitializedAsync</c> içinde
+    /// çalışıyor, yani grid henüz render edilmemiş ve <see cref="grid"/> null. Açma
+    /// işi bu yüzden <c>OnAfterRenderAsync</c>'e bırakılıyor.
+    /// </summary>
+    private bool satirlariAcBekleniyor;
 
     private void OnCompanyFilterChanged(object? value)
     {
@@ -341,20 +321,42 @@
                 selectedCompanyId,
                 selectedDeclarationType) ?? new();
 
-            yearlySummary = await DeclarationApiService.GetYearlySummaryAsync(
-                selectedYear,
-                selectedCompanyId);
+            // Yıllık özet sorgusu (yearly-summary) BURADAN KALDIRILDI: tek işi
+            // "Bu Yıl Toplam Vergi" kartını beslemekti, kart da kaldırıldı.
+            // Her Getir'de fazladan bir istek atıyordu.
 
-           
+            satirlariAcBekleniyor = true;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[BeyannameTakip LoadData ERROR] {ex.Message}");
 
             monthlyData = new();
-            yearlySummary = null;
-           
         }
+    }
+
+    /// <summary>
+    /// Firma satırlarını açar. Varsayılan AÇIK: kullanıcı her firmayı tek tek
+    /// açmak zorunda kalmasın; kapatma yine elinde.
+    ///
+    /// Yalnız <see cref="RowRender"/>'ın genişletilebilir saydığı satırlar
+    /// (beyannamesi olanlar) açılıyor — boş satırı açmaya çalışmak boş bir panel
+    /// açardı.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!satirlariAcBekleniyor || grid is null) return;
+
+        // Bayrak ÖNCE düşüyor: ExpandRows yeniden render tetikliyor ve bayrak
+        // açık kalsaydı bu metot kendini sonsuz çağırırdı.
+        satirlariAcBekleniyor = false;
+
+        var acilacaklar = monthlyData
+            .Where(f => f.Declarations is { Count: > 0 })
+            .ToList();
+
+        if (acilacaklar.Count > 0)
+            await grid.ExpandRows(acilacaklar);
     }
 
     private async Task OpenCreateDialog()

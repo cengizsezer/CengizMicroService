@@ -40,22 +40,10 @@ namespace WebApp.Application.Services
             return await _httpClient.GetResponseAsync<List<CompanyMonthlySummaryDto>>(url);
         }
 
-        public async Task<YearlyTaxSummaryDto?> GetYearlySummaryAsync(
-            int year,
-            int? customerCompanyId = null)
-        {
-            var query = new List<string>
-            {
-                $"year={year}"
-            };
-
-            if (customerCompanyId.HasValue)
-                query.Add($"customerCompanyId={customerCompanyId.Value}");
-
-            var url = $"{Prefix}/yearly-summary?{string.Join("&", query)}";
-
-            return await _httpClient.GetResponseAsync<YearlyTaxSummaryDto>(url);
-        }
+        // GetYearlySummaryAsync KALDIRILDI (09.09.2026): tek çağıran Beyanname Takip
+        // sayfasındaki "Bu Yıl Toplam Vergi" kartıydı, kart kaldırıldı. Sunucudaki
+        // /catalog/declarations/yearly-summary ucu duruyor; gerekirse sarmalayıcı
+        // birkaç satırla geri yazılır.
 
         public async Task<int?> CreateAsync(CreateDeclarationRequest request)
         {

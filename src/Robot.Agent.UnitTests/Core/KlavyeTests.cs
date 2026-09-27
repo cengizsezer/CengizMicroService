@@ -123,6 +123,105 @@ public class KlavyeTests : IDisposable
         }, _sahte.Olaylar);
     }
 
+    // ---- CTRL'suz temizleme (yanlis firma hatasi) ---------------------------
+
+    [Fact]
+    public void SecVeSil_END_SHIFT_HOME_DELETE_sirasiyla_temizliyor()
+    {
+        // Sira onemli: END olmadan SHIFT+HOME yalniz imlecin SOLUNU secer ve
+        // imlec ortadaysa metnin sagi kutuda kalir.
+        Klavye.SecVeSilVeYaz("0001");
+
+        Assert.Equal(new[]
+        {
+            "bekle:100", "bas:END",    "bekle:100",
+            "bekle:100", "birlikte:SHIFT+HOME", "bekle:100",
+            "bekle:100", "bas:DELETE", "bekle:100",
+            "yaz:0001", "bekle:150"
+        }, _sahte.Olaylar);
+    }
+
+    [Fact]
+    public void SecVeSil_hicbir_CTRL_tusu_gondermiyor()
+    {
+        // Hatanin kok sebebi buydu: ORKA'da CTRL kombinasyonlari calismiyor,
+        // kutu temizlenmiyor ve yeni kod eskisinin yanina yaziliyordu.
+        Klavye.SecVeSilVeYaz("0001");
+
+        Assert.DoesNotContain(_sahte.Olaylar, o => o.Contains("CONTROL", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SecVeSil_metni_temizlemeden_SONRA_yaziyor()
+    {
+        // Yazma once gitseydi temizleme yeni degeri silerdi.
+        Klavye.SecVeSilVeYaz("0001");
+
+        var silme = _sahte.Olaylar.FindIndex(o => o == "bas:DELETE");
+        var yazma = _sahte.Olaylar.FindIndex(o => o == "yaz:0001");
+
+        Assert.True(silme >= 0 && yazma > silme);
+    }
+
+    [Fact]
+    public void Dagitici_yola_gore_dogru_temizlemeyi_seciyor()
+    {
+        Klavye.TemizleVeYaz("0001", TemizlemeYolu.SecVeSil);
+        Assert.Contains(_sahte.Olaylar, o => o == "bas:END");
+        Assert.DoesNotContain(_sahte.Olaylar, o => o.Contains("CONTROL", StringComparison.Ordinal));
+
+        _sahte.Olaylar.Clear();
+
+        Klavye.TemizleVeYaz(@"C:\RobotGiris\ekstre.xlsx", TemizlemeYolu.CtrlA);
+        Assert.Contains(_sahte.Olaylar, o => o == "birlikte:CONTROL+KEY_A");
+        Assert.DoesNotContain(_sahte.Olaylar, o => o == "bas:END");
+    }
+
+    [Fact]
+    public void Mevcut_TemizleVeYaz_degismedi()
+    {
+        // Dosya secim diyalogunda calisan yol; CTRL'suz yolu eklerken bozulmadigi
+        // burada sabitleniyor.
+        Klavye.TemizleVeYaz(@"C:\RobotGiris\ekstre.xlsx");
+
+        Assert.Equal(new[]
+        {
+            "bekle:100", "birlikte:CONTROL+KEY_A", "bekle:100",
+            @"yaz:C:\RobotGiris\ekstre.xlsx", "bekle:150"
+        }, _sahte.Olaylar);
+    }
+
+    // ---- 'Temizleme' alaninin cozumu ----------------------------------------
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Temizleme_alani_bos_ise_varsayilan_CtrlA(string? deger)
+    {
+        // Mevcut butun TemizleYaz adimlarinin davranisi degismemeli.
+        Assert.Equal(TemizlemeYolu.CtrlA, Klavye.TemizlemeCoz(deger));
+    }
+
+    [Theory]
+    [InlineData("SecVeSil")]
+    [InlineData("secvesil")]
+    [InlineData("  SECVESIL  ")]
+    public void Temizleme_alani_SecVeSil_okunuyor(string deger)
+    {
+        Assert.Equal(TemizlemeYolu.SecVeSil, Klavye.TemizlemeCoz(deger));
+    }
+
+    [Fact]
+    public void Taninmayan_Temizleme_degeri_HATA_veriyor()
+    {
+        // Sessizce CTRL+A'ya dusmek, bir yazim hatasinin ayni sessiz kirilmayi
+        // (yanlis firmaya girme) geri getirmesi demekti.
+        var hata = Assert.Throws<ArgumentException>(() => Klavye.TemizlemeCoz("sec-ve-sil"));
+
+        Assert.Contains("SecVeSil", hata.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Yaz_metni_tek_parca_gonderiyor()
     {

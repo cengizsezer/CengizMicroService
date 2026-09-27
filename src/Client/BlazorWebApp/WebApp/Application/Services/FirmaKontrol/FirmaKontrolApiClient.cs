@@ -69,6 +69,16 @@ namespace WebApp.Application.Services.FirmaKontrol
                    ?? new List<FirmaKontrolMizanSatirDto>();
         }
 
+        public async Task<List<FirmaKontrolMizanAgacDto>> GetMizanAgacAsync(int firmaId, int yil, CancellationToken ct = default)
+        {
+            var response = await _httpClient.GetAsync($"{Base}/{firmaId}/mizan/agac?yil={yil}", ct);
+            if (!response.IsSuccessStatusCode)
+                await ApiErrorParser.ThrowAsync(response, ct);
+
+            return await response.Content.ReadFromJsonAsync<List<FirmaKontrolMizanAgacDto>>(cancellationToken: ct)
+                   ?? new List<FirmaKontrolMizanAgacDto>();
+        }
+
         public async Task SaveMizanAsync(int firmaId, MizanKaydetRequest req, CancellationToken ct = default)
         {
             var response = await _httpClient.PostAsJsonAsync($"{Base}/{firmaId}/mizan", req, ct);

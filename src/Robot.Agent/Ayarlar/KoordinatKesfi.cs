@@ -48,7 +48,7 @@ public static class KoordinatKesfi
     };
 
     /// <summary>
-    /// Ayar dosyasindaki anahtar: <c>orkaya-aktar.json#0</c>.
+    /// Ayar dosyasindaki anahtar: <c>tek-dosya-aktar.json#0</c>.
     ///
     /// Adim <b>indeksi</b> degil <c>Tikla</c> <b>sirasi</b> kullaniliyor: goreve
     /// araya bir Bekle ya da EkranGoruntusu adimi eklemek koordinat

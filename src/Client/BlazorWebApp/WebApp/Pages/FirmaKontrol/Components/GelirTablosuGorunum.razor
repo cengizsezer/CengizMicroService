@@ -1,0 +1,429 @@
+@using System.Globalization
+@using Radzen
+@using WebApp.Application.Services
+@using WebApp.Application.Services.FirmaKontrol
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Domain.Models.FirmaKontrol
+@using WebApp.Shared.Dto.FirmaKontrol
+
+@inject IEtiketApiClient EtiketApi
+@inject IFirmaKontrolService FirmaKontrolService
+@inject DialogService Dialog
+
+@*
+    Gelir Tablosu sekmesi — YASAL / YÖNETSEL görünüm (PROMPT 3B madde 3).
+
+    KURAL: YÖNETSEL GÖRÜNÜM YALNIZCA EKRANDIR.
+    • Varsayılan YASAL'dır; seçim hiçbir yerde saklanmaz, sayfa her açıldığında yasal başlar.
+    • Yasal görünümde GelirTablosuGrid bugünküyle aynı parametrelerle çizilir; tek ek,
+      ana hesap altındaki bilgi amaçlı etiket kırılımıdır (toplamlara girmez).
+    • Yönetsel hesap GrupGorunumu'nda yapılır ve yalnızca bu bileşende gösterilir. Vergi,
+      beyanname, bilanço, mizan, dikey yüzdeler ve dışa aktarım bu bileşeni görmez; onlar
+      Detay.razor'daki mizan/rawCari değerlerinden, bu bileşene hiç uğramadan beslenir.
+    • Etiket tarafı patlarsa yalnızca üstteki seçim şeridi etkilenir; yasal tablo çizilmeye
+      devam eder, global hata toast'ı çıkmaz.
+*@
+
+<div class="gg-gorunum">
+    <div class="gg-arac">
+        <div class="gg-secim" role="group" aria-label="Görünüm">
+            <button type="button"
+                    class="gg-secim-dugme @(!_yonetsel ? "gg-secim-aktif" : null)"
+                    aria-pressed="@(!_yonetsel ? "true" : "false")"
+                    @onclick="YasalSecAsync">Yasal görünüm</button>
+            <button type="button"
+                    class="gg-secim-dugme @(_yonetsel ? "gg-secim-aktif gg-secim-yonetsel" : null)"
+                    aria-pressed="@(_yonetsel ? "true" : "false")"
+                    disabled="@(_boyutlar.Count == 0)"
+                    title="@(_boyutlar.Count == 0 ? "Tanımlı etiket boyutu yok" : null)"
+                    @onclick="YonetselSecAsync">Yönetsel görünüm</button>
+        </div>
+
+        @if (_boyutlar.Count > 0)
+        {
+            <label class="gg-boyut-secici">
+                <span>Boyut</span>
+                <select class="gg-girdi" value="@_seciliBoyutId" @onchange="BoyutDegistiAsync">
+                    @foreach (var b in _boyutlar)
+                    {
+                        <option value="@b.Id">@b.Ad</option>
+                    }
+                </select>
+            </label>
+        }
+
+        <span class="gg-bosluk"></span>
+
+        @if (_etiketHatasi is not null)
+        {
+            <span class="gg-arac-not">
+                Etiketlere ulaşılamadı; kırılım ve yönetsel görünüm şu an yok.
+                <button type="button" class="gg-bag" @onclick="EtiketleriYukleAsync">Yeniden dene</button>
+            </span>
+        }
+        else if (!_yonetsel && _kirilim.Count > 0)
+        {
+            <span class="gg-arac-not">▸ işaretli hesaplarda etiket kırılımı açılır · bilgi amaçlı</span>
+        }
+    </div>
+
+    @if (!_yonetsel)
+    {
+        <GelirTablosuGrid Rows="Rows"
+                          CariRawValues="CariRawValues"
+                          OncekiRawValues="OncekiRawValues"
+                          HesaplananVergi691Cari="@HesaplananVergi691Cari"
+                          HideTaxRows="false"
+                          EtiketKirilimi="_kirilim" />
+    }
+    else
+    {
+        <div class="gg-yonetsel-baslik">
+            <span class="gg-yonetsel-rozet">YÖNETSEL GÖRÜNÜM</span>
+            <span>Yalnızca ekran. Beyanname, vergi hesaplaması, bilanço, mizan, dikey yüzdeler ve
+                dışa aktarım bu görünümden etkilenmez.</span>
+        </div>
+
+        <div class="gg-amber" role="alert">
+            <span class="gg-amber-ikon" aria-hidden="true">⚠</span>
+            <span>
+                Gelir dağıtıldı, gider dağıtılmadı. Bu görünümdeki kâr oranları yanıltır;
+                yalnızca ciro analizi için kullanın.
+            </span>
+        </div>
+
+        @if (_yonetselYukleniyor)
+        {
+            <div class="gg-kart">
+                @for (var i = 0; i < 4; i++)
+                {
+                    <div class="gg-iskelet-satir"><span class="gg-iskelet"></span></div>
+                }
+            </div>
+        }
+        else if (_yonetselSonuc is { } y && SeciliBoyut is { } boyut)
+        {
+            <div class="gg-kart gg-hesap">
+                <div class="gg-hesap-satir">
+                    <span>Net satışlar (yasal)</span>
+                    <span class="gg-tutar">@Tutar(y.Yasal)</span>
+                </div>
+
+                <div class="gg-hesap-satir">
+                    <span>− bu defterde başka şirkete etiketli tutar</span>
+                    <span class="gg-tutar">(@Tutar(y.BaskaSirketeEtiketli))</span>
+                </div>
+                @foreach (var g in y.BaskaSirketeKirilim)
+                {
+                    <div class="gg-hesap-alt">
+                        <span>@Cip(g.Ad) → @FirmaAdi(g.FirmaId!.Value)</span>
+                        <span class="gg-tutar">@Tutar(g.Tutar)</span>
+                    </div>
+                }
+
+                <div class="gg-hesap-satir">
+                    <span>+ diğer defterlerde bu şirkete etiketli tutar</span>
+                    <span class="gg-tutar">@Tutar(y.DigerDefterlerdenGelen)</span>
+                </div>
+                @foreach (var g in y.GelenKirilim)
+                {
+                    <div class="gg-hesap-alt">
+                        <span>@g.Ad defterinden</span>
+                        <span class="gg-tutar">@Tutar(g.Tutar)</span>
+                    </div>
+                }
+                @foreach (var e in y.EksikDefterler)
+                {
+                    <div class="gg-hesap-alt gg-hesap-eksik">
+                        <span>
+                            @DurumMetni(e)
+                            @if (e.Durum != HesapAgaciDurumu.Ulasilamadi)
+                            {
+                                <button type="button" class="gg-bag" @onclick="@(() => MizanYukleAsync(e))">Mizan yükle</button>
+                            }
+                            else
+                            {
+                                <button type="button" class="gg-bag" @onclick="YonetselYenileAsync">Yeniden dene</button>
+                            }
+                        </span>
+                        <span class="gg-tutar">—</span>
+                    </div>
+                }
+
+                <div class="gg-hesap-satir gg-hesap-sonuc">
+                    <span>Net satışlar (yönetsel)@(y.Eksik ? " — eksik" : "")</span>
+                    <span class="gg-tutar">@Tutar(y.Yonetsel)</span>
+                </div>
+
+                @if (y.Eksik)
+                {
+                    <div class="gg-hesap-not gg-hesap-not-uyari">
+                        Toplam EKSİK: @y.EksikDefterler.Count defterin dağılımı bilinmiyor, oradan bu
+                        şirkete gelecek tutar eklenmedi.
+                    </div>
+                }
+
+                @if (y.FirmasizEtiketli != 0m)
+                {
+                    <div class="gg-hesap-not">
+                        Firması tanımsız etiketlere düşen @Tutar(y.FirmasizEtiketli) başka bir
+                        şirkete taşınamadığı için bu defterde kaldı.
+                    </div>
+                }
+
+                <div class="gg-hesap-not">
+                    Etiketsiz (Atanmamış) tutarlar defterin sahibinde kalır. Dağıtım
+                    <strong>@boyut.Ad</strong> boyutunun kapsamındaki net satış hesaplarından
+                    (60x–61x) yapıldı.
+                    @if (_ciroDisiKapsam.Count > 0)
+                    {
+                        <text> Kapsamdaki @string.Join(", ", _ciroDisiKapsam) net satış hesabı olmadığı için bu hesaba girmedi.</text>
+                    }
+                    @if (_yasalKapsamFarki is decimal fark && !GrupGorunumu.Denk(fark, 0m))
+                    {
+                        <text> Not: boyut kapsamı net satışların tamamını kapsamıyor (@Tutar(fark) kapsam dışında, defterde kaldı).</text>
+                    }
+                </div>
+            </div>
+        }
+        else if (_yonetselHata is not null)
+        {
+            <div class="gg-kart gg-hesap-not gg-hesap-not-uyari">
+                Yönetsel görünüm hesaplanamadı. <button type="button" class="gg-bag" @onclick="YonetselYenileAsync">Yeniden dene</button>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+    [Parameter, EditorRequired] public List<MizanSatir> Rows { get; set; } = new();
+
+    [Parameter] public IReadOnlyDictionary<string, decimal?> CariRawValues { get; set; } =
+        new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+
+    [Parameter] public IReadOnlyDictionary<string, decimal?> OncekiRawValues { get; set; } =
+        new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+
+    [Parameter] public decimal? HesaplananVergi691Cari { get; set; }
+
+    private static readonly CultureInfo Tr = new("tr-TR");
+
+    // Varsayılan YASAL. Bilerek hiçbir yerde saklanmaz (URL, localStorage, servis):
+    // sayfa her açıldığında / yenilendiğinde yasal görünümle başlar.
+    private bool _yonetsel;
+
+    private List<EtiketBoyutuDto> _boyutlar = new();
+    private int _seciliBoyutId;
+    private string? _etiketHatasi;
+
+    private IReadOnlyList<HesapDugumu> _agac = Array.Empty<HesapDugumu>();
+    private Dictionary<string, List<GrupGorunumu.KirilimSatiri>> _kirilim = new(StringComparer.OrdinalIgnoreCase);
+    private Dictionary<int, string> _firmaAdlari = new();
+
+    private bool _yonetselYukleniyor;
+    private GrupGorunumu.YonetselSonuc? _yonetselSonuc;
+    private string? _yonetselHata;
+    private List<string> _ciroDisiKapsam = new();
+    private decimal? _yasalKapsamFarki;
+
+    private int _yuklenenYil;
+    private int _yuklenenFirmaId;
+
+    private EtiketBoyutuDto? SeciliBoyut => _boyutlar.FirstOrDefault(b => b.Id == _seciliBoyutId);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Firma ya da dönem değiştiyse etiket tarafı tazelenir; yönetsel sonuç düşer.
+        var yil = FirmaKontrolService.AktifDonemYili;
+        if (yil == _yuklenenYil && FirmaId == _yuklenenFirmaId) return;
+
+        _yuklenenYil = yil;
+        _yuklenenFirmaId = FirmaId;
+        _yonetsel = false;
+        _yonetselSonuc = null;
+
+        await AgaciYukleAsync();
+        await EtiketleriYukleAsync();
+    }
+
+    private async Task AgaciYukleAsync()
+    {
+        try
+        {
+            _agac = await FirmaKontrolService.GetHesapAgaciAsync(FirmaId, Donem.Cari);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GelirTablosuGorunum agac HATA] {ex.Message}");
+            _agac = Array.Empty<HesapDugumu>();
+        }
+    }
+
+    /// <summary>Korunaklı: hata yalnızca seçim şeridinde yerinde mesaj olur.</summary>
+    private async Task EtiketleriYukleAsync()
+    {
+        try
+        {
+            _boyutlar = await EtiketApi.GetBoyutlarAsync(FirmaId);
+            if (SeciliBoyut is null) _seciliBoyutId = _boyutlar.FirstOrDefault()?.Id ?? 0;
+            _etiketHatasi = null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GelirTablosuGorunum etiket HATA] {ex.Message}");
+            _boyutlar = new();
+            _seciliBoyutId = 0;
+            _etiketHatasi = ex.Message;
+            _yonetsel = false;
+        }
+
+        KirilimHesapla();
+    }
+
+    private void KirilimHesapla()
+    {
+        try
+        {
+            _kirilim = SeciliBoyut is { } b
+                ? GrupGorunumu.AnaHesapKirilimlari(_agac, b)
+                : new(StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GelirTablosuGorunum kirilim HATA] {ex.Message}");
+            _kirilim = new(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private async Task BoyutDegistiAsync(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var id)) return;
+
+        _seciliBoyutId = id;
+        KirilimHesapla();
+        _yonetselSonuc = null;
+
+        if (_yonetsel) await YonetselHesaplaAsync();
+    }
+
+    private Task YasalSecAsync()
+    {
+        _yonetsel = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task YonetselSecAsync()
+    {
+        if (SeciliBoyut is null) return;
+
+        _yonetsel = true;
+        if (_yonetselSonuc is null) await YonetselHesaplaAsync();
+    }
+
+    private Task YonetselYenileAsync() => YonetselHesaplaAsync();
+
+    /// <summary>
+    /// Diğer defterler YALNIZCA yönetsel görünüm seçildiğinde okunur (sayfa açılışında değil).
+    /// Her firma ayrı korunur; biri alınamazsa o satır "ulaşılamadı" olur.
+    /// </summary>
+    private async Task YonetselHesaplaAsync()
+    {
+        if (SeciliBoyut is not { } boyut) return;
+
+        _yonetselYukleniyor = true;
+        _yonetselHata = null;
+        StateHasChanged();
+
+        try
+        {
+            await FirmaAdlariniYukleAsync();
+
+            var firmalar = GrupGorunumu.IlgiliFirmalar(FirmaId, boyut.Degerler);
+            var defterler = await GrupDefterYukleyici.YukleAsync(
+                FirmaKontrolService, EtiketApi, FirmaId, boyut, firmalar, FirmaAdi);
+
+            var kendi = defterler.First(d => d.FirmaId == FirmaId);
+            var yasal = YasalNetSatislar();
+
+            _yonetselSonuc = GrupGorunumu.YonetselHesapla(
+                FirmaId, yasal, kendi, defterler, boyut.Degerler);
+
+            _ciroDisiKapsam = GrupGorunumu.CiroDisiKapsamHesaplari(_agac, boyut.KapsamHesaplari);
+            _yasalKapsamFarki = kendi.Yuklu ? yasal - kendi.AnaHesapToplami : null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GelirTablosuGorunum yonetsel HATA] {ex}");
+            _yonetselSonuc = null;
+            _yonetselHata = ex.Message;
+        }
+        finally
+        {
+            _yonetselYukleniyor = false;
+        }
+    }
+
+    /// <summary>
+    /// Gelir tablosundaki "C-NET SATIŞLAR" satırı — grid'in kullandığı hesapla birebir aynı
+    /// girdilerle OKUNUR. Buradan geri hiçbir şey yazılmaz.
+    /// </summary>
+    private decimal YasalNetSatislar()
+    {
+        var satirlar = GelirTablosuCalculator.Compute(Rows, CariRawValues, OncekiRawValues, HesaplananVergi691Cari);
+        var net = satirlar.FirstOrDefault(r =>
+            r.Source.Tip == SatirTipi.Total
+            && EtiketMotoru.Sadelestir(r.Source.Ad).Contains("net satis"));
+
+        return net?.Cari ?? 0m;
+    }
+
+    private async Task FirmaAdlariniYukleAsync()
+    {
+        if (_firmaAdlari.Count > 0) return;
+
+        try
+        {
+            var firmalar = await FirmaKontrolService.GetFirmsAsync();
+            _firmaAdlari = firmalar.ToDictionary(f => f.Id, f => f.Ad);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GelirTablosuGorunum firma HATA] {ex.Message}");
+        }
+    }
+
+    private string FirmaAdi(int firmaId) =>
+        _firmaAdlari.TryGetValue(firmaId, out var ad) ? ad : $"Firma #{firmaId} (bulunamadı)";
+
+    private async Task MizanYukleAsync(GrupGorunumu.Defter defter)
+    {
+        var sonuc = await Dialog.OpenAsync<MizanUploadDialog>(
+            $"{defter.FirmaAd} – Cari Dönem Mizan Yükle",
+            new() { ["FirmaId"] = defter.FirmaId, ["Donem"] = Donem.Cari },
+            new DialogOptions { Width = "640px", CloseDialogOnOverlayClick = false });
+
+        if (sonuc is true) await YonetselHesaplaAsync();
+    }
+
+    // ── Biçim ──
+
+    private static string DurumMetni(GrupGorunumu.Defter d) => d.Durum switch
+    {
+        HesapAgaciDurumu.MizanYuklenmedi => $"{d.FirmaAd} mizanı yüklenmedi",
+        HesapAgaciDurumu.AgacYok => $"{d.FirmaAd} mizanında kırılım ağacı yok (yeniden yüklenmeli)",
+        HesapAgaciDurumu.Ulasilamadi => $"{d.FirmaAd} verisine ulaşılamadı",
+        _ => d.FirmaAd
+    };
+
+    private RenderFragment Cip(string degerAd) => __builder =>
+    {
+        var d = SeciliBoyut?.Degerler.FirstOrDefault(x => x.Ad == degerAd);
+        <span class="gg-cip">
+            <span class="gg-kare" style="@($"background:{(string.IsNullOrWhiteSpace(d?.Renk) ? "#CBD5E1" : d!.Renk)}")"></span>
+            @degerAd
+        </span>
+    };
+
+    private static string Tutar(decimal deger) => deger.ToString("N2", Tr);
+}

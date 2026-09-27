@@ -52,6 +52,22 @@ public sealed class FlaUiKlavyeSurucusu : IKlavyeSurucusu
 }
 
 /// <summary>
+/// <c>TemizleYaz</c> adiminin kutuyu NASIL bosalttigi.
+///
+/// Gorev dosyasindan seciliyor cunku cevap EKRANA gore degisiyor: ORKA'nin
+/// kendi kutularinda CTRL calismiyor, Windows'un dosya secim diyalogunda
+/// calisiyor.
+/// </summary>
+public enum TemizlemeYolu
+{
+    /// <summary>CTRL+A ile sec, uzerine yaz. Varsayilan; dosya diyalogunda calisiyor.</summary>
+    CtrlA,
+
+    /// <summary>END + SHIFT+HOME + DELETE. ORKA'nin kendi kutulari icin.</summary>
+    SecVeSil
+}
+
+/// <summary>
 /// ORKA'nin ic kontrolleri UIA'ya kapali oldugu icin tum etkilesim klavyeden.
 /// Iyi haber: Delphi/VCL klavye navigasyonunu iyi destekliyor.
 /// </summary>
@@ -163,6 +179,74 @@ public static class Klavye
     {
         Kisayol("CTRL+A", 100);
         Yaz(metin, beklemeMs);
+    }
+
+    /// <summary>
+    /// Kutuyu CTRL KULLANMADAN temizler: END, SHIFT+HOME, DELETE, sonra yazar.
+    ///
+    /// <b>Neden var:</b> 08.09.2026 kosusunda robot 0001 yerine 1187 firmasina
+    /// girdi (ORKA_1187_2026). F7 firma arama kutusu <b>otomatik tamamlama</b>
+    /// alani ve icinde onceki deger duruyor; <see cref="TemizleVeYaz"/> onu
+    /// CTRL+A ile secmeye calisiyor ama <b>ORKA'da CTRL kombinasyonlari
+    /// calismiyor</b> (daha once ALT icin de olculmustu). Secim olmayinca yeni
+    /// kod eskisinin UZERINE degil YANINA yaziliyor, otomatik tamamlama baska
+    /// bir firmayi buluyor ve robot yanlis firmada calismaya devam ediyor --
+    /// sessizce, cunku sonraki adimlarin hepsi "bir firma acildi" diyor.
+    ///
+    /// <b>Neden bu tuslar:</b> uc tus da tek basina, kombinasyonsuz calisiyor.
+    /// END imleci sona goturuyor (kutu bos olsa da zararsiz), SHIFT+HOME basa
+    /// kadar seciyor, DELETE secimi siliyor. SHIFT+HOME bir kombinasyon ama
+    /// SHIFT bir <i>modifier</i> olarak Delphi/VCL kutularinda calisiyor;
+    /// calismayan CTRL/ALT kisayollari.
+    ///
+    /// <b>Neden <see cref="TemizleVeYaz"/> degistirilmedi:</b> dosya secim
+    /// diyalogunda (Windows'un kendi penceresi) CTRL+A calisiyor ve orada
+    /// {dosyaYolu}/{hesapKodu} adimlariyla sinanmis durumda. Calisan yolu
+    /// degistirmemek icin ikinci bir yol eklendi; hangi adimin hangisini
+    /// kullanacagi gorev dosyasindan seciliyor (<c>Adim.Temizleme</c>).
+    /// </summary>
+    public static void SecVeSilVeYaz(string metin, int? beklemeMs = null)
+    {
+        Tus("END", 1, 100);
+        Kisayol("SHIFT+HOME", 100);
+        Tus("DELETE", 1, 100);
+        Yaz(metin, beklemeMs);
+    }
+
+    /// <summary>
+    /// Adimin sectigi temizleme yoluyla yazar.
+    ///
+    /// Ayri bir dagitici olmasinin sebebi: iki yol da <c>TemizleYaz</c> adimi
+    /// ve motorun icinde bir <c>if</c> ile ayrilsalardi karar sinanamazdi.
+    /// </summary>
+    public static void TemizleVeYaz(string metin, TemizlemeYolu yol, int? beklemeMs = null)
+    {
+        if (yol == TemizlemeYolu.SecVeSil) SecVeSilVeYaz(metin, beklemeMs);
+        else TemizleVeYaz(metin, beklemeMs);
+    }
+
+    /// <summary>
+    /// Gorev dosyasindaki <c>Temizleme</c> alanini cozer. Bos/eksikse
+    /// <see cref="TemizlemeYolu.CtrlA"/> -- mevcut butun adimlarin davranisi
+    /// degismemeli.
+    /// </summary>
+    /// <exception cref="ArgumentException">
+    /// Taninmayan deger. <b>Sessizce CTRL+A'ya dusulmuyor:</b> yazim hatasi
+    /// ("SecVeSİl", "sec-ve-sil") tam da duzeltilmeye calisilan hatayi geri
+    /// getirirdi ve gorev sessizce yanlis firmaya girerdi.
+    /// </exception>
+    public static TemizlemeYolu TemizlemeCoz(string? deger)
+    {
+        if (string.IsNullOrWhiteSpace(deger)) return TemizlemeYolu.CtrlA;
+
+        return deger.Trim().ToLowerInvariant() switch
+        {
+            "ctrla" or "ctrl+a" => TemizlemeYolu.CtrlA,
+            "secvesil"          => TemizlemeYolu.SecVeSil,
+            _ => throw new ArgumentException(
+                $"Bilinmeyen Temizleme degeri: '{deger}'. Gecerli degerler: " +
+                $"'{nameof(TemizlemeYolu.CtrlA)}' (varsayilan), '{nameof(TemizlemeYolu.SecVeSil)}'.")
+        };
     }
 
     private static VirtualKeyShort Cozumle(string ad)

@@ -7,7 +7,16 @@ namespace CatalogService.Api.Features.FirmaKontrol.Services
         /// <summary>Firmanın verilen yıla ait tüm ham mizan satırları (her iki dönem).</summary>
         Task<List<FirmaKontrolMizanSatirDto>> GetSatirlarAsync(int firmaId, int yil, CancellationToken ct = default);
 
-        /// <summary>Bir dönemin ham mizanını idempotent kaydeder: (FirmaId, Donem, Yil) sil + yaz.</summary>
+        /// <summary>
+        /// Firmanın verilen yıla ait hesap kırılım ağaçları (her iki dönem). Ağaç kaydı
+        /// yoksa o dönem listede yer almaz — eski yüklemelerde ağaç bulunmaz, bu hata değildir.
+        /// </summary>
+        Task<List<FirmaKontrolMizanAgacDto>> GetAgaclarAsync(int firmaId, int yil, CancellationToken ct = default);
+
+        /// <summary>
+        /// Bir dönemin ham mizanını idempotent kaydeder: (FirmaId, Donem, Yil) sil + yaz.
+        /// Aynı işlemde o dönemin kırılım ağacı da yazılır.
+        /// </summary>
         Task KaydetAsync(int firmaId, MizanKaydetRequest req, CancellationToken ct = default);
 
         /// <summary>Firmanın verilen yıla ait tüm mizan satırlarını siler (her iki dönem).</summary>

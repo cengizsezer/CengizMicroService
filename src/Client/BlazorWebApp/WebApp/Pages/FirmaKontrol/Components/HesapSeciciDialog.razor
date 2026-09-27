@@ -1,0 +1,434 @@
+@using System.Text
+@using System.Globalization
+@using Radzen
+@using WebApp.Application.Services
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Domain.Models.FirmaKontrol
+
+@inject IFirmaKontrolService FirmaKontrolService
+@inject DialogService Dialog
+
+@*
+    Hesap seçici — mizanın alt kırılım ağacından tek bir hesap seçtirir.
+
+    DİKKAT: Buradaki düğümler HİÇBİR toplama girmez. Bilanço, Gelir Tablosu, Vergi
+    Hesaplaması, Dikey Yüzdeler ve Finansal Oranlar eskisi gibi yalnızca üç haneli ana
+    hesap kodlarından hesaplanır (600 = 600 1 = 600 1 20 + 600 1 21 — aynı para).
+
+    Ekrandaki tutar MaliTabloIsareti ile hesabın TDHP grubunun sunum yönüne çevrilir;
+    elle işaret çevirme yoktur. Görünen sayı, ileride hesaplamada kullanılacak sayıdır.
+*@
+
+<div class="hs-kok">
+
+    @* ── Üst ── *@
+    <div class="hs-arac">
+        <input class="hs-ara" type="search" placeholder="Kod veya ad ara"
+               value="@_arama" @oninput="@(e => AramaDegisti(e.Value?.ToString()))" />
+
+        <label class="hs-onay">
+            <input type="checkbox" checked="@_sadeceBakiyeli"
+                   @onchange="@(e => _sadeceBakiyeli = (bool)(e.Value ?? false))" />
+            <span>Sadece bakiyesi olanlar</span>
+        </label>
+
+        <span class="hs-bosluk"></span>
+
+        <button type="button" class="hs-dugme" @onclick="TumunuKapat">Tümünü kapat</button>
+    </div>
+
+    <div class="hs-govde">
+
+        @* ── Ağaç ── *@
+        <div class="hs-agac">
+            @if (_yukleniyor)
+            {
+                <div class="hs-bos">Hesap ağacı yükleniyor...</div>
+            }
+            else if (_kokler.Count == 0)
+            {
+                <div class="hs-bos">
+                    @* Eski yüklemelerde ağaç kaydı yoktur; bu hata değildir. *@
+                    @(_tumDugumler.Count == 0
+                        ? "Bu dönemin kırılım ağacı kayıtlı değil. Bu dönemin mizanını yeniden yükleyin."
+                        : "Aramanıza ya da filtreye uyan hesap yok.")
+                </div>
+            }
+            else
+            {
+                @foreach (var grup in _kokler.GroupBy(k => k.AnaGrup).OrderBy(g => g.Key))
+                {
+                    <div class="hs-grup-basligi">@grup.Key · @GrupAdi(grup.Key)</div>
+
+                    @foreach (var kok in grup.OrderBy(k => k.Kod, StringComparer.Ordinal))
+                    {
+                        @DugumSatiri(kok, 0)
+                    }
+                }
+            }
+        </div>
+
+        @* ── Seçilen hesabın kartı ── *@
+        <div class="hs-yan">
+            @if (_secili is null)
+            {
+                <div class="hs-bos">Soldan bir hesap seçin.</div>
+            }
+            else
+            {
+                <div class="hs-kart">
+                    <div class="hs-kart-kod">@_secili.Kod</div>
+                    <div class="hs-kart-ad">@(_secili.Ad.Length > 0 ? _secili.Ad : "—")</div>
+                    <div class="hs-kart-tutar">@Tutar(Sunum(_secili))</div>
+                    <div class="hs-kart-yon">
+                        @(_secili.BorcBakiye >= _secili.AlacakBakiye ? "Borç bakiyeli" : "Alacak bakiyeli")
+                        · borç @Tutar(_secili.BorcBakiye) · alacak @Tutar(_secili.AlacakBakiye)
+                    </div>
+                </div>
+
+                <div class="hs-bolum-basligi">Üst hesap zinciri</div>
+                <div class="hs-zincir">
+                    @foreach (var ust in Zincir(_secili))
+                    {
+                        <span class="hs-zincir-oge">@ust.Kod</span>
+                    }
+                    <span class="hs-zincir-oge hs-zincir-son">@_secili.Kod</span>
+                </div>
+
+                <div class="hs-bolum-basligi">Ana hesap içindeki payı</div>
+                <div class="hs-pay">
+                    @PayMetni(_secili)
+                    <span class="hs-pay-alt">ana hesap @_secili.AnaHesapKodu · @Tutar(AnaHesapSunum(_secili))</span>
+                </div>
+
+                <div class="hs-bolum-basligi">İşaret</div>
+                <div class="hs-isaret">
+                    <button type="button" class="hs-isaret-dugme @(_isaret > 0 ? "hs-isaret-secili" : null)"
+                            @onclick="@(() => _isaret = 1)">+ ekle</button>
+                    <button type="button" class="hs-isaret-dugme @(_isaret < 0 ? "hs-isaret-secili" : null)"
+                            @onclick="@(() => _isaret = -1)">− çıkar</button>
+                </div>
+
+                <div class="hs-yan-dugmeler">
+                    <button type="button" class="hs-dugme hs-dugme-birincil" @onclick="Ekle">Ekle</button>
+                    <button type="button" class="hs-dugme" @onclick="Vazgec">Vazgeç</button>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* ── Alt şerit ── *@
+    <div class="hs-serit">
+        <span>
+            @_tumDugumler.Count satır · @AnaHesapSayisi ana hesap ·
+            @AltKirilimSayisi alt kırılım · en fazla @EnDerinSeviye seviye
+        </span>
+        <span class="hs-bosluk"></span>
+        <span class="hs-not">Alt kırılımlar toplamlara girmez</span>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int FirmaId { get; set; }
+    [Parameter] public Donem Donem { get; set; } = Donem.Cari;
+
+    /// <summary>İsteğe bağlı filtre (örn. yalnızca gelir hesapları: d => d.AnaGrup is 6 or 7).</summary>
+    [Parameter] public Func<HesapDugumu, bool>? Filtre { get; set; }
+
+    private static readonly CultureInfo Tr = new("tr-TR");
+
+    private List<HesapDugumu> _tumDugumler = new();
+
+    /// <summary>UstKod → doğrudan çocuklar. Ağaç yapısı buradan türetilir.</summary>
+    private Dictionary<string, List<HesapDugumu>> _cocuklar = new(StringComparer.OrdinalIgnoreCase);
+
+    private Dictionary<string, HesapDugumu> _kodIndeks = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Ana hesap kodu → (tutuyor mu, fark). Madde 5 doğrulaması; hata değil, bilgi.</summary>
+    private Dictionary<string, (bool Tutuyor, decimal Fark)> _dogrulama = new(StringComparer.OrdinalIgnoreCase);
+
+    private List<HesapDugumu> _kokler = new();
+    private readonly HashSet<string> _acik = new(StringComparer.OrdinalIgnoreCase);
+
+    private HesapDugumu? _secili;
+    private int _isaret = 1;
+    private string _arama = string.Empty;
+    private bool _sadeceBakiyeli;
+    private bool _yukleniyor = true;
+
+    /// <summary>Aramada eşleşen düğümler + onların atalarıysa görünür ve kendiliğinden açıktır.</summary>
+    private HashSet<string>? _aramaGorunur;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var dugumler = await FirmaKontrolService.GetHesapAgaciAsync(FirmaId, Donem);
+
+        _tumDugumler = (Filtre is null ? dugumler : dugumler.Where(Filtre)).ToList();
+
+        _kodIndeks = _tumDugumler
+            .GroupBy(d => d.Kod, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        _cocuklar = _tumDugumler
+            .Where(d => d.UstKod is not null)
+            .GroupBy(d => d.UstKod!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderBy(d => d.Kod, StringComparer.Ordinal).ToList(),
+                StringComparer.OrdinalIgnoreCase);
+
+        DogrulamaKur();
+
+        _yukleniyor = false;
+        KokleriKur();
+    }
+
+    /// <summary>
+    /// Madde 5: her ana hesap için, doğrudan altındaki düğümlerin ham bakiye toplamı ana
+    /// hesabın bakiyesine eşit mi (0,01 tolerans). Eşit değilse fark gösterilir — bu bir
+    /// HATA değil, bilgidir; yüklemeyi engellemez.
+    /// </summary>
+    private void DogrulamaKur()
+    {
+        _dogrulama = new Dictionary<string, (bool, decimal)>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var ana in _tumDugumler.Where(d => d.Seviye == 1))
+        {
+            if (!_cocuklar.TryGetValue(ana.Kod, out var cocuklar) || cocuklar.Count == 0) continue;
+
+            var fark = ana.Bakiye - cocuklar.Sum(c => c.Bakiye);
+            _dogrulama[ana.Kod] = (Math.Abs(fark) <= 0.01m, fark);
+        }
+    }
+
+    // ── Filtre / arama ──
+
+    private void AramaDegisti(string? metin)
+    {
+        _arama = metin ?? string.Empty;
+        KokleriKur();
+    }
+
+    private bool Aramada => _arama.Trim().Length > 0;
+
+    private void KokleriKur()
+    {
+        _aramaGorunur = null;
+
+        if (Aramada)
+        {
+            var terim = Sadelestir(_arama);
+            var gorunur = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var d in _tumDugumler)
+            {
+                if (!Sadelestir(d.Kod).Contains(terim) && !Sadelestir(d.Ad).Contains(terim)) continue;
+
+                gorunur.Add(d.Kod);
+                foreach (var ata in Zincir(d)) gorunur.Add(ata.Kod);   // ataları da göster
+            }
+
+            _aramaGorunur = gorunur;
+        }
+
+        _kokler = _tumDugumler
+            .Where(d => d.Seviye == 1 && Gorunur(d))
+            .ToList();
+    }
+
+    /// <summary>Düğümün kendisi ya da altındaki herhangi bir düğüm süzgeçlerden geçiyor mu.</summary>
+    private bool Gorunur(HesapDugumu d)
+    {
+        if (_aramaGorunur is not null && !_aramaGorunur.Contains(d.Kod)) return false;
+
+        if (_sadeceBakiyeli && d.Bakiye == 0m && !AltindaBakiyeVar(d)) return false;
+
+        return true;
+    }
+
+    private bool AltindaBakiyeVar(HesapDugumu d) =>
+        Cocuklar(d).Any(c => c.Bakiye != 0m || AltindaBakiyeVar(c));
+
+    private List<HesapDugumu> Cocuklar(HesapDugumu d) =>
+        _cocuklar.TryGetValue(d.Kod, out var liste) ? liste : new List<HesapDugumu>();
+
+    private List<HesapDugumu> GorunurCocuklar(HesapDugumu d) =>
+        Cocuklar(d).Where(Gorunur).ToList();
+
+    // ── Aç / kapat (performans: yalnızca açık dallar çizilir) ──
+
+    private bool Acik(HesapDugumu d) =>
+        _aramaGorunur is not null || _acik.Contains(d.Kod);
+
+    private void Degistir(HesapDugumu d)
+    {
+        if (!_acik.Remove(d.Kod)) _acik.Add(d.Kod);
+    }
+
+    private void TumunuKapat() => _acik.Clear();
+
+    // ── Satır çizimi (özyinelemeli; kapalı dal hiç render edilmez) ──
+
+    private RenderFragment DugumSatiri(HesapDugumu d, int derinlik) => __builder =>
+    {
+        var cocuklar = GorunurCocuklar(d);
+        var acik = cocuklar.Count > 0 && Acik(d);
+        var secili = _secili is not null && string.Equals(_secili.Kod, d.Kod, StringComparison.OrdinalIgnoreCase);
+
+        <div class="hs-satir @(secili ? "hs-satir-secili" : null)"
+             style="@($"padding-left:{8 + derinlik * 18}px")"
+             @onclick="@(() => _secili = d)">
+
+            @if (cocuklar.Count > 0)
+            {
+                <button type="button" class="hs-ok" @onclick:stopPropagation="true"
+                        @onclick="@(() => Degistir(d))">@(acik ? "▾" : "▸")</button>
+            }
+            else
+            {
+                <span class="hs-ok"></span>
+            }
+
+            <span class="hs-kod">@Isaretle(d.Kod)</span>
+            <span class="hs-ad">
+                @Isaretle(d.Ad)
+                @if (cocuklar.Count > 0 && !acik)
+                {
+                    <span class="hs-alt-bilgi">@cocuklar.Count alt kırılım</span>
+                }
+                @if (d.Seviye == 1 && _dogrulama.TryGetValue(d.Kod, out var dg))
+                {
+                    <span class="hs-rozet @(dg.Tutuyor ? "hs-rozet-tutuyor" : "hs-rozet-tutmuyor")"
+                          title="@(dg.Tutuyor
+                                   ? "Alt kırılım toplamı ana hesaba eşit."
+                                   : "Alt kırılım toplamı ana hesaptan farklı. Bilgi amaçlıdır, yüklemeyi engellemez.")">
+                        @(dg.Tutuyor ? "tutuyor" : $"tutmuyor · {Tutar(Math.Abs(dg.Fark))}")
+                    </span>
+                }
+            </span>
+            <span class="hs-tutar">@Tutar(Sunum(d))</span>
+        </div>
+
+        @if (acik)
+        {
+            foreach (var c in cocuklar)
+            {
+                @DugumSatiri(c, derinlik + 1)
+            }
+        }
+    };
+
+    /// <summary>Aramada eşleşen metin parçasını işaretler.</summary>
+    private RenderFragment Isaretle(string metin) => __builder =>
+    {
+        var terim = _arama.Trim();
+
+        if (terim.Length == 0 || metin.Length == 0)
+        {
+            @metin
+            return;
+        }
+
+        // Sadelestir karakterleri bire bir eşler (ı→i, Ş→s ...), bu yüzden indeksler kayar değil.
+        var i = Sadelestir(metin).IndexOf(Sadelestir(terim), StringComparison.Ordinal);
+        if (i < 0)
+        {
+            @metin
+            return;
+        }
+
+        var son = i + terim.Length;
+
+        @metin[..i]
+        <mark class="hs-vurgu">@metin[i..son]</mark>
+        @metin[son..]
+    };
+
+    // ── Seçim kartı ──
+
+    /// <summary>Kökten başlayarak düğümün atalarını döner (düğümün kendisi hariç).</summary>
+    private List<HesapDugumu> Zincir(HesapDugumu d)
+    {
+        var zincir = new List<HesapDugumu>();
+        var ust = d.UstKod;
+
+        while (ust is not null && _kodIndeks.TryGetValue(ust, out var ata))
+        {
+            zincir.Insert(0, ata);
+            ust = ata.UstKod;
+        }
+
+        return zincir;
+    }
+
+    private decimal AnaHesapSunum(HesapDugumu d) =>
+        _kodIndeks.TryGetValue(d.AnaHesapKodu, out var ana) ? Sunum(ana) : 0m;
+
+    private string PayMetni(HesapDugumu d)
+    {
+        var ana = AnaHesapSunum(d);
+        if (ana == 0m) return "—";
+
+        return "%" + (Sunum(d) / ana * 100m).ToString("N2", Tr);
+    }
+
+    private async Task Ekle()
+    {
+        if (_secili is null) return;
+        Dialog.Close(new HesapSecimi { Dugum = _secili, Isaret = _isaret });
+        await Task.CompletedTask;
+    }
+
+    private void Vazgec() => Dialog.Close(null);
+
+    // ── Sayaçlar ──
+
+    private int AnaHesapSayisi => _tumDugumler.Count(d => d.Seviye == 1);
+    private int AltKirilimSayisi => _tumDugumler.Count(d => d.Seviye > 1);
+    private int EnDerinSeviye => _tumDugumler.Count == 0 ? 0 : _tumDugumler.Max(d => d.Seviye);
+
+    // ── Sunum yönü (madde 7) ──
+
+    // Dönüşümün TEK kaynağı HesapDugumSunumu; etiket motoru da aynı yerden okur.
+    private static decimal Sunum(HesapDugumu d) => HesapDugumSunumu.Sunum(d);
+
+    // ── Biçim ──
+
+    private static string Tutar(decimal deger) => deger.ToString("N2", Tr);
+
+    private static string GrupAdi(int anaGrup) => anaGrup switch
+    {
+        1 => "DÖNEN VARLIKLAR",
+        2 => "DURAN VARLIKLAR",
+        3 => "KISA VADELİ YABANCI KAYNAKLAR",
+        4 => "UZUN VADELİ YABANCI KAYNAKLAR",
+        5 => "ÖZ KAYNAKLAR",
+        6 => "GELİR TABLOSU HESAPLARI",
+        7 => "MALİYET HESAPLARI",
+        8 => "SERBEST HESAPLAR",
+        9 => "NAZIM HESAPLAR",
+        _ => "DİĞER",
+    };
+
+    /// <summary>Büyük/küçük harf ve Türkçe karakter duyarsız karşılaştırma anahtarı (1:1 eşleme).</summary>
+    private static string Sadelestir(string? metin)
+    {
+        if (string.IsNullOrEmpty(metin)) return string.Empty;
+
+        var sb = new StringBuilder(metin.Length);
+        foreach (var ch in metin)
+        {
+            sb.Append(ch switch
+            {
+                'ı' or 'I' or 'İ' or 'i' => 'i',
+                'ş' or 'Ş' => 's',
+                'ğ' or 'Ğ' => 'g',
+                'ü' or 'Ü' => 'u',
+                'ö' or 'Ö' => 'o',
+                'ç' or 'Ç' => 'c',
+                _ => char.ToLowerInvariant(ch)
+            });
+        }
+        return sb.ToString();
+    }
+}

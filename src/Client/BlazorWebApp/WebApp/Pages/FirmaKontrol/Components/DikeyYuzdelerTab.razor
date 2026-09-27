@@ -1,0 +1,431 @@
+@using System.Globalization
+@using WebApp.Application.Services
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Domain.Models.FirmaKontrol
+@using static WebApp.Application.Services.DikeyYuzdeSunumu
+
+@inject IFirmaKontrolService FirmaKontrolService
+
+@*
+    Dikey Yüzdeler (PROMPT 4) — eski dört alt sekmenin (Bilanço · Bilanço Özet · Gelir Tablosu ·
+    Gelir Tablosu Özet) yerine solda ÜÇ GÖRÜNÜM: Bilanço · Gelir Tablosu · Özet Grafik.
+    "Özet" alt sekmeleri artık "Sadece ana kalemler" onay kutusuyla karşılanıyor.
+
+    SUNUM KATMANIDIR: tutarlar DikeyYuzdeSunumu üzerinden MizanHesaplayici ve
+    GelirTablosuCalculator'dan okunur; hiçbir hesap burada yeniden yapılmaz.
+    Alt kırılımlar hiçbir toplama girmez, yalnızca Özet Grafik'te BİLGİ olarak çizilir.
+*@
+
+<div class="dy-ekran">
+
+    @* ── Sol sütun ── *@
+    <aside class="dy-sol">
+        <div class="dy-baslik">GÖRÜNÜM</div>
+
+        @foreach (var (g, ad, alt) in Gorunumler)
+        {
+            <button type="button"
+                    class="dy-gorunum @(g == _gorunum ? "dy-gorunum-secili" : null)"
+                    aria-pressed="@(g == _gorunum ? "true" : "false")"
+                    @onclick="@(() => _gorunum = g)">
+                <span class="dy-gorunum-ad">@ad</span>
+                <span class="dy-gorunum-alt">@alt</span>
+            </button>
+        }
+
+        <div class="dy-ayirici"></div>
+
+        @if (_gorunum == Gorunum.Bilanco)
+        {
+            @Onay("Sadece hareket görenler", _bHareket, v => _bHareket = v)
+            @Onay("Sadece ana kalemler", _bAnaKalem, v => _bAnaKalem = v)
+            @Onay("Çubukları göster", _bCubuk, v => _bCubuk = v)
+
+            <div class="dy-sol-ozet">
+                @OzetRakam("AKTİF TOPLAM", _bilanco.AktifToplam)
+                @OzetRakam("PASİF TOPLAM", _bilanco.PasifToplam)
+
+                @if (_bilanco.FarkVar)
+                {
+                    @* Zorunlu: fark varken iki bölümün yüzdeleri farklı tabanlara göredir. *@
+                    <div class="dy-fark" role="alert">
+                        <strong>FARK @Tutar(_bilanco.Fark)</strong>
+                        <span>Aktif ve pasif ayrı tabanlara oranlandı</span>
+                    </div>
+                }
+            </div>
+        }
+        else if (_gorunum == Gorunum.GelirTablosu)
+        {
+            @Onay("Sadece hareket görenler", _gHareket, v => _gHareket = v)
+            @Onay("Sadece ana kalemler", _gAnaKalem, v => _gAnaKalem = v)
+            @Onay("Çubukları göster", _gCubuk, v => _gCubuk = v)
+
+            <div class="dy-sol-ozet">
+                @OzetRakam("NET SATIŞLAR", _gelir.NetSatislar)
+                @OzetRakam("TİCARİ KÂR (690)", _gelir.TicariKar)
+                @OzetRakam("DÖNEM NET KÂRI (692)", _gelir.DonemNetKari)
+            </div>
+        }
+        else
+        {
+            @Onay("Alt kırılımları göster", _oAltKirilim, v => { _oAltKirilim = v; OzetHesapla(); })
+            @Onay("Sıfır bakiyeleri de göster", _oSifir, v => { _oSifir = v; OzetHesapla(); })
+
+            <div class="dy-sol-ozet">
+                @OzetRakam("TİCARİ KÂR", _ozet.TicariKar)
+                <div class="dy-sol-not">Gelirler − satış iadeleri − giderler</div>
+
+                @if (_gelir.TicariKar is decimal k690 && Math.Abs(k690 - _ozet.TicariKar) > Tolerans)
+                {
+                    <div class="dy-fark">
+                        <span>Gelir tablosundaki 690 (@Tutar(k690)) ile fark: @Tutar(_ozet.TicariKar - k690).
+                            690 mizandan okunmuş olabilir.</span>
+                    </div>
+                }
+            </div>
+        }
+    </aside>
+
+    @* ── Sağ sütun: yapışkan araç çubuğu + kayan gövde ── *@
+    <section class="dy-sag">
+        @if (_gorunum != Gorunum.Ozet)
+        {
+            var cubuk = _gorunum == Gorunum.Bilanco ? _bCubuk : _gCubuk;
+
+            <div class="dy-arac">
+                <span class="dy-arac-baslik">@(_gorunum == Gorunum.Bilanco ? "BİLANÇO · DİKEY YÜZDELER" : "GELİR TABLOSU · NET SATIŞLARA ORAN")</span>
+                <span class="dy-bosluk"></span>
+                @if (cubuk)
+                {
+                    <span class="dy-arac-not">Çubuklar dikey yüzdeyi gösterir · tam genişlik = %100</span>
+                }
+            </div>
+
+            <div class="dy-govde">
+                <table class="dy-tablo">
+                    <colgroup>
+                        <col class="dy-c-kod" />
+                        <col />
+                        <col class="dy-c-onceki" />
+                        <col class="dy-c-cari" />
+                        <col class="dy-c-yuzde" />
+                        @if (cubuk)
+                        {
+                            <col class="dy-c-cubuk" />
+                        }
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>KOD</th>
+                            <th>HESAP ADI</th>
+                            <th class="dy-sag-hiza">ÖNCEKİ</th>
+                            <th class="dy-sag-hiza">CARİ DÖNEM</th>
+                            <th class="dy-sag-hiza">@(_gorunum == Gorunum.Bilanco ? "DİKEY %" : "NET SATIŞ %")</th>
+                            @if (cubuk)
+                            {
+                                <th>ÇUBUK</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            var satirlar = GorunenSatirlar();
+                            var kolon = cubuk ? 6 : 5;
+                        }
+                        @if (satirlar.Count == 0)
+                        {
+                            <tr><td colspan="@kolon" class="dy-bos">Gösterilecek satır yok.</td></tr>
+                        }
+                        @foreach (var s in satirlar)
+                        {
+                            @if (s.Tur == SatirTuru.Bolum)
+                            {
+                                <tr class="dy-r-bolum"><td colspan="@kolon">@s.Ad</td></tr>
+                            }
+                            else
+                            {
+                            <tr class="@SatirSinifi(s.Tur)">
+                                <td class="dy-kod">@s.Kod</td>
+                                <td class="dy-ad">@s.Ad</td>
+                                <td class="dy-num @EksiSinif(s.Onceki)">@TutarN(s.Onceki)</td>
+                                <td class="dy-num @EksiSinif(s.Cari)">@TutarN(s.Cari)</td>
+                                <td class="dy-num @EksiSinif(s.Yuzde)">@Yuzde(s.Yuzde)</td>
+                                @if (cubuk)
+                                {
+                                    <td class="dy-cubuk-hucre">
+                                        @if (s.Yuzde is decimal y && y != 0m)
+                                        {
+                                            <span class="dy-cubuk @(y < 0m ? "dy-cubuk-eksi" : null)"
+                                                  style="@Genislik(CubukDikey(y))"></span>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="dy-arac">
+                <span class="dy-arac-baslik">ÖZET GRAFİK</span>
+                <span class="dy-bosluk"></span>
+                <span class="dy-arac-not">Çubuklar her bölümün en büyük kalemine göre · yanında gerçek yüzde</span>
+            </div>
+
+            <div class="dy-kutular">
+                @Kutu("GELİRLER", _ozet.Gelirler.Toplam)
+                @Kutu("GİDERLER", _ozet.Giderler.Toplam)
+                @Kutu("VARLIKLAR", _ozet.Varliklar.Toplam)
+                @Kutu("KAYNAKLAR", _ozet.Kaynaklar.Toplam)
+            </div>
+
+            <div class="dy-govde dy-govde-ozet">
+                @Bolum(_ozet.Gelirler, agacNotu: true, renkNotu: null,
+                    not: "Satış iadeleri gelir toplamına girmez; ticari kârdan ayrıca düşülür.")
+                @Bolum(_ozet.Giderler, agacNotu: true, renkNotu: null, gider: true,
+                    not: "6'lı gider hesabı boşken tutar 7'li yansıtma hesabından (740, 760, 770 …) okunur; tutar bir kez sayılır.")
+                @Bolum(_ozet.Varliklar, agacNotu: false, renkNotu: null,
+                    not: "Kontra hesaplar yalnızca bu görünümde netlendi (255 − 257, 264 − 268); bilanço toplamı değişmez.")
+                @Bolum(_ozet.Kaynaklar, agacNotu: false, renkNotu: "yeşil özkaynak, turuncu borç",
+                    not: "Kaynaklar dönem kârı düzeltmesi olmadan, pasif toplamıyla aynı tabandadır.")
+            </div>
+        }
+    </section>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+    [Parameter, EditorRequired] public HesapPlani Mizan { get; set; } = new();
+
+    [Parameter] public IReadOnlyDictionary<string, decimal?> CariRawValues { get; set; } =
+        new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+    [Parameter] public IReadOnlyDictionary<string, decimal?> OncekiRawValues { get; set; } =
+        new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+    [Parameter] public IReadOnlyDictionary<string, string> RawAdlar { get; set; } =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    [Parameter] public decimal? HesaplananVergi691Cari { get; set; }
+
+    private enum Gorunum { Bilanco, GelirTablosu, Ozet }
+
+    private static readonly (Gorunum G, string Ad, string Alt)[] Gorunumler =
+    {
+        (Gorunum.Bilanco, "Bilanço", "Aktif ve pasif, kendi toplamlarına"),
+        (Gorunum.GelirTablosu, "Gelir Tablosu", "Net satışlara oranla"),
+        (Gorunum.Ozet, "Özet Grafik", "Gelirler, giderler, varlıklar, kaynaklar"),
+    };
+
+    private static readonly CultureInfo Tr = new("tr-TR");
+
+    private Gorunum _gorunum = Gorunum.Bilanco;
+
+    // Görünüm 1
+    private bool _bHareket = true, _bAnaKalem, _bCubuk = true;
+    // Görünüm 2
+    private bool _gHareket = true, _gAnaKalem, _gCubuk = true;
+    // Görünüm 3
+    private bool _oAltKirilim = true, _oSifir;
+
+    private BilancoSonucu _bilanco = new();
+    private GelirTablosuSonucu _gelir = new();
+    private OzetGrafikSonucu _ozet = new();
+
+    private IReadOnlyList<HesapDugumu> _agac = Array.Empty<HesapDugumu>();
+    private int _agacYili;
+    private int _agacFirmaId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Ağaç yalnızca firma/dönem değişince okunur; yoksa alt kırılım çizilmez, hata verilmez.
+        var yil = FirmaKontrolService.AktifDonemYili;
+        if (yil != _agacYili || FirmaId != _agacFirmaId)
+        {
+            _agacYili = yil;
+            _agacFirmaId = FirmaId;
+            try
+            {
+                _agac = await FirmaKontrolService.GetHesapAgaciAsync(FirmaId, Donem.Cari);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DikeyYuzdeler agac HATA] {ex.Message}");
+                _agac = Array.Empty<HesapDugumu>();
+            }
+        }
+
+        _bilanco = DikeyYuzdeSunumu.Bilanco(Mizan.Aktif, Mizan.Pasif);
+        _gelir = DikeyYuzdeSunumu.GelirTablosu(Mizan.GelirTablosu, CariRawValues, OncekiRawValues, HesaplananVergi691Cari);
+        OzetHesapla();
+    }
+
+    private void OzetHesapla() =>
+        _ozet = DikeyYuzdeSunumu.OzetGrafik(
+            Mizan.GelirTablosu, Mizan.Aktif, Mizan.Pasif,
+            CariRawValues, OncekiRawValues, RawAdlar, _agac,
+            altKirilim: _oAltKirilim, sifirlar: _oSifir);
+
+    private List<Satir> GorunenSatirlar()
+    {
+        var (liste, hareket, anaKalem) = _gorunum == Gorunum.Bilanco
+            ? (_bilanco.Satirlar, _bHareket, _bAnaKalem)
+            : (_gelir.Satirlar, _gHareket, _gAnaKalem);
+
+        return liste.Where(s => s.Tur switch
+        {
+            // "Sadece ana kalemler": hesap satırları gizlenir, grup ve alt grup kalır.
+            SatirTuru.Hesap => !anaKalem && (!hareket || s.HareketVar),
+            SatirTuru.AltGrup => !hareket || s.HareketVar,
+            _ => true
+        }).ToList();
+    }
+
+    private static string SatirSinifi(SatirTuru tur) => tur switch
+    {
+        SatirTuru.Roma => "dy-r-roma",
+        SatirTuru.AltGrup => "dy-r-alt",
+        SatirTuru.Toplam => "dy-r-toplam",
+        SatirTuru.AraToplam => "dy-r-ara",
+        SatirTuru.TicariKar => "dy-r-690",
+        SatirTuru.DonemNetKari => "dy-r-692",
+        _ => "dy-r-hesap"
+    };
+
+    // ── Parçalar ──
+
+    private RenderFragment Onay(string etiket, bool deger, Action<bool> degisti) => __builder =>
+    {
+        <label class="dy-onay">
+            <input type="checkbox" checked="@deger" @onchange="@(e => degisti((bool)(e.Value ?? false)))" />
+            <span>@etiket</span>
+        </label>
+    };
+
+    private RenderFragment OzetRakam(string etiket, decimal? tutar) => __builder =>
+    {
+        <div class="dy-ozet-rakam">
+            <span class="dy-ozet-etiket">@etiket</span>
+            <span class="dy-ozet-tutar @EksiSinif(tutar)">@TutarN(tutar)</span>
+        </div>
+    };
+
+    private RenderFragment Kutu(string etiket, decimal tutar) => __builder =>
+    {
+        <div class="dy-kutu">
+            <span class="dy-kutu-etiket">@etiket</span>
+            <span class="dy-kutu-tutar @EksiSinif(tutar)">@Tutar(tutar)</span>
+        </div>
+    };
+
+    private RenderFragment Bolum(OzetBolum b, bool agacNotu, string? renkNotu, string not, bool gider = false) => __builder =>
+    {
+        var enBuyuk = b.EnBuyuk;
+
+        <div class="dy-kart">
+            <div class="dy-kart-basi">
+                <span class="dy-kart-baslik">@b.Baslik</span>
+                <span class="dy-kart-toplam @EksiSinif(b.Toplam)">@Tutar(b.Toplam)</span>
+                <span class="dy-bosluk"></span>
+                <span class="dy-kart-kural">
+                    Çubuk: bölümün en büyük kalemine göre · yüzde: bölüm toplamına
+                    @if (renkNotu is not null)
+                    {
+                        <text> · @renkNotu</text>
+                    }
+                </span>
+            </div>
+
+            @if (agacNotu && _oAltKirilim && _ozet.AgacYok)
+            {
+                <div class="dy-kart-uyari">Alt kırılım için bu dönemin mizanını yeniden yükleyin</div>
+            }
+
+            @if (b.Kalemler.Count == 0 && b.EksiSatirlar.Count == 0)
+            {
+                <div class="dy-bos">Bu bölümde bakiyeli hesap yok.</div>
+            }
+
+            @foreach (var k in b.Kalemler)
+            {
+                <div class="dy-kalem">
+                    <span class="dy-kalem-kod">@k.Kod</span>
+                    <span class="dy-kalem-ad">@k.Ad</span>
+                    <span class="dy-kalem-cubuk-kap">
+                        @Cubuk(k.Tutar, enBuyuk, KalemRenk(k, gider))
+                    </span>
+                    <span class="dy-kalem-tutar @EksiSinif(k.Tutar)">@Tutar(k.Tutar)</span>
+                    <span class="dy-kalem-yuzde">@Yuzde(Oran(k.Tutar, b.Toplam))</span>
+                </div>
+
+                @foreach (var a in k.AltKirilimlar)
+                {
+                    @* BİLGİ: alt kırılım hiçbir toplama girmez. *@
+                    <div class="dy-kalem dy-kirilim dy-kirilim-@a.Seviye">
+                        <span class="dy-kalem-kod">@a.Kod</span>
+                        <span class="dy-kalem-ad">@a.Ad</span>
+                        <span class="dy-kalem-cubuk-kap">
+                            @* Aynı ölçek: bölümün en büyük kalemi. Daha açık ton = alt kırılım. *@
+                            @Cubuk(a.Tutar, enBuyuk, $"dy-renk-{(gider ? "gider" : "gelir")}-alt{Math.Min(a.Seviye, 2)}")
+                        </span>
+                        <span class="dy-kalem-tutar @EksiSinif(a.Tutar)">@Tutar(a.Tutar)</span>
+                        <span class="dy-kalem-yuzde"></span>
+                    </div>
+                }
+            }
+
+            @foreach (var e in b.EksiSatirlar)
+            {
+                <div class="dy-kalem dy-kalem-eksi-satir">
+                    <span class="dy-kalem-kod">− @e.Kod</span>
+                    <span class="dy-kalem-ad">@e.Ad (ticari kârdan düşülür, toplama girmez)</span>
+                    <span class="dy-kalem-cubuk-kap"></span>
+                    <span class="dy-kalem-tutar dy-eksi">(@Tutar(Math.Abs(e.Tutar)))</span>
+                    <span class="dy-kalem-yuzde"></span>
+                </div>
+            }
+
+            <div class="dy-kart-not">@not</div>
+        </div>
+    };
+
+    private static string KalemRenk(Kalem k, bool gider) => k.Tur switch
+    {
+        KalemTuru.Ozkaynak => "dy-renk-ozkaynak",
+        KalemTuru.Borc => "dy-renk-borc",
+        _ when gider => "dy-renk-gider",
+        _ => k.Tutar < 0m ? "dy-renk-eksi" : "dy-renk-arti"
+    };
+
+    /// <summary>
+    /// Özet Grafik çubuğu: genişlik = |tutar| / bölümün en büyük kalemi (ölçek değişmedi).
+    /// Sıfırdan farklı ama çok küçük tutarlar görünür kalsın diye CSS'te asgari genişlik var.
+    /// </summary>
+    private RenderFragment Cubuk(decimal tutar, decimal enBuyuk, string renk) => __builder =>
+    {
+        if (tutar != 0m)
+        {
+            <span class="dy-kalem-cubuk @renk" style="@Genislik(CubukBolumEnBuyugu(tutar, enBuyuk))"></span>
+        }
+    };
+
+    // ── Biçim: negatif tutarlar parantezli, #8a3a12 ──
+
+    private static string EksiSinif(decimal? d) => d is < 0m ? "dy-eksi" : string.Empty;
+
+    private static string Tutar(decimal d) =>
+        d < 0m ? $"({Math.Abs(d).ToString("N2", Tr)})" : d.ToString("N2", Tr);
+
+    private static string TutarN(decimal? d) => d is decimal v ? Tutar(v) : "—";
+
+    private static string Yuzde(decimal? y) => y switch
+    {
+        null => "—",
+        < 0m => $"(%{Math.Abs(y.Value).ToString("N2", Tr)})",
+        _ => "%" + y.Value.ToString("N2", Tr)
+    };
+
+    private static string Genislik(decimal yuzde) =>
+        $"width:{Math.Round(yuzde, 2).ToString(CultureInfo.InvariantCulture)}%";
+}

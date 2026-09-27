@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using ExcelDataReader;
 using WebApp.Application.Services.Interfaces;
+using WebApp.Domain.Models.FirmaKontrol;
 
 namespace WebApp.Application.Services
 {
@@ -48,25 +49,24 @@ namespace WebApp.Application.Services
 
                     if (!IsAnaHesapKodu(kod))
                     {
-                        // 3-haneli numerik formata uymayan satır.
-                        // Boşluk içeriyorsa hiyerarşik alt kod (beklenen);
-                        // değilse geçersiz format (kullanıcı dikkati gerekebilir).
-                        var sebep = kod.Contains(' ')
-                            ? AtlamaSebebi.HiyerarsikAltKod
-                            : AtlamaSebebi.GecersizFormat;
-
-                        result.AtlananSatirlar.Add(new AtlananSatir
+                        // Alt kırılım ("600 1", "120 1 A08"): artık ATILMIYOR, ayrı ağaç
+                        // listesine yazılıyor. Ana hesap sözlüğüne (result.Rows) GİRMEZ —
+                        // aynı para ikinci kez sayılmasın diye. İlk parçası üç haneli sayı
+                        // olmayan satırlar (başlık, toplam, boş) eskisi gibi atlanır.
+                        if (!DugumEkle(result, kod, ad, reader, bakiye))
                         {
-                            Kod = kod,
-                            Ad = ad,
-                            Bakiye = bakiye,
-                            Sebep = sebep,
-                            SebepMetni = sebep == AtlamaSebebi.HiyerarsikAltKod
-                                ? "Hiyerarşik Alt Kodlar (atlandı, normal davranış)"
-                                : "Geçersiz Format"
-                        });
+                            result.AtlananSatirlar.Add(new AtlananSatir
+                            {
+                                Kod = kod,
+                                Ad = ad,
+                                Bakiye = bakiye,
+                                Sebep = AtlamaSebebi.GecersizFormat,
+                                SebepMetni = "Geçersiz Format"
+                            });
+                        }
                         continue;
                     }
+
 
                     // Mizan dosyasının son satırı genelde genel toplam satırıdır:
                     // Borç Toplam = Alacak Toplam ve Borç Bakiye = Alacak Bakiye olur.
@@ -97,6 +97,10 @@ namespace WebApp.Application.Services
                         continue;
                     }
 
+                    // Üç haneli ana hesap: mevcut davranış aynen sürer. Ayrıca ağacın kökü
+                    // olarak düğüm listesine de eklenir — o liste hiçbir toplamda kullanılmaz.
+                    DugumEkle(result, kod, ad, reader, bakiye);
+
                     // MockFirmaKontrolService.UpdateMizanFromExcelAsync, "CariDonem ?? OncekiDonem"
                     // okuyup Donem parametresine göre hedef döneme yazıyor; tek alan yeterli.
                     result.Rows.Add(new MizanExcelRow
@@ -117,6 +121,51 @@ namespace WebApp.Application.Services
 
         private static bool IsAnaHesapKodu(string kod) =>
             !string.IsNullOrEmpty(kod) && AnaHesapKoduPattern.IsMatch(kod);
+
+        /// <summary>Kırılım ağacı üst sınırı; aşılırsa fazlası alınmaz, yükleme bozulmaz.</summary>
+        private const int DugumSiniri = 10_000;
+
+        private const string SinirSebebi = "Kırılım sınırı aşıldı (ağaca alınmadı)";
+
+        /// <summary>
+        /// Satırı kırılım ağacına ekler. İlk parçası üç haneli sayı değilse hiçbir şey
+        /// yapmaz ve false döner (çağıran satırı atlanan listesine yazar).
+        ///
+        /// Bu liste ana hesap sözlüğünden (<c>result.Rows</c>) tamamen ayrıdır; buraya
+        /// eklenen hiçbir kayıt toplamlara girmez.
+        /// </summary>
+        private static bool DugumEkle(
+            MizanParseResult result, string kod, string? ad, IExcelDataReader reader, decimal? bakiye)
+        {
+            var parcalar = HesapDugumu.Parcala(kod);
+            if (parcalar.Length == 0 || !HesapDugumu.AnaHesapKoduMu(parcalar[0])) return false;
+
+            if (result.HesapDugumleri.Count >= DugumSiniri)
+            {
+                // Sınır mesajı bir kez yazılır; kalan satırlar sessizce alınmaz.
+                if (!result.AtlananSatirlar.Any(a => a.SebepMetni == SinirSebebi))
+                {
+                    result.AtlananSatirlar.Add(new AtlananSatir
+                    {
+                        Kod = kod,
+                        Ad = ad,
+                        Bakiye = bakiye,
+                        Sebep = AtlamaSebebi.HiyerarsikAltKod,
+                        SebepMetni = SinirSebebi
+                    });
+                }
+                return true;
+            }
+
+            var borc = ParseDecimal(SafeGetCell(reader, 5)) ?? 0m;
+            var alacak = ParseDecimal(SafeGetCell(reader, 6)) ?? 0m;
+
+            var dugum = HesapDugumu.Olustur(kod, ad, borc, alacak, bakiye);
+            if (dugum is null) return false;
+
+            result.HesapDugumleri.Add(dugum);
+            return true;
+        }
 
         // PROGROUP formatında D (3) ve E (4) borç/alacak toplamları, F (5) ve G (6)
         // borç/alacak bakiyeleridir. Mizan denklik kontrolü olarak son satırda

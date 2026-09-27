@@ -17,7 +17,15 @@ namespace PkfRobot.Ajan;
 ///
 /// <b>Kaydet'e basilmiyor.</b> Robot hucreleri dolduruyor, kullanici gozle
 /// kontrol edip kendisi kaydediyor. Bu kural pazarlik konusu degil ve
-/// <c>gorevler/orkaya-aktar.json</c> icinde Kaydet adimi yok.
+/// <c>gorevler/tek-dosya-aktar.json</c> icinde Kaydet adimi yok.
+///
+/// <b>Akis artik kuyrukla AYNI dosyalarda.</b> Eskiden ajan kendi
+/// <c>orkaya-aktar.json</c>'unu kosuyordu; ayni aktarim iki dosyada durunca
+/// birinde duzeltilen digerinde eksik kaliyordu (olculdu 08.09.2026: ajan
+/// modul gezinmesinde bir ENTER eksik gonderiyor ve Veri Transferi acilmadan
+/// devam edebiliyordu). O dosya silindi, yerine
+/// <see cref="GorevDosyasi"/> geldi: acilis + govde, ikisi de kuyrugun
+/// kostugu dosyalar.
 /// </summary>
 public sealed class OrkayaAktarCalistirici : IIsCalistirici
 {
@@ -234,10 +242,19 @@ public sealed class OrkayaAktarCalistirici : IIsCalistirici
             else _log.Uyari(satir);
         }
 
-        return sonuc.TamamTutuyor
-            ? $"{sonuc.Eslesen}/{sonuc.Beklenen} satir eslesti"
-            : $"{sonuc.Eslesen}/{sonuc.Beklenen} eslesti, {sonuc.Farklar.Count} satir TUTMUYOR" +
-              (sonuc.Karsilastirilmayan > 0 ? $", {sonuc.Karsilastirilmayan} satir dogrulanmadi" : string.Empty);
+        if (sonuc.TamamTutuyor) return $"{sonuc.Eslesen}/{sonuc.Beklenen} satir eslesti";
+
+        // "Tutmayan satir yok, yalniz ekrana sigmayan var" ile "yanlis kod
+        // yazilmis" ayni cumleyle anlatilmamali: birincisi kaydirilmis bir
+        // grid'de normal, ikincisi ekrana gitmeyi gerektiriyor.
+        var ozet = sonuc.Farklar.Count == 0
+            ? $"{sonuc.Eslesen}/{sonuc.Beklenen} eslesti, tutmayan satir yok"
+            : $"{sonuc.Eslesen}/{sonuc.Beklenen} eslesti, {sonuc.Farklar.Count} satir TUTMUYOR";
+
+        if (sonuc.Karsilastirilmayan > 0) ozet += $", {sonuc.Karsilastirilmayan} satir dogrulanmadi";
+        if (sonuc.EslesmeyenOkunan > 0) ozet += $", {sonuc.EslesmeyenOkunan} okunan satir eslesmedi";
+
+        return ozet;
     }
 
     // ---- sifreler -----------------------------------------------------------
@@ -377,7 +394,20 @@ public sealed class OrkayaAktarCalistirici : IIsCalistirici
 
     // ---- yardimcilar --------------------------------------------------------
 
-    private string GorevYolu() => Path.Combine(AppContext.BaseDirectory, "gorevler", "orkaya-aktar.json");
+    /// <summary>
+    /// Ajanin kostugu akis: <c>acilis.json</c> + <c>tek-dosya-aktar.json</c>
+    /// birlestiren sarmalayici.
+    ///
+    /// <b>Neden sarmalayici dosya, "iki gorevi pespese kosan" kod degil:</b>
+    /// <see cref="Gorev.Yukle"/> <c>AltGorev</c> adimlarini yukleme aninda
+    /// aciyor, motor duz TEK liste goruyor. Boylece tek log klasoru, tek
+    /// ilerleme sayaci ve tek hata ekrani kaliyor -- iki ayri calistirma
+    /// olsaydi <see cref="HataEkraniniYukleAsync"/> hangi klasore bakacagini
+    /// bilemezdi.
+    /// </summary>
+    public const string GorevDosyasi = "ajan-aktar.json";
+
+    private string GorevYolu() => Path.Combine(AppContext.BaseDirectory, "gorevler", GorevDosyasi);
 
     private async Task<string?> HataEkraniniYukleAsync(CancellationToken ct)
     {

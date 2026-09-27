@@ -1,0 +1,674 @@
+@using System.Globalization
+@using System.Text
+@using WebApp.Application.Services
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Domain.Models.FirmaKontrol
+
+@inject IFirmaKontrolService FirmaKontrolService
+
+@*
+    Tek sekmelik bilanço. Aktif ve Pasif düz satır listelerinden üç seviyeli ağaç kurar
+    (Roma grubu → alt grup → hesap) ve sol raydan seçilen grubu sağda gösterir.
+
+    Toplamlar BURADA HESAPLANMAZ: tek kaynak MizanHesaplayici.Compute'tur — detaylı
+    Bilanço (Aktif/Pasif sekmeleri), Bilanço Özet, Dikey Yüzdeler ve Finansal Oranlar
+    da aynı yerden beslenir. Tek istisna Other tipli özkaynak alt başlıklarıdır
+    (Geçmiş Yıllar Kârları/Zararları, Dönem Net Kârı): Compute bunlara değer üretmez,
+    panel o başlığın altındaki hesapların COMPUTE'TAN GELEN değerlerini toplar —
+    ham bakiyeden yeniden türetme yoktur.
+*@
+
+@if (_yapiHatasi is not null)
+{
+    <div class="bl-hata">
+        <strong>Bilanço çizilemedi.</strong> @_yapiHatasi
+    </div>
+}
+else
+{
+    <div class="bl-panel">
+
+        @* ── 5.1 Denge bandı ── *@
+        <div class="bl-denge">
+            <div class="bl-denge-sol">
+                <div class="bl-denge-kutu">
+                    <div class="bl-denge-etiket">AKTİF TOPLAM</div>
+                    <div class="bl-denge-tutar @NegSinif(_aktifToplam)">@Tutar(_aktifToplam)</div>
+                </div>
+                <span class="bl-esit">=</span>
+                <div class="bl-denge-kutu">
+                    <div class="bl-denge-etiket">PASİF TOPLAM</div>
+                    <div class="bl-denge-tutar @NegSinif(_pasifToplam)">@Tutar(_pasifToplam)</div>
+                </div>
+            </div>
+
+            @if (Denk)
+            {
+                <div class="bl-rozet bl-rozet-denk">
+                    <RadzenIcon Icon="check_circle" Style="font-size:18px" />
+                    <span class="bl-rozet-ad">BİLANÇO DENK</span>
+                </div>
+            }
+            else
+            {
+                <div class="bl-rozet bl-rozet-fark">
+                    <RadzenIcon Icon="warning" Style="font-size:18px" />
+                    <div class="bl-rozet-orta">
+                        <div class="bl-rozet-ad">BİLANÇO DENK DEĞİL</div>
+                        <div class="bl-rozet-tutar @NegSinif(_fark)">@Tutar(_fark)</div>
+                    </div>
+                    <button type="button" class="bl-fark-dugme" @onclick="FarkPaneliDegistirAsync">
+                        @(_farkPaneliAcik ? "Kapat" : "Farkı incele")
+                    </button>
+                </div>
+            }
+        </div>
+
+        <div class="bl-icerik">
+
+            @* ── 5.2 Sol ray ── *@
+            <aside class="bl-ray">
+                <label class="bl-onay">
+                    <input type="checkbox" checked="@_sadeceHareket"
+                           @onchange="@(e => SadeceHareketDegisti((bool)(e.Value ?? false)))" />
+                    <span>Sadece hareket görenler</span>
+                </label>
+
+                <div class="bl-sayac">@GosterilenHesapSayisi / @ToplamHesapSayisi hesap gösteriliyor</div>
+
+                <div class="bl-ray-baslik">AKTİF</div>
+                @foreach (var g in _aktifGruplar)
+                {
+                    @GrupOgesi(g)
+                }
+                <div class="bl-ray-toplam">
+                    <span class="bl-ray-toplam-ad">AKTİF TOPLAM</span>
+                    <span class="bl-ray-toplam-tutar @NegSinif(_aktifToplam)">@Tutar(_aktifToplam)</span>
+                </div>
+
+                <div class="bl-ray-baslik">PASİF</div>
+                @foreach (var g in _pasifGruplar)
+                {
+                    @GrupOgesi(g)
+                }
+                <div class="bl-ray-toplam">
+                    <span class="bl-ray-toplam-ad">PASİF TOPLAM</span>
+                    <span class="bl-ray-toplam-tutar @NegSinif(_pasifToplam)">@Tutar(_pasifToplam)</span>
+                </div>
+
+                <div class="bl-ray-bosluk"></div>
+
+                <div class="bl-ray-fark @(Denk ? "bl-ray-fark-denk" : "bl-ray-fark-var")">
+                    <span class="bl-ray-toplam-ad">FARK</span>
+                    <span class="bl-ray-toplam-tutar">@(Denk ? "0,00" : Tutar(_fark))</span>
+                </div>
+            </aside>
+
+            @* ── 5.3 Detay ── *@
+            <section class="bl-detay">
+
+                @* ── 7. Farkı incele ── *@
+                @if (_farkPaneliAcik)
+                {
+                    <div class="bl-fark-panel">
+                        <div class="bl-fark-basi">
+                            <span class="bl-fark-baslik">Hesap planı iskeletinde yer almayan hesaplar</span>
+                            <button type="button" class="bl-fark-kapat" @onclick="FarkPaneliDegistirAsync">Kapat</button>
+                        </div>
+                        <div class="bl-fark-alt">
+                            Ham mizanda bakiyesi olan, ancak Aktif / Pasif / Gelir Tablosu iskeletlerinin
+                            hiçbirinde bulunmayan hesaplar. Tutarlar ham mizan bakiyesidir (borç−alacak).
+                        </div>
+
+                        @if (_farkYukleniyor)
+                        {
+                            <div class="bl-fark-bos">Ham mizan okunuyor...</div>
+                        }
+                        else if (_kimsesizler.Count == 0)
+                        {
+                            <div class="bl-fark-bos">İskelet dışında bakiyeli hesap bulunamadı.</div>
+                        }
+                        else
+                        {
+                            <div class="bl-kolon-basligi">
+                                <span class="bl-kod">KOD</span>
+                                <span class="bl-ad">HESAP ADI</span>
+                                <span class="bl-tutar">HAM BAKİYE</span>
+                            </div>
+                            @foreach (var k in _kimsesizler)
+                            {
+                                <div class="bl-hesap">
+                                    <span class="bl-kod">@k.Kod</span>
+                                    <span class="bl-ad">@k.Ad</span>
+                                    <span class="bl-tutar @NegSinif(k.Bakiye)">@Tutar(k.Bakiye)</span>
+                                </div>
+                            }
+                            <div class="bl-fark-toplam">
+                                <span class="bl-kod"></span>
+                                <span class="bl-ad">Toplam (@_kimsesizler.Count hesap)</span>
+                                <span class="bl-tutar @NegSinif(_kimsesizToplam)">@Tutar(_kimsesizToplam)</span>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <div class="bl-arac">
+                    <input class="bl-ara" type="search" placeholder="Hesap ara: kod veya ad"
+                           value="@_arama" @oninput="@(e => _arama = e.Value?.ToString() ?? string.Empty)" />
+                    <div class="bl-arac-bosluk"></div>
+                    <button type="button" class="bl-kapat-dugme" @onclick="TumAltGruplariDegistir">
+                        @(TumuKapali ? "Alt grupları aç" : "Alt grupları kapat")
+                    </button>
+                </div>
+
+                @if (_secili is null)
+                {
+                    <div class="bl-bos">Gösterilecek grup yok.</div>
+                }
+                else
+                {
+                    <div class="bl-grup-basligi">
+                        <span class="bl-grup-basligi-ad">@_secili.Roma — @_secili.Ad</span>
+                        <span class="bl-grup-basligi-tutar @NegSinif(_secili.Toplam)">@Tutar(_secili.Toplam)</span>
+                    </div>
+
+                    <div class="bl-kolon-basligi">
+                        <span class="bl-kod">KOD</span>
+                        <span class="bl-ad">HESAP ADI</span>
+                        <span class="bl-tutar">CARİ DÖNEM</span>
+                    </div>
+
+                    @* @key: grup değişince gövde yeniden kurulur, scroll başa döner.
+                       Anahtar Roma rakamıdır — ağaç her parametre setinde yeniden kurulduğu
+                       için nesne referansı anahtar olarak kullanılamaz (her render'da değişir). *@
+                    <div class="bl-govde" @key="_secili.Roma">
+                        @{
+                            var altlar = GorunurAltGruplar(_secili);
+                        }
+                        @if (altlar.Count == 0)
+                        {
+                            <div class="bl-bos">
+                                @(Aramada ? "Aramanıza uyan hesap yok." : "Bu grupta gösterilecek hesap yok.")
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var alt in altlar)
+                            {
+                                var acik = AltAcikMi(alt);
+                                var hesaplar = GorunurHesaplar(alt);
+
+                                <div class="bl-alt-grup" @onclick="@(() => AltGrupDegistir(alt))">
+                                    <span class="bl-ok">@(acik ? "▾" : "▸")</span>
+                                    <span class="bl-ad">
+                                        @alt.Ad
+                                        @if (alt.GelirTablosundan)
+                                        {
+                                            <span class="bl-ek-not" title="590/591 hesabında bakiye yok; kapanış kaydı atılmamış. Tutar Gelir Tablosu'nun dönem kârından (690) geliyor.">gelir tablosundan</span>
+                                        }
+                                    </span>
+                                    <span class="bl-tutar @NegSinif(alt.Toplam)">@Tutar(alt.Toplam)</span>
+                                </div>
+
+                                @if (acik)
+                                {
+                                    @foreach (var h in hesaplar)
+                                    {
+                                        var hareket = HareketVar(h.Cari);
+                                        <div class="bl-hesap @(hareket ? null : "bl-hesap-bos")">
+                                            <span class="bl-kod">@h.Kod</span>
+                                            <span class="bl-ad">@h.Ad</span>
+                                            <span class="bl-tutar @(hareket ? NegSinif(h.Cari) : null)">
+                                                @(hareket ? Tutar(h.Cari) : "—")
+                                            </span>
+                                        </div>
+                                    }
+                                }
+                            }
+                        }
+                    </div>
+
+                    <div class="bl-alt-toplam">
+                        <span class="bl-alt-toplam-ad">@_secili.Roma — @_secili.Ad TOPLAMI</span>
+                        <span class="bl-tutar @NegSinif(_secili.Toplam)">@Tutar(_secili.Toplam)</span>
+                    </div>
+                }
+            </section>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public List<MizanSatir> Aktif { get; set; } = new();
+    [Parameter, EditorRequired] public List<MizanSatir> Pasif { get; set; } = new();
+
+    /// <summary>Yalnızca "Farkı incele" için: iskelet dışı hesapları bulurken bu liste de taranır.</summary>
+    [Parameter] public List<MizanSatir> GelirTablosu { get; set; } = new();
+
+    /// <summary>
+    /// Dönem net kârının özkaynağa eklenecek tutarı. Kuralın TEK sahibi
+    /// <c>Detay.OzkaynakDonemKariDuzeltmesi</c>'dir: 590/591 doluysa 0, boşsa gelir
+    /// tablosunun dönem kârı (690). Panel ne bu kuralı ne de tutarı yeniden hesaplar —
+    /// aynı değer Finansal Oranlar paneline de geçer, iki ekran hep aynı özkaynağı görür.
+    /// </summary>
+    [Parameter] public decimal DonemKariDuzeltmesi { get; set; }
+
+    /// <summary>"Farkı incele" ham mizanı bu firma için okur.</summary>
+    [Parameter] public int FirmaId { get; set; }
+
+    /// <summary>Ham mizanın hangi dönemi okunacak. Panel cari dönem gösterir.</summary>
+    [Parameter] public Donem Donem { get; set; } = Donem.Cari;
+
+    private static readonly CultureInfo Tr = new("tr-TR");
+
+    // ── Ağaç modeli (yalnızca sunum) ──
+
+    private sealed record Hesap(string Kod, string Ad, decimal? Cari);
+
+    private sealed class AltGrup
+    {
+        public string Ad { get; init; } = string.Empty;
+        public SatirTipi Tip { get; init; }
+        public decimal? Toplam { get; set; }
+        public List<Hesap> Hesaplar { get; } = new();
+
+        /// <summary>
+        /// Tutar mizandan değil, gelir tablosundan geldi (590/591 bakiyesi yok).
+        /// Yalnızca "Dönem Net Karı (Zararı)" satırında doğar.
+        /// </summary>
+        public bool GelirTablosundan { get; set; }
+    }
+
+    private sealed class RomaGrup
+    {
+        public string Roma { get; init; } = string.Empty;
+        public string Ad { get; init; } = string.Empty;
+        public decimal? Toplam { get; set; }
+        public List<AltGrup> AltGruplar { get; } = new();
+
+        public IEnumerable<Hesap> Hesaplar => AltGruplar.SelectMany(a => a.Hesaplar);
+    }
+
+    private sealed record Kimsesiz(string Kod, string Ad, decimal? Bakiye);
+
+    private List<RomaGrup> _aktifGruplar = new();
+    private List<RomaGrup> _pasifGruplar = new();
+
+    private decimal? _aktifToplam;
+    private decimal? _pasifToplam;
+    private decimal? _fark;
+
+    private string? _yapiHatasi;
+
+    private RomaGrup? _secili;
+    private bool _sadeceHareket = true;
+    private string _arama = string.Empty;
+
+    /// <summary>Kapalı alt gruplar: "{roma}|{alt ad}".</summary>
+    private readonly HashSet<string> _kapali = new();
+
+    private bool _farkPaneliAcik;
+    private bool _farkYukleniyor;
+    private List<Kimsesiz> _kimsesizler = new();
+    private decimal? _kimsesizToplam;
+
+    /// <summary>
+    /// Ağaç HER parametre setinde yeniden kurulur — MizanGrid ve BilancoOzetGrid de
+    /// böyle çalışır. Referans karşılaştırmasıyla önbelleklemek YANLIŞ olur:
+    /// <c>GetMizanAsync</c> her çağrıda aynı <c>firma.Mizan</c> nesnesini döndürür ve
+    /// mizan yüklemesi (<c>UpdateMizanFromExcelAsync</c>) o nesnenin satırlarını
+    /// YERİNDE günceller; referans değişmediği için panel bayat kalır, iskelet
+    /// görünür ama tüm tutarlar null kalırdı.
+    /// </summary>
+    protected override void OnParametersSet() => Kur();
+
+    private void Kur()
+    {
+        // Yeniden kurulum kullanıcı durumunu (seçili grup, açık/kapalı alt gruplar,
+        // arama, fark paneli) ezmez; yalnızca tutarlar tazelenir.
+        var oncekiRoma = _secili?.Roma;
+        var oncekiDenge = (_aktifToplam, _pasifToplam);
+
+        _yapiHatasi = null;
+
+        var aktifComputed = MizanHesaplayici.Compute(Aktif, MaliTabloBolumu.Aktif);
+        var pasifComputed = MizanHesaplayici.Compute(Pasif, MaliTabloBolumu.Pasif);
+
+        _aktifGruplar = AgacKur(aktifComputed);
+        _pasifGruplar = AgacKur(pasifComputed);
+
+        // 3. madde: grup sayısı tutmazsa çizme, bildir.
+        if (_aktifGruplar.Count != 2 || _pasifGruplar.Count != 3)
+        {
+            _yapiHatasi =
+                $"Hesap planındaki üst düzey grup sayısı beklenenden farklı: Aktif {_aktifGruplar.Count} (beklenen 2), " +
+                $"Pasif {_pasifGruplar.Count} (beklenen 3). Hesap planı iskeleti değişmiş olabilir.";
+            return;
+        }
+
+        _aktifToplam = GenelToplam(aktifComputed);
+        _pasifToplam = GenelToplam(pasifComputed);
+
+        DonemKariniYerlestir();
+
+        _fark = _aktifToplam.HasValue && _pasifToplam.HasValue
+            ? _aktifToplam.Value - _pasifToplam.Value
+            : (decimal?)null;
+
+        // Mizan değiştiyse "Farkı incele" listesi de bayattır; bir dahaki açılışta yeniden okunur.
+        if (oncekiDenge != (_aktifToplam, _pasifToplam))
+        {
+            _kimsesizler = new();
+            _kimsesizToplam = null;
+        }
+
+        var tumGruplar = _aktifGruplar.Concat(_pasifGruplar).ToList();
+
+        _secili = (oncekiRoma is null ? null : tumGruplar.FirstOrDefault(g => g.Roma == oncekiRoma))
+                  ?? tumGruplar.FirstOrDefault(GrupHareketliMi)
+                  ?? _aktifGruplar.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// <see cref="DonemKariDuzeltmesi"/> sıfırdan farklıysa (yani kapanış atılmamış, kâr hâlâ
+    /// 6/7 gruplarında) tutarı V-ÖZ KAYNAKLAR altındaki "Dönem Net Karı (Zararı)" satırına
+    /// yazar ve aynı tutarı grup toplamı ile PASİF TOPLAM'a ekler.
+    ///
+    /// Kuralın kendisi (590/591 dolu mu, dolu değilse hangi değer) burada DEĞİL,
+    /// <c>Detay.OzkaynakDonemKariDuzeltmesi</c>'nde bir kez yazılır; burada yalnızca
+    /// hangi satıra yazılacağı belirlenir.
+    /// </summary>
+    private void DonemKariniYerlestir()
+    {
+        if (DonemKariDuzeltmesi == 0m) return;
+
+        // Satır etiket metniyle değil, altındaki 590/591 hesaplarıyla bulunur.
+        var eslesme = _pasifGruplar
+            .Select(g => (Grup: g, Satir: g.AltGruplar
+                .FirstOrDefault(a => a.Hesaplar.Any(h => h.Kod is "590" or "591"))))
+            .FirstOrDefault(x => x.Satir is not null);
+
+        if (eslesme.Satir is not { } satir || eslesme.Grup is not { } ozKaynak) return;
+
+        satir.Toplam = DonemKariDuzeltmesi;
+        satir.GelirTablosundan = true;
+
+        ozKaynak.Toplam = (ozKaynak.Toplam ?? 0m) + DonemKariDuzeltmesi;
+        _pasifToplam = (_pasifToplam ?? 0m) + DonemKariDuzeltmesi;
+    }
+
+    /// <summary>Düz Compute çıktısından üç seviyeli ağaç. Total satırı ağaca girmez.</summary>
+    private static List<RomaGrup> AgacKur(List<MizanHesaplayici.ComputedRow> computed)
+    {
+        var gruplar = new List<RomaGrup>();
+        RomaGrup? grup = null;
+        AltGrup? alt = null;
+
+        foreach (var r in computed)
+        {
+            var tip = r.Source.Tip;
+            var ad = (r.Source.Ad ?? string.Empty).Trim();
+
+            if (tip == SatirTipi.Total)
+            {
+                grup = null;
+                alt = null;
+                continue;
+            }
+
+            if (tip == SatirTipi.MainGroup && MizanHesaplayici.UstDuzeyMainGroupMu(ad))
+            {
+                var (roma, kisaAd) = RomaAyikla(ad);
+                grup = new RomaGrup { Roma = roma, Ad = kisaAd, Toplam = r.Cari };
+                gruplar.Add(grup);
+                alt = null;
+                continue;
+            }
+
+            if (grup is null) continue;
+
+            // Seviye 2: SubGroup · üst düzey OLMAYAN MainGroup · Other (özkaynak alt başlıkları)
+            var altGrupMu = tip == SatirTipi.SubGroup
+                            || (tip == SatirTipi.MainGroup && !MizanHesaplayici.UstDuzeyMainGroupMu(ad))
+                            || tip == SatirTipi.Other;
+
+            if (altGrupMu)
+            {
+                alt = new AltGrup { Ad = ad, Tip = tip, Toplam = r.Cari };
+                grup.AltGruplar.Add(alt);
+                continue;
+            }
+
+            if (tip == SatirTipi.Account && alt is not null)
+                alt.Hesaplar.Add(new Hesap(r.Source.Kod ?? string.Empty, ad, r.Cari));
+        }
+
+        // Other tipli alt başlıklar: Compute değer üretmez. Yalnızca BUNLAR için,
+        // altlarındaki hesapların Compute'tan gelen değerleri toplanır.
+        foreach (var a in gruplar.SelectMany(g => g.AltGruplar).Where(a => a.Tip == SatirTipi.Other))
+        {
+            var dolu = a.Hesaplar.Where(h => h.Cari.HasValue).ToList();
+            a.Toplam = dolu.Count > 0 ? dolu.Sum(h => h.Cari!.Value) : (decimal?)null;
+        }
+
+        return gruplar;
+    }
+
+    /// <summary>Bölümün genel toplamı = tek Total satırının cari değeri.</summary>
+    private static decimal? GenelToplam(List<MizanHesaplayici.ComputedRow> computed) => computed
+        .Where(r => r.Source.Tip == SatirTipi.Total)
+        .Select(r => r.Cari)
+        .LastOrDefault(v => v.HasValue);
+
+    /// <summary>"I -DÖNEN VARLIKLAR" → ("I", "DÖNEN VARLIKLAR").</summary>
+    private static (string Roma, string Ad) RomaAyikla(string tamAd)
+    {
+        var i = tamAd.IndexOf('-');
+        return i < 0 ? (string.Empty, tamAd) : (tamAd[..i].Trim(), tamAd[(i + 1)..].Trim());
+    }
+
+    // ── Denge ──
+
+    private bool Denk => _fark.HasValue && Math.Abs(_fark.Value) <= 0.01m;
+
+    // ── Filtre / arama ──
+
+    private bool Aramada => _arama.Trim().Length > 0;
+
+    private static bool HareketVar(decimal? cari) => cari.HasValue && cari.Value != 0m;
+
+    private static bool GrupHareketliMi(RomaGrup g) => g.Hesaplar.Any(h => HareketVar(h.Cari));
+
+    private int ToplamHesapSayisi =>
+        _aktifGruplar.Concat(_pasifGruplar).Sum(g => g.Hesaplar.Count());
+
+    private int GosterilenHesapSayisi => _sadeceHareket
+        ? _aktifGruplar.Concat(_pasifGruplar).Sum(g => g.Hesaplar.Count(h => HareketVar(h.Cari)))
+        : ToplamHesapSayisi;
+
+    private void SadeceHareketDegisti(bool deger)
+    {
+        _sadeceHareket = deger;
+
+        // Seçili grup filtre yüzünden görünmez hale geldiyse hareketli ilk gruba geç.
+        if (_secili is not null && _sadeceHareket && !GrupHareketliMi(_secili))
+            _secili = _aktifGruplar.Concat(_pasifGruplar).FirstOrDefault(GrupHareketliMi);
+    }
+
+    private List<Hesap> GorunurHesaplar(AltGrup alt)
+    {
+        IEnumerable<Hesap> q = alt.Hesaplar;
+
+        if (_sadeceHareket)
+            q = q.Where(h => HareketVar(h.Cari));
+
+        if (Aramada)
+        {
+            var terim = Sadelestir(_arama);
+            q = q.Where(h => Sadelestir(h.Kod).Contains(terim) || Sadelestir(h.Ad).Contains(terim));
+        }
+
+        return q.ToList();
+    }
+
+    // Gelir tablosundan gelen "Dönem Net Karı (Zararı)" satırının altında hareketli hesap
+    // yoktur (590/591 boştur); tutarı taşıdığı için yine de listede kalmalı.
+    private List<AltGrup> GorunurAltGruplar(RomaGrup grup) =>
+        grup.AltGruplar
+            .Where(a => GorunurHesaplar(a).Count > 0 || (a.GelirTablosundan && !Aramada))
+            .ToList();
+
+    /// <summary>Büyük/küçük harf ve Türkçe karakter duyarsız karşılaştırma anahtarı.</summary>
+    private static string Sadelestir(string? metin)
+    {
+        if (string.IsNullOrEmpty(metin)) return string.Empty;
+
+        var sb = new StringBuilder(metin.Length);
+        foreach (var ch in metin)
+        {
+            sb.Append(ch switch
+            {
+                'ı' or 'I' or 'İ' or 'i' => 'i',
+                'ş' or 'Ş' => 's',
+                'ğ' or 'Ğ' => 'g',
+                'ü' or 'Ü' => 'u',
+                'ö' or 'Ö' => 'o',
+                'ç' or 'Ç' => 'c',
+                _ => char.ToLowerInvariant(ch)
+            });
+        }
+        return sb.ToString();
+    }
+
+    // ── Aç / kapat ──
+
+    private string AltAnahtar(AltGrup alt) => $"{_secili?.Roma}|{alt.Ad}";
+
+    /// <summary>Arama varken eşleşmenin alt grubu kendiliğinden açılır.</summary>
+    private bool AltAcikMi(AltGrup alt) => Aramada || !_kapali.Contains(AltAnahtar(alt));
+
+    private void AltGrupDegistir(AltGrup alt)
+    {
+        var anahtar = AltAnahtar(alt);
+        if (!_kapali.Remove(anahtar)) _kapali.Add(anahtar);
+    }
+
+    private bool TumuKapali =>
+        _secili is not null
+        && GorunurAltGruplar(_secili) is { Count: > 0 } altlar
+        && altlar.All(a => _kapali.Contains(AltAnahtar(a)));
+
+    private void TumAltGruplariDegistir()
+    {
+        if (_secili is null) return;
+
+        var altlar = GorunurAltGruplar(_secili);
+        if (altlar.Count == 0) return;
+
+        if (TumuKapali)
+        {
+            foreach (var a in altlar) _kapali.Remove(AltAnahtar(a));
+        }
+        else
+        {
+            foreach (var a in altlar) _kapali.Add(AltAnahtar(a));
+        }
+    }
+
+    private void GrupSec(RomaGrup grup)
+    {
+        _secili = grup;
+        _arama = string.Empty;
+    }
+
+    // ── Farkı incele (7. madde) ──
+
+    private async Task FarkPaneliDegistirAsync()
+    {
+        if (_farkPaneliAcik)
+        {
+            _farkPaneliAcik = false;
+            return;
+        }
+
+        _farkPaneliAcik = true;
+
+        if (_kimsesizler.Count > 0) return;   // bir kez okunur
+
+        _farkYukleniyor = true;
+        try
+        {
+            var ham = await FirmaKontrolService.GetRawMizanValuesAsync(FirmaId, Donem);
+            var adlar = await FirmaKontrolService.GetRawMizanAdlarAsync(FirmaId);
+
+            // İskelet = üç mali tablonun Account kodları.
+            var iskelet = Aktif.Concat(Pasif).Concat(GelirTablosu)
+                .Where(s => s.Tip == SatirTipi.Account)
+                .Select(s => s.Kod ?? string.Empty)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            _kimsesizler = ham
+                .Where(kv => kv.Value.HasValue && kv.Value.Value != 0m)
+                .Where(kv => !iskelet.Contains(kv.Key))
+                .OrderBy(kv => kv.Key, StringComparer.Ordinal)
+                .Select(kv => new Kimsesiz(
+                    kv.Key,
+                    adlar.TryGetValue(kv.Key, out var ad) && !string.IsNullOrWhiteSpace(ad) ? ad : "—",
+                    kv.Value))
+                .ToList();
+
+            _kimsesizToplam = _kimsesizler.Count > 0
+                ? _kimsesizler.Sum(k => k.Bakiye ?? 0m)
+                : (decimal?)null;
+        }
+        finally
+        {
+            _farkYukleniyor = false;
+        }
+    }
+
+    // ── Biçim ──
+
+    /// <summary>Negatif tutar parantez içinde gösterilir: (890.960,24)</summary>
+    private static string Tutar(decimal? deger)
+    {
+        if (!deger.HasValue) return "—";
+
+        var metin = Math.Abs(deger.Value).ToString("N2", Tr);
+        return deger.Value < 0 ? $"({metin})" : metin;
+    }
+
+    private static string? NegSinif(decimal? deger) =>
+        deger.HasValue && deger.Value < 0 ? "bl-negatif" : null;
+
+    // ── Ray grup öğesi ──
+
+    private RenderFragment GrupOgesi(RomaGrup grup) => __builder =>
+    {
+        var hareketli = GrupHareketliMi(grup);
+        var secili = ReferenceEquals(grup, _secili);
+
+        var altSayisi = _sadeceHareket
+            ? grup.AltGruplar.Count(a => a.Hesaplar.Any(h => HareketVar(h.Cari)))
+            : grup.AltGruplar.Count;
+
+        var hesapSayisi = _sadeceHareket
+            ? grup.Hesaplar.Count(h => HareketVar(h.Cari))
+            : grup.Hesaplar.Count();
+
+        <button type="button"
+                class="bl-grup @(secili ? "bl-grup-secili" : null) @(hareketli ? null : "bl-grup-bos")"
+                @onclick="@(() => GrupSec(grup))">
+            <span class="bl-grup-roma">@grup.Roma</span>
+            <span class="bl-grup-orta">
+                <span class="bl-grup-ad">@grup.Ad</span>
+                <span class="bl-grup-tutar @(hareketli ? NegSinif(grup.Toplam) : null)">
+                    @(hareketli ? Tutar(grup.Toplam) : "—")
+                </span>
+                <span class="bl-grup-alt">
+                    @(hareketli ? $"{altSayisi} alt grup · {hesapSayisi} hesap" : "hareket yok")
+                </span>
+            </span>
+        </button>
+    };
+}

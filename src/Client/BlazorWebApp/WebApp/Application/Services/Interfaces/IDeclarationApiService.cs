@@ -10,10 +10,6 @@ namespace WebApp.Application.Services.Interfaces
             int? customerCompanyId = null,
             string? declarationType = null);
 
-        Task<YearlyTaxSummaryDto?> GetYearlySummaryAsync(
-            int year,
-            int? customerCompanyId = null);
-
         Task<int?> CreateAsync(CreateDeclarationRequest request);
         Task<bool> UpdateAsync(int id, UpdateDeclarationRequest request);
         Task<bool> DeleteAsync(int id);

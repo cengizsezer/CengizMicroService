@@ -2,11 +2,20 @@ using CatalogService.Api.Features.FirmaKontrol.Domain;
 using CatalogService.Api.Features.FirmaKontrol.Dtos;
 using CatalogService.Api.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace CatalogService.Api.Features.FirmaKontrol.Services
 {
     public class FirmaKontrolMizanService : IFirmaKontrolMizanService
     {
+        /// <summary>Ağaç JSON'u için tek biçim; alan adları camelCase, Türkçe karakterler kaçırılmaz.</summary>
+        private static readonly JsonSerializerOptions JsonAyar = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            PropertyNameCaseInsensitive = true,
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        };
+
         private readonly CatalogContext _db;
 
         public FirmaKontrolMizanService(CatalogContext db) => _db = db;
@@ -25,6 +34,39 @@ namespace CatalogService.Api.Features.FirmaKontrol.Services
                     Bakiye = m.Bakiye
                 })
                 .ToListAsync(ct);
+        }
+
+        public async Task<List<FirmaKontrolMizanAgacDto>> GetAgaclarAsync(int firmaId, int yil, CancellationToken ct = default)
+        {
+            var kayitlar = await _db.FirmaKontrolMizanAgaclari
+                .AsNoTracking()
+                .Where(a => a.FirmaId == firmaId && a.Yil == yil)
+                .ToListAsync(ct);
+
+            var sonuc = new List<FirmaKontrolMizanAgacDto>(kayitlar.Count);
+
+            foreach (var k in kayitlar)
+            {
+                List<MizanHamDugumDto>? dugumler = null;
+                try
+                {
+                    dugumler = JsonSerializer.Deserialize<List<MizanHamDugumDto>>(k.DugumlerJson, JsonAyar);
+                }
+                catch (JsonException)
+                {
+                    // Bozuk/eski biçimli kayıt yüklemeyi bozmasın; ağaç yokmuş gibi davranılır.
+                    dugumler = null;
+                }
+
+                sonuc.Add(new FirmaKontrolMizanAgacDto
+                {
+                    Donem = k.Donem,
+                    Yil = k.Yil,
+                    Dugumler = dugumler ?? new List<MizanHamDugumDto>()
+                });
+            }
+
+            return sonuc;
         }
 
         public async Task KaydetAsync(int firmaId, MizanKaydetRequest req, CancellationToken ct = default)
@@ -61,6 +103,42 @@ namespace CatalogService.Api.Features.FirmaKontrol.Services
                 });
             }
 
+            // Kırılım ağacı — ham satırlarla AYNI istekte, aynı anahtarla, aynı idempotent
+            // akışta. Düğümler tek JSON listesi olarak yazılır; satır başına kayıt açılmaz
+            // (erişim deseni her zaman "şu dönemin ağacının tamamı"dır).
+            var mevcutAgac = await _db.FirmaKontrolMizanAgaclari
+                .FirstOrDefaultAsync(a => a.FirmaId == firmaId && a.Donem == req.Donem && a.Yil == req.Yil, ct);
+
+            if (req.Dugumler.Count == 0)
+            {
+                // Ağaç gönderilmediyse eski ağaç ortada kalmasın (ham satırlarla tutarsız olurdu).
+                if (mevcutAgac is not null)
+                    _db.FirmaKontrolMizanAgaclari.Remove(mevcutAgac);
+            }
+            else
+            {
+                var json = JsonSerializer.Serialize(req.Dugumler, JsonAyar);
+
+                if (mevcutAgac is null)
+                {
+                    _db.FirmaKontrolMizanAgaclari.Add(new FirmaKontrolMizanAgac
+                    {
+                        FirmaId = firmaId,
+                        Donem = req.Donem,
+                        Yil = req.Yil,
+                        DugumlerJson = json,
+                        DugumSayisi = req.Dugumler.Count,
+                        UploadedAt = now
+                    });
+                }
+                else
+                {
+                    mevcutAgac.DugumlerJson = json;
+                    mevcutAgac.DugumSayisi = req.Dugumler.Count;
+                    mevcutAgac.UploadedAt = now;
+                }
+            }
+
             await _db.SaveChangesAsync(ct);
         }
 
@@ -70,9 +148,20 @@ namespace CatalogService.Api.Features.FirmaKontrol.Services
                 .Where(m => m.FirmaId == firmaId && m.Yil == yil)
                 .ToListAsync(ct);
 
-            if (mevcut.Count == 0) return;
+            // Ağaç ham satırların yanında durur; sıfırlamada o da gider. Ham satır
+            // kalmamış olsa bile ağaç kaydı ortada kalmasın diye erken çıkış yok.
+            var agaclar = await _db.FirmaKontrolMizanAgaclari
+                .Where(a => a.FirmaId == firmaId && a.Yil == yil)
+                .ToListAsync(ct);
 
-            _db.FirmaKontrolMizanSatirlari.RemoveRange(mevcut);
+            if (mevcut.Count == 0 && agaclar.Count == 0) return;
+
+            if (mevcut.Count > 0)
+                _db.FirmaKontrolMizanSatirlari.RemoveRange(mevcut);
+
+            if (agaclar.Count > 0)
+                _db.FirmaKontrolMizanAgaclari.RemoveRange(agaclar);
+
             await _db.SaveChangesAsync(ct);
         }
 

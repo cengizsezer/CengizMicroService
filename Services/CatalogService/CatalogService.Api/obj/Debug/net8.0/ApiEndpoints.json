@@ -3050,6 +3050,302 @@
   },
   {
     "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "GetEtiketBoyutlar",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/etiket/boyutlar",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.FirmaKontrol.Dtos.EtiketBoyutuDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "EtiketBoyutEkle",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/etiket/boyutlar",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.FirmaKontrol.Dtos.EtiketBoyutuYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.FirmaKontrol.Dtos.EtiketBoyutuDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "EtiketBoyutGuncelle",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/etiket/boyutlar/{boyutId}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "boyutId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.FirmaKontrol.Dtos.EtiketBoyutuYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "EtiketBoyutSil",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/etiket/boyutlar/{boyutId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "boyutId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "EtiketDegerEkle",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/etiket/boyutlar/{boyutId}/degerler",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "boyutId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.FirmaKontrol.Dtos.EtiketDegeriYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.FirmaKontrol.Dtos.EtiketDegeriDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "EtiketKuralSira",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/etiket/boyutlar/{boyutId}/kural-sira",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "boyutId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "siralar",
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.FirmaKontrol.Dtos.EtiketKuralSiraDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "EtiketKuralEkle",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/etiket/boyutlar/{boyutId}/kurallar",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "boyutId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.FirmaKontrol.Dtos.EtiketKuraliYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.FirmaKontrol.Dtos.EtiketKuraliDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "EtiketDegerGuncelle",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/etiket/degerler/{degerId}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "degerId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.FirmaKontrol.Dtos.EtiketDegeriYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "EtiketDegerSil",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/etiket/degerler/{degerId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "degerId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "EtiketKuralGuncelle",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/etiket/kurallar/{kuralId}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "kuralId",
+        "Type": "System.Int64",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.FirmaKontrol.Dtos.EtiketKuraliYazDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "EtiketKuralSil",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/etiket/kurallar/{kuralId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "kuralId",
+        "Type": "System.Int64",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
     "Method": "GetMaddeler",
     "RelativePath": "api/catalog/firma-kontrol/{firmaId}/maddeler",
     "HttpMethod": "GET",
@@ -3665,6 +3961,37 @@
     "ReturnTypes": [
       {
         "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.FirmaKontrol.Dtos.MizanNotuDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.FirmaKontrol.Controllers.FirmaKontrolController",
+    "Method": "GetMizanAgac",
+    "RelativePath": "api/catalog/firma-kontrol/{firmaId}/mizan/agac",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "yil",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.FirmaKontrol.Dtos.FirmaKontrolMizanAgacDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
         "MediaTypes": [
           "text/plain",
           "application/json",

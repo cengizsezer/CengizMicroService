@@ -2627,7 +2627,7 @@ eklendi.
    `SatirSayisi` — hepsini sunucu doldurdu)
 2. İki dosya `%AppData%\PkfRobot\isler\{isId}\` altına indirilir
 3. **Ön doğrulamalar** — biri tutmazsa ORKA'ya hiç dokunulmaz (§121)
-4. `gorevler/orkaya-aktar.json` çalıştırılır; `GridDoldur` kod listesini yazar
+4. `gorevler/ajan-aktar.json` çalıştırılır (= `acilis.json` + `tek-dosya-aktar.json`); `GridDoldur` kod listesini yazar
 5. Sonuç: `{ YazilanSatir, ToplamSatir, SureSaniye, KaydetBasilmadi: true }`
 6. Başarılıysa klasör silinir; başarısızsa 7 gün durur (§124)
 
@@ -2739,18 +2739,20 @@ Sırayla, **test firmasında** ve önce **tek satırlık** bir ekstreyle.
 
 | Yüzde | Beklenen | Durursa |
 |---|---|---|
-| %5 | ORKA açılıyor / zaten açık | `OrkaPath` doğru mu |
-| %15 | Giriş + F7 + firma kodu + firma şifresi | `--probe` ile pencere başlıklarına bak |
-| %25 | Veri Transferi ekranı | Modül gezinme tuş sayısı (`RIGHT×3`, `DOWN×1`) firmaya göre değişebilir |
+| %3 | ORKA açılıyor / zaten açık | `OrkaPath` doğru mu |
+| %5–7 | Giriş + F7 + firma kodu + firma şifresi + şube | `--probe` ile pencere başlıklarına bak |
+| %8–9 | Modül gezinme → Veri Transferi ekranı | Tuş sayısı (`RIGHT×3`, `DOWN×1`) firmaya göre değişebilir; `--degisken modulSag=` ile düzeltilebilir |
+| %10 | Gövde başlıyor, ekran doğrulaması (`TcxDBTreeList`) | Veri Transferi gerçekten açık mı |
+| %20 | Şablon satırı seçildi, Transfere Başla | `sablon-secildi.png`: doğru şablon mu (satır koordinatla seçiliyor) |
 | %35 | Dosya seçim diyaloğu, dosya yolu yazılıyor | Diyalog başlığı `Transfer Edilecek Excel` mi |
-| %45 | Ekran doğrulaması | Hâlâ Veri Transferi ekranında mıyız |
+| %50 | Hesap seçildi, transfer bitiş popup'ı geçildi | Hâlâ Veri Transferi ekranında mıyız |
 | %50–95 | Kodlar yazılıyor | **Hemen durdurun**, aşağıya bakın |
 | %100 | Bitti | — |
 
 - [ ] **%50'den sonra ilk üç satırı gözle kontrol edin:** kodlar doğru satıra mı
       gidiyor? Kaymışsa **İptal**'e basın ve ORKA'yı **kaydetmeden** kapatın.
 - [ ] Koordinatlar tutmuyorsa (`Tikla` yanlış yere basıyorsa)
-      `PkfRobot.exe --kalibre` ile ölçüp `gorevler/orkaya-aktar.json` içindeki
+      `PkfRobot.exe --kalibre` ile ölçüp `gorevler/tek-dosya-aktar.json` içindeki
       `X`/`Y` değerlerini düzeltin. Kod değişmez.
 - [ ] Bitince ekranda *"… satır yazıldı. ORKA'da kontrol edip Kaydet'e basın."*
       yazmalı. **Kaydet'e robot basmaz; siz basarsınız.**
@@ -2812,7 +2814,7 @@ Hepsi geçiyor. Yeni testler:
 |---|---|
 | CatalogService — iş | `Features/Ajanlar/Domain/AjanIsi.cs`, `Dtos/AjanIsDtos.cs`, `Services/IAjanIsServisi.cs` + `AjanIsServisi.cs`, `Services/AjanIsGondericisi.cs`, `Services/OrkaAktarimYuku.cs`, `Controllers/AgentIsController.cs`, `Controllers/AgentDosyaController.cs`, `Infrastructure/EntityConfigurations/AjanIsiEntityTypeConfiguration.cs` |
 | CatalogService — değişen | `AgentHub.cs` (iş metotları), `AgentHubAyarlari.cs` (`IsZamanAsimiDakika`), `AjanKimligi.cs` (varsayılan politika), `Services/IAjanDeposu.cs` + `AjanDeposu.cs` (`AjanaGoreBul`), `Infrastructure/Context/CatalogContext.cs`, `Program.cs`, `Features/Firmalar/**` + `FirmaEntityTypeConfiguration` (`OrkaFirmaKodu`) |
-| Ajan — iş | `Ajan/IsCalistirici.cs` (arayüz + sahte), `Ajan/IsDosyalari.cs`, `Ajan/OrkaSurucusu.cs`, `Ajan/OrkayaAktarCalistirici.cs`, `Core/GridDoldurVerisi.cs`, `gorevler/orkaya-aktar.json` |
+| Ajan — iş | `Ajan/IsCalistirici.cs` (arayüz + sahte), `Ajan/IsDosyalari.cs`, `Ajan/OrkaSurucusu.cs`, `Ajan/OrkayaAktarCalistirici.cs`, `Core/GridDoldurVerisi.cs`, `gorevler/ajan-aktar.json` |
 | Ajan — değişen | `Ajan/HubBaglantisi.cs`, `Ajan/AjanServisi.cs`, `Ajan/AjanCalistirici.cs`, `Core/AdimMotoru.cs` (`GridDoldur` + adım geri çağrısı), `Config/Gorev.cs` (`Yuzde`), `Config/RobotConfig.cs`, `appsettings.json`, `PkfRobot.csproj` (ClosedXML) |
 | Blazor | `Pages/BankaEkstre/AktarPage.razor`, `Pages/BankaEkstre/Bolumler/AjanIsKarti.razor` (yeni), `Pages/Yonetim/Ajanlar.razor`, `Pages/Yonetim/FirmaDialog.razor`, `Application/Services/Yonetim/AjanIsApi.cs` (yeni), `Shared/Dto/Yonetim/AjanIsDtos.cs` (yeni) + `Firma*Dto` |
 
@@ -3211,3 +3213,192 @@ ofiste yapılacak.
 Ajan anahtarı hâlâ yalnız ilk bağlantı denemesinde soruluyor; Ayarlar
 ekranında "anahtarı değiştir" düğmesi yok. Anahtar değiştirmek için
 `PkfRobot.exe --anahtari-sifirla` duruyor.
+
+---
+
+# Aktarım tek dosyada: ajan da kuyruğun görevlerini koşuyor
+
+## Kapsam
+
+Ajanın koştuğu `gorevler/orkaya-aktar.json` **silindi**. Ajan artık
+`gorevler/ajan-aktar.json` koşuyor; o dosyanın kendi adımı yok, yalnız iki
+`AltGorev` referansı:
+
+```
+ajan-aktar.json
+  ├─ acilis.json            (= 01-orka-ac-firma-sec.json + 02-modul-ve-sekme.json)
+  └─ tek-dosya-aktar.json   (aktarım gövdesi — kuyruğun da koştuğu dosya)
+```
+
+Aktarım adımları tek yerde, giriş adımları tek yerde. `Gorev.Yukle` `AltGorev`'i
+yükleme anında açtığı için motor düz TEK liste görüyor: tek log klasörü, tek
+ilerleme sayacı, tek hata ekranı. Kod tarafında değişen tek yol
+`OrkayaAktarCalistirici.GorevDosyasi`.
+
+**Neden:** iki dosya ayrışmıştı ve ajan geride kalmıştı — modül gezinmesinde bir
+ENTER eksik, ekran guard'ı `VEYA` olduğu için o eksiği yakalamıyor, başlık
+doğrulaması hâlâ sabit `ORKA_`. Ayrıntı ve ölçümler: **KARARLAR §152**.
+
+## Davranış değişiklikleri
+
+- **`OnayBekle` gözetimsiz koşuda atlanıyor.** `AdimMotoru` yeni bir `gozetimsiz`
+  bayrağı alıyor (`FlaUiOrkaSurucusu` `true` veriyor). Sekme kapatma tıklaması
+  ajan yolunda **hiç çalışmıyor**, log'a *"kullanıcı onayı gerekiyor, gözetimsiz
+  çalışmada atlandı"* düşüyor. Ölçülmemiş bir koordinata basmaktansa sekme açık
+  kalıyor. Arayüz yolu değişmedi (DEVAM'a kadar bekliyor), konsol (`--gorev`)
+  gözetimli sayılıyor.
+- **İlerleme yüzdeleri açılışa da bölüştürüldü:** 01 → %3-7, 02 → %8-9, gövde
+  %10'dan devam. Arayüz `Yuzde` kullanmıyor, elle çalıştırma etkilenmedi.
+- **Kalibrasyon anahtarları taşındı:** `KalibrasyonGocu`, `orkaya-aktar.json#N`
+  kayıtlarını `tek-dosya-aktar.json#N`'e taşıyor ve ayarları hemen diske yazıyor;
+  açılışta "AdimYok" uyarısı çıkmıyor, ofiste yapılmış ölçüm kaybolmuyor.
+
+## Testler
+
+- `Config/AjanGoreviTests.cs` (yeni): sarmalayıcı gövdenin adımlarını **aynen**
+  içeriyor; giriş zinciri (`OrkaBaslat`, `{sifre}`, `{firmaSifre}`) ve gövde
+  değişkenleri (`{dosyaYolu}`, `{hesapKodu}`, `GridDoldur`) duruyor; dosya yalnız
+  `AltGorev` tutuyor (adım kopyalanmıyor); `orkaya-aktar.json` geri gelmemiş;
+  dosya publish çıktısında var.
+- `Arayuz/KalibrasyonGocuTests.cs` (yeni): anahtar taşınıyor, yeni anahtarda ölçüm
+  varsa eski siliniyor, diğer dosyalara dokunulmuyor, ikinci çalıştırmada boş
+  dönüyor, taşınan anahtar yeni görev dosyasına gerçekten uygulanabiliyor.
+- `Core/TekDosyaAktarTests.cs`: kopya eşitliği testi yerini "aktarım
+  koordinatlarının tek kopyası bu dosyada" testine bıraktı; gözetimli/gözetimsiz
+  `OnayBekle` kararı ve "ajan yolunda atlanan tek adım sekme kapatma" eklendi.
+- `Ajan/OrkayaAktarTests.cs`: görev dosyası sabiti üzerinden okuyor; giriş
+  boyunca da ilerleme bildirildiği (ve giriş yüzdelerinin gövdeden önce geldiği)
+  sınanıyor.
+- `Config/AcilisGoreviTests.cs`: aktarım teorisi artık `tek-dosya-aktar.json` +
+  `ajan-aktar.json` üzerinde koşuyor.
+
+382 test geçiyor.
+
+## Ne eksik kaldı
+
+**Ofiste doğrulanmadı.** Ajan artık 02'nin çift ENTER'ini, `TcxDBTreeList`
+guard'ını ve `ORKA_{firmaKodu}_` doğrulamasını kullanıyor; hepsi düzeltme ama
+ajan yolu bu haliyle hiç koşmadı — uçtan uca bir koşu gerekiyor. Sekme kapatma
+koordinatı (0.95, 0.06) hâlâ placeholder; ajan onu atladığı için ölçüm yalnız
+elle/kuyruk yolunu ilgilendiriyor.
+
+**Ajan her işte açılışı baştan koşuyor.** `OrkaBaslat` idempotent ama giriş
+tuşları değil: ORKA açık ve firma seçiliyken ikinci bir iş gelirse tuşlar
+bilinmeyen ekrana gider. Birleşmeden önce de böyleydi (regresyon değil), bilinçli
+olarak **çözülmedi** — koşullu adım tipi ayrı bir iş (KARARLAR §152).
+
+---
+
+# Yanlış firmaya girme düzeltmesi: ORKA'nın kutuları CTRL'süz temizleniyor
+
+## Kapsam
+
+08.09.2026 koşusunda robot `0001` yerine **1187** firmasına girdi. Sebep: F7 firma
+arama kutusu otomatik tamamlama alanı, `TemizleYaz` onu **CTRL+A** ile temizlemeye
+çalışıyor ve **ORKA'da CTRL kombinasyonları çalışmıyor**. Kutu boşalmayınca yeni
+kod eskisinin yanına yazılıyor ve tamamlama başka bir firma buluyor. Ayrıntı:
+**KARARLAR §153**.
+
+- `Core/Klavye.cs`: `SecVeSilVeYaz` (END → SHIFT+HOME → DELETE → yaz),
+  `TemizlemeYolu` enum'u, yol seçen dağıtıcı ve `TemizlemeCoz` çözümleyicisi.
+  **Mevcut `TemizleVeYaz` bit bit aynı** — dosya seçim diyaloğunda çalışıyor.
+- `Config/Gorev.cs`: `Adim.Temizleme` (`"CtrlA"` varsayılan / `"SecVeSil"`).
+  Tanınmayan değer hata veriyor; yol, adım çalışmadan önce çözülüyor.
+- `Core/AdimMotoru.cs`: `TemizleYaz` seçilen yolu kullanıyor, log satırına hangi
+  yolun koşulduğu yazılıyor.
+- `gorevler/01-orka-ac-firma-sec.json`: firma kodu adımı `"Temizleme": "SecVeSil"`.
+  Bu dosya `acilis.json` ve `ajan-aktar.json` içinden aynı tek kopya olarak
+  koşuyor, yani düzeltme her iki yolda da geçerli.
+
+**Dokunulmayanlar:** `{dosyaYolu}` / `{hesapKodu}` adımları (dosya seçim
+diyaloğunda CTRL+A çalışıyor) ve `GridDoldur` (grid hücresinde END'in ne yaptığı
+ölçülmedi — ayrı karar).
+
+## Testler
+
+`Core/KlavyeTests.cs`: tuş sırası, `SecVeSil` yolunda hiç CTRL gönderilmediği,
+yazmanın temizlemeden sonra geldiği, dağıtıcının doğru yolu seçtiği, mevcut
+`TemizleVeYaz`ın değişmediği, `Temizleme` alanının çözümü (boş → CtrlA,
+büyük/küçük harf duyarsız, tanınmayan değer → hata).
+
+`Core/FirmaKoduYazmaTests.cs` (yeni): görev dosyalarındaki sınır — firma kodu
+`SecVeSil`, dosya yolu/hesap kodu `CtrlA`, `GridDoldur` alansız; ajanın koştuğu
+akışta da geçerli; kutunun yazmadan önce gerçekten boşaltıldığı; **yanlış firma
+senaryosunun eski yolla geri geleceği** (CtrlA yolunda kutuyu boşaltan hiçbir tuş
+yok); ve ikinci savunmanın yerinde durduğu (`Dogrula` → `ORKA_{firmaKodu}_`).
+
+402 test geçiyor.
+
+## Ne eksik kaldı
+
+Hesap Planı arama kutusu da ORKA'nın kendi penceresi ve `{hesapKodu}` adımı hâlâ
+CTRL+A kullanıyor; bugüne kadar sorun çıkarmadı ama aynı sınıf sessiz kırılmaya
+açık. Bir koşuda `hesap-arandi.png`'ye bakıp kutuda tek kod mu duruyor
+doğrulanmalı.
+
+---
+
+# İki koşu düzeltmesi: sürpriz pencere önceliği ve grid doğrulamasının hizası
+
+## 1. "Uyari Tanimlamalari" penceresi
+
+Firma açılırken çıkıyor, aktarımı yarıda bırakıyordu. Başlığı
+`BeklenmeyenPencereler`'deki genel **"Uyari"** kaydına uyduğu için robot
+**duruyordu** — ve listeye kural eklemek tek başına yetmezdi: otomatik kapatma
+adımdan **önce**, durdurma kontrolü adımdan **sonra** çalışıyor, yani pencere
+adımın ortasında açıldığında kapatma kuralı hiç denenmeden robot duruyordu.
+
+- `appsettings.json`: `{ "Baslik": "Uyari Tanimlamalari", "Dugme": "Kapat" }`.
+- `AdimMotoru.SurprizPencereKontrol`: durmadan **önce** kapatma kuralı aranıyor,
+  varsa pencere kapatılmaya çalışılıyor; kalktıysa göreve devam, kalkmadıysa eski
+  davranış (ekran görüntüsü + durdur).
+- `AdimMotoru.KapatmaKurali` (yeni, statik): önceliğin kendisi sınanabilsin diye.
+- İki listenin örtüşmesi artık "AYAR ÇELİŞKİSİ" uyarısı değil, **tanımlı öncelik**
+  bilgisi: "Uyari" kaydını daraltmak ORKA'nın gerçek hata pencerelerini kaçırmak
+  olurdu.
+
+`"Kapat"` düğmesi ofiste doğrulanmadı; bulunamazsa mevcut ESC yedeği devrede.
+
+## 2. Grid doğrulaması artık açıklamaya göre eşleştiriyor
+
+`GridDoldur` son satıra kadar AŞAĞI ok gönderdiği için iş bittiğinde grid
+**kaydırılmış** kalıyor; görüntüdeki ilk satır listenin ilk satırı değil. Sıra
+bazlı karşılaştırma bu yüzden *"0/48 eşleşti, 27 satır tutmuyor"* diyordu — oysa
+okunan kodların hepsi doğruydu.
+
+**Seçilen yol: açıklama metnine göre eşleştirme.** Gerekçe ve reddedilen iki
+alternatif (grid'i başa döndürmek / çok sayfalı okuma) **KARARLAR §154**'te; özeti:
+ikisi de grid dolduktan sonra, kullanıcı kaydetmeden önce ORKA'ya ek tuş göndermeyi
+gerektiriyor ve çok sayfalı okuma zaten bu eşleştirme anahtarının üstüne kuruluyor.
+
+- `Core/GridDogrulama.cs`: `AciklamaAnahtari` (boşluk/noktalama/Türkçe harf
+  toleransı — kodlarda **yok**), açıklamaya göre eşleştirme, kesilmiş açıklama için
+  tek adaylı ön ek eşleşmesi, `EslestirmeYolu` (açıklama okunamazsa sıraya düşülüyor
+  **ve raporda söyleniyor**), `EslesmeyenOkunan`.
+- `TamamTutuyor` artık eşleşmeyen okunan satır da istemiyor: sayılar tutup
+  satırların birbirini tutmadığı durum "tamam" görünüyordu.
+- Rapor dili: tutmayan satır yokken "DOĞRULAMA UYARISI … 0 satır tutmuyor"
+  yazılmıyor; kaydırılmış grid'de normal durum bu.
+- `Core/GridOkuyucu.cs`: model yönergesi açıklamayı zorunlu kılıyor ("kesilmişse
+  görüneni yaz, tamamlama").
+- `Ajan/OrkayaAktarCalistirici.cs`: sunucuya giden özet "tutmayan satır yok" ile
+  "satır TUTMUYOR"u ayırıyor.
+
+**Kapsama açığı bilerek duruyor:** hiza düzeldi, "21 satır görüntüde yoktu"
+düzelmedi — o satırlar hâlâ **doğrulanmadı** olarak raporlanıyor.
+
+## Testler
+
+`Core/OtomatikKapatmaTests.cs`: yayındaki ayarlarda örtüşen başlık bildiriliyor,
+"Uyari Tanimlamalari" kuralı bulunuyor, gerçek başlık kuraldan uzunken de
+eşleşiyor, kuralı olmayan pencere (Lisans/Yedekleme) doğrudan durduruyor, boş
+başlıklı kural hiçbir pencereye uymuyor.
+
+`Core/GridDogrulamaTests.cs`: **koşunun aynısı** (kaydırılmış grid doğru eşleşiyor,
+sahte uyarı yok), kaydırılmış grid'de gerçek hatanın yine yakalandığı, aynı
+açıklamalı satırların sıraya göre paylaştırıldığı, kesilmiş açıklamanın ön ekle
+eşleştiği, belirsiz ön ekin eşleştirilmediği, Türkçe/noktalama toleransı, sayılar
+tutup satırlar tutmadığında `TamamTutuyor` olmadığı, sıra yedeğine düşüşün
+raporlandığı ve tek satırın açıklaması okunamadı diye yedeğe düşülmediği.
+
+418 test geçiyor.

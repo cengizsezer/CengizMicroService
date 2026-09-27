@@ -114,32 +114,35 @@ else
                 }
             </RadzenTabsItem>
 
-            <RadzenTabsItem Text="Aktif" Icon="account_balance">
+            @* Bilanço: Aktif ve Pasif'i tek ekranda birleştirir; ayrı Aktif / Pasif
+               sekmeleri kaldırıldı, yerlerini bu sekme aldı. Toplamlar MizanHesaplayici'den
+               gelir, panel içinde yeniden hesaplanmaz. *@
+            <RadzenTabsItem Text="Bilanço" Icon="account_balance_wallet">
                 @if (mizan is null)
                 {
                     <em>Hesap planı yükleniyor...</em>
                 }
                 else
                 {
-                    <MizanGrid Rows="mizan.Aktif" Bolum="MaliTabloBolumu.Aktif" />
-                }
-            </RadzenTabsItem>
-
-            <RadzenTabsItem Text="Pasif" Icon="balance">
-                @if (mizan is null)
-                {
-                    <em>Hesap planı yükleniyor...</em>
-                }
-                else
-                {
-                    <MizanGrid Rows="mizan.Pasif" Bolum="MaliTabloBolumu.Pasif" />
+                    @* Özkaynak düzeltmesi tek yerden gelir (OzkaynakDonemKariDuzeltmesi);
+                       aynı değer Finansal Oranlar paneline de geçer, kural kopyalanmaz. *@
+                    <BilancoPanel Aktif="mizan.Aktif"
+                                  Pasif="mizan.Pasif"
+                                  GelirTablosu="mizan.GelirTablosu"
+                                  DonemKariDuzeltmesi="@OzkaynakDonemKariDuzeltmesi"
+                                  FirmaId="@FirmaId"
+                                  Donem="Donem.Cari" />
                 }
             </RadzenTabsItem>
 
             @* Gelir tablosu yalnızca 6'lı ve 7'li seriyi gösterir (690, 691, 692 ve
                yansıtma hesapları dâhil). HideTaxRows=false olmalı: true olsaydı 690'dan
                sonrası kesilir, 691 ve 692 satırları kaybolurdu.
-               Vergi Hesaplaması artık kendi sekmesinde. *@
+               Vergi Hesaplaması artık kendi sekmesinde.
+               Yasal / Yönetsel seçimi GelirTablosuGorunum içindedir; varsayılan yasal ve
+               yasal görünüm aynı GelirTablosuGrid'i aynı parametrelerle çizer. Yönetsel
+               görünüm YALNIZCA EKRANDIR — cariDonemKari, vergi paneli, bilanço, dikey
+               yüzdeler bu bileşenden hiçbir değer almaz. *@
             <RadzenTabsItem Text="Gelir Tablosu" Icon="trending_up">
                 @if (mizan is null)
                 {
@@ -147,11 +150,11 @@ else
                 }
                 else
                 {
-                    <GelirTablosuGrid Rows="mizan.GelirTablosu"
-                                      CariRawValues="rawCariValues"
-                                      OncekiRawValues="rawOncekiValues"
-                                      HesaplananVergi691Cari="@hesaplananVergi691"
-                                      HideTaxRows="false" />
+                    <GelirTablosuGorunum FirmaId="@FirmaId"
+                                         Rows="mizan.GelirTablosu"
+                                         CariRawValues="rawCariValues"
+                                         OncekiRawValues="rawOncekiValues"
+                                         HesaplananVergi691Cari="@hesaplananVergi691" />
                 }
             </RadzenTabsItem>
 
@@ -179,39 +182,15 @@ else
                 }
                 else
                 {
-                    <RadzenTabs RenderMode="TabRenderMode.Client" SelectedIndex="0">
-                        <Tabs>
-                            <RadzenTabsItem Text="Bilanço" Icon="account_balance">
-                                <h4 class="fk-detay-section-title">Aktif (Varlıklar)</h4>
-                                <MizanGrid Rows="mizan.Aktif" Bolum="MaliTabloBolumu.Aktif" ShowYuzde="true" />
-
-                                <h4 class="fk-detay-section-title">Pasif (Kaynaklar)</h4>
-                                <MizanGrid Rows="mizan.Pasif" Bolum="MaliTabloBolumu.Pasif" ShowYuzde="true" />
-                            </RadzenTabsItem>
-
-                            <RadzenTabsItem Text="Bilanço Özet" Icon="account_balance_wallet">
-                                <BilancoOzetGrid Aktif="mizan.Aktif"
-                                                 Pasif="mizan.Pasif"
-                                                 CariRawValues="rawCariValues"
-                                                 OncekiRawValues="rawOncekiValues" />
-                            </RadzenTabsItem>
-
-                            <RadzenTabsItem Text="Gelir Tablosu" Icon="trending_up">
-                                <GelirTablosuGrid Rows="mizan.GelirTablosu"
-                                                  CariRawValues="rawCariValues"
-                                                  OncekiRawValues="rawOncekiValues"
-                                                  HesaplananVergi691Cari="@hesaplananVergi691"
-                                                  HideTaxRows="false" />
-                            </RadzenTabsItem>
-
-                            <RadzenTabsItem Text="Gelir Tablosu Özet" Icon="summarize">
-                                <GelirTabloOzetGrid Rows="mizan.GelirTablosu"
-                                                    CariRawValues="rawCariValues"
-                                                    OncekiRawValues="rawOncekiValues"
-                                                    HesaplananVergi691Cari="@hesaplananVergi691" />
-                            </RadzenTabsItem>
-                        </Tabs>
-                    </RadzenTabs>
+                    @* Eski dört alt sekme (Bilanço · Bilanço Özet · Gelir Tablosu · Gelir Tablosu
+                       Özet) yerine solda üç görünüm. Özetler "Sadece ana kalemler" ile karşılanır.
+                       Sunum katmanı: aynı tutarlar, aynı paydalar. *@
+                    <DikeyYuzdelerTab FirmaId="@FirmaId"
+                                      Mizan="mizan"
+                                      CariRawValues="rawCariValues"
+                                      OncekiRawValues="rawOncekiValues"
+                                      RawAdlar="rawAdValues"
+                                      HesaplananVergi691Cari="@hesaplananVergi691" />
                 }
             </RadzenTabsItem>
 
@@ -226,8 +205,23 @@ else
                                          Pasif="mizan.Pasif"
                                          GelirTablosu="mizan.GelirTablosu"
                                          CariRawValues="rawCariValues"
-                                         OncekiRawValues="rawOncekiValues" />
+                                         OncekiRawValues="rawOncekiValues"
+                                         DonemKariDuzeltmesi="@OzkaynakDonemKariDuzeltmesi"
+                                         OnBilancoyaGit="@(() => secilenSekme = BilancoSekmesiIndeksi)"
+                                         OnOncekiDonemYukle="@(() => OpenMizanUploadDialog(Donem.Onceki))" />
                 }
+            </RadzenTabsItem>
+
+            @* Etiketler ve Grup Görünümü EN SONDA. Sekme indeksleri aşağıdaki sabitlerde;
+               sıra değişirse onlar da güncellenmeli. Etiketler hiçbir resmi hesaba girmez. *@
+            <RadzenTabsItem Text="Etiketler" Icon="sell">
+                <EtiketlerTab FirmaId="@FirmaId" Donem="Donem.Cari" />
+            </RadzenTabsItem>
+
+            @* Grup Görünümü EN SONDA: mevcut indeksler kaymasın. Diğer firmaların ağacını
+               okuduğu için veri YALNIZCA sekmeye girildiğinde (Aktif) yüklenir. *@
+            <RadzenTabsItem Text="Grup Görünümü" Icon="hub">
+                <GrupGorunumuTab FirmaId="@FirmaId" Aktif="@(secilenSekme == GrupSekmesiIndeksi)" />
             </RadzenTabsItem>
         </Tabs>
     </RadzenTabs>
@@ -266,7 +260,14 @@ else
     private IReadOnlyList<UyariSonucu> uyarilar = Array.Empty<UyariSonucu>();
 
     // Sekme indeksi: RadzenTabsItem sırasıyla eşleşir. Sekme sırası değişirse burası da güncellenmeli.
-    private const int VergiSekmesiIndeksi = 5;
+    // Sıra: 0 Firma Kontrol · 1 Mizan · 2 Bilanço · 3 Gelir Tablosu · 4 Vergi Hesaplaması ·
+    //       5 Dikey Yüzdeler · 6 Finansal Oranlar · 7 Etiketler · 8 Grup Görünümü
+    // (Ayrı Aktif / Pasif sekmeleri kaldırıldı; Bilanço onların yerini aldı.)
+    // İndekse bağlı kullanım: ?sekme=vergi derin bağlantısı (VergiKalemleri.razor'dan dönüş),
+    // Finansal Oranlar → "Bilanço'ya git", Grup Görünümü tembel yüklemesi (Aktif).
+    private const int BilancoSekmesiIndeksi = 2;
+    private const int VergiSekmesiIndeksi = 4;
+    private const int GrupSekmesiIndeksi = 8;
 
     private int secilenSekme;
 
@@ -388,6 +389,33 @@ else
     private int TotalItems => items?.Count ?? 0;
     private int TotalChecked => items?.Count(i => i.IsChecked) ?? 0;
     private int TotalIssues => items?.Count(i => i.Status == ControlStatus.HasIssue) ?? 0;
+
+    /// <summary>
+    /// Dönem net kârının özkaynağa eklenecek tutarı — TEK KAYNAK, kural burada bir kez yazılır.
+    ///
+    /// 590/591'in mizanda bakiyesi varsa kapanış kaydı atılmıştır, kâr zaten özkaynakta:
+    /// düzeltme 0'dır. Bakiye yoksa kâr hâlâ 6/7 gruplarında durur; gelir tablosunun dönem
+    /// kârı (<see cref="GelirTablosuCalculator.GetDonemKari"/> → 690, <c>cariDonemKari</c>)
+    /// özkaynağa eklenecek tutardır.
+    ///
+    /// Bilanço ve Finansal Oranlar panelleri bu TEK değeri parametre olarak alır; kural
+    /// hiçbir panelde tekrar yazılmaz. Bakiye kontrolü ham (işaretsiz) değer üzerindedir,
+    /// sıfırdan farklı olması yeterlidir.
+    /// </summary>
+    private decimal OzkaynakDonemKariDuzeltmesi
+    {
+        get
+        {
+            if (mizan is null) return 0m;
+
+            var kapanisAtilmis = mizan.Pasif.Any(s =>
+                s.Tip == SatirTipi.Account
+                && (s.Kod == "590" || s.Kod == "591")
+                && s.CariDonem.HasValue && s.CariDonem.Value != 0m);
+
+            return kapanisAtilmis ? 0m : (cariDonemKari ?? 0m);
+        }
+    }
 
     // Mizan'dan 690 / 691 cari raw değerleri — vergi paneline pass edilir.
     private bool TicariKar690FromMizan =>

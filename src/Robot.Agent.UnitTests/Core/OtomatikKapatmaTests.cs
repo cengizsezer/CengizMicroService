@@ -121,13 +121,80 @@ public class OtomatikKapatmaTests : IDisposable
     // ---- iki listenin karismamasi -------------------------------------------
 
     [Fact]
-    public void Yayindaki_ayarlarda_iki_liste_cakismiyor()
+    public void Yayindaki_ayarlarda_ortusen_baslik_bildiriliyor()
     {
-        // BeklenmeyenPencereler DURDURUR, OtomatikKapatilacakPencereler KAPATIP
-        // DEVAM EDER. Ayni baslik ikisinde birden olursa niyet belirsizlesir.
+        // "Uyari Tanimlamalari" penceresi, durdurma listesindeki genel "Uyari"
+        // kaydina da uyuyor. Bu bir AYAR HATASI DEGIL: o kaydi daraltmak ORKA'nin
+        // gercek hata pencerelerini kacirmak olurdu. Ortusme bilerek var ve
+        // gorev basinda log'a yaziliyor; davranisi asagidaki testler tanimliyor.
         var cfg = RobotConfig.Yukle(Path.Combine(AppContext.BaseDirectory, "appsettings.json"));
 
-        Assert.Empty(AdimMotoru.CakisanPencereBasliklari(cfg));
+        Assert.Equal(new[] { "Uyari Tanimlamalari" }, AdimMotoru.CakisanPencereBasliklari(cfg));
+    }
+
+    // ---- oncelik: once KAPAT, kapanmazsa DUR -------------------------------
+
+    [Fact]
+    public void Uyari_Tanimlamalari_penceresinin_kapatma_kurali_var()
+    {
+        // 08.09.2026: firma acilirken bu pencere cikiyor ve aktarim yarida
+        // kaliyordu -- basligi "Uyari" kaydina uydugu icin robot DURUYORDU,
+        // kapatma kurali hic denenmiyordu.
+        var cfg = RobotConfig.Yukle(Path.Combine(AppContext.BaseDirectory, "appsettings.json"));
+
+        var kural = AdimMotoru.KapatmaKurali(cfg, "Uyari Tanimlamalari");
+
+        Assert.NotNull(kural);
+        Assert.Equal("Uyari Tanimlamalari", kural!.Baslik);
+    }
+
+    [Fact]
+    public void Durdurma_kaydina_uyan_pencerenin_kapatma_kurali_bulunuyor()
+    {
+        // Ekrandaki gercek baslik kuraldan uzun olabilir; eslestirme iki yonlu.
+        var cfg = new RobotConfig
+        {
+            BeklenmeyenPencereler = { "Uyari" },
+            OtomatikKapatilacakPencereler =
+            {
+                new KapatilacakPencere { Baslik = "Uyari Tanimlamalari", Dugme = "Kapat" }
+            }
+        };
+
+        Assert.NotNull(AdimMotoru.KapatmaKurali(cfg, "Uyari Tanimlamalari [ORKA]"));
+    }
+
+    [Fact]
+    public void Kapatma_kurali_olmayan_pencere_dogrudan_durduruyor()
+    {
+        // Oncelik yalniz kurali OLAN pencereler icin: "Lisans" cikarsa robot
+        // eskisi gibi duruyor.
+        var cfg = RobotConfig.Yukle(Path.Combine(AppContext.BaseDirectory, "appsettings.json"));
+
+        Assert.Null(AdimMotoru.KapatmaKurali(cfg, "Lisans suresi doldu"));
+        Assert.Null(AdimMotoru.KapatmaKurali(cfg, "Yedekleme"));
+    }
+
+    [Fact]
+    public void Bos_baslikli_kural_hicbir_pencereye_uymuyor()
+    {
+        // Bos kural her basligi "icerir" -- her pencereyi kapatilabilir
+        // gostermek, durdurma listesini tumden etkisiz kilardi.
+        var cfg = new RobotConfig
+        {
+            OtomatikKapatilacakPencereler = { new KapatilacakPencere { Baslik = "  " } }
+        };
+
+        Assert.Null(AdimMotoru.KapatmaKurali(cfg, "Lisans"));
+    }
+
+    [Fact]
+    public void Pencere_basligi_yoksa_kural_aranmiyor()
+    {
+        var cfg = RobotConfig.Yukle(Path.Combine(AppContext.BaseDirectory, "appsettings.json"));
+
+        Assert.Null(AdimMotoru.KapatmaKurali(cfg, null));
+        Assert.Null(AdimMotoru.KapatmaKurali(cfg, "   "));
     }
 
     [Fact]

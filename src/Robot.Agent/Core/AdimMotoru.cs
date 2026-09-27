@@ -23,6 +23,8 @@ public class AdimMotoru
     private readonly Dictionary<string, string> _degiskenler;
     private readonly GridDoldurVerisi? _gridVerisi;
     private readonly Action<Adim>? _adimBasladi;
+    private readonly bool _gozetimsiz;
+    private readonly List<AdimOlcumu> _olcumler = new();
 
     /// <summary>
     /// En son BILEREK one getirilen pencere (BeklePencere / Tikla / OrkaBaslat).
@@ -33,10 +35,22 @@ public class AdimMotoru
     /// </summary>
     private UstSeviyePencere? _sonOnPencere;
 
+    /// <param name="gozetimsiz">
+    /// Basinda KIMSE YOK MU? Sunucudan gelen isi kosan ajan yolu icin <c>true</c>.
+    ///
+    /// Tek etkisi <see cref="Adim.OnayBekle"/> tasiyan adimlar: o bayrak
+    /// "kullanici KAYDET'e basana kadar bu adim calismasin" demek ve
+    /// duraklatmayi Calistir sekmesi yapiyor (bkz.
+    /// <c>PkfRobot.Arayuz.GorevKosucusu</c>). Gozetimsiz kosuda duraklatacak
+    /// kimse olmadigi icin adim <b>calistirilmiyor, ATLANIYOR</b> -- eskiden
+    /// bayrak sessizce yok sayiliyordu ve robot, kullanici kaydetmeden sekme
+    /// kapatma tiklamasini yapardi.
+    /// </param>
     public AdimMotoru(RobotConfig cfg, AdimLogger log, UIA3Automation automation,
                       Dictionary<string, string>? degiskenler = null,
                       GridDoldurVerisi? gridVerisi = null,
-                      Action<Adim>? adimBasladi = null)
+                      Action<Adim>? adimBasladi = null,
+                      bool gozetimsiz = false)
     {
         _cfg = cfg;
         _log = log;
@@ -45,6 +59,7 @@ public class AdimMotoru
         _degiskenler = degiskenler ?? new Dictionary<string, string>();
         _gridVerisi = gridVerisi;
         _adimBasladi = adimBasladi;
+        _gozetimsiz = gozetimsiz;
 
         Klavye.VarsayilanBeklemeMs = cfg.Zamanlama.TusBeklemeMs;
 
@@ -52,6 +67,19 @@ public class AdimMotoru
         // Klavye statik ve loglayiciyi tanimiyor, bagi burada kuruyoruz.
         Klavye.Iz = satir => _log.Bilgi(satir);
     }
+
+    /// <summary>
+    /// Son <see cref="Calistir"/> cagrisindaki adim sureleri.
+    ///
+    /// <b>Neden disari aciliyor:</b> "en yavas adimlar" ozeti hem log dosyasina
+    /// hem de formdaki log kutusuna yazilmali ve ikisi ayni listeden gelmeli;
+    /// motorun log'una bakip satir ayristirmak, bicim degistiginde sessizce
+    /// bozulan bir bag olurdu.
+    /// </summary>
+    public IReadOnlyList<AdimOlcumu> Olcumler => _olcumler;
+
+    /// <summary>Son calistirmanin toplam suresi.</summary>
+    public TimeSpan GecenSure { get; private set; }
 
     public void Calistir(Gorev gorev)
     {
@@ -61,13 +89,30 @@ public class AdimMotoru
 
         var cakisan = CakisanPencereBasliklari(_cfg);
         if (cakisan.Count > 0)
-            _log.Uyari("AYAR CELISKISI: su basliklar hem BeklenmeyenPencereler (DURDUR) hem " +
+            _log.Bilgi("Su basliklar hem BeklenmeyenPencereler (DURDUR) hem " +
                        "OtomatikKapatilacakPencereler (KAPAT VE DEVAM ET) listesinde: " +
-                       string.Join(" | ", cakisan) + ". Kapatma adimdan ONCE calistigi icin " +
-                       "pencere kapanir ve durdurma kurali hic tetiklenmez.");
+                       string.Join(" | ", cakisan) + ". Oncelik KAPATMADA: pencere once " +
+                       "kapatilmaya calisilir, kapanmazsa robot durur.");
+
+        // Sureler adim adim olculuyor: "gorev yavas" bilgisi tek basina hicbir
+        // seyi kisaltmiyor, HANGI adimin yavas oldugu kisaltiyor.
+        _olcumler.Clear();
+        var gorevKronometresi = Stopwatch.StartNew();
+        var adimNo = 0;
 
         foreach (var adim in gorev.Adimlar)
         {
+            adimNo++;
+
+            // Once bu: adim HIC baslamiyor, sayaca da olcume de girmiyor.
+            if (GozetimsizAtlamaNotu(adim, _gozetimsiz) is { } atlama)
+            {
+                _log.Uyari(atlama);
+                continue;
+            }
+
+            var kronometre = Stopwatch.StartNew();
+
             try
             {
                 OtomatikPencereKapat();
@@ -76,19 +121,76 @@ public class AdimMotoru
             }
             catch (Exception ex)
             {
-                _log.Hata($"Adim basarisiz ({adim.Tip} / {Maskele(adim, adim.Deger)}): {ex.Message}");
+                _log.Hata($"Adim basarisiz ({adim.Tip} / {Maskele(adim, adim.Deger)}) " +
+                          $"{SureBicimi.Kisa(kronometre.Elapsed)} sonra: {ex.Message}");
                 _log.EkranAl("HATA", zorla: true);
                 _log.Bilgi("Ekrandaki pencereler: " +
                            string.Join(" | ", _bekleyici.TumPencereBasliklari().Take(20)));
+
+                GecenSure = gorevKronometresi.Elapsed;
                 throw;
             }
+
+            // Sure ADIM SATIRININ AYNISI tekrarlanarak yaziliyor: log'da yukari
+            // kaydirmadan "bu adim ne kadar surdu" okunabilsin.
+            kronometre.Stop();
+            _olcumler.Add(new AdimOlcumu(adimNo, adim.Tip.Trim(), kronometre.Elapsed));
+            _log.AdimBitti(kronometre.Elapsed);
 
             SurprizPencereKontrol();
             Thread.Sleep(_cfg.Zamanlama.AdimBeklemeMs);
         }
 
-        _log.Bilgi("Gorev tamamlandi.");
+        GecenSure = gorevKronometresi.Elapsed;
+
+        _log.Bilgi($"Gorev tamamlandi. Toplam sure {SureBicimi.Kisa(GecenSure)}.");
+
+        var ozet = AdimSureOzeti.Ozet(_olcumler);
+        if (ozet.Length > 0) _log.Bilgi(ozet);
     }
+
+    /// <summary>
+    /// Adimin formda gosterilecek tek satirlik tanimi: "BeklePencere 'Hesap Plan'".
+    ///
+    /// <b>Neden cozulmemis degerle:</b> etiket adim BASLAMADAN once gerekiyor
+    /// (canli sayac o anda basliyor) ve degisken cozumu adimin kendi icinde
+    /// yapiliyor. Cozulmemis '{dosyaYolu}' okunabilir bir sey soyluyor; ustelik
+    /// hassas adimlar <see cref="Maskele"/> ile zaten '***' oluyor.
+    /// </summary>
+    public static string AdimEtiketi(Adim adim)
+    {
+        var tip = adim.Tip.Trim();
+
+        var ayrinti = !string.IsNullOrWhiteSpace(adim.Not)
+            ? adim.Not.Trim()
+            : tip.Equals("Bekle", StringComparison.OrdinalIgnoreCase)
+                ? $"{adim.Sayi} ms"
+                : Maskele(adim, adim.Deger).Trim();
+
+        return string.IsNullOrWhiteSpace(ayrinti) ? tip : $"{tip} '{ayrinti}'";
+    }
+
+    /// <summary>
+    /// Gozetimsiz kosuda bu adim atlanacak mi? Atlanacaksa log'a yazilacak
+    /// satiri, atlanmayacaksa <c>null</c> dondurur.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// <b>Neden ayri ve statik:</b> karar sinanabilmeli. Motorun kendisi
+    /// UI Automation'a bagli ve ev makinesinde ayaga kalkmiyor; kural ise
+    /// (bir adim ne zaman atlanir) tam olarak sinanmasi gereken sey.
+    /// <c>GorevKosucusu.OnayGerekiyorsaDuraklat</c> ile ayni kalip: ayni
+    /// bayragin gozetimli yoldaki karsiligi orada.
+    ///
+    /// <b>Neden atlaniyor, durdurulmuyor:</b> aktarim bu adimdan ONCE bitmis
+    /// oluyor -- grid dolu, ekran kullanicinin kontrol edecegi halde. Hata
+    /// saymak, bitmis bir isi basarisiz gostermek olurdu. Atlamanin bedeli
+    /// yalniz ORKA'da acik kalan bir sekme.
+    /// </remarks>
+    public static string? GozetimsizAtlamaNotu(Adim adim, bool gozetimsiz)
+        => gozetimsiz && adim.OnayBekle
+            ? $"{AdimEtiketi(adim)}: kullanici onayi gerekiyor, gozetimsiz calismada atlandi."
+            : null;
 
     private void AdimiYurut(Adim adim)
     {
@@ -126,10 +228,13 @@ public class AdimMotoru
                 break;
 
             case "temizleyaz":
-                _log.Adim("TemizleYaz", Maskele(adim, deger));
+                // Yol ONCE cozuluyor: taninmayan bir 'Temizleme' degeri, kutuya
+                // hicbir sey yazilmadan hata versin.
+                var temizleme = Klavye.TemizlemeCoz(adim.Temizleme);
+                _log.Adim("TemizleYaz", $"{Maskele(adim, deger)} (temizleme: {temizleme})");
                 YazilacakDegeriDenetle("TemizleYaz", adim, deger);
                 OdakGuvence("TemizleYaz");
-                Klavye.TemizleVeYaz(deger);
+                Klavye.TemizleVeYaz(deger, temizleme);
                 break;
 
             case "tus":
@@ -693,12 +798,18 @@ public class AdimMotoru
     }
 
     /// <summary>
-    /// Iki listede birden gecen basliklar. Bos degilse ayarlar celisiyor: ayni pencere
-    /// hem "durdur" hem "kapat ve devam et" diye isaretlenmis.
+    /// Iki listede birden gecen basliklar: ayni pencere hem "durdur" hem
+    /// "kapat ve devam et" diye isaretlenmis.
     ///
-    /// Celiskide KAPATMA kazanir -- adimdan once calistigi icin pencere zaten kapanmis
-    /// olur ve durdurma kurali hic tetiklenmez. Sessiz kalmamasi icin gorev basinda
-    /// uyariliyor; karar kullanicinin.
+    /// <b>Celiski degil, TANIMLI oncelik:</b> kapatma kazaniyor -- pencere once
+    /// kapatilmaya calisilir, kapanmazsa durdurma kurali devreye girer
+    /// (bkz. <see cref="KapatmaKurali"/> ve <c>SurprizPencereKontrol</c>).
+    /// Ortusme bazen kacinilmaz: "Uyari Tanimlamalari" penceresi, durdurma
+    /// listesindeki genel "Uyari" kaydina da uyuyor ve o kaydi daraltmak
+    /// ORKA'nin gercek hata pencerelerini kacirmak olurdu.
+    ///
+    /// Liste yine de gorev basinda log'a yaziliyor: hangi pencerenin hangi
+    /// muameleyi gorecegi ofiste okunabilmeli.
     /// </summary>
     public static List<string> CakisanPencereBasliklari(RobotConfig cfg)
     {
@@ -732,14 +843,59 @@ public class AdimMotoru
         if (_cfg.BeklenmeyenPencereler.Count == 0) return;
 
         var bulunan = _bekleyici.BeklenmeyenPencereVarMi(_cfg.BeklenmeyenPencereler);
-        if (bulunan != null)
+        if (bulunan is null) return;
+
+        // KAPATMA DURDURMADAN ONCELIKLI. Iki liste ayni pencereyi yakalayabilir
+        // ("Uyari Tanimlamalari" hem kapatma kuralina hem BeklenmeyenPencereler'
+        // deki "Uyari" kaydina uyuyor) ve bu durumda niyet bellidir: pencereyi
+        // kapat, kapanmiyorsa dur.
+        //
+        // Sira neden onemliydi: otomatik kapatma her adimdan ONCE bakiyor, bu
+        // kontrol ise adimdan SONRA. Pencere adimin ortasinda acildiginda once
+        // burasi calisiyor ve robot, kapatma kurali dururken DURUYORDU -- kural
+        // hic denenmeden.
+        if (KapatmaKurali(_cfg, bulunan) is { } kural)
         {
-            _log.Uyari($"BEKLENMEYEN PENCERE: '{bulunan}'");
-            _log.EkranAl("beklenmeyen-pencere", zorla: true);
-            throw new InvalidOperationException(
-                $"Beklenmeyen pencere acildi: '{bulunan}'. " +
-                "Robot durduruldu. Ekran goruntusune bak.");
+            _log.Uyari($"BEKLENMEYEN PENCERE: '{bulunan}' -- kapatma kurali var " +
+                       $"('{kural.Baslik}'), once kapatilmaya calisiliyor.");
+
+            var pencere = PencereBekleyici.Esles(OrkaPenceresi.TumUstSeviyePencereler(), kural.Baslik);
+            if (pencere is not null) Kapat(pencere, kural);
+
+            if (_bekleyici.BeklenmeyenPencereVarMi(_cfg.BeklenmeyenPencereler) is null)
+            {
+                _log.Bilgi($"'{bulunan}' kapandi, goreve devam ediliyor.");
+                return;
+            }
+
+            _log.Uyari($"'{bulunan}' KAPANMADI; durdurma kurali devrede.");
         }
+
+        _log.Uyari($"BEKLENMEYEN PENCERE: '{bulunan}'");
+        _log.EkranAl("beklenmeyen-pencere", zorla: true);
+        throw new InvalidOperationException(
+            $"Beklenmeyen pencere acildi: '{bulunan}'. " +
+            "Robot durduruldu. Ekran goruntusune bak.");
+    }
+
+    /// <summary>
+    /// Bu pencere basligi icin bir otomatik kapatma kurali var mi?
+    ///
+    /// <b>Neden statik ve disari acik:</b> "once kapat, kapanmazsa dur"
+    /// onceliginin kendisi sinanabilmeli; kapatmanin ekranda ne yaptigi
+    /// sinanamaz. <see cref="CakisanPencereBasliklari"/> ile ayni eslestirme
+    /// mantigi -- iki yon: kural basligi pencere basligini icerebilir
+    /// ("Uyari Tanimlamalari" kurali "Uyari Tanimlamalari [1]" penceresini),
+    /// pencere basligi da kurali icerebilir.
+    /// </summary>
+    public static KapatilacakPencere? KapatmaKurali(RobotConfig cfg, string? pencereBasligi)
+    {
+        if (string.IsNullOrWhiteSpace(pencereBasligi)) return null;
+
+        return cfg.OtomatikKapatilacakPencereler.FirstOrDefault(k =>
+            !string.IsNullOrWhiteSpace(k.Baslik) &&
+            (pencereBasligi.Contains(k.Baslik, StringComparison.OrdinalIgnoreCase) ||
+             k.Baslik.Contains(pencereBasligi, StringComparison.OrdinalIgnoreCase)));
     }
 
     /// <summary>
@@ -797,15 +953,20 @@ public class AdimMotoru
         var solaGit = adim.SolaGitAdet ?? _cfg.Grid.SolaGitAdet;
         var tabAdet = adim.TabAdet ?? _cfg.Grid.TabAdet;
 
+        // Grid'in KENDI tus beklemesi: Zamanlama.TusBeklemeMs modul gezinmesi
+        // icin secilmis bir deger ve burada satir basina 5 kez odeniyor
+        // (bkz. GridAyar.GridTusBeklemeMs).
+        var tusBekleme = Math.Max(0, _cfg.Grid.GridTusBeklemeMs);
+
         _log.Adim("GridDoldur", $"{satirlar.Count} satir ({_gridVerisi.Kaynak}) " +
-                                $"[SOL x{solaGit} -> TAB x{tabAdet}]");
+                                $"[SOL x{solaGit} -> TAB x{tabAdet}, tus arasi {tusBekleme} ms]");
 
         // Grid'e konumlanmak gorev JSON'unun isi (Tikla); burada yalnizca odagin
         // ORKA'da oldugundan emin olunuyor.
         OdakGuvence("GridDoldur");
         _log.EkranAl("griddoldur-oncesi", zorla: true);
 
-        GridiYaz(satirlar, solaGit, tabAdet,
+        GridiYaz(satirlar, solaGit, tabAdet, tusBeklemeMs: tusBekleme,
             satirBasliyor: (no, toplam) =>
             {
                 // Her satir ayri satirda log'a dusuyor: "kac satir yazildi ve NEREDE
@@ -820,7 +981,7 @@ public class AdimMotoru
                 _gridVerisi.YazilanSatir = no;
                 _gridVerisi.SatirYazildi?.Invoke(no, toplam);
 
-                Thread.Sleep(_cfg.Zamanlama.TusBeklemeMs);
+                Thread.Sleep(tusBekleme);
             });
 
         // Yol saklaniyor: dogrulama katmani bu goruntuyu okuyacak (bkz.
@@ -849,13 +1010,20 @@ public class AdimMotoru
     /// </summary>
     /// <param name="satirBasliyor">(satirNo, toplam) -- satir yazilmadan hemen once.</param>
     /// <param name="satirYazildi">(satirNo, toplam) -- satir yazildiktan hemen sonra.</param>
+    /// <param name="tusBeklemeMs">
+    /// Tuslar arasi bekleme; null ise <see cref="Klavye.VarsayilanBeklemeMs"/>.
+    /// Grid'in kendi degeri (<see cref="GridAyar.GridTusBeklemeMs"/>) buradan
+    /// giriyor: satir basina 5 bekleme dusuyor ve 43 satirlik bir ekstrede ortak
+    /// degerle yalnizca bekleme 48 saniye ediyordu.
+    /// </param>
     public static void GridiYaz(IReadOnlyList<GridSatiri> satirlar,
                                 int solaGitAdet, int tabAdet,
                                 Action<int, int>? satirBasliyor = null,
-                                Action<int, int>? satirYazildi = null)
+                                Action<int, int>? satirYazildi = null,
+                                int? tusBeklemeMs = null)
     {
         // BIR KEZ: imlec ilk satirin Karsi Hesap Kodu hucresine getiriliyor.
-        GrideKonumlan(solaGitAdet, tabAdet);
+        GrideKonumlan(solaGitAdet, tabAdet, tusBeklemeMs);
 
         for (var i = 0; i < satirlar.Count; i++)
         {
@@ -867,7 +1035,7 @@ public class AdimMotoru
                     $"{i} satir yazildi, devam edilmiyor.");
 
             satirBasliyor?.Invoke(i + 1, satirlar.Count);
-            SatiriYaz(satir.KarsiHesapKodu);
+            SatiriYaz(satir.KarsiHesapKodu, tusBeklemeMs);
             satirYazildi?.Invoke(i + 1, satirlar.Count);
         }
     }
@@ -884,10 +1052,10 @@ public class AdimMotoru
     /// kalir. Fazlasi zararsiz, eksigi hedefi kaydirir -- yani fazla basmak
     /// "hangi kolondaydik" sorusunu sormadan sabit bir baslangic veriyor.
     /// </summary>
-    public static void GrideKonumlan(int solaGitAdet, int tabAdet)
+    public static void GrideKonumlan(int solaGitAdet, int tabAdet, int? tusBeklemeMs = null)
     {
-        if (solaGitAdet > 0) Klavye.Tus("LEFT", solaGitAdet);
-        if (tabAdet > 0) Klavye.Tus("TAB", tabAdet);
+        if (solaGitAdet > 0) Klavye.Tus("LEFT", solaGitAdet, tusBeklemeMs);
+        if (tabAdet > 0) Klavye.Tus("TAB", tabAdet, tusBeklemeMs);
     }
 
     /// <summary>
@@ -898,17 +1066,17 @@ public class AdimMotoru
     /// secili geliyor; ustelik grid hucresinde duzenleme kipi acik degilken
     /// Ctrl+A TUM SATIRLARI secebilir.
     /// </summary>
-    public static void SatiriYaz(string kod)
+    public static void SatiriYaz(string kod, int? tusBeklemeMs = null)
     {
-        Klavye.Yaz(kod);
+        Klavye.Yaz(kod, tusBeklemeMs);
 
         // ENTER hucreyi onayliyor; Karsi Hesap Adi kolonu ORKA tarafindan
         // kendiliginden doluyor.
-        Klavye.Tus("ENTER", 1);
+        Klavye.Tus("ENTER", 1, tusBeklemeMs);
 
         // Satir atlamayi ENTER'a birakmak, ENTER'in imleci hangi kolonda
         // biraktigina bagli olurdu; ASAGI ok bagimsiz.
-        Klavye.Tus("DOWN", 1);
+        Klavye.Tus("DOWN", 1, tusBeklemeMs);
     }
 
     /// <summary>

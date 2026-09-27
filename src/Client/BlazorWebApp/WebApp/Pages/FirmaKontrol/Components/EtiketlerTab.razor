@@ -1,0 +1,956 @@
+@using System.Globalization
+@using Radzen
+@using WebApp.Application.Services
+@using WebApp.Application.Services.FirmaKontrol
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Domain.Models.FirmaKontrol
+@using WebApp.Shared.Dto.FirmaKontrol
+
+@inject IEtiketApiClient EtiketApi
+@inject IFirmaKontrolService FirmaKontrolService
+@inject DialogService Dialog
+@inject NotificationService Notif
+
+@*
+    Etiket tanımları ve etiketleme ekranı (PROMPT 3A).
+
+    Etiketler HENÜZ HİÇBİR HESABA GİRMİYOR: Bilanço, Gelir Tablosu, Vergi, Dikey Yüzdeler
+    ve Finansal Oranlar bu sekmeyi görmez. Raporlarda kullanım 3B'de.
+
+    Dağılımın tek kaynağı EtiketMotoru: kurallar Sıra'ya göre gezilir (ilk eşleşen kazanır)
+    ve çift sayım koruması uygulanır — etiketli düğümün altına inilmez, böylece
+    etiket toplamları + Atanmamış = ana hesap bakiyesi her zaman tutar.
+*@
+
+@if (_yukleniyor)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+}
+else if (_etiketServisiKapali)
+{
+    @* Yerinde mesaj — sayfanın geri kalanı etkilenmedi, global toast çıkmadı. *@
+    <div class="et-kart">
+        <div class="et-amber-serit">
+            <RadzenIcon Icon="cloud_off" Style="font-size:18px" />
+            <span>
+                Etiket servisine ulaşılamadı. Etiket tanımları şu an görüntülenemiyor;
+                sayfanın geri kalanı normal çalışmaya devam ediyor.
+            </span>
+            <span class="et-bosluk"></span>
+            <button type="button" class="et-bag" @onclick="YenidenDeneAsync">Yeniden dene</button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_etiketHataMetni))
+        {
+            <div class="et-bos">Ayrıntı: @_etiketHataMetni</div>
+        }
+    </div>
+}
+else
+{
+    <div class="et-ekran">
+
+        @* ── 4.1 Sol sütun ── *@
+        <aside class="et-sol">
+            <div class="et-baslik">ETİKET BOYUTLARI</div>
+
+            @foreach (var b in _boyutlar)
+            {
+                @if (_duzenlenenBoyutId == b.Id)
+                {
+                    <div class="et-form">
+                        <input class="et-girdi" placeholder="Boyut adı" @bind="_duzenBoyutAd" />
+                        <input class="et-girdi" placeholder="Kapsam hesapları: 600,601,610 ya da 6*"
+                               @bind="_duzenBoyutKapsam" />
+                        <div class="et-form-dugmeler">
+                            <button type="button" class="et-dugme et-dugme-birincil" @onclick="@(() => BoyutGuncelleAsync(b))">Kaydet</button>
+                            <button type="button" class="et-dugme" @onclick="@(() => _duzenlenenBoyutId = 0)">Vazgeç</button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    @* Seçim butonu ile işlem butonları kardeş: iç içe <button> geçersiz HTML olurdu. *@
+                    <div class="et-boyut-satir">
+                        <button type="button"
+                                class="et-boyut @(b.Id == _seciliBoyutId ? "et-boyut-secili" : null)"
+                                @onclick="@(() => BoyutSec(b.Id))">
+                            <span class="et-boyut-ad">@b.Ad</span>
+                            <span class="et-boyut-alt">
+                                @b.Degerler.Count değer ·
+                                @(b.Kapsam == EtiketKapsami.TumFirmalar ? "tüm firmalarda" : "sadece bu firma")
+                                <br />kapsam: @(string.IsNullOrWhiteSpace(b.KapsamHesaplari) ? "—" : b.KapsamHesaplari)
+                            </span>
+                        </button>
+                        <span class="et-boyut-islem">
+                            <button type="button" class="et-mini" title="Boyutu düzenle"
+                                    @onclick="@(() => BoyutDuzenlemeyeAc(b))">✎</button>
+                            <button type="button" class="et-mini et-mini-sil" title="Boyutu sil"
+                                    @onclick="@(() => BoyutSilAsync(b))">@CopIkonu</button>
+                        </span>
+                    </div>
+                }
+            }
+
+            @if (_boyutEkleAcik)
+            {
+                <div class="et-form">
+                    <input class="et-girdi" placeholder="Boyut adı" @bind="_yeniBoyutAd" />
+                    <input class="et-girdi" placeholder="Kapsam hesapları: 600,601,610 ya da 6*"
+                           @bind="_yeniBoyutKapsam" />
+                    <label class="et-onay">
+                        <input type="checkbox" checked="@_yeniBoyutBuFirma"
+                               @onchange="@(e => _yeniBoyutBuFirma = (bool)(e.Value ?? false))" />
+                        <span>Sadece bu firma</span>
+                    </label>
+                    <div class="et-form-dugmeler">
+                        <button type="button" class="et-dugme et-dugme-birincil" @onclick="BoyutEkleAsync">Ekle</button>
+                        <button type="button" class="et-dugme" @onclick="@(() => _boyutEkleAcik = false)">Vazgeç</button>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <button type="button" class="et-dugme et-dugme-genis" @onclick="@(() => _boyutEkleAcik = true)">
+                    + Yeni boyut
+                </button>
+            }
+
+            <div class="et-ayirici"></div>
+
+            @if (SeciliBoyut is { } sb)
+            {
+                <div class="et-baslik">DEĞERLER</div>
+
+                @if (sb.Degerler.Count == 0)
+                {
+                    <div class="et-bos-not">Henüz değer yok. Etiketler bu listeden seçilir.</div>
+                }
+
+                @foreach (var d in sb.Degerler)
+                {
+                    @if (_duzenlenenDegerId == d.Id)
+                    {
+                        <div class="et-form">
+                            <input class="et-girdi" placeholder="Etiket adı" @bind="_duzenAd" />
+                            <input class="et-girdi" placeholder="#2a78d6" @bind="_duzenRenk" />
+                            @FirmaSecici(_duzenFirmaId, v => _duzenFirmaId = v)
+                            <div class="et-form-dugmeler">
+                                <button type="button" class="et-dugme et-dugme-birincil" @onclick="@(() => DegerGuncelleAsync(d))">Kaydet</button>
+                                <button type="button" class="et-dugme" @onclick="@(() => _duzenlenenDegerId = 0)">Vazgeç</button>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="et-deger">
+                            <span class="et-kare" style="@KareStili(d.Renk)"></span>
+                            <span class="et-deger-ad">
+                                @d.Ad
+                                <span class="gg-deger-firma">@(d.FirmaId is int f ? "→ " + FirmaAdi(f) : "firması yok")</span>
+                            </span>
+                            <span class="et-deger-tutar">@Tutar(_dagilim.DegerToplamlari.GetValueOrDefault(d.Id))</span>
+                            <button type="button" class="et-mini" title="Değeri düzenle" @onclick="@(() => DuzenlemeyeAc(d))">✎</button>
+                            <button type="button" class="et-mini et-mini-sil" title="Değeri sil" @onclick="@(() => DegerSilAsync(d))">@CopIkonu</button>
+                        </div>
+                    }
+                }
+
+                <div class="et-deger et-atanmamis">
+                    <span class="et-kare et-kare-atanmamis"></span>
+                    <span class="et-deger-ad">Atanmamış</span>
+                    <span class="et-deger-tutar">@Tutar(_dagilim.Atanmamis)</span>
+                </div>
+
+                @if (_degerEkleAcik)
+                {
+                    <div class="et-form">
+                        <input class="et-girdi" placeholder="Etiket adı" @bind="_yeniDegerAd" />
+                        <input class="et-girdi" placeholder="#2a78d6" @bind="_yeniDegerRenk" />
+                        @FirmaSecici(_yeniDegerFirmaId, v => _yeniDegerFirmaId = v)
+                        <div class="et-form-dugmeler">
+                            <button type="button" class="et-dugme et-dugme-birincil" @onclick="DegerEkleAsync">Ekle</button>
+                            <button type="button" class="et-dugme" @onclick="@(() => _degerEkleAcik = false)">Vazgeç</button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <button type="button" class="et-dugme et-dugme-genis" @onclick="@(() => _degerEkleAcik = true)">
+                        + Değer ekle
+                    </button>
+                }
+
+                @* Kapsam kartı *@
+                <div class="et-kapsam">
+                    <div class="et-baslik">KAPSAM</div>
+
+                    <div class="et-yigin">
+                        @foreach (var d in sb.Degerler)
+                        {
+                            var pay = Oran(_dagilim.DegerToplamlari.GetValueOrDefault(d.Id));
+                            @if (pay > 0d)
+                            {
+                                <span class="et-yigin-p" style="@($"{Genislik(pay)};background:{Renk(d.Renk)}")"
+                                      title="@d.Ad"></span>
+                            }
+                        }
+                        @if (Oran(_dagilim.Atanmamis) > 0d)
+                        {
+                            <span class="et-yigin-p et-yigin-atanmamis" style="@Genislik(Oran(_dagilim.Atanmamis))"
+                                  title="Atanmamış"></span>
+                        }
+                    </div>
+
+                    <div class="et-kapsam-not">
+                        Kapsam (<strong>@sb.KapsamHesaplari</strong>) toplamı
+                        <strong>@Tutar(KapsamToplami)</strong>; bunun
+                        <strong>@YuzdeMetni(EtiketliOran)</strong>'i etiketli.
+                        <strong>@Tutar(_dagilim.Atanmamis)</strong> atanmamış.
+                    </div>
+                </div>
+            }
+        </aside>
+
+        @* ── 4.2 / 4.3 Sağ sütun ── *@
+        <section class="et-sag">
+
+            @if (SeciliBoyut is not { } boyut)
+            {
+                <div class="et-bos">Soldan bir etiket boyutu seçin ya da yeni bir tane ekleyin.</div>
+            }
+            else
+            {
+                @* ── Kurallar ── *@
+                <div class="et-kart">
+                    <div class="et-kart-basi">
+                        <span class="et-kart-baslik">KURALLAR</span>
+                        <span class="et-kart-not">Yukarıdan aşağıya uygulanır, ilk eşleşen kazanır</span>
+                        <span class="et-bosluk"></span>
+                        @if (boyut.Degerler.Count == 0)
+                        {
+                            <span class="et-kart-not et-kural-engel">Önce bir değer ekleyin</span>
+                        }
+                        <button type="button" class="et-dugme"
+                                disabled="@(boyut.Degerler.Count == 0)"
+                                title="@(boyut.Degerler.Count == 0 ? "Kural bir etikete bağlanır; önce soldaki DEĞERLER listesine değer ekleyin." : null)"
+                                @onclick="@(() => _kuralEkleAcik = !_kuralEkleAcik)">
+                            + Kural ekle
+                        </button>
+                    </div>
+
+                    @if (_kuralEkleAcik && boyut.Degerler.Count > 0)
+                    {
+                        <div class="et-form et-form-yatay">
+                            <select class="et-girdi" value="@((int)_yeniKuralTip)"
+                                    @onchange="@(e => _yeniKuralTip = (EtiketEslesmeTipi)int.Parse(e.Value?.ToString() ?? "0"))">
+                                <option value="0">Kod deseni</option>
+                                <option value="1">Ad içerir</option>
+                                <option value="2">Tek seçim</option>
+                            </select>
+
+                            <input class="et-girdi" placeholder="600 1 21*" @bind="_yeniKuralDesen" />
+
+                            @if (_yeniKuralTip == EtiketEslesmeTipi.TekSecim)
+                            {
+                                <button type="button" class="et-dugme" @onclick="HesapSecAsync">Hesap seç</button>
+                            }
+
+                            <select class="et-girdi" value="@_yeniKuralDegerId"
+                                    @onchange="@(e => _yeniKuralDegerId = int.Parse(e.Value?.ToString() ?? "0"))">
+                                <option value="0">— etiket seçin —</option>
+                                @foreach (var d in boyut.Degerler)
+                                {
+                                    <option value="@d.Id">@d.Ad</option>
+                                }
+                            </select>
+
+                            <button type="button" class="et-dugme et-dugme-birincil" @onclick="KuralEkleAsync">Ekle</button>
+                            <button type="button" class="et-dugme" @onclick="@(() => _kuralEkleAcik = false)">Vazgeç</button>
+                        </div>
+                    }
+
+                    <div class="et-satir et-satir-basi">
+                        <span class="et-k-sira">Sıra</span>
+                        <span class="et-k-tip">Eşleşme tipi</span>
+                        <span class="et-k-desen">Desen</span>
+                        <span class="et-k-etiket">Etiket</span>
+                        <span class="et-k-adet">Kaç hesap</span>
+                        <span class="et-k-tutar">Tutar</span>
+                        <span class="et-k-islem"></span>
+                    </div>
+
+                    @if (Kurallar.Count == 0)
+                    {
+                        <div class="et-bos">Bu boyutta henüz kural yok.</div>
+                    }
+                    else
+                    {
+                        @foreach (var (k, i) in Kurallar.Select((k, i) => (k, i)))
+                        {
+                            <div class="et-satir">
+                                <span class="et-k-sira">@(i + 1)</span>
+                                <span class="et-k-tip">@TipAdi(k.EslesmeTipi)</span>
+                                <span class="et-k-desen">@k.Desen</span>
+                                <span class="et-k-etiket">@Cip(k.DegerId)</span>
+                                <span class="et-k-adet">@_dagilim.KuralHesapSayilari.GetValueOrDefault(k.Id)</span>
+                                <span class="et-k-tutar">@Tutar(_dagilim.KuralTutarlari.GetValueOrDefault(k.Id))</span>
+                                <span class="et-k-islem">
+                                    <button type="button" class="et-mini" disabled="@(i == 0)"
+                                            @onclick="@(() => TasiAsync(i, -1))">↑</button>
+                                    <button type="button" class="et-mini" disabled="@(i == Kurallar.Count - 1)"
+                                            @onclick="@(() => TasiAsync(i, 1))">↓</button>
+                                    <button type="button" class="et-mini et-mini-sil" title="Kuralı sil"
+                                            @onclick="@(() => KuralSilAsync(k))">@CopIkonu</button>
+                                </span>
+                            </div>
+                        }
+                    }
+
+                    @if (_dagilim.EtiketsizDugumler.Count > 0)
+                    {
+                        <div class="et-amber-serit">
+                            <RadzenIcon Icon="warning" Style="font-size:18px" />
+                            <span>Hiçbir kurala düşmeyen @_dagilim.EtiketsizDugumler.Count hesap var</span>
+                            <button type="button" class="et-bag" @onclick="@(() => _sadeceEtiketsiz = !_sadeceEtiketsiz)">
+                                @(_sadeceEtiketsiz ? "Tümünü göster" : "Göster")
+                            </button>
+                        </div>
+                    }
+                </div>
+
+                @* ── Hesaplar ve etiketleri ── *@
+                <div class="et-kart">
+                    <div class="et-kart-basi">
+                        <span class="et-kart-baslik">HESAPLAR VE ETİKETLERİ</span>
+                        <span class="et-bosluk"></span>
+                        <input class="et-girdi et-ara" type="search" placeholder="Kod veya ad ara"
+                               value="@_arama" @oninput="@(e => _arama = e.Value?.ToString() ?? string.Empty)" />
+                        <label class="et-onay">
+                            <input type="checkbox" checked="@_sadeceKapsam"
+                                   @onchange="@(e => _sadeceKapsam = (bool)(e.Value ?? false))" />
+                            <span>Sadece kapsamdaki hesaplar</span>
+                        </label>
+                    </div>
+
+                    <div class="et-satir et-satir-basi">
+                        <span class="et-h-kod">Kod</span>
+                        <span class="et-h-ad">Hesap adı</span>
+                        <span class="et-h-tutar">Bakiye</span>
+                        <span class="et-h-etiket">Etiket</span>
+                    </div>
+
+                    <div class="et-govde">
+                        @if (GorunurHesaplar.Count == 0)
+                        {
+                            <div class="et-bos">Gösterilecek hesap yok.</div>
+                        }
+                        else
+                        {
+                            @foreach (var h in GorunurHesaplar)
+                            {
+                                var etiket = _dagilim.DugumEtiketleri.GetValueOrDefault(h.Kod);
+                                var altKirilimdan = etiket is null && h.Seviye == 1 && AltindaEtiketVar(h);
+                                var etiketsiz = etiket is null && !altKirilimdan;
+
+                                <div class="et-satir @(etiketsiz ? "et-satir-etiketsiz" : null)">
+                                    <span class="et-h-kod">@h.Kod</span>
+                                    <span class="et-h-ad">@h.Ad</span>
+                                    <span class="et-h-tutar">@Tutar(HesapDugumSunumu.Sunum(h))</span>
+                                    <span class="et-h-etiket">
+                                        @if (etiket is not null)
+                                        {
+                                            @Cip(etiket.DegerId)
+                                        }
+                                        else if (altKirilimdan)
+                                        {
+                                            <span class="et-alt-kirilimdan">alt kırılımdan</span>
+                                        }
+                                        else
+                                        {
+                                            @* Tek tıklık atama: seçim bir TekSecim kuralı olarak kaydedilir. *@
+                                            <select class="et-girdi et-mini-secim" value="0"
+                                                    @onchange="@(e => HizliAtaAsync(h, e.Value?.ToString()))">
+                                                <option value="0">— etiket ata —</option>
+                                                @foreach (var d in boyut.Degerler)
+                                                {
+                                                    <option value="@d.Id">@d.Ad</option>
+                                                }
+                                            </select>
+                                        }
+                                    </span>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            }
+        </section>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+    [Parameter] public Donem Donem { get; set; } = Donem.Cari;
+
+    private static readonly CultureInfo Tr = new("tr-TR");
+
+    private List<EtiketBoyutuDto> _boyutlar = new();
+    private IReadOnlyList<HesapDugumu> _agac = Array.Empty<HesapDugumu>();
+    private EtiketMotoru.Dagilim _dagilim = new();
+
+    private int _seciliBoyutId;
+    private bool _yukleniyor = true;
+
+    /// <summary>Etiket servisine ulaşılamadı; sekmede yerinde mesaj gösterilir (sayfa etkilenmez).</summary>
+    private bool _etiketServisiKapali;
+    private string? _etiketHataMetni;
+
+    // Ekran durumu
+    private string _arama = string.Empty;
+    private bool _sadeceKapsam = true;
+    private bool _sadeceEtiketsiz;
+
+    private bool _boyutEkleAcik;
+    private string _yeniBoyutAd = string.Empty;
+    private string _yeniBoyutKapsam = string.Empty;
+    private bool _yeniBoyutBuFirma;
+
+    private bool _degerEkleAcik;
+    private string _yeniDegerAd = string.Empty;
+    private string _yeniDegerRenk = "#2a78d6";
+    private int? _yeniDegerFirmaId;
+
+    // Değer düzenleme (3B: etiketin karşılık geldiği firma burada seçilir/değiştirilir).
+    private int _duzenlenenDegerId;
+    private string _duzenAd = string.Empty;
+    private string _duzenRenk = string.Empty;
+    private int? _duzenFirmaId;
+
+    /// <summary>Firma seçim ekranını besleyen aynı liste (IFirmaKontrolService.GetFirmsAsync).</summary>
+    private List<Firma> _firmalar = new();
+
+    private bool _kuralEkleAcik;
+    private EtiketEslesmeTipi _yeniKuralTip = EtiketEslesmeTipi.KodDeseni;
+    private string _yeniKuralDesen = string.Empty;
+    private int _yeniKuralDegerId;
+
+    private EtiketBoyutuDto? SeciliBoyut => _boyutlar.FirstOrDefault(b => b.Id == _seciliBoyutId);
+
+    private List<EtiketKuraliDto> Kurallar =>
+        SeciliBoyut?.Kurallar.OrderBy(k => k.Sira).ThenBy(k => k.Id).ToList() ?? new();
+
+    /// <summary>
+    /// Sekmeler Client render modunda olduğu için bu bileşen SAYFA AÇILIRKEN kurulur.
+    /// Bu yüzden iki uzak çağrı da ayrı ayrı korunur: biri patlasa bile istisna yukarı
+    /// sızmaz, sayfanın geri kalanı (Firma Kontrol, Mizan, Bilanço, Gelir Tablosu, Vergi,
+    /// Oranlar) normal çalışır ve kullanıcıya global hata toast'ı ÇIKMAZ. Hata konsola
+    /// düşer, etiket verisi boş kalır, bu sekmeye girildiğinde yerinde mesaj görünür.
+    ///
+    /// Bu koruma kalıcıdır: servis ileride de geçici olarak erişilemez olabilir.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _agac = await FirmaKontrolService.GetHesapAgaciAsync(FirmaId, Donem);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[EtiketAgacLoad HATA] {ex}");
+            _agac = Array.Empty<HesapDugumu>();
+        }
+
+        try
+        {
+            _firmalar = (await FirmaKontrolService.GetFirmsAsync()).OrderBy(f => f.Ad).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[EtiketFirmaLoad HATA] {ex.Message}");
+            _firmalar = new();
+        }
+
+        await BoyutlariGuvenliYukleAsync();
+
+        _yukleniyor = false;
+    }
+
+    /// <summary>Açılışta kullanılan güvenli yükleme: hata toast üretmez, bayrağı kaldırır.</summary>
+    private async Task BoyutlariGuvenliYukleAsync()
+    {
+        try
+        {
+            await BoyutlariYukleAsync();
+
+            _etiketServisiKapali = false;
+            _etiketHataMetni = null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[EtiketLoad HATA] {ex}");
+
+            _boyutlar = new();
+            _seciliBoyutId = 0;
+            _dagilim = new();
+
+            _etiketServisiKapali = true;
+            _etiketHataMetni = ex.Message;
+        }
+    }
+
+    private async Task YenidenDeneAsync()
+    {
+        _yukleniyor = true;
+        await BoyutlariGuvenliYukleAsync();
+        _yukleniyor = false;
+    }
+
+    private async Task BoyutlariYukleAsync()
+    {
+        _boyutlar = await EtiketApi.GetBoyutlarAsync(FirmaId);
+
+        if (SeciliBoyut is null)
+            _seciliBoyutId = _boyutlar.FirstOrDefault()?.Id ?? 0;
+
+        Hesapla();
+    }
+
+    /// <summary>
+    /// Dağılımı tazeler. Tek kaynak EtiketMotoru — çift sayım koruması orada.
+    ///
+    /// Payda BOYUTUN KAPSAM TANIMIDIR (örn. "600,601,610"). Kapsamsız hesaplansaydı payda
+    /// bütün gelir tablosunun neti olur, gelirlerle giderler birbirini yer ve yüzde %100'ü
+    /// aşardı. Kapsam yüzdesi, Atanmamış ve "hiçbir kurala düşmeyen hesap" uyarısı hep
+    /// bu küme üzerinden çıkar.
+    /// </summary>
+    private void Hesapla() =>
+        _dagilim = EtiketMotoru.Dagit(KapsamAgaci, SeciliBoyut?.Kurallar ?? new List<EtiketKuraliDto>());
+
+    private IEnumerable<HesapDugumu> KapsamAgaci =>
+        EtiketMotoru.Kapsa(_agac, SeciliBoyut?.KapsamHesaplari);
+
+    private void BoyutSec(int id)
+    {
+        _seciliBoyutId = id;
+        _degerEkleAcik = false;
+        _kuralEkleAcik = false;
+        Hesapla();
+    }
+
+    // ── Hesap listesi ──
+
+    private List<HesapDugumu> GorunurHesaplar
+    {
+        get
+        {
+            IEnumerable<HesapDugumu> q = _sadeceKapsam ? KapsamAgaci : _agac;
+
+            if (_sadeceEtiketsiz)
+            {
+                var kodlar = _dagilim.EtiketsizDugumler.Select(d => d.Kod).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                q = q.Where(d => kodlar.Contains(d.Kod));
+            }
+
+            var terim = _arama.Trim();
+            if (terim.Length > 0)
+            {
+                var t = EtiketMotoru.Sadelestir(terim);
+                q = q.Where(d => EtiketMotoru.Sadelestir(d.Kod).Contains(t)
+                                 || EtiketMotoru.Sadelestir(d.Ad).Contains(t));
+            }
+
+            return q.OrderBy(d => d.Kod, StringComparer.Ordinal).ToList();
+        }
+    }
+
+    private bool AltindaEtiketVar(HesapDugumu ana) =>
+        _dagilim.DugumEtiketleri.Keys.Any(k =>
+            k.Length > ana.Kod.Length
+            && k.StartsWith(ana.Kod, StringComparison.OrdinalIgnoreCase)
+            && k[ana.Kod.Length] == ' ');
+
+    // ── Tanım işlemleri ──
+
+    private async Task BoyutEkleAsync()
+    {
+        if (_yeniBoyutAd.Trim().Length == 0) return;
+
+        if (_yeniBoyutKapsam.Trim().Length == 0)
+        {
+            Bildir(NotificationSeverity.Error,
+                "Kapsam hesapları boş bırakılamaz (örn. \"600,601,610\" ya da \"6*\").");
+            return;
+        }
+
+        // Sunucu da reddeder; burada erken uyarı, istek hiç gitmez.
+        if (AyniAdliBoyutVar(_yeniBoyutAd, haricId: null))
+        {
+            Bildir(NotificationSeverity.Warning, $"\"{_yeniBoyutAd.Trim()}\" adında bir boyut zaten var. Farklı bir ad seçin.");
+            return;
+        }
+
+        await Calistir(async () =>
+        {
+            var yeni = await EtiketApi.BoyutEkleAsync(FirmaId, new EtiketBoyutuYazDto
+            {
+                Ad = _yeniBoyutAd.Trim(),
+                Kapsam = _yeniBoyutBuFirma ? EtiketKapsami.BuFirma : EtiketKapsami.TumFirmalar,
+                Sira = _boyutlar.Count + 1,
+                KapsamHesaplari = _yeniBoyutKapsam.Trim()
+            });
+
+            _boyutEkleAcik = false;
+            _yeniBoyutAd = string.Empty;
+            _yeniBoyutKapsam = string.Empty;
+            _yeniBoyutBuFirma = false;
+
+            await BoyutlariYukleAsync();
+            _seciliBoyutId = yeni.Id;
+            Hesapla();
+        });
+    }
+
+    private async Task DegerEkleAsync()
+    {
+        if (SeciliBoyut is not { } b || _yeniDegerAd.Trim().Length == 0) return;
+
+        await Calistir(async () =>
+        {
+            await EtiketApi.DegerEkleAsync(FirmaId, b.Id, new EtiketDegeriYazDto
+            {
+                Ad = _yeniDegerAd.Trim(),
+                Renk = string.IsNullOrWhiteSpace(_yeniDegerRenk) ? null : _yeniDegerRenk.Trim(),
+                Sira = b.Degerler.Count + 1,
+                FirmaId = _yeniDegerFirmaId
+            });
+
+            _degerEkleAcik = false;
+            _yeniDegerAd = string.Empty;
+            _yeniDegerFirmaId = null;
+
+            await BoyutlariYukleAsync();
+        });
+    }
+
+    private void DuzenlemeyeAc(EtiketDegeriDto d)
+    {
+        _duzenlenenDegerId = d.Id;
+        _duzenAd = d.Ad;
+        _duzenRenk = d.Renk ?? string.Empty;
+        _duzenFirmaId = d.FirmaId;
+    }
+
+    private async Task DegerGuncelleAsync(EtiketDegeriDto d)
+    {
+        if (_duzenAd.Trim().Length == 0) return;
+
+        await Calistir(async () =>
+        {
+            // Tüm alanlar gönderilir (Sira dâhil) — eksik alan sunucuda sessizce sıfırlanmasın.
+            await EtiketApi.DegerGuncelleAsync(FirmaId, d.Id, new EtiketDegeriYazDto
+            {
+                Ad = _duzenAd.Trim(),
+                Renk = string.IsNullOrWhiteSpace(_duzenRenk) ? null : _duzenRenk.Trim(),
+                Sira = d.Sira,
+                FirmaId = _duzenFirmaId
+            });
+
+            _duzenlenenDegerId = 0;
+            await BoyutlariYukleAsync();
+        });
+    }
+
+    /// <summary>Etiketin karşılık geldiği firma; boş bırakılabilir ("Grup dışı" gibi).</summary>
+    private RenderFragment FirmaSecici(int? secili, Action<int?> degisti) => __builder =>
+    {
+        <select class="et-girdi" value="@(secili?.ToString() ?? "")"
+                title="Bu etiket hangi firmaya karşılık geliyor"
+                @onchange="@(e => degisti(int.TryParse(e.Value?.ToString(), out var v) ? v : null))">
+            <option value="">— firma yok (örn. Grup dışı) —</option>
+            @foreach (var f in _firmalar)
+            {
+                <option value="@f.Id">@f.Ad@(f.Id == FirmaId ? " (bu firma)" : "")</option>
+            }
+            @if (secili is int s && _firmalar.All(f => f.Id != s))
+            {
+                <option value="@s">Firma #@s (bulunamadı)</option>
+            }
+        </select>
+    };
+
+    private string FirmaAdi(int firmaId) =>
+        _firmalar.FirstOrDefault(f => f.Id == firmaId)?.Ad ?? $"Firma #{firmaId} (bulunamadı)";
+
+    private async Task HesapSecAsync()
+    {
+        var sonuc = await Dialog.OpenAsync<HesapSeciciDialog>(
+            "Hesap seç",
+            new() { ["FirmaId"] = FirmaId, ["Donem"] = Donem },
+            new DialogOptions { Width = "1040px", Height = "700px", CloseDialogOnOverlayClick = false });
+
+        if (sonuc is HesapSecimi secim)
+        {
+            _yeniKuralDesen = secim.Dugum.Kod;
+            StateHasChanged();
+        }
+    }
+
+    private async Task KuralEkleAsync()
+    {
+        if (SeciliBoyut is not { } b) return;
+        if (_yeniKuralDesen.Trim().Length == 0 || _yeniKuralDegerId == 0)
+        {
+            Bildir(NotificationSeverity.Error, "Desen ve etiket seçilmeli.");
+            return;
+        }
+
+        await Calistir(async () =>
+        {
+            await EtiketApi.KuralEkleAsync(FirmaId, b.Id, new EtiketKuraliYazDto
+            {
+                Sira = (b.Kurallar.Count == 0 ? 0 : b.Kurallar.Max(k => k.Sira)) + 1,
+                EslesmeTipi = _yeniKuralTip,
+                Desen = _yeniKuralDesen.Trim(),
+                DegerId = _yeniKuralDegerId,
+                FirmaId = null     // desen tabanlı kurallar varsayılan olarak tüm firmalarda
+            });
+
+            _kuralEkleAcik = false;
+            _yeniKuralDesen = string.Empty;
+            _yeniKuralDegerId = 0;
+
+            await BoyutlariYukleAsync();
+        });
+    }
+
+    /// <summary>Listeden tek tıklık atama: o koda ait bir TekSecim kuralı olarak kaydedilir.</summary>
+    private async Task HizliAtaAsync(HesapDugumu dugum, string? degerIdMetni)
+    {
+        if (SeciliBoyut is not { } b) return;
+        if (!int.TryParse(degerIdMetni, out var degerId) || degerId == 0) return;
+
+        await Calistir(async () =>
+        {
+            await EtiketApi.KuralEkleAsync(FirmaId, b.Id, new EtiketKuraliYazDto
+            {
+                Sira = (b.Kurallar.Count == 0 ? 0 : b.Kurallar.Max(k => k.Sira)) + 1,
+                EslesmeTipi = EtiketEslesmeTipi.TekSecim,
+                Desen = dugum.Kod,
+                DegerId = degerId,
+                FirmaId = FirmaId   // elle atama bu firmaya özeldir
+            });
+
+            await BoyutlariYukleAsync();
+        });
+    }
+
+    private async Task TasiAsync(int indeks, int yon)
+    {
+        if (SeciliBoyut is not { } b) return;
+
+        var liste = Kurallar;
+        var hedef = indeks + yon;
+        if (hedef < 0 || hedef >= liste.Count) return;
+
+        (liste[indeks], liste[hedef]) = (liste[hedef], liste[indeks]);
+
+        await Calistir(async () =>
+        {
+            await EtiketApi.KuralSiraGuncelleAsync(FirmaId, b.Id,
+                liste.Select((k, i) => new EtiketKuralSiraDto { KuralId = k.Id, Sira = i + 1 }).ToList());
+
+            await BoyutlariYukleAsync();
+        });
+    }
+
+    // ── Boyut düzenleme ──
+
+    private int _duzenlenenBoyutId;
+    private string _duzenBoyutAd = string.Empty;
+    private string _duzenBoyutKapsam = string.Empty;
+
+    private void BoyutDuzenlemeyeAc(EtiketBoyutuDto b)
+    {
+        _duzenlenenBoyutId = b.Id;
+        _duzenBoyutAd = b.Ad;
+        _duzenBoyutKapsam = b.KapsamHesaplari;
+    }
+
+    private async Task BoyutGuncelleAsync(EtiketBoyutuDto b)
+    {
+        var ad = _duzenBoyutAd.Trim();
+        var kapsam = _duzenBoyutKapsam.Trim();
+
+        if (ad.Length == 0)
+        {
+            Bildir(NotificationSeverity.Error, "Boyut adı boş bırakılamaz.");
+            return;
+        }
+
+        if (kapsam.Length == 0)
+        {
+            Bildir(NotificationSeverity.Error,
+                "Kapsam hesapları boş bırakılamaz (örn. \"600,601,610\" ya da \"6*\").");
+            return;
+        }
+
+        if (AyniAdliBoyutVar(ad, haricId: b.Id))
+        {
+            Bildir(NotificationSeverity.Warning, $"\"{ad}\" adında bir boyut zaten var. Farklı bir ad seçin.");
+            return;
+        }
+
+        await Calistir(async () =>
+        {
+            // Kapsam türü (tüm firmalar / bu firma) ve sıra korunur; yalnızca ad ve kapsam değişir.
+            await EtiketApi.BoyutGuncelleAsync(FirmaId, b.Id, new EtiketBoyutuYazDto
+            {
+                Ad = ad,
+                Kapsam = b.Kapsam,
+                Sira = b.Sira,
+                KapsamHesaplari = kapsam
+            });
+
+            _duzenlenenBoyutId = 0;
+            await BoyutlariYukleAsync();
+        });
+    }
+
+    /// <summary>Aynı adda boyut var mı — büyük/küçük harf ve Türkçe karakter duyarsız.</summary>
+    private bool AyniAdliBoyutVar(string ad, int? haricId)
+    {
+        var aranan = EtiketMotoru.Sadelestir(string.Join(' ', ad.Split(' ', StringSplitOptions.RemoveEmptyEntries)));
+        return _boyutlar.Any(b => b.Id != haricId
+            && EtiketMotoru.Sadelestir(string.Join(' ', b.Ad.Split(' ', StringSplitOptions.RemoveEmptyEntries))) == aranan);
+    }
+
+    // ── Silme — geri alınamaz, onaysız silme yok ──
+
+    private async Task BoyutSilAsync(EtiketBoyutuDto b)
+    {
+        var mesaj = $"\"{b.Ad}\" boyutu, {b.Degerler.Count} değeri ve {b.Kurallar.Count} kuralı silinecek.";
+        if (b.Kapsam == EtiketKapsami.TumFirmalar)
+            mesaj += " Boyut tüm firmalarda ortaktır; diğer firmalardaki etiketlemesi ve o firmalara özel kuralları da gider.";
+
+        if (!await OnaylaAsync(mesaj, "Boyutu sil")) return;
+
+        await Calistir(async () =>
+        {
+            await EtiketApi.BoyutSilAsync(FirmaId, b.Id);
+
+            if (_seciliBoyutId == b.Id) _seciliBoyutId = 0;
+            _duzenlenenBoyutId = 0;
+            await BoyutlariYukleAsync();
+        });
+    }
+
+    private async Task DegerSilAsync(EtiketDegeriDto d)
+    {
+        var bagliKural = SeciliBoyut?.Kurallar.Count(k => k.DegerId == d.Id) ?? 0;
+
+        var mesaj = $"\"{d.Ad}\" değeri silinecek.";
+        if (bagliKural > 0)
+            mesaj += $" Bu değere bağlı {bagliKural} kural var, onlar da silinecek.";
+
+        if (!await OnaylaAsync(mesaj, "Değeri sil")) return;
+
+        await Calistir(async () =>
+        {
+            await EtiketApi.DegerSilAsync(FirmaId, d.Id);
+
+            _duzenlenenDegerId = 0;
+            await BoyutlariYukleAsync();
+        });
+    }
+
+    private async Task KuralSilAsync(EtiketKuraliDto kural)
+    {
+        if (!await OnaylaAsync($"\"{kural.Desen}\" kuralı silinecek.", "Kuralı sil")) return;
+
+        await Calistir(async () =>
+        {
+            await EtiketApi.KuralSilAsync(FirmaId, kural.Id);
+            await BoyutlariYukleAsync();
+        });
+    }
+
+    private async Task<bool> OnaylaAsync(string mesaj, string baslik)
+    {
+        var onay = await Dialog.Confirm(
+            mesaj + " Bu işlem geri alınamaz. Emin misiniz?",
+            baslik,
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+
+        return onay == true;
+    }
+
+    /// <summary>Üç seviyede (boyut / değer / kural) aynı silme ikonu.</summary>
+    private static readonly RenderFragment CopIkonu = __builder =>
+    {
+        <RadzenIcon Icon="delete" Style="font-size:14px; vertical-align:middle;" />
+    };
+
+    private async Task Calistir(Func<Task> is_)
+    {
+        try
+        {
+            await is_();
+        }
+        catch (Exception ex)
+        {
+            Bildir(NotificationSeverity.Error, ex.Message);
+        }
+    }
+
+    private void Bildir(NotificationSeverity seviye, string mesaj) =>
+        Notif.Notify(new NotificationMessage
+        {
+            Severity = seviye,
+            Summary = seviye == NotificationSeverity.Error ? "İşlem yapılamadı" : "Tamam",
+            Detail = mesaj,
+            Duration = 5000
+        });
+
+    // ── Kapsam ──
+
+    private decimal KapsamToplami => _dagilim.GenelToplam;
+
+    private double EtiketliOran =>
+        KapsamToplami == 0m ? 0d : (double)(_dagilim.EtiketliToplam / KapsamToplami) * 100d;
+
+    private double Oran(decimal tutar) =>
+        KapsamToplami == 0m ? 0d : (double)(tutar / KapsamToplami) * 100d;
+
+    // ── Biçim ──
+
+    private RenderFragment Cip(int degerId) => __builder =>
+    {
+        var d = SeciliBoyut?.Degerler.FirstOrDefault(x => x.Id == degerId);
+
+        <span class="et-cip">
+            <span class="et-kare" style="@KareStili(d?.Renk)"></span>
+            <span>@(d?.Ad ?? "—")</span>
+        </span>
+    };
+
+    private static string Renk(string? hex) =>
+        string.IsNullOrWhiteSpace(hex) ? "#CBD5E1" : hex!;
+
+    private static string KareStili(string? hex) => $"background:{Renk(hex)}";
+
+    private static string Genislik(double yuzde) =>
+        $"width:{Math.Round(Math.Clamp(yuzde, 0d, 100d), 2).ToString(CultureInfo.InvariantCulture)}%";
+
+    private static string Tutar(decimal deger) => deger.ToString("N2", Tr);
+
+    private static string YuzdeMetni(double yuzde) => "%" + yuzde.ToString("N2", Tr);
+
+    private static string TipAdi(EtiketEslesmeTipi tip) => tip switch
+    {
+        EtiketEslesmeTipi.KodDeseni => "Kod deseni",
+        EtiketEslesmeTipi.AdIcerir => "Ad içerir",
+        EtiketEslesmeTipi.TekSecim => "Tek seçim",
+        _ => "—"
+    };
+}

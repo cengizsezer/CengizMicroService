@@ -1,0 +1,53 @@
+{
+  "Ad": "Ajan aktarimi (acilis + aktarim govdesi)",
+  "Aciklama": "Sunucudan gelen isin calistirdigi akis. Kendi adimi YOKTUR: acilis ile dongu govdesini sirayla birlestirir. Adim KOPYALAMAYIN - AltGorev referansi tek kopyayi korur.",
+
+  "// NEDEN VAR": [
+    "Once IKI ayri dosya vardi: orkaya-aktar.json (ajan) ve tek-dosya-aktar.json",
+    "(Calistir sekmesi/kuyruk). Ikisi ayni aktarimi anlatiyordu ve birinde",
+    "duzeltilen sey digerinde eksik kaliyordu. Olculen ayrisma (08.09.2026):",
+    "  - orkaya-aktar.json modul gezinmesinde ENTER'i BIR kez gonderiyordu;",
+    "    02-modul-ve-sekme.json IKI kez gonderiyor (once TRANSFERLER, sonra",
+    "    Veri Transferi tile'i). Ajan bu yuzden Veri Transferi acilmadan",
+    "    devam edebiliyordu.",
+    "  - Ajan tarafindaki guard 'TdxRibbon|TcxDBTreeList' idi; TdxRibbon",
+    "    TRANSFERLER acilir acilmaz geldigi icin VEYA kosulu daha modul",
+    "    ekranindan cikilirken tutuyordu.",
+    "  - Baslik dogrulamasi ajan tarafinda hala sabit 'ORKA_' idi; 01",
+    "    icinde bu {firmaKodu} ile duzeltilmisti.",
+    "orkaya-aktar.json SILINDI; ajan da kuyrugun kostugu dosyalari kosuyor.",
+    "",
+    "Bakim kurali: aktarim adimlari YALNIZ tek-dosya-aktar.json'da, giris",
+    "adimlari YALNIZ 01/02'de degisir. Buraya adim eklenmez."
+  ],
+
+  "// SIRA": [
+    "1) acilis.json           - 01 (ORKA ac, firmaya gir) + 02 (TRANSFERLER >",
+    "                           Veri Transferi) -> Veri Transferi acik",
+    "2) tek-dosya-aktar.json  - aktarim govdesi; TcxDBTreeList guard'i ile",
+    "                           dogru ekranda basladigini kendisi dogruluyor",
+    "",
+    "Govdenin son adimi (sekme kapatma) 'OnayBekle' tasiyor: kullanici KAYDET'e",
+    "basmadan calismamali. Ajan yolunda basinda kimse olmadigi icin o adim",
+    "ATLANIYOR (AdimMotoru.GozetimsizAtlamaNotu) -- olculmemis bir koordinata",
+    "basmaktansa sekme acik kalir."
+  ],
+
+  "// KULLANIM": [
+    "Degiskenler (OrkayaAktarCalistirici dolduruyor):",
+    "  {firmaKodu}   - ORKA firma kodu        (01, 02)",
+    "  {sifre}       - ORKA giris sifresi     (01)",
+    "  {firmaSifre}  - firma sifresi          (01)",
+    "  {dosyaYolu}   - duzeltilmis ekstrenin tam yolu   (tek-dosya-aktar)",
+    "  {hesapKodu}   - banka hesabinin ORKA kodu        (tek-dosya-aktar)",
+    "  {donem}       - yyyyMM",
+    "",
+    "KAYDET ADIMI YOKTUR VE EKLENMEYECEKTIR: kullanici gozle kontrol edip",
+    "kendisi kaydeder."
+  ],
+
+  "Adimlar": [
+    { "Tip": "AltGorev", "Deger": "acilis.json", "Not": "ORKA ac, firmaya gir, Veri Transferi'ne gec" },
+    { "Tip": "AltGorev", "Deger": "tek-dosya-aktar.json", "Not": "Aktarim govdesi" }
+  ]
+}

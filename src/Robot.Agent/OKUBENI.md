@@ -41,7 +41,7 @@ bin\Release\net8.0-windows\win-x64\publish\
 |---|---|---|
 | `PkfRobot.exe` | ~173 MB | **Evet** — .NET runtime ve native DLL'ler içinde gömülü |
 | `appsettings.json` | ~1 KB | **Evet** — ayarlar buradan okunur |
-| `gorevler\` | 4 JSON | **Evet** — görev tanımları |
+| `gorevler\` | 7 JSON | **Evet** — görev tanımları (elle koşulan 01-04, birleştiren `acilis.json` / `ajan-aktar.json`, gövde `tek-dosya-aktar.json`) |
 | `PkfRobot.pdb` | ~20 KB | Hayır — sadece hata ayıklama sembolleri |
 
 Yani `publish\` klasörünü olduğu gibi kopyalamak en kolayı; `.pdb`'yi silebilirsin.
@@ -207,8 +207,22 @@ PkfRobot.exe --gorev ... --canli
 | `OtomatikOneGetir` | Tuş göndermeden önce ORKA'yı öne getirir — varsayılan `true`, kapatma |
 | `Zamanlama.AdimBeklemeMs` | Robot hızlı gidiyorsa artır |
 | `Zamanlama.PencereTimeoutSn` | Yavaş günlerde artır |
+| `Grid.GridTusBeklemeMs` | **Yalnızca `GridDoldur`**'un tuşlar arası beklemesi — varsayılan 80 |
 | `Pencereler.*` | Beklenen pencere başlıkları (içerir mantığı) |
 | `BeklenmeyenPencereler` | Bu başlıklar çıkarsa robot durur |
+| `OtomatikKapatilacakPencereler` | Bu başlıklar çıkarsa pencere **kapatılıp devam edilir**. Önce `Dugme` yazısını taşıyan düğmeye basılır, bulunamazsa ESC. **Durdurmadan önceliklidir:** bir pencere iki listeye birden uyuyorsa (örn. "Uyari Tanimlamalari" ↔ "Uyari") önce kapatılmaya çalışılır, kapanmazsa robot durur. |
+
+> **Zamanlama ayarları burası değil, Çalıştır sekmesi.** Formdaki
+> Adım / Tuş / Grid tuş / Pencere / ORKA açılış değerleri ve hız çarpanı
+> `%AppData%\PkfRobot\ayarlar.json`'a yazılıyor ve buradaki `Zamanlama` +
+> `Grid.GridTusBeklemeMs` değerlerini **eziyor** — elle çalıştırmada da,
+> sunucudan gelen ajan işinde de. Öncelik: `ayarlar.json` > `appsettings.json`;
+> ayarlar dosyası hiç yoksa buradakiler geçerli. Hangi değerlerle koşulduğu her
+> çalıştırmanın başında `Zamanlama: ...` satırında yazıyor.
+>
+> Grid ayrı bir değer kullanıyor çünkü orada satır başına 5 tuş düşüyor:
+> 43 satırlık bir ekstrede 215 bekleme, 150 ms'te tek başına 48 saniye. Modül
+> gezinmesindeki beklemeyi kısaltmadan grid'i hızlandırmak ancak böyle mümkün.
 
 ---
 
@@ -316,15 +330,31 @@ Ekran görüntüsü maskelenemez — bu yüzden şifreyi komut satırına yazma.
 | `Bekle` | `Sayi` milisaniye bekler |
 | `EkranGoruntusu` | İsimli görüntü alır |
 | `OnayGerekir` | **DryRun'da atlanır** — Kaydet adımları buraya |
+| `AltGorev` | Başka bir görev dosyasının adımlarını buraya gömer (yol, bu dosyanın klasörüne göreli). Yükleme anında açılır; motor bu tipi hiç görmez. **Akış birleştirmek için — adım kopyalamayın.** |
 | `Log` | Log'a not düşer |
 
 Yeni iş eklemek: `gorevler\` altına yeni JSON. Kod değişmez.
+
+### Hangi dosya ne zaman koşuyor
+
+| Dosya | Kim koşuyor |
+|---|---|
+| `01-…`, `02-…`, `03-…`, `04-…` | Elle, `--gorev` ile (ölçüm ve tek tek deneme) |
+| `acilis.json` | Çalıştır sekmesi, kuyruğun başında **bir kez** (= 01 + 02) |
+| `tek-dosya-aktar.json` | Çalıştır sekmesi, **her banka için** (aktarım gövdesi) |
+| `ajan-aktar.json` | Ajan, sunucudan gelen her iş için (= `acilis.json` + `tek-dosya-aktar.json`) |
+
+Son iki satır **aynı gövdeyi** koşuyor: aktarım adımları tek dosyada duruyor,
+biri düzeltilince diğeri de düzelmiş oluyor.
 
 ### Her adımda kullanılabilen ek alanlar
 
 | Alan | Ne işe yarar |
 |---|---|
 | `TimeoutSn` | Bu adıma özel pencere bekleme süresi. Verilmezse `Zamanlama.PencereTimeoutSn` geçerli. Tek yavaş adım yüzünden genel timeout'u büyütmeye gerek yok. |
+| `Temizleme` | Yalnız `TemizleYaz` adımında: kutu **nasıl** boşaltılsın. `"CtrlA"` (varsayılan) → CTRL+A ile seç, üzerine yaz. `"SecVeSil"` → END, SHIFT+HOME, DELETE, sonra yaz — **ORKA'nın kendi kutuları için**, çünkü ORKA'da CTRL kombinasyonları çalışmıyor. Tanınmayan değer hata verir. |
+| `OnayBekle` | "Bu adımdan ÖNCE dur, kullanıcı DEVAM'a basınca çalış." Çalıştır sekmesinde duraklatır. **Ajan (sunucudan gelen iş) yolunda adım hiç çalışmaz, atlanır** ve log'a *"kullanıcı onayı gerekiyor, gözetimsiz çalışmada atlandı"* düşer — duraklatacak kimse yok. Konsol (`--gorev`) elle çalıştırıldığı için adım orada çalışır. |
+| `Yuzde` | Bu adım başlarken sunucuya bildirilecek ilerleme. Yalnız ajan yolunda kullanılıyor; Çalıştır sekmesi adım sayacı gösteriyor. Bölüşme: 01 → %3-7, 02 → %8-9, `tek-dosya-aktar.json` %10'dan devam. |
 | `Deger` içinde `\|` | Birden fazla aday başlık: `"Veri Transferi\|Transfer Islemleri"`. Sırayla denenir, ilk bulunan kabul edilir. ORKA sürümden sürüme başlık değiştirdiği için tek başlığa bağlanmak kırılgan. |
 
 Timeout olduğunda log'a **hem denenen tüm adaylar hem de o an ekranda olan
@@ -467,7 +497,7 @@ sifreler) ve **koordinat kalibrasyonu**. Kapatma dugmesi tepsiye indirir, cikis
 tepsi menusunden. Konsol modlari (`--ajan`, `--gorev`, `--probe`,
 `--kalibre`) aynen calisir.
 
-Ayarlar `%AppData%\PkfRobotyarlar.json` icinde, sifreler
+Ayarlar `%AppData%\PkfRobot\ayarlar.json` icinde, sifreler
 `sifreler.dat` icinde DPAPI ile sifreli durur; publish uzerine yazdiginda
 kaybolmazlar.
 

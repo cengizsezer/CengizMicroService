@@ -58,8 +58,12 @@ public static class GridOkuma
         Tabloda "Karsi Hesap Kodu" baslikli (ya da ona en yakin) bir kolon var.
         Baslik satirini SAYMA. Veri satirlarini ustten alta sirayla, her biri icin:
           sira     : 1'den baslayan kendi sayacin (tablodaki numara kolonu degil)
-          aciklama : aciklama kolonundaki metin (yoksa bos birak)
+          aciklama : aciklama kolonundaki metin
           kod      : Karsi Hesap Kodu kolonundaki metin (bos ise bos birak)
+
+        ACIKLAMA ONEMLI: satirlar bu metne gore eslestiriliyor, sira numarasina
+        gore DEGIL. Her satir icin aciklamayi mutlaka yaz. Ekranda kesilmis
+        gorunuyorsa GORUNEN kadarini yaz, tamamlama.
 
         Kodu OLDUGU GIBI yaz: bosluklari, tireleri, bastaki sifirlari koru.
         Bir karakterden emin degilsen TAHMIN ETME, o satirin kodunu bos birak.

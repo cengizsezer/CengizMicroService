@@ -33,6 +33,17 @@ public sealed class ArayuzBaglami : IDisposable
         // kuruluyor ve ajan basladiginda dosya agzi ona takiliyor.
         Log = new CiftYonluLog();
 
+        // Silinen orkaya-aktar.json'a bakan kalibrasyon kayitlari yenisine
+        // tasiniyor. Diske HEMEN yaziliyor: goc yalniz bellekte kalsaydi
+        // kullanici ayarlari kaydetmeden kapattiginda her acilista "AdimYok"
+        // uyarisi yeniden cikardi.
+        var goc = KalibrasyonGocu.Uygula(Ayarlar);
+        if (goc.Count > 0)
+        {
+            foreach (var satir in goc) Log.Bilgi(satir);
+            AyarDeposu.Yaz(Ayarlar);
+        }
+
         Kopru = new AjanKoprusu(cfg, Log, Izleyici, anahtarSor);
         // Ana pencere basligi da veriliyor: kalibrasyonda oranin paydasi
         // ORKA'nin ANA penceresi olmali ve AdimMotoru.Tikla ayni basliktan

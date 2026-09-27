@@ -19,6 +19,13 @@
     "Transferler icinde VERI TRANSFERI ilk sirada ve zaten secili geliyor."
   ],
 
+  "// YUZDE": [
+    "Bu dosya artik ajan-aktar.json icinden de kosuyor (acilis.json > 02).",
+    "Bolusme: 01 -> %3-7, 02 -> %8-9, tek-dosya-aktar.json %10'dan devam ediyor.",
+    "Arayuz Yuzde'yi kullanmiyor (adim sayaci gosteriyor); yalniz sunucuya",
+    "giden ilerleme bildirimi icin."
+  ],
+
   "Adimlar": [
     { "Tip": "Log", "Not": "--- Modul ekraninda miyiz kontrol ---" },
     {
@@ -38,7 +45,8 @@
       "Deger": "RIGHT",
       "Adet": 3,
       "AdetDegisken": "modulSag",
-      "Not": "sag ok"
+      "Not": "Modul gezinme (TRANSFERLER)",
+      "Yuzde": 8
     },
     { "Tip": "Bekle", "Sayi": 600 },
     { "Tip": "EkranGoruntusu", "Deger": "02-sag-sonrasi" },
@@ -73,7 +81,7 @@
     },
 
     { "Tip": "Log", "Not": "--- VERI TRANSFERI ilk sirada, zaten secili ---" },
-    { "Tip": "Tus", "Deger": "ENTER", "Adet": 1 },
+    { "Tip": "Tus", "Deger": "ENTER", "Adet": 1, "Not": "Veri Transferi aciliyor", "Yuzde": 9 },
     { "Tip": "Bekle", "Sayi": 3000 },
     { "Tip": "EkranGoruntusu", "Deger": "05-veri-transferi-acildi" },
 

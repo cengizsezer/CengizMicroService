@@ -568,132 +568,6 @@
         }
       }
     },
-    "/api/auth/admin/agents": {
-      "get": {
-        "tags": [
-          "AdminAgent"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AjanListeSatiri"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AjanListeSatiri"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AjanListeSatiri"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "AdminAgent"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/YeniAjanIstegi"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/YeniAjanIstegi"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/YeniAjanIstegi"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/YeniAjanYaniti"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/YeniAjanYaniti"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/YeniAjanYaniti"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/auth/admin/agents/{id}/iptal": {
-      "post": {
-        "tags": [
-          "AdminAgent"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AjanIptalIstegi"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AjanIptalIstegi"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/AjanIptalIstegi"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
     "/api/auth/agent/token": {
       "post": {
         "tags": [
@@ -738,6 +612,132 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/auth/agents": {
+      "get": {
+        "tags": [
+          "AgentYonetim"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AjanListeSatiri"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AjanListeSatiri"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AjanListeSatiri"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "AgentYonetim"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/YeniAjanIstegi"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/YeniAjanIstegi"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/YeniAjanIstegi"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/YeniAjanYaniti"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/YeniAjanYaniti"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/YeniAjanYaniti"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/agents/{id}/iptal": {
+      "post": {
+        "tags": [
+          "AgentYonetim"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AjanIptalIstegi"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AjanIptalIstegi"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AjanIptalIstegi"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }

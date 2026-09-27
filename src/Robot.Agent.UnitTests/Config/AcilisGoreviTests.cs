@@ -77,14 +77,20 @@ public class AcilisGoreviTests
     }
 
     /// <summary>
-    /// Ekstre aktaran IKI akis da ayni popup'i beklemeli.
+    /// Ekstre aktaran IKI GIRIS NOKTASI da ayni popup'i beklemeli.
     ///
-    /// tek-dosya-aktar.json elle/kuyruk yolu, orkaya-aktar.json sunucudan gelen
-    /// is. Ikincisinde basinda kimse olmadigi icin sessiz kirilma daha pahali:
-    /// transfer bitmeden hesap planina gecilirse kodlar henuz dolmamis bir
-    /// grid'e yazilir.
+    /// tek-dosya-aktar.json elle/kuyruk yolu; ajan-aktar.json sunucudan gelen
+    /// isin kostugu sarmalayici (acilis + ayni govde). Ajan yolunda basinda
+    /// kimse olmadigi icin sessiz kirilma daha pahali: transfer bitmeden hesap
+    /// planina gecilirse kodlar henuz dolmamis bir grid'e yazilir.
+    ///
+    /// <b>Artik ayni adimlari sinamis oluyorlar</b> ve olmasi gereken de bu:
+    /// eskiden ikinci dosya (orkaya-aktar.json) govdenin AYRI bir kopyasiydi ve
+    /// bu testler iki kopyayi zorla esit tutmaya calisiyordu. Kopya silindi;
+    /// test simdi "sarmalayici govdeyi gercekten iceriyor mu" sorusunu da
+    /// cevapliyor.
     /// </summary>
-    public static TheoryData<string> AktarimGorevleri => new() { "tek-dosya-aktar.json", "orkaya-aktar.json" };
+    public static TheoryData<string> AktarimGorevleri => new() { "tek-dosya-aktar.json", "ajan-aktar.json" };
 
     [Theory]
     [MemberData(nameof(AktarimGorevleri))]

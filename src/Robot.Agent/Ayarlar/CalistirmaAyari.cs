@@ -204,6 +204,18 @@ public class CalistirmaAyari
     public int OrkaAcilisTimeoutSn { get; set; } = 90;
 
     /// <summary>
+    /// GridDoldur'daki tuslar arasi bekleme; <see cref="TusBeklemeMs"/> yerine
+    /// yalnizca o adimda kullaniliyor (bkz.
+    /// <see cref="PkfRobot.Config.GridAyar.GridTusBeklemeMs"/>).
+    ///
+    /// Ayri alan olmasinin sebebi olcum: 43 satirlik bir ekstrede satir basina
+    /// 5 tus dusuyor ve 150 ms'lik ortak degerle yalnizca bekleme 48 saniye
+    /// ediyordu. Grid'de beklenecek bir pencere/modul yok, o yuzden varsayilan
+    /// da daha kisa.
+    /// </summary>
+    public int GridTusBeklemeMs { get; set; } = 80;
+
+    /// <summary>
     /// Gorev JSON'undaki <c>Bekle</c> adimlarinin <c>Sayi</c> degerini olcekler.
     /// 1.0 = dosyadaki degerler, 2.0 = iki kati bekleme (yavas gun), 0.5 = yarisi.
     /// JSON dosyalari DEGISMIYOR; olcekleme calisma aninda, bellekteki kopyada.

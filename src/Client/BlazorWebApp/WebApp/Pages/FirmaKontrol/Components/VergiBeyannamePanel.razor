@@ -21,37 +21,132 @@
 *@
 
 <style>
-    .vb-bolum { border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; margin-bottom: 10px; overflow: hidden; }
-    .vb-bolum-basi { display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: pointer;
-                     background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
-    .vb-bolum-basi:hover { background: #f1f5f9; }
-    .vb-bolum-ad { font-weight: 600; font-size: 14px; flex: 1 1 auto; }
-    .vb-bolum-tutar { font-variant-numeric: tabular-nums; font-weight: 600; }
-    .vb-bolum-govde { padding: 6px 14px 12px; }
-    .vb-altyazi { font-size: 12px; color: #718096; margin: 6px 0 8px; }
-
-    /* Bölümlerin görsel ayrımı — şartnamedeki çerçeve renkleri */
-    .vb-kutu { border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; }
-    .vb-kutu-notr { border-color: #cbd5e0; background: #fff; }
-    .vb-kutu-yesil { border-color: #9ae6b4; background: #f0fff4; }
-    .vb-kutu-mavi { border-color: #90cdf4; background: #ebf8ff; }
-    .vb-kutu-sari { border-color: #f6e05e; background: #fffff0; }
-    .vb-kutu-basi { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: #4a5568; }
-
+    /* ── Üç satır tipi ──
+       Kaynak / Kalem / AraToplam / Sonuc ayrımını satır içi style değil bu sınıflar taşır. */
     .vb-satir { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid #f1f5f9; }
     .vb-satir:last-child { border-bottom: none; }
     .vb-satir.vb-asim { background: #fff5f5; }
+
+    .vb-satir-kalem { font-weight: 400; }
+    /* Sıfır tutarlı kalem soluk kalsın; göz gerçekten değişen rakama gitsin. */
+    .vb-satir-bos .vb-kod, .vb-satir-bos .vb-ad, .vb-satir-bos .vb-inp { color: #a0aec0; }
+
+    .vb-satir-aratoplam { font-weight: 600; border-top: 1px solid #e2e8f0; border-bottom: none;
+                          margin-top: 2px; padding-top: 6px; }
+    .vb-satir-aratoplam-yesil { border-top-color: #9ae6b4; }
+
+    .vb-satir-sonuc { font-weight: 700; font-size: 14px; border-top: 2px solid #2d3748;
+                      border-bottom: none; margin-top: 10px; padding-top: 9px; }
 
     .vb-kod { flex: 0 0 78px; font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #a0aec0; }
     .vb-ad { flex: 1 1 auto; min-width: 0; font-size: 13px; }
     .vb-kanun { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #a0aec0; margin-left: 6px; }
     .vb-tutar-hucre { flex: 0 0 150px; text-align: right; }
     .vb-not-hucre { flex: 0 0 34px; text-align: right; }
+    .vb-not-satiri { margin: 0 0 6px 78px; }
 
     .vb-inp { width: 100%; border: 1px solid #cbd5e0; border-radius: 4px; padding: 4px 7px; font-size: 13px;
-              text-align: right; font-variant-numeric: tabular-nums; background: #fff; }
+              text-align: right; background: #fff; }
     .vb-inp:disabled { background: #f7fafc; color: #4a5568; }
     .vb-inp.vb-inp-asim { border-color: #fc8181; background: #fff5f5; }
+
+    /* Rakamlar alt alta otursun. Yalnızca sayılar — etiketlerin yazı tipi değişmez. */
+    .vb-asama-tutar, .vb-gecis-tutar, .vb-satir-tutar, .vb-inp,
+    .vb-bolum-tutar, .vb-vergi-kolon-tutar {
+        font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
+    }
+
+    /* ── Matrah merdiveni: aşama kartları ── */
+    /* Tutar kolonu: kart tutarı da rozet tutarı da bu tek sabit genişlikli kolona oturur. */
+    .vb-merdiven { margin-bottom: 14px; --vb-tutar-kolon: 200px; }
+
+    .vb-asama-tutar, .vb-gecis-tutar {
+        flex: 0 0 var(--vb-tutar-kolon); box-sizing: border-box; white-space: nowrap;
+        text-align: right; font-weight: 700; padding: 4px 10px;
+        border: 1px solid transparent; border-radius: 8px;
+    }
+
+    .vb-asama { display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+                border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+    .vb-asama-no { flex: 0 0 28px; width: 28px; height: 28px; border-radius: 50%;
+                   display: flex; align-items: center; justify-content: center;
+                   background: #edf2f7; color: #4a5568; font-size: 13px; font-weight: 700; }
+    .vb-asama-orta { flex: 1 1 auto; min-width: 0; }
+    .vb-asama-ust { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .vb-asama-ad { font-size: 14px; font-weight: 600; color: #1a202c; }
+    .vb-asama-alt { font-size: 12px; color: #718096; margin-top: 2px; }
+    .vb-asama-tutar { font-size: 17px; }
+
+    .vb-etiket { font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+                 padding: 2px 7px; border-radius: 10px; background: #edf2f7; color: #4a5568; }
+
+    /* 4. kart — matrah: vurgu dolgusu, beyaz metin */
+    .vb-asama-sonuc { background: #2c5282; border-color: #2c5282; }
+    .vb-asama-sonuc .vb-asama-no { background: rgba(255,255,255,.18); color: #fff; }
+    .vb-asama-sonuc .vb-asama-ad { color: #fff; font-size: 15px; letter-spacing: 1.6px; }
+    .vb-asama-sonuc .vb-asama-alt { color: rgba(255,255,255,.78); }
+    .vb-asama-sonuc .vb-etiket { background: rgba(255,255,255,.18); color: #fff; }
+    .vb-asama-sonuc .vb-asama-tutar { color: #fff; font-size: 24px; }
+
+    /* ── Kartlar arası bağlantı çizgisi ── */
+    /* Sağ dolgu = kart dolgusu (14px) + kart kenarlığı (1px); tutar kolonu iki tarafta da aynı yere düşer. */
+    .vb-baglanti { position: relative; padding: 10px 15px 10px 56px; }
+    .vb-baglanti::before { content: ""; position: absolute; left: 27px; top: 0; bottom: 0;
+                           border-left: 2px solid #cbd5e0; }
+    .vb-baglanti-kesikli::before { border-left-style: dashed; }
+
+    /* ── Çizginin üzerindeki kalem rozetleri ── */
+    .vb-gecis { display: flex; align-items: center; gap: 8px; }
+    .vb-baglanti .vb-gecis:not(:first-child) { margin-top: 8px; }
+
+    .vb-gecis-rozet { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px;
+                      font: inherit; text-align: left; cursor: pointer;
+                      border: 1px dashed #cbd5e0; border-radius: 999px; padding: 5px 12px 5px 6px;
+                      background: #fff; color: #a0aec0; }
+    .vb-gecis-rozet:hover { border-color: #a0aec0; }
+    .vb-gecis-dolu { border-style: solid; }
+    .vb-gecis-dolu.vb-gecis-arti { background: #2c7a7b; border-color: #2c7a7b; color: #fff; }
+    .vb-gecis-dolu.vb-gecis-eksi { background: #2b6cb0; border-color: #2b6cb0; color: #fff; }
+
+    /* İşaret modelden gelir; etiket metninden ayıklanmaz. */
+    .vb-yon { flex: 0 0 20px; width: 20px; height: 20px; border-radius: 50%;
+              display: flex; align-items: center; justify-content: center;
+              font-size: 13px; font-weight: 700; line-height: 1; background: #edf2f7; color: #718096; }
+    .vb-gecis-dolu .vb-yon { background: rgba(255,255,255,.22); color: #fff; }
+
+    .vb-gecis-ad { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .vb-gecis-aciklama { font-size: 12px; opacity: .85; white-space: nowrap; }
+    .vb-gecis-kanun { font-family: ui-monospace, Consolas, monospace; font-size: 11px; opacity: .78; white-space: nowrap; }
+    .vb-gecis-adet { font-size: 11px; opacity: .78; white-space: nowrap; }
+    .vb-gecis-ayrac { opacity: .4; }
+    .vb-gecis-ok { margin-left: auto; display: flex; align-items: center; }
+
+    .vb-gecis-tutar { font-size: 13px; border-style: dashed; border-color: #e2e8f0;
+                      background: #f7fafc; color: #a0aec0; }
+    .vb-gecis-tutar.vb-tutar-arti { border: 1px solid #81e6d9; background: #e6fffa; color: #234e52; }
+    .vb-gecis-tutar.vb-tutar-eksi { border: 1px solid #90cdf4; background: #ebf8ff; color: #2a4365; }
+
+    /* Rozet açılınca alt kalemler rozetin altında girintili çıkar. */
+    .vb-gecis-govde { margin: 8px 0 2px 26px; padding: 6px 0 2px 12px; border-left: 2px solid #e2e8f0; }
+
+    /* ── Bölüm kutusu (Mahsuplar ve rozet gövdelerindeki alt kutular) ── */
+    .vb-bolum { border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; margin-bottom: 10px; overflow: hidden; }
+    .vb-bolum-basi { display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: pointer;
+                     background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+    .vb-bolum-basi:hover { background: #f1f5f9; }
+    .vb-bolum-ad { font-weight: 600; font-size: 14px; flex: 1 1 auto; }
+    .vb-bolum-tutar { font-weight: 600; }
+    .vb-bolum-govde { padding: 6px 14px 12px; }
+    .vb-altyazi { font-size: 12px; color: #718096; margin: 6px 0 8px; }
+    .vb-altyazi-son { margin-bottom: 0; }
+    .vb-altyazi-ust { margin-top: 8px; }
+
+    .vb-kutu { border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; }
+    .vb-kutu-notr { border-color: #cbd5e0; background: #fff; }
+    .vb-kutu-yesil { border-color: #9ae6b4; background: #f0fff4; }
+    .vb-kutu-mavi { border-color: #90cdf4; background: #ebf8ff; }
+    .vb-kutu-sari { border-color: #f6e05e; background: #fffff0; }
+    .vb-kutu-basi { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: #4a5568; }
 
     .vb-hatirlatma { font-size: 12px; color: #7b341e; background: #fffaf0; border-left: 3px solid #f6ad55;
                      padding: 4px 8px; margin: 2px 0 6px 78px; border-radius: 0 4px 4px 0; }
@@ -61,14 +156,22 @@
     .vb-aratoplam { display: flex; align-items: center; gap: 10px; padding: 8px 14px; margin-bottom: 10px;
                     border-radius: 8px; background: #f7fafc; border: 1px solid #e2e8f0; font-weight: 600; }
     .vb-aratoplam .vb-ad { font-size: 14px; }
-    .vb-aratoplam-vurgu { background: #ebf8ff; border-color: #90cdf4; }
     .vb-sonuc { background: #f0fff4; border-color: #9ae6b4; font-size: 16px; }
+    .vb-sonuc .vb-bolum-tutar { font-size: 20px; }
 
+    /* ── Vergi hesabı: iki kart yan yana, kazanan vurgulu ── */
+    .vb-vergi-basi { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+                     color: #718096; margin: 2px 0 8px; }
     .vb-vergi-kolonlar { display: flex; gap: 12px; flex-wrap: wrap; }
-    .vb-vergi-kolon { flex: 1 1 240px; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; background: #fff; }
-    .vb-vergi-kolon.vb-uygulanan { border-color: #9ae6b4; background: #f0fff4; }
+    .vb-vergi-kolon { position: relative; flex: 1 1 240px; border: 1px solid #e2e8f0; border-radius: 8px;
+                      padding: 12px 14px; background: #fff; }
+    .vb-vergi-kolon.vb-uygulanan { border: 2px solid #2c7a7b; background: #f0fff4; padding: 11px 13px; }
+    .vb-vergi-kolon.vb-soluk { opacity: .55; }
     .vb-vergi-kolon-ad { font-size: 12px; text-transform: uppercase; letter-spacing: .3px; color: #718096; }
-    .vb-vergi-kolon-tutar { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 4px; }
+    .vb-vergi-kolon-tutar { font-size: 20px; font-weight: 700; margin-top: 4px; }
+    .vb-uygulanir { position: absolute; top: -9px; right: 12px; font-size: 10px; font-weight: 700;
+                    letter-spacing: .4px; text-transform: uppercase; padding: 2px 8px; border-radius: 10px;
+                    background: #2c7a7b; color: #fff; }
 
     .vb-arac { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
     .vb-arama { border: 1px solid #cbd5e0; border-radius: 4px; padding: 5px 8px; font-size: 13px; min-width: 220px; }
@@ -131,206 +234,175 @@ else
                       Disabled="@(!_kirli || _islemde)" IsBusy="@_islemde" Click="@KaydetAsync" />
     </div>
 
-    <!-- 1. Ticari bilanço kârı -->
-    <div class="vb-aratoplam">
-        <span class="vb-kod">690</span>
-        <span class="vb-ad">
-            Ticari bilanço kârı / zararı
-            <span class="vb-kanun">gelir tablosundan</span>
-        </span>
-        <span class="vb-bolum-tutar">@Bicim(_sonuc.TicariKar)</span>
-    </div>
-
-    <!-- 2. İlaveler -->
+    // Açılır bölümlerin durumu ve rozetlerde gösterilecek dolu kalem sayıları.
+    // Mekanizma değişmedi: _kapali / Acik() / Degistir().
     var ilaveAcik = Acik("ilaveler");
-    <div class="vb-bolum">
-        <div class="vb-bolum-basi" @onclick="@(() => Degistir("ilaveler"))">
-            <RadzenIcon Icon="@(ilaveAcik ? "expand_more" : "chevron_right")" Style="font-size:18px" />
-            <span class="vb-bolum-ad">İlaveler (+)</span>
-            <span class="vb-bolum-tutar">@Bicim(_sonuc.IlaveHamToplam)</span>
-        </div>
-
-        @if (ilaveAcik)
-        {
-            <div class="vb-bolum-govde">
-                <!-- 2a. Matrahı artıran KKEG -->
-                <div class="vb-kutu vb-kutu-notr">
-                    <div class="vb-kutu-basi">Matrahı artıran KKEG</div>
-                    <div class="vb-altyazi">Kalıcı fark · vergi yükünü doğrudan artırır</div>
-                    @KalemListesi(_sonuc.Ilaveler.Where(x => x.MatrahiArtirir).ToList())
-                    <div class="vb-satir" style="font-weight:600; border-top:1px solid #e2e8f0">
-                        <span class="vb-kod"></span>
-                        <span class="vb-ad">Ara toplam</span>
-                        <span class="vb-tutar-hucre">@Bicim(_sonuc.IlaveMatrahaEtkiEden)</span>
-                        <span class="vb-not-hucre"></span>
-                    </div>
-                </div>
-
-                <!-- 2b. İstisnaya ilişkin KKEG -->
-                <div class="vb-kutu vb-kutu-yesil">
-                    <div class="vb-kutu-basi">İstisnaya ilişkin KKEG</div>
-                    <div class="vb-altyazi">Aynı tutar istisna kazancına eklenir · matraha net etkisi yok</div>
-                    @KalemListesi(_sonuc.Ilaveler.Where(x => !x.MatrahiArtirir).ToList(), geriDonusGoster: true)
-                    <div class="vb-satir" style="font-weight:600; border-top:1px solid #9ae6b4">
-                        <span class="vb-kod"></span>
-                        <span class="vb-ad">Ara toplam</span>
-                        <span class="vb-tutar-hucre">@Bicim(_sonuc.IlaveHamToplam - _sonuc.IlaveMatrahaEtkiEden)</span>
-                        <span class="vb-not-hucre"></span>
-                    </div>
-                </div>
-
-                <div class="vb-satir" style="font-weight:600">
-                    <span class="vb-kod"></span>
-                    <span class="vb-ad">Ham ilave toplamı <span class="vb-kanun">beyannameye yazılan</span></span>
-                    <span class="vb-tutar-hucre">@Bicim(_sonuc.IlaveHamToplam)</span>
-                    <span class="vb-not-hucre"></span>
-                </div>
-                <div class="vb-satir" style="font-weight:600">
-                    <span class="vb-kod"></span>
-                    <span class="vb-ad">Matraha etki eden kısım</span>
-                    <span class="vb-tutar-hucre">@Bicim(_sonuc.IlaveMatrahaEtkiEden)</span>
-                    <span class="vb-not-hucre"></span>
-                </div>
-            </div>
-        }
-    </div>
-
-    <!-- 3. Kâr ve ilaveler toplamı -->
-    <div class="vb-aratoplam">
-        <span class="vb-kod"></span>
-        <span class="vb-ad">Kâr ve ilaveler toplamı</span>
-        <span class="vb-bolum-tutar">@Bicim(_sonuc.KarVeIlavelerToplami)</span>
-    </div>
-
-    <!-- 4. Zarar olsa dahi indirilecek istisnalar -->
     var g2Acik = Acik("grup2");
-    <div class="vb-bolum">
-        <div class="vb-bolum-basi" @onclick="@(() => Degistir("grup2"))">
-            <RadzenIcon Icon="@(g2Acik ? "expand_more" : "chevron_right")" Style="font-size:18px" />
-            <span class="vb-bolum-ad">Zarar olsa dahi indirilecek istisna ve indirimler (−)</span>
-            <span class="vb-bolum-tutar">@Bicim(_sonuc.ZararOlsaDahiToplam)</span>
-        </div>
-
-        @if (g2Acik)
-        {
-            <div class="vb-bolum-govde">
-                <div class="vb-kutu vb-kutu-mavi">
-                    <div class="vb-altyazi">Matrahı negatife çekebilir, oluşan zarar devreder</div>
-                    @KalemListesi(_sonuc.ZararOlsaDahiIndirimler)
-                </div>
-            </div>
-        }
-    </div>
-
-    <!-- 5. Kâr / Zarar -->
-    <div class="vb-aratoplam">
-        <span class="vb-kod"></span>
-        <span class="vb-ad">Kâr / Zarar</span>
-        <span class="vb-bolum-tutar">@Bicim(_sonuc.KarZarar)</span>
-    </div>
-
-    <!-- 6. Geçmiş yıl zararları -->
     var zararAcik = Acik("zarar");
-    <div class="vb-bolum">
-        <div class="vb-bolum-basi" @onclick="@(() => Degistir("zarar"))">
-            <RadzenIcon Icon="@(zararAcik ? "expand_more" : "chevron_right")" Style="font-size:18px" />
-            <span class="vb-bolum-ad">Geçmiş yıl zararları (−)</span>
-            <span class="vb-bolum-tutar">@Bicim(_sonuc.ZararMahsupToplami)</span>
-        </div>
-
-        @if (zararAcik)
-        {
-            <div class="vb-bolum-govde">
-                <div class="vb-altyazi">
-                    En eski yıldan başlayarak mahsup edilir; @VergiSabit.ZararYilSiniri hesap döneminden eski zarar mahsup edilemez.
-                </div>
-
-                @foreach (var z in _zararlar.OrderBy(z => z.ZararYili).ToList())
-                {
-                    var mahsup = _sonuc.ZararMahsuplari.FirstOrDefault(m => m.ZararYili == z.ZararYili);
-
-                    <div class="vb-satir @(mahsup is not null && !mahsup.MahsupEdilebilir ? "vb-asim" : "")" @key="z">
-                        <span class="vb-kod">@z.ZararYili</span>
-                        <span class="vb-ad">
-                            @z.ZararYili yılı zararı
-                            @if (mahsup is not null && mahsup.MahsupEdilen > 0)
-                            {
-                                <span class="vb-kanun">mahsup @Bicim(mahsup.MahsupEdilen)</span>
-                            }
-                            @if (mahsup is not null && mahsup.DevredenTutar > 0)
-                            {
-                                <span class="vb-rozet vb-rozet-devir">devreden @Bicim(mahsup.DevredenTutar)</span>
-                            }
-                        </span>
-                        <span class="vb-tutar-hucre">
-                            <input class="vb-inp" value="@Bicim(z.ZararTutari)"
-                                   @onchange="@(e => { z.ZararTutari = TutarCoz(e.Value?.ToString()) ?? 0m; Kirlendi(); })" />
-                        </span>
-                        <span class="vb-not-hucre">
-                            <RadzenButton Icon="close" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
-                                          Variant="Variant.Text" title="Satırı sil"
-                                          Click="@(() => ZararSil(z))" />
-                        </span>
-                    </div>
-
-                    @if (mahsup?.Uyari is not null)
-                    {
-                        <div class="vb-uyari-satir">⚠ @mahsup.Uyari</div>
-                    }
-                }
-
-                <div style="display:flex; gap:8px; align-items:center; margin-top:8px">
-                    <input class="vb-inp" style="width:90px; text-align:left" placeholder="Yıl"
-                           value="@_yeniZararYili"
-                           @onchange="@(e => _yeniZararYili = e.Value?.ToString() ?? string.Empty)" />
-                    <RadzenButton Text="Zarar yılı ekle" Icon="add" ButtonStyle="ButtonStyle.Light"
-                                  Size="ButtonSize.Small" Click="@ZararEkle" />
-                </div>
-            </div>
-        }
-    </div>
-
-    <!-- 7. Kazanç varsa indirilecek indirimler -->
     var g3Acik = Acik("grup3");
-    <div class="vb-bolum">
-        <div class="vb-bolum-basi" @onclick="@(() => Degistir("grup3"))">
-            <RadzenIcon Icon="@(g3Acik ? "expand_more" : "chevron_right")" Style="font-size:18px" />
-            <span class="vb-bolum-ad">Kazancın bulunması hâlinde indirilecek indirimler (−)</span>
-            <span class="vb-bolum-tutar">@Bicim(_sonuc.KazancVarsaToplam)</span>
-        </div>
+    var mahsupAcik = Acik("mahsup");
 
-        @if (g3Acik)
-        {
-            <div class="vb-bolum-govde">
-                <div class="vb-kutu vb-kutu-sari">
-                    <div class="vb-altyazi">
-                        Matrahı sıfırın altına indiremez · üst sınır tabanı (kurum kazancı):
-                        <strong>@Bicim(_sonuc.KurumKazanci)</strong>
+    var ilaveAdet = _sonuc.Ilaveler.Count(x => x.GirilenTutar != 0m);
+    var g2Adet = _sonuc.ZararOlsaDahiIndirimler.Count(x => x.GirilenTutar != 0m);
+    var zararAdet = _zararlar.Count(z => z.ZararTutari != 0m);
+    var g3Adet = _sonuc.KazancVarsaIndirimler.Count(x => x.GirilenTutar != 0m);
+
+    // ═══ MATRAH MERDİVENİ ═══
+    // Dört aşama kartı; kartları bağlayan dikey çizginin üzerinde kalem rozetleri durur.
+    // Rozet tıklanınca ilgili bölüm açılır ve alt kalemler rozetin altında girintili listelenir.
+    // İşaret (+/−) ayrı bir görsel öğedir, etiket metninden gelmez.
+    <div class="vb-merdiven">
+
+        @* 1 — kaynak satırı: gelir tablosundan gelen 690 *@
+        @Asama(1, SatirTipi.Kaynak, "Ticari bilanço kârı", "TİCARİ KÂR",
+               "690 · gelir tablosundan gelir", _sonuc.TicariKar)
+
+        <div class="vb-baglanti @(_sonuc.IlaveHamToplam != 0m ? "" : "vb-baglanti-kesikli")">
+            @Rozet("ilaveler", Yon.Arti, "İlaveler", "KKEG ve diğer ilaveler",
+                   "KVK 11 · GVK 41", ilaveAdet, _sonuc.IlaveHamToplam)
+
+            @if (ilaveAcik)
+            {
+                <div class="vb-gecis-govde">
+                    <div class="vb-kutu vb-kutu-notr">
+                        <div class="vb-kutu-basi">Matrahı artıran KKEG</div>
+                        <div class="vb-altyazi">Kalıcı fark · vergi yükünü doğrudan artırır</div>
+                        @KalemListesi(_sonuc.Ilaveler.Where(x => x.MatrahiArtirir).ToList())
+                        @Satir(SatirTipi.AraToplam, null, "Ara toplam", null, _sonuc.IlaveMatrahaEtkiEden)
                     </div>
-                    @KalemListesi(_sonuc.KazancVarsaIndirimler, sinirGoster: true)
+
+                    <div class="vb-kutu vb-kutu-yesil">
+                        <div class="vb-kutu-basi">İstisnaya ilişkin KKEG</div>
+                        <div class="vb-altyazi">Aynı tutar istisna kazancına eklenir · matraha net etkisi yok</div>
+                        @KalemListesi(_sonuc.Ilaveler.Where(x => !x.MatrahiArtirir).ToList(), geriDonusGoster: true)
+                        @Satir(SatirTipi.AraToplam, null, "Ara toplam", null,
+                               _sonuc.IlaveHamToplam - _sonuc.IlaveMatrahaEtkiEden, "vb-satir-aratoplam-yesil")
+                    </div>
+
+                    @Satir(SatirTipi.AraToplam, null, "Ham ilave toplamı", "beyannameye yazılan", _sonuc.IlaveHamToplam)
+                    @Satir(SatirTipi.AraToplam, null, "Matraha etki eden kısım", null, _sonuc.IlaveMatrahaEtkiEden)
                 </div>
-            </div>
-        }
-    </div>
-
-    <!-- 8. Matrah -->
-    <div class="vb-aratoplam vb-aratoplam-vurgu">
-        <span class="vb-kod"></span>
-        <span class="vb-ad">MATRAH</span>
-        <span class="vb-bolum-tutar" style="font-size:18px">@Bicim(_sonuc.Matrah)</span>
-    </div>
-
-    <!-- 9. Vergi hesabı -->
-    <div class="vb-bolum">
-        <div class="vb-bolum-basi" style="cursor:default">
-            <span class="vb-bolum-ad">Vergi hesabı</span>
+            }
         </div>
+
+        @* 2 *@
+        @Asama(2, SatirTipi.AraToplam, "Kâr ve ilaveler toplamı", "ARA TOPLAM",
+               "ticari kâr + ilaveler", _sonuc.KarVeIlavelerToplami)
+
+        <div class="vb-baglanti @(_sonuc.ZararOlsaDahiToplam != 0m ? "" : "vb-baglanti-kesikli")">
+            @Rozet("grup2", Yon.Eksi, "Zarar olsa dahi indirilecek istisna ve indirimler", null,
+                   "KVK 5", g2Adet, _sonuc.ZararOlsaDahiToplam)
+
+            @if (g2Acik)
+            {
+                <div class="vb-gecis-govde">
+                    <div class="vb-kutu vb-kutu-mavi">
+                        <div class="vb-altyazi">Matrahı negatife çekebilir, oluşan zarar devreder</div>
+                        @KalemListesi(_sonuc.ZararOlsaDahiIndirimler)
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* 3 *@
+        @Asama(3, SatirTipi.AraToplam, "Kâr / Zarar", "ARA TOPLAM",
+               "istisnalar düşüldü · zarar mahsubu ve indirimler bundan yapılır", _sonuc.KarZarar)
+
+        @* Bu bağlantıda iki rozet alt alta durur. Geçmiş yıl zararları kendi düzenleme
+           arayüzünü (yıl ekleme, tutar girişi, satır silme) aynen korur. *@
+        <div class="vb-baglanti @((_sonuc.ZararMahsupToplami != 0m || _sonuc.KazancVarsaToplam != 0m) ? "" : "vb-baglanti-kesikli")">
+            @Rozet("zarar", Yon.Eksi, "Geçmiş yıl zararları", null, "KVK 9", zararAdet, _sonuc.ZararMahsupToplami)
+
+            @if (zararAcik)
+            {
+                <div class="vb-gecis-govde">
+                    <div class="vb-altyazi">
+                        En eski yıldan başlayarak mahsup edilir; @VergiSabit.ZararYilSiniri hesap döneminden eski zarar mahsup edilemez.
+                    </div>
+
+                    @foreach (var z in _zararlar.OrderBy(z => z.ZararYili).ToList())
+                    {
+                        var mahsup = _sonuc.ZararMahsuplari.FirstOrDefault(m => m.ZararYili == z.ZararYili);
+
+                        <div class="vb-satir vb-satir-kalem @(z.ZararTutari == 0m ? "vb-satir-bos" : "") @(mahsup is not null && !mahsup.MahsupEdilebilir ? "vb-asim" : "")" @key="z">
+                            <span class="vb-kod">@z.ZararYili</span>
+                            <span class="vb-ad">
+                                @z.ZararYili yılı zararı
+                                @if (mahsup is not null && mahsup.MahsupEdilen > 0)
+                                {
+                                    <span class="vb-kanun">mahsup @Bicim(mahsup.MahsupEdilen)</span>
+                                }
+                                @if (mahsup is not null && mahsup.DevredenTutar > 0)
+                                {
+                                    <span class="vb-rozet vb-rozet-devir">devreden @Bicim(mahsup.DevredenTutar)</span>
+                                }
+                            </span>
+                            <span class="vb-tutar-hucre">
+                                <input class="vb-inp" value="@Bicim(z.ZararTutari)"
+                                       @onchange="@(e => { z.ZararTutari = TutarCoz(e.Value?.ToString()) ?? 0m; Kirlendi(); })" />
+                            </span>
+                            <span class="vb-not-hucre">
+                                <RadzenButton Icon="close" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                                              Variant="Variant.Text" title="Satırı sil"
+                                              Click="@(() => ZararSil(z))" />
+                            </span>
+                        </div>
+
+                        @if (mahsup?.Uyari is not null)
+                        {
+                            <div class="vb-uyari-satir">⚠ @mahsup.Uyari</div>
+                        }
+                    }
+
+                    <div style="display:flex; gap:8px; align-items:center; margin-top:8px">
+                        <input class="vb-inp" style="width:90px; text-align:left" placeholder="Yıl"
+                               value="@_yeniZararYili"
+                               @onchange="@(e => _yeniZararYili = e.Value?.ToString() ?? string.Empty)" />
+                        <RadzenButton Text="Zarar yılı ekle" Icon="add" ButtonStyle="ButtonStyle.Light"
+                                      Size="ButtonSize.Small" Click="@ZararEkle" />
+                    </div>
+                </div>
+            }
+
+            @Rozet("grup3", Yon.Eksi, "Kazancın bulunması hâlinde indirilecek istisna ve indirimler", null,
+                   "KVK 10", g3Adet, _sonuc.KazancVarsaToplam)
+
+            @if (g3Acik)
+            {
+                <div class="vb-gecis-govde">
+                    <div class="vb-kutu vb-kutu-sari">
+                        <div class="vb-altyazi">
+                            Matrahı sıfırın altına indiremez · üst sınır tabanı (kurum kazancı):
+                            <strong>@Bicim(_sonuc.KurumKazanci)</strong>
+                        </div>
+                        @KalemListesi(_sonuc.KazancVarsaIndirimler, sinirGoster: true)
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* 4 — merdivenin sonu: matrah *@
+        @Asama(4, SatirTipi.Sonuc, "MATRAH", "MALİ KÂR",
+               "kurumlar vergisi matrahı · üzerinden vergi hesaplanan tutar", _sonuc.Matrah)
+    </div>
+
+    // ═══ VERGİ HESABI ═══
+    // Kazanan kartı mevcut mantık belirler (_sonuc.AsgariUygulandi); hiçbir şey sabit yazılmaz.
+    <div class="vb-bolum">
         <div class="vb-bolum-govde">
+            <div class="vb-vergi-basi">
+                Vergi hesabı@(_sonuc.AsgariKvHesaplandi ? " · yüksek olan uygulanır" : "")
+            </div>
+
             <div class="vb-vergi-kolonlar">
-                <div class="vb-vergi-kolon @(_sonuc.AsgariUygulandi ? "" : "vb-uygulanan")">
+                <div class="vb-vergi-kolon @(_sonuc.AsgariUygulandi ? "vb-soluk" : "vb-uygulanan")">
+                    @if (!_sonuc.AsgariUygulandi)
+                    {
+                        <span class="vb-uygulanir">Uygulanır</span>
+                    }
                     <div class="vb-vergi-kolon-ad">Normal hesaplanan vergi</div>
                     <div class="vb-vergi-kolon-tutar">@Bicim(_sonuc.NormalVergi)</div>
-                    <div class="vb-altyazi" style="margin-bottom:0">
+                    <div class="vb-altyazi vb-altyazi-son">
                         Matrah @Bicim(_sonuc.Matrah) × %@Bicim(_kvOrani)
                         @if (_sonuc.IndirimliOranMatrahi > 0)
                         {
@@ -341,37 +413,37 @@ else
 
                 @if (_sonuc.AsgariKvHesaplandi)
                 {
-                    <div class="vb-vergi-kolon @(_sonuc.AsgariUygulandi ? "vb-uygulanan" : "")">
+                    <div class="vb-vergi-kolon @(_sonuc.AsgariUygulandi ? "vb-uygulanan" : "vb-soluk")">
+                        @if (_sonuc.AsgariUygulandi)
+                        {
+                            <span class="vb-uygulanir">Uygulanır</span>
+                        }
                         <div class="vb-vergi-kolon-ad">Yurt içi asgari KV (32/C)</div>
                         <div class="vb-vergi-kolon-tutar">@Bicim(_sonuc.AsgariVergi)</div>
-                        <div class="vb-altyazi" style="margin-bottom:0">
+                        <div class="vb-altyazi vb-altyazi-son">
                             Asgari matrah @Bicim(_sonuc.AsgariMatrah) × %@Bicim(VergiSabit.AsgariOran)
                         </div>
                     </div>
                 }
             </div>
 
-            <div class="vb-altyazi" style="margin-top:8px">
-                @(_sonuc.AsgariKvHesaplandi
-                    ? "Yüksek olan uygulanır."
-                    : "Asgari kurumlar vergisi hesabı kapalı; normal hesaplanan vergi uygulanır.")
-            </div>
+            @if (!_sonuc.AsgariKvHesaplandi)
+            {
+                <div class="vb-altyazi vb-altyazi-ust">
+                    Asgari kurumlar vergisi hesabı kapalı; normal hesaplanan vergi uygulanır.
+                </div>
+            }
 
-            <div class="vb-satir" style="font-weight:600; border-top:1px solid #e2e8f0">
-                <span class="vb-kod"></span>
-                <span class="vb-ad">Hesaplanan kurumlar vergisi</span>
-                <span class="vb-tutar-hucre">@Bicim(_sonuc.HesaplananVergi)</span>
-                <span class="vb-not-hucre"></span>
-            </div>
+            @Satir(SatirTipi.Sonuc, null, "Hesaplanan kurumlar vergisi", null, _sonuc.HesaplananVergi)
         </div>
     </div>
 
-    <!-- 10. Mahsuplar -->
-    var mahsupAcik = Acik("mahsup");
+    // Mahsuplar merdivenin dışında; yeniden tasarlanmadı, yalnızca ortak kalem satırı görselini alır.
     <div class="vb-bolum">
         <div class="vb-bolum-basi" @onclick="@(() => Degistir("mahsup"))">
             <RadzenIcon Icon="@(mahsupAcik ? "expand_more" : "chevron_right")" Style="font-size:18px" />
-            <span class="vb-bolum-ad">Mahsuplar (−)</span>
+            <span class="vb-yon">−</span>
+            <span class="vb-bolum-ad">Mahsuplar</span>
             <span class="vb-bolum-tutar">@Bicim(_sonuc.MahsupToplami)</span>
         </div>
 
@@ -383,11 +455,11 @@ else
         }
     </div>
 
-    <!-- 11. Ödenecek kurumlar vergisi -->
+    // Ödenecek kurumlar vergisi — merdivenin dışında, olduğu gibi kaldı.
     <div class="vb-aratoplam vb-sonuc">
         <span class="vb-kod"></span>
         <span class="vb-ad">@(_sonuc.OdenecekVergi >= 0 ? "ÖDENECEK KURUMLAR VERGİSİ" : "İADE / MAHSUP EDİLECEK")</span>
-        <span class="vb-bolum-tutar" style="font-size:20px">@Bicim(Math.Abs(_sonuc.OdenecekVergi))</span>
+        <span class="vb-bolum-tutar">@Bicim(Math.Abs(_sonuc.OdenecekVergi))</span>
     </div>
 
     @if (_sonuc.Uyarilar.Count > 0)
@@ -685,6 +757,101 @@ else
 
     // ── Satır çizimi ──
 
+    /// <summary>
+    /// Satırın görsel tipi. Yalnızca çizim içindir; sunucuya giden DTO'da karşılığı yoktur.
+    /// Kaynak = gelir tablosundan gelen (690), Kalem = kullanıcının girdiği,
+    /// AraToplam = hesaplanan, Sonuc = bölümün bağladığı tutar.
+    /// </summary>
+    enum SatirTipi { Kaynak, Kalem, AraToplam, Sonuc }
+
+    /// <summary>Kalem rozetinin işareti. Etiket metninden ayıklanmaz, çizim yerinden gelir.</summary>
+    enum Yon { Yok, Arti, Eksi }
+
+    static string SinifAsama(SatirTipi tip) => tip switch
+    {
+        SatirTipi.Kaynak => "vb-asama vb-asama-kaynak",
+        SatirTipi.AraToplam => "vb-asama vb-asama-aratoplam",
+        SatirTipi.Sonuc => "vb-asama vb-asama-sonuc",
+        _ => "vb-asama"
+    };
+
+    static string SinifSatir(SatirTipi tip) => tip switch
+    {
+        SatirTipi.AraToplam => "vb-satir vb-satir-aratoplam",
+        SatirTipi.Sonuc => "vb-satir vb-satir-sonuc",
+        _ => "vb-satir vb-satir-kalem"
+    };
+
+    /// <summary>Merdivenin bir aşama kartı. Tutar her zaman modelden gelir.</summary>
+    RenderFragment Asama(int no, SatirTipi tip, string ad, string etiket, string altYazi, decimal tutar) => __builder =>
+    {
+        <div class="@SinifAsama(tip)">
+            <span class="vb-asama-no">@no</span>
+            <div class="vb-asama-orta">
+                <div class="vb-asama-ust">
+                    <span class="vb-asama-ad">@ad</span>
+                    <span class="vb-etiket">@etiket</span>
+                </div>
+                <div class="vb-asama-alt">@altYazi</div>
+            </div>
+            <span class="vb-asama-tutar">@Bicim(tutar)</span>
+        </div>
+    };
+
+    /// <summary>
+    /// İki aşama kartı arasındaki bağlantı çizgisine oturan kalem rozeti.
+    /// Tıklanınca <see cref="Degistir"/> ile ilgili bölüm açılıp kapanır.
+    /// Tutarı sıfır olan rozet gri ve kesikli, dolu olan renkli ve dolgulu çizilir.
+    /// </summary>
+    RenderFragment Rozet(string anahtar, Yon yon, string ad, string? aciklama, string? kanun, int adet, decimal tutar) => __builder =>
+    {
+        var acik = Acik(anahtar);
+        var dolu = tutar != 0m;
+        var yonSinif = yon == Yon.Arti ? "vb-gecis-arti" : "vb-gecis-eksi";
+        var tutarSinif = !dolu ? "" : (yon == Yon.Arti ? "vb-tutar-arti" : "vb-tutar-eksi");
+
+        <div class="vb-gecis">
+            <button type="button" class="vb-gecis-rozet @yonSinif @(dolu ? "vb-gecis-dolu" : "")"
+                    @onclick="@(() => Degistir(anahtar))">
+                <span class="vb-yon">@(yon == Yon.Arti ? "+" : "−")</span>
+                <span class="vb-gecis-ad">@ad</span>
+                @if (!string.IsNullOrWhiteSpace(aciklama))
+                {
+                    <span class="vb-gecis-ayrac">|</span>
+                    <span class="vb-gecis-aciklama">@aciklama</span>
+                }
+                @if (!string.IsNullOrWhiteSpace(kanun))
+                {
+                    <span class="vb-gecis-ayrac">|</span>
+                    <span class="vb-gecis-kanun">@kanun</span>
+                }
+                <span class="vb-gecis-ayrac">|</span>
+                <span class="vb-gecis-adet">@adet kalem</span>
+                <span class="vb-gecis-ok">
+                    <RadzenIcon Icon="@(acik ? "expand_more" : "chevron_right")" Style="font-size:16px" />
+                </span>
+            </button>
+            <span class="vb-gecis-tutar @tutarSinif">@Bicim(tutar)</span>
+        </div>
+    };
+
+    /// <summary>Kalem listesi dışındaki tek satırlar (ara toplam, sonuç). Tutar modelden gelir.</summary>
+    RenderFragment Satir(SatirTipi tip, string? kod, string ad, string? ek, decimal tutar, string? ekSinif = null) => __builder =>
+    {
+        <div class="@SinifSatir(tip) @ekSinif">
+            <span class="vb-kod">@kod</span>
+            <span class="vb-ad">
+                @ad
+                @if (!string.IsNullOrWhiteSpace(ek))
+                {
+                    <span class="vb-kanun">@ek</span>
+                }
+            </span>
+            <span class="vb-tutar-hucre vb-satir-tutar">@Bicim(tutar)</span>
+            <span class="vb-not-hucre"></span>
+        </div>
+    };
+
     /// <summary>Sıfır tutarlı kalemler varsayılan gizli; arama ve "tümünü göster" bunu ezer.</summary>
     bool Gorunur(VergiSonucSatirDto satir)
     {
@@ -716,7 +883,7 @@ else
                 var asim = s.SinirAsimi > 0;
                 var hatirlatmaGorunur = s.GirilenTutar != 0m || _hatirlatmaAcik.Contains(s.VergiKalemiId);
 
-                <div class="vb-satir @(asim ? "vb-asim" : "")" @key="s.VergiKalemiId">
+                <div class="vb-satir vb-satir-kalem @(s.GirilenTutar == 0m ? "vb-satir-bos" : "") @(asim ? "vb-asim" : "")" @key="s.VergiKalemiId">
                     <span class="vb-kod">@s.Kod</span>
                     <span class="vb-ad">
                         @s.Ad
@@ -780,7 +947,7 @@ else
                     </div>
                 }
 
-                <div style="margin: 0 0 6px 78px">
+                <div class="vb-not-satiri">
                     <input class="vb-inp" style="text-align:left; font-size:12px" placeholder="Not (isteğe bağlı)"
                            value="@_notlar.GetValueOrDefault(s.VergiKalemiId)"
                            @onchange="@(e => NotDegisti(s.VergiKalemiId, e))" />

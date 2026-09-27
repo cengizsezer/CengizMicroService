@@ -90,6 +90,19 @@ public class RobotConfig
         Ajan = Ajan,
         GoruntuDogrulama = GoruntuDogrulama,
 
+        // Grid de YENIDEN kuruluyor: GridTusBeklemeMs kopya uzerinde
+        // degistiriliyor (form degerleri, hiz carpani) ve paylasilan nesneye
+        // yazmak ayni anda calisan ajan isini de etkilerdi. Onceden Grid hic
+        // kopyalanmiyordu -- kopya varsayilanlarla (12/7) geliyordu ve
+        // appsettings.json'daki degerler Calistir sekmesinde sessizce yok
+        // sayiliyordu.
+        Grid = new GridAyar
+        {
+            SolaGitAdet = Grid.SolaGitAdet,
+            TabAdet = Grid.TabAdet,
+            GridTusBeklemeMs = Grid.GridTusBeklemeMs
+        },
+
         Giris = new GirisAyar
         {
             Veritabani = Giris.Veritabani,
@@ -219,6 +232,22 @@ public class GridAyar
 
     /// <summary>1. kolondan Karsi Hesap Kodu kolonuna kac TAB (ofiste olculdu).</summary>
     public int TabAdet { get; set; } = 7;
+
+    /// <summary>
+    /// Grid doldurulurken TUSLAR ARASI bekleme. <c>Zamanlama.TusBeklemeMs</c>
+    /// yerine BU deger kullaniliyor; yalnizca <c>GridDoldur</c> adiminda.
+    ///
+    /// <b>Neden ayri bir deger:</b> grid tek bir hucreye yazip ENTER+ASAGI ile
+    /// alt satira geciyor -- pencere acilmasi, modul yuklenmesi, odak degismesi
+    /// gibi beklenecek bir sey YOK. Satir basina 5 bekleme dusuyor ve 43 satirlik
+    /// bir ekstrede 215 bekleme ediyor: 150 ms'te (carpanla 225 ms) tek basina
+    /// 48 saniye. Ayni degeri modul gezinmesiyle paylasmak, oradaki beklemeyi de
+    /// kisaltmadan burayi kisaltmayi imkansiz kiliyordu.
+    ///
+    /// Hiz carpani buna da uygulaniyor (bkz. <see cref="PkfRobot.Core.Hizlandirici"/>):
+    /// yavas gunde "her seyi yavaslat" demenin anlami grid'i disarida birakmak degil.
+    /// </summary>
+    public int GridTusBeklemeMs { get; set; } = 80;
 }
 
 public class PencereAyar

@@ -149,6 +149,25 @@ public class Adim
     public string Not { get; set; } = "";
 
     /// <summary>
+    /// <c>TemizleYaz</c> adiminda: kutu NASIL bosaltilsin?
+    ///
+    ///   "CtrlA"     - CTRL+A ile sec, uzerine yaz. VARSAYILAN (alan bos ise bu).
+    ///   "SecVeSil"  - END, SHIFT+HOME, DELETE, sonra yaz. CTRL kullanmaz.
+    ///
+    /// <b>Neden adim bazinda:</b> cevap ekrana gore degisiyor. ORKA'nin kendi
+    /// kutularinda CTRL kombinasyonlari CALISMIYOR (08.09.2026: F7 firma arama
+    /// kutusu temizlenmedi, kod eskisinin yanina yazildi, otomatik tamamlama
+    /// 0001 yerine 1187'yi buldu ve robot yanlis firmada calisti). Windows'un
+    /// dosya secim diyalogunda ise CTRL+A calisiyor ve {dosyaYolu}/{hesapKodu}
+    /// adimlari onunla sinanmis durumda -- hepsini birden degistirmek, calisan
+    /// yolu bozmak olurdu.
+    ///
+    /// Taninmayan deger HATA veriyor; sessizce varsayilana dusmek, bir yazim
+    /// hatasinin ayni sessiz kirilmayi geri getirmesi demekti.
+    /// </summary>
+    public string? Temizleme { get; set; }
+
+    /// <summary>
     /// Adet sayisini bir degiskenden al. Ornek: "modulSagOk"
     /// Komut satirindan: --degisken modulSagOk=7
     /// Degisken yoksa Adet degeri kullanilir.
@@ -188,7 +207,13 @@ public class Adim
     ///
     /// <b>Duraklatmayi adim motoru YAPMIYOR:</b> Calistir sekmesi bunu her adimin
     /// basindaki geri cagirmada (bkz. PkfRobot.Arayuz.GorevKosucusu) uyguluyor.
-    /// Konsol modlari (--gorev) alani yok sayar ve adim beklemeden calisir.
+    ///
+    /// <b>Gozetimsiz (ajan) yolda adim ATLANIR</b>
+    /// (bkz. <c>AdimMotoru.GozetimsizAtlamaNotu</c>): duraklatacak kimse yok ve
+    /// bayragin anlami "kullanici KAYDET'e basmadan bu adim calismasin". Bayrak
+    /// eskiden orada sessizce yok sayiliyordu; ajan, kullanici kaydetmeden sekme
+    /// kapatma tiklamasini yapardi. Konsol modlari (--gorev) elle ve basinda
+    /// biriyle calistirildigi icin gozetimli sayiliyor: adim calisir.
     /// </summary>
     public bool OnayBekle { get; set; }
 

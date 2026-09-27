@@ -75,8 +75,13 @@ public static class Hizlandirici
         => adim.Tip.Trim().Equals("Bekle", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Carpan uygulanmis config KOPYASI: yalnizca <c>Zamanlama.TusBeklemeMs</c>
-    /// olcekleniyor.
+    /// Carpan uygulanmis config KOPYASI: <c>Zamanlama.TusBeklemeMs</c> ve
+    /// <c>Grid.GridTusBeklemeMs</c> olcekleniyor.
+    ///
+    /// <b>Grid de dahil:</b> grid'in tuslar arasi beklemesi ayri bir ayar oldu
+    /// (bkz. <see cref="GridAyar.GridTusBeklemeMs"/>) ama yine bir BEKLEME.
+    /// Carpanin disinda kalsaydi "yavas gun" dugmesi gorevin en cok tus gonderen
+    /// adimini hic yavaslatmazdi.
     ///
     /// Kopya cikariliyor cunku ayni config nesnesi ayni anda calisan ajan isinde
     /// de kullanilabiliyor (bkz. <see cref="RobotConfig.CalismaKopyasi"/>);
@@ -91,6 +96,8 @@ public static class Hizlandirici
         var kopya = cfg.CalismaKopyasi();
         kopya.Zamanlama.TusBeklemeMs =
             Math.Max(0, (int)Math.Round(cfg.Zamanlama.TusBeklemeMs * oran));
+        kopya.Grid.GridTusBeklemeMs =
+            Math.Max(0, (int)Math.Round(cfg.Grid.GridTusBeklemeMs * oran));
 
         return kopya;
     }

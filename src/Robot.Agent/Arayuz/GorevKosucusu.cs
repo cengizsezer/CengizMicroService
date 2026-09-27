@@ -1,5 +1,6 @@
 using System.Runtime.Versioning;
 using FlaUI.UIA3;
+using PkfRobot.Ayarlar;
 using PkfRobot.Config;
 using PkfRobot.Core;
 
@@ -21,12 +22,18 @@ public sealed class GorevKosucusu
     private readonly CalismaDenetimi _denetim;
     private readonly double _hizCarpani;
     private readonly Action<string> _log;
-    private readonly Action<int, int>? _adimIlerledi;
+    private readonly Action<AdimIlerlemesi>? _adimIlerledi;
 
     private readonly Action<Adim>? _onayBekleniyor;
 
+    /// <param name="adimIlerledi">
+    /// Sirasi gelen adim: kacinci/kac, ve NE oldugu. Yalniz (adim, toplam)
+    /// ikilisi yetmiyordu -- "adim 12/38" satiri 45 saniye duran bir
+    /// <c>AltPencereDogrula</c> ile 4 saniyelik bir <c>Bekle</c>'yi ayni
+    /// gosteriyordu.
+    /// </param>
     public GorevKosucusu(RobotConfig cfg, CalismaDenetimi denetim, double hizCarpani,
-                         Action<string> log, Action<int, int>? adimIlerledi = null,
+                         Action<string> log, Action<AdimIlerlemesi>? adimIlerledi = null,
                          Action<Adim>? onayBekleniyor = null)
     {
         // Carpan config'e BURADA, bir kez uygulaniyor: Calistir her banka icin
@@ -58,14 +65,13 @@ public sealed class GorevKosucusu
 
         SonLogKlasoru = adimLog.Klasor;
 
-        // Tuslar arasi bosluk da log'a yaziliyor: carpanin gercekten etki ettigi
-        // ofiste tek satirdan gorulebilsin diye.
-        var carpanNotu = Math.Abs(_hizCarpani - 1.0) < 0.0001
-            ? string.Empty
-            : $" (hiz carpani {_hizCarpani:0.##} uygulandi; " +
-              $"tuslar arasi {_cfg.Zamanlama.TusBeklemeMs} ms)";
+        // Hangi degerlerle kosuldugu ajan yolundaki satirin AYNISI: iki yolu
+        // karsilastirirken bicim farki, gercek bir fark saniliyordu.
+        var zamanlamaOzeti = ZamanlamaCozumu.Ozet(_cfg, _hizCarpani, ZamanlamaCozumu.AyarlarKaynagi);
 
-        _log($"{gorev.Ad}: {gorev.Adimlar.Count} adim{carpanNotu}. Log: {adimLog.Klasor}");
+        _log($"{gorev.Ad}: {gorev.Adimlar.Count} adim. Log: {adimLog.Klasor}");
+        _log($"Zamanlama: {zamanlamaOzeti}");
+        adimLog.Bilgi($"Zamanlama: {zamanlamaOzeti}");
 
         var sayac = 0;
 
@@ -81,10 +87,23 @@ public sealed class GorevKosucusu
             _denetim.AdimOncesiBekle();
 
             sayac++;
-            _adimIlerledi?.Invoke(sayac, gorev.Adimlar.Count);
+            _adimIlerledi?.Invoke(new AdimIlerlemesi(sayac, gorev.Adimlar.Count,
+                                                     AdimMotoru.AdimEtiketi(adim)));
         });
 
-        motor.Calistir(gorev);
+        try
+        {
+            motor.Calistir(gorev);
+        }
+        finally
+        {
+            // Ozet formdaki log kutusuna da dusuyor: adim log'u yalnizca dosyaya
+            // yaziliyor ve "hangi adim zaman yedi" sorusu ekranda cevaplanabilmeli.
+            // Hata durumunda da yaziliyor -- yarim kosunun suresi de bilgi.
+            var ozet = AdimSureOzeti.Ozet(motor.Olcumler);
+            if (ozet.Length > 0)
+                _log($"{gorev.Ad} bitti · toplam {SureBicimi.Kisa(motor.GecenSure)} · {ozet}");
+        }
     }
 
     /// <summary>

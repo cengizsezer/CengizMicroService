@@ -16,6 +16,12 @@ namespace WebApp.Application.Services.FirmaKontrol
 
         // ── Ham mizan ───────────────────────────────────────────────────────
         Task<List<FirmaKontrolMizanSatirDto>> GetMizanAsync(int firmaId, int yil, CancellationToken ct = default);
+
+        /// <summary>
+        /// Saklı hesap kırılım ağaçları (her iki dönem). Ağacı olmayan dönem listede yer almaz;
+        /// eski yüklemelerde ağaç bulunmaması hata değildir.
+        /// </summary>
+        Task<List<FirmaKontrolMizanAgacDto>> GetMizanAgacAsync(int firmaId, int yil, CancellationToken ct = default);
         Task SaveMizanAsync(int firmaId, MizanKaydetRequest req, CancellationToken ct = default);
         Task DeleteMizanAsync(int firmaId, int yil, CancellationToken ct = default);
 

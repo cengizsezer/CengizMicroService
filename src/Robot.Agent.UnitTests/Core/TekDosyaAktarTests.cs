@@ -92,20 +92,33 @@ public class TekDosyaAktarTests
     }
 
     [Fact]
-    public void Koordinatlar_orkaya_aktar_ile_ayni()
+    public void Aktarim_koordinatlarinin_tek_kopyasi_bu_dosyada()
     {
-        // Dosya oradan kopyalandi; bir koordinat sessizce ayrisirsa dongu ile tek
-        // seferlik aktarim farkli yerlere tiklardi.
-        var yeni = Gorevi();
-        var kaynak = Gorev.Yukle(Yol("orkaya-aktar.json"));
+        // Eskiden ayni oranlar orkaya-aktar.json'da da duruyordu ve bir test
+        // ikisini zorla esit tutuyordu. Kopya silindi; kural artik "baska hicbir
+        // gorev dosyasinda ayni tiklama noktasi olmayacak".
+        //
+        // 03-banka-transferi.json bilincli istisna: elle olcum/test dosyasi,
+        // zincirin parcasi degil ve "Transfere Basla" oranini kendi icinde
+        // tasiyor.
+        var beklenen = new[] { "Sol panel", "Sablon satiri", "Transfere Basla", "Grid ilk satir" };
+        foreach (var not in beklenen) TiklaBul(Gorevi(), not);   // dosyada TEK olmali
 
-        foreach (var not in new[] { "Sol panel", "Sablon satiri", "Transfere Basla", "Grid ilk satir" })
+        var klasor = Path.GetDirectoryName(Yol(DosyaAdi))!;
+
+        foreach (var dosya in Directory.GetFiles(klasor, "*.json"))
         {
-            var a = TiklaBul(yeni, not);
-            var b = TiklaBul(kaynak, not);
+            var ad = Path.GetFileName(dosya);
+            if (ad.Equals(DosyaAdi, StringComparison.OrdinalIgnoreCase)) continue;
+            if (ad.StartsWith("03-", StringComparison.OrdinalIgnoreCase)) continue;
+            if (ad.StartsWith("04-", StringComparison.OrdinalIgnoreCase)) continue;
 
-            Assert.Equal(b.X, a.X, 5);
-            Assert.Equal(b.Y, a.Y, 5);
+            // KoordinatKesfi HAM JSON okuyor, AltGorev acmiyor: sarmalayicilar
+            // (acilis.json, ajan-aktar.json) govdeyi REFERANSLA iceriyor ve
+            // burada dogru sekilde "kendi Tikla adimi yok" cikiyorlar.
+            foreach (var kayit in KoordinatKesfi.KesfetDosya(dosya))
+                foreach (var not in beklenen)
+                    Assert.DoesNotContain(not, kayit.Aciklama, StringComparison.OrdinalIgnoreCase);
         }
     }
 
@@ -197,7 +210,62 @@ public class TekDosyaAktarTests
         // Mevcut butun adimlarin davranisi degismemeli.
         Assert.False(new Adim().OnayBekle);
 
-        var eskiGorev = Gorev.Yukle(Yol("orkaya-aktar.json"));
-        Assert.DoesNotContain(eskiGorev.Adimlar, a => a.OnayBekle);
+        // Acilis zincirinde onay bekleyen adim olmamali: orada duraklamak
+        // kuyrugu daha ilk banka baslamadan durdururdu.
+        var acilis = Gorev.Yukle(Yol("acilis.json"));
+        Assert.DoesNotContain(acilis.Adimlar, a => a.OnayBekle);
+    }
+
+    // ---- gozetimsiz (ajan) kosu ---------------------------------------------
+
+    [Fact]
+    public void Gozetimsiz_kosuda_onay_bekleyen_adim_atlaniyor()
+    {
+        // Duraklatmayi Calistir sekmesi yapiyor; ajan yolunda DEVAM dugmesi yok.
+        // Bayrak eskiden orada sessizce YOK SAYILIYORDU: robot, kullanici
+        // kaydetmeden sekme kapatma tiklamasini yapardi -- ustelik koordinat
+        // henuz ofiste olculmemis bir PLACEHOLDER.
+        var adim = new Adim { Tip = "Tikla", OnayBekle = true, Not = "Sekme kapatma carpisi" };
+
+        var not = AdimMotoru.GozetimsizAtlamaNotu(adim, gozetimsiz: true);
+
+        Assert.NotNull(not);
+        Assert.Contains("gozetimsiz", not, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Sekme kapatma", not, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Gozetimli_kosuda_onay_bekleyen_adim_atlanmiyor()
+    {
+        // Arayuz yolu: adim CALISIYOR, yalnizca DEVAM'a kadar bekliyor.
+        var adim = new Adim { Tip = "Tikla", OnayBekle = true, Not = "Sekme kapatma carpisi" };
+
+        Assert.Null(AdimMotoru.GozetimsizAtlamaNotu(adim, gozetimsiz: false));
+    }
+
+    [Fact]
+    public void Gozetimsiz_kosu_onay_bayragi_olmayan_adimi_atlamiyor()
+    {
+        // Atlama YALNIZ bu bayraga bagli; ajanin geri kalan akisi degismedi.
+        var adim = new Adim { Tip = "Tikla", Not = "Sol panel - Banka Ekstresi" };
+
+        Assert.Null(AdimMotoru.GozetimsizAtlamaNotu(adim, gozetimsiz: true));
+    }
+
+    [Fact]
+    public void Ajan_yolunda_atlanan_tek_adim_sekme_kapatma()
+    {
+        // Ajan govdeyi bastan sona kosuyor; atlanan adimin aktarimin KENDISINE
+        // dokunmadigi burada sabitleniyor. Ikinci bir OnayBekle eklenirse
+        // (ornegin grid oncesi bir kontrol) ajan onu da sessizce atlardi.
+        var atlananlar = Gorevi().Adimlar
+            .Where(a => AdimMotoru.GozetimsizAtlamaNotu(a, gozetimsiz: true) is not null)
+            .ToList();
+
+        var atlanan = Assert.Single(atlananlar);
+
+        Assert.Equal("Tikla", atlanan.Tip);
+        Assert.Contains("Sekme kapatma", atlanan.Not, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(Tiklamalar(Gorevi()).Last().Not, atlanan.Not);
     }
 }

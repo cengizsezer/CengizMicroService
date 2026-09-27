@@ -25,6 +25,24 @@ namespace WebApp.Application.Services.Interfaces
         public List<AtlananSatir> AtlananSatirlar { get; set; } = new();
     }
 
+    /// <summary>Başka bir firmanın ağacı okunurken sonucun ne olduğu (grup görünümü için).</summary>
+    public enum HesapAgaciDurumu
+    {
+        /// <summary>Ağaç okundu, dağılım hesaplanabilir.</summary>
+        Yuklu,
+
+        /// <summary>Bu dönem için mizan hiç yüklenmemiş.</summary>
+        MizanYuklenmedi,
+
+        /// <summary>Mizan var ama kırılım ağacı kaydı yok (eski yükleme) — yeniden yüklenmeli.</summary>
+        AgacYok,
+
+        /// <summary>Firma ya da mizan servisine ulaşılamadı.</summary>
+        Ulasilamadi
+    }
+
+    public sealed record HesapAgaciSonucu(HesapAgaciDurumu Durum, IReadOnlyList<HesapDugumu> Dugumler);
+
     public interface IFirmaKontrolService
     {
         Task<IReadOnlyList<Firma>> GetFirmsAsync();
@@ -51,6 +69,35 @@ namespace WebApp.Application.Services.Interfaces
         Task ResetMizanAsync(int firmaId);
 
         Task<IReadOnlyDictionary<string, decimal?>> GetRawMizanValuesAsync(int firmaId, Donem donem);
+
+        /// <summary>
+        /// Mizanın hesap kırılım ağacı (düz liste; ağaç <see cref="HesapDugumu.UstKod"/> ile
+        /// türetilir). Ham mizan değerlerinin yazıldığı yerde, aynı (firma, dönem, yıl)
+        /// anahtarıyla KALICI saklanır; hidrasyonda ham değerlerle birlikte geri okunur.
+        /// Ağaç kaydı olmayan eski yüklemelerde boş liste döner — bu hata değildir.
+        ///
+        /// Bu düğümler HİÇBİR toplama girmez; <see cref="GetRawMizanValuesAsync"/> çıktısı
+        /// eskisi gibi yalnızca üç haneli ana hesap kodlarını içerir.
+        /// </summary>
+        Task<IReadOnlyList<HesapDugumu>> GetHesapAgaciAsync(int firmaId, Donem donem);
+
+        /// <summary>
+        /// <see cref="GetHesapAgaciAsync"/> ile aynı ağaç, ama boş sonucun NEDENİYLE birlikte:
+        /// mizan yüklenmemiş mi, ağaç kaydı mı yok, yoksa servise mi ulaşılamadı. Grup
+        /// görünümü başka firmaların defterini okurken "sıfır yazıp geçmemek" için kullanır.
+        /// Hiçbir zaman istisna fırlatmaz.
+        /// </summary>
+        Task<HesapAgaciSonucu> GetHesapAgaciSonucuAsync(int firmaId, Donem donem);
+
+        /// <summary>
+        /// BAŞKA firmanın defteri için HAFİF okuma: tam mizan hidrasyonu (ham satırlar, plan
+        /// klonu, dönem doldurma) ve hidrasyon kilidi YOK — yalnızca ağaç uç noktası sorulur,
+        /// sonuç önbelleklere yazılmaz. Firma zaten hidre edilmişse ağ çağrısı yapılmaz.
+        /// Ağaç boşsa hızlıca <see cref="HesapAgaciDurumu.MizanYuklenmedi"/> döner.
+        /// İptal (<paramref name="ct"/>) çağırana fırlatılır; diğer hatalar
+        /// <see cref="HesapAgaciDurumu.Ulasilamadi"/> olur.
+        /// </summary>
+        Task<HesapAgaciSonucu> GetHesapAgaciHafifAsync(int firmaId, Donem donem, CancellationToken ct);
 
         /// <summary>
         /// Mizandan gelen kod -> hesap adı eşleşmesi (PROGROUP formatında B sütunundan).

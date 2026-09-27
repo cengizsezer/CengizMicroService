@@ -14,9 +14,19 @@
     "'Giriniz' benzersiz ve Turkce karakter icermiyor."
   ],
 
+  "// YUZDE": [
+    "Bu dosya artik ajan-aktar.json icinden de kosuyor (acilis.json > 01).",
+    "Sunucu ilerlemeyi 'Yuzde' tasiyan adimlardan ogreniyor; buraya deger",
+    "konmadan once giris boyunca %2'de takili kaliyor ve uzun suren bir",
+    "acilis 'ajan takildi' gibi gorunuyordu.",
+    "Bolusme: 01 -> %3-7, 02 -> %8-9, tek-dosya-aktar.json %10'dan devam ediyor.",
+    "Arayuz (Calistir sekmesi) Yuzde'yi KULLANMIYOR, adim sayacini gosteriyor;",
+    "bu degerler elle calistirmayi etkilemez."
+  ],
+
   "Adimlar": [
     { "Tip": "Log", "Not": "--- ORKA baslatiliyor ---" },
-    { "Tip": "OrkaBaslat" },
+    { "Tip": "OrkaBaslat", "Not": "ORKA baslatiliyor", "Yuzde": 3 },
 
     { "Tip": "BeklePencere", "Deger": "Orka SQL", "Not": "Giris ekrani bekleniyor" },
     { "Tip": "EkranGoruntusu", "Deger": "giris-ekrani" },
@@ -32,9 +42,34 @@
     { "Tip": "EkranGoruntusu", "Deger": "giris-sonrasi" },
 
     { "Tip": "Log", "Not": "--- Firma araniyor (F7) ---" },
-    { "Tip": "Tus", "Deger": "F7", "Adet": 1 },
+    { "Tip": "Tus", "Deger": "F7", "Adet": 1, "Not": "Firma araniyor", "Yuzde": 5 },
     { "Tip": "Bekle", "Sayi": 800 },
-    { "Tip": "TemizleYaz", "Deger": "{firmaKodu}", "Not": "firma kodu yaziliyor" },
+    {
+      "// NEDEN SecVeSil": [
+        "08.09.2026 kosusunda robot 0001 yerine 1187'ye girdi",
+        "(ORKA_1187_2026 'Pkf Risk Yonetimi...'). Bu kutu OTOMATIK TAMAMLAMA",
+        "alani ve icinde onceki deger duruyor; varsayilan temizleme (CTRL+A)",
+        "ORKA'da CALISMIYOR -- CTRL kombinasyonlarinin gecmedigi daha once",
+        "olculmustu (ALT icin de ayni). Secim olmayinca yeni kod eskisinin",
+        "UZERINE degil YANINA yaziliyor, tamamlama baska bir firma buluyor ve",
+        "robot yanlis firmada calismaya devam ediyor -- sessizce, cunku sonraki",
+        "adimlarin hepsi 'bir firma acildi' diyor.",
+        "",
+        "SecVeSil = END, SHIFT+HOME, DELETE, sonra yaz. Ucu de kombinasyonsuz;",
+        "SHIFT bir modifier ve Delphi/VCL kutularinda calisiyor.",
+        "",
+        "DIKKAT: {dosyaYolu} ve {hesapKodu} adimlari (tek-dosya-aktar.json)",
+        "CTRL+A ile kaliyor. Onlar Windows'un dosya secim diyalogunda ve orada",
+        "CTRL+A calisiyor; sinanmis yolu degistirmiyoruz.",
+        "",
+        "Asagidaki Dogrula adimi bu hatanin ikinci savunmasi: baslikta SECILI",
+        "firmanin kodu araniyor, yani yanlis firma acilirsa gorev orada durur."
+      ],
+      "Tip": "TemizleYaz",
+      "Deger": "{firmaKodu}",
+      "Temizleme": "SecVeSil",
+      "Not": "firma kodu yaziliyor"
+    },
     { "Tip": "Bekle", "Sayi": 1000 },
     { "Tip": "EkranGoruntusu", "Deger": "firma-arandi" },
 
@@ -50,7 +85,7 @@
     { "Tip": "Bekle", "Sayi": 3000, "Not": "Firma Sifresini Giriniz popup" },
     { "Tip": "EkranGoruntusu", "Deger": "firma-sifre-ekrani" },
 
-    { "Tip": "Yaz", "Deger": "{firmaSifre}", "Not": "firma sifresi giriliyor" },
+    { "Tip": "Yaz", "Deger": "{firmaSifre}", "Not": "Firma sifresi giriliyor", "Yuzde": 6 },
     { "Tip": "Bekle", "Sayi": 500 },
     { "Tip": "EkranGoruntusu", "Deger": "firma-sifre-yazildi" },
 
@@ -68,6 +103,6 @@
     { "Tip": "Dogrula", "Deger": "ORKA_{firmaKodu}_", "Not": "Baslikta SECILI firmanin kodu var mi -- sabit 'ORKA_0001_2026' yaziliydi, 0001 disinda bir firma secilince (0336 SMMM) her zaman patlardi. Yil da atildi: baslik yil donunce degisir." },
     { "Tip": "EkranGoruntusu", "Deger": "modul-ekrani" },
 
-    { "Tip": "Log", "Not": "BASARILI: Firma acildi, modul ekranindayiz." }
+    { "Tip": "Log", "Not": "Firma acildi, modul ekranindayiz", "Yuzde": 7 }
   ]
 }

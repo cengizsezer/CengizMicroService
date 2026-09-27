@@ -76,7 +76,10 @@ public class CiftTikTests : IDisposable
     {
         // Kural gorev dosyasinda durdugu icin dosyanin kendisi uzerinden
         // sabitleniyor: sablon satiri cift tik, geri kalan her Tikla tek tik.
-        var yol = Path.Combine(AppContext.BaseDirectory, "gorevler", "orkaya-aktar.json");
+        //
+        // Ajanin kostugu AKISIN TAMAMI okunuyor (acilis + govde): kural yalniz
+        // govdede degil, birlesmis zincirde de tutmali.
+        var yol = Path.Combine(AppContext.BaseDirectory, "gorevler", "ajan-aktar.json");
         Assert.True(File.Exists(yol), $"Gorev dosyasi publish ciktisinda yok: {yol}");
 
         var tiklaAdimlari = Gorev.Yukle(yol).Adimlar
@@ -95,7 +98,7 @@ public class CiftTikTests : IDisposable
         // Kalibrasyon gorev JSON'unu yeniden yaziyor. Bayrak orada kaybolsaydi
         // zincir bir sonraki kalibrasyondan sonra sessizce yine sablon satirinda
         // dururdu -- ve kimse koordinat degisikligini suclu sanmazdi.
-        var yol = GorevYaz("orkaya-aktar.json", """
+        var yol = GorevYaz("tek-dosya-aktar.json", """
         {
           "Ad": "Ornek Gorev",
           "Adimlar": [
@@ -106,7 +109,7 @@ public class CiftTikTests : IDisposable
 
         KalibrasyonUygulama.Uygula(_klasor, new[]
         {
-            new KoordinatAyari { Anahtar = "orkaya-aktar.json#0", Not = "Sablon satiri", X = 0.42, Y = 0.27 }
+            new KoordinatAyari { Anahtar = "tek-dosya-aktar.json#0", Not = "Sablon satiri", X = 0.42, Y = 0.27 }
         });
 
         var adim = Gorev.Yukle(yol).Adimlar[0];

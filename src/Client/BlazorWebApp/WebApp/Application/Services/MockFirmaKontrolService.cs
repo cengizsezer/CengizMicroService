@@ -43,6 +43,12 @@ namespace WebApp.Application.Services
         private readonly Dictionary<int, Dictionary<string, decimal?>> _rawOncekiByFirm = new();
         private readonly Dictionary<int, Dictionary<string, string>> _rawAdByFirm = new();
 
+        // Hesap kırılım ağacı — ham değerlerle aynı yerde, firma + dönem bazında.
+        // DB'de kalıcı (FirmaKontrolMizanAgaclari); burada scope ömürlü önbelleği durur ve
+        // hidrasyonda ham değerlerle birlikte doldurulur. Bu düğümler hiçbir toplama girmez.
+        private readonly Dictionary<int, List<HesapDugumu>> _agacCariByFirm = new();
+        private readonly Dictionary<int, List<HesapDugumu>> _agacOncekiByFirm = new();
+
         private readonly SemaphoreSlim _initLock = new(1, 1);
         private readonly SemaphoreSlim _firmsLock = new(1, 1);
 
@@ -410,6 +416,13 @@ namespace WebApp.Application.Services
             else
                 _rawOncekiByFirm[firmaId] = raw;
 
+            // Kırılım ağacı: raw ile aynı anda, aynı dönemin altına yazılır. raw sözlüğüne
+            // DOKUNULMAZ — orası yalnızca üç haneli kodları taşımaya devam eder.
+            if (donem == Donem.Cari)
+                _agacCariByFirm[firmaId] = parseResult.HesapDugumleri.ToList();
+            else
+                _agacOncekiByFirm[firmaId] = parseResult.HesapDugumleri.ToList();
+
             // Ham satırları DB'ye kalıcı yaz — idempotent (bu firma+dönem+yıl için sil+yaz).
             // Excel parse'ı client-side kaldı; sadece parse edilmiş ham değerler gönderilir.
             try
@@ -423,6 +436,17 @@ namespace WebApp.Application.Services
                         Kod = kv.Key,
                         Ad = adMap.TryGetValue(kv.Key, out var ad) ? ad : null,
                         Bakiye = kv.Value
+                    }).ToList(),
+
+                    // Kırılım ağacı ham satırlarla AYNI istekte, aynı anahtarla gider.
+                    // Satirlar listesine karışmaz; orası yalnızca üç haneli kodları taşır.
+                    Dugumler = parseResult.HesapDugumleri.Select(d => new MizanHamDugumDto
+                    {
+                        Kod = d.Kod,
+                        Ad = d.Ad,
+                        BorcBakiye = d.BorcBakiye,
+                        AlacakBakiye = d.AlacakBakiye,
+                        Bakiye = d.Bakiye
                     }).ToList()
                 };
                 await _kontrolApiClient.SaveMizanAsync(firmaId, req);
@@ -447,6 +471,81 @@ namespace WebApp.Application.Services
                 return map;
 
             return new Dictionary<string, decimal?>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        public async Task<IReadOnlyList<HesapDugumu>> GetHesapAgaciAsync(int firmaId, Donem donem)
+        {
+            // Ağaç ham değerlerle aynı hidrasyonda DB'den okunur.
+            await EnsureFirmMizanHydratedAsync(firmaId);
+
+            var source = donem == Donem.Cari ? _agacCariByFirm : _agacOncekiByFirm;
+            return source.TryGetValue(firmaId, out var liste)
+                ? liste
+                : Array.Empty<HesapDugumu>();
+        }
+
+        public async Task<HesapAgaciSonucu> GetHesapAgaciSonucuAsync(int firmaId, Donem donem)
+        {
+            var bos = Array.Empty<HesapDugumu>();
+
+            try
+            {
+                // Hidrasyon hatayı yutar ve bayrağı YAKMAZ; bayrağa bakarak "ulaşılamadı"yı
+                // "yüklenmedi"den ayırırız.
+                await EnsureFirmMizanHydratedAsync(firmaId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[HesapAgaciSonucu HATA] firma={firmaId} {ex.Message}");
+                return new HesapAgaciSonucu(HesapAgaciDurumu.Ulasilamadi, bos);
+            }
+
+            if (!_mizanHydratedFirms.Contains(firmaId))
+                return new HesapAgaciSonucu(HesapAgaciDurumu.Ulasilamadi, bos);
+
+            var agaclar = donem == Donem.Cari ? _agacCariByFirm : _agacOncekiByFirm;
+            if (agaclar.TryGetValue(firmaId, out var liste) && liste.Count > 0)
+                return new HesapAgaciSonucu(HesapAgaciDurumu.Yuklu, liste);
+
+            var hamlar = donem == Donem.Cari ? _rawCariByFirm : _rawOncekiByFirm;
+            var mizanVar = hamlar.TryGetValue(firmaId, out var ham) && ham.Count > 0;
+
+            return new HesapAgaciSonucu(
+                mizanVar ? HesapAgaciDurumu.AgacYok : HesapAgaciDurumu.MizanYuklenmedi, bos);
+        }
+
+        public async Task<HesapAgaciSonucu> GetHesapAgaciHafifAsync(int firmaId, Donem donem, CancellationToken ct)
+        {
+            // Zaten hidre edilmiş firma (örn. bakılan firma): bellekten, ağ çağrısı yok.
+            if (_mizanInitialized && _mizanHydratedFirms.Contains(firmaId))
+                return await GetHesapAgaciSonucuAsync(firmaId, donem);
+
+            try
+            {
+                // Kilitsiz, tek çağrı: yalnızca ağaç. Ham satırlar / plan klonu / önbellek yazımı yok.
+                var agaclar = await _kontrolApiClient.GetMizanAgacAsync(firmaId, CurrentYil, ct);
+
+                var dugumler = agaclar
+                    .Where(a => (Donem)a.Donem == donem)
+                    .SelectMany(a => a.Dugumler)
+                    .Select(d => HesapDugumu.Olustur(d.Kod, d.Ad, d.BorcBakiye, d.AlacakBakiye, d.Bakiye))
+                    .Where(d => d is not null)
+                    .Select(d => d!)
+                    .ToList();
+
+                return dugumler.Count > 0
+                    ? new HesapAgaciSonucu(HesapAgaciDurumu.Yuklu, dugumler)
+                    : new HesapAgaciSonucu(HesapAgaciDurumu.MizanYuklenmedi, Array.Empty<HesapDugumu>());
+            }
+            catch (OperationCanceledException)
+            {
+                throw;   // zaman aşımı kararı çağırana ait
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[HesapAgaciHafif HATA] firma={firmaId} {ex.Message}");
+                return new HesapAgaciSonucu(HesapAgaciDurumu.Ulasilamadi, Array.Empty<HesapDugumu>());
+            }
         }
 
         public async Task<IReadOnlyDictionary<string, string>> GetRawMizanAdlarAsync(int firmaId)
@@ -591,6 +690,8 @@ namespace WebApp.Application.Services
             _rawCariByFirm.Clear();
             _rawOncekiByFirm.Clear();
             _rawAdByFirm.Clear();
+            _agacCariByFirm.Clear();
+            _agacOncekiByFirm.Clear();
 
             _notHydratedFirms.Clear();
             _notlarByFirm.Clear();
@@ -827,6 +928,29 @@ namespace WebApp.Application.Services
                 _rawOncekiByFirm[firmaId] = rawOnceki;
                 _rawCariByFirm[firmaId] = rawCari;
                 _rawAdByFirm[firmaId] = adMap;
+
+                // Kırılım ağacı ham değerlerin yanında saklanır; aynı hidrasyonda geri okunur.
+                // Ayrı try: eski kayıtlarda ya da uç yoksa ağaç gelmez — bu HATA DEĞİL, ağaç
+                // boş kalır ve seçici "bu dönemin mizanını yeniden yükleyin" der.
+                try
+                {
+                    var agaclar = await _kontrolApiClient.GetMizanAgacAsync(firmaId, CurrentYil);
+
+                    foreach (var a in agaclar)
+                    {
+                        var hedef = (Donem)a.Donem == Donem.Cari ? _agacCariByFirm : _agacOncekiByFirm;
+
+                        hedef[firmaId] = a.Dugumler
+                            .Select(d => HesapDugumu.Olustur(d.Kod, d.Ad, d.BorcBakiye, d.AlacakBakiye, d.Bakiye))
+                            .Where(d => d is not null)
+                            .Select(d => d!)
+                            .ToList();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[MizanAgacLoad HATA] {ex.Message}");
+                }
 
                 _mizanHydratedFirms.Add(firmaId);
             }

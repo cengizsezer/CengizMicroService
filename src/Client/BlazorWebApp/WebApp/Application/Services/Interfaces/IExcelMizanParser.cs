@@ -1,3 +1,5 @@
+using WebApp.Domain.Models.FirmaKontrol;
+
 namespace WebApp.Application.Services.Interfaces
 {
     public class MizanExcelRow
@@ -68,6 +70,15 @@ namespace WebApp.Application.Services.Interfaces
         public List<MizanExcelRow> Rows { get; set; } = new();
         public List<AtlananSatir> AtlananSatirlar { get; set; } = new();
         public List<string> Errors { get; set; } = new();
+
+        /// <summary>
+        /// Hesap kırılım ağacının düz listesi: hem üç haneli ana hesaplar (seviye 1) hem
+        /// alt kırılımlar ("600 1", "600 1 21"). Ağaç yapısı <c>UstKod</c> ile türetilir.
+        ///
+        /// Bu liste <see cref="Rows"/>'dan BAĞIMSIZDIR ve hiçbir toplama girmez; ana hesap
+        /// sözlüğünü yalnızca <see cref="Rows"/> besler (orada üç haneli kodlar vardır).
+        /// </summary>
+        public List<HesapDugumu> HesapDugumleri { get; set; } = new();
     }
 
     public interface IExcelMizanParser

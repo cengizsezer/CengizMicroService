@@ -234,6 +234,9 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             services.AddScoped<WebApp.Application.Services.FirmaKontrol.IVergiBeyannameApiClient>(sp =>
                 new WebApp.Application.Services.FirmaKontrol.VergiBeyannameApiClient(sp.GetRequiredService<HttpClient>()));
 
+            services.AddScoped<WebApp.Application.Services.FirmaKontrol.IEtiketApiClient>(sp =>
+                new WebApp.Application.Services.FirmaKontrol.EtiketApiClient(sp.GetRequiredService<HttpClient>()));
+
             services.AddScoped<IKdvBeyannameApiService>(sp =>
                 new KdvBeyannameApiService(sp.GetRequiredService<HttpClient>()));
 
