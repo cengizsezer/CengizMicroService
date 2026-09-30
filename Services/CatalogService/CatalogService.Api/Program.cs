@@ -145,6 +145,20 @@ builder.Services.AddScoped<CatalogService.Api.Features.Anasayfa.Services.IAnasay
 // Anasayfa firma paneli: tüm firmaların künyesi + uyarıları tek çağrıda.
 builder.Services.AddScoped<CatalogService.Api.Features.Anasayfa.Services.IFirmaPaneliService,
                            CatalogService.Api.Features.Anasayfa.Services.FirmaPaneliService>();
+
+// Firma olay kaydı ("Son işlemler"): yalnız yazma işlemleri, asıl işlemi bozmaz.
+builder.Services.AddScoped<CatalogService.Api.Features.Anasayfa.Services.IFirmaOlayYazici,
+                           CatalogService.Api.Features.Anasayfa.Services.FirmaOlayYazici>();
+
+// Firma işleri + Yapılacaklar (yasal işler vergi takviminden türetilir) ve takvimin yönetimi.
+builder.Services.AddScoped<CatalogService.Api.Features.Yapilacaklar.Services.IYapilacaklarService,
+                           CatalogService.Api.Features.Yapilacaklar.Services.YapilacaklarService>();
+builder.Services.AddScoped<CatalogService.Api.Features.Yapilacaklar.Services.IVergiTakvimiService,
+                           CatalogService.Api.Features.Yapilacaklar.Services.VergiTakvimiService>();
+
+// Anasayfa künye yazmaları (sınıflandırma, sorumlu, notlar).
+builder.Services.AddScoped<CatalogService.Api.Features.Anasayfa.Services.IFirmaKunyeService,
+                           CatalogService.Api.Features.Anasayfa.Services.FirmaKunyeService>();
 builder.Services.AddScoped<IFirmaService, FirmaService>();
 builder.Services.AddScoped<IKdvBeyannameQueryService, KdvBeyannameQueryService>();
 builder.Services.AddScoped<IDuzenleyenService, DuzenleyenService>();
@@ -605,6 +619,10 @@ IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf')
                 await globalSeeder.SeedMukelleflerAsync(ctxOnce, envHost, logger);
             });
 
+            // Mükellefiyet kodlarından vergi türü / defter usulü önerisi (elle seçilene dokunmaz).
+            await SeedAdimi.CalistirAsync(logger, "Firma sınıflandırması",
+                () => CatalogService.Api.Features.Firmalar.FirmaSiniflandirmaSeed.SeedAsync(ctxOnce, logger));
+
             await SeedAdimi.CalistirAsync(logger, "Ticaret Sicil İşlemleri",
                 () => CatalogService.Api.Features.TicaretSicil.TicaretSicilSeed.SeedAsync(ctxOnce));
 
@@ -624,6 +642,12 @@ IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf')
             await SeedAdimi.CalistirAsync(logger, "Beyanname türleri",
                 () => CatalogService.Api.Features.Declarations.BeyannameTuruSeed
                           .SeedVeLoglaAsync(ctxOnce, logger));
+
+            // Vergi takvimi (Yapılacaklar'ın yasal işleri): yalnız eksik satırı ekler,
+            // elle düzeltilmiş tarihe dokunmaz. Son günü geçmiş satırlar pasif başlar.
+            await SeedAdimi.CalistirAsync(logger, "Vergi takvimi",
+                () => CatalogService.Api.Features.Yapilacaklar.VergiTakvimiSeed.SeedVeLoglaAsync(
+                          ctxOnce, sp.GetRequiredService<TimeProvider>().GetLocalNow().Date, logger));
 
             // Kurumlar vergisi beyanname kalemleri: katalog firmadan bağımsız, bir kez yüklenir.
             await SeedAdimi.CalistirAsync(logger, "Vergi kalemleri",

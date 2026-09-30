@@ -1,0 +1,58 @@
+/*:root {
+    --app-header-h: 88px;
+    --app-sidebar-w: 250px;*/ /* expanded genişlik */
+    /*--app-sidebar-w-c: 64px;*/ /* collapsed genişlik */
+/*}*/
+
+/* Header sabit kalıyorsa kendi kuralların burada olabilir */
+
+/* ------- SIDEBAR GENİŞLİĞİ ------- */
+/*.app-shell.expanded ::deep .rz-sidebar {
+    width: var(--app-sidebar-w) !important;
+    min-width: var(--app-sidebar-w) !important;
+    transform: none !important;
+}
+
+.app-shell.collapsed ::deep .rz-sidebar {
+    width: var(--app-sidebar-w-c) !important;
+    min-width: var(--app-sidebar-w-c) !important;
+    transform: none !important;
+}*/
+
+/* ------- BODY’Yİ SOLDAN İT ------- */
+/* Radzen bazı sürümlerde .rz-body > div/.rz-content/.rz-main katmanları kullanıyor;
+   hepsini birlikte hedefliyoruz. */
+/*.app-shell.expanded ::deep .rz-body,
+.app-shell.expanded ::deep .rz-body > div,
+.app-shell.expanded ::deep .rz-content,
+.app-shell.expanded ::deep .rz-main {
+    margin-left: var(--app-sidebar-w) !important;
+    transition: margin-left .15s ease;
+}
+
+.app-shell.collapsed ::deep .rz-body,
+.app-shell.collapsed ::deep .rz-body > div,
+.app-shell.collapsed ::deep .rz-content,
+.app-shell.collapsed ::deep .rz-main {
+    margin-left: var(--app-sidebar-w-c) !important;
+    transition: margin-left .15s ease;
+}*/
+
+/* ------- DAR MOD GÖRÜNÜM (ikonlar kalsın) ------- */
+/*.app-shell.collapsed ::deep .rz-panelmenu .rz-text {
+    display: none;
+}
+
+.app-shell.collapsed ::deep .rz-panelmenu .rz-link {
+    justify-content: center;
+    text-align: center;
+    padding: .75rem 0;
+}*/
+
+/* Alt köşedeki ok alanı (sidebar içinde) */
+/*::deep .rz-sidebar .toggle-btn {
+    margin-top: auto;
+    padding: .5rem;
+    display: flex;
+    justify-content: center;
+}*/

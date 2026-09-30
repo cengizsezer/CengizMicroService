@@ -1,0 +1,1174 @@
+[
+    {
+        "kod":  "1",
+        "ad":  "DÖNEN VARLIKLAR"
+    },
+    {
+        "kod":  "10",
+        "ad":  "Hazır Değerler"
+    },
+    {
+        "kod":  "100",
+        "ad":  "Kasa"
+    },
+    {
+        "kod":  "101",
+        "ad":  "Alınan Çekler"
+    },
+    {
+        "kod":  "102",
+        "ad":  "Bankalar"
+    },
+    {
+        "kod":  "103",
+        "ad":  "Verilen Çekler ve Ödeme Emirleri(-)"
+    },
+    {
+        "kod":  "108",
+        "ad":  "Diğer Hazır Değerler"
+    },
+    {
+        "kod":  "11",
+        "ad":  "Menkul Kıymetler"
+    },
+    {
+        "kod":  "110",
+        "ad":  "Hisse Senetleri"
+    },
+    {
+        "kod":  "111",
+        "ad":  "Özel Kesim Tahvil,Senet ve Bonoları"
+    },
+    {
+        "kod":  "112",
+        "ad":  "Kamu Kesimi Tahvil, Senet ve Bonoları"
+    },
+    {
+        "kod":  "118",
+        "ad":  "Diğer Menkul Kıymetler"
+    },
+    {
+        "kod":  "119",
+        "ad":  "Menkul Kıymetler Değer Düşüklüğü Karşılığı(-)"
+    },
+    {
+        "kod":  "12",
+        "ad":  "Ticari Alacaklar"
+    },
+    {
+        "kod":  "120",
+        "ad":  "Alıcılar"
+    },
+    {
+        "kod":  "121",
+        "ad":  "Alacak Senetleri"
+    },
+    {
+        "kod":  "122",
+        "ad":  "Alacak Senetleri Reeskontu(-)"
+    },
+    {
+        "kod":  "124",
+        "ad":  "Kazanılmamış Finansal Kiralama Faiz Gelirleri(-)"
+    },
+    {
+        "kod":  "126",
+        "ad":  "Verilen Depozito ve Teminatlar"
+    },
+    {
+        "kod":  "127",
+        "ad":  "Diğer Ticari Alacaklar"
+    },
+    {
+        "kod":  "128",
+        "ad":  "Şüpheli Ticari Alacaklar"
+    },
+    {
+        "kod":  "129",
+        "ad":  "Şüpheli Ticari Alacaklar Karşılığı (-)"
+    },
+    {
+        "kod":  "13",
+        "ad":  "Diğer Alacaklar"
+    },
+    {
+        "kod":  "131",
+        "ad":  "Ortaklardan Alacaklar"
+    },
+    {
+        "kod":  "132",
+        "ad":  "İştiraklerden Alacaklar"
+    },
+    {
+        "kod":  "133",
+        "ad":  "Bağlı Ortaklıklardan Alacaklar"
+    },
+    {
+        "kod":  "135",
+        "ad":  "Personelden Alacaklar"
+    },
+    {
+        "kod":  "136",
+        "ad":  "Diğer Çeşitli Alacaklar"
+    },
+    {
+        "kod":  "137",
+        "ad":  "Diğer Alacak Senetleri Reeskontu (-)"
+    },
+    {
+        "kod":  "138",
+        "ad":  "Şüpheli Diğer Alacaklar"
+    },
+    {
+        "kod":  "139",
+        "ad":  "Şüpheli Diğer Alacaklar Karşılığı (-)"
+    },
+    {
+        "kod":  "15",
+        "ad":  "Stoklar"
+    },
+    {
+        "kod":  "150",
+        "ad":  "İlk Madde ve Malzeme"
+    },
+    {
+        "kod":  "151",
+        "ad":  "Yarı Mamüller-Üretim"
+    },
+    {
+        "kod":  "152",
+        "ad":  "Mamüller"
+    },
+    {
+        "kod":  "153",
+        "ad":  "Ticari Mallar"
+    },
+    {
+        "kod":  "157",
+        "ad":  "Diğer Stoklar"
+    },
+    {
+        "kod":  "158",
+        "ad":  "Stok Değer Düşüklüğü Karşılığı (-)"
+    },
+    {
+        "kod":  "159",
+        "ad":  "Verilen Sipariş Avansları"
+    },
+    {
+        "kod":  "17",
+        "ad":  "Yıllara Yaygın İnşaat ve Onarım Maliyetleri"
+    },
+    {
+        "kod":  "170",
+        "ad":  "Yıllara Yaygın İnşaat ve Onarım Maliyetleri"
+    },
+    {
+        "kod":  "178",
+        "ad":  "Yıllara Yaygın İnşaat Enflasyon Düzeltme Hesabı"
+    },
+    {
+        "kod":  "179",
+        "ad":  "Taşeronlara Verilen Avanslar"
+    },
+    {
+        "kod":  "18",
+        "ad":  "Gelecek Aylara Ait Giderler ve Gelir Tahakkukları"
+    },
+    {
+        "kod":  "180",
+        "ad":  "Gelecek Aylara Ait Giderler"
+    },
+    {
+        "kod":  "181",
+        "ad":  "Gelir Tahakkukları"
+    },
+    {
+        "kod":  "19",
+        "ad":  "Gelecek Aylara Ait Giderler ve Gelir Tahakkukları"
+    },
+    {
+        "kod":  "190",
+        "ad":  "Devreden KDV"
+    },
+    {
+        "kod":  "191",
+        "ad":  "İndirilecek KDV"
+    },
+    {
+        "kod":  "192",
+        "ad":  "Diğer KDV"
+    },
+    {
+        "kod":  "193",
+        "ad":  "Peşin Ödenen Vergiler ve Fonlar"
+    },
+    {
+        "kod":  "195",
+        "ad":  "İş Avansları"
+    },
+    {
+        "kod":  "196",
+        "ad":  "Personel Avansları"
+    },
+    {
+        "kod":  "197",
+        "ad":  "Sayım ve Tesellüm Noksanları"
+    },
+    {
+        "kod":  "198",
+        "ad":  "Diğer Çeşitli Dönen Varlıklar"
+    },
+    {
+        "kod":  "199",
+        "ad":  "Diğer Çeşitli Dönen Varlıklar Karşılığı (-)"
+    },
+    {
+        "kod":  "2",
+        "ad":  "DURAN VARLIKLAR"
+    },
+    {
+        "kod":  "22",
+        "ad":  "Ticari Alacaklar"
+    },
+    {
+        "kod":  "220",
+        "ad":  "Alıcılar"
+    },
+    {
+        "kod":  "221",
+        "ad":  "Alacak Senetleri"
+    },
+    {
+        "kod":  "222",
+        "ad":  "Alacak Senetleri Reeskontu(-)"
+    },
+    {
+        "kod":  "224",
+        "ad":  "Kazanılmamış Finansal Kiralama Faiz Gelirleri(-)"
+    },
+    {
+        "kod":  "226",
+        "ad":  "Verilen Depozito ve Teminatlar"
+    },
+    {
+        "kod":  "229",
+        "ad":  "Şüpheli Alacaklar Karşılığı(-)"
+    },
+    {
+        "kod":  "23",
+        "ad":  "Diğer Alacaklar"
+    },
+    {
+        "kod":  "231",
+        "ad":  "Ortaklardan Alacaklar"
+    },
+    {
+        "kod":  "232",
+        "ad":  "İştiraklerden Alacaklar"
+    },
+    {
+        "kod":  "233",
+        "ad":  "Bağlı Ortaklıklardan Alacaklar"
+    },
+    {
+        "kod":  "235",
+        "ad":  "Personelden Alacaklar"
+    },
+    {
+        "kod":  "236",
+        "ad":  "Diğer Çeşitli Alacaklar"
+    },
+    {
+        "kod":  "237",
+        "ad":  "Diğer Alacak Senetleri Reeskontu(-)"
+    },
+    {
+        "kod":  "239",
+        "ad":  "Şüpheli Diğer Alacaklar Karşılığı(-)"
+    },
+    {
+        "kod":  "24",
+        "ad":  "Diğer Alacaklar"
+    },
+    {
+        "kod":  "240",
+        "ad":  "Bağlı Menkul Kıymetler"
+    },
+    {
+        "kod":  "241",
+        "ad":  "Bağlı Menkul Kıymetler Değer Düşüklüğü Karşılığı(-)"
+    },
+    {
+        "kod":  "242",
+        "ad":  "İştirakler"
+    },
+    {
+        "kod":  "243",
+        "ad":  "İştiraklere Sermaye Taahhütleri(-)"
+    },
+    {
+        "kod":  "244",
+        "ad":  "İştirakler Sermaye Payları Değer Düşüklüğü Karşılığı(-)"
+    },
+    {
+        "kod":  "245",
+        "ad":  "Bağlı Ortaklıklar"
+    },
+    {
+        "kod":  "246",
+        "ad":  "Bağlı Ortaklıklara Sermaye Taahhütleri(-)"
+    },
+    {
+        "kod":  "247",
+        "ad":  "Bağlı Ortaklıklar Sermaye Payları Değer Düşüklüğü Karşılığı(-)"
+    },
+    {
+        "kod":  "248",
+        "ad":  "Diğer Mali Duran Varlıklar"
+    },
+    {
+        "kod":  "249",
+        "ad":  "Diğer Mali Duran Varlıklar Karşılığı(-)"
+    },
+    {
+        "kod":  "25",
+        "ad":  "Diğer Alacaklar"
+    },
+    {
+        "kod":  "250",
+        "ad":  "Arazi ve Arsalar"
+    },
+    {
+        "kod":  "251",
+        "ad":  "Yeraltı ve Yerüstü Düzenleri"
+    },
+    {
+        "kod":  "252",
+        "ad":  "Binalar"
+    },
+    {
+        "kod":  "253",
+        "ad":  "Tesis,Makine ve Cihazlar"
+    },
+    {
+        "kod":  "254",
+        "ad":  "Taşıtlar"
+    },
+    {
+        "kod":  "255",
+        "ad":  "Demirbaşlar"
+    },
+    {
+        "kod":  "256",
+        "ad":  "Diğer Maddi Duran Varlıklar"
+    },
+    {
+        "kod":  "257",
+        "ad":  "Birikmiş Amortismanlar(-)"
+    },
+    {
+        "kod":  "258",
+        "ad":  "Yapılmakta Olan Yatırımlar"
+    },
+    {
+        "kod":  "259",
+        "ad":  "Verilen Avanslar"
+    },
+    {
+        "kod":  "26",
+        "ad":  "Diğer Alacaklar"
+    },
+    {
+        "kod":  "260",
+        "ad":  "Haklar"
+    },
+    {
+        "kod":  "261",
+        "ad":  "Şerefiye"
+    },
+    {
+        "kod":  "262",
+        "ad":  "Kuruluş ve Örgütlenme Giderleri"
+    },
+    {
+        "kod":  "263",
+        "ad":  "Araştırma ve Geliştirme Giderleri"
+    },
+    {
+        "kod":  "264",
+        "ad":  "Özel Maliyetler"
+    },
+    {
+        "kod":  "267",
+        "ad":  "Diğer Maddi Olmayan Duran Varlıklar"
+    },
+    {
+        "kod":  "268",
+        "ad":  "Birikmiş Amortismanlar(-)"
+    },
+    {
+        "kod":  "269",
+        "ad":  "Verilen Avanslar"
+    },
+    {
+        "kod":  "27",
+        "ad":  "Diğer Alacaklar"
+    },
+    {
+        "kod":  "271",
+        "ad":  "Arama Giderleri"
+    },
+    {
+        "kod":  "272",
+        "ad":  "Hazırlık ve Geliştirme Giderleri"
+    },
+    {
+        "kod":  "277",
+        "ad":  "Diğer Özel Tükenmeye Tabi Varlıklar"
+    },
+    {
+        "kod":  "278",
+        "ad":  "Birikmiş Tükenme Payları(-)"
+    },
+    {
+        "kod":  "279",
+        "ad":  "Verilen Avanslar"
+    },
+    {
+        "kod":  "28",
+        "ad":  "Gelecek Yıllara Ait Giderler ve Gelir Tahakkukları"
+    },
+    {
+        "kod":  "280",
+        "ad":  "Gelecek Yıllara Ait Giderler"
+    },
+    {
+        "kod":  "281",
+        "ad":  "Gelir Tahakkukları"
+    },
+    {
+        "kod":  "29",
+        "ad":  "Gelecek Yıllara Ait Giderler ve Gelir Tahakkukları"
+    },
+    {
+        "kod":  "291",
+        "ad":  "Gelecek Yıllarda İndirilecek KDV"
+    },
+    {
+        "kod":  "292",
+        "ad":  "Diğer KDV"
+    },
+    {
+        "kod":  "293",
+        "ad":  "Gelecek Yıllar İhtiyacı Stoklar"
+    },
+    {
+        "kod":  "294",
+        "ad":  "Elden Çıkarılacak Stoklar ve Maddi Duran Varlıklar"
+    },
+    {
+        "kod":  "295",
+        "ad":  "Peşin Ödenen Vergiler ve Fonlar"
+    },
+    {
+        "kod":  "297",
+        "ad":  "Diğer Çeşitli Duran Varlıklar"
+    },
+    {
+        "kod":  "298",
+        "ad":  "Stok Değer Düşüklüğü Karşılığı(-)"
+    },
+    {
+        "kod":  "299",
+        "ad":  "Birikmiş Amortismanlar(-)"
+    },
+    {
+        "kod":  "3",
+        "ad":  "KISA VADELİ YABANCI KAYNAKLAR"
+    },
+    {
+        "kod":  "30",
+        "ad":  "Mali Borçlar"
+    },
+    {
+        "kod":  "300",
+        "ad":  "Banka Kredileri"
+    },
+    {
+        "kod":  "301",
+        "ad":  "Finansal Kiralama İşlemlerinden Borçlar"
+    },
+    {
+        "kod":  "302",
+        "ad":  "Ertelenmiş Finansal Kiralama Borçlanma Maliyetleri(-)"
+    },
+    {
+        "kod":  "303",
+        "ad":  "Uzun Vadeli Kredilerin Anapara Taksitleri ve Faizleri"
+    },
+    {
+        "kod":  "304",
+        "ad":  "Tahvil,Anapara,Borç Taksit ve Faizleri"
+    },
+    {
+        "kod":  "305",
+        "ad":  "Çıkarılmış Bonolar ve Senetler"
+    },
+    {
+        "kod":  "306",
+        "ad":  "Çıkarılmış Diğer Menkul Kıymetler"
+    },
+    {
+        "kod":  "308",
+        "ad":  "Menkul Kıymetler İhraç Farkı(-)"
+    },
+    {
+        "kod":  "309",
+        "ad":  "Diğer Mali Borçlar"
+    },
+    {
+        "kod":  "32",
+        "ad":  "Ticari Borçlar"
+    },
+    {
+        "kod":  "320",
+        "ad":  "Satıcılar"
+    },
+    {
+        "kod":  "321",
+        "ad":  "Borç Senetleri"
+    },
+    {
+        "kod":  "322",
+        "ad":  "Borç Senetleri Reeskontu(-)"
+    },
+    {
+        "kod":  "326",
+        "ad":  "Alınan Depozito ve Teminatlar"
+    },
+    {
+        "kod":  "329",
+        "ad":  "Diğer Ticari Borçlar"
+    },
+    {
+        "kod":  "33",
+        "ad":  "Diğer Borçlar"
+    },
+    {
+        "kod":  "331",
+        "ad":  "Ortaklara Borçlar"
+    },
+    {
+        "kod":  "332",
+        "ad":  "İştiraklere Borçlar"
+    },
+    {
+        "kod":  "333",
+        "ad":  "Bağlı Ortaklıklara Borçlar"
+    },
+    {
+        "kod":  "335",
+        "ad":  "Personele Borçlar"
+    },
+    {
+        "kod":  "336",
+        "ad":  "Diğer Çeşitli Borçlar"
+    },
+    {
+        "kod":  "337",
+        "ad":  "Diğer Borç Senetleri Reeskontu(-)"
+    },
+    {
+        "kod":  "34",
+        "ad":  "Alınan Avanslar"
+    },
+    {
+        "kod":  "340",
+        "ad":  "Alınan Sipariş Avansları"
+    },
+    {
+        "kod":  "349",
+        "ad":  "Alınan Diğer Avanslar"
+    },
+    {
+        "kod":  "35",
+        "ad":  "Yıllara Yaygın İnşaat ve Onarım Hakedişleri"
+    },
+    {
+        "kod":  "350",
+        "ad":  "Yıllara Yaygın İnşaat ve Onarım Hakediş Bedelleri Düzeltme Hesabı"
+    },
+    {
+        "kod":  "358",
+        "ad":  "Yıllara Yaygın İnşaat Enflasyon Düzeltme Hesabı"
+    },
+    {
+        "kod":  "36",
+        "ad":  "Ödenecek Vergi ve Diğer Yükümlülükler"
+    },
+    {
+        "kod":  "360",
+        "ad":  "Ödenecek Vergi ve  Fonlar"
+    },
+    {
+        "kod":  "361",
+        "ad":  "Ödenecek Sosyal Güvenlik Kesintileri"
+    },
+    {
+        "kod":  "368",
+        "ad":  "Vadesi Geçmiş Ertelenmiş veya Taksitlendirilmiş Vergi ve Diğer Yükümlülükler"
+    },
+    {
+        "kod":  "369",
+        "ad":  "Ödenecek Diğer Yükümlülükler"
+    },
+    {
+        "kod":  "37",
+        "ad":  "Borç ve Gider Karşılıkları"
+    },
+    {
+        "kod":  "370",
+        "ad":  "Dönem Kârı Vergi ve Diğer Yasal Yükümlükler Karşılıkları"
+    },
+    {
+        "kod":  "371",
+        "ad":  "Dönem Kârının Peşin Ödenen Vergi ve Diğer Yükümlülükler(-)"
+    },
+    {
+        "kod":  "372",
+        "ad":  "Kıdem Tazminatı Karşılığı"
+    },
+    {
+        "kod":  "373",
+        "ad":  "Maliyet Giderleri Karşılığı"
+    },
+    {
+        "kod":  "379",
+        "ad":  "Diğer Borç ve Gider Karşılıkları"
+    },
+    {
+        "kod":  "38",
+        "ad":  "Gelecek Aylara Ait Gelirler ve Gider Tahakkukları"
+    },
+    {
+        "kod":  "380",
+        "ad":  "Gelecek Aylara Ait Gelirler"
+    },
+    {
+        "kod":  "381",
+        "ad":  "Gider Tahakkukları"
+    },
+    {
+        "kod":  "39",
+        "ad":  "Gelecek Aylara Ait Gelirler ve Gider Tahakkukları"
+    },
+    {
+        "kod":  "391",
+        "ad":  "Hesaplanan KDV"
+    },
+    {
+        "kod":  "392",
+        "ad":  "Diğer KDV"
+    },
+    {
+        "kod":  "393",
+        "ad":  "Merkez ve Şubeler Cari Hesabı"
+    },
+    {
+        "kod":  "397",
+        "ad":  "Sayım ve Tesellüm Fazlaları"
+    },
+    {
+        "kod":  "399",
+        "ad":  "Diğer Çeşitli Yabancı Kaynaklar"
+    },
+    {
+        "kod":  "4",
+        "ad":  "UZUN VADELİ YABANCI KAYNAKLAR"
+    },
+    {
+        "kod":  "40",
+        "ad":  "Mali Borçlar"
+    },
+    {
+        "kod":  "400",
+        "ad":  "Banka Kredileri"
+    },
+    {
+        "kod":  "401",
+        "ad":  "Finansal Kiralama İşlemlerinden Borçlar"
+    },
+    {
+        "kod":  "402",
+        "ad":  "Ertelenmiş Finansal Kiralama Borçlanma Maliyetleri(-)"
+    },
+    {
+        "kod":  "405",
+        "ad":  "Çıkarılmış Tahviller"
+    },
+    {
+        "kod":  "407",
+        "ad":  "Çıkarılmış Diğer Menkul Kıymetler"
+    },
+    {
+        "kod":  "408",
+        "ad":  "Menkul Kıymetler İhraç Farkı(-)"
+    },
+    {
+        "kod":  "409",
+        "ad":  "Diğer Mali Borçlar."
+    },
+    {
+        "kod":  "42",
+        "ad":  "Ticari Borçlar"
+    },
+    {
+        "kod":  "420",
+        "ad":  "Satıcılar"
+    },
+    {
+        "kod":  "421",
+        "ad":  "Borç Senetleri"
+    },
+    {
+        "kod":  "422",
+        "ad":  "Borç Senetleri Reeskontu(-)"
+    },
+    {
+        "kod":  "426",
+        "ad":  "Alınan Depozito ve Teminatlar"
+    },
+    {
+        "kod":  "429",
+        "ad":  "Diğer Ticari Borçlar"
+    },
+    {
+        "kod":  "43",
+        "ad":  "Diğer Borçlar"
+    },
+    {
+        "kod":  "431",
+        "ad":  "Ortaklara Borçlar"
+    },
+    {
+        "kod":  "432",
+        "ad":  "İştiraklere Borçlar"
+    },
+    {
+        "kod":  "433",
+        "ad":  "Bağlı Ortaklıklara Borçlar"
+    },
+    {
+        "kod":  "436",
+        "ad":  "Diğer Çeşitli Borçlar"
+    },
+    {
+        "kod":  "437",
+        "ad":  "Diğer Borç Senetleri Reeskontu(-)"
+    },
+    {
+        "kod":  "438",
+        "ad":  "Kamuya Olan Ertelenmiş ve Taksitlendirilmiş Borçlar"
+    },
+    {
+        "kod":  "44",
+        "ad":  "Alınan Avanslar"
+    },
+    {
+        "kod":  "440",
+        "ad":  "Alınan Sipariş Avansları"
+    },
+    {
+        "kod":  "449",
+        "ad":  "Alınan Diğer Avanslar"
+    },
+    {
+        "kod":  "47",
+        "ad":  "Borç ve Gider Karşılıkları"
+    },
+    {
+        "kod":  "472",
+        "ad":  "Kıdem Tazminatı Karşılıkları"
+    },
+    {
+        "kod":  "479",
+        "ad":  "Diğer Borç ve Gider Karşılıkları"
+    },
+    {
+        "kod":  "48",
+        "ad":  "Gelecek Yıllara Ait Gelirler ve Gider Tahakkukları"
+    },
+    {
+        "kod":  "480",
+        "ad":  "Gelecek Yıllara Ait Gelirler"
+    },
+    {
+        "kod":  "481",
+        "ad":  "Gider Tahakkukları"
+    },
+    {
+        "kod":  "49",
+        "ad":  "Diğer Uzun Vadeli Yab. Kaynakl."
+    },
+    {
+        "kod":  "492",
+        "ad":  "Gelecek Yıllara Ertelenen veya Terkin Edilecek KDV"
+    },
+    {
+        "kod":  "493",
+        "ad":  "Tesise Katılma Payları"
+    },
+    {
+        "kod":  "499",
+        "ad":  "Diğer Çeş. Uzun Vadeli Yab. Kayn."
+    },
+    {
+        "kod":  "5",
+        "ad":  "ÖZ KAYNAKLAR"
+    },
+    {
+        "kod":  "50",
+        "ad":  "Ödenmiş Sermaye"
+    },
+    {
+        "kod":  "500",
+        "ad":  "Sermaye"
+    },
+    {
+        "kod":  "501",
+        "ad":  "Ödenmemiş Sermaye(-)"
+    },
+    {
+        "kod":  "502",
+        "ad":  "Sermaye Düzeltmesi Olumlu Fark."
+    },
+    {
+        "kod":  "503",
+        "ad":  "Sermaye Düzeltmesi Olumsuz Farkları(-)"
+    },
+    {
+        "kod":  "52",
+        "ad":  "Sermaye Yedekleri"
+    },
+    {
+        "kod":  "520",
+        "ad":  "Hisse Senedi İhraç Primleri"
+    },
+    {
+        "kod":  "521",
+        "ad":  "Hisse Senedi İptal Karları"
+    },
+    {
+        "kod":  "522",
+        "ad":  "M.D.V. Yeniden Değerl. Artışl."
+    },
+    {
+        "kod":  "523",
+        "ad":  "İştirakler Yeniden Değerleme Artışları"
+    },
+    {
+        "kod":  "524",
+        "ad":  "Diğer Sermaye Yedekleri"
+    },
+    {
+        "kod":  "525",
+        "ad":  "kayda alinan emtia özel karşilik hesabı"
+    },
+    {
+        "kod":  "526",
+        "ad":  "DEMİRBAŞ MAKİNE VE TEÇHİZAT ÖZEL KARŞILIK HESABI"
+    },
+    {
+        "kod":  "54",
+        "ad":  "Kar Yedekleri"
+    },
+    {
+        "kod":  "540",
+        "ad":  "Yasal Yedekler"
+    },
+    {
+        "kod":  "541",
+        "ad":  "Statü Yedekleri"
+    },
+    {
+        "kod":  "542",
+        "ad":  "Olağanüstü Yedekler"
+    },
+    {
+        "kod":  "548",
+        "ad":  "Diğer Kar Yedekleri"
+    },
+    {
+        "kod":  "549",
+        "ad":  "Özel Fonlar"
+    },
+    {
+        "kod":  "57",
+        "ad":  "Kar Yedekleri"
+    },
+    {
+        "kod":  "570",
+        "ad":  "Geçmiş Yıllar Karları"
+    },
+    {
+        "kod":  "58",
+        "ad":  "Kar Yedekleri"
+    },
+    {
+        "kod":  "580",
+        "ad":  "Geçmiş Yıllar Zararları"
+    },
+    {
+        "kod":  "59",
+        "ad":  "Kar Yedekleri"
+    },
+    {
+        "kod":  "590",
+        "ad":  "Dönem Net Karı"
+    },
+    {
+        "kod":  "591",
+        "ad":  "Dönem Net Zararı (-)"
+    },
+    {
+        "kod":  "6",
+        "ad":  "Gelir Tablosu Hesapları"
+    },
+    {
+        "kod":  "60",
+        "ad":  "Brüt Satışlar"
+    },
+    {
+        "kod":  "600",
+        "ad":  "Yurtiçi Satışlar"
+    },
+    {
+        "kod":  "601",
+        "ad":  "Yurtdışı Satışlar"
+    },
+    {
+        "kod":  "602",
+        "ad":  "Diğer Gelirler"
+    },
+    {
+        "kod":  "61",
+        "ad":  "Satış İndirimleri (-)"
+    },
+    {
+        "kod":  "610",
+        "ad":  "Satıştan İadeler (-)"
+    },
+    {
+        "kod":  "611",
+        "ad":  "Satış İskontoları (-)"
+    },
+    {
+        "kod":  "612",
+        "ad":  "Diğer İndirimler (-)"
+    },
+    {
+        "kod":  "62",
+        "ad":  "Satışların Maliyeti (-)"
+    },
+    {
+        "kod":  "620",
+        "ad":  "Satılan Mamuller Maliyeti (-)"
+    },
+    {
+        "kod":  "621",
+        "ad":  "Satılan Ticari Mallar Maliyeti (-)"
+    },
+    {
+        "kod":  "622",
+        "ad":  "Satılan Hizmet Maliyeti (-)"
+    },
+    {
+        "kod":  "63",
+        "ad":  "Faaliyet Giderleri (-)"
+    },
+    {
+        "kod":  "630",
+        "ad":  "Araştırma ve Geliştirme Giderleri (-)"
+    },
+    {
+        "kod":  "631",
+        "ad":  "Pazarlama Satış ve Dağıtım Giderleri (-)"
+    },
+    {
+        "kod":  "632",
+        "ad":  "Genel Yönetim Giderleri (-)"
+    },
+    {
+        "kod":  "64",
+        "ad":  "Diğer Faaliyetlerden Olağan Gelir ve Kârlar"
+    },
+    {
+        "kod":  "642",
+        "ad":  "Faiz Gelirleri"
+    },
+    {
+        "kod":  "646",
+        "ad":  "Kambiyo Kârları"
+    },
+    {
+        "kod":  "649",
+        "ad":  "Diğer Olağan Gelir ve Kârlar"
+    },
+    {
+        "kod":  "65",
+        "ad":  "Diğer Faaliyetlerden Olağan Gider ve Zararlar (-)"
+    },
+    {
+        "kod":  "653",
+        "ad":  "Komisyon Giderleri (-)"
+    },
+    {
+        "kod":  "656",
+        "ad":  "Kambiyo Zararları (-)"
+    },
+    {
+        "kod":  "659",
+        "ad":  "Diğer Olağan Gider ve Zararlar (-)"
+    },
+    {
+        "kod":  "66",
+        "ad":  "Finansman Giderleri (-)"
+    },
+    {
+        "kod":  "660",
+        "ad":  "Kısa Vadeli Borçlanma Giderleri (-)"
+    },
+    {
+        "kod":  "661",
+        "ad":  "Uzun Vadeli Borçlanma Giderleri (-)"
+    },
+    {
+        "kod":  "67",
+        "ad":  "Olağandışı Gelir ve Kârlar"
+    },
+    {
+        "kod":  "671",
+        "ad":  "Önceki Dönem Gelir ve Kârları"
+    },
+    {
+        "kod":  "679",
+        "ad":  "Diğer Olağandışı Gelir ve Kârlar"
+    },
+    {
+        "kod":  "68",
+        "ad":  "Olağandışı Gider ve Zararlar (-)"
+    },
+    {
+        "kod":  "681",
+        "ad":  "Önceki Dönem Gider ve Zararları (-)"
+    },
+    {
+        "kod":  "689",
+        "ad":  "Diğer Olağandışı Gider ve Zararlar (-)"
+    },
+    {
+        "kod":  "69",
+        "ad":  "Dönem Net Kârı (Zararı)"
+    },
+    {
+        "kod":  "690",
+        "ad":  "Dönem Kârı veya Zararı"
+    },
+    {
+        "kod":  "691",
+        "ad":  "Dönem Kârı Vergi ve Diğer Yasal Yükümlülük Karşılıkları (-)"
+    },
+    {
+        "kod":  "692",
+        "ad":  "Dönem Net Kârı veya Zararı"
+    },
+    {
+        "kod":  "7",
+        "ad":  "Maliyet Hesapları"
+    },
+    {
+        "kod":  "70",
+        "ad":  "Maliyet Muhasebesi Bağlantı Hesapları"
+    },
+    {
+        "kod":  "700",
+        "ad":  "Maliyet Muhasebesi Bağlantı Hesabı"
+    },
+    {
+        "kod":  "701",
+        "ad":  "Maliyet Muhasebesi Yansıtma Hesabı"
+    },
+    {
+        "kod":  "71",
+        "ad":  "Direkt İlk Madde ve Malzeme Giderleri"
+    },
+    {
+        "kod":  "710",
+        "ad":  "Direkt İlk Madde ve Malzeme Giderleri"
+    },
+    {
+        "kod":  "72",
+        "ad":  "Direkt İşçilik Giderleri"
+    },
+    {
+        "kod":  "720",
+        "ad":  "Direkt İşçilik Giderleri"
+    },
+    {
+        "kod":  "73",
+        "ad":  "Genel Üretim Giderleri"
+    },
+    {
+        "kod":  "730",
+        "ad":  "Genel Üretim Giderleri"
+    },
+    {
+        "kod":  "74",
+        "ad":  "Hizmet Üretim Maliyeti"
+    },
+    {
+        "kod":  "740",
+        "ad":  "Hizmet Üretim Maliyeti"
+    },
+    {
+        "kod":  "75",
+        "ad":  "Araştırma ve Geliştirme Giderleri"
+    },
+    {
+        "kod":  "750",
+        "ad":  "Araştırma ve Geliştirme Giderleri"
+    },
+    {
+        "kod":  "76",
+        "ad":  "Pazarlama Satış ve Dağıtım Giderleri"
+    },
+    {
+        "kod":  "760",
+        "ad":  "Pazarlama Satış ve Dağıtım Giderleri"
+    },
+    {
+        "kod":  "77",
+        "ad":  "Genel Yönetim Giderleri"
+    },
+    {
+        "kod":  "770",
+        "ad":  "Genel Yönetim Giderleri"
+    },
+    {
+        "kod":  "78",
+        "ad":  "Finansman Giderleri"
+    },
+    {
+        "kod":  "780",
+        "ad":  "Finansman Giderleri"
+    },
+    {
+        "kod":  "8",
+        "ad":  "Serbest"
+    },
+    {
+        "kod":  "9",
+        "ad":  "Nazım Hesaplar"
+    }
+]

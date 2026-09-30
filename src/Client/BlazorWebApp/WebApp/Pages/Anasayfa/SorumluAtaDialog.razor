@@ -1,0 +1,102 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.Admin
+@using WebApp.Shared.Dto.Anasayfa
+
+@inject IAnasayfaApiClient Api
+@inject IUsersService Kullanicilar
+@inject DialogService DialogService
+
+@*
+    Takip kartı — firmaya sorumlu atama. Kullanıcı listesi IdentityService'ten (auth/users);
+    seçilen kullanıcının Id'si ve adı firmaya yazılır.
+*@
+
+<div class="an-form">
+    @if (yukleniyor)
+    {
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+    }
+    else if (liste.Count == 0)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">
+            Kullanıcı listesi alınamadı.
+        </RadzenAlert>
+    }
+    else
+    {
+        <RadzenDropDown TValue="int?" Data="@liste" TextProperty="@nameof(UserListItemDto.DisplayName)"
+                        ValueProperty="@nameof(UserListItemDto.Id)" @bind-Value="secili"
+                        AllowFiltering="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        Placeholder="Kullanıcı seçin" AllowClear="true" Style="width:100%" />
+    }
+
+    @if (hata is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">@hata</RadzenAlert>
+    }
+
+    <div class="an-form-dugmeler">
+        @if (MevcutId is not null)
+        {
+            <RadzenButton Text="Sorumluyu kaldır" ButtonStyle="ButtonStyle.Light" Click="@(() => Kaydet(null))"
+                          Style="margin-right:auto" />
+        }
+        <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(false))" />
+        <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" IsBusy="@kaydediliyor"
+                      Disabled="@(secili is null)" Click="@(() => Kaydet(secili))" />
+    </div>
+</div>
+
+<style>
+    .an-form { display:flex; flex-direction:column; gap:.9rem; }
+    .an-form-dugmeler { display:flex; justify-content:flex-end; gap:.5rem; }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+    [Parameter] public int? MevcutId { get; set; }
+
+    private List<UserListItemDto> liste = new();
+    private int? secili;
+    private bool yukleniyor = true;
+    private bool kaydediliyor;
+    private string? hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        secili = MevcutId;
+        try
+        {
+            var sayfa = await Kullanicilar.GetUsersAsync(pageIndex: 0, pageSize: 200, q: "");
+            liste = sayfa?.Data?.OrderBy(k => k.DisplayName).ToList() ?? new();
+        }
+        catch
+        {
+            liste = new();
+        }
+        finally
+        {
+            yukleniyor = false;
+        }
+    }
+
+    private async Task Kaydet(int? kullaniciId)
+    {
+        hata = null;
+        kaydediliyor = true;
+        try
+        {
+            var ad = liste.FirstOrDefault(k => k.Id == kullaniciId)?.DisplayName;
+            hata = await Api.SorumluAtaAsync(FirmaId, new FirmaSorumluAtaDto { KullaniciId = kullaniciId, KullaniciAdi = ad });
+        }
+        finally
+        {
+            kaydediliyor = false;
+        }
+
+        if (hata is null) DialogService.Close(true);
+    }
+}

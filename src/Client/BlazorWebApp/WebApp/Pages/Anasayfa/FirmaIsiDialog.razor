@@ -1,0 +1,178 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.Admin
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@inject IYapilacaklarApiClient Api
+@inject IUsersService Kullanicilar
+@inject DialogService DialogService
+
+@*
+    Firma işleri kartı — firmaya özel iş ekle / düzenle. Yalnız özel iş; yasal işler
+    mükellefiyetten türer, burada eklenmez.
+
+    Uygulama işi YAPMAZ (e-posta atmaz); yalnız hatırlatır. Talimat değil iş: tarihi ve
+    "yapıldı" hali var.
+*@
+
+<div class="ys-form">
+    <div>
+        <RadzenLabel Text="Başlık" Component="baslik" />
+        <RadzenTextBox Name="baslik" @bind-Value="model.Baslik" MaxLength="200" Style="width:100%"
+                       Placeholder="ör. Yönetim raporu e-postası" />
+    </div>
+
+    <div>
+        <RadzenLabel Text="Açıklama (isteğe bağlı)" Component="aciklama" />
+        <RadzenTextArea Name="aciklama" @bind-Value="model.Aciklama" MaxLength="1000" Rows="2" Style="width:100%" />
+    </div>
+
+    <div class="ys-form-iki">
+        <div>
+            <RadzenLabel Text="Tekrar" Component="tekrar" />
+            <RadzenDropDown Name="tekrar" TValue="IsTekrari" Data="@Tekrarlar" TextProperty="Ad" ValueProperty="Deger"
+                            @bind-Value="model.Tekrar" Style="width:100%" />
+        </div>
+
+        @if (model.Tekrar == IsTekrari.TekSefer)
+        {
+            <div>
+                <RadzenLabel Text="Tarih" Component="tarih" />
+                <RadzenDatePicker Name="tarih" TValue="DateTime?" @bind-Value="model.TekSeferTarih"
+                                  DateFormat="dd.MM.yyyy" Style="width:100%" />
+            </div>
+        }
+        else
+        {
+            <div>
+                <RadzenLabel Text="Son gün" Component="kural" />
+                <RadzenDropDown Name="kural" TValue="IsGunKurali" Data="@Kurallar" TextProperty="Ad" ValueProperty="Deger"
+                                @bind-Value="model.GunKurali" Style="width:100%" />
+            </div>
+        }
+    </div>
+
+    @if (model.Tekrar != IsTekrari.TekSefer && model.GunKurali == IsGunKurali.AyinGunu)
+    {
+        <div>
+            <RadzenLabel Text="Ayın günü (1–31)" Component="gun" />
+            <RadzenNumeric Name="gun" TValue="int?" @bind-Value="model.AyinGunu" Min="1" Max="31" Style="width:120px" />
+            <div class="ys-alt">31 seçilirse 30 çeken ayda 30'una, şubatta 28/29'una düşer.
+                @(model.Tekrar == IsTekrari.Aylik ? "" : "Gün, dönemin ilk ayında sayılır.")</div>
+        </div>
+    }
+
+    <div>
+        <RadzenLabel Text="Sorumlu" Component="sorumlu" />
+        <RadzenDropDown Name="sorumlu" TValue="int?" Data="@kullanicilar" TextProperty="@nameof(UserListItemDto.DisplayName)"
+                        ValueProperty="@nameof(UserListItemDto.Id)" @bind-Value="model.SorumluKullaniciId"
+                        AllowFiltering="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        AllowClear="true" Placeholder="Firmanın sorumlusu" Style="width:100%" />
+    </div>
+
+    @if (Mevcut is not null)
+    {
+        <RadzenCheckBox @bind-Value="model.Aktif" Name="aktif" />
+        <RadzenLabel Text="Aktif (pasif iş listelerde görünmez, tanımı kalır)" Component="aktif" Style="margin-left:6px" />
+    }
+
+    @if (hata is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">@hata</RadzenAlert>
+    }
+
+    <div class="ys-form-dugmeler">
+        <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(false))" />
+        <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" IsBusy="@kaydediliyor"
+                      Disabled="@string.IsNullOrWhiteSpace(model.Baslik)" Click="@Kaydet" />
+    </div>
+</div>
+
+<style>
+    .ys-form { display:flex; flex-direction:column; gap:.75rem; }
+    .ys-form-iki { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+    .ys-form-dugmeler { display:flex; justify-content:flex-end; gap:.5rem; }
+    .ys-alt { font-size:11.5px; color:#a0aec0; margin-top:2px; }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+
+    /// <summary>Düzenlemede mevcut tanım; eklemede boş.</summary>
+    [Parameter] public FirmaIsiDto? Mevcut { get; set; }
+
+    private FirmaIsiKaydetDto model = new();
+    private List<UserListItemDto> kullanicilar = new();
+    private bool kaydediliyor;
+    private string? hata;
+
+    private sealed record Secenek<T>(T Deger, string Ad);
+
+    private static readonly List<Secenek<IsTekrari>> Tekrarlar = new()
+    {
+        new(IsTekrari.Aylik, "Her ay"),
+        new(IsTekrari.UcAylik, "Üç ayda bir"),
+        new(IsTekrari.Yillik, "Her yıl"),
+        new(IsTekrari.TekSefer, "Tek sefer")
+    };
+
+    private static readonly List<Secenek<IsGunKurali>> Kurallar = new()
+    {
+        new(IsGunKurali.AyinGunu, "Ayın belirli günü"),
+        new(IsGunKurali.AySonu, "Ay sonu"),
+        new(IsGunKurali.DonemSonu, "Dönem sonu")
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Mevcut is not null)
+        {
+            model = new FirmaIsiKaydetDto
+            {
+                Baslik = Mevcut.Baslik,
+                Aciklama = Mevcut.Aciklama,
+                Tekrar = Mevcut.Tekrar,
+                GunKurali = Mevcut.GunKurali,
+                AyinGunu = Mevcut.AyinGunu ?? 1,
+                TekSeferTarih = Mevcut.TekSeferTarih,
+                SorumluKullaniciId = Mevcut.SorumluKullaniciId,
+                SorumluKullaniciAdi = Mevcut.SorumluKullaniciAdi,
+                Aktif = Mevcut.Aktif
+            };
+        }
+
+        try
+        {
+            var sayfa = await Kullanicilar.GetUsersAsync(pageIndex: 0, pageSize: 200, q: "");
+            kullanicilar = sayfa?.Data?.OrderBy(k => k.DisplayName).ToList() ?? new();
+        }
+        catch
+        {
+            // Liste alınamazsa sorumlu boş kalır (= firmanın sorumlusu); form yine çalışır.
+            kullanicilar = new();
+        }
+    }
+
+    private async Task Kaydet()
+    {
+        hata = null;
+        kaydediliyor = true;
+        try
+        {
+            model.SorumluKullaniciAdi = kullanicilar.FirstOrDefault(k => k.Id == model.SorumluKullaniciId)?.DisplayName
+                                        ?? (model.SorumluKullaniciId == Mevcut?.SorumluKullaniciId ? Mevcut?.SorumluKullaniciAdi : null);
+
+            hata = Mevcut is null
+                ? await Api.IsEkleAsync(FirmaId, model)
+                : await Api.IsGuncelleAsync(FirmaId, Mevcut.Id, model);
+        }
+        finally
+        {
+            kaydediliyor = false;
+        }
+
+        if (hata is null) DialogService.Close(true);
+    }
+}

@@ -1,3 +1,5 @@
+using CatalogService.Api.Features.Anasayfa.Domain;
+using CatalogService.Api.Features.Anasayfa.Services;
 using CatalogService.Api.Features.FirmaKontrol.Domain;
 using CatalogService.Api.Features.FirmaKontrol.Dtos;
 using CatalogService.Api.Infrastructure.Context;
@@ -8,8 +10,28 @@ namespace CatalogService.Api.Features.FirmaKontrol.Services
     public class EtiketService : IEtiketService
     {
         private readonly CatalogContext _db;
+        private readonly IFirmaOlayYazici? _olay;
 
-        public EtiketService(CatalogContext db) => _db = db;
+        public EtiketService(CatalogContext db, IFirmaOlayYazici? olay = null)
+        {
+            _db = db;
+            _olay = olay;
+        }
+
+        /// <summary>
+        /// Kural olayı firmanın "Son işlemler"ine yazılır. Kuralın firması yoksa boyutun
+        /// firmasına bakılır; ikisi de boşsa (tüm firmalara ait kural) olay yazılmaz.
+        /// </summary>
+        private async Task KuralOlayiAsync(EtiketKurali kural, int? boyutFirmaId, FirmaOlayTipi tip, CancellationToken ct)
+        {
+            if (_olay is null || (kural.FirmaId ?? boyutFirmaId) is not { } firmaId) return;
+
+            var aciklama = tip == FirmaOlayTipi.EtiketKuraliEklendi
+                ? $"Etiket kuralı eklendi: {kural.Desen}"
+                : $"Etiket kuralı silindi: {kural.Desen}";
+
+            await _olay.YazAsync(firmaId, tip, aciklama, ct);
+        }
 
         public async Task<List<EtiketBoyutuDto>> GetBoyutlarAsync(int firmaId, CancellationToken ct = default)
         {
@@ -210,7 +232,7 @@ namespace CatalogService.Api.Features.FirmaKontrol.Services
 
         public async Task<EtiketKuraliDto> KuralEkleAsync(int boyutId, EtiketKuraliYazDto dto, CancellationToken ct = default)
         {
-            _ = await BulAsync(_db.EtiketBoyutlari, boyutId, "Etiket boyutu", ct);
+            var boyut = await BulAsync(_db.EtiketBoyutlari, boyutId, "Etiket boyutu", ct);
             _ = await BulAsync(_db.EtiketDegerleri, dto.DegerId, "Etiket değeri", ct);
 
             var kural = new EtiketKurali
@@ -228,6 +250,8 @@ namespace CatalogService.Api.Features.FirmaKontrol.Services
 
             _db.EtiketKurallari.Add(kural);
             await _db.SaveChangesAsync(ct);
+
+            await KuralOlayiAsync(kural, boyut.FirmaId, FirmaOlayTipi.EtiketKuraliEklendi, ct);
 
             return new EtiketKuraliDto
             {
@@ -262,8 +286,13 @@ namespace CatalogService.Api.Features.FirmaKontrol.Services
             var kural = await _db.EtiketKurallari.FirstOrDefaultAsync(k => k.Id == kuralId, ct);
             if (kural is null) return;
 
+            var boyutFirmaId = await _db.EtiketBoyutlari.Where(b => b.Id == kural.BoyutId)
+                .Select(b => b.FirmaId).FirstOrDefaultAsync(ct);
+
             _db.EtiketKurallari.Remove(kural);
             await _db.SaveChangesAsync(ct);
+
+            await KuralOlayiAsync(kural, boyutFirmaId, FirmaOlayTipi.EtiketKuraliSilindi, ct);
         }
 
         public async Task KuralSiraGuncelleAsync(int boyutId, List<EtiketKuralSiraDto> siralar, CancellationToken ct = default)

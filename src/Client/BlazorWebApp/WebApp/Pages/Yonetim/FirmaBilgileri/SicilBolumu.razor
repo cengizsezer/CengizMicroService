@@ -37,34 +37,34 @@
                         <RadzenTextBox @bind-Value="model.Unvan" Style="width:100%" />
                     </RadzenFormField>
                 </RadzenColumn>
-                <RadzenColumn Size="12" SizeMD="3">
+                <RadzenColumn id="fb-odak-vkn" Size="12" SizeMD="3">
                     <RadzenFormField Text="Vergi Kimlik No" Style="width:100%">
                         <RadzenTextBox @bind-Value="model.VergiKimlikNo" MaxLength="11" Style="width:100%" />
                     </RadzenFormField>
                 </RadzenColumn>
-                <RadzenColumn Size="12" SizeMD="3">
+                <RadzenColumn id="fb-odak-vergiDairesi" Size="12" SizeMD="3">
                     <RadzenFormField Text="Vergi Dairesi" Style="width:100%">
                         <RadzenTextBox @bind-Value="model.VergiDairesi" Style="width:100%" />
                     </RadzenFormField>
                 </RadzenColumn>
 
-                <RadzenColumn Size="12" SizeMD="3">
+                <RadzenColumn id="fb-odak-ticaretSicilNo" Size="12" SizeMD="3">
                     <RadzenFormField Text="Ticaret Sicil No" Style="width:100%">
                         <RadzenTextBox @bind-Value="model.TicaretSicilNo" Style="width:100%" />
                     </RadzenFormField>
                 </RadzenColumn>
-                <RadzenColumn Size="12" SizeMD="3">
+                <RadzenColumn id="fb-odak-mersisNo" Size="12" SizeMD="3">
                     <RadzenFormField Text="MERSİS No" Style="width:100%">
                         <RadzenTextBox @bind-Value="model.MersisNo" Style="width:100%" />
                     </RadzenFormField>
                 </RadzenColumn>
-                <RadzenColumn Size="12" SizeMD="3">
+                <RadzenColumn id="fb-odak-kurulusTarihi" Size="12" SizeMD="3">
                     <RadzenFormField Text="Kuruluş Tarihi" Style="width:100%">
                         <RadzenDatePicker @bind-Value="model.KurulusTarihi" DateFormat="dd.MM.yyyy"
                                           ShowTime="false" AllowClear="true" Style="width:100%" />
                     </RadzenFormField>
                 </RadzenColumn>
-                <RadzenColumn Size="12" SizeMD="3">
+                <RadzenColumn id="fb-odak-naceKodu" Size="12" SizeMD="3">
                     <RadzenFormField Text="NACE Kodu" Style="width:100%">
                         <RadzenTextBox @bind-Value="model.NaceKodu" Style="width:100%" />
                     </RadzenFormField>
@@ -83,7 +83,7 @@
                     </RadzenText>
                 </RadzenColumn>
 
-                <RadzenColumn Size="12" SizeMD="6">
+                <RadzenColumn id="fb-odak-adres" Size="12" SizeMD="6">
                     <RadzenFormField Text="Adres" Style="width:100%">
                         <RadzenTextArea @bind-Value="model.Adres" Rows="2" Style="width:100%" />
                     </RadzenFormField>
@@ -99,7 +99,7 @@
                     </RadzenFormField>
                 </RadzenColumn>
 
-                <RadzenColumn Size="12" SizeMD="3">
+                <RadzenColumn id="fb-odak-sermaye" Size="12" SizeMD="3">
                     <RadzenFormField Text="Sermaye" Style="width:100%">
                         <RadzenNumeric @bind-Value="model.Sermaye" Format="n2" Min="0" Style="width:100%" />
                     </RadzenFormField>
@@ -119,7 +119,7 @@
                                        Placeholder="Kurumlar, KDV, Muhtasar" Style="width:100%" />
                     </RadzenFormField>
                 </RadzenColumn>
-                <RadzenColumn Size="12" SizeMD="3">
+                <RadzenColumn id="fb-odak-iseBaslama" Size="12" SizeMD="3">
                     <RadzenFormField Text="İşe Başlama Tarihi" Style="width:100%">
                         <RadzenDatePicker @bind-Value="model.IseBaslamaTarihi" DateFormat="dd.MM.yyyy"
                                           ShowTime="false" AllowClear="true" Style="width:100%" />

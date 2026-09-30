@@ -1,0 +1,28 @@
+@using WebApp.Shared.Dto.Anasayfa
+
+@* Olay satırları: Takip kartında son beşi, "Tüm hareketler"de tamamı — aynı görünüm. *@
+
+<table class="an-olaylar">
+    <tbody>
+        @foreach (var olay in Olaylar)
+        {
+            <tr>
+                <td class="an-olay-zaman">@olay.Zaman.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                <td>@olay.Aciklama</td>
+                <td class="an-olay-kisi">@(olay.KullaniciAdi ?? "—")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<style>
+    .an-olaylar { width:100%; border-collapse:collapse; font-size:12.5px; }
+    .an-olaylar td { padding:3px 6px; border-bottom:1px solid #f2f5f9; color:#2d3748; vertical-align:top; }
+    .an-olaylar tr:last-child td { border-bottom:none; }
+    .an-olay-zaman { width:120px; white-space:nowrap; color:#718096; font-family:Consolas,"Courier New",monospace; font-size:11.5px; }
+    .an-olay-kisi { width:130px; color:#718096; text-align:right; }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<FirmaOlayDto> Olaylar { get; set; } = Array.Empty<FirmaOlayDto>();
+}

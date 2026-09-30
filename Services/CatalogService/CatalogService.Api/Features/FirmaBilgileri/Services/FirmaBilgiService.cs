@@ -1,5 +1,8 @@
-﻿using CatalogService.Api.Features.BankaEkstre.Kapsam;
+﻿using CatalogService.Api.Features.Anasayfa.Domain;
+using CatalogService.Api.Features.Anasayfa.Services;
+using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.FirmaBilgileri.Domain;
+using CatalogService.Api.Features.Firmalar.Domain;
 using CatalogService.Api.Features.FirmaBilgileri.Dtos;
 using CatalogService.Api.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
@@ -54,12 +57,36 @@ namespace CatalogService.Api.Features.FirmaBilgileri.Services
 
         private readonly CatalogContext _db;
         private readonly IBankaFirmaKapsami _kapsam;
+        private readonly IFirmaOlayYazici? _olay;
+        private readonly ILogger<FirmaBilgiService>? _log;
 
-        public FirmaBilgiService(CatalogContext db, IBankaFirmaKapsami kapsam)
+        public FirmaBilgiService(CatalogContext db, IBankaFirmaKapsami kapsam, IFirmaOlayYazici? olay = null,
+                                 ILogger<FirmaBilgiService>? log = null)
         {
             _db = db;
             _kapsam = kapsam;
+            _olay = olay;
+            _log = log;
         }
+
+        /// <summary>Mükellefiyet kartındaki alanlar (olay kaydında "Mükellefiyet güncellendi").</summary>
+        private static readonly string[] MukellefiyetFirmaAlanlari =
+            { nameof(Firmalar.Domain.Firma.VergiKimlikNo), nameof(Firmalar.Domain.Firma.VergiDairesi) };
+
+        private static readonly string[] MukellefiyetSicilAlanlari =
+        {
+            nameof(FirmaSicilBilgisi.MukellefiyetTurleri), nameof(FirmaSicilBilgisi.EFatura),
+            nameof(FirmaSicilBilgisi.EDefter), nameof(FirmaSicilBilgisi.IseBaslamaTarihi),
+            nameof(FirmaSicilBilgisi.NaceKodu)
+        };
+
+        private static readonly string[] SiniflandirmaAlanlari =
+        {
+            nameof(Firmalar.Domain.Firma.VergiTuru), nameof(Firmalar.Domain.Firma.VergiTuruKaynagi),
+            nameof(Firmalar.Domain.Firma.DefterUsulu), nameof(Firmalar.Domain.Firma.DefterUsuluKaynagi)
+        };
+
+        private static readonly string[] Teknik = { "UpdatedAt", "CreatedAt" };
 
         private int FirmaId => _kapsam.Secili
             ? _kapsam.FirmaId
@@ -148,9 +175,51 @@ namespace CatalogService.Api.Features.FirmaBilgileri.Services
             sicil.IseBaslamaTarihi = dto.IseBaslamaTarihi;
             sicil.UpdatedAt = DateTime.Now;
 
+            // Vergi türü / defter usulü mükellefiyet KODLARINDAN önerilir; kullanıcının
+            // elle seçtiği değerin üzerine yazılmaz (bkz. MukellefiyetSiniflandirici).
+            // Ayıklanan kodlar ve ayıklanamayan kalan metin loglanır (yasal işler bu listeden türeyecek).
+            MukellefiyetSiniflandirici.AyiklaVeLogla(_log, firmaId, sicil.MukellefiyetTurleri);
+            MukellefiyetSiniflandirici.Uygula(firma, sicil.MukellefiyetTurleri, _log);
+
+            // Olay kaydı için neyin değiştiği, kayıttan ÖNCE okunuyor. Yeni sicil
+            // kaydında her dolu alan değişmiş sayılır.
+            var firmaDegisen = DegisenAlanlar(_db.Entry(firma));
+            var sicilDegisen = DegisenAlanlar(_db.Entry(sicil));
+
             await _db.SaveChangesAsync(ct);
 
+            if (_olay is not null)
+            {
+                var mukellefiyet = firmaDegisen.Intersect(MukellefiyetFirmaAlanlari).Any()
+                                   || sicilDegisen.Intersect(MukellefiyetSicilAlanlari).Any();
+                var sicilDegisti = firmaDegisen.Except(MukellefiyetFirmaAlanlari).Except(SiniflandirmaAlanlari).Any()
+                                   || sicilDegisen.Except(MukellefiyetSicilAlanlari).Any();
+
+                if (mukellefiyet)
+                    await _olay.YazAsync(firmaId, FirmaOlayTipi.MukellefiyetGuncellendi, "Mükellefiyet bilgileri güncellendi", ct);
+                if (sicilDegisti)
+                    await _olay.YazAsync(firmaId, FirmaOlayTipi.SicilGuncellendi, "Sicil bilgileri güncellendi", ct);
+                if (firmaDegisen.Intersect(SiniflandirmaAlanlari).Any())
+                    await _olay.YazAsync(firmaId, FirmaOlayTipi.SiniflandirmaGuncellendi,
+                                         "Sınıflandırma mükellefiyetten otomatik güncellendi", ct);
+            }
+
             return await SicilGetAsync(ct);
+        }
+
+        /// <summary>Kaydedilmek üzere olan entity'de değeri gerçekten değişen alanlar.</summary>
+        private static List<string> DegisenAlanlar(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry entry)
+        {
+            var yeni = entry.State == EntityState.Added;
+
+            return entry.Properties
+                .Where(p => !Teknik.Contains(p.Metadata.Name) && !p.Metadata.IsPrimaryKey()
+                            && p.Metadata.Name != nameof(FirmaSicilBilgisi.FirmaId))
+                .Where(p => yeni
+                    ? p.CurrentValue is not null && !(p.CurrentValue is string s && s.Length == 0)
+                    : p.IsModified && !Equals(p.OriginalValue, p.CurrentValue))
+                .Select(p => p.Metadata.Name)
+                .ToList();
         }
 
         // ---- Ortaklık ----

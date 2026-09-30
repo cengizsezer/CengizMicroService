@@ -7,7 +7,9 @@ namespace WebApp.Shared.Dto.Anasayfa
     {
         ImzaYetkisiBitiyor = 1,
         PayOraniTutmuyor = 2,
-        EksikSicilAlani = 3
+        EksikSicilAlani = 3,
+        GecerliYetkiliYok = 4,
+        SiniflandirmaUyusmuyor = 5
     }
 
     public class FirmaUyariDto
@@ -28,6 +30,25 @@ namespace WebApp.Shared.Dto.Anasayfa
         public List<FirmaUyariDto> Uyarilar { get; set; } = new();
 
         public bool UyariVar => Uyarilar.Count > 0;
+
+        /// <summary>Boş künye alanı sayısı; sunucunun tek listesinden (16 kontrol).</summary>
+        public int EksikSayisi { get; set; }
+
+        /// <summary>İmza yetkisi / pay oranı / geçerli yetkili yok uyarılarının sayısı.</summary>
+        public int UyariSayisi { get; set; }
+
+        /// <summary>Firmanın HİÇ mizanı yok (kırmızı "!").</summary>
+        public bool MizanYok { get; set; }
+
+        public string? MizanFormati { get; set; }
+    }
+
+    /// <summary>Eksik künye alanı. <see cref="Odak"/> "Tamamla"nın gideceği alan anahtarı.</summary>
+    public class EksikAlanDto
+    {
+        public string Kart { get; set; } = string.Empty;
+        public string Alan { get; set; } = string.Empty;
+        public string Odak { get; set; } = string.Empty;
     }
 
     public class FirmaMukellefiyetDto
@@ -35,10 +56,25 @@ namespace WebApp.Shared.Dto.Anasayfa
         public string VergiKimlikNo { get; set; } = string.Empty;
         public string? VergiDairesi { get; set; }
         public string? MukellefiyetTurleri { get; set; }
+
+        /// <summary>Sunucunun ayıkladığı kodlar; kartta çip.</summary>
+        public List<MukellefiyetKoduDto> Kodlar { get; set; } = new();
+
+        /// <summary>Kod sayılamayan kalan metin; çiplerin altında aynen gösterilir.</summary>
+        public string? KalanMetin { get; set; }
+
         public bool? EFatura { get; set; }
         public bool? EDefter { get; set; }
         public DateTime? IseBaslamaTarihi { get; set; }
         public string? NaceKodu { get; set; }
+    }
+
+    public class MukellefiyetKoduDto
+    {
+        public string Kod { get; set; } = string.Empty;
+        public string? Ad { get; set; }
+        public string? KisaAd { get; set; }
+        public bool SiniflandirmaKaynagi { get; set; }
     }
 
     public class FirmaPaneliSicilDto
@@ -49,7 +85,172 @@ namespace WebApp.Shared.Dto.Anasayfa
         public string? SermayeParaBirimi { get; set; }
         public DateTime? KurulusTarihi { get; set; }
         public string? Adres { get; set; }
+    }
+
+    // ---- Sınıflandırma ve mizan (sayısal değerler sunucuyla ortak) ----
+
+    public enum DefterUsulu : byte
+    {
+        Belirsiz = 0,
+        BilancoEsasi = 1,
+        IsletmeHesabi = 2
+    }
+
+    public enum VergiTuru : byte
+    {
+        Belirsiz = 0,
+        KurumlarVergisi = 1,
+        GelirVergisi = 2
+    }
+
+    public enum HesapDonemi : byte
+    {
+        TakvimYili = 1,
+        OzelHesapDonemi = 2
+    }
+
+    /// <summary>
+    /// Mizan formatı seçenekleri; sunucudaki <c>MizanFormatlari.Liste</c> ile aynı. Profil
+    /// tablosu gelene kadar sabit liste.
+    /// </summary>
+    public static class MizanFormatlari
+    {
+        public const string Belirsiz = "Belirsiz";
+
+        public static readonly IReadOnlyList<string> Liste = new[]
+        {
+            "ORKA — döviz kolonlu",
+            "ORKA — döviz kolonsuz",
+            "Luca",
+            "Mikro",
+            "Logo",
+            Belirsiz
+        };
+
+        public static bool Secili(string? format)
+            => !string.IsNullOrWhiteSpace(format) && format != Belirsiz;
+
+        /// <summary>
+        /// Boş şablonu olan formatlar: yalnız gerçek çıktısı görülmüş programlar (sunucudaki
+        /// liste ile aynı). Mikro/Logo için şablon yok — uydurma şablon gönderilmez.
+        /// </summary>
+        public static bool SablonVar(string? format)
+            => format is "ORKA — döviz kolonlu" or "ORKA — döviz kolonsuz" or "Luca";
+    }
+
+    /// <summary>Son yüklenen mizanın durumu; özet alanları eski kayıtlarda boş ("—").</summary>
+    public class FirmaPaneliMizanDurumuDto
+    {
+        public int Yil { get; set; }
+        public int Donem { get; set; }
+        public int AnalizYili { get; set; }
+        public DateTime? YuklenmeZamani { get; set; }
+        public int? SatirSayisi { get; set; }
+        public int? SeviyeSayisi { get; set; }
+        public decimal? BorcToplam { get; set; }
+        public decimal? AlacakToplam { get; set; }
+        public decimal? Fark { get; set; }
+        public bool? Dengeli { get; set; }
+    }
+
+    public class FirmaPaneliSiniflandirmaDto
+    {
+        public DefterUsulu DefterUsulu { get; set; }
+        public VergiTuru VergiTuru { get; set; }
+        public string? DefterUsuluOtomatikKod { get; set; }
+        public string? VergiTuruOtomatikKod { get; set; }
+        public string? MizanFormati { get; set; }
         public string? OrkaFirmaKodu { get; set; }
+        public HesapDonemi? HesapDonemi { get; set; }
+        public DateTime? OzelDonemBas { get; set; }
+        public DateTime? OzelDonemBit { get; set; }
+        public FirmaPaneliMizanDurumuDto? SonMizan { get; set; }
+        public string? UyusmazlikMesaji { get; set; }
+    }
+
+    // ---- Takip kartı (sayısal değerler sunucuyla ortak) ----
+
+    public enum FirmaOlayTipi : byte
+    {
+        FirmaOlusturuldu = 1,
+        MukellefiyetGuncellendi = 2,
+        SicilGuncellendi = 3,
+        SiniflandirmaGuncellendi = 4,
+        SorumluAtandi = 5,
+        NotEklendi = 6,
+        MizanYuklendi = 7,
+        EtiketKuraliEklendi = 8,
+        EtiketKuraliSilindi = 9,
+        IsEklendi = 10,
+        IsGuncellendi = 11,
+        IsSilindi = 12,
+        IsYapildi = 13,
+        IsIsaretiKaldirildi = 14
+    }
+
+    public class FirmaDonemCipDto
+    {
+        public int Yil { get; set; }
+        public bool Yuklu { get; set; }
+    }
+
+    public class FirmaNotuDto
+    {
+        public long Id { get; set; }
+        public string Metin { get; set; } = string.Empty;
+        public string? OlusturanKullaniciAdi { get; set; }
+        public DateTime OlusturmaZamani { get; set; }
+        public bool Silinebilir { get; set; }
+    }
+
+    public class FirmaOlayDto
+    {
+        public FirmaOlayTipi OlayTipi { get; set; }
+        public string Aciklama { get; set; } = string.Empty;
+        public string? KullaniciAdi { get; set; }
+        public DateTime Zaman { get; set; }
+    }
+
+    public class FirmaPaneliTakipDto
+    {
+        public int? SorumluKullaniciId { get; set; }
+        public string? SorumluKullaniciAdi { get; set; }
+        public List<FirmaDonemCipDto> Donemler { get; set; } = new();
+        public FirmaNotuDto? SonNot { get; set; }
+        public int NotSayisi { get; set; }
+        public List<FirmaOlayDto> SonOlaylar { get; set; } = new();
+    }
+
+    /// <summary>İmza yetkilileri kartı başlık rozeti; sunucu hesaplar.</summary>
+    public class FirmaYetkiRozetiDto
+    {
+        public int Sayi { get; set; }
+        public bool Kritik { get; set; }
+        public bool GecerliYok { get; set; }
+    }
+
+    public class FirmaSorumluAtaDto
+    {
+        public int? KullaniciId { get; set; }
+        public string? KullaniciAdi { get; set; }
+    }
+
+    public class FirmaNotuEkleDto
+    {
+        public string Metin { get; set; } = string.Empty;
+    }
+
+    public class FirmaSiniflandirmaKaydetDto
+    {
+        public DefterUsulu DefterUsulu { get; set; }
+        public VergiTuru VergiTuru { get; set; }
+        public string? MizanFormati { get; set; }
+        public HesapDonemi? HesapDonemi { get; set; }
+        public DateTime? OzelDonemBas { get; set; }
+        public DateTime? OzelDonemBit { get; set; }
+
+        /// <summary>Kayıtlı sınıflandırmayı kodlarla uyuşmasa da onayla (kaynak "elle" olur).</summary>
+        public bool Onayla { get; set; }
     }
 
     public class FirmaPaneliYetkiliDto
@@ -73,11 +274,15 @@ namespace WebApp.Shared.Dto.Anasayfa
         public string Unvan { get; set; } = string.Empty;
 
         public FirmaMukellefiyetDto Mukellefiyet { get; set; } = new();
+        public FirmaPaneliSiniflandirmaDto Siniflandirma { get; set; } = new();
         public FirmaPaneliSicilDto Sicil { get; set; } = new();
         public FirmaOrtaklikDto Ortaklik { get; set; } = new();
         public List<FirmaPaneliYetkiliDto> Yetkililer { get; set; } = new();
+        public FirmaYetkiRozetiDto? YetkiRozeti { get; set; }
+        public FirmaPaneliTakipDto Takip { get; set; } = new();
         public List<FirmaBelgesiDto> Belgeler { get; set; } = new();
         public List<FirmaUyariDto> Uyarilar { get; set; } = new();
+        public List<EksikAlanDto> Eksikler { get; set; } = new();
     }
 
     /// <summary>

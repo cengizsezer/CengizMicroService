@@ -59,6 +59,9 @@
 
 <RadzenStack Gap="1rem">
 
+    @* Bütün firmaların gecikmiş işleri — firma künyesinin üstünde; gecikmiş yoksa hiç çizilmez. *@
+    <YapilacaklarSeridi @ref="yapilacaklarSeridi" />
+
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
                  JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap" Gap="0.5rem">
         <RadzenStack Gap="0">
@@ -225,6 +228,7 @@
         : Tr.DateTimeFormat.GetMonthName(ozet.Ay) + " " + ozet.Yil;
 
     private FirmaPaneli? firmaPaneli;
+    private YapilacaklarSeridi? yapilacaklarSeridi;
 
     protected override async Task OnInitializedAsync() => await Yukle();
 
@@ -237,6 +241,7 @@
     {
         await Yukle();
         if (firmaPaneli is not null) await firmaPaneli.Tazele();
+        if (yapilacaklarSeridi is not null) await yapilacaklarSeridi.Tazele();
     }
 
     private async Task Yukle()

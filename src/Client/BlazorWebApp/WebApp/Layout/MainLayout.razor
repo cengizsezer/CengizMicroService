@@ -86,6 +86,9 @@
                 @* Giriş sonrası varsayılan sayfa; kartları ilgili ekranlara götürüyor. *@
                 <RadzenPanelMenuItem Text="Anasayfa" Icon="dashboard" Path="/anasayfa" />
 
+                @* Bütün firmaların işleri aciliyete göre; Beyannameler maddesi yerinde kalır. *@
+                <RadzenPanelMenuItem Text="Yapılacaklar" Icon="checklist" Path="/yapilacaklar" />
+
                 <RadzenPanelMenuItem Text="Şirket" Icon="business_center">
                     @if (canViewCalendar)
                     {
@@ -223,6 +226,8 @@
                     <RadzenPanelMenuItem Text="Mükellefler" Icon="groups"   Path="/yonetim/mukellefler" />
                     <RadzenPanelMenuItem Text="Düzenleyen Bilgileri" Icon="badge" Path="/yonetim/duzenleyen" />
                     <RadzenPanelMenuItem Text="Personel Mailleri" Icon="mail" Path="/yonetim/personel-mailleri" />
+                    @* Yapılacaklar'ın yasal işlerinin son günleri: tarihler koda gömülü değil, burada düzenlenir. *@
+                    <RadzenPanelMenuItem Text="Vergi Takvimi" Icon="event_note" Path="/yonetim/vergi-takvimi" />
                     @if (canViewAjanlar)
                     {
                         @* Ajan yönetimi rolde değil izinde: pkf kullanıcılarının Admin

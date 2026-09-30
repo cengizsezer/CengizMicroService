@@ -66,6 +66,23 @@ namespace CatalogService.Api.Infrastructure.Context
 
         public DbSet<Features.FirmaBilgileri.Domain.FirmaBelgesi> FirmaBelgeleri
             => Set<Features.FirmaBilgileri.Domain.FirmaBelgesi>();
+
+        // Anasayfa Takip kartı: notlar ve olay kaydı (yalnız yazma işlemleri).
+        public DbSet<Features.Anasayfa.Domain.FirmaNotu> FirmaNotlari
+            => Set<Features.Anasayfa.Domain.FirmaNotu>();
+
+        public DbSet<Features.Anasayfa.Domain.FirmaOlayKaydi> FirmaOlayKayitlari
+            => Set<Features.Anasayfa.Domain.FirmaOlayKaydi>();
+
+        // Firma işleri + Yapılacaklar: özel işler, yasal takvim, tek tamamlama tablosu.
+        public DbSet<Features.Yapilacaklar.Domain.FirmaIsi> FirmaIsleri
+            => Set<Features.Yapilacaklar.Domain.FirmaIsi>();
+
+        public DbSet<Features.Yapilacaklar.Domain.VergiTakvimi> VergiTakvimi
+            => Set<Features.Yapilacaklar.Domain.VergiTakvimi>();
+
+        public DbSet<Features.Yapilacaklar.Domain.IsTamamlama> IsTamamlamalari
+            => Set<Features.Yapilacaklar.Domain.IsTamamlama>();
         public DbSet<AccountNode> AccountNodes => Set<AccountNode>();
 
         public DbSet<PayrollParameter> PayrollParameters => Set<PayrollParameter>();
@@ -201,6 +218,11 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new FirmaOrtakEntityTypeConfiguration());
             builder.ApplyConfiguration(new FirmaImzaYetkilisiEntityTypeConfiguration());
             builder.ApplyConfiguration(new FirmaBelgesiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new FirmaNotuEntityTypeConfiguration());
+            builder.ApplyConfiguration(new FirmaOlayKaydiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new FirmaIsiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new VergiTakvimiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new IsTamamlamaEntityTypeConfiguration());
             builder.ApplyConfiguration(new TaxPaymentConfiguration());
             builder.ApplyConfiguration(new FirmaEntityTypeConfiguration());
             builder.ApplyConfiguration(new MukellefEntityTypeConfiguration());

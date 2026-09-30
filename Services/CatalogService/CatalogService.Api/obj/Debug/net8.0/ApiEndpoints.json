@@ -355,6 +355,282 @@
     ]
   },
   {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.FirmaIsleriController",
+    "Method": "Kart",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/isler",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.FirmaIsleriKartDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.FirmaIsleriController",
+    "Method": "Ekle",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/isler",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.FirmaIsiKaydetDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.FirmaIsiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.FirmaIsleriController",
+    "Method": "Guncelle",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/isler/{isId}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "isId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.FirmaIsiKaydetDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.FirmaIsiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.FirmaIsleriController",
+    "Method": "Sil",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/isler/{isId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "isId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Anasayfa.Controllers.AnasayfaController",
+    "Method": "Notlar",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/notlar",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.Anasayfa.Dtos.FirmaNotuDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Anasayfa.Controllers.AnasayfaController",
+    "Method": "NotEkle",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/notlar",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Anasayfa.Dtos.FirmaNotuEkleDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Anasayfa.Dtos.FirmaNotuDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Anasayfa.Controllers.AnasayfaController",
+    "Method": "NotSil",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/notlar/{notId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "notId",
+        "Type": "System.Int64",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Anasayfa.Controllers.AnasayfaController",
+    "Method": "Olaylar",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/olaylar",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.Anasayfa.Dtos.FirmaOlayDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Anasayfa.Controllers.AnasayfaController",
+    "Method": "SiniflandirmaKaydet",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/siniflandirma",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Anasayfa.Dtos.FirmaSiniflandirmaKaydetDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Anasayfa.Controllers.AnasayfaController",
+    "Method": "SorumluAta",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/sorumlu",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Anasayfa.Dtos.FirmaSorumluAtaDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Anasayfa.Controllers.AnasayfaController",
+    "Method": "MizanSablonu",
+    "RelativePath": "api/catalog/anasayfa/mizan-sablonu",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "format",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "CatalogService.Api.Features.Anasayfa.Controllers.AnasayfaController",
     "Method": "Ozet",
     "RelativePath": "api/catalog/anasayfa/ozet",
@@ -8140,6 +8416,177 @@
     "ReturnTypes": [
       {
         "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.Vehicles.DTO.VehicleDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.VergiTakvimiController",
+    "Method": "Liste",
+    "RelativePath": "api/catalog/vergi-takvimi",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "yil",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.Yapilacaklar.Dtos.VergiTakvimiDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.VergiTakvimiController",
+    "Method": "Ekle",
+    "RelativePath": "api/catalog/vergi-takvimi",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.VergiTakvimiKaydetDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.VergiTakvimiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.VergiTakvimiController",
+    "Method": "Guncelle",
+    "RelativePath": "api/catalog/vergi-takvimi/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.VergiTakvimiKaydetDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.VergiTakvimiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.VergiTakvimiController",
+    "Method": "Sil",
+    "RelativePath": "api/catalog/vergi-takvimi/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.VergiTakvimiController",
+    "Method": "Varsayilanlar",
+    "RelativePath": "api/catalog/vergi-takvimi/varsayilanlar",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.YapilacaklarController",
+    "Method": "Liste",
+    "RelativePath": "api/catalog/yapilacaklar",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "filtre",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.YapilacaklarDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.YapilacaklarController",
+    "Method": "Isaretle",
+    "RelativePath": "api/catalog/yapilacaklar/isaretle",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.IsIsaretleDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.YapilacaklarController",
+    "Method": "Ozet",
+    "RelativePath": "api/catalog/yapilacaklar/ozet",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.YapilacaklarOzetDto",
         "MediaTypes": [
           "text/plain",
           "application/json",

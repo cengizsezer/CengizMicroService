@@ -39,5 +39,18 @@ namespace CatalogService.Api.Features.FirmaKontrol.Domain
         public int DugumSayisi { get; set; }
 
         public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
+
+        // ---- Yükleme özeti (anasayfa "mizan durumu") ----
+        // Kayıt sırasında bir kez yazılır; okuyan ekran JSON'u açmaz, hesap yapmaz.
+        // Bu alanlar gelmeden önce yüklenmiş kayıtlarda BOŞ kalır; ekran "—" gösterir.
+
+        /// <summary>En derin düğümün seviyesi (ana hesap = 1). Boşsa bilinmiyor.</summary>
+        public int? SeviyeSayisi { get; set; }
+
+        /// <summary>Ana hesap düğümlerinin borç bakiyeleri toplamı. Boşsa bilinmiyor.</summary>
+        public decimal? BorcToplam { get; set; }
+
+        /// <summary>Ana hesap düğümlerinin alacak bakiyeleri toplamı. Boşsa bilinmiyor.</summary>
+        public decimal? AlacakToplam { get; set; }
     }
 }

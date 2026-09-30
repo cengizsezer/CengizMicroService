@@ -121,7 +121,7 @@ namespace CatalogService.UnitTests.Anasayfa
         }
 
         private static Task<FirmaPaneliDto> Panel(CatalogContext db, int? firmaId)
-            => new FirmaPaneliService(db).PanelAsync(firmaId);
+            => new FirmaPaneliService(db, () => Bugun).PanelAsync(firmaId);
 
         /// <summary>Kurucuyu doğrudan çağırmak için tek firmalık kısayol.</summary>
         private static List<FirmaUyariDto> Uyarilar(Firma firma, FirmaSicilBilgisi? sicil,
@@ -286,7 +286,9 @@ namespace CatalogService.UnitTests.Anasayfa
                 new FirmaImzaYetkilisi { Ad = "Eski", YetkiBitis = Bugun.AddDays(-10) }
             }));
 
-            Assert.Equal(FirmaUyariTuru.ImzaYetkisiBitiyor, uyari.Tur);
+            // 6B: hepsi dolmuşsa uyarı "Geçerli imza yetkilisi yok" türünde.
+            Assert.Equal(FirmaUyariTuru.GecerliYetkiliYok, uyari.Tur);
+            Assert.Contains("Geçerli imza yetkilisi yok", uyari.Mesaj);
             Assert.Contains("10 gün önce doldu", uyari.Mesaj);
         }
 
@@ -364,13 +366,15 @@ namespace CatalogService.UnitTests.Anasayfa
         }
 
         [Fact]
-        public async Task Detay_sicil_bolumunde_orka_firma_kodu_geliyor()
+        public async Task Detay_orka_firma_kodu_siniflandirma_kartinda_geliyor()
         {
-            // Panel okuma odaklı; kodun eksik olduğu firmada boş görünmesi de bilgi.
+            // ORKA firma kodu bir program ayarı; Sicil kartından Sınıflandırma kartına
+            // taşındı (alan aynı alan). Kodun eksik olduğu firmada boş görünmesi de bilgi.
             using var db = Context();
 
-            Assert.Equal("0001", (await Panel(db, FirmaA)).Secili!.Sicil.OrkaFirmaKodu);
-            Assert.Null((await Panel(db, FirmaC)).Secili!.Sicil.OrkaFirmaKodu);
+            Assert.Equal("0001", (await Panel(db, FirmaA)).Secili!.Siniflandirma.OrkaFirmaKodu);
+            Assert.Null((await Panel(db, FirmaC)).Secili!.Siniflandirma.OrkaFirmaKodu);
+            Assert.DoesNotContain(typeof(FirmaPaneliSicilDto).GetProperties(), p => p.Name == "OrkaFirmaKodu");
         }
 
         [Fact]

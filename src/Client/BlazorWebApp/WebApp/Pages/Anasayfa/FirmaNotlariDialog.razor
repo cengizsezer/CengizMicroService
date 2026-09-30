@@ -1,0 +1,119 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto.Anasayfa
+
+@inject IAnasayfaApiClient Api
+@inject DialogService DialogService
+
+@*
+    Takip kartı — firmanın bütün notları (yeni → eski) ve not ekleme. Silme yalnız notu
+    yazana açık; sunucu da aynı kuralı uygular (başkasının notu 403).
+*@
+
+<div class="an-form">
+    <div>
+        <RadzenTextArea @bind-Value="yeniMetin" Rows="3" MaxLength="2000" Placeholder="Not yazın…" Style="width:100%" />
+        <div class="an-form-dugmeler">
+            <RadzenButton Text="Not ekle" Icon="add" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Primary"
+                          Disabled="@string.IsNullOrWhiteSpace(yeniMetin)" IsBusy="@kaydediliyor" Click="@Ekle" />
+        </div>
+    </div>
+
+    @if (hata is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">@hata</RadzenAlert>
+    }
+
+    @if (notlar is null)
+    {
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+    }
+    else if (notlar.Count == 0)
+    {
+        <div class="an-bos">Henüz not yok.</div>
+    }
+    else
+    {
+        <div class="an-not-liste">
+            @foreach (var not in notlar)
+            {
+                <div class="an-not-satir">
+                    <div class="an-not-metin">@not.Metin</div>
+                    <div class="an-not-alt">
+                        <span>@(not.OlusturanKullaniciAdi ?? "—") · @not.OlusturmaZamani.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                        @if (not.Silinebilir)
+                        {
+                            <span class="an-sil" role="button" @onclick="@(() => Sil(not))">Sil</span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .an-form { display:flex; flex-direction:column; gap:.8rem; }
+    .an-form-dugmeler { display:flex; justify-content:flex-end; gap:.5rem; margin-top:.35rem; }
+    .an-bos { font-size:12.5px; color:#a0aec0; }
+    .an-not-liste { display:flex; flex-direction:column; max-height:55vh; overflow-y:auto; }
+    .an-not-satir { padding:.5rem 0; border-bottom:1px solid #f2f5f9; }
+    .an-not-satir:last-child { border-bottom:none; }
+    .an-not-metin { font-size:13px; color:#2d3748; white-space:pre-wrap; word-break:break-word; }
+    .an-not-alt { display:flex; justify-content:space-between; font-size:11.5px; color:#a0aec0; margin-top:.2rem; }
+    .an-sil { color:#c53030; cursor:pointer; }
+    .an-sil:hover { text-decoration:underline; }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+
+    private List<FirmaNotuDto>? notlar;
+    private string? yeniMetin;
+    private bool kaydediliyor;
+    private string? hata;
+
+    protected override async Task OnInitializedAsync() => await Yukle();
+
+    private async Task Yukle()
+    {
+        notlar = await Api.NotlarAsync(FirmaId);
+        if (notlar is null)
+        {
+            notlar = new();
+            hata = "Notlar alınamadı.";
+        }
+    }
+
+    private async Task Ekle()
+    {
+        hata = null;
+        kaydediliyor = true;
+        try
+        {
+            hata = await Api.NotEkleAsync(FirmaId, yeniMetin!.Trim());
+        }
+        finally
+        {
+            kaydediliyor = false;
+        }
+
+        if (hata is not null) return;
+
+        yeniMetin = null;
+        await Yukle();
+    }
+
+    private async Task Sil(FirmaNotuDto not)
+    {
+        var onay = await DialogService.Confirm("Not silinecek.", "Not silme",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        hata = await Api.NotSilAsync(FirmaId, not.Id);
+        if (hata is not null) return;
+
+        await Yukle();
+    }
+}

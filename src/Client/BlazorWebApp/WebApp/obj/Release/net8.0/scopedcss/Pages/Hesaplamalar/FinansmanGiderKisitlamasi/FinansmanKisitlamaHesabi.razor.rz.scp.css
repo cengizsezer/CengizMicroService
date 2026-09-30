@@ -1,0 +1,258 @@
+/* Hesaplamalar > Finansman Gider Kısıtlaması.
+   Bordro sekmesinin CSS'i tam sayfa kabuk kurar (html/body'ye dokunur); bu sekme
+   şeridin altındaki normal akışta kalsın diye yalnız kendi kutularını biçimliyor. */
+
+.fgk-sayfa[b-15ii1t2tab] {
+    font-family: Arial, sans-serif;
+    color: #222;
+    max-width: 1400px;
+}
+
+/* ---- Üst şerit: yıl + geçerli oran + oran tablosu düğmesi ---- */
+
+.fgk-ust[b-15ii1t2tab] {
+    display: flex;
+    align-items: flex-end;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.fgk-alan[b-15ii1t2tab] {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+    .fgk-alan label[b-15ii1t2tab] {
+        font-size: 12px;
+        color: #4a5568;
+    }
+
+.fgk-oran-rozet[b-15ii1t2tab] {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 6px 14px;
+    border: 1px solid #cfe0f5;
+    border-radius: 6px;
+    background: #f2f7ff;
+}
+
+.fgk-oran-etiket[b-15ii1t2tab] {
+    font-size: 12px;
+    color: #4a5568;
+}
+
+.fgk-oran-deger[b-15ii1t2tab] {
+    font-size: 16px;
+    font-weight: 700;
+    color: #2b6cb0;
+}
+
+/* ---- Oran tablosu paneli ---- */
+
+.fgk-oran-panel[b-15ii1t2tab] {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+}
+
+.fgk-panel-baslik[b-15ii1t2tab] {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.fgk-panel-not[b-15ii1t2tab] {
+    font-weight: 400;
+    font-size: 12px;
+    color: #718096;
+    margin-left: 8px;
+}
+
+.fgk-oran-tablo[b-15ii1t2tab] {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+    .fgk-oran-tablo th[b-15ii1t2tab] {
+        text-align: left;
+        font-weight: 600;
+        color: #4a5568;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 6px 8px;
+    }
+
+    .fgk-oran-tablo td[b-15ii1t2tab] {
+        border-bottom: 1px solid #f0f4f8;
+        padding: 6px 8px;
+        vertical-align: middle;
+    }
+
+.fgk-yeni-satir td[b-15ii1t2tab] {
+    background: #fafcff;
+}
+
+.fgk-islem[b-15ii1t2tab] {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+/* ---- Dokuz satırlık form + açıklamalar ---- */
+
+.fgk-govde[b-15ii1t2tab] {
+    display: flex;
+    gap: 18px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.fgk-form[b-15ii1t2tab] {
+    flex: 1 1 620px;
+    min-width: 520px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+    padding: 10px 12px;
+}
+
+.fgk-satir[b-15ii1t2tab] {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 4px;
+    border-bottom: 1px solid #f0f4f8;
+}
+
+    .fgk-satir:last-of-type[b-15ii1t2tab] {
+        border-bottom: none;
+    }
+
+.fgk-no[b-15ii1t2tab] {
+    flex: 0 0 24px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    border-radius: 50%;
+    background: #edf2f7;
+    color: #4a5568;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.fgk-etiket[b-15ii1t2tab] {
+    flex: 1 1 auto;
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+.fgk-formul[b-15ii1t2tab] {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    background: #edf2f7;
+    color: #718096;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.fgk-zorunlu[b-15ii1t2tab] {
+    color: #c53030;
+    margin-left: 2px;
+}
+
+.fgk-deger[b-15ii1t2tab] {
+    flex: 0 0 220px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Hesaplanan satırlar salt okunur ve görsel olarak ayrışıyor. */
+.fgk-satir.hesaplanan[b-15ii1t2tab] {
+    background: #f7fafc;
+}
+
+    .fgk-satir.hesaplanan .fgk-deger[b-15ii1t2tab] {
+        font-weight: 600;
+        color: #2d3748;
+        padding-right: 10px;
+    }
+
+.fgk-satir.sonuc[b-15ii1t2tab] {
+    background: #f2f7ff;
+    border: 1px solid #cfe0f5;
+    border-radius: 6px;
+    margin-top: 6px;
+}
+
+    .fgk-satir.sonuc .fgk-etiket[b-15ii1t2tab] {
+        font-weight: 700;
+    }
+
+    .fgk-satir.sonuc .fgk-deger[b-15ii1t2tab] {
+        font-size: 17px;
+        font-weight: 700;
+        color: #2b6cb0;
+    }
+
+.fgk-dipnot[b-15ii1t2tab] {
+    font-size: 11px;
+    color: #a0aec0;
+    padding: 8px 4px 2px 4px;
+}
+
+.fgk-hata[b-15ii1t2tab],
+.fgk-bilgi[b-15ii1t2tab] {
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.fgk-hata[b-15ii1t2tab] {
+    border: 1px solid #fbb6b6;
+    background: #fff5f5;
+    color: #9b2c2c;
+}
+
+.fgk-bilgi[b-15ii1t2tab] {
+    border: 1px solid #cfe0f5;
+    background: #f2f7ff;
+    color: #2c5282;
+}
+
+/* ---- Açıklama sütunu ---- */
+
+.fgk-notlar[b-15ii1t2tab] {
+    flex: 1 1 320px;
+    min-width: 280px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fffdf6;
+    padding: 12px 14px;
+}
+
+.fgk-notlar-baslik[b-15ii1t2tab] {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 8px;
+    color: #744210;
+}
+
+.fgk-notlar ul[b-15ii1t2tab] {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.fgk-notlar li[b-15ii1t2tab] {
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: #4a5568;
+    margin-bottom: 8px;
+}

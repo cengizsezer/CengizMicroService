@@ -1,3 +1,5 @@
+using CatalogService.Api.Features.Anasayfa.Domain;
+using CatalogService.Api.Features.Anasayfa.Services;
 using CatalogService.Api.Features.FirmaKontrol.Domain;
 using CatalogService.Api.Features.FirmaKontrol.Dtos;
 using CatalogService.Api.Infrastructure.Context;
@@ -17,8 +19,13 @@ namespace CatalogService.Api.Features.FirmaKontrol.Services
         };
 
         private readonly CatalogContext _db;
+        private readonly IFirmaOlayYazici? _olay;
 
-        public FirmaKontrolMizanService(CatalogContext db) => _db = db;
+        public FirmaKontrolMizanService(CatalogContext db, IFirmaOlayYazici? olay = null)
+        {
+            _db = db;
+            _olay = olay;
+        }
 
         public async Task<List<FirmaKontrolMizanSatirDto>> GetSatirlarAsync(int firmaId, int yil, CancellationToken ct = default)
         {
@@ -119,27 +126,39 @@ namespace CatalogService.Api.Features.FirmaKontrol.Services
             {
                 var json = JsonSerializer.Serialize(req.Dugumler, JsonAyar);
 
+                // Yükleme özeti bir kez burada yazılır; anasayfa okur, hesaplamaz.
+                var ozet = MizanYuklemeOzeti.Hesapla(req.Dugumler);
+
                 if (mevcutAgac is null)
                 {
-                    _db.FirmaKontrolMizanAgaclari.Add(new FirmaKontrolMizanAgac
+                    mevcutAgac = new FirmaKontrolMizanAgac
                     {
                         FirmaId = firmaId,
                         Donem = req.Donem,
-                        Yil = req.Yil,
-                        DugumlerJson = json,
-                        DugumSayisi = req.Dugumler.Count,
-                        UploadedAt = now
-                    });
+                        Yil = req.Yil
+                    };
+                    _db.FirmaKontrolMizanAgaclari.Add(mevcutAgac);
                 }
-                else
-                {
-                    mevcutAgac.DugumlerJson = json;
-                    mevcutAgac.DugumSayisi = req.Dugumler.Count;
-                    mevcutAgac.UploadedAt = now;
-                }
+
+                mevcutAgac.DugumlerJson = json;
+                mevcutAgac.DugumSayisi = req.Dugumler.Count;
+                mevcutAgac.UploadedAt = now;
+                mevcutAgac.SeviyeSayisi = ozet.SeviyeSayisi;
+                mevcutAgac.BorcToplam = ozet.BorcToplam;
+                mevcutAgac.AlacakToplam = ozet.AlacakToplam;
             }
 
             await _db.SaveChangesAsync(ct);
+
+            // "Son işlemler" — asıl kayıt bittikten sonra, ayrı try/catch'li yazıcıyla.
+            if (_olay is not null)
+            {
+                var veriYili = req.Donem == 1 ? req.Yil : req.Yil - 1;
+                var donem = req.Donem == 1 ? "cari dönem" : "önceki dönem";
+                var satir = req.Dugumler.Count > 0 ? req.Dugumler.Count : eklenenKodlar.Count;
+                await _olay.YazAsync(firmaId, FirmaOlayTipi.MizanYuklendi,
+                                     $"{veriYili} mizanı yüklendi ({donem}, {satir:N0} satır)", ct);
+            }
         }
 
         public async Task SifirlaAsync(int firmaId, int yil, CancellationToken ct = default)

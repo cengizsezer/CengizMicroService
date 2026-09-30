@@ -7,7 +7,8 @@ namespace CatalogService.Api.Features.Anasayfa.Services
 {
     public interface IFirmaPaneliService
     {
-        Task<FirmaPaneliDto> PanelAsync(int? seciliFirmaId, CancellationToken ct = default);
+        /// <param name="kullaniciId">İsteği yapan kullanıcı (JWT <c>sub</c>); notun silinebilirliği için.</param>
+        Task<FirmaPaneliDto> PanelAsync(int? seciliFirmaId, CancellationToken ct = default, string? kullaniciId = null);
     }
 
     /// <summary>
@@ -29,10 +30,17 @@ namespace CatalogService.Api.Features.Anasayfa.Services
     public class FirmaPaneliService : IFirmaPaneliService
     {
         private readonly CatalogContext _db;
+        private readonly Func<DateTime> _bugun;
 
-        public FirmaPaneliService(CatalogContext db) => _db = db;
+        /// <param name="bugun">Testler için sabit gün; üretimde <see cref="DateTime.Today"/>.</param>
+        public FirmaPaneliService(CatalogContext db, Func<DateTime>? bugun = null)
+        {
+            _db = db;
+            _bugun = bugun ?? (() => DateTime.Today);
+        }
 
-        public async Task<FirmaPaneliDto> PanelAsync(int? seciliFirmaId, CancellationToken ct = default)
+        public async Task<FirmaPaneliDto> PanelAsync(int? seciliFirmaId, CancellationToken ct = default,
+                                                     string? kullaniciId = null)
         {
             var firmalar = await _db.Firmalar.AsNoTracking()
                 .Where(f => f.Aktif)
@@ -79,14 +87,99 @@ namespace CatalogService.Api.Features.Anasayfa.Services
                 })
                 .ToListAsync(ct);
 
-            return FirmaPaneliKurucu.Kur(
-                DateTime.Today,
+            var mizanlar = await MizanYuklemeleriAsync(idler, ct);
+
+            var panel = FirmaPaneliKurucu.Kur(
+                _bugun(),
                 firmalar,
                 siciller.ToDictionary(s => s.FirmaId),
                 ortaklar.ToLookup(o => o.FirmaId),
                 yetkililer.ToLookup(y => y.FirmaId),
                 belgeler,
-                seciliId);
+                seciliId,
+                mizanlar.ToLookup(m => m.FirmaId));
+
+            if (panel.Secili is not null)
+                await TakipDoldurAsync(panel.Secili.Takip, seciliId, kullaniciId, ct);
+
+            return panel;
+        }
+
+        /// <summary>Takip kartının son notu ve son beş olayı — yalnız seçili firma için.</summary>
+        private async Task TakipDoldurAsync(FirmaPaneliTakipDto takip, int firmaId, string? kullaniciId,
+                                            CancellationToken ct)
+        {
+            var notlar = _db.FirmaNotlari.AsNoTracking().Where(n => n.FirmaId == firmaId);
+
+            takip.NotSayisi = await notlar.CountAsync(ct);
+            takip.SonNot = await notlar
+                .OrderByDescending(n => n.OlusturmaZamani).ThenByDescending(n => n.Id)
+                .Select(n => new FirmaNotuDto
+                {
+                    Id = n.Id,
+                    Metin = n.Metin,
+                    OlusturanKullaniciAdi = n.OlusturanKullaniciAdi,
+                    OlusturmaZamani = DateTime.SpecifyKind(n.OlusturmaZamani, DateTimeKind.Utc),
+                    Silinebilir = kullaniciId != null && n.OlusturanKullaniciId == kullaniciId
+                })
+                .FirstOrDefaultAsync(ct);
+
+            takip.SonOlaylar = await OlaylarAsync(_db, firmaId, SonOlaySayisi, ct);
+        }
+
+        /// <summary>Takip kartında gösterilen olay sayısı; tamamı "Tüm hareketler"de.</summary>
+        public const int SonOlaySayisi = 5;
+
+        /// <summary>Firmanın olayları, yeni → eski. <paramref name="adet"/> boşsa tamamı.</summary>
+        public static async Task<List<FirmaOlayDto>> OlaylarAsync(CatalogContext db, int firmaId, int? adet,
+                                                                 CancellationToken ct)
+        {
+            var sorgu = db.FirmaOlayKayitlari.AsNoTracking()
+                .Where(o => o.FirmaId == firmaId)
+                .OrderByDescending(o => o.Zaman).ThenByDescending(o => o.Id)
+                .AsQueryable();
+
+            if (adet is { } n) sorgu = sorgu.Take(n);
+
+            return await sorgu
+                .Select(o => new FirmaOlayDto
+                {
+                    OlayTipi = o.OlayTipi,
+                    Aciklama = o.Aciklama,
+                    KullaniciAdi = o.KullaniciAdi,
+                    Zaman = DateTime.SpecifyKind(o.Zaman, DateTimeKind.Utc)
+                })
+                .ToListAsync(ct);
+        }
+
+        /// <summary>
+        /// Bütün firmaların mizan yüklemeleri, iki sorguda. Ağaç kaydından yalnız özet
+        /// kolonları okunuyor — düğüm JSON'u (binlerce düğüm) anasayfaya taşınmıyor.
+        /// Ağacı olmayan (özellikten önceki) yüklemeler ham satır tablosundan geliyor;
+        /// onların özet alanları boş.
+        /// </summary>
+        private async Task<List<MizanYuklemesi>> MizanYuklemeleriAsync(List<int> idler, CancellationToken ct)
+        {
+            var agaclar = await _db.FirmaKontrolMizanAgaclari.AsNoTracking()
+                .Where(a => idler.Contains(a.FirmaId))
+                .Select(a => new MizanYuklemesi(a.FirmaId, a.Donem, a.Yil, a.UploadedAt,
+                                                a.DugumSayisi, a.SeviyeSayisi, a.BorcToplam, a.AlacakToplam))
+                .ToListAsync(ct);
+
+            var hamlar = await _db.FirmaKontrolMizanSatirlari.AsNoTracking()
+                .Where(s => idler.Contains(s.FirmaId))
+                .GroupBy(s => new { s.FirmaId, s.Donem, s.Yil })
+                .Select(g => new { g.Key.FirmaId, g.Key.Donem, g.Key.Yil, Zaman = g.Max(s => s.UploadedAt) })
+                .ToListAsync(ct);
+
+            var agacAnahtarlari = agaclar.Select(a => (a.FirmaId, a.Donem, a.AnalizYili)).ToHashSet();
+
+            agaclar.AddRange(hamlar
+                .Where(h => !agacAnahtarlari.Contains((h.FirmaId, (int)h.Donem, h.Yil)))
+                .Select(h => new MizanYuklemesi(h.FirmaId, (int)h.Donem, h.Yil, h.Zaman,
+                                                null, null, null, null)));
+
+            return agaclar;
         }
     }
 }

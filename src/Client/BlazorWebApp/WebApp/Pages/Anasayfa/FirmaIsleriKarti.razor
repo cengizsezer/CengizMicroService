@@ -1,0 +1,257 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Pages.Yapilacaklar
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@inject IYapilacaklarApiClient Api
+@inject DialogService DialogService
+@inject NavigationManager Nav
+
+@*
+    Firma işleri (tasarım F) — seçili firmanın iki gruplu iş listesi.
+
+    Yasal: mükellefiyet kodlarından türetilir, KİLİTLİ. Ad ve tarih Vergi takviminden gelir;
+    burada değiştirilemez, silinemez, yalnız "yapıldı" işaretlenir.
+    Firmaya özel: tam düzenlenebilir, silinebilir.
+
+    İşaretlenen iş listeden kaybolmaz: üstü çizilir, "bu dönem yapıldı" rozeti alır, altında
+    sıradaki dönem görünür. Satırların hepsi sunucuda kurulur (YapilacaklarKurucu) —
+    Yapılacaklar ekranı da aynı satırları gösterir.
+
+    Kendi verisini ayrı çağrıyla alır: durum hesabı sunucunun saat servisine bağlı ve firma
+    paneli servisi değişmesin diye panel çağrısına katılmadı.
+*@
+
+<YsStiller />
+
+<RadzenCard Variant="Variant.Outlined" class="fp-bolum" id="ys-kart-isler">
+    <div class="fp-bolum-basi">
+        <span class="fp-bolum-ad">
+            <RadzenIcon Icon="checklist" Style="font-size:17px" />
+            Firma işleri
+            @if (kart is { GeciktiSayisi: > 0 })
+            {
+                <span class="ys-sayi ys-rozet-gecikti">@kart.GeciktiSayisi gecikmiş</span>
+            }
+            @if (kart is { BuAySayisi: > 0 })
+            {
+                <span class="ys-sayi ys-rozet-hafta">@kart.BuAySayisi bu ay</span>
+            }
+        </span>
+        <span class="ys-bag" role="button" @onclick="Ekle">+ İş ekle</span>
+    </div>
+
+    @if (kart is null)
+    {
+        <div class="ys-bos">@(hata ?? "Yükleniyor…")</div>
+    }
+    else
+    {
+        @* ---- Yasal ---- *@
+        <div class="ys-grup">
+            <div class="ys-grup-basi">
+                <span class="ys-grup-ad">Yasal — mükellefiyetten türetildi</span>
+                <span class="ys-grup-not">tarihler Vergi takviminden gelir, elle değiştirilmez</span>
+            </div>
+
+            @if (kart.Yasal.Count == 0)
+            {
+                <div class="ys-bos">
+                    @(kart.MukellefiyetKodlari.Count == 0
+                        ? "Mükellefiyet kodu girilmemiş; yasal iş türetilemedi."
+                        : "Bu firmanın kodları için takvimde aktif satır yok.")
+                </div>
+            }
+            @foreach (var s in kart.Yasal)
+            {
+                @Satir(s, duzenlenebilir: false)
+            }
+
+            @if (kart.TakvimdeOlmayanKodlar.Count > 0)
+            {
+                <div class="ys-alt" style="margin-top:.3rem">
+                    Takvimde karşılığı olmayan kod: @string.Join(", ", kart.TakvimdeOlmayanKodlar) —
+                    <span class="ys-bag" role="button" @onclick="@(() => Nav.NavigateTo("/yonetim/vergi-takvimi"))">Vergi takvimi</span>
+                </div>
+            }
+        </div>
+
+        @* ---- Firmaya özel ---- *@
+        <div class="ys-grup">
+            <div class="ys-grup-basi">
+                <span class="ys-grup-ad">Firmaya özel — senin eklediklerin</span>
+            </div>
+
+            @if (kart.OzelTanimlar.Count == 0)
+            {
+                <div class="ys-bos">Özel iş yok. "+ İş ekle" ile ekleyebilirsin.</div>
+            }
+            @foreach (var s in kart.Ozel)
+            {
+                @Satir(s, duzenlenebilir: SonSatirMi(s))
+            }
+            @foreach (var t in PasifTanimlar)
+            {
+                <div class="ys-satir ys-pasif">
+                    <span></span>
+                    <div>
+                        <div class="ys-baslik">@t.Baslik</div>
+                        <div class="ys-alt">Firmaya özel · @t.KuralMetni</div>
+                    </div>
+                    <span class="ys-songun">—</span>
+                    <span>
+                        <span class="ys-rozet ys-rozet-sonra">@(t.Aktif ? "Tarihi yok" : "Pasif")</span>
+                        @Islemler(t)
+                    </span>
+                </div>
+            }
+        </div>
+
+        @if (hata is not null)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small"
+                         Style="margin-top:.5rem">@hata</RadzenAlert>
+        }
+    }
+</RadzenCard>
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+    [Parameter] public string FirmaAdi { get; set; } = string.Empty;
+
+    /// <summary>Kayıt yapıldı; üst bileşen Takip kartının "Son işlemler"ini tazeler.</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    private FirmaIsleriKartDto? kart;
+    private int yukluFirma;
+    private string? hata;
+    private bool isleniyor;
+
+    /// <summary>Görünen dönemi olmayan tanımlar (pasif ya da tarihsiz) — düzenlenebilsin diye ayrıca listelenir.</summary>
+    private IEnumerable<FirmaIsiDto> PasifTanimlar
+        => kart?.OzelTanimlar.Where(t => kart.Ozel.All(s => s.KaynakId != t.Id)) ?? Enumerable.Empty<FirmaIsiDto>();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (FirmaId == yukluFirma) return;
+        yukluFirma = FirmaId;
+        kart = null;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        var sonuc = await Api.FirmaIsleriAsync(FirmaId);
+        hata = sonuc is null ? "Firma işleri alınamadı." : null;
+        kart = sonuc ?? kart;
+    }
+
+    /// <summary>Aynı işin birden çok satırı (yapılmış + sıradaki) olabilir; düzenle/sil yalnız sonuncusunda.</summary>
+    private bool SonSatirMi(IsSatiriDto s)
+        => kart!.Ozel.LastOrDefault(x => x.KaynakId == s.KaynakId) == s;
+
+    private RenderFragment Satir(IsSatiriDto s, bool duzenlenebilir) => __builder =>
+    {
+        <div class="@(s.Tamamlandi ? "ys-satir ys-cizili" : "ys-satir")">
+            <input type="checkbox" checked="@s.Tamamlandi" disabled="@isleniyor"
+                   title="@(s.Tamamlandi ? "İşareti kaldır" : "Bu dönem yapıldı olarak işaretle")"
+                   @onchange="@(() => Isaretle(s))" />
+            <div>
+                <div class="ys-baslik">
+                    @if (s.KaynakTip == IsKaynagi.Yasal)
+                    {
+                        <RadzenIcon Icon="lock" class="ys-kilit" title="Mükellefiyetten türetildi; değiştirilemez" />
+                    }
+                    @s.Baslik
+                </div>
+                <div class="ys-alt">@AltSatir(s)</div>
+            </div>
+            <span class="ys-songun">@s.SonGun.ToString("dd.MM.yyyy")</span>
+            <span>
+                <span class="@IsMetin.RozetSinifi(s.Durum)">@IsMetin.Rozet(s.Durum, s.Gun)</span>
+                @if (duzenlenebilir && kart!.OzelTanimlar.FirstOrDefault(t => t.Id == s.KaynakId) is { } tanim)
+                {
+                    @Islemler(tanim)
+                }
+            </span>
+        </div>
+    };
+
+    private RenderFragment Islemler(FirmaIsiDto tanim) => __builder =>
+    {
+        <span class="ys-islem">
+            <span class="ys-bag" role="button" @onclick="@(() => Duzenle(tanim))">Düzenle</span>
+            <span class="ys-bag ys-sil" role="button" @onclick="@(() => Sil(tanim))">Sil</span>
+        </span>
+    };
+
+    private static string AltSatir(IsSatiriDto s)
+    {
+        var parcalar = new List<string> { IsMetin.Kaynak(s.KaynakTip) };
+        if (s.MukellefiyetKodu is not null) parcalar[0] += " " + s.MukellefiyetKodu;
+        parcalar.Add(IsMetin.Tekrar(s.Tekrar));
+        if (!string.IsNullOrEmpty(s.DonemEtiketi)) parcalar.Add(s.DonemEtiketi!);
+
+        if (s.Tamamlandi && s.TamamlanmaZamani is { } z)
+            parcalar.Add($"yapıldı {z.ToLocalTime():dd.MM.yyyy}{(s.TamamlayanAdi is null ? "" : " · " + s.TamamlayanAdi)}");
+        else if (s.SonYapilma is { } son)
+            parcalar.Add($"son yapılma {son.ToLocalTime():dd.MM.yyyy}");
+
+        return string.Join(" · ", parcalar);
+    }
+
+    private async Task Isaretle(IsSatiriDto s)
+    {
+        isleniyor = true;
+        try
+        {
+            var sonuc = await Api.IsaretleAsync(new IsIsaretleDto
+            {
+                Yapildi = !s.Tamamlandi,
+                Isler = { IsIsaretDto.Satirdan(s) }
+            });
+            await Yukle();
+            hata = sonuc ?? hata;
+        }
+        finally
+        {
+            isleniyor = false;
+        }
+
+        if (hata is null) await Degisti.InvokeAsync();
+    }
+
+    private Task Ekle() => FormAc(null);
+
+    private Task Duzenle(FirmaIsiDto tanim) => FormAc(tanim);
+
+    private async Task FormAc(FirmaIsiDto? tanim)
+    {
+        var kaydedildi = await DialogService.OpenAsync<FirmaIsiDialog>(
+            (tanim is null ? "İş ekle — " : "İşi düzenle — ") + FirmaAdi,
+            new Dictionary<string, object?>
+            {
+                { nameof(FirmaIsiDialog.FirmaId), FirmaId },
+                { nameof(FirmaIsiDialog.Mevcut), tanim }
+            }!,
+            new DialogOptions { Width = "min(520px, 96vw)" });
+
+        if (kaydedildi is not true) return;
+        await Yukle();
+        await Degisti.InvokeAsync();
+    }
+
+    private async Task Sil(FirmaIsiDto tanim)
+    {
+        var onay = await DialogService.Confirm(
+            $"\"{tanim.Baslik}\" ve bütün \"yapıldı\" kayıtları silinecek.", "İş silme",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        var sonuc = await Api.IsSilAsync(FirmaId, tanim.Id);
+        await Yukle();
+        hata = sonuc ?? hata;
+        if (hata is null) await Degisti.InvokeAsync();
+    }
+}

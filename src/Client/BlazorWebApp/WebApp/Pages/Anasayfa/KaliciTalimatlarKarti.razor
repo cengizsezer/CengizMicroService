@@ -1,0 +1,151 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Pages.Yapilacaklar
+@using WebApp.Shared.Dto.Anasayfa
+
+@inject IAnasayfaApiClient Api
+@inject DialogService DialogService
+
+@*
+    Kalıcı talimatlar (tasarım F). Yeni tablo YOK: veri Takip kartının notlarıyla aynı
+    (FirmaNotu), aynı uçlarla yazılır.
+
+    Talimatın tarihi, onay kutusu ve durumu yoktur — bu ayrım bilinçli. Tarihi olan bir şey
+    "Firma işleri"ne iş olarak eklenir; buraya tarih alanı eklenmez.
+*@
+
+<YsStiller />
+
+<RadzenCard Variant="Variant.Outlined" class="fp-bolum" id="ys-kart-talimatlar">
+    <div class="fp-bolum-basi">
+        <span class="fp-bolum-ad">
+            <RadzenIcon Icon="push_pin" Style="font-size:17px" />
+            Kalıcı talimatlar
+        </span>
+    </div>
+
+    @if (talimatlar is null)
+    {
+        <div class="ys-bos">@(hata ?? "Yükleniyor…")</div>
+    }
+    else
+    {
+        @if (talimatlar.Count == 0)
+        {
+            <div class="ys-bos">Talimat yok.</div>
+        }
+        else
+        {
+            <ul class="ys-talimatlar">
+                @foreach (var t in talimatlar)
+                {
+                    <li>@t.Metin<span class="ys-talimat-alt">— @(t.OlusturanKullaniciAdi ?? "—")</span>@if (t.Silinebilir)
+                        {
+                            <span class="ys-bag ys-sil" role="button" style="margin-left:6px" @onclick="@(() => Sil(t))">Sil</span>
+                        }</li>
+                }
+            </ul>
+        }
+
+        <div class="ys-talimat-form">
+            <input type="text" maxlength="2000" placeholder="Talimat ekle (ör. Faturalar yalnız muhasebe adresine gönderilir)"
+                   value="@yeni" @oninput="@(e => yeni = e.Value?.ToString())" @onkeydown="TusBasildi" />
+            <RadzenButton Text="Ekle" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                          Disabled="@(string.IsNullOrWhiteSpace(yeni) || kaydediliyor)" Click="@Ekle" />
+        </div>
+
+        @if (hata is not null)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small"
+                         Style="margin-top:.5rem">@hata</RadzenAlert>
+        }
+    }
+
+    <div class="ys-dipnot">
+        Talimatın tarihi ve yapıldı hali yoktur — tarihi olan bir şey yazacaksan yukarıya iş olarak ekle.
+    </div>
+</RadzenCard>
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+
+    /// <summary>Talimat eklendi/silindi; Takip kartının notu ve "Son işlemler" tazelensin.</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    /// <summary>Takip kartındaki not sayısı; oradan not eklenince bu liste de yeniden okunur.</summary>
+    [Parameter] public int NotSayisi { get; set; }
+
+    private List<FirmaNotuDto>? talimatlar;
+    private int yukluFirma;
+    private int yukluSayi = -1;
+    private string? yeni;
+    private string? hata;
+    private bool kaydediliyor;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (FirmaId == yukluFirma && NotSayisi == yukluSayi) return;
+        if (FirmaId != yukluFirma) talimatlar = null;
+        yukluFirma = FirmaId;
+        yukluSayi = NotSayisi;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        List<FirmaNotuDto>? sonuc;
+        try
+        {
+            sonuc = await Api.NotlarAsync(FirmaId);
+        }
+        catch
+        {
+            sonuc = null;
+        }
+
+        hata = sonuc is null ? "Talimatlar alınamadı." : null;
+        talimatlar = sonuc ?? talimatlar;
+    }
+
+    private async Task TusBasildi(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(yeni)) await Ekle();
+    }
+
+    private async Task Ekle()
+    {
+        kaydediliyor = true;
+        string? sonuc;
+        try
+        {
+            sonuc = await Api.NotEkleAsync(FirmaId, yeni!.Trim());
+        }
+        finally
+        {
+            kaydediliyor = false;
+        }
+
+        if (sonuc is not null)
+        {
+            hata = sonuc;
+            return;
+        }
+
+        yeni = null;
+        await Yukle();
+        await Degisti.InvokeAsync();
+    }
+
+    private async Task Sil(FirmaNotuDto t)
+    {
+        var onay = await DialogService.Confirm("Talimat silinecek.", "Talimat silme",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        var sonuc = await Api.NotSilAsync(FirmaId, t.Id);
+        await Yukle();
+        hata = sonuc ?? hata;
+        if (sonuc is null) await Degisti.InvokeAsync();
+    }
+}

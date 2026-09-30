@@ -16,6 +16,9 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(x => x.DugumlerJson)
                 .IsRequired();
 
+            builder.Property(x => x.BorcToplam).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.AlacakToplam).HasColumnType("decimal(18,2)");
+
             builder.HasOne(x => x.Firma)
                 .WithMany()
                 .HasForeignKey(x => x.FirmaId)

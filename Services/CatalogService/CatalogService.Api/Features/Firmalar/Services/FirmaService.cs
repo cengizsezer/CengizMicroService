@@ -1,4 +1,6 @@
-﻿using CatalogService.Api.Features.Firmalar.Domain;
+﻿using CatalogService.Api.Features.Anasayfa.Domain;
+using CatalogService.Api.Features.Anasayfa.Services;
+using CatalogService.Api.Features.Firmalar.Domain;
 using CatalogService.Api.Features.Firmalar.Dtos;
 using CatalogService.Api.Infrastructure.Context;
 using CatalogService.Api.Infrastructure.Exceptions;
@@ -9,10 +11,12 @@ namespace CatalogService.Api.Features.Firmalar.Services
     public class FirmaService : IFirmaService
     {
         private readonly CatalogContext _context;
+        private readonly IFirmaOlayYazici? _olay;
 
-        public FirmaService(CatalogContext context)
+        public FirmaService(CatalogContext context, IFirmaOlayYazici? olay = null)
         {
             _context = context;
+            _olay = olay;
         }
 
         public async Task<List<FirmaDto>> GetAllAsync(bool includeInactive = false)
@@ -103,6 +107,9 @@ namespace CatalogService.Api.Features.Firmalar.Services
 
             _context.Firmalar.Add(firma);
             await _context.SaveChangesAsync();
+
+            if (_olay is not null)
+                await _olay.YazAsync(firma.Id, FirmaOlayTipi.FirmaOlusturuldu, $"Firma oluşturuldu: {firma.Unvan}");
 
             var kisaltma = await ResolveKisaltma(firma.DuzenleyenId);
             return ToDto(firma, kisaltma);

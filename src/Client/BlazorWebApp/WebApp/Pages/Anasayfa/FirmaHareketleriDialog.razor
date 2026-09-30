@@ -1,0 +1,40 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto.Anasayfa
+
+@inject IAnasayfaApiClient Api
+
+@*
+    Takip kartı — "Tüm hareketler". Yalnız yazma işlemleri kaydediliyor; görüntüleme
+    kaydı tutulmuyor.
+*@
+
+@if (olaylar is null)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+}
+else if (olaylar.Count == 0)
+{
+    <div class="an-bos">Henüz işlem yok.</div>
+}
+else
+{
+    <div class="an-hareket-liste">
+        <FirmaOlayListesi Olaylar="@olaylar" />
+    </div>
+}
+
+<style>
+    .an-bos { font-size:12.5px; color:#a0aec0; }
+    .an-hareket-liste { max-height:65vh; overflow-y:auto; }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+
+    private List<FirmaOlayDto>? olaylar;
+
+    protected override async Task OnInitializedAsync()
+        => olaylar = await Api.OlaylarAsync(FirmaId) ?? new();
+}

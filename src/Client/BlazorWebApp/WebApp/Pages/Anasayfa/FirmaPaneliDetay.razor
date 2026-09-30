@@ -9,6 +9,9 @@
 @inject NavigationManager Nav
 @inject IFileApiService FileApi
 @inject DialogService DialogService
+@inject WebApp.Application.Services.IAnasayfaApiClient Api
+@inject NotificationService Notif
+@inject IJSRuntime JS
 
 @*
     Seçili firmanın künyesi: mükellefiyet, sicil, ortaklık, imza yetkilileri, belgeler.
@@ -22,18 +25,35 @@
 
 <RadzenStack Gap="0.75rem">
 
-    @if (Detay.Uyarilar.Count > 0)
+    @* Eksik bilgi şeridi: raydaki sayı rozetiyle aynı liste (sunucuda FirmaEksikBilgi). *@
+    @* Uyarılar (imza yetkisi, pay oranı, geçerli yetkili yok) aynı şeritte ayrı cümlede;
+       eskiden ayrı kutudaydı ve raydan düşmüştü. *@
+    @if (Detay.Eksikler.Count > 0 || RaydakiUyarilar.Count > 0)
     {
-        <div class="fp-uyari-kutu">
-            @foreach (var uyari in Detay.Uyarilar)
-            {
-                <div class="fp-uyari-satir">
-                    <RadzenIcon Icon="@Simge(uyari.Tur)" Style="font-size:16px" />
-                    <span>@uyari.Mesaj</span>
-                </div>
-            }
+        <div class="an-eksik-serit">
+            <RadzenIcon Icon="edit_note" Style="font-size:17px;flex-shrink:0" />
+            <span class="an-eksik-metin">
+                @if (Detay.Eksikler.Count > 0)
+                {
+                    <b>Eksik bilgi:</b>
+                    @string.Join(" · ", Detay.Eksikler.Take(3).Select(e => $"{e.Kart} › {e.Alan}"))
+                    @if (Detay.Eksikler.Count > 3)
+                    {
+                        <span class="an-eksik-fazla"> +@(Detay.Eksikler.Count - 3) tane daha</span>
+                    }
+                }
+                @if (RaydakiUyarilar.Count > 0)
+                {
+                    <span class="@(Detay.Eksikler.Count > 0 ? "an-uyari-cumle" : "")">
+                        <b>Uyarı:</b> @string.Join(" · ", RaydakiUyarilar.Select(u => u.Mesaj.TrimEnd('.')))
+                    </span>
+                }
+            </span>
+            <RadzenButton Text="Tamamla" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Warning"
+                          Variant="Variant.Flat" Click="@Tamamla" />
         </div>
     }
+
 
     @* ---- Mükellefiyet ---- *@
     <RadzenCard Variant="Variant.Outlined" class="fp-bolum">
@@ -42,7 +62,30 @@
         <div class="fp-alanlar">
             @Alan("Vergi dairesi", Detay.Mukellefiyet.VergiDairesi)
             @Alan("Vergi kimlik no", Detay.Mukellefiyet.VergiKimlikNo)
-            @Alan("Mükellefiyet türleri", Detay.Mukellefiyet.MukellefiyetTurleri)
+            <div class="fp-alan">
+                <div class="fp-etiket">Mükellefiyet türleri</div>
+                @if (Detay.Mukellefiyet.Kodlar.Count == 0 && Bos(Detay.Mukellefiyet.KalanMetin))
+                {
+                    <div class="fp-deger">—</div>
+                }
+                else
+                {
+                    <div class="an-kod-cipler">
+                        @foreach (var kod in Detay.Mukellefiyet.Kodlar)
+                        {
+                            <span class="@(kod.SiniflandirmaKaynagi ? "an-kod-cip an-kod-kaynak" : "an-kod-cip")"
+                                  title="@(kod.SiniflandirmaKaynagi ? $"{kod.Ad} — sınıflandırmanın kaynağı" : kod.Ad)">
+                                @(kod.KisaAd is null ? kod.Kod : $"{kod.Kod} · {kod.KisaAd}")
+                            </span>
+                        }
+                    </div>
+                    @* Kod sayılamayan kalan metin sessizce yutulmaz. *@
+                    @if (!Bos(Detay.Mukellefiyet.KalanMetin))
+                    {
+                        <div class="an-kalan" title="Kod olarak ayıklanamayan metin">@Detay.Mukellefiyet.KalanMetin</div>
+                    }
+                }
+            </div>
             @Alan("İşe başlama", Tarih(Detay.Mukellefiyet.IseBaslamaTarihi))
             @Alan("NACE kodu", Detay.Mukellefiyet.NaceKodu)
             <div class="fp-alan">
@@ -55,6 +98,80 @@
         </div>
     </RadzenCard>
 
+    @* ---- Sınıflandırma ve mizan ---- *@
+    <RadzenCard Variant="Variant.Outlined" class="fp-bolum">
+        <div class="fp-bolum-basi">
+            <span class="fp-bolum-ad">
+                <RadzenIcon Icon="category" Style="font-size:17px" />
+                Sınıflandırma ve mizan
+            </span>
+            <span class="fp-duzenle" role="button" @onclick="@(() => SiniflandirmaDuzenle(null))">Düzenle</span>
+        </div>
+
+        <div class="fp-alanlar">
+            <div class="fp-alan">
+                <div class="fp-etiket">Defter usulü</div>
+                <div class="fp-deger">@DefterUsuluAdi(Sinif.DefterUsulu)</div>
+                @if (Sinif.DefterUsuluOtomatikKod is { } dk)
+                {
+                    <div class="an-oto">@OtomatikNotu(dk)</div>
+                }
+            </div>
+            <div class="fp-alan">
+                <div class="fp-etiket">Vergi türü</div>
+                <div class="fp-deger">@VergiTuruAdi(Sinif.VergiTuru)</div>
+                @if (Sinif.VergiTuruOtomatikKod is { } vk)
+                {
+                    <div class="an-oto">@OtomatikNotu(vk)</div>
+                }
+            </div>
+            <div class="fp-alan">
+                <div class="fp-etiket">Mizan formatı</div>
+                <div class="fp-deger">@(MizanFormatlari.Secili(Sinif.MizanFormati) ? Sinif.MizanFormati : "—")</div>
+                @if (MizanFormatlari.SablonVar(Sinif.MizanFormati))
+                {
+                    <span class="an-baglanti" role="button" @onclick="SablonIndir">Boş şablon indir</span>
+                }
+                else if (MizanFormatlari.Secili(Sinif.MizanFormati))
+                {
+                    @* Gerçek çıktısı görülmemiş program: uydurma şablon gönderilmez. *@
+                    <span class="an-baglanti an-pasif">Boş şablon indir</span>
+                    <div class="an-oto">bu programın gerçek mizan çıktısı henüz görülmedi</div>
+                }
+                else
+                {
+                    <span class="an-baglanti an-pasif" title="Önce mizan formatını seçin">Boş şablon indir</span>
+                }
+            </div>
+            @Alan("ORKA firma kodu", Sinif.OrkaFirmaKodu)
+            @Alan("Hesap dönemi", HesapDonemiMetni())
+        </div>
+
+        <div class="an-mizan">
+            @Alan("Son yüklenen mizan", SonMizanMetni())
+            @Alan("Yükleme zamanı", Sinif.SonMizan?.YuklenmeZamani?.ToLocalTime().ToString("dd.MM.yyyy HH:mm"))
+            <div class="fp-alan">
+                <div class="fp-etiket">Denge</div>
+                <div class="fp-deger">
+                    @if (Sinif.SonMizan?.Dengeli is true)
+                    {
+                        <span class="an-denge an-denge-tamam">Borç = Alacak</span>
+                    }
+                    else if (Sinif.SonMizan?.Dengeli is false)
+                    {
+                        <span class="an-denge an-denge-fark">Fark @Para(Sinif.SonMizan.Fark ?? 0)</span>
+                    }
+                    else
+                    {
+                        <span>—</span>
+                    }
+                </div>
+            </div>
+            @Alan("Alt kırılım", AltKirilimMetni())
+            <span class="an-baglanti an-mizan-ac" role="button" @onclick="FirmaKontroluneGit">Firma kontrolünde aç</span>
+        </div>
+    </RadzenCard>
+
     @* ---- Sicil ---- *@
     <RadzenCard Variant="Variant.Outlined" class="fp-bolum">
         @Baslik("apartment", "Sicil")
@@ -64,7 +181,6 @@
             @Alan("MERSİS no", Detay.Sicil.MersisNo)
             @Alan("Sermaye", Sermaye())
             @Alan("Kuruluş tarihi", Tarih(Detay.Sicil.KurulusTarihi))
-            @Alan("ORKA firma kodu", Detay.Sicil.OrkaFirmaKodu)
         </div>
 
         <div class="fp-alan fp-genis">
@@ -118,7 +234,7 @@
 
     @* ---- İmza yetkilileri ---- *@
     <RadzenCard Variant="Variant.Outlined" class="fp-bolum">
-        @Baslik("draw", "İmza yetkilileri")
+        @Baslik("draw", "İmza yetkilileri", YetkiRozeti())
 
         @if (Detay.Yetkililer.Count == 0)
         {
@@ -198,10 +314,213 @@
         </div>
     </RadzenCard>
 
+    @* ---- Takip ---- *@
+    <RadzenCard Variant="Variant.Outlined" class="fp-bolum" id="an-kart-takip">
+        <div class="fp-bolum-basi">
+            <span class="fp-bolum-ad">
+                <RadzenIcon Icon="assignment_ind" Style="font-size:17px" />
+                Takip
+            </span>
+        </div>
+
+        <div class="an-takip">
+            <div class="fp-alan">
+                <div class="fp-etiket">Sorumlu</div>
+                <div class="an-sorumlu">
+                    @if (Takip.SorumluKullaniciId is null)
+                    {
+                        <span class="an-avatar an-avatar-bos"></span>
+                        <span class="fp-bos">Atanmamış</span>
+                        <span class="an-baglanti" role="button" @onclick="SorumluAta">Ata</span>
+                    }
+                    else
+                    {
+                        <span class="an-avatar">@BasHarfler(Takip.SorumluKullaniciAdi)</span>
+                        <span class="fp-deger">@Takip.SorumluKullaniciAdi</span>
+                        <span class="an-baglanti" role="button" @onclick="SorumluAta">Değiştir</span>
+                    }
+                </div>
+            </div>
+
+            <div class="fp-alan">
+                <div class="fp-etiket">Dönemler</div>
+                <div class="an-donemler">
+                    @foreach (var donem in Takip.Donemler)
+                    {
+                        <span class="@(donem.Yuklu ? "an-donem an-donem-yuklu" : "an-donem an-donem-yok")"
+                              title="@(donem.Yuklu ? $"{donem.Yil} mizanı yüklü" : $"{donem.Yil} mizanı yüklenmemiş")">@donem.Yil</span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="an-takip-bolum">
+            <div class="an-takip-basi">
+                <span class="fp-etiket">Not</span>
+                <span class="an-baglanti" role="button" @onclick="NotlariAc">
+                    @(Takip.NotSayisi > 1 ? $"Tüm notlar ({Takip.NotSayisi})" : Takip.NotSayisi == 1 ? "Tüm notlar" : "Not ekle")
+                </span>
+            </div>
+            @if (Takip.SonNot is { } not)
+            {
+                <div class="an-not">@not.Metin</div>
+                <div class="an-oto">@(not.OlusturanKullaniciAdi ?? "—") · @not.OlusturmaZamani.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+            }
+            else
+            {
+                <div class="fp-bos-satir">Not yok.</div>
+            }
+        </div>
+
+        <div class="an-takip-bolum">
+            <div class="an-takip-basi">
+                <span class="fp-etiket">Son işlemler</span>
+                @if (Takip.SonOlaylar.Count > 0)
+                {
+                    <span class="an-baglanti" role="button" @onclick="HareketleriAc">Tüm hareketler</span>
+                }
+            </div>
+            @if (Takip.SonOlaylar.Count == 0)
+            {
+                <div class="fp-bos-satir">Henüz işlem yok</div>
+            }
+            else
+            {
+                <FirmaOlayListesi Olaylar="@Takip.SonOlaylar" />
+            }
+        </div>
+    </RadzenCard>
+
+    @* ---- Firma işleri + Kalıcı talimatlar (Prompt 7) ----
+       Firma işleri: yasal (mükellefiyetten, kilitli) + firmaya özel. Kalıcı talimatlar:
+       Takip kartının notlarıyla aynı veri (FirmaNotu); tarihi ve durumu yok. *@
+    <FirmaIsleriKarti FirmaId="@Detay.FirmaId" FirmaAdi="@Detay.Ad" Degisti="@Degisti" />
+    <KaliciTalimatlarKarti FirmaId="@Detay.FirmaId" NotSayisi="@Takip.NotSayisi" Degisti="@Degisti" />
+
 </RadzenStack>
 
 @code {
     [Parameter, EditorRequired] public FirmaPaneliDetayDto Detay { get; set; } = new();
+
+    /// <summary>Kart üzerinden bir şey kaydedildi; üst bileşen paneli tazeler.</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    private FirmaPaneliSiniflandirmaDto Sinif => Detay.Siniflandirma;
+
+    /// <summary>Şeritteki "Uyarı" cümlesi: eksik sicil uyarısı hariç (o eksik listesinde).</summary>
+    private List<FirmaUyariDto> RaydakiUyarilar
+        => Detay.Uyarilar.Where(u => u.Tur != FirmaUyariTuru.EksikSicilAlani).ToList();
+
+    /// <summary>
+    /// İlk eksik alanın kartını açar ve o alana odaklanır: sınıflandırma alanları bu
+    /// ekrandaki formda, sorumlu Takip kartında, geri kalanı (mükellefiyet, sicil, ortak,
+    /// yetkili) tek düzenleme yeri olan Firma Bilgileri ekranında.
+    /// </summary>
+    private async Task Tamamla()
+    {
+        var ilk = Detay.Eksikler.FirstOrDefault();
+        if (ilk is null)
+        {
+            // Eksik yok, yalnız uyarı var: pay oranı ortaklığa, imza uyarıları yetkililere.
+            var uyari = RaydakiUyarilar.FirstOrDefault();
+            if (uyari is null) return;
+
+            if (uyari.Tur == FirmaUyariTuru.SiniflandirmaUyusmuyor)
+            {
+                // Düzelt ya da onayla: ikisi de sınıflandırma formunda.
+                await SiniflandirmaDuzenle("vergiTuru");
+                return;
+            }
+
+            var odak = uyari.Tur == FirmaUyariTuru.PayOraniTutmuyor ? "ortak" : "imzaYetkilisi";
+            Nav.NavigateTo($"/yonetim/firmalar/{Detay.FirmaId}/bilgiler?odak={odak}");
+            return;
+        }
+
+        switch (ilk.Kart)
+        {
+            case "Sınıflandırma":
+                await SiniflandirmaDuzenle(ilk.Odak);
+                break;
+            case "Takip":
+                await SorumluAta();
+                break;
+            case "Mizan":
+                // Mizan yükleme Firma Kontrol ekranında; anasayfa yüklemez.
+                FirmaKontroluneGit();
+                break;
+            default:
+                Nav.NavigateTo($"/yonetim/firmalar/{Detay.FirmaId}/bilgiler?odak={Uri.EscapeDataString(ilk.Odak)}");
+                break;
+        }
+    }
+
+    // ---- Takip ----
+
+    private FirmaPaneliTakipDto Takip => Detay.Takip;
+
+    private static string BasHarfler(string? ad)
+    {
+        var parcalar = (ad ?? string.Empty).Split(new[] { ' ', '.', '_' }, StringSplitOptions.RemoveEmptyEntries);
+        var harfler = string.Concat(parcalar.Take(2).Select(p => char.ToUpper(p[0], Tr)));
+        return harfler.Length == 0 ? "?" : harfler;
+    }
+
+    private async Task SorumluAta()
+    {
+        var kaydedildi = await DialogService.OpenAsync<SorumluAtaDialog>(
+            "Sorumlu — " + Detay.Ad,
+            new Dictionary<string, object?>
+            {
+                { nameof(SorumluAtaDialog.FirmaId), Detay.FirmaId },
+                { nameof(SorumluAtaDialog.MevcutId), Takip.SorumluKullaniciId }
+            }!,
+            new DialogOptions { Width = "min(460px, 96vw)" });
+
+        if (kaydedildi is true) await Degisti.InvokeAsync();
+    }
+
+    private async Task NotlariAc()
+    {
+        await DialogService.OpenAsync<FirmaNotlariDialog>(
+            "Notlar — " + Detay.Ad,
+            new Dictionary<string, object> { { nameof(FirmaNotlariDialog.FirmaId), Detay.FirmaId } },
+            new DialogOptions { Width = "min(640px, 96vw)" });
+
+        // Diyalogda not eklenmiş ya da silinmiş olabilir; kart son notu yeniden okusun.
+        await Degisti.InvokeAsync();
+    }
+
+    private Task HareketleriAc()
+        => DialogService.OpenAsync<FirmaHareketleriDialog>(
+            "Tüm hareketler — " + Detay.Ad,
+            new Dictionary<string, object> { { nameof(FirmaHareketleriDialog.FirmaId), Detay.FirmaId } },
+            new DialogOptions { Width = "min(760px, 96vw)" });
+
+    /// <summary>
+    /// İmza yetkilileri başlık rozeti (sunucu hesaplar): 90 günden az kalan varsa kırmızı,
+    /// yoksa amber. Yetkili yoksa ya da hepsi bir yıldan uzunsa rozet çıkmaz.
+    /// </summary>
+    private RenderFragment? YetkiRozeti()
+    {
+        if (Detay.YetkiRozeti is { GecerliYok: true })
+        {
+            return __builder =>
+            {
+                <span class="an-yetki-rozet an-yetki-kritik" title="Kayıtlı yetkililerin hepsinin süresi dolmuş">Geçerli yetkili yok</span>
+            };
+        }
+
+        if (Detay.YetkiRozeti is not { Sayi: > 0 } r) return null;
+
+        return __builder =>
+        {
+            <span class="@(r.Kritik ? "an-yetki-rozet an-yetki-kritik" : "an-yetki-rozet")"
+                  title="@(r.Kritik ? "En az bir yetkinin bitişine 90 günden az kaldı" : "Bitişine 1 yıldan az kalan yetki var")">
+                @r.Sayi yetki 1 yıldan kısa
+            </span>
+        };
+    }
 
     private static readonly CultureInfo Tr = new("tr-TR");
 
@@ -230,12 +549,6 @@
             ? $"{Para(tutar)} {Detay.Sicil.SermayeParaBirimi ?? "TRY"}"
             : string.Empty;
 
-    private static string Simge(FirmaUyariTuru tur) => tur switch
-    {
-        FirmaUyariTuru.ImzaYetkisiBitiyor => "event_busy",
-        FirmaUyariTuru.PayOraniTutmuyor => "percent",
-        _ => "help_outline"
-    };
 
     /// <summary>Süresi dolan sarı, dolmuş kırmızımsı; kalanı nötr.</summary>
     private static string YetkiliSinifi(FirmaPaneliYetkiliDto yetkili)
@@ -252,12 +565,13 @@
         return $"{kalan} gün kaldı";
     }
 
-    private RenderFragment Baslik(string simge, string metin) => __builder =>
+    private RenderFragment Baslik(string simge, string metin, RenderFragment? ek = null) => __builder =>
     {
         <div class="fp-bolum-basi">
             <span class="fp-bolum-ad">
                 <RadzenIcon Icon="@simge" Style="font-size:17px" />
                 @metin
+                @ek
             </span>
             <span class="fp-duzenle" role="button" @onclick="Duzenle">Düzenle</span>
         </div>
@@ -280,6 +594,77 @@
     };
 
     private void Duzenle() => Nav.NavigateTo($"/yonetim/firmalar/{Detay.FirmaId}/bilgiler");
+
+    // ---- Sınıflandırma ve mizan ----
+
+    private static string DefterUsuluAdi(DefterUsulu d) => d switch
+    {
+        DefterUsulu.BilancoEsasi => "Bilanço esası",
+        DefterUsulu.IsletmeHesabi => "İşletme hesabı",
+        _ => "—"
+    };
+
+    private static string VergiTuruAdi(VergiTuru v) => v switch
+    {
+        VergiTuru.KurumlarVergisi => "Kurumlar vergisi",
+        VergiTuru.GelirVergisi => "Gelir vergisi",
+        _ => "—"
+    };
+
+    /// <summary>"0010'dan otomatik" / "0001'den otomatik".</summary>
+    private static string OtomatikNotu(string kod) => kod + (kod.EndsWith('1') ? "'den otomatik" : "'dan otomatik");
+
+    private string HesapDonemiMetni() => Sinif.HesapDonemi switch
+    {
+        HesapDonemi.TakvimYili => "Takvim yılı",
+        HesapDonemi.OzelHesapDonemi => $"Özel · {Tarih(Sinif.OzelDonemBas)} – {Tarih(Sinif.OzelDonemBit)}",
+        _ => string.Empty
+    };
+
+    private string SonMizanMetni()
+    {
+        if (Sinif.SonMizan is not { } m) return "Yüklenmemiş";
+
+        var donem = m.Donem == 1 ? "cari dönem" : "önceki dönem";
+        return m.SatirSayisi is { } satir ? $"{m.Yil} · {donem} · {satir:N0} satır" : $"{m.Yil} · {donem}";
+    }
+
+    private string AltKirilimMetni() => Sinif.SonMizan?.SeviyeSayisi switch
+    {
+        null => string.Empty,
+        <= 1 => "Yok",
+        { } n => $"Var · {n} seviye"
+    };
+
+    private void FirmaKontroluneGit() => Nav.NavigateTo($"/firmakontrol/{Detay.FirmaId}");
+
+    /// <summary>Kartın "Düzenle"si. <paramref name="odak"/> "Tamamla"dan gelen alan adı.</summary>
+    public async Task SiniflandirmaDuzenle(string? odak)
+    {
+        var kaydedildi = await DialogService.OpenAsync<SiniflandirmaDuzenleDialog>(
+            "Sınıflandırma — " + Detay.Ad,
+            new Dictionary<string, object?>
+            {
+                { nameof(SiniflandirmaDuzenleDialog.FirmaId), Detay.FirmaId },
+                { nameof(SiniflandirmaDuzenleDialog.Mevcut), Sinif },
+                { nameof(SiniflandirmaDuzenleDialog.Odak), odak }
+            }!,
+            new DialogOptions { Width = "min(620px, 96vw)" });
+
+        if (kaydedildi is true) await Degisti.InvokeAsync();
+    }
+
+    private async Task SablonIndir()
+    {
+        var (icerik, hata) = await Api.MizanSablonuAsync(Sinif.MizanFormati!);
+        if (icerik is null)
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Şablon indirilemedi", hata, 6000);
+            return;
+        }
+
+        await JS.InvokeVoidAsync("downloadFileFromBytes", "mizan-sablonu.xlsx", icerik);
+    }
 
     /// <summary>Belge görüntüleme Firma Bilgileri ekranıyla aynı altyapı: presigned URL + PDF diyaloğu.</summary>
     private async Task Goruntule(FirmaBelgesiDto belge, string turAdi)

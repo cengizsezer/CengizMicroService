@@ -160,6 +160,10 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             // Anasayfa kartları + "son kullanılan firmalar" (tarayıcıda tutulur).
             services.AddScoped<IAnasayfaApiClient>(sp =>
                 new AnasayfaApiClient(sp.GetRequiredService<HttpClient>()));
+
+            // Firma işleri kartı, Yapılacaklar ekranı ve Yönetim → Vergi Takvimi.
+            services.AddScoped<IYapilacaklarApiClient>(sp =>
+                new YapilacaklarApiClient(sp.GetRequiredService<HttpClient>()));
             services.AddScoped<ISonFirmalarStore>(sp =>
                 new SonFirmalarStore(sp.GetRequiredService<Blazored.LocalStorage.ILocalStorageService>()));
 

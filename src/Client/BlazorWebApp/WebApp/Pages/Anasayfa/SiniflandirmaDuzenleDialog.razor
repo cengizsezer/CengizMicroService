@@ -1,0 +1,183 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto.Anasayfa
+
+@inject IAnasayfaApiClient Api
+@inject DialogService DialogService
+
+@*
+    "Sınıflandırma ve mizan" kartının düzenleme formu. ORKA firma kodu burada yok: o
+    alan Firma Bilgileri'nde yazılıyor, bu kart yalnız gösteriyor.
+
+    Otomatik doldurma ÖNERİDİR: kullanıcının değiştirdiği değer sunucuda "elle" işaretlenir
+    ve sonraki mükellefiyet okuması üzerine yazmaz. Değiştirilmeyen alan otomatik kalır.
+*@
+
+<div class="an-form">
+    <div class="@AlanSinifi("vergiTuru")" id="an-alan-vergiTuru">
+        <div class="an-form-etiket">Vergi türü</div>
+        <RadzenRadioButtonList TValue="VergiTuru" Value="@model.VergiTuru" ValueChanged="@VergiTuruDegisti"
+                               Orientation="Orientation.Horizontal" Gap="1rem">
+            <Items>
+                <RadzenRadioButtonListItem Text="Belirsiz" Value="VergiTuru.Belirsiz" />
+                <RadzenRadioButtonListItem Text="Kurumlar vergisi" Value="VergiTuru.KurumlarVergisi" />
+                <RadzenRadioButtonListItem Text="Gelir vergisi" Value="VergiTuru.GelirVergisi" />
+            </Items>
+        </RadzenRadioButtonList>
+        @if (Mevcut.VergiTuruOtomatikKod is { } vk && model.VergiTuru == Mevcut.VergiTuru)
+        {
+            <div class="an-oto">@OtomatikNotu(vk)</div>
+        }
+    </div>
+
+    <div class="@AlanSinifi("defterUsulu")" id="an-alan-defterUsulu">
+        <div class="an-form-etiket">Defter usulü</div>
+        <RadzenRadioButtonList TValue="DefterUsulu" @bind-Value="model.DefterUsulu"
+                               Orientation="Orientation.Horizontal" Gap="1rem">
+            <Items>
+                <RadzenRadioButtonListItem Text="Belirsiz" Value="DefterUsulu.Belirsiz" />
+                <RadzenRadioButtonListItem Text="Bilanço esası" Value="DefterUsulu.BilancoEsasi" />
+                <RadzenRadioButtonListItem Text="İşletme hesabı" Value="DefterUsulu.IsletmeHesabi"
+                                           Disabled="@(model.VergiTuru == VergiTuru.KurumlarVergisi)" />
+            </Items>
+        </RadzenRadioButtonList>
+        @if (model.VergiTuru == VergiTuru.KurumlarVergisi)
+        {
+            <div class="an-not">İşletme hesabı seçilemez: kurumlar vergisi mükellefi bilanço esasına göre defter tutar.</div>
+        }
+        @if (Mevcut.DefterUsuluOtomatikKod is { } dk && model.DefterUsulu == Mevcut.DefterUsulu)
+        {
+            <div class="an-oto">@OtomatikNotu(dk)</div>
+        }
+    </div>
+
+    <div class="@AlanSinifi("mizanFormati")" id="an-alan-mizanFormati">
+        <div class="an-form-etiket">Mizan formatı</div>
+        <RadzenDropDown TValue="string" Data="@MizanFormatlari.Liste" @bind-Value="model.MizanFormati"
+                        Placeholder="Seçin" AllowClear="true" Style="width:100%" />
+    </div>
+
+    <div class="@AlanSinifi("hesapDonemi")" id="an-alan-hesapDonemi">
+        <div class="an-form-etiket">Hesap dönemi</div>
+        <RadzenRadioButtonList TValue="HesapDonemi?" @bind-Value="model.HesapDonemi"
+                               Orientation="Orientation.Horizontal" Gap="1rem">
+            <Items>
+                <RadzenRadioButtonListItem Text="Seçilmedi" Value="@((HesapDonemi?)null)" />
+                <RadzenRadioButtonListItem Text="Takvim yılı" Value="@((HesapDonemi?)HesapDonemi.TakvimYili)" />
+                <RadzenRadioButtonListItem Text="Özel hesap dönemi" Value="@((HesapDonemi?)HesapDonemi.OzelHesapDonemi)" />
+            </Items>
+        </RadzenRadioButtonList>
+
+        @if (model.HesapDonemi == HesapDonemi.OzelHesapDonemi)
+        {
+            <div class="an-form-tarihler">
+                <div>
+                    <div class="an-form-etiket">Başlangıç</div>
+                    <RadzenDatePicker TValue="DateTime?" @bind-Value="model.OzelDonemBas" DateFormat="dd.MM.yyyy" />
+                </div>
+                <div>
+                    <div class="an-form-etiket">Bitiş</div>
+                    <RadzenDatePicker TValue="DateTime?" @bind-Value="model.OzelDonemBit" DateFormat="dd.MM.yyyy" />
+                </div>
+            </div>
+        }
+    </div>
+
+    @* Kodlarla çelişen otomatik değer: düzelt (değeri değiştir) ya da açıkça onayla.
+       Formu değiştirmeden kaydetmek onay SAYILMAZ; onay ayrı bir seçim. *@
+    @if (Mevcut.UyusmazlikMesaji is { } uyusmazlik)
+    {
+        <div class="an-uyusmazlik">
+            <div>@uyusmazlik.</div>
+            <RadzenCheckBox @bind-Value="model.Onayla" Name="onayla" />
+            <RadzenLabel Text="Kayıtlı sınıflandırmayı onaylıyorum (mükellefiyet kodlarıyla uyuşmasa da)"
+                         Component="onayla" Style="margin-left:6px;font-size:12.5px" />
+        </div>
+    }
+
+    @if (hata is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">@hata</RadzenAlert>
+    }
+
+    <div class="an-form-dugmeler">
+        <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(false))" />
+        <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" IsBusy="@kaydediliyor" Click="@Kaydet" />
+    </div>
+</div>
+
+<style>
+    .an-form { display:flex; flex-direction:column; gap:.9rem; }
+    .an-form-alan { padding:.35rem .5rem; border-radius:6px; }
+    .an-form-odak { background:#fffff0; box-shadow:0 0 0 2px #f6e05e; }
+    .an-form-etiket { font-size:11px; color:#718096; text-transform:uppercase; letter-spacing:.02em; margin-bottom:.25rem; }
+    .an-form-tarihler { display:flex; gap:1rem; margin-top:.5rem; }
+    .an-form-dugmeler { display:flex; justify-content:flex-end; gap:.5rem; }
+    .an-not { font-size:11.5px; color:#a0aec0; margin-top:.2rem; }
+    .an-oto { font-size:11px; color:#a0aec0; margin-top:.15rem; }
+    .an-uyusmazlik { border:1px solid #f6e05e; background:#fffff0; border-radius:6px; padding:.5rem .7rem;
+                     font-size:12.5px; color:#744210; }
+    .an-uyusmazlik > div { margin-bottom:.35rem; }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+    [Parameter, EditorRequired] public FirmaPaneliSiniflandirmaDto Mevcut { get; set; } = new();
+
+    /// <summary>"Tamamla"dan gelindiyse vurgulanacak alan (vergiTuru, defterUsulu, mizanFormati, hesapDonemi).</summary>
+    [Parameter] public string? Odak { get; set; }
+
+    private FirmaSiniflandirmaKaydetDto model = new();
+    private bool kaydediliyor;
+    private string? hata;
+
+    protected override void OnParametersSet()
+    {
+        model = new FirmaSiniflandirmaKaydetDto
+        {
+            DefterUsulu = Mevcut.DefterUsulu,
+            VergiTuru = Mevcut.VergiTuru,
+            MizanFormati = Mevcut.MizanFormati,
+            HesapDonemi = Mevcut.HesapDonemi,
+            OzelDonemBas = Mevcut.OzelDonemBas,
+            OzelDonemBit = Mevcut.OzelDonemBit
+        };
+    }
+
+    private string AlanSinifi(string alan) => alan == Odak ? "an-form-alan an-form-odak" : "an-form-alan";
+
+    private static string OtomatikNotu(string kod) => kod + (kod.EndsWith('1') ? "'den otomatik" : "'dan otomatik");
+
+    private void VergiTuruDegisti(VergiTuru deger)
+    {
+        model.VergiTuru = deger;
+
+        // Kısıt: kurumlar vergisinde işletme hesabı seçili kalamaz.
+        if (deger == VergiTuru.KurumlarVergisi && model.DefterUsulu == DefterUsulu.IsletmeHesabi)
+            model.DefterUsulu = DefterUsulu.Belirsiz;
+    }
+
+    private async Task Kaydet()
+    {
+        hata = null;
+
+        if (model.HesapDonemi != HesapDonemi.OzelHesapDonemi)
+        {
+            model.OzelDonemBas = null;
+            model.OzelDonemBit = null;
+        }
+
+        kaydediliyor = true;
+        try
+        {
+            hata = await Api.SiniflandirmaKaydetAsync(FirmaId, model);
+        }
+        finally
+        {
+            kaydediliyor = false;
+        }
+
+        if (hata is null) DialogService.Close(true);
+    }
+}

@@ -1,0 +1,289 @@
+@page "/yapilacaklar"
+
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@attribute [Authorize]
+
+@inject IYapilacaklarApiClient Api
+@inject DialogService DialogService
+
+@*
+    Yapılacaklar (tasarım G) — firma üstü: seçili firmadan BAĞIMSIZ, bütün firmaların işleri.
+
+    Gruplama ACİLİYETE göre, firmaya göre değil: Gecikti (kırmızı) · Bu hafta (amber) ·
+    Bu ay (nötr) · Sonra (katlanmış). Boş grup hiç çizilmez. "Yapıldı" grubu (katlanmış)
+    işaretlenen işin ekrandan kaybolmaması ve işaretin geri alınabilmesi için var.
+
+    AYNI İŞ TEK SATIR: aynı ad + aynı son gün birden çok firmadaysa tek satır ("9 firma");
+    açılınca firma firma işaretlenir, tek satırdaki kutu hepsini onay sorarak işaretler.
+    Gruplama sunucuda (YapilacaklarKurucu.Grupla) — anasayfa şeridi de aynı sayıyı verir.
+
+    Beyannameler ekranının yerine geçmez, ona dokunmaz: yasal işler Vergi takviminden türer.
+*@
+
+<PageTitle>Yapılacaklar</PageTitle>
+
+<YsStiller />
+
+<div class="ys-kok">
+    <div class="ys-ust">
+        <div>
+            <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">Yapılacaklar</RadzenText>
+            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">
+                Bütün firmalar — seçili firmadan bağımsız@(veri is null ? "" : $" · bugün {veri.Bugun:dd.MM.yyyy}")
+            </RadzenText>
+        </div>
+
+        <div class="ys-filtreler">
+            @Filtre(IsFiltresi.Tumu, "Tümü")
+            @Filtre(IsFiltresi.Bende, "Bende")
+            @Filtre(IsFiltresi.Yasal, "Yasal")
+            @Filtre(IsFiltresi.Ozel, "Firmaya özel")
+            <RadzenButton Icon="refresh" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                          Click="@Yukle" Disabled="@yukleniyor" title="Yenile" />
+        </div>
+    </div>
+
+    @if (hata is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">@hata</RadzenAlert>
+    }
+
+    @if (veri is null)
+    {
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+    }
+    else if (veri.Gruplar.Count == 0)
+    {
+        <div class="ys-kart ys-bos">
+            @(filtre == IsFiltresi.Bende ? "Sorumlusu olduğun iş yok." : "Yapılacak iş yok.")
+        </div>
+    }
+    else
+    {
+        @Bolum(IsDurumu.Gecikti, "Gecikti", "ys-kart ys-kart-gecikti", katlanir: false)
+        @Bolum(IsDurumu.BuHafta, "Bu hafta", "ys-kart ys-kart-hafta", katlanir: false)
+        @Bolum(IsDurumu.BuAy, "Bu ay", "ys-kart ys-kart-ay", katlanir: false)
+        @Bolum(IsDurumu.Sonra, "Sonra", "ys-kart ys-kart-sonra", katlanir: true)
+        @Bolum(IsDurumu.Tamam, "Yapıldı", "ys-kart ys-kart-tamam", katlanir: true)
+    }
+</div>
+
+@code {
+    private YapilacaklarDto? veri;
+    private IsFiltresi filtre = IsFiltresi.Tumu;
+    private bool yukleniyor;
+    private bool isleniyor;
+
+    /// <summary>Onay iptalinde işaret kutusunu eski hâline döndürmek için satır anahtarına eklenir.</summary>
+    private int surum;
+    private string? hata;
+
+    /// <summary>Açılmış çok-firmalı satırlar ve açılmış katlanır bölümler.</summary>
+    private readonly HashSet<string> acikSatirlar = new();
+    private readonly HashSet<IsDurumu> acikBolumler = new();
+
+    protected override Task OnInitializedAsync() => Yukle();
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        try
+        {
+            var sonuc = await Api.ListeAsync(filtre);
+            if (sonuc is null) hata = "Liste alınamadı. Sunucuya ulaşılamıyor olabilir.";
+            else
+            {
+                veri = sonuc;
+                hata = null;
+            }
+        }
+        finally
+        {
+            yukleniyor = false;
+        }
+    }
+
+    private async Task FiltreSec(IsFiltresi f)
+    {
+        if (f == filtre) return;
+        filtre = f;
+        await Yukle();
+    }
+
+    private RenderFragment Filtre(IsFiltresi f, string ad) => __builder =>
+    {
+        <span class="@(filtre == f ? "ys-filtre ys-filtre-secili" : "ys-filtre")" role="button"
+              @onclick="@(() => FiltreSec(f))">@ad</span>
+    };
+
+    private RenderFragment Bolum(IsDurumu durum, string ad, string sinif, bool katlanir) => __builder =>
+    {
+        var gruplar = veri!.Gruplar.Where(g => g.Durum == durum).ToList();
+        if (gruplar.Count == 0) return; // boş grup hiç çizilmez
+
+        var acik = !katlanir || acikBolumler.Contains(durum);
+
+        <div class="@sinif">
+            <div class="@(katlanir ? "ys-kart-basi ys-katlanir" : "ys-kart-basi")"
+                 @onclick="@(() => { if (katlanir && !acikBolumler.Remove(durum)) acikBolumler.Add(durum); })">
+                @if (katlanir)
+                {
+                    <RadzenIcon Icon="@(acik ? "expand_more" : "chevron_right")" Style="font-size:18px" />
+                }
+                @ad
+                <span class="@IsMetin.RozetSinifi(durum)">@gruplar.Count iş</span>
+            </div>
+
+            @if (acik)
+            {
+                <table class="ys-tablo">
+                    <thead>
+                        <tr>
+                            <th style="width:26px"></th>
+                            <th>İş</th>
+                            <th style="width:150px">Firma</th>
+                            <th style="width:95px">Son gün</th>
+                            <th style="width:150px">Durum</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var g in gruplar)
+                        {
+                            @GrupSatiri(g)
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    };
+
+    private RenderFragment GrupSatiri(IsGrubuDto g) => __builder =>
+    {
+        var tekFirma = g.Firmalar.Count == 1;
+        var hepsiTamam = g.Firmalar.All(f => f.Tamamlandi);
+        var acik = !tekFirma && acikSatirlar.Contains(g.Anahtar);
+
+        <tr class="@(hepsiTamam ? "ys-cizili" : "")" @key="@($"{g.Anahtar}#{surum}")">
+            <td>
+                <input type="checkbox" checked="@hepsiTamam" disabled="@isleniyor"
+                       title="@(tekFirma ? (hepsiTamam ? "İşareti kaldır" : "Yapıldı olarak işaretle")
+                                        : (hepsiTamam ? "Bütün firmaların işaretini kaldır" : "Bütün firmaları işaretle"))"
+                       @onchange="@(() => GrubuIsaretle(g))" />
+            </td>
+            <td>
+                <div class="ys-baslik">@g.Baslik</div>
+                <div class="ys-alt">
+                    @IsMetin.Kaynak(g.KaynakTip) · @IsMetin.Tekrar(g.Tekrar)@(g.DonemEtiketi is null ? "" : " · " + g.DonemEtiketi)
+                    @if (tekFirma && g.Firmalar[0].SorumluKullaniciAdi is { } sorumlu)
+                    {
+                        <text> · @sorumlu</text>
+                    }
+                </div>
+            </td>
+            <td>
+                @if (tekFirma)
+                {
+                    @g.Firmalar[0].FirmaAdi
+                }
+                else
+                {
+                    <span class="ys-firma-sayi" role="button"
+                          @onclick="@(() => { if (!acikSatirlar.Remove(g.Anahtar)) acikSatirlar.Add(g.Anahtar); })">
+                        @g.FirmaSayisi firma@(g.TamamlananSayisi > 0 && !hepsiTamam ? $" ({g.TamamlananSayisi} yapıldı)" : "")
+                        <RadzenIcon Icon="@(acik ? "expand_less" : "expand_more")" Style="font-size:15px;vertical-align:-3px" />
+                    </span>
+                }
+            </td>
+            <td class="ys-songun">@g.SonGun.ToString("dd.MM.yyyy")</td>
+            <td><span class="@IsMetin.RozetSinifi(g.Durum)">@IsMetin.Rozet(g.Durum, g.Gun)</span></td>
+        </tr>
+
+        @if (acik)
+        {
+            @foreach (var f in g.Firmalar)
+            {
+                <tr class="@(f.Tamamlandi ? "ys-alt-tablo ys-cizili" : "ys-alt-tablo")">
+                    <td style="padding-left:18px">
+                        <input type="checkbox" checked="@f.Tamamlandi" disabled="@isleniyor"
+                               @onchange="@(() => TekIsaretle(f))" />
+                    </td>
+                    <td colspan="2">
+                        <div class="ys-baslik">@f.FirmaAdi</div>
+                        <div class="ys-alt">
+                            @(f.SorumluKullaniciAdi ?? "sorumlu yok")
+                            @if (f.Tamamlandi && f.TamamlanmaZamani is { } z)
+                            {
+                                <text> · yapıldı @z.ToLocalTime().ToString("dd.MM.yyyy")@(f.TamamlayanAdi is null ? "" : " · " + f.TamamlayanAdi)</text>
+                            }
+                        </div>
+                    </td>
+                    <td class="ys-songun">@f.SonGun.ToString("dd.MM.yyyy")</td>
+                    <td><span class="@IsMetin.RozetSinifi(f.Durum)">@IsMetin.Rozet(f.Durum, f.Gun)</span></td>
+                </tr>
+            }
+        }
+    };
+
+    private Task TekIsaretle(IsSatiriDto s)
+        => Isaretle(!s.Tamamlandi, new[] { s });
+
+    /// <summary>Tek satırdaki kutu: tek firmada doğrudan, çok firmada ÖNCE onay sorar.</summary>
+    private async Task GrubuIsaretle(IsGrubuDto g)
+    {
+        var yapildi = !g.Firmalar.All(f => f.Tamamlandi);
+        var hedef = g.Firmalar.Where(f => f.Tamamlandi != yapildi).ToList();
+
+        if (g.Firmalar.Count > 1)
+        {
+            var mesaj = yapildi
+                ? $"\"{g.Baslik}\" ({g.SonGun:dd.MM.yyyy}) {hedef.Count} firmada yapıldı olarak işaretlenecek:\n{FirmaListesi(hedef)}"
+                : $"\"{g.Baslik}\" ({g.SonGun:dd.MM.yyyy}) {hedef.Count} firmada işareti kaldırılacak:\n{FirmaListesi(hedef)}";
+
+            var onay = await DialogService.Confirm(mesaj, yapildi ? "Hepsini işaretle" : "İşaretleri kaldır",
+                new ConfirmOptions
+                {
+                    OkButtonText = yapildi ? $"{hedef.Count} firmayı işaretle" : "İşaretleri kaldır",
+                    CancelButtonText = "Vazgeç"
+                });
+
+            if (onay != true)
+            {
+                // Kutu tarayıcıda değişti; satırı yeniden kurarak sunucudaki hâline döndür.
+                surum++;
+                return;
+            }
+        }
+
+        await Isaretle(yapildi, hedef);
+    }
+
+    private static string FirmaListesi(IEnumerable<IsSatiriDto> firmalar)
+    {
+        var adlar = firmalar.Select(f => f.FirmaAdi).ToList();
+        return adlar.Count <= 12 ? string.Join(", ", adlar) : string.Join(", ", adlar.Take(12)) + $" ve {adlar.Count - 12} firma daha";
+    }
+
+    private async Task Isaretle(bool yapildi, IEnumerable<IsSatiriDto> satirlar)
+    {
+        isleniyor = true;
+        try
+        {
+            var sonuc = await Api.IsaretleAsync(new IsIsaretleDto
+            {
+                Yapildi = yapildi,
+                Isler = satirlar.Select(IsIsaretDto.Satirdan).ToList()
+            });
+            await Yukle();
+            hata = sonuc ?? hata;
+        }
+        finally
+        {
+            isleniyor = false;
+        }
+    }
+}

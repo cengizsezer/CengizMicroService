@@ -1,0 +1,237 @@
+@page "/yonetim/vergi-takvimi"
+
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Pages.Yapilacaklar
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@attribute [Authorize]
+
+@inject IYapilacaklarApiClient Api
+@inject DialogService DialogService
+@inject NotificationService Notif
+
+@*
+    Vergi takvimi — Yapılacaklar'daki yasal işlerin son günleri.
+
+    Tarihler KODA GÖMÜLÜ DEĞİL: yasal süreler tebliğle değişiyor ve uzatılıyor. Süre
+    uzatıldığında son gün burada düzeltilir; firma kartları ve Yapılacaklar yeni tarihi
+    bir sonraki açılışta gösterir. Dönem başı/sonu dönemden hesaplanır.
+
+    Pasif satır iş üretmez. "Yapıldı" işareti olan satır silinmez (geçmiş kaybolurdu) ve
+    dönemi değiştirilemez; tarih, ad ve aktiflik düzeltilebilir.
+*@
+
+<PageTitle>Vergi Takvimi</PageTitle>
+
+<YsStiller />
+
+<div class="ys-kok">
+    <div class="ys-ust">
+        <div>
+            <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">Vergi takvimi</RadzenText>
+            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">
+                Yasal işlerin son günleri. Seed tarihleri yürürlükteki takvimle doğrulanmalı; bayram/resmî tatil kaydırması elle yapılır.
+            </RadzenText>
+        </div>
+        <div class="ys-filtreler">
+            @foreach (var y in Yillar)
+            {
+                <span class="@(yil == y ? "ys-filtre ys-filtre-secili" : "ys-filtre")" role="button"
+                      @onclick="@(() => YilSec(y))">@(y?.ToString() ?? "Tümü")</span>
+            }
+            <RadzenButton Text="Varsayılanları yükle" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                          Click="@Varsayilanlar" title="Eksik satırları ekler; mevcut satıra dokunmaz" />
+        </div>
+    </div>
+
+    @* ---- Yeni satır ---- *@
+    <div class="ys-kart">
+        <div class="ys-kart-basi">Satır ekle</div>
+        <div class="vt-form">
+            <RadzenTextBox @bind-Value="yeni.MukellefiyetKodu" MaxLength="4" Placeholder="Kod (0015)" Style="width:90px" />
+            <RadzenTextBox @bind-Value="yeni.Ad" MaxLength="150" Placeholder="Ad" Style="flex:1;min-width:180px" />
+            <RadzenDropDown TValue="IsTekrari" Data="@Tekrarlar" TextProperty="Ad" ValueProperty="Deger"
+                            @bind-Value="yeni.Tekrar" Style="width:130px" />
+            <RadzenNumeric TValue="int" @bind-Value="yeni.Yil" Min="2000" Max="2100" Style="width:90px" />
+            <RadzenNumeric TValue="int" @bind-Value="yeni.DonemNo" Min="1" Max="12" Style="width:70px" title="Dönem no" />
+            <RadzenDatePicker TValue="DateTime" @bind-Value="yeni.SonGun" DateFormat="dd.MM.yyyy" Style="width:130px" />
+            <RadzenButton Text="Ekle" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Primary" Click="@Ekle" />
+        </div>
+    </div>
+
+    @if (hata is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">@hata</RadzenAlert>
+    }
+
+    <div class="ys-kart">
+        @if (satirlar is null)
+        {
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+        }
+        else if (satirlar.Count == 0)
+        {
+            <div class="ys-bos">Takvimde satır yok. "Varsayılanları yükle" ile 2026–2027 satırları eklenebilir.</div>
+        }
+        else
+        {
+            <table class="ys-tablo">
+                <thead>
+                    <tr>
+                        <th style="width:60px">Kod</th>
+                        <th>Ad</th>
+                        <th style="width:150px">Dönem</th>
+                        <th style="width:150px">Son gün</th>
+                        <th style="width:60px">Aktif</th>
+                        <th style="width:150px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in satirlar)
+                    {
+                        var d = duzen[s.Id];
+                        <tr class="@(s.Aktif ? "" : "ys-pasif")">
+                            <td class="ys-songun">@s.MukellefiyetKodu</td>
+                            <td><RadzenTextBox @bind-Value="d.Ad" MaxLength="150" Style="width:100%" /></td>
+                            <td>
+                                <div>@DonemEtiketi(s)</div>
+                                <div class="ys-alt">@s.DonemBas.ToString("dd.MM.yyyy") – @s.DonemBit.ToString("dd.MM.yyyy")</div>
+                            </td>
+                            <td>
+                                <RadzenDatePicker TValue="DateTime" @bind-Value="d.SonGun" DateFormat="dd.MM.yyyy" Style="width:135px" />
+                                <div class="ys-alt">@Gun(d.SonGun)</div>
+                            </td>
+                            <td><RadzenCheckBox TValue="bool" @bind-Value="d.Aktif" /></td>
+                            <td>
+                                @if (Degisti(s, d))
+                                {
+                                    <span class="ys-bag" role="button" @onclick="@(() => Kaydet(s, d))">Kaydet</span>
+                                    <span class="ys-bag" role="button" style="margin-left:8px" @onclick="@(() => Geri(s))">Vazgeç</span>
+                                }
+                                else if (s.TamamlamaSayisi > 0)
+                                {
+                                    <span class="ys-alt" title="Bu satırda yapıldı işareti var">@s.TamamlamaSayisi firma yaptı</span>
+                                }
+                                else
+                                {
+                                    <span class="ys-bag ys-sil" role="button" @onclick="@(() => Sil(s))">Sil</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+<style>
+    .vt-form { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:.4rem; }
+</style>
+
+@code {
+    private static readonly int?[] Yillar = { 2026, 2027, null };
+
+    private sealed record Secenek(IsTekrari Deger, string Ad);
+
+    private static readonly List<Secenek> Tekrarlar = new()
+    {
+        new(IsTekrari.Aylik, "Aylık"),
+        new(IsTekrari.UcAylik, "Üç aylık"),
+        new(IsTekrari.Yillik, "Yıllık")
+    };
+
+    private int? yil = DateTime.Today.Year;
+    private List<VergiTakvimiDto>? satirlar;
+    private Dictionary<int, VergiTakvimiKaydetDto> duzen = new();
+    private VergiTakvimiKaydetDto yeni = new() { Yil = DateTime.Today.Year, SonGun = DateTime.Today };
+    private string? hata;
+
+    private static readonly System.Globalization.CultureInfo Tr = new("tr-TR");
+
+    protected override Task OnInitializedAsync() => Yukle();
+
+    private async Task YilSec(int? y)
+    {
+        yil = y;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        var sonuc = await Api.TakvimAsync(yil);
+        if (sonuc is null)
+        {
+            hata = "Takvim alınamadı.";
+            satirlar ??= new();
+            return;
+        }
+
+        satirlar = sonuc;
+        duzen = satirlar.ToDictionary(s => s.Id, Kopya);
+    }
+
+    private static VergiTakvimiKaydetDto Kopya(VergiTakvimiDto s) => new()
+    {
+        MukellefiyetKodu = s.MukellefiyetKodu,
+        Ad = s.Ad,
+        Tekrar = s.Tekrar,
+        Yil = s.Yil,
+        DonemNo = s.DonemNo,
+        SonGun = s.SonGun,
+        Aktif = s.Aktif
+    };
+
+    private static bool Degisti(VergiTakvimiDto s, VergiTakvimiKaydetDto d)
+        => s.Ad != d.Ad || s.SonGun.Date != d.SonGun.Date || s.Aktif != d.Aktif;
+
+    private void Geri(VergiTakvimiDto s) => duzen[s.Id] = Kopya(s);
+
+    private static string DonemEtiketi(VergiTakvimiDto s) => s.Tekrar switch
+    {
+        IsTekrari.Aylik => Tr.DateTimeFormat.GetMonthName(s.DonemNo) + " " + s.Yil,
+        IsTekrari.UcAylik => $"{s.Yil} / {s.DonemNo}. çeyrek",
+        _ => s.Yil.ToString()
+    };
+
+    private static string Gun(DateTime t) => Tr.DateTimeFormat.GetDayName(t.DayOfWeek);
+
+    private async Task Kaydet(VergiTakvimiDto s, VergiTakvimiKaydetDto d)
+    {
+        hata = await Api.TakvimGuncelleAsync(s.Id, d);
+        if (hata is null) await Yukle();
+    }
+
+    private async Task Sil(VergiTakvimiDto s)
+    {
+        var onay = await DialogService.Confirm($"{s.MukellefiyetKodu} · {DonemEtiketi(s)} satırı silinecek.", "Takvim satırı silme",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        hata = await Api.TakvimSilAsync(s.Id);
+        if (hata is null) await Yukle();
+    }
+
+    private async Task Ekle()
+    {
+        hata = await Api.TakvimEkleAsync(yeni);
+        if (hata is not null) return;
+
+        yeni = new VergiTakvimiKaydetDto { Yil = yeni.Yil, Tekrar = yeni.Tekrar, SonGun = yeni.SonGun };
+        await Yukle();
+    }
+
+    private async Task Varsayilanlar()
+    {
+        var (eklenen, h) = await Api.TakvimVarsayilanlarAsync();
+        hata = h;
+        if (h is not null) return;
+
+        Notif.Notify(NotificationSeverity.Info, "Vergi takvimi",
+            eklenen == 0 ? "Eksik satır yok." : $"{eklenen} satır eklendi — tarihleri yürürlükteki takvimle doğrulayın.");
+        await Yukle();
+    }
+}

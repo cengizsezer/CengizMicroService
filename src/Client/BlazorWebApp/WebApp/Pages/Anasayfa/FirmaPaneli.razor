@@ -35,6 +35,15 @@
             }
         </div>
 
+        @if (!yukleniyor && panel.Firmalar.Count > 0)
+        {
+            <div class="an-cipler">
+                @Cip(RayFiltresi.Tumu, "Tümü", panel.Firmalar.Count)
+                @Cip(RayFiltresi.Eksik, "Eksik", panel.Firmalar.Count(f => Sayi(f) > 0))
+                @Cip(RayFiltresi.MizanYok, "Mizan yok", panel.Firmalar.Count(f => f.MizanYok))
+            </div>
+        }
+
         @if (yukleniyor)
         {
             <div class="fp-liste-bos">Yükleniyor…</div>
@@ -44,7 +53,7 @@
             <div class="fp-liste-bos">
                 @(panel.Firmalar.Count == 0
                     ? "Firma kaydı yok. Yönetim → Firmalarım'dan ekleyebilirsiniz."
-                    : "Aramaya uyan firma yok.")
+                    : "Aramaya ya da filtreye uyan firma yok.")
             </div>
         }
         else
@@ -55,17 +64,28 @@
                      @onclick="@(() => Sec(firma.FirmaId))">
                     <div class="fp-satir-metin">
                         <div class="fp-satir-ad">@firma.Ad</div>
-                        <div class="fp-satir-vkn">@firma.VergiKimlikNo</div>
+                        <div class="fp-satir-vkn">@firma.VergiKimlikNo · @(firma.MizanFormati ?? "—")</div>
                     </div>
 
-                    @if (firma.UyariVar)
+                    @* Kırmızı (mizan yok) sarıya (eksik alan) baskın: daha ağır olan. *@
+                    @if (firma.MizanYok)
                     {
-                        <span class="fp-uyari" title="@string.Join("\n", firma.Uyarilar.Select(u => u.Mesaj))">
-                            <RadzenIcon Icon="warning" Style="font-size:17px" />
-                        </span>
+                        <span class="an-rozet an-rozet-mizan" title="@RozetBasligi(firma)">!</span>
+                    }
+                    else if (Sayi(firma) > 0)
+                    {
+                        <span class="an-rozet an-rozet-eksik" title="@RozetBasligi(firma)">@Sayi(firma)</span>
                     }
                 </div>
             }
+        }
+
+        @if (!yukleniyor && panel.Firmalar.Count > 0)
+        {
+            <div class="an-ray-aciklama">
+                <span class="an-rozet an-rozet-eksik">3</span> eksik alan + uyarı sayısı ·
+                <span class="an-rozet an-rozet-mizan">!</span> hiç mizan yüklenmemiş
+            </div>
         }
     </div>
 
@@ -96,7 +116,7 @@
                     </div>
                 </div>
 
-                <FirmaPaneliDetay Detay="@panel.Secili" />
+                <FirmaPaneliDetay Detay="@panel.Secili" Degisti="@DetayTazele" />
             </div>
         }
     </div>
@@ -185,6 +205,60 @@
     .fp-belge-not { color:#a0aec0; font-size:11.5px; }
     .fp-belge-yok { border:1px dashed #cbd5e0; color:#a0aec0; background:transparent; }
     .fp-belge-yok:hover { border-color:#3182ce; color:#3182ce; }
+
+    /* ---- anasayfa künyesi eklemeleri (an-) ---- */
+    .an-cipler { display:flex; flex-wrap:wrap; gap:5px; padding:7px 10px; border-bottom:1px solid #edf2f7; }
+    .an-cip { font-size:11.5px; border:1px solid #e2e8f0; border-radius:999px; padding:1px 9px;
+              color:#4a5568; cursor:pointer; background:#fff; white-space:nowrap; }
+    .an-cip:hover { border-color:#3182ce; }
+    .an-cip-secili { background:#3182ce; border-color:#3182ce; color:#fff; }
+    .an-rozet { display:inline-flex; align-items:center; justify-content:center; min-width:19px; height:19px;
+                padding:0 5px; border-radius:999px; font-size:11px; font-weight:700; flex-shrink:0; }
+    .an-rozet-eksik { background:#fefcbf; color:#744210; }
+    .an-rozet-mizan { background:#e53e3e; color:#fff; }
+    .an-ray-aciklama { padding:7px 10px; font-size:11px; color:#a0aec0; border-top:1px solid #edf2f7;
+                       display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+    .an-ray-aciklama .an-rozet { min-width:15px; height:15px; font-size:10px; padding:0 3px; }
+    .an-oto { font-size:11px; color:#a0aec0; }
+    .an-eksik-serit { display:flex; align-items:center; gap:8px; border:1px solid #f6e05e; background:#fffff0;
+                      border-radius:6px; padding:.45rem .7rem; color:#744210; font-size:12.5px; }
+    .an-eksik-metin { flex:1; min-width:0; }
+    .an-eksik-fazla { color:#975a16; white-space:nowrap; }
+    .an-uyari-cumle { display:block; margin-top:2px; }
+    .an-kod-cipler { display:flex; flex-wrap:wrap; gap:4px; }
+    .an-kod-cip { font-size:11.5px; border-radius:999px; padding:1px 8px; background:#edf2f7; color:#4a5568;
+                  white-space:nowrap; }
+    .an-kod-kaynak { background:#ebf4ff; color:#2c5282; font-weight:700; box-shadow:inset 0 0 0 1px #90cdf4; }
+    .an-kalan { font-size:11px; color:#a0aec0; margin-top:3px; word-break:break-word; }
+    .an-odak-vurgu { outline:2px solid #f6e05e; outline-offset:3px; border-radius:6px; }
+
+    /* Takip kartı */
+    .an-takip { display:grid; gap:.4rem 1.2rem; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); }
+    .an-sorumlu { display:flex; align-items:center; gap:8px; font-size:13px; }
+    .an-avatar { width:26px; height:26px; border-radius:50%; background:#ebf4ff; color:#2c5282;
+                 display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
+    .an-avatar-bos { background:transparent; border:1.5px dashed #cbd5e0; }
+    .an-donemler { display:flex; flex-wrap:wrap; gap:5px; }
+    .an-donem { font-size:11.5px; border-radius:999px; padding:1px 9px; }
+    .an-donem-yuklu { background:#e6fffa; color:#276749; }
+    .an-donem-yok { background:#edf2f7; color:#a0aec0; }
+    .an-takip-bolum { border-top:1px solid #edf2f7; margin-top:.6rem; padding-top:.5rem; }
+    .an-takip-basi { display:flex; justify-content:space-between; align-items:center; margin-bottom:.25rem; }
+    .an-not { font-size:13px; color:#2d3748; white-space:pre-wrap; word-break:break-word; }
+    .an-yetki-rozet { font-size:11px; font-weight:600; border-radius:999px; padding:1px 8px; margin-left:4px;
+                      background:#fefcbf; color:#744210; }
+    .an-yetki-kritik { background:#fed7d7; color:#9b2c2c; }
+    .an-baglanti { font-size:12px; color:#3182ce; cursor:pointer; }
+    .an-baglanti:hover { text-decoration:underline; }
+    .an-pasif { color:#cbd5e0; cursor:not-allowed; }
+    .an-pasif:hover { text-decoration:none; }
+    .an-mizan { display:grid; gap:.4rem 1.2rem; align-items:end;
+                grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
+                border-top:1px solid #edf2f7; margin-top:.6rem; padding-top:.55rem; }
+    .an-mizan-ac { justify-self:end; white-space:nowrap; }
+    .an-denge { display:inline-block; font-size:11.5px; border-radius:999px; padding:1px 8px; }
+    .an-denge-tamam { background:#e6fffa; color:#276749; }
+    .an-denge-fark { background:#fffaf0; color:#975a16; }
 </style>
 
 @code {
@@ -196,7 +270,38 @@
 
     private int SeciliId => panel.Secili?.FirmaId ?? 0;
 
-    private List<FirmaPaneliOzetDto> Suzulmus => FirmaPaneliArama.Suz(panel.Firmalar, arama);
+    private enum RayFiltresi { Tumu, Eksik, MizanYok }
+
+    private RayFiltresi filtre = RayFiltresi.Tumu;
+
+    /// <summary>Arama ile filtre birlikte uygulanır; çipteki sayılar filtre öncesi (aramasız) toplamdır.</summary>
+    private List<FirmaPaneliOzetDto> Suzulmus => FirmaPaneliArama.Suz(panel.Firmalar, arama)
+        .Where(f => filtre switch
+        {
+            RayFiltresi.Eksik => Sayi(f) > 0,
+            RayFiltresi.MizanYok => f.MizanYok,
+            _ => true
+        })
+        .ToList();
+
+    private RenderFragment Cip(RayFiltresi deger, string ad, int sayi) => __builder =>
+    {
+        <span class="@(filtre == deger ? "an-cip an-cip-secili" : "an-cip")" role="button"
+              @onclick="@(() => filtre = deger)">@ad @sayi</span>
+    };
+
+    /// <summary>Sarı rozetin sayısı: eksik alanlar + uyarılar (imza yetkisi, pay oranı, geçerli yetkili).</summary>
+    private static int Sayi(FirmaPaneliOzetDto f) => f.EksikSayisi + f.UyariSayisi;
+
+    /// <summary>Renk tek başına anlam taşımasın: rozetin başlığı ne olduğunu yazar.</summary>
+    private static string RozetBasligi(FirmaPaneliOzetDto f)
+    {
+        var parcalar = new List<string>();
+        if (f.MizanYok) parcalar.Add("hiç mizan yüklenmemiş");
+        if (f.EksikSayisi > 0) parcalar.Add($"{f.EksikSayisi} eksik alan");
+        if (f.UyariSayisi > 0) parcalar.Add($"{f.UyariSayisi} uyarı");
+        return string.Join(" · ", parcalar);
+    }
 
     protected override async Task OnInitializedAsync() => await Yukle(null, ilk: true);
 
@@ -209,6 +314,9 @@
         await Yukle(SeciliId > 0 ? SeciliId : null, ilk: true);
         StateHasChanged();
     }
+
+    /// <summary>Kart üzerinden kayıt yapıldı: aynı firma, liste ve ayrıntı birlikte tazelenir.</summary>
+    private Task DetayTazele() => Yukle(SeciliId > 0 ? SeciliId : null, ilk: false);
 
     private async Task Sec(int firmaId)
     {

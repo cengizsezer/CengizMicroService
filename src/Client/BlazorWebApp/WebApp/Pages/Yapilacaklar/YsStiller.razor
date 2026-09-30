@@ -1,0 +1,83 @@
+@*
+    Firma işleri kartı, Kalıcı talimatlar kartı, Yapılacaklar ekranı ve anasayfa şeridinin
+    ortak stilleri (ys- öneki). Diğer öneklerin (an-, fp-, …) sınıflarına dokunulmaz.
+    Renk tek başına anlam taşımaz: her rozette metin de yazar.
+*@
+<style>
+    /* Rozetler */
+    .ys-rozet { display:inline-flex; align-items:center; gap:3px; font-size:11px; font-weight:600;
+                border-radius:999px; padding:1px 8px; white-space:nowrap; }
+    .ys-rozet-gecikti { background:#fed7d7; color:#9b2c2c; }
+    .ys-rozet-hafta { background:#feebc8; color:#9c4221; }
+    .ys-rozet-ay { background:#edf2f7; color:#4a5568; }
+    .ys-rozet-sonra { background:#f7fafc; color:#a0aec0; }
+    .ys-rozet-tamam { background:#c6f6d5; color:#22543d; }
+    .ys-sayi { font-size:11px; font-weight:700; border-radius:999px; padding:1px 8px; margin-left:4px; }
+
+    /* Kart içi liste */
+    .ys-grup { margin-top:.35rem; }
+    .ys-grup + .ys-grup { border-top:1px solid #edf2f7; margin-top:.6rem; padding-top:.5rem; }
+    .ys-grup-basi { display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+                    margin-bottom:.2rem; flex-wrap:wrap; }
+    .ys-grup-ad { font-size:11px; color:#718096; text-transform:uppercase; letter-spacing:.02em; font-weight:600; }
+    .ys-grup-not { font-size:11px; color:#a0aec0; }
+    .ys-satir { display:grid; grid-template-columns:22px minmax(0,1fr) auto auto; gap:.2rem .6rem;
+                align-items:center; padding:5px 0; border-bottom:1px solid #f2f5f9; }
+    .ys-satir:last-child { border-bottom:none; }
+    .ys-satir input[type=checkbox] { width:15px; height:15px; cursor:pointer; margin:0; }
+    .ys-baslik { font-size:13px; color:#2d3748; min-width:0; word-break:break-word; }
+    .ys-alt { font-size:11.5px; color:#a0aec0; }
+    .ys-songun { font-size:12px; color:#4a5568; font-family:Consolas,"Courier New",monospace; white-space:nowrap; }
+    .ys-cizili .ys-baslik { text-decoration:line-through; color:#a0aec0; }
+    .ys-cizili .ys-songun { color:#a0aec0; }
+    .ys-kilit { font-size:13px !important; color:#cbd5e0; vertical-align:-2px; }
+    .ys-islem { display:inline-flex; gap:8px; margin-left:6px; }
+    .ys-bag { font-size:12px; color:#3182ce; cursor:pointer; }
+    .ys-bag:hover { text-decoration:underline; }
+    .ys-sil { color:#c53030; }
+    .ys-pasif { opacity:.55; }
+    .ys-bos { font-size:12.5px; color:#a0aec0; padding:4px 0; }
+    .ys-dipnot { font-size:11.5px; color:#a0aec0; border-top:1px solid #edf2f7; margin-top:.5rem; padding-top:.4rem; }
+
+    /* Kalıcı talimatlar */
+    .ys-talimatlar { margin:0; padding-left:1.1rem; }
+    .ys-talimatlar li { font-size:13px; color:#2d3748; padding:3px 0; white-space:pre-wrap; word-break:break-word; }
+    .ys-talimat-alt { font-size:11px; color:#a0aec0; margin-left:6px; white-space:nowrap; }
+    .ys-talimat-form { display:flex; gap:6px; margin-top:.5rem; }
+    .ys-talimat-form input { flex:1; min-width:0; font-size:13px; border:1px solid #e2e8f0; border-radius:4px; padding:4px 8px; }
+
+    /* Yapılacaklar ekranı */
+    .ys-kok { display:flex; flex-direction:column; gap:.9rem; }
+    .ys-ust { display:flex; justify-content:space-between; align-items:center; gap:.6rem; flex-wrap:wrap; }
+    .ys-filtreler { display:flex; gap:6px; flex-wrap:wrap; }
+    .ys-filtre { font-size:12.5px; border:1px solid #e2e8f0; border-radius:999px; padding:3px 12px;
+                 color:#4a5568; cursor:pointer; background:#fff; }
+    .ys-filtre:hover { border-color:#3182ce; }
+    .ys-filtre-secili { background:#3182ce; border-color:#3182ce; color:#fff; }
+    .ys-kart { border:1px solid #e2e8f0; border-radius:6px; background:#fff; padding:.55rem .85rem; }
+    .ys-kart-gecikti { border-color:#feb2b2; border-left:4px solid #e53e3e; background:#fffafa; }
+    .ys-kart-hafta { border-color:#fbd38d; border-left:4px solid #dd6b20; background:#fffcf5; }
+    .ys-kart-ay { border-left:4px solid #a0aec0; }
+    .ys-kart-sonra, .ys-kart-tamam { border-left:4px solid #e2e8f0; }
+    .ys-kart-basi { display:flex; align-items:center; gap:8px; font-size:13.5px; font-weight:700; color:#2d3748;
+                    cursor:default; user-select:none; }
+    .ys-katlanir { cursor:pointer; }
+    .ys-tablo { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:.35rem; }
+    .ys-tablo th { text-align:left; font-weight:600; color:#718096; font-size:11px; text-transform:uppercase;
+                   border-bottom:1px solid #e2e8f0; padding:4px 6px; }
+    .ys-tablo td { padding:5px 6px; border-bottom:1px solid #f2f5f9; color:#2d3748; vertical-align:top; }
+    .ys-tablo tr:last-child td { border-bottom:none; }
+    .ys-tablo input[type=checkbox] { width:15px; height:15px; cursor:pointer; margin:0; }
+    .ys-firma-sayi { color:#3182ce; cursor:pointer; white-space:nowrap; }
+    .ys-firma-sayi:hover { text-decoration:underline; }
+    .ys-alt-tablo td { background:#f9fbfd; }
+    .ys-alt-tablo .ys-baslik { font-size:12.5px; }
+
+    /* Anasayfa şeridi */
+    .ys-serit { display:flex; align-items:center; gap:8px; border:1px solid #feb2b2; background:#fff5f5;
+                border-radius:6px; padding:.45rem .8rem; color:#742a2a; font-size:13px; }
+    .ys-serit-metin { flex:1; min-width:0; }
+    .ys-serit-kapsam { color:#a0aec0; font-size:12px; }
+    .ys-serit a { color:#c53030; font-weight:600; text-decoration:none; white-space:nowrap; }
+    .ys-serit a:hover { text-decoration:underline; }
+</style>

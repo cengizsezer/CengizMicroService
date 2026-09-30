@@ -1,4 +1,6 @@
-﻿using Blazored.LocalStorage;
+﻿using System.Net.Http.Json;
+using System.Text.Json;
+using Blazored.LocalStorage;
 using WebApp.Extensions;
 using WebApp.Shared.Dto.Anasayfa;
 
@@ -13,6 +15,23 @@ namespace WebApp.Application.Services
         /// <paramref name="firmaId"/> boşsa sunucu ilk firmayı seçer.
         /// </summary>
         Task<FirmaPaneliDto?> FirmaPaneliAsync(int? firmaId = null, CancellationToken ct = default);
+
+        /// <summary>Sınıflandırma kartının formu. Hata varsa sunucunun mesajı döner, yoksa <c>null</c>.</summary>
+        Task<string?> SiniflandirmaKaydetAsync(int firmaId, FirmaSiniflandirmaKaydetDto dto, CancellationToken ct = default);
+
+        /// <summary>Seçili mizan formatının boş şablonu (xlsx).</summary>
+        Task<(byte[]? Icerik, string? Hata)> MizanSablonuAsync(string format, CancellationToken ct = default);
+
+        // ---- Takip kartı ----
+
+        /// <summary><c>KullaniciId = null</c> sorumluyu kaldırır. Hata mesajı ya da <c>null</c>.</summary>
+        Task<string?> SorumluAtaAsync(int firmaId, FirmaSorumluAtaDto dto, CancellationToken ct = default);
+
+        Task<List<FirmaNotuDto>?> NotlarAsync(int firmaId, CancellationToken ct = default);
+        Task<string?> NotEkleAsync(int firmaId, string metin, CancellationToken ct = default);
+        Task<string?> NotSilAsync(int firmaId, long notId, CancellationToken ct = default);
+
+        Task<List<FirmaOlayDto>?> OlaylarAsync(int firmaId, CancellationToken ct = default);
     }
 
     /// <inheritdoc cref="IAnasayfaApiClient"/>
@@ -44,6 +63,80 @@ namespace WebApp.Application.Services
                 : $"{Prefix}/firma-paneli";
 
             return _http.GetResponseAsync<FirmaPaneliDto?>(yol);
+        }
+
+        /// <inheritdoc />
+        public Task<string?> SiniflandirmaKaydetAsync(int firmaId, FirmaSiniflandirmaKaydetDto dto, CancellationToken ct = default)
+            => YazAsync(() => _http.PutAsJsonAsync($"{Prefix}/firmalar/{firmaId}/siniflandirma", dto, ct), ct);
+
+        /// <inheritdoc />
+        public async Task<(byte[]? Icerik, string? Hata)> MizanSablonuAsync(string format, CancellationToken ct = default)
+        {
+            try
+            {
+                using var resp = await _http.GetAsync($"{Prefix}/mizan-sablonu?format={Uri.EscapeDataString(format)}", ct);
+                if (!resp.IsSuccessStatusCode)
+                    return (null, MesajCoz(await resp.Content.ReadAsStringAsync(ct)) ?? "Şablon indirilemedi.");
+
+                return (await resp.Content.ReadAsByteArrayAsync(ct), null);
+            }
+            catch (Exception)
+            {
+                return (null, SunucuYok);
+            }
+        }
+
+        /// <inheritdoc />
+        public Task<string?> SorumluAtaAsync(int firmaId, FirmaSorumluAtaDto dto, CancellationToken ct = default)
+            => YazAsync(() => _http.PutAsJsonAsync($"{Prefix}/firmalar/{firmaId}/sorumlu", dto, ct), ct);
+
+        /// <inheritdoc />
+        public Task<List<FirmaNotuDto>?> NotlarAsync(int firmaId, CancellationToken ct = default)
+            => _http.GetResponseAsync<List<FirmaNotuDto>?>($"{Prefix}/firmalar/{firmaId}/notlar");
+
+        /// <inheritdoc />
+        public Task<string?> NotEkleAsync(int firmaId, string metin, CancellationToken ct = default)
+            => YazAsync(() => _http.PostAsJsonAsync($"{Prefix}/firmalar/{firmaId}/notlar",
+                                                    new FirmaNotuEkleDto { Metin = metin }, ct), ct);
+
+        /// <inheritdoc />
+        public Task<string?> NotSilAsync(int firmaId, long notId, CancellationToken ct = default)
+            => YazAsync(() => _http.DeleteAsync($"{Prefix}/firmalar/{firmaId}/notlar/{notId}", ct), ct);
+
+        /// <inheritdoc />
+        public Task<List<FirmaOlayDto>?> OlaylarAsync(int firmaId, CancellationToken ct = default)
+            => _http.GetResponseAsync<List<FirmaOlayDto>?>($"{Prefix}/firmalar/{firmaId}/olaylar");
+
+        private const string SunucuYok ="Sunucuya ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.";
+
+        /// <summary>Yazma isteği: başarıda <c>null</c>, hatada kullanıcıya gösterilecek mesaj.</summary>
+        private static async Task<string?> YazAsync(Func<Task<HttpResponseMessage>> istek, CancellationToken ct)
+        {
+            try
+            {
+                using var resp = await istek();
+                if (resp.IsSuccessStatusCode) return null;
+
+                return MesajCoz(await resp.Content.ReadAsStringAsync(ct)) ?? "Kayıt yapılamadı.";
+            }
+            catch (Exception)
+            {
+                return SunucuYok;
+            }
+        }
+
+        /// <summary>Sunucunun <c>{ field, message }</c> hata gövdesinden mesajı çıkarır.</summary>
+        private static string? MesajCoz(string govde)
+        {
+            try
+            {
+                using var belge = JsonDocument.Parse(govde);
+                return belge.RootElement.TryGetProperty("message", out var m) ? m.GetString() : null;
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
         }
     }
 

@@ -10,6 +10,7 @@
 @inject IFirmaApiClient FirmaApi
 @inject NavigationManager Nav
 @inject WebApp.Application.Services.ISonFirmalarStore SonFirmalar
+@inject IJSRuntime JS
 
 @*
     Firma Bilgileri — kullanıcının sık ihtiyaç duyduğu firma künyesi tek ekranda:
@@ -62,6 +63,12 @@
 @code {
     [Parameter] public int FirmaId { get; set; }
 
+    /// <summary>
+    /// Anasayfadaki "Tamamla"dan gelindiyse eksik alanın anahtarı ("mersisNo", "ortak"…);
+    /// sayfa açılınca o alana kaydırılıp odaklanır.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "odak")] public string? Odak { get; set; }
+
     private FirmaDto? firma;
     private bool bulunamadi;
 
@@ -93,4 +100,15 @@
             bulunamadi = true;
         }
     }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !string.IsNullOrWhiteSpace(Odak))
+            await JS.InvokeVoidAsync("anOdakla", "fb-odak-" + Odak);
+    }
 }
+
+<style>
+    .an-odak-vurgu { outline:2px solid #f6e05e; outline-offset:3px; border-radius:6px;
+                     background:#fffff0; transition:background .3s; }
+</style>

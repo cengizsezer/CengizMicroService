@@ -1,4 +1,5 @@
 using CatalogService.Api.Features.FirmaBilgileri.Domain;
+using CatalogService.Api.Features.Firmalar.Domain;
 using CatalogService.Api.Features.FirmaBilgileri.Dtos;
 
 namespace CatalogService.Api.Features.Anasayfa.Dtos
@@ -12,7 +13,13 @@ namespace CatalogService.Api.Features.Anasayfa.Dtos
     {
         ImzaYetkisiBitiyor = 1,
         PayOraniTutmuyor = 2,
-        EksikSicilAlani = 3
+        EksikSicilAlani = 3,
+
+        /// <summary>Kayıtlı imza yetkililerinin hepsinin süresi dolmuş.</summary>
+        GecerliYetkiliYok = 4,
+
+        /// <summary>Otomatik dolmuş sınıflandırma mükellefiyet kodlarıyla çelişiyor.</summary>
+        SiniflandirmaUyusmuyor = 5
     }
 
     public class FirmaUyariDto
@@ -38,6 +45,31 @@ namespace CatalogService.Api.Features.Anasayfa.Dtos
         public List<FirmaUyariDto> Uyarilar { get; set; } = new();
 
         public bool UyariVar => Uyarilar.Count > 0;
+
+        /// <summary>Boş künye alanı sayısı (<c>FirmaEksikBilgi</c>'nin 16 kontrolünden).</summary>
+        public int EksikSayisi { get; set; }
+
+        /// <summary>
+        /// Uyarı sayısı (imza yetkisi, pay oranı, geçerli yetkili yok); rozette eksik
+        /// sayısıyla toplanır, şeritte ayrı cümlede yazılır.
+        /// </summary>
+        public int UyariSayisi { get; set; }
+
+        /// <summary>Firmanın HİÇ mizanı yok (kırmızı "!").</summary>
+        public bool MizanYok { get; set; }
+
+        /// <summary>Satırın ikinci satırında VKN'in yanında gösterilir; seçilmemişse <c>null</c>.</summary>
+        public string? MizanFormati { get; set; }
+    }
+
+    /// <summary>Eksik bir künye alanı: hangi kartta, ne eksik, "Tamamla" nereye odaklanır.</summary>
+    public class EksikAlanDto
+    {
+        public string Kart { get; set; } = string.Empty;
+        public string Alan { get; set; } = string.Empty;
+
+        /// <summary>Alanın anahtarı ("mersisNo", "sorumlu"…); istemci kartı/alanı bununla bulur.</summary>
+        public string Odak { get; set; } = string.Empty;
     }
 
     /// <summary>Mükellefiyet bölümü. Alanların bir kısmı <c>catalog.Firmalar</c>'dan.</summary>
@@ -46,10 +78,31 @@ namespace CatalogService.Api.Features.Anasayfa.Dtos
         public string VergiKimlikNo { get; set; } = string.Empty;
         public string? VergiDairesi { get; set; }
         public string? MukellefiyetTurleri { get; set; }
+
+        /// <summary>Metinden ayıklanan kodlar — kartta çip olarak çizilir.</summary>
+        public List<MukellefiyetKoduDto> Kodlar { get; set; } = new();
+
+        /// <summary>Kod sayılamayan kalan metin; varsa çiplerin altında aynen gösterilir.</summary>
+        public string? KalanMetin { get; set; }
+
         public bool? EFatura { get; set; }
         public bool? EDefter { get; set; }
         public DateTime? IseBaslamaTarihi { get; set; }
         public string? NaceKodu { get; set; }
+    }
+
+    /// <summary>Mükellefiyet kodu çipi: "0003 · Muhtasar".</summary>
+    public class MukellefiyetKoduDto
+    {
+        public string Kod { get; set; } = string.Empty;
+
+        /// <summary>Metinde kodun yanında yazan tam ad.</summary>
+        public string? Ad { get; set; }
+
+        public string? KisaAd { get; set; }
+
+        /// <summary>Vergi türü / defter usulü önerisinin kaynağı (0010 ya da 0001) — vurgulu çizilir.</summary>
+        public bool SiniflandirmaKaynagi { get; set; }
     }
 
     /// <summary>Sicil bölümü. Okuma odaklı; düzenleme Firma Bilgileri ekranında.</summary>
@@ -61,12 +114,157 @@ namespace CatalogService.Api.Features.Anasayfa.Dtos
         public string? SermayeParaBirimi { get; set; }
         public DateTime? KurulusTarihi { get; set; }
         public string? Adres { get; set; }
+    }
+
+    /// <summary>
+    /// Bir mizan yüklemesinin anasayfadaki durumu. Değerler yükleme sırasında yazılmış
+    /// özetten okunuyor; burada hesap yapılmıyor. Özet alanları gelmeden önce yüklenmiş
+    /// kayıtlarda boş (<c>null</c>) — ekran "—" yazar.
+    /// </summary>
+    public class FirmaPaneliMizanDurumuDto
+    {
+        /// <summary>Mizanın ait olduğu yıl (önceki dönem yüklemesinde analiz yılının bir eksiği).</summary>
+        public int Yil { get; set; }
+
+        /// <summary>0 = önceki dönem, 1 = cari dönem (Firma Kontrol'deki anahtar).</summary>
+        public int Donem { get; set; }
+
+        /// <summary>Firma Kontrol'de hangi analiz yılı altında yüklendiği ("Firma kontrolünde aç" için).</summary>
+        public int AnalizYili { get; set; }
+
+        /// <summary>UTC.</summary>
+        public DateTime? YuklenmeZamani { get; set; }
+
+        public int? SatirSayisi { get; set; }
+        public int? SeviyeSayisi { get; set; }
+        public decimal? BorcToplam { get; set; }
+        public decimal? AlacakToplam { get; set; }
+
+        /// <summary>Borç − alacak; özet yoksa <c>null</c>.</summary>
+        public decimal? Fark => BorcToplam is { } b && AlacakToplam is { } a ? b - a : null;
+
+        /// <summary>|fark| &lt; 0,01. Özet yoksa <c>null</c>.</summary>
+        public bool? Dengeli => Fark is { } f ? Math.Abs(f) < 0.01m : null;
+    }
+
+    /// <summary>
+    /// "Sınıflandırma ve mizan" kartı. ORKA firma kodu Sicil kartından buraya taşındı:
+    /// ticaret sicilinden gelen bir bilgi değil, bir program ayarı. Alan aynı alan.
+    /// </summary>
+    public class FirmaPaneliSiniflandirmaDto
+    {
+        public DefterUsulu DefterUsulu { get; set; }
+        public VergiTuru VergiTuru { get; set; }
+
+        /// <summary>Değer mükellefiyet kodundan otomatik geldiyse o kod ("0010"); elle ya da boşsa <c>null</c>.</summary>
+        public string? DefterUsuluOtomatikKod { get; set; }
+        public string? VergiTuruOtomatikKod { get; set; }
+
+        public string? MizanFormati { get; set; }
+        public string? OrkaFirmaKodu { get; set; }
+
+        public HesapDonemi? HesapDonemi { get; set; }
+        public DateTime? OzelDonemBas { get; set; }
+        public DateTime? OzelDonemBit { get; set; }
+
+        /// <summary>En son yüklenen mizan; hiç yükleme yoksa <c>null</c>.</summary>
+        public FirmaPaneliMizanDurumuDto? SonMizan { get; set; }
 
         /// <summary>
-        /// ORKA giriş zincirinde F7 sonrası girilen firma kodu. Panelde okunuyor;
-        /// ORKA'ya aktarım işi bunsuz kurulmadığı için eksikliği burada da görülsün diye.
+        /// Kayıtlı sınıflandırma mükellefiyet kodlarıyla çelişiyorsa açıklaması (uyarı ile aynı
+        /// cümle); düzenleme formu "kayıtlı değeri onayla" seçeneğini buna göre gösterir.
         /// </summary>
-        public string? OrkaFirmaKodu { get; set; }
+        public string? UyusmazlikMesaji { get; set; }
+    }
+
+    // ---- Takip kartı ----
+
+    /// <summary>Bir yılın mizan durumu: yüklüyse yeşil çip, cari yıl yüklü değilse gri çip.</summary>
+    public class FirmaDonemCipDto
+    {
+        public int Yil { get; set; }
+        public bool Yuklu { get; set; }
+    }
+
+    public class FirmaNotuDto
+    {
+        public long Id { get; set; }
+        public string Metin { get; set; } = string.Empty;
+        public string? OlusturanKullaniciAdi { get; set; }
+
+        /// <summary>UTC.</summary>
+        public DateTime OlusturmaZamani { get; set; }
+
+        /// <summary>İsteği yapan kullanıcı notu yazan kişi mi (silme yalnız ona açık).</summary>
+        public bool Silinebilir { get; set; }
+    }
+
+    public class FirmaOlayDto
+    {
+        public Domain.FirmaOlayTipi OlayTipi { get; set; }
+        public string Aciklama { get; set; } = string.Empty;
+        public string? KullaniciAdi { get; set; }
+
+        /// <summary>UTC.</summary>
+        public DateTime Zaman { get; set; }
+    }
+
+    public class FirmaPaneliTakipDto
+    {
+        public int? SorumluKullaniciId { get; set; }
+        public string? SorumluKullaniciAdi { get; set; }
+
+        /// <summary>Mizanı yüklü yıllar (yeni → eski); cari yıl yüklü değilse başta gri çip.</summary>
+        public List<FirmaDonemCipDto> Donemler { get; set; } = new();
+
+        /// <summary>En son eklenen not; yoksa <c>null</c>.</summary>
+        public FirmaNotuDto? SonNot { get; set; }
+        public int NotSayisi { get; set; }
+
+        /// <summary>Son 5 olay, yeni → eski.</summary>
+        public List<FirmaOlayDto> SonOlaylar { get; set; } = new();
+    }
+
+    /// <summary>
+    /// İmza yetkilileri kartının başlık rozeti: bitişine 365 günden az kalan (henüz
+    /// dolmamış) yetkili sayısı; biri 90 günden azsa kritik. Sayı 0 ise rozet çıkmaz.
+    /// </summary>
+    public class FirmaYetkiRozetiDto
+    {
+        public int Sayi { get; set; }
+        public bool Kritik { get; set; }
+
+        /// <summary>Kayıtlı yetkililerin hepsinin süresi dolmuş: rozet "Geçerli yetkili yok".</summary>
+        public bool GecerliYok { get; set; }
+    }
+
+    public class FirmaSorumluAtaDto
+    {
+        /// <summary><c>null</c> = sorumluyu kaldır.</summary>
+        public int? KullaniciId { get; set; }
+        public string? KullaniciAdi { get; set; }
+    }
+
+    public class FirmaNotuEkleDto
+    {
+        public string Metin { get; set; } = string.Empty;
+    }
+
+    /// <summary>Sınıflandırma kartının "Düzenle" formu. ORKA kodu burada yazılmaz (Firma Bilgileri'nde).</summary>
+    public class FirmaSiniflandirmaKaydetDto
+    {
+        public DefterUsulu DefterUsulu { get; set; }
+        public VergiTuru VergiTuru { get; set; }
+        public string? MizanFormati { get; set; }
+        public HesapDonemi? HesapDonemi { get; set; }
+        public DateTime? OzelDonemBas { get; set; }
+        public DateTime? OzelDonemBit { get; set; }
+
+        /// <summary>
+        /// Kayıtlı sınıflandırmayı mükellefiyet kodlarıyla uyuşmasa da onayla: dolu vergi türü ve
+        /// defter usulü "elle" işaretlenir, uyuşmazlık uyarısı düşer.
+        /// </summary>
+        public bool Onayla { get; set; }
     }
 
     /// <summary>
@@ -98,6 +296,7 @@ namespace CatalogService.Api.Features.Anasayfa.Dtos
         public string Unvan { get; set; } = string.Empty;
 
         public FirmaMukellefiyetDto Mukellefiyet { get; set; } = new();
+        public FirmaPaneliSiniflandirmaDto Siniflandirma { get; set; } = new();
         public FirmaPaneliSicilDto Sicil { get; set; } = new();
 
         /// <summary>
@@ -109,10 +308,18 @@ namespace CatalogService.Api.Features.Anasayfa.Dtos
 
         public List<FirmaPaneliYetkiliDto> Yetkililer { get; set; } = new();
 
+        /// <summary>İmza yetkilileri kartının başlık rozeti; yoksa <c>null</c>.</summary>
+        public FirmaYetkiRozetiDto? YetkiRozeti { get; set; }
+
+        public FirmaPaneliTakipDto Takip { get; set; } = new();
+
         /// <summary>Belge listesi düzenleme ekranıyla aynı DTO; görüntüleme de aynı altyapı.</summary>
         public List<FirmaBelgesiDto> Belgeler { get; set; } = new();
 
         public List<FirmaUyariDto> Uyarilar { get; set; } = new();
+
+        /// <summary>Eksik künye alanları, ekran sırasıyla; listedeki rozetle aynı kaynak.</summary>
+        public List<EksikAlanDto> Eksikler { get; set; } = new();
     }
 
     /// <summary>

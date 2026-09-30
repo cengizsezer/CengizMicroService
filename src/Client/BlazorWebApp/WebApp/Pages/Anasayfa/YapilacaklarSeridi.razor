@@ -1,0 +1,41 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Pages.Yapilacaklar
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@inject IYapilacaklarApiClient Api
+
+@*
+    Anasayfanın en üstündeki tek satır: bütün firmaların gecikmiş ve bu haftaki işleri.
+    Sayılar Yapılacaklar ekranının satır sayısıdır (aynı iş = tek satır), firma × iş değil.
+
+    GECİKMİŞ İŞ YOKSA ŞERİT HİÇ ÇIKMAZ: her gün duran bir uyarı üç günde görünmez olur.
+    Seçili firmadan bağımsız olduğu satırın içinde yazar.
+*@
+
+@if (ozet is { Gecikti: > 0 })
+{
+    <YsStiller />
+    <div class="ys-serit" role="status">
+        <RadzenIcon Icon="assignment_late" Style="font-size:18px;flex-shrink:0" />
+        <span class="ys-serit-metin">
+            <b>@ozet.Gecikti gecikmiş iş</b>@(ozet.BuHafta > 0 ? $" · {ozet.BuHafta} bu hafta" : "")
+            <span class="ys-serit-kapsam"> — bütün firmalar (seçili firmadan bağımsız)</span>
+        </span>
+        <a href="/yapilacaklar">Yapılacaklar →</a>
+    </div>
+}
+
+@code {
+    private YapilacaklarOzetDto? ozet;
+
+    protected override async Task OnInitializedAsync() => ozet = await Api.OzetAsync();
+
+    /// <summary>Anasayfanın "Yenile" düğmesi.</summary>
+    public async Task Tazele()
+    {
+        ozet = await Api.OzetAsync();
+        StateHasChanged();
+    }
+}
