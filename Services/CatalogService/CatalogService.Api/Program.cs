@@ -1,4 +1,4 @@
-﻿using CatalogService.Api.Extensions;
+using CatalogService.Api.Extensions;
 using CatalogService.Api.Features.AccountPlan;
 using CatalogService.Api.Features.Ajanlar;
 using CatalogService.Api.Features.Ajanlar.Services;
@@ -155,10 +155,22 @@ builder.Services.AddScoped<CatalogService.Api.Features.Yapilacaklar.Services.IYa
                            CatalogService.Api.Features.Yapilacaklar.Services.YapilacaklarService>();
 builder.Services.AddScoped<CatalogService.Api.Features.Yapilacaklar.Services.IVergiTakvimiService,
                            CatalogService.Api.Features.Yapilacaklar.Services.VergiTakvimiService>();
+// Dönem panosu: aynı tamamlama kaydının döneme göre çevrilmiş hali (firma × iş matrisi).
+builder.Services.AddScoped<CatalogService.Api.Features.Yapilacaklar.Services.IDonemPanosuService,
+                           CatalogService.Api.Features.Yapilacaklar.Services.DonemPanosuService>();
+// Takip panosu (Prompt 14): iş bazında tarif — Nasıl yapılır sheet'i.
+builder.Services.AddScoped<CatalogService.Api.Features.Yapilacaklar.Services.IIsTarifiService,
+                           CatalogService.Api.Features.Yapilacaklar.Services.IsTarifiService>();
+builder.Services.AddScoped<CatalogService.Api.Features.Yapilacaklar.Services.IKisiService,
+                           CatalogService.Api.Features.Yapilacaklar.Services.KisiService>();
 
 // Anasayfa künye yazmaları (sınıflandırma, sorumlu, notlar).
 builder.Services.AddScoped<CatalogService.Api.Features.Anasayfa.Services.IFirmaKunyeService,
                            CatalogService.Api.Features.Anasayfa.Services.FirmaKunyeService>();
+
+// Kullanılan sistemler: ortak sistem listesi (Yönetim → Sistemler) + firma atamaları.
+builder.Services.AddScoped<CatalogService.Api.Features.Sistemler.Services.ISistemService,
+                           CatalogService.Api.Features.Sistemler.Services.SistemService>();
 builder.Services.AddScoped<IFirmaService, FirmaService>();
 builder.Services.AddScoped<IKdvBeyannameQueryService, KdvBeyannameQueryService>();
 builder.Services.AddScoped<IDuzenleyenService, DuzenleyenService>();
@@ -648,6 +660,19 @@ IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf')
             await SeedAdimi.CalistirAsync(logger, "Vergi takvimi",
                 () => CatalogService.Api.Features.Yapilacaklar.VergiTakvimiSeed.SeedVeLoglaAsync(
                           ctxOnce, sp.GetRequiredService<TimeProvider>().GetLocalNow().Date, logger));
+
+            // Kullanılan sistemler: ortak liste (Luca, ORKA, DijitalPlanet…); eksik olanı ekler.
+            await SeedAdimi.CalistirAsync(logger, "Sistemler",
+                () => CatalogService.Api.Features.Sistemler.SistemSeed.SeedVeLoglaAsync(ctxOnce, logger));
+
+            // İş tarifleri (Prompt 14): tek seferlik, tablo boşsa mevcut işlerden üretilir. Farklı
+            // metinli kayıt bağlanmaz, başlık başlık loglanır. Sistemler'den sonra (SistemId FK).
+            await SeedAdimi.CalistirAsync(logger, "İş tarifleri",
+                () => CatalogService.Api.Features.Yapilacaklar.IsTarifiSeed.SeedVeLoglaAsync(ctxOnce, logger));
+
+            // Kişiler (Prompt 14): kişiye bağlanmamış alıcılardan kişi; şüpheli eşleşme birleştirilmez, loglanır.
+            await SeedAdimi.CalistirAsync(logger, "Kişiler",
+                () => CatalogService.Api.Features.Yapilacaklar.KisiSeed.SeedVeLoglaAsync(ctxOnce, logger));
 
             // Kurumlar vergisi beyanname kalemleri: katalog firmadan bağımsız, bir kez yüklenir.
             await SeedAdimi.CalistirAsync(logger, "Vergi kalemleri",

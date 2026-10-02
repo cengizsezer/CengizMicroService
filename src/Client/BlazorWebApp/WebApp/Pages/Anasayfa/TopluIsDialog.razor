@@ -1,0 +1,369 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Pages.Yapilacaklar
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@inject IYapilacaklarApiClient Api
+@inject DialogService DialogService
+@inject IJSRuntime JS
+
+@*
+    Firma işleri — Ctrl+V ile toplu ekleme. YAPIŞTIR → NE ANLADIĞINI GÖSTER → ONAYLAT → EKLE.
+    Sessiz ekleme yok: bu dialog onaylanmadan hiçbir iş yazılmaz.
+
+    Ayrıştırma ve doğrulama sunucuda (TopluIsAyristirici). Kullanıcı ilk satır kararını,
+    kolon eşlemesini ya da bir hücreyi değiştirdiğinde düzeltilmiş tablo aynı uca geri gider
+    — kural iki yerde yazılmaz.
+
+    Kırmızı satır eklenmez ama listede kalır, hücresine tıklanıp düzeltilir. Amber satır
+    eklenir; eksiği sonra prosedür panelinden doldurulur.
+*@
+
+<YsStiller />
+
+<div class="ys-toplu">
+    @if (onizleme is null)
+    {
+        @* Pano okunamadıysa (izin yok / tarayıcı desteklemiyor) elle yapıştırma kutusu. *@
+        <div class="ys-alt">Excel'den kopyaladığınız satırları buraya yapıştırın (Ctrl+V). İlk satır başlık olabilir.</div>
+        <textarea class="ys-toplu-metin" rows="8" @bind="metin" @bind:event="oninput"
+                  placeholder="@("Başlık\tTekrar\tGün\tProgram\tAlıcı\nBordroyu hazırla\ther ay\t25\tLuca\tAd Soyad <ad@firma.com>")"></textarea>
+        <div class="ys-toplu-alt">
+            <SablonIndirBaglantisi Getir="@(() => Api.IsSablonuAsync(FirmaId))" DosyaAdi="firma-isleri-sablonu.xlsx" />
+            <span>
+                <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(false))" />
+                <RadzenButton Text="Çözümle" ButtonStyle="ButtonStyle.Primary" IsBusy="@isleniyor"
+                              Disabled="@string.IsNullOrWhiteSpace(metin)" Click="@(() => Onizle(ilk: true))" />
+            </span>
+        </div>
+    }
+    else if (sonuc is not null)
+    {
+        @* Ekleme sonucu: ne oldu, neyi atladı. *@
+        <div class="ys-toplu-sonuc">
+            <div><b>@sonuc.Eklenen</b> iş eklendi@(sonuc.Guncellenen > 0 ? $", {sonuc.Guncellenen} iş güncellendi" : "").</div>
+            @if (sonuc.Atlananlar.Count > 0)
+            {
+                <div class="ys-toplu-atlananlar">
+                    <b>@sonuc.Atlananlar.Count iş atlandı:</b>
+                    <ul>
+                        @foreach (var a in sonuc.Atlananlar)
+                        {
+                            <li>@a.Baslik — <span class="ys-alt">@a.Sebep</span></li>
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+        <div class="ys-toplu-alt">
+            <span></span>
+            <RadzenButton Text="Tamam" ButtonStyle="ButtonStyle.Primary" Click="@(() => DialogService.Close(true))" />
+        </div>
+    }
+    else
+    {
+        @* 1. Kolon eşleşmesi *@
+        <div class="ys-toplu-ust">
+            <label class="ys-toplu-secim">
+                <input type="checkbox" checked="@onizleme.IlkSatirBaslik" @onchange="@IlkSatirDegisti" />
+                İlk satır başlık
+                @if (onizleme.IlkSatirBaslik != onizleme.IlkSatirBaslikOnerisi)
+                {
+                    <span class="ys-alt">(öneri: @(onizleme.IlkSatirBaslikOnerisi ? "başlık" : "veri"))</span>
+                }
+            </label>
+            <SablonIndirBaglantisi Getir="@(() => Api.IsSablonuAsync(FirmaId))" DosyaAdi="firma-isleri-sablonu.xlsx" />
+        </div>
+
+        <table class="ys-tablo ys-toplu-eslesme">
+            <thead><tr><th>Alan</th><th>Kolon</th><th>Dosyadaki başlık</th></tr></thead>
+            <tbody>
+                @foreach (var e in onizleme.Eslesme)
+                {
+                    <tr>
+                        <td>@TopluMetin.Alan(e.Alan)</td>
+                        <td>
+                            <select class="ys-toplu-kolon" value="@(e.Kolon?.ToString() ?? "")" @onchange="@(a => KolonDegisti(e.Alan, a))">
+                                <option value="">— eşleşmedi, boş kalacak</option>
+                                @for (var k = 0; k < onizleme.KolonSayisi; k++)
+                                {
+                                    <option value="@k">@TopluMetin.KolonHarfi(k)@KolonOrnegi(k)</option>
+                                }
+                            </select>
+                        </td>
+                        <td class="ys-alt">@(e.Kolon is null ? "— eşleşmedi, boş kalacak" : e.DosyadakiBaslik ?? "(başlık satırı yok)")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @* 2. Üç sayı *@
+        <div class="ys-toplu-sayilar">
+            <span class="ys-toplu-sayi ys-toplu-yesil">@Sayi(TopluSatirDurumu.Tamam) iş eklenecek</span>
+            <span class="ys-toplu-sayi ys-toplu-amber">@Sayi(TopluSatirDurumu.Eksik) eksik bilgiyle eklenecek</span>
+            <span class="ys-toplu-sayi ys-toplu-kirmizi">@Sayi(TopluSatirDurumu.Okunamadi) okunamadı, atlanacak</span>
+            @if (atlanan.Count > 0)
+            {
+                <span class="ys-alt">· @atlanan.Count satırı siz atladınız</span>
+            }
+        </div>
+
+        @* 3. Satır tablosu *@
+        <div class="ys-toplu-satirlar">
+            <table class="ys-tablo">
+                <thead>
+                    <tr><th>#</th><th>Başlık</th><th>Tekrar</th><th>Gün</th><th>Program</th><th>Alıcı</th><th>Durum</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in onizleme.Satirlar)
+                    {
+                        var atlandi = atlanan.Contains(s.Sira);
+                        <tr class="@SatirSinifi(s, atlandi)">
+                            <td>@(s.Sira + 1)</td>
+                            @Hucre(s, TopluAlan.Baslik, s.Is?.Baslik ?? Ham(s, TopluAlan.Baslik))
+                            @Hucre(s, TopluAlan.Tekrar, s.TekrarMetni)
+                            @Hucre(s, TopluAlan.Gun, s.GunMetni)
+                            @Hucre(s, TopluAlan.Program, s.ProgramMetni)
+                            @Hucre(s, TopluAlan.Alici, s.AliciMetni)
+                            <td>
+                                <span class="@DurumSinifi(s.Durum)">@DurumMetni(s.Durum)</span>
+                                @if (s.MevcutIsId is not null)
+                                {
+                                    <div class="ys-alt">@(uzerineYazma ? "aynı başlıklı iş var — atlanacak" : "aynı başlıklı iş güncellenecek")</div>
+                                }
+                                @foreach (var sorun in s.Sorunlar)
+                                {
+                                    <div class="ys-alt">@sorun</div>
+                                }
+                            </td>
+                            <td>
+                                <span class="ys-toplu-atla" role="button" title="@(atlandi ? "Geri al" : "Bu satırı atla")"
+                                      @onclick="@(() => Atla(s.Sira))">@(atlandi ? "↺" : "✕")</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @* 4. Alt şerit *@
+        <div class="ys-toplu-alt">
+            <label class="ys-toplu-secim">
+                <input type="checkbox" @bind="uzerineYazma" />
+                Aynı başlıktaki mevcut işin üzerine yazma
+                @if (MevcutSayisi > 0)
+                {
+                    <span class="ys-alt">(@MevcutSayisi satır)</span>
+                }
+            </label>
+            <span>
+                <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(false))" />
+                <RadzenButton Text="@($"{Eklenecekler.Count} işi ekle")" ButtonStyle="ButtonStyle.Primary" IsBusy="@isleniyor"
+                              Disabled="@(Eklenecekler.Count == 0)" Click="@Ekle" />
+            </span>
+        </div>
+    }
+
+    @if (hata is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">@hata</RadzenAlert>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+
+    /// <summary>Panodan gelen metin; boşsa dialog elle yapıştırma kutusuyla açılır.</summary>
+    [Parameter] public string? Metin { get; set; }
+
+    private string? metin;
+    private TopluOnizlemeDto? onizleme;
+    private TopluSonucDto? sonuc;
+    private readonly HashSet<int> atlanan = new();
+    private bool uzerineYazma = true;
+    private bool isleniyor;
+    private string? hata;
+
+    /// <summary>Düzenlenen hücre: (satır, alan).</summary>
+    private (int Sira, TopluAlan Alan)? duzenlenen;
+    private string duzenMetni = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        metin = Metin;
+        if (!string.IsNullOrWhiteSpace(metin)) await Onizle(ilk: true);
+    }
+
+    private int Sayi(TopluSatirDurumu durum) => onizleme!.Satirlar.Count(s => s.Durum == durum && !atlanan.Contains(s.Sira));
+
+    private int MevcutSayisi => onizleme!.Satirlar.Count(s => s.MevcutIsId is not null && s.Is is not null && !atlanan.Contains(s.Sira));
+
+    private List<FirmaIsiKaydetDto> Eklenecekler => onizleme?.Satirlar
+        .Where(s => s.Durum != TopluSatirDurumu.Okunamadi && s.Is is not null && !atlanan.Contains(s.Sira))
+        .Select(s => s.Is!)
+        .ToList() ?? new();
+
+    private string KolonOrnegi(int k)
+    {
+        var ilk = onizleme!.Hucreler.FirstOrDefault()?.ElementAtOrDefault(k);
+        if (string.IsNullOrWhiteSpace(ilk)) return string.Empty;
+        return " · " + (ilk.Length > 24 ? ilk[..24] + "…" : ilk);
+    }
+
+    private string? Ham(TopluSatirDto s, TopluAlan alan)
+        => onizleme!.Eslesme.FirstOrDefault(e => e.Alan == alan)?.Kolon is { } k
+           ? onizleme.Hucreler[s.Sira].ElementAtOrDefault(k) : null;
+
+    // ---- Sunucuya geri gönderme ----
+
+    private async Task Onizle(bool ilk)
+    {
+        hata = null;
+        isleniyor = true;
+        try
+        {
+            var istek = ilk
+                ? new TopluOnizleIstekDto { Metin = metin }
+                : new TopluOnizleIstekDto { Hucreler = onizleme!.Hucreler, IlkSatirBaslik = onizleme.IlkSatirBaslik, Eslesme = onizleme.Eslesme };
+
+            var (yeni, mesaj) = await Api.TopluOnizleAsync(FirmaId, istek);
+            if (yeni is null)
+            {
+                hata = mesaj ?? "Yapıştırılan metin çözümlenemedi.";
+                return;
+            }
+            if (yeni.Satirlar.Count == 0 && ilk)
+            {
+                hata = "Yapıştırılan metinde satır bulunamadı.";
+                return;
+            }
+
+            // İlk satır kararı değişince satır indeksleri kayar; atlananlar geçersiz olur.
+            if (onizleme is not null && onizleme.IlkSatirBaslik != yeni.IlkSatirBaslik) atlanan.Clear();
+            onizleme = yeni;
+        }
+        finally
+        {
+            isleniyor = false;
+        }
+    }
+
+    private async Task IlkSatirDegisti(ChangeEventArgs e)
+    {
+        onizleme!.IlkSatirBaslik = e.Value is true;
+        // Eşleme başlık satırından yeniden kurulsun.
+        onizleme.Eslesme = new();
+        await Onizle(ilk: false);
+    }
+
+    private async Task KolonDegisti(TopluAlan alan, ChangeEventArgs e)
+    {
+        int? kolon = int.TryParse(e.Value?.ToString(), out var k) ? k : null;
+
+        // Bir kolon tek alana: aynı kolonu tutan başka alan boşalır.
+        foreach (var es in onizleme!.Eslesme)
+        {
+            if (es.Alan == alan) es.Kolon = kolon;
+            else if (kolon is not null && es.Kolon == kolon) es.Kolon = null;
+        }
+        await Onizle(ilk: false);
+    }
+
+    private void Atla(int sira)
+    {
+        if (!atlanan.Add(sira)) atlanan.Remove(sira);
+    }
+
+    // ---- Hücre düzeltme (kırmızı satırda) ----
+
+    private RenderFragment Hucre(TopluSatirDto s, TopluAlan alan, string? gosterilen) => __builder =>
+    {
+        var kolon = onizleme!.Eslesme.FirstOrDefault(e => e.Alan == alan)?.Kolon;
+        var duzenleniyor = duzenlenen is { } d && d.Sira == s.Sira && d.Alan == alan;
+
+        <td class="@(s.Durum == TopluSatirDurumu.Okunamadi && kolon is not null ? "ys-toplu-duzelt" : "")"
+            title="@(s.Durum == TopluSatirDurumu.Okunamadi && kolon is not null ? "Düzeltmek için tıklayın" : null)"
+            @onclick="@(() => DuzenlemeyiAc(s, alan, kolon))">
+            @if (duzenleniyor)
+            {
+                <input class="ys-toplu-girdi" @bind="duzenMetni" @bind:event="oninput" @onclick:stopPropagation="true"
+                       @onkeydown="@(async k => { if (k.Key == "Enter") await DuzenlemeyiKaydet(); else if (k.Key == "Escape") duzenlenen = null; })"
+                       @onblur="DuzenlemeyiKaydet" autofocus />
+            }
+            else
+            {
+                @(gosterilen ?? "—")
+            }
+        </td>
+    };
+
+    private void DuzenlemeyiAc(TopluSatirDto s, TopluAlan alan, int? kolon)
+    {
+        if (s.Durum != TopluSatirDurumu.Okunamadi || kolon is null) return;
+        duzenlenen = (s.Sira, alan);
+        duzenMetni = onizleme!.Hucreler[s.Sira].ElementAtOrDefault(kolon.Value) ?? string.Empty;
+    }
+
+    private async Task DuzenlemeyiKaydet()
+    {
+        if (duzenlenen is not { } d) return;
+        duzenlenen = null;
+
+        var kolon = onizleme!.Eslesme.First(e => e.Alan == d.Alan).Kolon!.Value;
+        var satir = onizleme.Hucreler[d.Sira];
+        while (satir.Count <= kolon) satir.Add(string.Empty);
+        if (satir[kolon] == duzenMetni) return;
+
+        satir[kolon] = duzenMetni;
+        await Onizle(ilk: false);
+    }
+
+    // ---- Ekleme ----
+
+    private async Task Ekle()
+    {
+        hata = null;
+        isleniyor = true;
+        try
+        {
+            var (s, mesaj) = await Api.TopluEkleAsync(FirmaId, new TopluEkleDto { Isler = Eklenecekler, UzerineYazma = uzerineYazma });
+            if (s is null)
+            {
+                hata = mesaj ?? "İşler eklenemedi.";
+                return;
+            }
+            sonuc = s;
+        }
+        finally
+        {
+            isleniyor = false;
+        }
+    }
+
+
+    // ---- Görünüm ----
+
+    private static string SatirSinifi(TopluSatirDto s, bool atlandi)
+        => atlandi ? "ys-toplu-satir-atlandi"
+         : s.Durum switch
+         {
+             TopluSatirDurumu.Okunamadi => "ys-toplu-satir-kirmizi",
+             TopluSatirDurumu.Eksik => "ys-toplu-satir-amber",
+             _ => string.Empty
+         };
+
+    private static string DurumSinifi(TopluSatirDurumu d) => d switch
+    {
+        TopluSatirDurumu.Okunamadi => "ys-rozet ys-rozet-gecikti",
+        TopluSatirDurumu.Eksik => "ys-rozet ys-rozet-hafta",
+        _ => "ys-rozet ys-rozet-tamam"
+    };
+
+    private static string DurumMetni(TopluSatirDurumu d) => d switch
+    {
+        TopluSatirDurumu.Okunamadi => "okunamadı",
+        TopluSatirDurumu.Eksik => "eksik bilgiyle",
+        _ => "eklenecek"
+    };
+}

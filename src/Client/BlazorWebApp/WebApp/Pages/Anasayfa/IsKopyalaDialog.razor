@@ -1,0 +1,203 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Pages.Yapilacaklar
+@using WebApp.Shared.Dto.Yapilacaklar
+@using WebApp.Shared.Dto.Yonetim
+
+@inject IYapilacaklarApiClient Api
+@inject IFirmaApiClient Firmalar
+@inject DialogService DialogService
+
+@*
+    Başka firmadan kopyala: işler çoğu firmada aynı (bordro, KDV hazırlık, banka ekstresi);
+    aynı listeyi 17 kez yapıştırmak yerine.
+
+    Yalnız ÖZEL işler listelenir — yasal işler mükellefiyetten türer. Kopyalanan: başlık,
+    açıklama, tekrar, gün kuralı, program, menü yolu, nasıl yapılır, alıcılar. Kopyalanmayan:
+    tamamlamalar, dönem ve prosedür ekleri, ön adım bağı, sorumlu — firmaya özgü; bir firmanın
+    ekran görüntüsü diğerinde yanıltıcı olur. Ayrımı sunucu yapar (KopyalaAsync).
+*@
+
+<YsStiller />
+
+<div class="ys-toplu">
+    @if (sonuc is not null)
+    {
+        <div class="ys-toplu-sonuc">
+            <div><b>@sonuc.Eklenen</b> iş kopyalandı.</div>
+            @if (sonuc.Atlananlar.Count > 0)
+            {
+                <div class="ys-toplu-atlananlar">
+                    <b>@sonuc.Atlananlar.Count iş atlandı:</b>
+                    <ul>
+                        @foreach (var a in sonuc.Atlananlar)
+                        {
+                            <li>@a.Baslik — <span class="ys-alt">@a.Sebep</span></li>
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+        <div class="ys-toplu-alt">
+            <span></span>
+            <RadzenButton Text="Tamam" ButtonStyle="ButtonStyle.Primary" Click="@(() => DialogService.Close(true))" />
+        </div>
+    }
+    else
+    {
+        <div>
+            <div class="ys-alt">Hangi firmadan?</div>
+            <RadzenDropDown TValue="int?" Data="@firmalar" TextProperty="Ad" ValueProperty="Id" Value="@kaynakId"
+                            ValueChanged="@((int? id) => KaynakSecildi(id))" AllowFiltering="true"
+                            FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" Placeholder="Firma seçin" Style="width:100%" />
+        </div>
+
+        @if (kaynakId is not null)
+        {
+            @if (isler is null)
+            {
+                <div class="ys-bos">Yükleniyor…</div>
+            }
+            else if (isler.Count == 0)
+            {
+                <div class="ys-bos">Bu firmanın özel işi yok.</div>
+            }
+            else
+            {
+                <div class="ys-toplu-ust">
+                    <label class="ys-toplu-secim">
+                        <input type="checkbox" checked="@(secili.Count == isler.Count)" @onchange="@HepsiDegisti" />
+                        Hepsi (@secili.Count / @isler.Count)
+                    </label>
+                </div>
+                <div class="ys-toplu-satirlar">
+                    <table class="ys-tablo">
+                        <thead><tr><th></th><th>Başlık</th><th>Kural</th><th>Program</th><th>Alıcı</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach (var t in isler)
+                            {
+                                var var_ = MevcutBasliklar.Contains(Anahtar(t.Baslik));
+                                <tr class="@(var_ ? "ys-pasif" : "")">
+                                    <td><input type="checkbox" checked="@secili.Contains(t.Id)" @onchange="@(() => Degistir(t.Id))" /></td>
+                                    <td>@t.Baslik</td>
+                                    <td class="ys-alt">@t.KuralMetni</td>
+                                    <td>@(t.SistemAdi ?? "—")</td>
+                                    <td>@(t.Alicilar.Count == 0 ? "—" : string.Join(", ", t.Alicilar.Select(a => a.AdSoyad)))</td>
+                                    <td class="ys-alt">@(var_ ? "bu firmada var — atlanacak" : "")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="ys-alt">Tamamlamalar, ekler, ön adım bağı ve sorumlu kopyalanmaz.</div>
+            }
+        }
+
+        <div class="ys-toplu-alt">
+            <span></span>
+            <span>
+                <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(false))" />
+                <RadzenButton Text="@($"{secili.Count} işi kopyala")" ButtonStyle="ButtonStyle.Primary" IsBusy="@isleniyor"
+                              Disabled="@(secili.Count == 0)" Click="@Kopyala" />
+            </span>
+        </div>
+    }
+
+    @if (hata is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">@hata</RadzenAlert>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+
+    /// <summary>Hedef firmanın özel iş başlıkları — aynı başlık atlanacak diye önceden gösterilir.</summary>
+    [Parameter] public List<string> MevcutBasliklar { get; set; } = new();
+
+    private sealed record Secenek(int Id, string Ad);
+
+    private List<Secenek> firmalar = new();
+    private int? kaynakId;
+    private List<FirmaIsiDto>? isler;
+    private readonly HashSet<int> secili = new();
+    private TopluSonucDto? sonuc;
+    private bool isleniyor;
+    private string? hata;
+
+    private static readonly System.Globalization.CultureInfo Tr = new("tr-TR");
+
+    /// <summary>Sunucudaki "aynı başlık" kuralıyla aynı: kırpılmış, Türkçe büyük harf.</summary>
+    public static string Anahtar(string? baslik) => (baslik ?? string.Empty).Trim().ToUpper(Tr);
+
+    protected override async Task OnInitializedAsync()
+    {
+        MevcutBasliklar = MevcutBasliklar.Select(Anahtar).ToList();
+        try
+        {
+            firmalar = (await Firmalar.GetAllAsync())
+                .Where(f => f.Id != FirmaId)
+                .Select(f => new Secenek(f.Id, string.IsNullOrWhiteSpace(f.KisaAd) ? f.Unvan : f.KisaAd))
+                .OrderBy(f => f.Ad, StringComparer.Create(Tr, true))
+                .ToList();
+        }
+        catch
+        {
+            hata = "Firma listesi alınamadı.";
+        }
+    }
+
+    private async Task KaynakSecildi(int? id)
+    {
+        kaynakId = id;
+        isler = null;
+        secili.Clear();
+        if (id is null) return;
+
+        var kart = await Api.FirmaIsleriAsync(id.Value);
+        if (kart is null)
+        {
+            hata = "Firmanın işleri alınamadı.";
+            isler = new();
+            return;
+        }
+
+        // Yalnız özel işler (yasal prosedür satırları OzelTanimlar'da yok). Varsayılan hepsi seçili.
+        isler = kart.OzelTanimlar;
+        foreach (var t in isler) secili.Add(t.Id);
+    }
+
+    private void Degistir(int id)
+    {
+        if (!secili.Add(id)) secili.Remove(id);
+    }
+
+    private void HepsiDegisti(ChangeEventArgs e)
+    {
+        secili.Clear();
+        if (e.Value is true && isler is not null)
+            foreach (var t in isler) secili.Add(t.Id);
+    }
+
+    private async Task Kopyala()
+    {
+        hata = null;
+        isleniyor = true;
+        try
+        {
+            var (s, mesaj) = await Api.KopyalaAsync(FirmaId, new IsKopyalaDto { KaynakFirmaId = kaynakId!.Value, IsIdleri = secili.ToList() });
+            if (s is null)
+            {
+                hata = mesaj ?? "Kopyalanamadı.";
+                return;
+            }
+            sonuc = s;
+        }
+        finally
+        {
+            isleniyor = false;
+        }
+    }
+}

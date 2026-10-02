@@ -1,0 +1,256 @@
+@page "/yonetim/sistemler"
+
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Pages.Yapilacaklar
+@using WebApp.Shared.Dto.Sistemler
+
+@attribute [Authorize]
+
+@inject ISistemApiClient Api
+@inject DialogService DialogService
+@inject NotificationService Notif
+
+@*
+    Yönetim → Sistemler: firmaların "Kullanılan sistemler" kartının ortak listesi.
+
+    Kayıt SİLİNMEZ. Yanlışlıkla iki kez açılmış kayıt BİRLEŞTİRİLİR: firma atamaları ve
+    firma işlerinin programı hedefe taşınır, kaynak silinir — altı ay sonra 17 firmayı
+    elle düzeltmek gerekmesin. Kullanılmayan kayıt pasife alınır: yeni seçimde çıkmaz,
+    mevcut atamalar bozulmaz.
+
+    Yeniden adlandırmada da benzer ad sorulur (kartın "+ Yeni ekle"siyle aynı kural).
+*@
+
+<PageTitle>Sistemler</PageTitle>
+
+<YsStiller />
+
+<div class="ys-kok">
+    <div class="ys-ust">
+        <div>
+            <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">Sistemler</RadzenText>
+            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">
+                Hangi iş nerede yapılıyor: bütün firmalar için ortak liste. Yanlış açılan kaydı silmek yerine doğrusuyla birleştirin.
+            </RadzenText>
+        </div>
+        <div class="ys-filtreler">
+            <span class="@(tur is null ? "ys-filtre ys-filtre-secili" : "ys-filtre")" role="button" @onclick="@(() => tur = null)">Tümü</span>
+            @foreach (var t in Enum.GetValues<SistemTuru>())
+            {
+                <span class="@(tur == t ? "ys-filtre ys-filtre-secili" : "ys-filtre")" role="button"
+                      @onclick="@(() => tur = t)">@SistemMetin.Tur(t)</span>
+            }
+        </div>
+    </div>
+
+    @* ---- Yeni kayıt ---- *@
+    <div class="ys-kart">
+        <div class="ys-kart-basi">Sistem ekle</div>
+        <div class="an-yonetim-form">
+            <RadzenDropDown TValue="SistemTuru" Data="@Turler" TextProperty="Ad" ValueProperty="Deger"
+                            @bind-Value="yeni.Tur" Style="width:160px" />
+            <RadzenTextBox @bind-Value="yeni.Ad" MaxLength="100" Placeholder="Ad (ör. Uyumsoft)" Style="flex:1;min-width:180px" />
+            <RadzenButton Text="Ekle" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Primary"
+                          Disabled="@string.IsNullOrWhiteSpace(yeni.Ad)" Click="@(() => Ekle(false))" />
+        </div>
+        @if (yeniBenzer is not null)
+        {
+            <div class="an-yonetim-benzer">
+                <b>@yeniBenzer.Ad</b> zaten listede@(yeniBenzer.Aktif ? "" : " (pasif)"), onu mu demek istediniz?
+                <RadzenButton Text="Evet, ekleme" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                              Click="@(() => { yeniBenzer = null; yeni.Ad = string.Empty; })" />
+                <RadzenButton Text="@($"Hayır, \"{yeni.Ad.Trim()}\" ayrı bir sistem")" Size="ButtonSize.ExtraSmall"
+                              ButtonStyle="ButtonStyle.Warning" Click="@(() => Ekle(true))" />
+            </div>
+        }
+    </div>
+
+    @if (hata is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">@hata</RadzenAlert>
+    }
+
+    <div class="ys-kart">
+        @if (sistemler is null)
+        {
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+        }
+        else if (Gorunen.Count == 0)
+        {
+            <div class="ys-bos">Bu türde kayıt yok.</div>
+        }
+        else
+        {
+            <table class="ys-tablo">
+                <thead>
+                    <tr>
+                        <th style="width:120px">Tür</th>
+                        <th>Ad</th>
+                        <th style="width:190px">Kullanan firmalar</th>
+                        <th style="width:60px">Aktif</th>
+                        <th style="width:240px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Gorunen)
+                    {
+                        var d = duzen[s.Id];
+                        <tr class="@(s.Aktif ? "" : "ys-pasif")">
+                            <td>@SistemMetin.Tur(s.Tur)</td>
+                            <td>
+                                <RadzenTextBox @bind-Value="d.Ad" MaxLength="100" Style="width:100%" />
+                                @if (benzerler.TryGetValue(s.Id, out var b))
+                                {
+                                    <div class="an-yonetim-benzer">
+                                        <b>@b.Ad</b> zaten listede — birleştirmek mi istediniz?
+                                        <span class="ys-bag" role="button" @onclick="@(() => Kaydet(s, d, israr: true))">Yine de bu adla kaydet</span>
+                                    </div>
+                                }
+                            </td>
+                            <td>
+                                <span title="@string.Join(", ", s.Firmalar)">@(s.FirmaSayisi == 0 ? "—" : $"{s.FirmaSayisi} firma")</span>
+                                @if (s.IsSayisi > 0)
+                                {
+                                    <div class="ys-alt">@s.IsSayisi işte program</div>
+                                }
+                            </td>
+                            <td><RadzenCheckBox TValue="bool" @bind-Value="d.Aktif" /></td>
+                            <td>
+                                @if (s.Ad != d.Ad.Trim() || s.Aktif != d.Aktif)
+                                {
+                                    <span class="ys-bag" role="button" @onclick="@(() => Kaydet(s, d, israr: false))">Kaydet</span>
+                                    <span class="ys-bag" role="button" style="margin-left:8px" @onclick="@(() => Geri(s))">Vazgeç</span>
+                                }
+                                else if (birlestirilen == s.Id)
+                                {
+                                    <div class="an-yonetim-form">
+                                        <RadzenDropDown TValue="int?" Data="@Hedefler(s)" TextProperty="Ad" ValueProperty="Id"
+                                                        @bind-Value="hedefId" Placeholder="Hangi kayda?" Style="width:150px" />
+                                        <span class="ys-bag" role="button" @onclick="@(() => Birlestir(s))">Birleştir</span>
+                                        <span class="ys-bag" role="button" @onclick="@(() => birlestirilen = null)">Vazgeç</span>
+                                    </div>
+                                }
+                                else if (Hedefler(s).Count > 0)
+                                {
+                                    <span class="ys-bag" role="button" @onclick="@(() => { birlestirilen = s.Id; hedefId = null; })"
+                                          title="Bu kaydı başka bir kayda taşı ve sil">Birleştir…</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+<style>
+    .an-yonetim-form { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:.4rem; }
+    .an-yonetim-benzer { font-size:12px; color:#744210; background:#fffff0; border:1px solid #f6e05e; border-radius:6px;
+                         padding:.3rem .5rem; margin-top:.35rem; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+</style>
+
+@code {
+    private sealed record Secenek(SistemTuru Deger, string Ad);
+
+    private static readonly List<Secenek> Turler = Enum.GetValues<SistemTuru>()
+        .Select(t => new Secenek(t, SistemMetin.Tur(t))).ToList();
+
+    private List<SistemDto>? sistemler;
+    private Dictionary<int, SistemGuncelleDto> duzen = new();
+    private readonly Dictionary<int, SistemDto> benzerler = new();
+    private SistemTuru? tur;
+    private SistemEkleDto yeni = new() { Tur = SistemTuru.EFatura };
+    private SistemDto? yeniBenzer;
+    private int? birlestirilen;
+    private int? hedefId;
+    private string? hata;
+
+    private List<SistemDto> Gorunen => sistemler?.Where(s => tur is null || s.Tur == tur).ToList() ?? new();
+
+    /// <summary>Birleştirme hedefi: aynı türdeki diğer kayıtlar (sunucu da yalnız aynı türü kabul eder).</summary>
+    private List<SistemDto> Hedefler(SistemDto s) => sistemler!.Where(x => x.Tur == s.Tur && x.Id != s.Id).ToList();
+
+    protected override Task OnInitializedAsync() => Yukle();
+
+    private async Task Yukle()
+    {
+        var sonuc = await Api.ListeAsync(null, pasiflerDahil: true);
+        if (sonuc is null)
+        {
+            hata = "Sistem listesi alınamadı.";
+            sistemler ??= new();
+            return;
+        }
+
+        sistemler = sonuc;
+        duzen = sistemler.ToDictionary(s => s.Id, s => new SistemGuncelleDto { Ad = s.Ad, Aktif = s.Aktif });
+        benzerler.Clear();
+    }
+
+    private void Geri(SistemDto s)
+    {
+        duzen[s.Id] = new SistemGuncelleDto { Ad = s.Ad, Aktif = s.Aktif };
+        benzerler.Remove(s.Id);
+    }
+
+    private async Task Ekle(bool israr)
+    {
+        hata = null;
+        yeni.Israr = israr;
+        var sonuc = await Api.EkleAsync(yeni);
+
+        if (sonuc.Benzer is not null)
+        {
+            yeniBenzer = sonuc.Benzer;
+            return;
+        }
+
+        hata = sonuc.Hata;
+        if (sonuc.Kayit is null) return;
+
+        yeniBenzer = null;
+        yeni = new SistemEkleDto { Tur = yeni.Tur };
+        await Yukle();
+    }
+
+    private async Task Kaydet(SistemDto s, SistemGuncelleDto d, bool israr)
+    {
+        hata = null;
+        d.Israr = israr;
+        var sonuc = await Api.GuncelleAsync(s.Id, d);
+
+        if (sonuc.Benzer is not null)
+        {
+            benzerler[s.Id] = sonuc.Benzer;
+            return;
+        }
+
+        hata = sonuc.Hata;
+        if (sonuc.Kayit is not null) await Yukle();
+    }
+
+    private async Task Birlestir(SistemDto kaynak)
+    {
+        if (hedefId is not { } h) return;
+        var hedef = sistemler!.First(x => x.Id == h);
+
+        var onay = await DialogService.Confirm(
+            $"\"{kaynak.Ad}\" kaydı \"{hedef.Ad}\" içine taşınacak ve silinecek. {kaynak.FirmaSayisi} firma ataması ve " +
+            $"{kaynak.IsSayisi} firma işi \"{hedef.Ad}\"ı gösterecek.", "Sistem birleştirme",
+            new ConfirmOptions { OkButtonText = "Birleştir", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        var (sonuc, h2) = await Api.BirlestirAsync(kaynak.Id, h);
+        hata = h2;
+        if (sonuc is null) return;
+
+        Notif.Notify(NotificationSeverity.Success, "Birleştirildi",
+            $"{sonuc.TasinanAtama} atama taşındı, {sonuc.BirlesenAtama} çift atama tekleştirildi, {sonuc.TasinanIs} iş güncellendi.");
+        birlestirilen = null;
+        await Yukle();
+    }
+}

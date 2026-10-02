@@ -1,0 +1,83 @@
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@*
+    "KAPANMAMIŞ ÖNCEKİ DÖNEM" kutusu (Prompt 14) — ZORUNLU: Eylül'e bakarken Ağustos'un açık
+    olduğu görünmezse Ağustos sessizce kapanır. Seçili dönemden ÖNCEKİ sekmelerden eksiği
+    olanlar, en yakını önde. Sayılar sekmenin sayılarıdır (o ayın matrisinden).
+
+    Firma filtresine UYAR: "3 firmada Ağustos açık" ile "AITEX'te Ağustos kapalı" farklı iki
+    cümledir. Filtreliyken firmanın Özet satırındaki hücreler okunur (aynı matris sayıları) ve
+    kutu kapalı durumda da çizilir — o firmanın geçmişinin temiz olduğu da bilgidir.
+
+    Özet sheet'in üst şeridinde ve dönem sekmesinin şeridinin altında aynı bileşen.
+*@
+
+@if (Acik.Count == 0)
+{
+    @if (!Kompakt || FirmaSatiri is not null)
+    {
+        <div class="@(Kompakt ? "dp-kutu dp-kutu-tamam dp-kutu-kompakt" : "dp-kutu dp-kutu-tamam")">
+            <div class="dp-kutu-baslik">Önceki dönemler</div>
+            <div>@(FirmaSatiri is { } f ? $"{f.FirmaAdi} · seçili dönemden önce açık dönem yok." : "Seçili dönemden önce açık dönem yok.")</div>
+        </div>
+    }
+}
+else
+{
+    var ilk = Acik[0];
+    <div class="@(Kompakt ? "dp-kutu dp-kutu-acik dp-kutu-kompakt" : "dp-kutu dp-kutu-acik")">
+        <div class="dp-kutu-baslik">Kapanmamış önceki dönem</div>
+        <div>
+            @if (FirmaSatiri is { } f)
+            {
+                <span>@f.FirmaAdi · </span>
+            }
+            <span class="dp-bag" role="button" @onclick="@(() => Git.InvokeAsync(ilk.Anahtar))" @onclick:stopPropagation="true">
+                <b>@AyAdi(ilk.Donem) hâlâ açık</b>
+            </span>
+            · @Sayi(ilk)
+            @foreach (var d in Acik.Skip(1))
+            {
+                <span> · </span>
+                <span class="dp-bag" role="button" @onclick="@(() => Git.InvokeAsync(d.Anahtar))" @onclick:stopPropagation="true">@AyAdi(d.Donem)</span>
+                <span class="dp-alt"> (@Sayi(d))</span>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public List<DonemSekmesiDto> Donemler { get; set; } = new();
+
+    /// <summary>Bakılan dönem ("2026-09"); anahtarı ondan küçük sekmeler taranır.</summary>
+    [Parameter, EditorRequired] public string SeciliAnahtar { get; set; } = string.Empty;
+
+    /// <summary>Firma filtresi açıksa o firmanın Özet satırı (hücreler <see cref="Donemler"/> sırasında).</summary>
+    [Parameter] public DonemOzetSatirDto? FirmaSatiri { get; set; }
+
+    /// <summary>Gidilecek dönem anahtarı; filtre kabukta korunur.</summary>
+    [Parameter] public EventCallback<string> Git { get; set; }
+
+    /// <summary>Dönem sekmesinde: filtresizken açık dönem yoksa hiç çizilmez.</summary>
+    [Parameter] public bool Kompakt { get; set; }
+
+    private sealed record AcikDonem(DonemSekmesiDto Donem, int Eksik, int FirmaSayisi)
+    {
+        public string Anahtar => Donem.Anahtar;
+    }
+
+    // "2026-08" < "2026-09": anahtar biçimi sabit genişlikte, sıralı karşılaştırma doğru.
+    private List<AcikDonem> Acik => Donemler
+        .Select((d, i) => FirmaSatiri is { } f
+            ? new AcikDonem(d, f.Hucreler[i].Gecerli - f.Hucreler[i].Yapilan, 1)
+            : new AcikDonem(d, d.Eksik, d.EksikFirmaSayisi))
+        .Where(a => string.CompareOrdinal(a.Anahtar, SeciliAnahtar) < 0 && a.Eksik > 0)
+        .OrderByDescending(a => a.Anahtar, StringComparer.Ordinal)
+        .ToList();
+
+    private string Sayi(AcikDonem a) => FirmaSatiri is null ? $"{a.FirmaSayisi} firmada eksik" : $"{a.Eksik} iş eksik";
+
+    /// <summary>"Ağustos 2026" → aynı yıldaysa yalnız ay adı.</summary>
+    private string AyAdi(DonemSekmesiDto d)
+        => SeciliAnahtar.StartsWith(d.Yil + "-", StringComparison.Ordinal) ? d.Etiket.Split(' ')[0] : d.Etiket;
+}

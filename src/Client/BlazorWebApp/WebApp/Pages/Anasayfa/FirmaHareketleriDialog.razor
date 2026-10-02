@@ -1,16 +1,24 @@
-@using Radzen
+﻿@using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services
 @using WebApp.Shared.Dto.Anasayfa
 
 @inject IAnasayfaApiClient Api
+@inject ILogger<FirmaHareketleriDialog> Log
 
 @*
     Takip kartı — "Tüm hareketler". Yalnız yazma işlemleri kaydediliyor; görüntüleme
     kaydı tutulmuyor.
+
+    Prompt 12: yüklenemeyen liste "Henüz işlem yok" gibi görünmez (önceden null → boş liste
+    yapılıyordu; hata ile "hiç işlem yok" aynı görünüyordu).
 *@
 
-@if (olaylar is null)
+@if (yuklenemedi)
+{
+    <AnKartHatasi YenidenDene="@Yukle" />
+}
+else if (olaylar is null)
 {
     <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
 }
@@ -34,7 +42,24 @@ else
     [Parameter, EditorRequired] public int FirmaId { get; set; }
 
     private List<FirmaOlayDto>? olaylar;
+    private bool yuklenemedi;
 
-    protected override async Task OnInitializedAsync()
-        => olaylar = await Api.OlaylarAsync(FirmaId) ?? new();
+    protected override Task OnInitializedAsync() => Yukle();
+
+    private async Task Yukle()
+    {
+        List<FirmaOlayDto>? sonuc;
+        try
+        {
+            sonuc = await Api.OlaylarAsync(FirmaId);
+        }
+        catch (Exception ex)
+        {
+            Log.LogWarning(ex, "Firma hareketleri yüklenemedi (firma {FirmaId}).", FirmaId);
+            sonuc = null;
+        }
+
+        yuklenemedi = sonuc is null;
+        olaylar = sonuc ?? new List<FirmaOlayDto>();
+    }
 }

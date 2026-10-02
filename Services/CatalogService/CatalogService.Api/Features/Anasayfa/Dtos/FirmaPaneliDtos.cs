@@ -46,8 +46,20 @@ namespace CatalogService.Api.Features.Anasayfa.Dtos
 
         public bool UyariVar => Uyarilar.Count > 0;
 
-        /// <summary>Boş künye alanı sayısı (<c>FirmaEksikBilgi</c>'nin 16 kontrolünden).</summary>
+        /// <summary>Boş künye maddesi sayısı — gerekli + ikincil + durum (<c>FirmaEksikBilgi</c>). Rozet bunu SAYMAZ.</summary>
         public int EksikSayisi { get; set; }
+
+        /// <summary>Boş GEREKLİ alan sayısı — rozetin sayısı (Prompt 12).</summary>
+        public int GerekliEksikSayisi { get; set; }
+
+        /// <summary>Boş gerekli alanların adları — rozetin <c>title</c>'ı: "Eksik: vergi dairesi, defter usulü".</summary>
+        public List<string> GerekliEksikler { get; set; } = new();
+
+        /// <summary>Firma oluşturulalı yeni firma toleransından az gün geçti.</summary>
+        public bool YeniFirma { get; set; }
+
+        /// <summary>Rozetin türü (renk + metin); karar sunucuda tek yerde (<c>FirmaEksikBilgi.Rozet</c>).</summary>
+        public Services.KunyeRozeti Rozet { get; set; }
 
         /// <summary>
         /// Uyarı sayısı (imza yetkisi, pay oranı, geçerli yetkili yok); rozette eksik
@@ -70,6 +82,12 @@ namespace CatalogService.Api.Features.Anasayfa.Dtos
 
         /// <summary>Alanın anahtarı ("mersisNo", "sorumlu"…); istemci kartı/alanı bununla bulur.</summary>
         public string Odak { get; set; } = string.Empty;
+
+        /// <summary>Gerekli alan (rozete girer). Değilse ikincil ya da durum.</summary>
+        public bool Gerekli { get; set; }
+
+        /// <summary>Künye eksiği değil durum ("cari dönem mizanı yüklenmemiş"); rozete girmez.</summary>
+        public bool Durum { get; set; }
     }
 
     /// <summary>Mükellefiyet bölümü. Alanların bir kısmı <c>catalog.Firmalar</c>'dan.</summary>
@@ -175,6 +193,49 @@ namespace CatalogService.Api.Features.Anasayfa.Dtos
         /// cümle); düzenleme formu "kayıtlı değeri onayla" seçeneğini buna göre gösterir.
         /// </summary>
         public string? UyusmazlikMesaji { get; set; }
+
+        // ---- Prompt 9 ----
+
+        public FirmaTipi FirmaTipi { get; set; }
+        public SgkTesvikKademesi SgkTesvikKademesi { get; set; }
+        public MuhtasarDonemi MuhtasarDonemi { get; set; }
+
+        /// <summary>Kademenin işveren SGK oranı (%); kademe seçilmemişse boş.</summary>
+        public decimal? SgkIsverenOrani { get; set; }
+
+        /// <summary>Formun seçenekleri; oranlar tek yerden (<c>SgkTesvikOranlari</c>), istemcide kopya yok.</summary>
+        public List<SgkKademeSecenegiDto> SgkKademeleri { get; set; } = new();
+    }
+
+    public class SgkKademeSecenegiDto
+    {
+        public SgkTesvikKademesi Kademe { get; set; }
+        public string Ad { get; set; } = string.Empty;
+        public decimal IsverenOrani { get; set; }
+    }
+
+    /// <summary>Firmanın bir sistem ataması.</summary>
+    public class FirmaSistemAtamasiDto
+    {
+        public int SistemId { get; set; }
+        public string Ad { get; set; } = string.Empty;
+        public Sistemler.Domain.SistemTuru Tur { get; set; }
+
+        /// <summary>Pasife alınmış sistemin mevcut ataması bozulmaz; ekranda ayrıca işaretlenir.</summary>
+        public bool Aktif { get; set; }
+
+        public string? FirmaKodu { get; set; }
+        public int Sira { get; set; }
+    }
+
+    /// <summary>
+    /// "Kullanılan sistemler" kartı. ORKA firma kodu, mizan formatı ve son mizan
+    /// <see cref="FirmaPaneliSiniflandirmaDto"/>'da kaldı (aynı alanlar, kart yalnız gösterir).
+    /// </summary>
+    public class FirmaPaneliSistemlerDto
+    {
+        public List<FirmaSistemAtamasiDto> Atamalar { get; set; } = new();
+        public string? SistemNotu { get; set; }
     }
 
     // ---- Takip kartı ----
@@ -255,10 +316,20 @@ namespace CatalogService.Api.Features.Anasayfa.Dtos
     {
         public DefterUsulu DefterUsulu { get; set; }
         public VergiTuru VergiTuru { get; set; }
+
+        /// <summary>
+        /// <c>null</c> = dokunma. Prompt 9'dan beri mizan formatı "Kullanılan sistemler" kartında
+        /// düzenleniyor (boşaltma da orada); bu alan eski istemciler için kaldı.
+        /// </summary>
         public string? MizanFormati { get; set; }
+
         public HesapDonemi? HesapDonemi { get; set; }
         public DateTime? OzelDonemBas { get; set; }
         public DateTime? OzelDonemBit { get; set; }
+
+        public FirmaTipi FirmaTipi { get; set; }
+        public SgkTesvikKademesi SgkTesvikKademesi { get; set; }
+        public MuhtasarDonemi MuhtasarDonemi { get; set; }
 
         /// <summary>
         /// Kayıtlı sınıflandırmayı mükellefiyet kodlarıyla uyuşmasa da onayla: dolu vergi türü ve
@@ -295,8 +366,13 @@ namespace CatalogService.Api.Features.Anasayfa.Dtos
         public string Ad { get; set; } = string.Empty;
         public string Unvan { get; set; } = string.Empty;
 
+        /// <summary>Şerit başlığı: gerekli eksik sayısı ve yeni firma toleransı (raydaki rozetle aynı hesap).</summary>
+        public int GerekliEksikSayisi { get; set; }
+        public bool YeniFirma { get; set; }
+
         public FirmaMukellefiyetDto Mukellefiyet { get; set; } = new();
         public FirmaPaneliSiniflandirmaDto Siniflandirma { get; set; } = new();
+        public FirmaPaneliSistemlerDto Sistemler { get; set; } = new();
         public FirmaPaneliSicilDto Sicil { get; set; } = new();
 
         /// <summary>
@@ -333,5 +409,8 @@ namespace CatalogService.Api.Features.Anasayfa.Dtos
 
         /// <summary>Firma yoksa <c>null</c>.</summary>
         public FirmaPaneliDetayDto? Secili { get; set; }
+
+        /// <summary>Yeni firma toleransı (gün) — lejant için; değer tek yerde: <c>FirmaEksikBilgi.YeniFirmaToleransGun</c>.</summary>
+        public int YeniFirmaToleransGun { get; set; } = Services.FirmaEksikBilgi.YeniFirmaToleransGun;
     }
 }

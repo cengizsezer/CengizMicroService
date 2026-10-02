@@ -1,4 +1,5 @@
 using CatalogService.Api.Features.BankaEkstre.Kapsam;
+using CatalogService.Api.Features.Yapilacaklar.Domain;
 using CatalogService.Api.Features.Yapilacaklar.Dtos;
 using CatalogService.Api.Features.Yapilacaklar.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -23,12 +24,12 @@ namespace CatalogService.Api.Features.Yapilacaklar.Controllers
         public YapilacaklarController(IYapilacaklarService service) => _service = service;
 
         [HttpGet]
-        public async Task<ActionResult<YapilacaklarDto>> Liste([FromQuery] IsFiltresi filtre = IsFiltresi.Tumu,
+        public async Task<ActionResult<YapilacaklarDto>> Liste([FromQuery] IsFiltresi filtre = IsFiltresi.Tumu, [FromQuery] int? firmaId = null,
                                                                CancellationToken ct = default)
         {
             try
             {
-                return Ok(await _service.ListeAsync(filtre, ct));
+                return Ok(await _service.ListeAsync(filtre, ct, firmaId));
             }
             catch (YapilacaklarKuralException ex)
             {
@@ -41,14 +42,18 @@ namespace CatalogService.Api.Features.Yapilacaklar.Controllers
         public async Task<ActionResult<YapilacaklarOzetDto>> Ozet(CancellationToken ct = default)
             => Ok(await _service.OzetAsync(ct));
 
-        /// <summary>Tek ya da çok firma-dönem; <c>Yapildi = false</c> işareti kaldırır (satır silinir).</summary>
+        /// <summary>
+        /// Tek ya da çok firma-dönem; <c>Yapildi = false</c> işareti kaldırır. Notsuz/kanıtsız satır
+        /// silinir; notu ya da kanıtı olan dönemde yalnız zaman boşalır (not ve kanıt korunur).
+        /// </summary>
         [HttpPut("isaretle")]
         public async Task<IActionResult> Isaretle([FromBody] IsIsaretleDto dto, CancellationToken ct = default)
         {
             try
             {
-                await _service.IsaretleAsync(dto, ct);
-                return NoContent();
+                // fileIds: işareti kaldırılan dönemlerin kanıt dosyaları — istemci FileApi'den de siler.
+                var fileIds = await _service.IsaretleAsync(dto, ct);
+                return Ok(new { fileIds });
             }
             catch (YapilacaklarKuralException ex)
             {
@@ -85,13 +90,18 @@ namespace CatalogService.Api.Features.Yapilacaklar.Controllers
                                                         CancellationToken ct = default)
             => Calistir(() => _service.IsGuncelleAsync(firmaId, isId, dto, ct));
 
+        /// <summary>Yanıttaki <c>fileIds</c> (işin ekleri) FileApiService'ten de silinmelidir.</summary>
         [HttpDelete("{isId:int}")]
-        public async Task<IActionResult> Sil(int firmaId, int isId, CancellationToken ct = default)
+        public async Task<ActionResult<object>> Sil(int firmaId, int isId, CancellationToken ct = default)
         {
             try
             {
-                await _service.IsSilAsync(firmaId, isId, ct);
-                return NoContent();
+                var fileIds = await _service.IsSilAsync(firmaId, isId, ct);
+                return Ok(new { fileIds });
+            }
+            catch (YapilacaklarKuralException ex)
+            {
+                return BadRequest(new { field = ex.Field, message = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -99,7 +109,73 @@ namespace CatalogService.Api.Features.Yapilacaklar.Controllers
             }
         }
 
-        private async Task<ActionResult<FirmaIsiDto>> Calistir(Func<Task<FirmaIsiDto>> is_)
+        // ---- Toplu ekleme ve kopyalama (Prompt 11) ----
+
+        /// <summary>Yapıştırılan tabloyu çözer; EKLEMEZ. Düzeltmeler aynı uca hücre tablosuyla geri gelir.</summary>
+        [HttpPost("toplu/onizle")]
+        public Task<ActionResult<TopluOnizlemeDto>> TopluOnizle(int firmaId, [FromBody] TopluOnizleIstekDto istek,
+                                                               CancellationToken ct = default)
+            => Calistir(() => _service.TopluOnizleAsync(firmaId, istek, ct));
+
+        [HttpPost("toplu/ekle")]
+        public Task<ActionResult<TopluSonucDto>> TopluEkle(int firmaId, [FromBody] TopluEkleDto dto, CancellationToken ct = default)
+            => Calistir(() => _service.TopluEkleAsync(firmaId, dto, ct));
+
+        /// <summary>Başka firmanın özel işlerini bu firmaya kopyalar.</summary>
+        [HttpPost("kopyala")]
+        public Task<ActionResult<TopluSonucDto>> Kopyala(int firmaId, [FromBody] IsKopyalaDto dto, CancellationToken ct = default)
+            => Calistir(() => _service.KopyalaAsync(firmaId, dto, ct));
+
+        /// <summary>Boş şablon (xlsx): doğru başlık satırı + örnek satır. Firma verisi okunmaz.</summary>
+        [HttpGet("sablon")]
+        public IActionResult Sablon(int firmaId)
+            => File(YapilacaklarService.IsSablonu(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "firma-isleri-sablonu.xlsx");
+
+        // ---- Prosedür (Prompt 8) ----
+
+        /// <summary>
+        /// Prosedür paneli. <paramref name="kaynakId"/> özelde iş Id'si, yasalda serinin herhangi
+        /// bir takvim satırı (listedeki satırın <c>KaynakId</c>'si).
+        /// </summary>
+        [HttpGet("prosedur")]
+        public Task<ActionResult<IsProsedurDto>> Prosedur(int firmaId, [FromQuery] IsKaynagi kaynakTip, [FromQuery] int kaynakId,
+                                                         [FromQuery] bool tumGecmis = false, CancellationToken ct = default)
+            => Calistir(() => _service.ProsedurAsync(firmaId, kaynakTip, kaynakId, tumGecmis, ct));
+
+        /// <summary>Yasal işin prosedür satırını açar (idempotent) — ek yüklemeden önce.</summary>
+        [HttpPost("yasal/{kod}/{tekrar}")]
+        public Task<ActionResult<FirmaIsiDto>> YasalAc(int firmaId, string kod, IsTekrari tekrar, CancellationToken ct = default)
+            => Calistir(() => _service.YasalProsedurAcAsync(firmaId, kod, tekrar, ct));
+
+        /// <summary>Yasal işin program, alıcı, menü yolu ve adımları; ad ve tarih değişmez.</summary>
+        [HttpPut("yasal/{kod}/{tekrar}/prosedur")]
+        public Task<ActionResult<FirmaIsiDto>> YasalProsedur(int firmaId, string kod, IsTekrari tekrar,
+                                                             [FromBody] IsProsedurKaydetDto dto, CancellationToken ct = default)
+            => Calistir(() => _service.YasalProsedurKaydetAsync(firmaId, kod, tekrar, dto, ct));
+
+        /// <summary>Ek kaydı. Dosya <b>önce</b> FileApiService'e yüklenir (Belgeler kartıyla aynı akış).</summary>
+        [HttpPost("{isId:int}/ekler")]
+        public Task<ActionResult<FirmaIsiEkiDto>> EkEkle(int firmaId, int isId, [FromBody] FirmaIsiEkiOlusturDto dto,
+                                                         CancellationToken ct = default)
+            => Calistir(() => _service.EkEkleAsync(firmaId, isId, dto, ct));
+
+        /// <summary>Yanıttaki <c>fileId</c> FileApiService'ten de silinmelidir.</summary>
+        [HttpDelete("{isId:int}/ekler/{ekId:int}")]
+        public async Task<ActionResult<object>> EkSil(int firmaId, int isId, int ekId, CancellationToken ct = default)
+        {
+            try
+            {
+                var fileId = await _service.EkSilAsync(firmaId, isId, ekId, ct);
+                return Ok(new { fileId });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { field = "ekId", message = ex.Message });
+            }
+        }
+
+        private async Task<ActionResult<T>> Calistir<T>(Func<Task<T>> is_)
         {
             try
             {

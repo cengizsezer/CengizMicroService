@@ -7,14 +7,20 @@
 @inject DialogService DialogService
 
 @*
-    "Sınıflandırma ve mizan" kartının düzenleme formu. ORKA firma kodu burada yok: o
-    alan Firma Bilgileri'nde yazılıyor, bu kart yalnız gösteriyor.
+    "Sınıflandırma" kartının düzenleme formu — vergi ve mevzuat. Mizan formatı ve ORKA firma
+    kodu burada yok: ikisi "Kullanılan sistemler" kartının formunda (Prompt 9).
 
     Otomatik doldurma ÖNERİDİR: kullanıcının değiştirdiği değer sunucuda "elle" işaretlenir
     ve sonraki mükellefiyet okuması üzerine yazmaz. Değiştirilmeyen alan otomatik kalır.
 *@
 
 <div class="an-form">
+    <div class="@AlanSinifi("firmaTipi")" id="an-alan-firmaTipi">
+        <div class="an-form-etiket">Firma tipi</div>
+        <RadzenDropDown TValue="FirmaTipi" Data="@FirmaTipleri" TextProperty="Ad" ValueProperty="Deger"
+                        @bind-Value="model.FirmaTipi" Style="width:100%" />
+    </div>
+
     <div class="@AlanSinifi("vergiTuru")" id="an-alan-vergiTuru">
         <div class="an-form-etiket">Vergi türü</div>
         <RadzenRadioButtonList TValue="VergiTuru" Value="@model.VergiTuru" ValueChanged="@VergiTuruDegisti"
@@ -52,12 +58,6 @@
         }
     </div>
 
-    <div class="@AlanSinifi("mizanFormati")" id="an-alan-mizanFormati">
-        <div class="an-form-etiket">Mizan formatı</div>
-        <RadzenDropDown TValue="string" Data="@MizanFormatlari.Liste" @bind-Value="model.MizanFormati"
-                        Placeholder="Seçin" AllowClear="true" Style="width:100%" />
-    </div>
-
     <div class="@AlanSinifi("hesapDonemi")" id="an-alan-hesapDonemi">
         <div class="an-form-etiket">Hesap dönemi</div>
         <RadzenRadioButtonList TValue="HesapDonemi?" @bind-Value="model.HesapDonemi"
@@ -82,6 +82,33 @@
                 </div>
             </div>
         }
+    </div>
+
+    <div class="@AlanSinifi("sgkTesvikKademesi")" id="an-alan-sgkTesvikKademesi">
+        <div class="an-form-etiket">SGK teşvik kademesi</div>
+        <RadzenRadioButtonList TValue="SgkTesvikKademesi" @bind-Value="model.SgkTesvikKademesi"
+                               Orientation="Orientation.Horizontal" Gap="1rem">
+            <Items>
+                <RadzenRadioButtonListItem Text="Belirsiz" Value="SgkTesvikKademesi.Belirsiz" />
+                @foreach (var k in Mevcut.SgkKademeleri)
+                {
+                    <RadzenRadioButtonListItem Text="@($"{k.Ad} · işveren %{k.IsverenOrani.ToString("0.00", Tr)}")" Value="@k.Kademe" />
+                }
+            </Items>
+        </RadzenRadioButtonList>
+        <div class="an-not">Oranlar bilgi içindir, hiçbir hesaba girmez.</div>
+    </div>
+
+    <div class="@AlanSinifi("muhtasarDonemi")" id="an-alan-muhtasarDonemi">
+        <div class="an-form-etiket">Muhtasar dönemi</div>
+        <RadzenRadioButtonList TValue="MuhtasarDonemi" @bind-Value="model.MuhtasarDonemi"
+                               Orientation="Orientation.Horizontal" Gap="1rem">
+            <Items>
+                <RadzenRadioButtonListItem Text="Belirsiz" Value="MuhtasarDonemi.Belirsiz" />
+                <RadzenRadioButtonListItem Text="Aylık" Value="MuhtasarDonemi.Aylik" />
+                <RadzenRadioButtonListItem Text="Üç aylık" Value="MuhtasarDonemi.UcAylik" />
+            </Items>
+        </RadzenRadioButtonList>
     </div>
 
     @* Kodlarla çelişen otomatik değer: düzelt (değeri değiştir) ya da açıkça onayla.
@@ -125,7 +152,7 @@
     [Parameter, EditorRequired] public int FirmaId { get; set; }
     [Parameter, EditorRequired] public FirmaPaneliSiniflandirmaDto Mevcut { get; set; } = new();
 
-    /// <summary>"Tamamla"dan gelindiyse vurgulanacak alan (vergiTuru, defterUsulu, mizanFormati, hesapDonemi).</summary>
+    /// <summary>"Tamamla"dan gelindiyse vurgulanacak alan (vergiTuru, defterUsulu, hesapDonemi).</summary>
     [Parameter] public string? Odak { get; set; }
 
     private FirmaSiniflandirmaKaydetDto model = new();
@@ -138,12 +165,28 @@
         {
             DefterUsulu = Mevcut.DefterUsulu,
             VergiTuru = Mevcut.VergiTuru,
-            MizanFormati = Mevcut.MizanFormati,
+            // MizanFormati gönderilmez (null = dokunma): Kullanılan sistemler formunda.
             HesapDonemi = Mevcut.HesapDonemi,
             OzelDonemBas = Mevcut.OzelDonemBas,
-            OzelDonemBit = Mevcut.OzelDonemBit
+            OzelDonemBit = Mevcut.OzelDonemBit,
+            FirmaTipi = Mevcut.FirmaTipi,
+            SgkTesvikKademesi = Mevcut.SgkTesvikKademesi,
+            MuhtasarDonemi = Mevcut.MuhtasarDonemi
         };
     }
+
+    private static readonly System.Globalization.CultureInfo Tr = new("tr-TR");
+
+    private sealed record Secenek<T>(T Deger, string Ad);
+
+    private static readonly List<Secenek<FirmaTipi>> FirmaTipleri = new()
+    {
+        new(FirmaTipi.Belirsiz, "Belirsiz"),
+        new(FirmaTipi.SermayeSirketi, "Sermaye şirketi"),
+        new(FirmaTipi.Sahis, "Şahıs"),
+        new(FirmaTipi.AdiOrtaklik, "Adi ortaklık"),
+        new(FirmaTipi.IsOrtakligi, "İş ortaklığı")
+    };
 
     private string AlanSinifi(string alan) => alan == Odak ? "an-form-alan an-form-odak" : "an-form-alan";
 

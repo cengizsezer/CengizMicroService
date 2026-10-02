@@ -4,12 +4,16 @@
 @using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services
+@using WebApp.Application.Services.Yonetim
 @using WebApp.Shared.Dto.Yapilacaklar
 
 @attribute [Authorize]
 
 @inject IYapilacaklarApiClient Api
 @inject DialogService DialogService
+@inject IFirmaApiClient Firmalar
+@inject NavigationManager Nav
+@inject ILogger<YapilacaklarPage> Log
 
 @*
     Yapılacaklar (tasarım G) — firma üstü: seçili firmadan BAĞIMSIZ, bütün firmaların işleri.
@@ -23,6 +27,13 @@
     Gruplama sunucuda (YapilacaklarKurucu.Grupla) — anasayfa şeridi de aynı sayıyı verir.
 
     Beyannameler ekranının yerine geçmez, ona dokunmaz: yasal işler Vergi takviminden türer.
+
+    Prompt 13: sayfa TÜRETİLMİŞ bir kuyruktur, kayıt tutmaz — iş ekleme formu BİLEREK YOK (iki ekleme yolu
+    olursa hangisinin hangi firmaya yazdığı karışır). Yalnız yol gösterilir: "İş Takip Panosu'na git" (Prompt 16).
+
+    Prompt 16: firma filtresi bir SEÇENEK, varsayılan değil — sabah sorusu "neyi kaçırdım", varsayılan hâlâ
+    BÜTÜN FİRMALAR. Seçici İş Takip Panosu'nunkinin aynısı (FirmaSecici); seçim adreste (?firma=), dört
+    filtreyle birlikte çalışır, sunucuda gruplamadan önce uygulanır (grup sayıları filtreye uyar).
 *@
 
 <PageTitle>Yapılacaklar</PageTitle>
@@ -34,15 +45,17 @@
         <div>
             <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">Yapılacaklar</RadzenText>
             <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">
-                Bütün firmalar — seçili firmadan bağımsız@(veri is null ? "" : $" · bugün {veri.Bugun:dd.MM.yyyy}")
+                @(Firma is null ? "Bütün firmalar — seçili firmadan bağımsız" : (FirmaAdi ?? $"Firma #{Firma}"))@(veri is null ? "" : $" · bugün {veri.Bugun:dd.MM.yyyy}")@(" · Yeni iş İş Takip Panosu'ndan eklenir.")
             </RadzenText>
         </div>
 
         <div class="ys-filtreler">
+            @PanoyaGitBaglantisi()
             @Filtre(IsFiltresi.Tumu, "Tümü")
             @Filtre(IsFiltresi.Bende, "Bende")
             @Filtre(IsFiltresi.Yasal, "Yasal")
             @Filtre(IsFiltresi.Ozel, "Firmaya özel")
+            <FirmaSecici Secili="@Firma" Secenekler="@firmaSecenekleri" Secildi="@FirmaSec" />
             <RadzenButton Icon="refresh" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
                           Click="@Yukle" Disabled="@yukleniyor" title="Yenile" />
         </div>
@@ -60,7 +73,8 @@
     else if (veri.Gruplar.Count == 0)
     {
         <div class="ys-kart ys-bos">
-            @(filtre == IsFiltresi.Bende ? "Sorumlusu olduğun iş yok." : "Yapılacak iş yok.")
+            @(filtre == IsFiltresi.Bende ? "Sorumlusu olduğun iş yok." : "Bugün yapılacak iş yok.")@(Firma is null ? "" : $" ({FirmaAdi ?? "seçili firma"})")@(" Yeni iş İş Takip Panosu'ndan eklenir.")
+            <div style="margin-top:.4rem">@PanoyaGitBaglantisi()</div>
         </div>
     }
     else
@@ -87,14 +101,13 @@
     private readonly HashSet<string> acikSatirlar = new();
     private readonly HashSet<IsDurumu> acikBolumler = new();
 
-    protected override Task OnInitializedAsync() => Yukle();
 
     private async Task Yukle()
     {
         yukleniyor = true;
         try
         {
-            var sonuc = await Api.ListeAsync(filtre);
+            var sonuc = await Api.ListeAsync(filtre, firmaId: Firma);
             if (sonuc is null) hata = "Liste alınamadı. Sunucuya ulaşılamıyor olabilir.";
             else
             {
@@ -227,6 +240,56 @@
                 </tr>
             }
         }
+    };
+
+    // ---- Prompt 16: firma filtresi (İş Takip Panosu'nun AYNI seçicisi) + "İş Takip Panosu'na git" ----
+
+    /// <summary>Firma filtresi (?firma=12). Varsayılan bütün firmalar; dört filtreyle birlikte çalışır.</summary>
+    [SupplyParameterFromQuery(Name = "firma")] public int? Firma { get; set; }
+
+    private List<DonemFirmaSecenegi> firmaSecenekleri = new();
+    private int? yuklenenFirma = -1;
+
+    private string? FirmaAdi => firmaSecenekleri.FirstOrDefault(f => f.Id == Firma)?.Ad;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (firmaSecenekleri.Count == 0) await FirmalariYukle();
+        if (yuklenenFirma == Firma) return;
+        yuklenenFirma = Firma;
+        await Yukle();
+    }
+
+    private async Task FirmalariYukle()
+    {
+        try
+        {
+            var tr = StringComparer.Create(new System.Globalization.CultureInfo("tr-TR"), true);
+            firmaSecenekleri = (await Firmalar.GetAllAsync())
+                .Where(f => f.Aktif)
+                .Select(f => new DonemFirmaSecenegi(f.Id, string.IsNullOrWhiteSpace(f.KisaAd) ? f.Unvan : f.KisaAd))
+                .OrderBy(f => f.Ad, tr)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            // Seçici pasif kalır; liste bütün firmalarla çalışmaya devam eder.
+            Log.LogWarning(ex, "Firma listesi alınamadı (Yapılacaklar firma filtresi).");
+        }
+    }
+
+    /// <summary>Seçim adrese yazılır — geri tuşu çalışır. İş Takip Panosu'nun seçimine dokunmaz (ayrı adres).</summary>
+    private void FirmaSec(int? firmaId)
+        => Nav.NavigateTo(firmaId is { } f ? $"/yapilacaklar?firma={f}" : "/yapilacaklar");
+
+    /// <summary>
+    /// "İş Takip Panosu'na git" (Prompt 16; Prompt 13'te Anasayfa'ya gidiyordu). İş ekleme artık panonun içinde;
+    /// seçili firma varsa taşınır, yoksa pano bütün firmalarla açılır — hiçbir firma tahmin edilmez.
+    /// </summary>
+    private RenderFragment PanoyaGitBaglantisi() => __builder =>
+    {
+        <a class="ys-bag" href="@(Firma is { } f ? $"{IsTakipPanosuAdres.Yol}?firma={f}" : IsTakipPanosuAdres.Yol)"
+           title="Yeni iş İş Takip Panosu'ndan (ya da anasayfadaki firma işleri kartından) eklenir">İş Takip Panosu'na git</a>
     };
 
     private Task TekIsaretle(IsSatiriDto s)

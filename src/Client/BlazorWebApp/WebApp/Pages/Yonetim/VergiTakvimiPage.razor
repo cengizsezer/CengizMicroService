@@ -20,6 +20,10 @@
     uzatıldığında son gün burada düzeltilir; firma kartları ve Yapılacaklar yeni tarihi
     bir sonraki açılışta gösterir. Dönem başı/sonu dönemden hesaplanır.
 
+    Prompt 7B: tarihler NOMİNAL kuraldan (hafta sonu kaydırması kaldırıldı — gerçek tahakkuk fişi
+    nominal tarihi yazıyor, kaydırma geç tarih gösteriyordu). Elle düzenlenen satır işaretlenir, seed
+    ona bir daha dokunmaz.
+
     Pasif satır iş üretmez. "Yapıldı" işareti olan satır silinmez (geçmiş kaybolurdu) ve
     dönemi değiştirilemez; tarih, ad ve aktiflik düzeltilebilir.
 *@
@@ -33,7 +37,7 @@
         <div>
             <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">Vergi takvimi</RadzenText>
             <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">
-                Yasal işlerin son günleri. Seed tarihleri yürürlükteki takvimle doğrulanmalı; bayram/resmî tatil kaydırması elle yapılır.
+                Tarihler nominal kuraldan üretilir. Hafta sonu, resmî tatil ve bayram kaydırmaları OTOMATİK YAPILMAZ; gerekiyorsa satırı elle düzeltin.
             </RadzenText>
         </div>
         <div class="ys-filtreler">
@@ -43,7 +47,7 @@
                       @onclick="@(() => YilSec(y))">@(y?.ToString() ?? "Tümü")</span>
             }
             <RadzenButton Text="Varsayılanları yükle" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
-                          Click="@Varsayilanlar" title="Eksik satırları ekler; mevcut satıra dokunmaz" />
+                          Click="@Varsayilanlar" title="Eksik satırları ekler; elle düzenlenmiş satıra dokunmaz" />
         </div>
     </div>
 
@@ -102,7 +106,7 @@
                             </td>
                             <td>
                                 <RadzenDatePicker TValue="DateTime" @bind-Value="d.SonGun" DateFormat="dd.MM.yyyy" Style="width:135px" />
-                                <div class="ys-alt">@Gun(d.SonGun)</div>
+                                <div class="ys-alt">@Gun(d.SonGun)@(s.ElleDuzenlendi ? " · elle düzenlendi" : "")</div>
                             </td>
                             <td><RadzenCheckBox TValue="bool" @bind-Value="d.Aktif" /></td>
                             <td>

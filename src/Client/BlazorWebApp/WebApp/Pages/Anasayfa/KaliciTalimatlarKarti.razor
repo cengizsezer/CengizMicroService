@@ -6,6 +6,7 @@
 
 @inject IAnasayfaApiClient Api
 @inject DialogService DialogService
+@inject ILogger<KaliciTalimatlarKarti> Log
 
 @*
     Kalıcı talimatlar (tasarım F). Yeni tablo YOK: veri Takip kartının notlarıyla aynı
@@ -27,7 +28,12 @@
 
     @if (talimatlar is null)
     {
-        <div class="ys-bos">@(hata ?? "Yükleniyor…")</div>
+        <div class="ys-bos">Yükleniyor…</div>
+    }
+    else if (yuklenemedi)
+    {
+        @* Prompt 12: "talimat yok" (boş liste) ile "yüklenemedi" ayrı görünür. *@
+        <AnKartHatasi YenidenDene="@YenidenDene" />
     }
     else
     {
@@ -82,6 +88,7 @@
     private string? yeni;
     private string? hata;
     private bool kaydediliyor;
+    private bool yuklenemedi;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -99,13 +106,23 @@
         {
             sonuc = await Api.NotlarAsync(FirmaId);
         }
-        catch
+        catch (Exception ex)
         {
+            Log.LogWarning(ex, "Kalıcı talimatlar yüklenemedi (firma {FirmaId}).", FirmaId);
             sonuc = null;
         }
 
-        hata = sonuc is null ? "Talimatlar alınamadı." : null;
-        talimatlar = sonuc ?? talimatlar;
+        // Asla null bırakılmaz: boş liste + hata durumu (Prompt 12).
+        yuklenemedi = sonuc is null;
+        talimatlar = sonuc ?? new List<FirmaNotuDto>();
+    }
+
+    /// <summary>"Yeniden dene": YALNIZ bu kartın çağrısı.</summary>
+    private async Task YenidenDene()
+    {
+        hata = null;
+        await Yukle();
+        StateHasChanged();
     }
 
     private async Task TusBasildi(KeyboardEventArgs e)

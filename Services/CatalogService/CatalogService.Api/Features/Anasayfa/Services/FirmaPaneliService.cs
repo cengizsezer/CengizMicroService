@@ -30,13 +30,13 @@ namespace CatalogService.Api.Features.Anasayfa.Services
     public class FirmaPaneliService : IFirmaPaneliService
     {
         private readonly CatalogContext _db;
-        private readonly Func<DateTime> _bugun;
+        private readonly TimeProvider _saat;
 
-        /// <param name="bugun">Testler için sabit gün; üretimde <see cref="DateTime.Today"/>.</param>
-        public FirmaPaneliService(CatalogContext db, Func<DateTime>? bugun = null)
+        /// <param name="saat">Enjekte edilen saat (Prompt 7B: <c>DateTime.Today</c> yerine); testler sabit tarih verir.</param>
+        public FirmaPaneliService(CatalogContext db, TimeProvider? saat = null)
         {
             _db = db;
-            _bugun = bugun ?? (() => DateTime.Today);
+            _saat = saat ?? TimeProvider.System;
         }
 
         public async Task<FirmaPaneliDto> PanelAsync(int? seciliFirmaId, CancellationToken ct = default,
@@ -88,16 +88,25 @@ namespace CatalogService.Api.Features.Anasayfa.Services
                 .ToListAsync(ct);
 
             var mizanlar = await MizanYuklemeleriAsync(idler, ct);
+            var sistemler = await Sistemler.Services.SistemService.FirmaAtamalariAsync(_db, seciliId, ct);
+
+            // Gerekli alan "muhasebe programı" (Prompt 12): firmanın Muhasebe türünde atanmış sistemi var mı.
+            var muhasebeli = (await (from fs in _db.FirmaSistemleri.AsNoTracking()
+                                     join s in _db.Sistemler.AsNoTracking() on fs.SistemId equals s.Id
+                                     where idler.Contains(fs.FirmaId) && s.Tur == Sistemler.Domain.SistemTuru.Muhasebe
+                                     select fs.FirmaId).Distinct().ToListAsync(ct)).ToHashSet();
 
             var panel = FirmaPaneliKurucu.Kur(
-                _bugun(),
+                _saat.GetLocalNow().Date,
                 firmalar,
                 siciller.ToDictionary(s => s.FirmaId),
                 ortaklar.ToLookup(o => o.FirmaId),
                 yetkililer.ToLookup(y => y.FirmaId),
                 belgeler,
                 seciliId,
-                mizanlar.ToLookup(m => m.FirmaId));
+                mizanlar.ToLookup(m => m.FirmaId),
+                sistemler,
+                muhasebeli);
 
             if (panel.Secili is not null)
                 await TakipDoldurAsync(panel.Secili.Takip, seciliId, kullaniciId, ct);

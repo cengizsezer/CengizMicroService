@@ -156,7 +156,14 @@ namespace CatalogService.Api.Features.Anasayfa.Services
                 OzelDonemBas = firma.OzelDonemBas,
                 OzelDonemBit = firma.OzelDonemBit,
                 SonMizan = SonMizan(mizanlar),
-                UyusmazlikMesaji = MukellefiyetSiniflandirici.Uyusmazlik(firma, sicil?.MukellefiyetTurleri)
+                UyusmazlikMesaji = MukellefiyetSiniflandirici.Uyusmazlik(firma, sicil?.MukellefiyetTurleri),
+                FirmaTipi = firma.FirmaTipi,
+                SgkTesvikKademesi = firma.SgkTesvikKademesi,
+                MuhtasarDonemi = firma.MuhtasarDonemi,
+                SgkIsverenOrani = SgkTesvikOranlari.Oran(firma.SgkTesvikKademesi),
+                SgkKademeleri = SgkTesvikOranlari.Liste
+                    .Select(k => new SgkKademeSecenegiDto { Kademe = k.Kademe, Ad = k.Ad, IsverenOrani = k.IsverenOrani })
+                    .ToList()
             };
         }
 
@@ -245,6 +252,10 @@ namespace CatalogService.Api.Features.Anasayfa.Services
         public static List<FirmaUyariDto> RaydakiUyarilar(IEnumerable<FirmaUyariDto> uyarilar)
             => uyarilar.Where(u => u.Tur != FirmaUyariTuru.EksikSicilAlani).ToList();
 
+        /// <summary>Yetkisi bugün geçerli yetkili: bitişi boş (süresiz) ya da bitiş günü bugün/sonrası.</summary>
+        public static int GecerliYetkiliSayisi(IEnumerable<FirmaImzaYetkilisi> yetkililer, DateTime bugun)
+            => yetkililer.Count(y => y.YetkiBitis is not { } bitis || bitis.Date >= bugun.Date);
+
         /// <summary>Listede ve başlıkta kullanılan ad: kısa ad varsa o, yoksa unvan.</summary>
         public static string Ad(Firma firma)
             => string.IsNullOrWhiteSpace(firma.KisaAd) ? firma.Unvan : firma.KisaAd;
@@ -266,8 +277,11 @@ namespace CatalogService.Api.Features.Anasayfa.Services
             ILookup<int, FirmaImzaYetkilisi> yetkililer,
             IReadOnlyList<FirmaBelgesiDto> seciliBelgeler,
             int? seciliFirmaId,
-            ILookup<int, MizanYuklemesi>? mizanlar = null)
+            ILookup<int, MizanYuklemesi>? mizanlar = null,
+            IReadOnlyList<FirmaSistemAtamasiDto>? seciliSistemler = null,
+            IReadOnlySet<int>? muhasebeProgramiOlanlar = null)
         {
+            muhasebeProgramiOlanlar ??= new HashSet<int>();
             var panel = new FirmaPaneliDto();
             mizanlar ??= Array.Empty<MizanYuklemesi>().ToLookup(m => m.FirmaId);
 
@@ -291,8 +305,15 @@ namespace CatalogService.Api.Features.Anasayfa.Services
                 var cariYil = CariDonem(firma, bugun).Yil;
                 var eksikler = FirmaEksikBilgi.Eksikler(new FirmaKunyeGirdisi(
                     firma, sicil, ortaklar[firma.Id].Count(), yetkililer[firma.Id].Count(),
-                    CariMizanEksik(mizanlar[firma.Id], cariYil)));
+                    CariMizanEksik(mizanlar[firma.Id], cariYil),
+                    muhasebeProgramiOlanlar.Contains(firma.Id),
+                    GecerliYetkiliSayisi(yetkililer[firma.Id], bugun)));
                 eksikHaritasi[firma.Id] = eksikler;
+
+                // Rozet YALNIZ gerekli alanları sayar (Prompt 12); yeni firma toleransı rengi/metni değiştirir.
+                var gerekli = eksikler.Where(e => e.Gerekli).ToList();
+                var raydakiUyari = RaydakiUyarilar(firmaUyarilari).Count;
+                var yeni = FirmaEksikBilgi.YeniFirma(firma.CreatedAt, bugun);
 
                 panel.Firmalar.Add(new FirmaPaneliOzetDto
                 {
@@ -302,7 +323,11 @@ namespace CatalogService.Api.Features.Anasayfa.Services
                     VergiKimlikNo = firma.VergiKimlikNo,
                     Uyarilar = firmaUyarilari,
                     EksikSayisi = eksikler.Count,
-                    UyariSayisi = RaydakiUyarilar(firmaUyarilari).Count,
+                    UyariSayisi = raydakiUyari,
+                    GerekliEksikSayisi = gerekli.Count,
+                    GerekliEksikler = gerekli.Select(e => e.Alan).ToList(),
+                    YeniFirma = yeni,
+                    Rozet = FirmaEksikBilgi.Rozet(gerekli.Count, raydakiUyari, yeni),
                     MizanYok = MizanYok(mizanlar[firma.Id]),
                     MizanFormati = MizanFormatlari.Secili(firma.MizanFormati) ? firma.MizanFormati : null
                 });
@@ -320,6 +345,8 @@ namespace CatalogService.Api.Features.Anasayfa.Services
                 Unvan = secili.Unvan,
                 Uyarilar = uyariHaritasi[secili.Id],
                 Eksikler = eksikHaritasi[secili.Id],
+                GerekliEksikSayisi = eksikHaritasi[secili.Id].Count(e => e.Gerekli),
+                YeniFirma = FirmaEksikBilgi.YeniFirma(secili.CreatedAt, bugun),
 
                 Mukellefiyet = new FirmaMukellefiyetDto
                 {
@@ -335,6 +362,12 @@ namespace CatalogService.Api.Features.Anasayfa.Services
                 },
 
                 Siniflandirma = Siniflandirma(secili, seciliSicil, mizanlar[secili.Id]),
+
+                Sistemler = new FirmaPaneliSistemlerDto
+                {
+                    Atamalar = (seciliSistemler ?? Array.Empty<FirmaSistemAtamasiDto>()).ToList(),
+                    SistemNotu = secili.SistemNotu
+                },
 
                 Sicil = new FirmaPaneliSicilDto
                 {

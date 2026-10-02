@@ -249,6 +249,6 @@ namespace CatalogService.UnitTests.Anasayfa
         }
 
         private static Task<FirmaPaneliDto> Panel(CatalogContext db, int firmaId)
-            => new FirmaPaneliService(db, () => Bugun).PanelAsync(firmaId);
+            => new FirmaPaneliService(db, TestSaati.Gun(Bugun)).PanelAsync(firmaId);
     }
 }

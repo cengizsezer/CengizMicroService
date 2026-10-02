@@ -49,6 +49,17 @@
         public DateTime? OzelDonemBas { get; set; }
         public DateTime? OzelDonemBit { get; set; }
 
+        // ---- Sınıflandırma (Prompt 9) — elle seçilir, otomatik önerisi yok ----
+
+        public FirmaTipi FirmaTipi { get; set; } = FirmaTipi.Belirsiz;
+        public SgkTesvikKademesi SgkTesvikKademesi { get; set; } = SgkTesvikKademesi.Belirsiz;
+        public MuhtasarDonemi MuhtasarDonemi { get; set; } = MuhtasarDonemi.Belirsiz;
+
+        // ---- Kullanılan sistemler (Prompt 9) ----
+
+        /// <summary>Serbest not: "DijitalPlanet şifresi firma yetkilisinde".</summary>
+        public string? SistemNotu { get; set; }
+
         // ---- Takip ----
 
         /// <summary>

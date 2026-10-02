@@ -1,0 +1,44 @@
+@*
+    Anasayfa kart izolasyonu (Prompt 12) — bir kartın verisi yüklenemediğinde kart gövdesinde TEK satır:
+    "Bu bölüm yüklenemedi · Yeniden dene". "Yeniden dene" yalnız O KARTIN çağrısını tekrarlar; sayfa
+    yenilenmez, diğer kartlar etkilenmez. Teknik ayrıntı kullanıcıya gösterilmez, kart log'a yazar.
+
+    Boş liste ile hata AYNI DEĞİLDİR: "Bu firmada iş yok" kartın kendi boş metnidir; bu satır yalnız
+    çağrı başarısız olduğunda çıkar.
+*@
+
+<div class="an-kart-hata" role="alert">
+    <span>@Metin</span>
+    <span> · </span>
+    <span class="@(calisiyor ? "an-baglanti an-pasif" : "an-baglanti")" role="button" @onclick="Dene">
+        @(calisiyor ? "Deneniyor…" : "Yeniden dene")
+    </span>
+</div>
+
+<style>
+    .an-kart-hata { font-size:12.5px; color:#9b2c2c; background:#fff5f5; border:1px dashed #feb2b2; border-radius:6px;
+                    padding:.4rem .65rem; display:flex; align-items:center; gap:2px; flex-wrap:wrap; }
+</style>
+
+@code {
+    [Parameter] public string Metin { get; set; } = "Bu bölüm yüklenemedi";
+
+    /// <summary>Yalnız bu kartın çağrısı.</summary>
+    [Parameter, EditorRequired] public EventCallback YenidenDene { get; set; }
+
+    private bool calisiyor;
+
+    private async Task Dene()
+    {
+        if (calisiyor) return;
+        calisiyor = true;
+        try
+        {
+            await YenidenDene.InvokeAsync();
+        }
+        finally
+        {
+            calisiyor = false;
+        }
+    }
+}

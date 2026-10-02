@@ -1,0 +1,30 @@
+@using Radzen
+@using Radzen.Blazor
+
+@inject DialogService DialogService
+
+@*
+    Dönem sekmesinin "+ İş ekle"si için firma sorusu. Yalnız firma seçer; ekleme MEVCUT
+    FirmaIsiDialog'da ve mevcut uçta (POST …/firmalar/{id}/isler) yapılır. Firma filtresi
+    açıksa o firma önceden seçili gelir.
+*@
+
+<div class="ys-form">
+    <RadzenLabel Text="Hangi firmaya iş eklenecek?" Component="firma" />
+    <RadzenDropDown Name="firma" TValue="int?" Data="@Secenekler" TextProperty="Ad" ValueProperty="Id"
+                    @bind-Value="secim" AllowFiltering="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                    Placeholder="Firma seçin" Style="width:100%" />
+    <div style="display:flex; justify-content:flex-end; gap:.5rem; margin-top:.8rem">
+        <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(null))" />
+        <RadzenButton Text="Devam" ButtonStyle="ButtonStyle.Primary" Disabled="@(secim is null)" Click="@(() => DialogService.Close(secim))" />
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<DonemFirmaSecenegi> Secenekler { get; set; } = new();
+    [Parameter] public int? Varsayilan { get; set; }
+
+    private int? secim;
+
+    protected override void OnInitialized() => secim = Secenekler.Any(f => f.Id == Varsayilan) ? Varsayilan : null;
+}

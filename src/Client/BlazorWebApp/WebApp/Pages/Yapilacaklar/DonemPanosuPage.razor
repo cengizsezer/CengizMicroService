@@ -1,0 +1,521 @@
+@page "/is-takip-panosu"
+
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@attribute [Authorize]
+
+@inject IYapilacaklarApiClient Api
+@inject NavigationManager Nav
+
+@*
+    İş Takip Panosu (Prompt 15; önceki adı "Dönem panosu") — Prompt 14'te Excel çalışma kitabı gibi SEKMELİ
+    tek sayfa oldu. Sol menüde Anasayfa'nın hemen altında. Adres IsTakipPanosuAdres.Yol (/is-takip-panosu);
+    eski /donem-panosu EskiRotaYonlendirme ile buraya gelir, sorgu parametreleri korunur.
+
+        Özet · <dönem sekmeleri> │ Nasıl yapılır · Kişiler ve mailler
+
+    Sekme deseni Hesaplamalar'ınki (hs-sekmeler): şerit bir listeden üretilir, sekme adresle
+    taşınır (<a href>), geri tuşu çalışır. Farkı: şerit sayfanın ALTINDA ve dönem sekmeleri
+    TÜRETİLİR — sunucudaki DonemSekmeleri (içinde bulunulan ay + önceki aylar, sayı ve renk
+    eşiği tek yerde). Adres: ?donem=2026-09[&firma=12], ?sekme=ozet, ?sekme=nasil[&is=o-bordro-2] ya da ?sekme=kisiler. Adres boşsa varsayılan
+    sekmeye (bir önceki ay) replace ile gidilir.
+
+    Yapılacaklar sayfası AYRI kalır: o VADE merkezli, bu DÖNEM merkezli.
+
+    İzolasyon: özet (sekme rozetleri) yüklenemezse dönem matrisi yine açılır; matris yüklenemezse
+    yalnız mesaj; hücre paneli patlarsa yalnız panel.
+*@
+
+<PageTitle>İş Takip Panosu</PageTitle>
+
+<YsStiller />
+
+<div class="dp-sayfa">
+    <div class="dp-baslik">
+        <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">İş Takip Panosu</RadzenText>
+        <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">Dönem merkezli takip — hangi ayın işi kapandı, nerede eksik var</RadzenText>
+    </div>
+
+    @* ---- Üst şerit (Prompt 15 · 2.0–2.1): KALICI firma seçimi + eylemler, her sekmede. Seçim adreste
+       (?firma=) taşınır, sekme değişince kaybolmaz. Bu sayfanın kendi seçimidir; Anasayfa'nın seçili
+       firmasına dokunmaz (anasayfa firmayı yalnız kendi adresinden/ilk firmadan alır). *@
+    <div class="dp-ust-serit">
+        <FirmaSecici Secili="@Firma" Secenekler="@FirmaSecenekleri" Secildi="@FirmaSec" />
+        <IsTakipEylemleri @ref="eylemler" FirmaId="@Firma" Firmalar="@FirmaSecenekleri" Eklendi="@Eklendi" />
+    </div>
+
+    <div class="dp-icerik">
+        @if (ozetHata is not null)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Warning" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">
+                Sekme özeti yüklenemedi (@ozetHata). Dönem matrisi yine de açılır.
+            </RadzenAlert>
+        }
+
+        @if (KisilerSekmesi)
+        {
+            <ErrorBoundary>
+                <ChildContent>
+                    <KisilerSayfasi Firmalar="@FirmaSecenekleri" Kisi="@KisiParam" FirmaId="@Firma" Surum="@surum" />
+                </ChildContent>
+                <ErrorContent>
+                    <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">
+                        Kişiler sekmesi açılamadı. Diğer sekmeler etkilenmedi.
+                    </RadzenAlert>
+                </ErrorContent>
+            </ErrorBoundary>
+        }
+        else if (NasilSekmesi)
+        {
+            <ErrorBoundary>
+                <ChildContent>
+                    <NasilYapilirSayfasi Is="@Is" FirmaId="@Firma" Surum="@surum" IsEkle="@EylemIsEkle"
+                                         Git="@(a => Nav.NavigateTo(Adres(NasilSekme) + "&is=" + Uri.EscapeDataString(a)))" />
+                </ChildContent>
+                <ErrorContent>
+                    <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">
+                        Nasıl yapılır sekmesi açılamadı. Diğer sekmeler etkilenmedi.
+                    </RadzenAlert>
+                </ErrorContent>
+            </ErrorBoundary>
+        }
+        else if (OzetSekmesi)
+        {
+            @if (ozet is not null)
+            {
+                <DonemOzetSayfasi Ozet="@ozet" FirmaId="@Firma" IsEkle="@EylemIsEkle" Yapistir="@EylemYapistir"
+                                  Git="@(h => DonemeGit(h.Anahtar, h.FirmaId))" />
+            }
+            else if (ozetHata is null)
+            {
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+            }
+        }
+        else if (donemHata is not null)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">@donemHata</RadzenAlert>
+        }
+        else if (secili is not null || ozetHata is not null)
+        {
+            <DonemSekmesi Yil="@secili?.Yil" Ay="@secili?.Ay" FirmaId="@Firma" Firmalar="@ozet?.Satirlar"
+                          AyKaydir="@AyKaydir" FirmaFiltresiKaldir="@(() => DonemeGit(secili!.Value.Anahtar, null))"
+                          Degisti="@OzetTazele" Surum="@surum"
+                          IsEkle="@EylemIsEkle" Yapistir="@EylemYapistir" Yapistirildi="@EylemCtrlV">
+                <SeritEki>
+                    @if (ozet is not null && secili is { } s)
+                    {
+                        @* Filtreye uyar: filtreliyken yalnız o firmanın önceki dönemleri. *@
+                        <DonemAcikKutusu Donemler="@ozet.Donemler" SeciliAnahtar="@s.Anahtar" Kompakt="true"
+                                         FirmaSatiri="@(Firma is { } f ? ozet.Satirlar.FirstOrDefault(r => r.FirmaId == f) : null)"
+                                         Git="@(a => DonemeGit(a, Firma))" />
+                    }
+                </SeritEki>
+            </DonemSekmesi>
+        }
+        else
+        {
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+        }
+    </div>
+
+    @* ---- Alt sekme şeridi ---- *@
+    <nav class="dp-sekmeler" aria-label="Dönem panosu sekmeleri">
+        <a class="@(OzetSekmesi ? "dp-sekme dp-sekme-aktif" : "dp-sekme")" href="@Adres(OzetSekme)">Özet</a>
+
+        @foreach (var d in SekmeDonemleri)
+        {
+            var aktif = !SabitSekme && secili?.Anahtar == d.Anahtar;
+            <a class="@(aktif ? "dp-sekme dp-sekme-aktif" : "dp-sekme")" href="@Adres(null, d.Anahtar)"
+               title="@SekmeBasligi(d)">
+                @d.Etiket
+                @if (d.IcindeBulunulan)
+                {
+                    <span class="dp-sekme-simdi">●</span>
+                }
+                @if (d.Eksik > 0)
+                {
+                    <span class="@(d.Ton == EksikTonu.Cok ? "dp-rozet dp-rozet-cok" : "dp-rozet dp-rozet-az")">@d.Eksik</span>
+                }
+            </a>
+        }
+
+        @* Sekmelerde olmayan (◀ ▶ ile gidilen eski) dönem geçici sekme olarak görünür. *@
+        @if (!SabitSekme && secili is { } ds && ozet is not null && ozet.Donemler.All(d => d.Anahtar != ds.Anahtar))
+        {
+            <a class="dp-sekme dp-sekme-aktif" href="@Adres(null, ds.Anahtar)">@Etiket(ds.Yil, ds.Ay)</a>
+        }
+
+        <span class="dp-sekme-ayrac">│</span>
+        <a class="@(NasilSekmesi ? "dp-sekme dp-sekme-aktif" : "dp-sekme")" href="@Adres(NasilSekme)">Nasıl yapılır</a>
+        <a class="@(KisilerSekmesi ? "dp-sekme dp-sekme-aktif" : "dp-sekme")" href="@Adres(KisilerSekme)">Kişiler ve mailler</a>
+    </nav>
+</div>
+
+<style>
+    .dp-kok { display:flex; flex-direction:column; gap:.8rem; min-height:70vh; }
+    .dp-serit { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; border:1px solid #e2e8f0; border-radius:6px;
+                background:#fff; padding:.55rem .85rem; }
+    .dp-donem { display:flex; align-items:center; gap:.5rem; }
+    .dp-donem-ad { font-size:16px; font-weight:700; color:#2d3748; min-width:130px; text-align:center; }
+    .dp-ok { cursor:pointer; color:#3182ce; font-size:14px; padding:2px 6px; border-radius:4px; user-select:none; }
+    .dp-ok:hover { background:#ebf8ff; }
+    .dp-ozet { display:flex; align-items:center; gap:.5rem; font-size:13px; color:#2d3748; }
+    .dp-cubuk { width:140px; height:8px; background:#edf2f7; border-radius:999px; overflow:hidden; }
+    .dp-cubuk-dolu { height:100%; background:#38a169; }
+    .dp-yuzde { font-size:12px; color:#718096; }
+    .dp-eksik { flex:1; min-width:220px; font-size:12.5px; color:#9b2c2c; background:#fff5f5; border:1px solid #feb2b2;
+                border-radius:6px; padding:.3rem .6rem; }
+    .dp-eksik-yok { color:#22543d; background:#f0fff4; border-color:#9ae6b4; }
+    .dp-filtre { font-size:12.5px; color:#4a5568; display:flex; align-items:center; gap:4px; cursor:pointer; }
+    .dp-alt { font-size:11px; color:#a0aec0; }
+
+    .dp-tablo-kutu { overflow:auto; max-height:72vh; border:1px solid #e2e8f0; border-radius:6px; background:#fff; }
+    .dp-tablo { border-collapse:separate; border-spacing:0; font-size:12.5px; }
+    .dp-tablo th { position:sticky; top:0; z-index:2; background:#f7fafc; color:#4a5568; font-weight:600; font-size:11.5px;
+                   border-bottom:1px solid #e2e8f0; padding:6px 8px; }
+    .dp-is-kolon { min-width:96px; max-width:140px; white-space:normal; text-align:center; vertical-align:bottom; }
+    .dp-firma-kolon { position:sticky; left:0; z-index:1; background:#fff; text-align:left; min-width:160px; max-width:220px;
+                      padding:5px 10px; border-right:1px solid #edf2f7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .dp-tablo th.dp-firma-kolon { z-index:3; background:#f7fafc; }
+    .dp-tablo td { border-bottom:1px solid #f2f5f9; padding:4px; text-align:center; }
+    .dp-satir-eksik td { background:#fffafa; }
+    .dp-satir-eksik td.dp-firma-kolon { background:#fff5f5; }
+    .dp-oran-kolon { min-width:56px; }
+
+    .dp-hucre { position:relative; display:inline-flex; align-items:center; justify-content:center; width:34px; height:26px;
+                border-radius:5px; cursor:pointer; font-size:14px; }
+    .dp-hucre-yapildi { background:#c6f6d5; color:#22543d; }
+    .dp-hucre-eksik { border:1.5px dashed #fc8181; background:transparent; }
+    .dp-hucre-eksik:hover { background:#fff5f5; }
+    .dp-hucre-yapildi:hover { box-shadow:0 0 0 2px #9ae6b4; }
+    .dp-hucre-yok { color:#cbd5e0; cursor:default; }
+    .dp-hucre-secili { box-shadow:0 0 0 2px #3182ce !important; }
+    .dp-atac { position:absolute; right:-3px; top:-5px; font-size:10px; }
+    .dp-notlu { position:absolute; left:2px; bottom:0; font-size:9px; color:#276749; }
+    .dp-eksik-not { font-size:12px; color:#c53030; }
+    .dp-oran { font-size:11px; font-weight:700; border-radius:999px; padding:1px 7px; background:#fed7d7; color:#9b2c2c; }
+    .dp-oran-tam { background:#c6f6d5; color:#22543d; }
+    .dp-oran-bos { background:transparent; color:#cbd5e0; }
+
+    /* Hücre paneli: hücreye yakın kutu */
+    .dp-panel { position:fixed; z-index:50; width:380px; max-height:80vh; overflow:auto; background:#fff;
+                border:1px solid #cbd5e0; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.15); padding:.6rem .75rem;
+                display:flex; flex-direction:column; gap:.5rem; font-size:12.5px; }
+    .dp-panel-ust { display:flex; justify-content:space-between; gap:.5rem; align-items:flex-start; }
+    .dp-panel-baslik { font-size:12.5px; color:#2d3748; }
+    .dp-kapat { cursor:pointer; color:#a0aec0; }
+    .dp-kapat:hover { color:#2d3748; }
+    .dp-yapildi { display:flex; align-items:center; gap:6px; font-weight:600; color:#2d3748; cursor:pointer; }
+    .dp-yapistir { border:1.5px dashed #a0aec0; border-radius:6px; padding:.55rem; display:flex; flex-wrap:wrap; gap:6px;
+                   align-items:center; justify-content:center; color:#4a5568; outline:none; }
+    .dp-yapistir:focus { border-color:#3182ce; background:#f7fbff; }
+    .dp-kapali { opacity:.55; pointer-events:none; }
+    .dp-dosya-sec { color:#3182ce; cursor:pointer; text-decoration:underline; }
+    .dp-ekler { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:3px; }
+    .dp-ekler li { display:flex; gap:6px; align-items:center; }
+    .dp-ek-ad { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .dp-bag { color:#3182ce; cursor:pointer; font-size:12px; }
+    .dp-bag:hover { text-decoration:underline; }
+    .dp-sil { color:#c53030; }
+    .dp-etiket { font-size:11px; color:#718096; text-transform:uppercase; letter-spacing:.02em; font-weight:600; }
+    .dp-not { width:100%; font-size:12.5px; border:1px solid #e2e8f0; border-radius:4px; padding:4px 6px; resize:vertical; }
+    .dp-gecen { background:#fffff0; border:1px solid #faf089; border-radius:6px; padding:.4rem .55rem; display:flex;
+                flex-direction:column; gap:3px; }
+    .dp-gecen-not { white-space:pre-wrap; word-break:break-word; color:#2d3748; }
+    .dp-hata { color:#c53030; font-size:12px; }
+    .dp-bos { color:#a0aec0; }
+    .dp-panel-alt { display:flex; justify-content:space-between; align-items:center; border-top:1px solid #edf2f7; padding-top:.4rem; }
+
+    /* ---- Takip panosu (Prompt 14): sekmeli tek sayfa ---- */
+    .dp-sayfa { display:flex; flex-direction:column; min-height:calc(100vh - 120px); }
+    .dp-baslik { margin-bottom:.6rem; }
+
+    /* Prompt 15: kalıcı firma seçici + eylem grubu */
+    .dp-ust-serit { display:flex; align-items:center; gap:.6rem 1.2rem; flex-wrap:wrap; margin-bottom:.6rem;
+                    border:1px solid #e2e8f0; border-radius:6px; background:#fff; padding:.4rem .7rem; }
+    .dp-firma-secici { display:inline-flex; align-items:center; gap:6px; }
+    .dp-eylemler { display:inline-flex; align-items:center; gap:4px 12px; flex-wrap:wrap; }
+    .dp-eylem { font-size:12.5px; color:#3182ce; cursor:pointer; white-space:nowrap; }
+    .dp-eylem:hover { text-decoration:underline; }
+    .dp-eylem-ana { font-weight:600; }
+    .dp-eylem-hata { font-size:11.5px; color:#c53030; }
+    .dp-bos-ekle { display:flex; flex-direction:column; gap:.4rem; align-items:center; }
+    .dp-ozet-soluk td { opacity:.45; }
+    .dp-ozet-firma td { background:#ebf8ff; }
+
+    /* Nasıl yapılır: yazma (Prompt 15 · 3) */
+    .dp-bolum-baslik { display:flex; align-items:center; gap:10px; }
+    .dp-bolum-baslik .dp-bag { font-size:12px; text-transform:none; letter-spacing:0; font-weight:500; }
+    .dp-paylasim-uyari { background:#fffaf0; border:1px solid #fbd38d; color:#7b341e; border-radius:4px;
+                         padding:.3rem .6rem; font-size:12px; }
+    .dp-icerik { flex:1; padding-bottom:.6rem; }
+    .dp-firma-filtre { font-size:12.5px; background:#ebf8ff; border:1px solid #bee3f8; color:#2c5282; border-radius:999px;
+                       padding:2px 10px; display:inline-flex; gap:6px; align-items:center; }
+
+    /* Alt sekme şeridi — Excel gibi: aktif sekme beyaz, üstünde ince renk şerit */
+    .dp-sekmeler { position:sticky; bottom:0; z-index:20; display:flex; align-items:flex-end; gap:2px; overflow-x:auto;
+                   background:#edf2f7; border-top:1px solid #cbd5e0; padding:0 6px; }
+    .dp-sekme { position:relative; display:inline-flex; align-items:center; gap:6px; padding:6px 14px 7px; font-size:12.5px;
+                color:#4a5568; text-decoration:none; white-space:nowrap; border:1px solid transparent; border-top:3px solid transparent;
+                border-bottom:none; border-radius:0 0 4px 4px; background:transparent; }
+    .dp-sekme:hover { background:#e2e8f0; color:#2d3748; }
+    .dp-sekme-aktif { background:#fff; color:#1a202c; font-weight:600; border-color:#cbd5e0; border-top:3px solid #3182ce;
+                      margin-top:-1px; }
+    .dp-sekme-aktif:hover { background:#fff; }
+    .dp-sekme-simdi { font-size:9px; color:#718096; }
+    .dp-sekme-ayrac { align-self:center; color:#a0aec0; padding:0 4px; }
+    .dp-rozet { font-size:10px; font-weight:700; border-radius:999px; padding:0 6px; line-height:16px; }
+    .dp-rozet-az { background:#fefcbf; color:#975a16; border:1px solid #f6e05e; }
+    .dp-rozet-cok { background:#fed7d7; color:#9b2c2c; border:1px solid #fc8181; }
+
+    /* Özet sheet */
+    .dp-kutular { display:flex; gap:.6rem; flex-wrap:wrap; }
+    .dp-kutu { flex:1; min-width:240px; border:1px solid #e2e8f0; border-radius:6px; background:#fff; padding:.5rem .75rem;
+               font-size:12.5px; color:#2d3748; display:flex; flex-direction:column; gap:4px; }
+    .dp-kutu-baslik { font-size:11px; color:#718096; text-transform:uppercase; letter-spacing:.02em; font-weight:600; }
+    .dp-kutu-eksik { background:#fff5f5; border-color:#feb2b2; color:#9b2c2c; }
+    .dp-kutu-tamam { background:#f0fff4; border-color:#9ae6b4; color:#22543d; }
+    .dp-kutu-acik { background:#fffaf0; border-color:#f6ad55; color:#7b341e; }
+    .dp-kutu-kompakt { flex:none; flex-direction:row; align-items:center; gap:.6rem; padding:.35rem .7rem; }
+    .dp-ozet-tablo .dp-is-kolon { cursor:pointer; min-width:92px; }
+    .dp-ozet-tablo .dp-is-kolon:hover { background:#edf2f7; }
+    .dp-ozet-secili { box-shadow:inset 0 -3px 0 #3182ce; color:#2b6cb0 !important; }
+    .dp-ozet-tablo .dp-oran[role=button] { cursor:pointer; }
+    .dp-ton-az { background:#fefcbf; color:#975a16; }
+    .dp-ton-cok { background:#fed7d7; color:#9b2c2c; }
+    .dp-sorumlu-kolon { min-width:120px; text-align:left !important; color:#4a5568; font-size:12px; padding:4px 10px !important; }
+    /* Dönem sheet: kapsam, araç çubuğu, satır listesi, sağ panel */
+    .dp-kapsam { font-size:12.5px; color:#2d3748; display:inline-flex; gap:6px; align-items:center; }
+    .dp-kapsam .dp-kapat { font-size:15px; line-height:1; padding:0 2px; }
+    .dp-arac { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
+    .dp-gorunum { display:inline-flex; border:1px solid #cbd5e0; border-radius:6px; overflow:hidden; }
+    .dp-gorunum-ad { font-size:12px; padding:3px 12px; cursor:pointer; color:#4a5568; background:#fff; }
+    .dp-gorunum-ad + .dp-gorunum-ad { border-left:1px solid #cbd5e0; }
+    .dp-gorunum-aktif { background:#ebf8ff; color:#2b6cb0; font-weight:600; }
+    .dp-liste { width:100%; }
+    .dp-liste th { text-align:left; }
+    .dp-liste td { text-align:left; padding:5px 8px; vertical-align:middle; }
+    .dp-tik-kolon { width:30px; text-align:center !important; }
+    .dp-satir { cursor:pointer; }
+    .dp-satir:hover td { background:#f7fafc; }
+    .dp-satir-yapildi td { color:#a0aec0; }
+    .dp-satir-yapildi .dp-is-ad, .dp-satir-yapildi .dp-liste-firma { text-decoration:line-through; }
+    .dp-satir-yapildi .dp-cip { opacity:.55; }
+    .dp-satir-secili td { background:#ebf8ff !important; }
+    .dp-liste-firma { max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .dp-liste-is { min-width:180px; }
+    .dp-is-ad { margin-right:6px; }
+    .dp-liste-alici { max-width:240px; }
+    .dp-liste-tarih { white-space:nowrap; font-variant-numeric:tabular-nums; }
+    .dp-grup td { background:#f7fafc; border-top:1px solid #e2e8f0; font-size:12px; padding:5px 8px; }
+    .dp-cipler { display:flex; flex-wrap:wrap; gap:4px; }
+    .dp-cip { display:inline-block; font-size:11px; border-radius:999px; padding:1px 8px; line-height:16px; white-space:nowrap;
+              max-width:100%; overflow:hidden; text-overflow:ellipsis; vertical-align:middle; }
+    .dp-cip-program { background:#e9d8fd; color:#553c9a; }
+    .dp-cip-yasal { background:#bee3f8; color:#2a4365; }
+    .dp-cip-alici { background:#edf2f7; color:#2d3748; }
+    .dp-cip-tarih { background:#fefcbf; color:#744210; }
+    .dp-cip-yok { border:1px dashed #a0aec0; color:#718096; background:transparent; }
+    .dp-rozet-not { display:inline-block; font-size:11px; border-radius:4px; padding:0 5px; margin-right:3px;
+                    background:#f0fff4; color:#276749; border:1px solid #c6f6d5; }
+    .dp-rozet-not-eksik { background:#fffaf0; color:#9c4221; border-color:#fbd38d; }
+    /* Nasıl yapılır sheet'i */
+    .dp-tarif-izgara { display:grid; grid-template-columns:minmax(220px, 300px) 1fr; gap:.8rem; align-items:start; }
+    @@media (max-width: 760px) { .dp-tarif-izgara { grid-template-columns:1fr; } }
+    .dp-tarif-liste { border:1px solid #e2e8f0; border-radius:6px; background:#fff; max-height:72vh; overflow:auto;
+                      display:flex; flex-direction:column; }
+    .dp-arama { margin:6px; padding:4px 8px; font-size:12.5px; border:1px solid #cbd5e0; border-radius:4px; }
+    .dp-tarif-oge { padding:6px 10px; border-top:1px solid #f2f5f9; cursor:pointer; font-size:12.5px; display:flex;
+                    flex-direction:column; gap:2px; align-items:flex-start; }
+    .dp-tarif-oge:hover { background:#f7fafc; }
+    .dp-tarif-oge-aktif { background:#ebf8ff !important; box-shadow:inset 3px 0 0 #3182ce; }
+    .dp-tarif-oge-ad { font-weight:600; color:#2d3748; display:flex; gap:6px; align-items:center; }
+    .dp-tarif-detay { border:1px solid #e2e8f0; border-radius:6px; background:#fff; padding:.7rem .9rem; display:flex;
+                      flex-direction:column; gap:.7rem; font-size:12.5px; min-width:0; }
+    .dp-tarif-ust { display:flex; justify-content:space-between; gap:.6rem; align-items:flex-start; }
+    .dp-tarif-baslik { font-size:15px; font-weight:700; color:#1a202c; margin-bottom:3px; }
+    .dp-cip-farkli { background:#fefcbf; color:#975a16; border:1px solid #f6e05e; cursor:pointer; }
+    .dp-bolum { display:flex; flex-direction:column; gap:5px; border-top:1px solid #edf2f7; padding-top:.55rem; }
+    .dp-bolum-baslik { font-size:11px; color:#718096; text-transform:uppercase; letter-spacing:.02em; font-weight:700; }
+    .dp-menu-yolu { font-family:ui-monospace, Consolas, monospace; font-size:12px; background:#f7fafc; border:1px solid #e2e8f0;
+                    border-radius:4px; padding:2px 6px; white-space:nowrap; overflow:auto; max-width:100%; display:inline-block; }
+    .dp-adimlar { margin:0; padding-left:1.3rem; display:flex; flex-direction:column; gap:2px; color:#2d3748; }
+    .dp-kime { border-collapse:collapse; }
+    .dp-kime td { padding:3px 8px 3px 0; vertical-align:top; }
+    .dp-kime .dp-cip { margin:0 4px 2px 0; }
+    .dp-kime-secili td { background:#ebf8ff; }
+    .dp-firmada-farkli { border-left:3px solid #f6ad55; background:#fffaf0; padding:.35rem .6rem; border-radius:0 4px 4px 0;
+                         display:flex; flex-direction:column; gap:3px; }
+    .dp-donem-uyari { margin-top:4px; background:#ebf8ff; border:1px solid #bee3f8; color:#2c5282; border-radius:4px;
+                      padding:.35rem .6rem; font-size:12px; }
+    .dp-fark-kutu { border:1px solid #f6e05e; background:#fffff0; border-radius:6px; padding:.5rem .7rem; display:flex;
+                    flex-direction:column; gap:.4rem; }
+    .dp-fark-izgara { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:.5rem; }
+    .dp-fark-sutun { background:#fff; border:1px solid #e2e8f0; border-radius:4px; padding:.4rem .55rem; display:flex;
+                     flex-direction:column; gap:4px; align-items:flex-start; }
+    .dp-fark-tarif { border-color:#90cdf4; }
+    /* Tarif: bağlanabilir */
+    .dp-cip-baglanabilir { background:#edf2f7; color:#4a5568; border:1px solid #cbd5e0; }
+    .dp-baglanabilir-kutu { border:1px solid #cbd5e0; background:#f7fafc; border-radius:6px; padding:.45rem .7rem; display:flex;
+                            flex-direction:column; gap:.4rem; align-items:flex-start; }
+
+    /* Kişiler ve mailler */
+    .dp-kisi-izgara { display:grid; grid-template-columns:1fr minmax(240px, 320px); gap:.8rem; align-items:start; }
+    @@media (max-width: 900px) { .dp-kisi-izgara { grid-template-columns:1fr; } }
+    .dp-cip-eksik { background:#fefcbf; color:#975a16; border:1px solid #f6e05e; }
+    .dp-suphe { font-size:12.5px; display:flex; flex-wrap:wrap; gap:4px; align-items:center; }
+    .dp-takvim { border:1px solid #e2e8f0; border-radius:6px; background:#fff; padding:.55rem .7rem; display:flex;
+                 flex-direction:column; gap:.45rem; font-size:12.5px; }
+    .dp-takvim-gun { display:flex; gap:.55rem; align-items:flex-start; border-top:1px solid #edf2f7; padding-top:.35rem; }
+    .dp-takvim-tarih { min-width:26px; font-weight:700; font-size:15px; color:#2b6cb0; text-align:right; font-variant-numeric:tabular-nums; }
+    .dp-takvim-isler { display:flex; flex-direction:column; gap:2px; }
+
+    .dp-kapsam-notu { padding:6px 10px; border-top:1px solid #edf2f7; }
+
+    .dp-panel-sag { top:0; right:0; bottom:0; left:auto; width:min(420px, 100vw); max-height:none; border-radius:0;
+                    border-width:0 0 0 1px; box-shadow:-8px 0 24px rgba(0,0,0,.12); }
+</style>
+
+@code {
+    private const string OzetSekme = "ozet";
+    private const string NasilSekme = "nasil";
+    private const string KisilerSekme = "kisiler";
+
+    [SupplyParameterFromQuery(Name = "donem")] public string? Donem { get; set; }
+    [SupplyParameterFromQuery(Name = "sekme")] public string? Sekme { get; set; }
+    [SupplyParameterFromQuery(Name = "firma")] public int? Firma { get; set; }
+
+    /// <summary>Nasıl yapılır sekmesinde seçili iş (tarif grubu anahtarı).</summary>
+    [SupplyParameterFromQuery(Name = "is")] public string? Is { get; set; }
+
+    /// <summary>Kişiler sekmesinde tek kişi (iş dialogundaki "Kişiyi düzenle").</summary>
+    [SupplyParameterFromQuery(Name = "kisi")] public int? KisiParam { get; set; }
+
+    private DonemOzetiDto? ozet;
+
+    /// <summary>Kabuktaki eylem grubu (MEVCUT dialoglar); sekmelerin boş-liste düğmeleri ve Ctrl+V buraya gelir.</summary>
+    private IsTakipEylemleri? eylemler;
+
+    /// <summary>Ekleme bitince artar; açık sekme parametre değişince kendini tazeler.</summary>
+    private int surum;
+    private string? ozetHata;
+    private string? donemHata;
+
+    /// <summary>Adresteki dönem; boşsa (ve özet de yüklenemediyse) matris sunucunun varsayılanını açar.</summary>
+    private (int Yil, int Ay, string Anahtar)? secili;
+
+    private bool OzetSekmesi => string.Equals(Sekme, OzetSekme, StringComparison.OrdinalIgnoreCase);
+    private bool NasilSekmesi => string.Equals(Sekme, NasilSekme, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Dönem dışı sekme (Özet, Nasıl yapılır): adres boş dönemle varsayılana yönlenmez.</summary>
+    private bool KisilerSekmesi => string.Equals(Sekme, KisilerSekme, StringComparison.OrdinalIgnoreCase);
+    private bool SabitSekme => OzetSekmesi || NasilSekmesi || KisilerSekmesi;
+
+    private List<DonemFirmaSecenegi> FirmaSecenekleri
+        => ozet?.Satirlar.Select(s => new DonemFirmaSecenegi(s.FirmaId, s.FirmaAdi)).ToList() ?? new();
+
+    private IEnumerable<DonemSekmesiDto> SekmeDonemleri => ozet?.Donemler ?? Enumerable.Empty<DonemSekmesiDto>();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        donemHata = null;
+        secili = null;
+        if (!SabitSekme && !string.IsNullOrWhiteSpace(Donem))
+        {
+            secili = Coz(Donem);
+            if (secili is null) donemHata = $"\"{Donem}\" geçerli bir dönem değil (beklenen: 2026-09).";
+        }
+
+        if (ozet is null && ozetHata is null) await OzetYukle();
+
+        // Adres boş: varsayılan sekmeye (bir önceki ay). replace — geri tuşu boş adrese dönüp
+        // tekrar yönlendirme döngüsü kurmasın (Hesaplamalar'la aynı gerekçe).
+        if (!SabitSekme && string.IsNullOrWhiteSpace(Donem) && ozet is not null)
+            Nav.NavigateTo(Adres(null, ozet.VarsayilanAnahtar), forceLoad: false, replace: true);
+    }
+
+    private async Task OzetYukle()
+    {
+        var (sonuc, mesaj) = await Api.DonemOzetiAsync();
+        if (sonuc is null)
+        {
+            ozetHata = mesaj ?? "bağlantı hatası";
+            return;
+        }
+        ozet = sonuc;
+        ozetHata = null;
+    }
+
+    /// <summary>Matristen işaret/not/kanıt değişti: sekme rozetleri ve "açık dönem" kutusu tazelensin.</summary>
+    private async Task OzetTazele()
+    {
+        var (sonuc, _) = await Api.DonemOzetiAsync();
+        if (sonuc is not null) ozet = sonuc;
+    }
+
+    private void DonemeGit(string anahtar, int? firmaId) => Nav.NavigateTo(Kur(null, anahtar, firmaId));
+
+    /// <summary>
+    /// Firma seçici: açık sekmede kalınır, yalnız firma değişir (adres → geri tuşu çalışır, bağlantı paylaşılır).
+    /// Nasıl yapılır'da seçili iş korunur; Kişiler'deki tek kişi filtresi bırakılır.
+    /// </summary>
+    private void FirmaSec(int? firmaId)
+    {
+        if (firmaId == Firma) return;
+        var adres = SabitSekme ? Kur(Sekme!.ToLowerInvariant(), null, firmaId)
+                  : secili is { } s ? Kur(null, s.Anahtar, firmaId)
+                  : ozet is not null ? Kur(null, ozet.VarsayilanAnahtar, firmaId)
+                  : Kur(OzetSekme, null, firmaId);
+        if (NasilSekmesi && !string.IsNullOrEmpty(Is)) adres += "&is=" + Uri.EscapeDataString(Is);
+        Nav.NavigateTo(adres);
+    }
+
+    /// <summary>Panodan ekleme bitti: rozetler/özet ve açık sekme tazelenir — sayfa yenilemeye gerek yok.</summary>
+    private async Task Eklendi()
+    {
+        surum++;
+        await OzetTazele();
+        StateHasChanged();
+    }
+
+    private Task EylemIsEkle() => eylemler?.IsEkle() ?? Task.CompletedTask;
+    private Task EylemYapistir() => eylemler?.YapistirDugmesi() ?? Task.CompletedTask;
+    private Task EylemCtrlV(string metin) => eylemler?.TopluAc(metin) ?? Task.CompletedTask;
+
+    private void AyKaydir(int fark)
+    {
+        if (secili is not { } s) return;
+        var t = new DateTime(s.Yil, s.Ay, 1).AddMonths(fark);
+        DonemeGit($"{t.Year:0000}-{t.Month:00}", Firma);
+    }
+
+    /// <summary>Sekme/dönem adresi — sayfanın firma seçimi (?firma=) HER SEKMEDE taşınır (Prompt 15).</summary>
+    private string Adres(string? sekme, string? donem = null) => Kur(sekme, donem, Firma);
+
+    private static string Kur(string? sekme, string? donem, int? firmaId)
+    {
+        var adres = sekme is not null ? $"{IsTakipPanosuAdres.Yol}?sekme={sekme}" : $"{IsTakipPanosuAdres.Yol}?donem={donem}";
+        return firmaId is { } f ? adres + $"&firma={f}" : adres;
+    }
+
+    /// <summary>"2026-09" → (2026, 9). Biçim sunucudaki aylık dönem anahtarıyla aynı.</summary>
+    private static (int Yil, int Ay, string Anahtar)? Coz(string anahtar)
+    {
+        var p = anahtar.Trim().Split('-');
+        if (p.Length != 2 || !int.TryParse(p[0], out var y) || !int.TryParse(p[1], out var a)
+            || y is < 2000 or > 2100 || a is < 1 or > 12)
+            return null;
+        return (y, a, $"{y:0000}-{a:00}");
+    }
+
+    private static string Etiket(int y, int a)
+        => $"{new System.Globalization.CultureInfo("tr-TR").DateTimeFormat.GetMonthName(a)} {y}";
+
+    private static string SekmeBasligi(DonemSekmesiDto d)
+        => (d.IcindeBulunulan ? "İçinde bulunulan ay · " : "")
+           + (d.Toplam == 0 ? "bu ayda kapanan iş yok" : d.Eksik == 0 ? $"{d.Yapilan}/{d.Toplam} · tamam" : $"{d.Yapilan}/{d.Toplam} · {d.Eksik} eksik");
+}

@@ -1,4 +1,4 @@
-﻿using CatalogService.Api.Features.Anasayfa.Dtos;
+using CatalogService.Api.Features.Anasayfa.Dtos;
 using CatalogService.Api.Features.Anasayfa.Services;
 using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Infrastructure.Auth;
@@ -40,7 +40,7 @@ namespace CatalogService.Api.Features.Anasayfa.Controllers
         [HttpGet("ozet")]
         public async Task<ActionResult<AnasayfaOzetDto>> Ozet([FromQuery] int? yil, [FromQuery] int? ay,
                                                               CancellationToken ct = default)
-            => Ok(await _service.OzetAsync(yil ?? DateTime.Today.Year, ay ?? DateTime.Today.Month, ct));
+            => Ok(await _service.OzetAsync(yil ?? 0, ay ?? 0, ct));   // boş = bugünün ayı (serviste, enjekte saatle)
 
         /// <summary>
         /// Firma bilgi paneli: <b>tüm</b> firmaların liste satırları (uyarılarıyla) ve

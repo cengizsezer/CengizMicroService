@@ -1,0 +1,168 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Pages.Anasayfa
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@inject IYapilacaklarApiClient Api
+@inject DialogService DialogService
+@inject IJSRuntime JS
+@inject ILogger<IsTakipEylemleri> Log
+
+@*
+    İş Takip Panosu'nun eylem grubu (Prompt 15 · 2.1) — her sekmenin üst şeridinde:
+        [+ İş ekle] [Yapıştır] [Boş şablon indir] [Başka firmadan kopyala]
+
+    İKİNCİ BİR EKLEME YOLU DEĞİL: dördü de anasayfadaki firma işleri kartının MEVCUT bileşenlerini ve
+    uçlarını çağırır — FirmaIsiDialog, TopluIsDialog (aynı ayrıştırıcı, aynı önizleme), IsKopyalaDialog,
+    SablonIndirBaglantisi. Anasayfadaki kart olduğu gibi duruyor.
+
+    Firma: sayfanın firma seçicisi doluysa SORULMAZ, o firmaya eklenir; "Bütün firmalar"da önce
+    DonemFirmaSecDialog sorar (Prompt 13'teki pencere). Vazgeçilirse hiçbir şey olmaz.
+    Ekleme bitince Eklendi çağrılır; kabuk açık sekmeyi tazeler.
+*@
+
+<span class="dp-eylemler">
+    <span class="dp-eylem dp-eylem-ana" role="button" @onclick="IsEkle">+ İş ekle</span>
+    <span class="dp-eylem" role="button" @onclick="YapistirDugmesi" title="Excel'den kopyaladığınız satırları ekle">Yapıştır</span>
+    <SablonIndirBaglantisi Getir="@SablonGetir" DosyaAdi="firma-isleri-sablonu.xlsx" Sinif="dp-eylem" />
+    <span class="dp-eylem" role="button" @onclick="Kopyala">Başka firmadan kopyala</span>
+    @if (hata is not null)
+    {
+        <span class="dp-eylem-hata" role="alert">@hata</span>
+    }
+</span>
+
+@code {
+    /// <summary>Sayfanın firma seçimi (?firma=); boş = Bütün firmalar.</summary>
+    [Parameter] public int? FirmaId { get; set; }
+
+    /// <summary>Firma sorusunun seçenekleri (aktif firmalar).</summary>
+    [Parameter] public List<DonemFirmaSecenegi> Firmalar { get; set; } = new();
+
+    /// <summary>İş eklendi/kopyalandı — kabuk açık sekmeyi ve rozetleri tazeler.</summary>
+    [Parameter] public EventCallback Eklendi { get; set; }
+
+    private string? hata;
+    private bool soruluyor;
+
+    /// <summary>Seçili firma ya da (Bütün firmalar modunda) sorulan firma; vazgeçilirse null.</summary>
+    private async Task<int?> FirmaAl()
+    {
+        if (FirmaId is { } f) return f;
+        if (soruluyor) return null;
+        soruluyor = true;
+        try
+        {
+            var secim = await DialogService.OpenAsync<DonemFirmaSecDialog>("Hangi firma?",
+                new Dictionary<string, object?>
+                {
+                    { nameof(DonemFirmaSecDialog.Secenekler), Firmalar },
+                    { nameof(DonemFirmaSecDialog.Varsayilan), null }
+                }!,
+                new DialogOptions { Width = "min(420px, 96vw)" });
+            return secim as int?;
+        }
+        finally
+        {
+            soruluyor = false;
+        }
+    }
+
+    private string Ad(int firmaId) => Firmalar.FirstOrDefault(f => f.Id == firmaId)?.Ad ?? string.Empty;
+
+    /// <summary>Firmanın mevcut iş kartı (FirmaIsiDialog ve kopyalama bunu ister) — mevcut uç.</summary>
+    private async Task<FirmaIsleriKartDto?> KartAsync(int firmaId)
+    {
+        try
+        {
+            var kart = await Api.FirmaIsleriAsync(firmaId);
+            if (kart is null) hata = "Firmanın işleri okunamadı; tekrar deneyin.";
+            return kart;
+        }
+        catch (Exception ex)
+        {
+            Log.LogWarning(ex, "Firma işleri okunamadı (firma {FirmaId}).", firmaId);
+            hata = "Firmanın işleri okunamadı; tekrar deneyin.";
+            return null;
+        }
+    }
+
+    // ---- + İş ekle: mevcut FirmaIsiDialog ----
+
+    public async Task IsEkle()
+    {
+        hata = null;
+        if (await FirmaAl() is not int firmaId) return;
+        if (await KartAsync(firmaId) is not { } kart) return;
+
+        var kaydedildi = await DialogService.OpenAsync<FirmaIsiDialog>("İş ekle — " + Ad(firmaId),
+            new Dictionary<string, object?>
+            {
+                { nameof(FirmaIsiDialog.FirmaId), firmaId },
+                { nameof(FirmaIsiDialog.Kart), kart },
+                { nameof(FirmaIsiDialog.Mevcut), null }
+            }!,
+            new DialogOptions { Width = "min(640px, 96vw)" });
+
+        if (kaydedildi is true) await Eklendi.InvokeAsync();
+    }
+
+    // ---- Yapıştır / Ctrl+V: mevcut TopluIsDialog (aynı ayrıştırıcı, aynı önizleme) ----
+
+    /// <summary>Pano izni varsa panodan okur; yoksa dialog elle yapıştırma kutusuyla açılır (kartla aynı).</summary>
+    public async Task YapistirDugmesi()
+    {
+        string? metin = null;
+        try
+        {
+            metin = await JS.InvokeAsync<string?>("firmaIsleri.panodanOku");
+        }
+        catch
+        {
+            // İzin yok / tarayıcı desteklemiyor.
+        }
+        await TopluAc(metin);
+    }
+
+    /// <summary>Dönem sekmesinde Ctrl+V buraya gelir (firmaIsleri.js'teki mevcut bağlama).</summary>
+    public async Task TopluAc(string? metin)
+    {
+        hata = null;
+        if (await FirmaAl() is not int firmaId) return;
+
+        var eklendi = await DialogService.OpenAsync<TopluIsDialog>("Toplu iş ekle — " + Ad(firmaId),
+            new Dictionary<string, object?>
+            {
+                { nameof(TopluIsDialog.FirmaId), firmaId },
+                { nameof(TopluIsDialog.Metin), metin }
+            }!,
+            new DialogOptions { Width = "min(1100px, 96vw)" });
+
+        if (eklendi is true) await Eklendi.InvokeAsync();
+    }
+
+    // ---- Başka firmadan kopyala: mevcut IsKopyalaDialog ----
+
+    private async Task Kopyala()
+    {
+        hata = null;
+        if (await FirmaAl() is not int firmaId) return;
+        if (await KartAsync(firmaId) is not { } kart) return;
+
+        var kopyalandi = await DialogService.OpenAsync<IsKopyalaDialog>("Başka firmadan kopyala — " + Ad(firmaId),
+            new Dictionary<string, object?>
+            {
+                { nameof(IsKopyalaDialog.FirmaId), firmaId },
+                { nameof(IsKopyalaDialog.MevcutBasliklar), kart.OzelTanimlar.Select(t => t.Baslik).ToList() }
+            }!,
+            new DialogOptions { Width = "min(860px, 96vw)" });
+
+        if (kopyalandi is true) await Eklendi.InvokeAsync();
+    }
+
+    // ---- Boş şablon indir: mevcut SablonIndirBaglantisi; firma sorusundan vazgeçilirse (null, null) ----
+
+    private async Task<(byte[]? Icerik, string? Hata)> SablonGetir()
+        => await FirmaAl() is int firmaId ? await Api.IsSablonuAsync(firmaId) : (null, null);
+}

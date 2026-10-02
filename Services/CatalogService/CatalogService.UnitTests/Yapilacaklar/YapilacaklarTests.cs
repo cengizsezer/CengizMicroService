@@ -144,31 +144,95 @@ namespace CatalogService.UnitTests.Yapilacaklar
             kdvEylul.SonGun = new DateTime(2026, 11, 2); // uzatma
             await db.SaveChangesAsync();
 
-            var (eklenen, _) = await VergiTakvimiSeed.SeedAsync(db, Bugun);
+            var sonuc = await VergiTakvimiSeed.SeedAsync(db, Bugun);
 
-            Assert.Equal(0, eklenen);
+            Assert.Equal(0, sonuc.Eklenen);
             Assert.Equal(toplam, await db.VergiTakvimi.CountAsync());
-            Assert.Equal(new DateTime(2026, 11, 2), (await db.VergiTakvimi.SingleAsync(t => t.Id == kdvEylul.Id)).SonGun);
+            var satir = await db.VergiTakvimi.SingleAsync(t => t.Id == kdvEylul.Id);
+            Assert.Equal(new DateTime(2026, 11, 2), satir.SonGun);
+            Assert.True(satir.ElleDuzenlendi);   // seed değeri değil → elle sayıldı, bir daha dokunulmaz
         }
 
+        /// <summary>
+        /// Prompt 7B: hafta sonu kaydırması KALDIRILDI — tahakkuk fişi nominal tarihi yazıyor, kaydırma geç tarih
+        /// gösteriyordu. (Önceki test "pazartesiye kaydırır" diyordu; bu prompt o davranışı bilerek tersine çevirdi.)
+        /// </summary>
         [Fact]
-        public void Seed_gecmis_satirlari_pasif_hafta_sonunu_pazartesiye_kaydirir()
+        public void Seed_nominal_tarih_uretir_hafta_sonu_kaydirmasi_yok()
         {
             var satirlar = VergiTakvimiSeed.Uret(Bugun);
 
             // 2 yıl × (3 aylık iş × 12 + geçici 3 + kurumlar 1) = 80.
             Assert.Equal(80, satirlar.Count);
 
-            // Muhtasar ağustos: 26.09.2026 cumartesi → 28.09.2026 pazartesi, bugün = son gün → aktif.
-            var muhtasarAgustos = satirlar.Single(t => t.MukellefiyetKodu == "0003" && t.Yil == 2026 && t.DonemNo == 8);
-            Assert.Equal(new DateTime(2026, 9, 28), muhtasarAgustos.SonGun);
-            Assert.True(muhtasarAgustos.Aktif);
+            VergiTakvimi Bul(string kod, int yil, int no) => satirlar.Single(t => t.MukellefiyetKodu == kod && t.Yil == yil && t.DonemNo == no);
 
-            // Temmuz KDV'si 28.08.2026'da bitti → pasif (geçmişi "gecikti" diye doldurmasın).
-            Assert.False(satirlar.Single(t => t.MukellefiyetKodu == "0015" && t.Yil == 2026 && t.DonemNo == 7).Aktif);
+            Assert.Equal(new DateTime(2026, 9, 26), Bul("0003", 2026, 8).SonGun);   // muhtasar 08/2026 · cumartesi
+            Assert.Equal(new DateTime(2026, 5, 17), Bul("0033", 2026, 1).SonGun);   // geçici 2026/1 · pazar
+            Assert.Equal(new DateTime(2026, 9, 28), Bul("0015", 2026, 8).SonGun);   // KDV 08/2026
+            Assert.Equal(new DateTime(2026, 9, 26), Bul("0040", 2026, 8).SonGun);   // damga · izleyen ayın 26'sı
+            Assert.Equal(new DateTime(2026, 8, 17), Bul("0033", 2026, 2).SonGun);
+            Assert.Equal(new DateTime(2026, 11, 17), Bul("0033", 2026, 3).SonGun);
+            Assert.Equal(new DateTime(2027, 4, 30), Bul("0010", 2026, 1).SonGun);   // kurumlar
 
-            Assert.All(satirlar, t => Assert.NotEqual(DayOfWeek.Saturday, t.SonGun.DayOfWeek));
-            Assert.All(satirlar, t => Assert.NotEqual(DayOfWeek.Sunday, t.SonGun.DayOfWeek));
+            // Bugün 28.09: muhtasar ağustosun son günü (26.09) geçti → pasif; KDV ağustos (28.09) aktif.
+            Assert.False(Bul("0003", 2026, 8).Aktif);
+            Assert.True(Bul("0015", 2026, 8).Aktif);
+            Assert.False(Bul("0015", 2026, 7).Aktif);
+
+            Assert.Contains(satirlar, t => t.SonGun.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday);
+        }
+
+        [Fact]
+        public async Task Seed_eski_kaydirmali_satiri_nominale_ceker_elle_duzenleneni_korur()
+        {
+            using var db = Context();
+            var muhtasar = await db.VergiTakvimi.SingleAsync(t => t.MukellefiyetKodu == "0003" && t.Yil == 2026 && t.DonemNo == 8);
+            var gecici = await db.VergiTakvimi.SingleAsync(t => t.MukellefiyetKodu == "0033" && t.Yil == 2026 && t.DonemNo == 1);
+            var damga = await db.VergiTakvimi.SingleAsync(t => t.MukellefiyetKodu == "0040" && t.Yil == 2026 && t.DonemNo == 8);
+            muhtasar.SonGun = new DateTime(2026, 9, 28);      // eski seed'in kaydırmalı değeri
+            gecici.SonGun = new DateTime(2026, 5, 18);        // eski seed'in kaydırmalı değeri
+            damga.SonGun = new DateTime(2026, 9, 28);
+            damga.ElleDuzenlendi = true;                       // ekrandan düzenlenmiş
+            muhtasar.Aktif = true;
+            await db.SaveChangesAsync();
+            await Servis(db).IsaretleAsync(new IsIsaretleDto
+            {
+                Yapildi = true,
+                Isler = { new IsIsaretDto { KaynakTip = IsKaynagi.Yasal, KaynakId = muhtasar.Id, FirmaId = Dgr, DonemAnahtari = "2026-08" } }
+            });
+
+            var sonuc = await VergiTakvimiSeed.SeedAsync(db, Bugun);
+
+            Assert.Equal(2, sonuc.Yenilenen);
+            Assert.Equal(new DateTime(2026, 9, 26), (await db.VergiTakvimi.FindAsync(muhtasar.Id))!.SonGun);
+            Assert.Equal(new DateTime(2026, 5, 17), (await db.VergiTakvimi.FindAsync(gecici.Id))!.SonGun);
+            Assert.Equal(new DateTime(2026, 9, 28), (await db.VergiTakvimi.FindAsync(damga.Id))!.SonGun);   // korundu
+            Assert.True((await db.VergiTakvimi.FindAsync(muhtasar.Id))!.Aktif);                            // aktiflik korunur
+            Assert.Equal(1, await db.IsTamamlamalari.CountAsync(t => t.KaynakId == muhtasar.Id));           // işaret kaybolmadı
+
+            // İkinci çalıştırma değişiklik yapmaz.
+            var ikinci = await VergiTakvimiSeed.SeedAsync(db, Bugun);
+            Assert.Equal((0, 0, 0), (ikinci.Eklenen, ikinci.Yenilenen, ikinci.ElleSayilan));
+        }
+
+        [Fact]
+        public async Task Ekrandan_duzenlenen_satir_elle_isaretlenir_seed_dokunmaz()
+        {
+            using var db = Context();
+            var servis = new VergiTakvimiService(db, Saat());
+            var kdv = await db.VergiTakvimi.SingleAsync(t => t.MukellefiyetKodu == "0015" && t.Yil == 2026 && t.DonemNo == 10);
+
+            await servis.GuncelleAsync(kdv.Id, new VergiTakvimiKaydetDto
+            {
+                MukellefiyetKodu = "0015", Ad = kdv.Ad, Tekrar = kdv.Tekrar, Yil = 2026, DonemNo = 10,
+                SonGun = new DateTime(2026, 11, 30), Aktif = true
+            });
+            await VergiTakvimiSeed.SeedAsync(db, Bugun);
+
+            var satir = await db.VergiTakvimi.FindAsync(kdv.Id);
+            Assert.True(satir!.ElleDuzenlendi);
+            Assert.Equal(new DateTime(2026, 11, 30), satir.SonGun);
         }
 
         // ---- DGR: türetilen yasal işler ----
@@ -185,17 +249,19 @@ namespace CatalogService.UnitTests.Yapilacaklar
 
             var adlar = kart.Yasal.Select(s => $"{s.MukellefiyetKodu} {s.Baslik} · {s.DonemEtiketi} · {s.SonGun:dd.MM.yyyy} · {s.Durum}")
                                   .ToList();
+            // Prompt 7B: nominal tarih. Muhtasar ve damga ağustosun son günü 26.09 (cumartesi) — seed anında (28.09)
+            // geçmiş, pasif yazıldı; kuyrukta sıradaki dönem (eylül, 26.10) görünür. Önceki sürüm 28.09'a kaydırıyordu.
             Assert.Equal(new[]
             {
-                "0003 Muhtasar ve prim hizmet beyannamesi · Ağustos 2026 · 28.09.2026 · BuHafta",
+                "0003 Muhtasar ve prim hizmet beyannamesi · Eylül 2026 · 26.10.2026 · Sonra",
                 "0010 Kurumlar vergisi beyannamesi · 2026 · 30.04.2027 · Sonra",
                 "0015 KDV beyannamesi (KDV-1) · Ağustos 2026 · 28.09.2026 · BuHafta",
                 "0033 Geçici vergi beyannamesi · 2026 / 3. çeyrek · 17.11.2026 · Sonra",
-                "0040 Damga vergisi beyannamesi · Ağustos 2026 · 28.09.2026 · BuHafta"
+                "0040 Damga vergisi beyannamesi · Eylül 2026 · 26.10.2026 · Sonra"
             }, adlar);
 
             Assert.Equal(0, kart.GeciktiSayisi);
-            Assert.Equal(3, kart.BuAySayisi);
+            Assert.Equal(1, kart.BuAySayisi);   // yalnız KDV (28.09)
         }
 
         [Fact]
@@ -395,6 +461,25 @@ namespace CatalogService.UnitTests.Yapilacaklar
         // ---- Anasayfa şeridi ----
 
         [Fact]
+        public async Task Liste_firma_filtresi_gruplamadan_once_ve_diger_filtrelerle_birlikte()
+        {
+            using var db = Context(ekFirma: 2);
+            var servis = Servis(db);
+
+            var hepsi = await servis.ListeAsync(IsFiltresi.Tumu);
+            var dgr = await servis.ListeAsync(IsFiltresi.Tumu, firmaId: Dgr);
+
+            // Bütün firmalarda KDV satırı 3 firmayı kapsar; filtreyle tek firma.
+            Assert.Contains(hepsi.Gruplar, g => g.FirmaSayisi > 1);
+            Assert.All(dgr.Gruplar, g => Assert.All(g.Firmalar, f => Assert.Equal(Dgr, f.FirmaId)));
+            Assert.True(dgr.Gruplar.Count > 0);
+
+            // "Bende + firma": DGR'nin sorumlusu Ben; diğer firmanın sorumlusu başkası → boş.
+            Assert.NotEmpty((await servis.ListeAsync(IsFiltresi.Bende, firmaId: Dgr)).Gruplar);
+            Assert.Empty((await servis.ListeAsync(IsFiltresi.Bende, firmaId: 100)).Gruplar);
+        }
+
+        [Fact]
         public async Task Gecikmis_is_yokken_serit_sayisi_sifir()
         {
             using var db = Context(ekFirma: 8);
@@ -402,7 +487,7 @@ namespace CatalogService.UnitTests.Yapilacaklar
             var ozet = await Servis(db).OzetAsync();
 
             Assert.Equal(0, ozet.Gecikti); // istemci şeridi Gecikti > 0 iken çizer
-            Assert.Equal(3, ozet.BuHafta); // KDV, muhtasar, damga (28.09) — satır sayısı, firma değil
+            Assert.Equal(1, ozet.BuHafta); // KDV (28.09) — satır sayısı, firma değil. Muhtasar/damga 26.09 nominal (7B), seed'de pasif
         }
 
         [Fact]

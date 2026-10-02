@@ -1,4 +1,4 @@
-﻿using CatalogService.Api.Features.Anasayfa.Domain;
+using CatalogService.Api.Features.Anasayfa.Domain;
 using CatalogService.Api.Features.Anasayfa.Services;
 using CatalogService.Api.Features.BankaEkstre.Kapsam;
 using CatalogService.Api.Features.FirmaBilgileri.Domain;
@@ -59,11 +59,14 @@ namespace CatalogService.Api.Features.FirmaBilgileri.Services
         private readonly IBankaFirmaKapsami _kapsam;
         private readonly IFirmaOlayYazici? _olay;
         private readonly ILogger<FirmaBilgiService>? _log;
+        private readonly TimeProvider _saat;
 
+        /// <param name="saat">Prompt 12: imza yetkisinin geçerliliği bugüne bakar; DateTime.Today yerine enjekte saat (test edilebilir).</param>
         public FirmaBilgiService(CatalogContext db, IBankaFirmaKapsami kapsam, IFirmaOlayYazici? olay = null,
-                                 ILogger<FirmaBilgiService>? log = null)
+                                 ILogger<FirmaBilgiService>? log = null, TimeProvider? saat = null)
         {
             _db = db;
+            _saat = saat ?? TimeProvider.System;
             _kapsam = kapsam;
             _olay = olay;
             _log = log;
@@ -338,7 +341,8 @@ namespace CatalogService.Api.Features.FirmaBilgileri.Services
                 .OrderBy(y => y.Sira).ThenBy(y => y.Id)
                 .ToListAsync(ct);
 
-            return yetkililer.Select(y => Dto(y, DateTime.Today)).ToList();
+            var bugun = _saat.GetLocalNow().Date;
+            return yetkililer.Select(y => Dto(y, bugun)).ToList();
         }
 
         public async Task<List<FirmaImzaYetkilisiDto>> YetkililerKaydetAsync(

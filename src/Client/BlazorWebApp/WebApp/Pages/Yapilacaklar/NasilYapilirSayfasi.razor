@@ -1,0 +1,929 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Pages.Anasayfa
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@implements IAsyncDisposable
+
+@inject IYapilacaklarApiClient Api
+@inject ISistemApiClient Sistemler
+@inject IFileApiService FileApi
+@inject DialogService DialogService
+@inject IJSRuntime JS
+
+@*
+    İş Takip Panosu — "Nasıl yapılır" sheet'i (Prompt 14 · ADIM 3, Prompt 15 · ADIM 3). Tarif FİRMA BAZINDA
+    DEĞİL İŞ BAZINDA: "Bordro" bir kez yazılır, dört firma aynı tarifi okur. Yasal işlerin tarifi de ortak.
+
+    Sessiz birleştirme yok: metni tariften FARKLI firma tarife bağlanmadı, kendi metniyle çalışıyor.
+    Listede amber "farklı tarif var"; tıklayınca metinler yan yana, "Bu tarifi kullan" kullanıcının
+    kararıdır (firmanın metni silinmez, "Bu firmada farklı" olarak altında kalır).
+
+    YAZMA (Prompt 15): tarifi olmayan işte "+ Tarif yaz" — formdaki metin MEVCUT tarif oluşturma ucuna gider
+    (girdisi genişledi, yeni uç yok); boş form sunucuda reddedilir. Yasal işte prosedür satırı yoksa sunucu
+    MEVCUT "yasal prosedür aç" akışını çalıştırır; kullanıcı tek akış görür. Tarifi olan işte bölüm başına
+    "Düzenle". Birden çok firmada kullanılan tarifte düzenlerken uyarı satırı. KAYDET KULLANICININDIR:
+    otomatik kaydetme yok; Vazgeç değişikliği atar; kaydedilmemiş değişiklikle sekme/iş değiştirilirse sorulur.
+
+    "alıcı girilmemiş" yanında "+ Alıcı ekle": MEVCUT kişi akışı (FirmaIsiDialog · Prosedür sekmesi, 14B
+    önizlemesi dahil). Yeni bir alıcı yazma yolu yok.
+
+    Ekler bu tarifin (prosedür türü, her ay aynı) ekleridir. Dönem eki (IsTamamlamaEki) ve firmanın
+    prosedür eki (FirmaIsiEki) AYRI kayıtlardır, burada gösterilmez/birleştirilmez. Görsel Ctrl+V,
+    dönem panelinin MEVCUT yapıştırma bağlaması (donemPanosu.js) ile — alan odaktayken.
+
+    Adres: ?sekme=nasil&is=o-bordro-2[&firma=12].
+*@
+
+@* Kaydedilmemiş değişiklik varken sayfa içi gezinme (sekme, başka iş) sorulur; tarayıcı kapatılırken de. *@
+<NavigationLock OnBeforeInternalNavigation="GezinmeOncesi" ConfirmExternalNavigation="@Kirli" />
+
+<div class="dp-kok">
+    @if (hata is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">@hata</RadzenAlert>
+    }
+    else if (liste is null)
+    {
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+    }
+    else if (!FirmaninIsleri.Any())
+    {
+        @* 3.4: hiç iş yok — yol göster; ekleme kabuğun MEVCUT eylemi. *@
+        <div class="ys-kart ys-bos dp-bos-ekle">
+            <div>Henüz iş yok. İş ekleyince tarifi buradan yazabilirsin.</div>
+            <div class="dp-eylemler">
+                <span class="dp-eylem dp-eylem-ana" role="button" @onclick="@(() => IsEkle.InvokeAsync())">+ İş ekle</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="dp-tarif-izgara">
+            @* ---- Sol liste ---- *@
+            <aside class="dp-tarif-liste">
+                <input class="dp-arama" type="search" placeholder="İş ara…" @bind="arama" @bind:event="oninput" />
+                @foreach (var o in Gorunenler)
+                {
+                    <div class="@(o.Anahtar == SeciliAnahtar ? "dp-tarif-oge dp-tarif-oge-aktif" : "dp-tarif-oge")" role="button"
+                         @onclick="@(() => Git.InvokeAsync(o.Anahtar))">
+                        <div class="dp-tarif-oge-ad">
+                            @o.Ad
+                            @if (o.KaynakTip == IsKaynagi.Yasal)
+                            {
+                                <span class="dp-cip dp-cip-yasal">yasal</span>
+                            }
+                        </div>
+                        <div class="dp-alt">
+                            @IsMetin.Tekrar(o.Tekrar) · @o.FirmaSayisi firmada@(o.EkSayisi > 0 ? $" · {o.EkSayisi} ek" : "")
+                        </div>
+                        @if (o.TarifId is null)
+                        {
+                            <span class="dp-cip dp-cip-yok">tarif yok</span>
+                        }
+                        @if (o.FarkliSayisi > 0)
+                        {
+                            <span class="dp-cip dp-cip-farkli" title="@o.FarkliSayisi firmanın metni tariften farklı — bağlanmadı">farklı tarif var</span>
+                        }
+                        @if (o.BaglanabilirSayisi > 0)
+                        {
+                            <span class="dp-cip dp-cip-baglanabilir" title="Metni boş, tarife bağlanmamış — kendiliğinden bağlanmaz, siz karar verirsiniz">tarife bağlanabilir · @o.BaglanabilirSayisi firma</span>
+                        }
+                    </div>
+                }
+                @if (!Gorunenler.Any())
+                {
+                    <div class="dp-bos" style="padding:8px">Eşleşen iş yok.</div>
+                }
+            </aside>
+
+            @* ---- Sağ: detay ---- *@
+            <section class="dp-tarif-detay">
+                @if (detayHata is not null)
+                {
+                    <div class="dp-hata">@detayHata</div>
+                }
+                else if (detay is null)
+                {
+                    <div class="dp-bos">@(SeciliAnahtar is null ? "Soldan bir iş seçin." : "Yükleniyor…")</div>
+                }
+                else
+                {
+                    @Detay(detay)
+                }
+            </section>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Seçili iş (adres: <c>&amp;is=</c>); boşsa listenin ilki.</summary>
+    [Parameter] public string? Is { get; set; }
+
+    /// <summary>Sayfanın firma seçimi (Prompt 15): liste o firmada geçerli işler; "Kime gider"de o firma önde.</summary>
+    [Parameter] public int? FirmaId { get; set; }
+
+    /// <summary>Kabuktan: bir ekleme bitti, liste yeniden okunsun (Prompt 15).</summary>
+    [Parameter] public int Surum { get; set; }
+
+    /// <summary>Kabuğun MEVCUT "+ İş ekle" eylemi (boş liste için).</summary>
+    [Parameter] public EventCallback IsEkle { get; set; }
+
+    /// <summary>İş seçildi — kabuk adresi değiştirir (geri tuşu çalışsın).</summary>
+    [Parameter] public EventCallback<string> Git { get; set; }
+
+    /// <summary>Prosedür ve dönem ekiyle aynı türler ve sınır (sunucu: YapilacaklarService.EkDogrula).</summary>
+    private const string Kabul = ".xlsx,.xls,.pdf,.png,.jpg,.jpeg,.docx,.csv,.txt";
+    private static readonly HashSet<string> Uzantilar = new(Kabul.Split(','), StringComparer.OrdinalIgnoreCase);
+    private const long EnFazlaBayt = 20 * 1024 * 1024;
+
+    private static readonly System.Globalization.CultureInfo Tr = new("tr-TR");
+
+    private List<IsTarifiOzetDto>? liste;
+    private string? hata, detayHata, islemHata;
+    private string arama = string.Empty;
+    private IsTarifiDetayDto? detay;
+    private string? yuklenenAnahtar;
+    private bool farkKutusu, yukleniyor, kaydediliyor;
+
+    // ---- Yazma: hangi bölüm açık, form ve açıldığı andaki hâli (kirli kontrolü) ----
+    private enum Bolum { Yok, Yeni, Nerede, Nasil }
+    private Bolum acik = Bolum.Yok;
+    private IsTarifiKaydetDto? form;
+    private IsTarifiKaydetDto? formIlk;
+    private List<WebApp.Shared.Dto.Sistemler.SistemDto>? sistemler;
+
+    /// <summary>Kaydedilmemiş değişiklik var mı (Kaydet kullanıcının; otomatik kaydetme yok).</summary>
+    private bool Kirli => form is not null && formIlk is not null
+        && (form.Ad != formIlk.Ad || form.SistemId != formIlk.SistemId
+            || (form.MenuYolu ?? "") != (formIlk.MenuYolu ?? "") || (form.NasilYapilir ?? "") != (formIlk.NasilYapilir ?? ""));
+
+    private string? SeciliAnahtar => Is ?? FirmaninIsleri.FirstOrDefault()?.Anahtar;
+
+    /// <summary>Firma seçiliyse (Prompt 15) yalnız o firmada geçerli işler; değilse hepsi.</summary>
+    private IEnumerable<IsTarifiOzetDto> FirmaninIsleri
+        => liste?.Where(o => FirmaId is null || o.FirmaIdleri.Contains(FirmaId.Value)) ?? Enumerable.Empty<IsTarifiOzetDto>();
+
+    private IEnumerable<IsTarifiOzetDto> Gorunenler
+        => FirmaninIsleri.Where(o => arama.Length == 0 || o.Ad.ToLower(Tr).Contains(arama.Trim().ToLower(Tr)));
+
+    /// <summary>Tarifi okuyan firma sayısı (bağlı + yasal ortak) — paylaşılan tarif uyarısı için.</summary>
+    private static int KullananSayisi(IsTarifiDetayDto d)
+        => d.Firmalar.Count(f => f.Baglanti is TarifBaglantisi.Bagli or TarifBaglantisi.Ortak);
+
+    /// <summary>Yeni tarifi okuyacak firma sayısı: kendi metni olmayan bütün firmalar (farklı metin bağlanmaz).</summary>
+    private static int OkuyacakSayisi(IsTarifiDetayDto d)
+        => d.Firmalar.Count(f => string.IsNullOrWhiteSpace(f.MenuYolu) && f.Adimlar.Count == 0);
+
+    private int yuklenenSurum;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Surum != yuklenenSurum && liste is not null)
+        {
+            // Kabukta iş eklendi: liste ve açık detay yeniden okunur (açık form korunur).
+            yuklenenSurum = Surum;
+            await ListeYukle();
+            if (!Kirli) yuklenenAnahtar = null;
+        }
+        yuklenenSurum = Surum;
+        if (liste is null && hata is null) await ListeYukle();
+        if (SeciliAnahtar != yuklenenAnahtar) await DetayYukle();
+    }
+
+    private async Task ListeYukle()
+    {
+        var (sonuc, mesaj) = await Api.TarifListesiAsync();
+        if (sonuc is null)
+        {
+            hata = mesaj ?? "İş tarifleri yüklenemedi.";
+            return;
+        }
+        liste = sonuc;
+    }
+
+    private async Task DetayYukle()
+    {
+        yuklenenAnahtar = SeciliAnahtar;
+        detay = null;
+        detayHata = null;
+        islemHata = null;
+        FormuKapat();
+        farkKutusu = false;
+        if (yuklenenAnahtar is null) return;
+
+        var (sonuc, mesaj) = await Api.TarifDetayAsync(yuklenenAnahtar);
+        if (sonuc is null) detayHata = mesaj ?? "İş bulunamadı.";
+        else detay = sonuc;
+    }
+
+    /// <summary>Yazma sonrası: liste (çipler) ve detay yeniden okunur.</summary>
+    private async Task Tazele()
+    {
+        await ListeYukle();
+        if (yuklenenAnahtar is { } a)
+        {
+            var (sonuc, _) = await Api.TarifDetayAsync(a);
+            if (sonuc is not null) detay = sonuc;
+        }
+    }
+
+    // ---- Kaydedilmemiş değişiklik koruması ----
+
+    private async Task GezinmeOncesi(LocationChangingContext ctx)
+    {
+        if (!Kirli) return;
+        var onay = await DialogService.Confirm("Tarifte kaydedilmemiş değişiklik var. Kaydetmeden çıkılsın mı?",
+            "Kaydedilmemiş değişiklik", new ConfirmOptions { OkButtonText = "Kaydetmeden çık", CancelButtonText = "Kal" });
+        if (onay != true) ctx.PreventNavigation();
+    }
+
+    // ---- Detay ----
+
+    private RenderFragment Detay(IsTarifiDetayDto d) => __builder =>
+    {
+        var t = d.Tarif;
+        var farklilar = d.Firmalar.Where(f => f.Baglanti == TarifBaglantisi.Farkli).ToList();
+        var baglanabilir = t is null ? new List<IsTarifiFirmaDto>()
+            : d.Firmalar.Where(f => f.Baglanti == TarifBaglantisi.Bagsiz && f.FirmaIsiId is not null).ToList();
+        var ozeller = d.Firmalar.Where(f => f.FirmayaOzel).OrderBy(f => f.FirmaId == FirmaId ? 0 : 1).ToList();
+
+        <div class="dp-tarif-ust">
+            <div>
+                <div class="dp-tarif-baslik">@(t?.Ad ?? d.Ad)</div>
+                <div class="dp-cipler">
+                    @if (d.KaynakTip == IsKaynagi.Yasal)
+                    {
+                        <span class="dp-cip dp-cip-yasal" title="Yasal işin tarifi ortaktır">yasal · @d.MukellefiyetKodu</span>
+                    }
+                    <span class="dp-cip dp-cip-alici">@IsMetin.Tekrar(d.Tekrar)</span>
+                    @if (t is null)
+                    {
+                        <span class="dp-cip dp-cip-yok">tarif yok</span>
+                    }
+                    @if (farklilar.Count > 0)
+                    {
+                        <span class="dp-cip dp-cip-farkli" role="button" @onclick="@(() => farkKutusu = !farkKutusu)"
+                              title="Metinleri yan yana gör">farklı tarif var · @farklilar.Count firma</span>
+                    }
+                </div>
+            </div>
+            <span>
+                @if (t is null && d.UretilebilirMi && acik == Bolum.Yok)
+                {
+                    <RadzenButton Text="Firma metninden oluştur" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@Olustur"
+                                  title="En dolu firma metninden; metni farklı firma bağlanmaz" />
+                }
+            </span>
+        </div>
+
+        @if (islemHata is not null)
+        {
+            <div class="dp-hata">@islemHata</div>
+        }
+
+        @* ---- Farklı metinler yan yana: birleştirmeye kullanıcı karar verir ---- *@
+        @if (farkKutusu && t is not null && farklilar.Count > 0)
+        {
+            <div class="dp-fark-kutu">
+                <div class="dp-kutu-baslik">Metinler yan yana · birleştirmeye siz karar verirsiniz</div>
+                <div class="dp-fark-izgara">
+                    <div class="dp-fark-sutun dp-fark-tarif">
+                        <div class="dp-etiket">Tarif</div>
+                        @Metin(t.MenuYolu, t.Adimlar)
+                    </div>
+                    @foreach (var f in farklilar)
+                    {
+                        <div class="dp-fark-sutun">
+                            <div class="dp-etiket">@f.FirmaAdi</div>
+                            @Metin(f.MenuYolu, f.Adimlar)
+                            <RadzenButton Text="Bu tarifi kullan" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                                          title="Firma tarife bağlanır; kendi metni silinmez, 'Bu firmada farklı' olarak kalır"
+                                          Click="@(() => Bagla(t.Id, f))" />
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @* ---- Tarife bağlanabilir: metni boş, bağlanmamış. Otomatik değil; firmalar görülerek bağlanır. ---- *@
+        @if (t is not null && baglanabilir.Count > 0)
+        {
+            <div class="dp-baglanabilir-kutu">
+                <div class="dp-kutu-baslik">Tarife bağlanabilir · @baglanabilir.Count firma — metinleri boş, bir şey kaybolmaz</div>
+                <div class="dp-cipler">
+                    @foreach (var f in baglanabilir)
+                    {
+                        <span class="dp-cip dp-cip-alici">
+                            @f.FirmaAdi
+                            <span class="dp-bag" role="button" title="Bu firmayı tarife bağla" @onclick="@(() => Bagla(t.Id, f))">· bağla</span>
+                        </span>
+                    }
+                </div>
+                @if (baglanabilir.Count > 1)
+                {
+                    <RadzenButton Text="@($"{baglanabilir.Count} kaydın hepsini bağla")" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                                  Click="@(() => HepsiniBagla(t.Id, baglanabilir))" />
+                }
+            </div>
+        }
+
+        @* ---- 1. Nerede yapılır ---- *@
+        <div class="dp-bolum">
+            <div class="dp-bolum-baslik">
+                <span>Nerede yapılır</span>
+                @if (t is not null && acik == Bolum.Yok)
+                {
+                    <span class="dp-bag" role="button" @onclick="@(() => DuzenleAc(Bolum.Nerede))">Düzenle</span>
+                }
+            </div>
+            @if (acik == Bolum.Nerede && form is not null)
+            {
+                @PaylasimUyarisi(KullananSayisi(d), yeni: false)
+                @SistemSecimi()
+                <RadzenTextBox @bind-Value="form.MenuYolu" MaxLength="300" Style="width:100%" Placeholder="Bordro > Raporlar > Ücret Bordrosu" />
+                @FormDugmeleri()
+            }
+            else if (t is null)
+            {
+                <div class="dp-bos">Tarif yok — firmaların kendi metinleri aşağıda.</div>
+            }
+            else
+            {
+                <div class="dp-cipler">
+                    @if (t.SistemAdi is { } sa)
+                    {
+                        <span class="dp-cip dp-cip-program">@sa</span>
+                    }
+                    else
+                    {
+                        <span class="dp-cip dp-cip-yok">program yok</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(t.MenuYolu))
+                    {
+                        <code class="dp-menu-yolu">@t.MenuYolu</code>
+                    }
+                </div>
+            }
+        </div>
+
+        @* ---- 2. Kime gider (firmaya özel; Kime/Bilgi ayrımı) ---- *@
+        <div class="dp-bolum">
+            <div class="dp-bolum-baslik">Kime gider</div>
+            <table class="dp-kime">
+                @foreach (var f in d.Firmalar.OrderBy(f => f.FirmaId == FirmaId ? 0 : 1))
+                {
+                    var kime = f.Alicilar.Where(a => a.AliciTipi == AliciTipi.Kime).ToList();
+                    var bilgi = f.Alicilar.Where(a => a.AliciTipi == AliciTipi.Bilgi).ToList();
+                    <tr class="@(f.FirmaId == FirmaId ? "dp-kime-secili" : "")">
+                        <td class="dp-liste-firma">@f.FirmaAdi</td>
+                        <td>
+                            @if (kime.Count == 0 && bilgi.Count == 0)
+                            {
+                                <span class="dp-alt">alıcı girilmemiş</span>
+                                <span class="dp-bag" role="button" style="margin-left:8px" @onclick="@(() => AliciEkle(d, f))"
+                                      title="Firmanın bu işteki alıcısı — mevcut kişi akışı (iş formunun Prosedür sekmesi)">+ Alıcı ekle</span>
+                            }
+                            @foreach (var a in kime)
+                            {
+                                <span class="dp-cip dp-cip-alici" title="@a.Eposta">Kime: @a.AdSoyad</span>
+                            }
+                            @foreach (var a in bilgi)
+                            {
+                                <span class="dp-cip dp-cip-yok" title="@a.Eposta">Bilgi: @a.AdSoyad</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </table>
+        </div>
+
+        @* ---- 3. Nasıl yapılır ---- *@
+        <div class="dp-bolum">
+            <div class="dp-bolum-baslik">
+                <span>Nasıl yapılır</span>
+                @if (t is not null && acik == Bolum.Yok)
+                {
+                    <span class="dp-bag" role="button" @onclick="@(() => DuzenleAc(Bolum.Nasil))">Düzenle</span>
+                }
+            </div>
+            @if (acik == Bolum.Nasil && form is not null)
+            {
+                @PaylasimUyarisi(KullananSayisi(d), yeni: false)
+                <textarea class="dp-not" rows="8" maxlength="4000" @bind="form.NasilYapilir" @bind:event="oninput"
+                          placeholder="@("Her satır bir adım\nLuca > Bordro > Hesapla\nPDF al ve gönder")"></textarea>
+                @FormDugmeleri()
+            }
+            else if (acik == Bolum.Yeni && form is not null)
+            {
+                @* "+ Tarif yaz": sıfırdan; formdaki metin tarifin kendisi olur. *@
+                @PaylasimUyarisi(OkuyacakSayisi(d), yeni: true)
+                <div class="ys-form">
+                    <div>
+                        <RadzenLabel Text="Ad" />
+                        <RadzenTextBox @bind-Value="form.Ad" MaxLength="200" Style="width:100%" />
+                    </div>
+                    <div>
+                        <RadzenLabel Text="Program" />
+                        @SistemSecimi()
+                    </div>
+                    <div>
+                        <RadzenLabel Text="Menü yolu" />
+                        <RadzenTextBox @bind-Value="form.MenuYolu" MaxLength="300" Style="width:100%" Placeholder="Bordro > Raporlar > Ücret Bordrosu" />
+                    </div>
+                    <div>
+                        <RadzenLabel Text="Nasıl yapılır (her satır bir adım)" />
+                        <textarea class="dp-not" rows="8" maxlength="4000" @bind="form.NasilYapilir" @bind:event="oninput"></textarea>
+                    </div>
+                </div>
+                @FormDugmeleri()
+            }
+            else if (t is not null)
+            {
+                @if (t.Adimlar.Count == 0)
+                {
+                    <div class="dp-bos">Adım yazılmamış.</div>
+                }
+                else
+                {
+                    <ol class="dp-adimlar">
+                        @foreach (var a in t.Adimlar)
+                        {
+                            <li>@a</li>
+                        }
+                    </ol>
+                }
+
+                @* Firmaya özel metin SİLİNMEDİ: tarifin ALTINDA. *@
+                @foreach (var f in ozeller)
+                {
+                    <div class="dp-firmada-farkli">
+                        <div class="dp-etiket">Bu firmada farklı · @f.FirmaAdi</div>
+                        @Metin(f.MenuYolu, f.Adimlar)
+                    </div>
+                }
+            }
+            else
+            {
+                var metinliler = d.Firmalar.Where(f => f.Adimlar.Count > 0 || !string.IsNullOrWhiteSpace(f.MenuYolu)).ToList();
+                @if (metinliler.Count == 0)
+                {
+                    <div class="dp-bos">Hiçbir firmada tarif yazılmamış.</div>
+                }
+                @foreach (var f in metinliler)
+                {
+                    <div class="dp-firmada-farkli">
+                        <div class="dp-etiket">@f.FirmaAdi</div>
+                        @Metin(f.MenuYolu, f.Adimlar)
+                    </div>
+                }
+                <div>
+                    <RadzenButton Text="+ Tarif yaz" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Primary" Click="@TarifYazAc"
+                                  title="Bu işin tarifini yazın; bütün firmalar aynı tarifi okur" />
+                </div>
+            }
+        </div>
+
+        @* ---- 4. Ekler (tarifin; her ay aynı) ---- *@
+        <div class="dp-bolum">
+            <div class="dp-bolum-baslik">Ekler</div>
+            @if (t is null)
+            {
+                <div class="dp-bos">Tarif olmadan ek eklenemez.</div>
+            }
+            else
+            {
+                @if (t.Ekler.Count > 0)
+                {
+                    <ul class="dp-ekler">
+                        @foreach (var ek in t.Ekler)
+                        {
+                            <li>
+                                <span class="dp-ek-ad" title="@ek.DosyaAdi">📎 @ek.DosyaAdi</span>
+                                <span class="dp-bag" role="button" @onclick="@(() => Indir(ek))">indir</span>
+                                <span class="dp-bag dp-sil" role="button" @onclick="@(() => EkSil(t.Id, ek))">sil</span>
+                            </li>
+                        }
+                    </ul>
+                }
+                <div class="dp-yapistir" tabindex="0" @onfocus="@(() => YapistirmaAc(t.Id))" @onblur="YapistirmaKapat">
+                    <span><b>Ctrl+V</b>@(" ile ekran görüntüsü yapıştır")</span>
+                    <span class="dp-alt">ya da</span>
+                    <label class="@(yukleniyor ? "dp-dosya-sec dp-kapali" : "dp-dosya-sec")">
+                        + Ek yükle
+                        <InputFile accept="@Kabul" disabled="@yukleniyor" OnChange="@(e => DosyaSecildi(t.Id, e))" style="display:none" />
+                    </label>
+                    @if (yukleniyor)
+                    {
+                        <span class="dp-alt"> yükleniyor…</span>
+                    }
+                </div>
+            }
+            <div class="dp-donem-uyari">
+                Bu bölüm döneme ait değil. Buradaki ekler her ay aynıdır. O ayın çıktısı dönem sekmesine eklenir.
+            </div>
+        </div>
+    };
+
+    /// <summary>
+    /// Paylaşılan tarif uyarısı (ZORUNLU, Prompt 15): düzenlenen tarif birden çok firmada kullanılıyorsa bölümün
+    /// üstünde tek satır. Tek firmada kullanılıyorsa ÇIKMAZ.
+    /// </summary>
+    private static RenderFragment PaylasimUyarisi(int firmaSayisi, bool yeni) => __builder =>
+    {
+        @if (firmaSayisi > 1)
+        {
+            <div class="dp-paylasim-uyari" role="note">
+                @(yeni ? $"Bu tarif {firmaSayisi} firmada kullanılacak. Hepsi aynı tarifi okur."
+                       : $"Bu tarif {firmaSayisi} firmada kullanılıyor. Değişiklik hepsinde görünür.")
+            </div>
+        }
+    };
+
+    private RenderFragment SistemSecimi() => __builder =>
+    {
+        <RadzenDropDown TValue="int?" Data="@sistemler" TextProperty="Ad" ValueProperty="Id" @bind-Value="form!.SistemId"
+                        AllowClear="true" AllowFiltering="true" Placeholder="program yok" Style="width:100%" />
+    };
+
+    private RenderFragment FormDugmeleri() => __builder =>
+    {
+        <div style="display:flex; gap:.5rem; justify-content:flex-end; align-items:center">
+            @if (Kirli)
+            {
+                <span class="dp-alt">kaydedilmedi</span>
+            }
+            <RadzenButton Text="Vazgeç" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@Vazgec" />
+            <RadzenButton Text="Kaydet" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Primary" IsBusy="@kaydediliyor"
+                          Disabled="@(acik != Bolum.Yeni && !Kirli)" Click="@Kaydet" />
+        </div>
+    };
+
+    private static RenderFragment Metin(string? menu, List<string> adimlar) => __builder =>
+    {
+        @if (!string.IsNullOrWhiteSpace(menu))
+        {
+            <code class="dp-menu-yolu">@menu</code>
+        }
+        @if (adimlar.Count > 0)
+        {
+            <ol class="dp-adimlar">
+                @foreach (var a in adimlar)
+                {
+                    <li>@a</li>
+                }
+            </ol>
+        }
+        else if (string.IsNullOrWhiteSpace(menu))
+        {
+            <div class="dp-bos">metin yok</div>
+        }
+    };
+
+    // ---- Yazma: + Tarif yaz, bölüm düzenle, Kaydet / Vazgeç ----
+
+    private async Task SistemleriYukle(int? seciliId)
+    {
+        sistemler ??= await Sistemler.ListeAsync(null, false) ?? new();
+        // Pasif bir sistem seçiliyse listede kalsın (yeni seçilemez, mevcut kalır — Prompt 9 kuralı).
+        if (seciliId is { } sid && sistemler.All(s => s.Id != sid))
+            sistemler = (await Sistemler.ListeAsync(null, true) ?? new()).Where(s => s.Aktif || s.Id == sid).ToList();
+    }
+
+    private async Task TarifYazAc()
+    {
+        if (detay is null) return;
+        islemHata = null;
+        await SistemleriYukle(null);
+        FormuAc(Bolum.Yeni, new IsTarifiKaydetDto { Ad = detay.Ad });
+    }
+
+    private async Task DuzenleAc(Bolum bolum)
+    {
+        if (detay?.Tarif is not { } t) return;
+        islemHata = null;
+        await SistemleriYukle(t.SistemId);
+        FormuAc(bolum, new IsTarifiKaydetDto { Ad = t.Ad, SistemId = t.SistemId, MenuYolu = t.MenuYolu, NasilYapilir = t.NasilYapilir });
+    }
+
+    private void FormuAc(Bolum bolum, IsTarifiKaydetDto deger)
+    {
+        acik = bolum;
+        form = deger;
+        formIlk = new IsTarifiKaydetDto { Ad = deger.Ad, SistemId = deger.SistemId, MenuYolu = deger.MenuYolu, NasilYapilir = deger.NasilYapilir };
+    }
+
+    private void FormuKapat()
+    {
+        acik = Bolum.Yok;
+        form = null;
+        formIlk = null;
+    }
+
+    /// <summary>Vazgeç: değişiklik atılır, sunucuya hiçbir şey gitmez.</summary>
+    private void Vazgec()
+    {
+        islemHata = null;
+        FormuKapat();
+    }
+
+    /// <summary>KAYDET KULLANICININDIR: metin yalnız burada sunucuya gider (otomatik kaydetme yok).</summary>
+    private async Task Kaydet()
+    {
+        if (detay is null || form is null) return;
+        islemHata = null;
+        kaydediliyor = true;
+        try
+        {
+            if (acik == Bolum.Yeni)
+            {
+                // MEVCUT tarif oluşturma ucu, formla; boş form sunucuda reddedilir. Yasal işte satır yoksa sunucu açar.
+                var (rapor, mesaj) = await Api.TarifOlusturAsync(detay.Anahtar, form, FirmaId);
+                if (rapor is null)
+                {
+                    islemHata = mesaj ?? "Tarif kaydedilemedi.";
+                    return;
+                }
+                FormuKapat();
+                await Tazele();
+                if (rapor.Baglanmayanlar.Sum(b => b.KayitSayisi) is var farkli and > 0)
+                    await DialogService.Alert($"Tarif kaydedildi. Metni farklı {farkli} kayıt bağlanmadı; \"farklı tarif var\" çipinden karar verebilirsiniz.",
+                                              "Tarif kaydedildi");
+                return;
+            }
+
+            if (detay.Tarif is not { } t) return;
+            islemHata = await Api.TarifGuncelleAsync(t.Id, form);
+            if (islemHata is not null) return;
+            FormuKapat();
+            await Tazele();
+        }
+        finally
+        {
+            kaydediliyor = false;
+        }
+    }
+
+    /// <summary>Tarifi en dolu firma metninden (Prompt 14 yolu) — firmalarda metin varken.</summary>
+    private async Task Olustur()
+    {
+        if (detay is null) return;
+        var (rapor, mesaj) = await Api.TarifOlusturAsync(detay.Anahtar);
+        if (rapor is null)
+        {
+            islemHata = mesaj ?? "Tarif oluşturulamadı.";
+            return;
+        }
+
+        await Tazele();
+        if (rapor.Baglanmayanlar.Sum(b => b.KayitSayisi) is var farkli and > 0)
+            await DialogService.Alert($"Tarif oluşturuldu. Metni farklı {farkli} kayıt bağlanmadı; \"farklı tarif var\" çipinden karar verebilirsiniz.",
+                                      "Tarif oluşturuldu");
+    }
+
+    private async Task Bagla(int tarifId, IsTarifiFirmaDto f)
+    {
+        if (f.FirmaIsiId is not { } isId) return;
+        var onay = await DialogService.Confirm(
+            f.Baglanti == TarifBaglantisi.Farkli
+                ? $"{f.FirmaAdi} bu tarife bağlanacak. Firmanın kendi metni silinmez; tariften farklı olduğu için \"Bu firmada farklı\" başlığıyla görünmeye devam eder."
+                : $"{f.FirmaAdi} bu tarife bağlanacak. Firmanın bu işte kendi metni yok; tarifi okuyacak.",
+            "Bu tarifi kullan", new ConfirmOptions { OkButtonText = "Bağla", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        islemHata = await Api.TarifBaglaAsync(tarifId, isId);
+        if (islemHata is null) await Tazele();
+    }
+
+    /// <summary>"N kaydın hepsini bağla": önce hangi firmalar olduğu gösterilir, onayla bağlanır.</summary>
+    private async Task HepsiniBagla(int tarifId, List<IsTarifiFirmaDto> firmalar)
+    {
+        var onay = await DialogService.Confirm(
+            $"Şu {firmalar.Count} firma bu tarife bağlanacak: {string.Join(", ", firmalar.Select(f => f.FirmaAdi))}. "
+            + "Bu kayıtların kendi metni yok; hiçbir şey silinmez.",
+            "Hepsini bağla", new ConfirmOptions { OkButtonText = "Bağla", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        var (_, mesaj) = await Api.TarifHepsiniBaglaAsync(tarifId, firmalar.Select(f => f.FirmaIsiId!.Value).ToList());
+        islemHata = mesaj;
+        if (mesaj is null) await Tazele();
+    }
+
+    // ---- + Alıcı ekle: MEVCUT kişi akışı (FirmaIsiDialog · Prosedür sekmesi) ----
+
+    /// <summary>
+    /// Firmanın bu işteki satırı mevcut iş formunun Prosedür sekmesinde açılır — prosedür panelindeki
+    /// "+ Alıcı ekle" ile aynı çağrı (14B'deki kişi önizlemesi dahil). Yasal işte satır yoksa form, kaydederken
+    /// satırı mevcut akışla açar.
+    /// </summary>
+    private async Task AliciEkle(IsTarifiDetayDto d, IsTarifiFirmaDto f)
+    {
+        islemHata = null;
+        FirmaIsleriKartDto? kart;
+        try
+        {
+            kart = await Api.FirmaIsleriAsync(f.FirmaId);
+        }
+        catch
+        {
+            kart = null;
+        }
+        if (kart is null)
+        {
+            islemHata = "Firmanın işleri okunamadı; tekrar deneyin.";
+            return;
+        }
+
+        FirmaIsiDto? mevcut;
+        IsSatiriDto? yasalSatir = null;
+        if (d.KaynakTip == IsKaynagi.Yasal)
+        {
+            mevcut = kart.YasalProsedurler.FirstOrDefault(p => p.YasalMukellefiyetKodu == d.MukellefiyetKodu && p.Tekrar == d.Tekrar);
+            yasalSatir = kart.Yasal.FirstOrDefault(s => s.MukellefiyetKodu == d.MukellefiyetKodu && s.Tekrar == d.Tekrar)
+                         ?? new IsSatiriDto
+                         {
+                             KaynakTip = IsKaynagi.Yasal, FirmaId = f.FirmaId, FirmaAdi = f.FirmaAdi, Baslik = d.Ad,
+                             MukellefiyetKodu = d.MukellefiyetKodu, Tekrar = d.Tekrar, DonemAnahtari = string.Empty,
+                             SonGun = DateTime.Today, Durum = IsDurumu.Sonra
+                         };
+        }
+        else
+        {
+            mevcut = kart.OzelTanimlar.FirstOrDefault(t => t.Id == f.FirmaIsiId);
+            if (mevcut is null)
+            {
+                islemHata = "Bu firmanın iş kaydı bulunamadı.";
+                return;
+            }
+        }
+
+        var kaydedildi = await DialogService.OpenAsync<FirmaIsiDialog>("Alıcı — " + f.FirmaAdi,
+            new Dictionary<string, object?>
+            {
+                { nameof(FirmaIsiDialog.FirmaId), f.FirmaId },
+                { nameof(FirmaIsiDialog.Kart), kart },
+                { nameof(FirmaIsiDialog.Mevcut), mevcut },
+                { nameof(FirmaIsiDialog.YasalSatir), yasalSatir },
+                { nameof(FirmaIsiDialog.Sekme), 1 }   // Prosedür sekmesi: alıcılar
+            }!,
+            new DialogOptions { Width = "min(640px, 96vw)" });
+
+        if (kaydedildi is true) await Tazele();   // satır hemen güncellenir
+    }
+
+    // ---- Ekler ----
+
+    private int? yapistirmaTarifi;
+    private DotNetObjectReference<NasilYapilirSayfasi>? referans;
+
+    /// <summary>Yapıştırma alanı odaktayken görsel Ctrl+V — dönem panelinin MEVCUT bağlaması (donemPanosu.js).</summary>
+    private async Task YapistirmaAc(int tarifId)
+    {
+        yapistirmaTarifi = tarifId;
+        try
+        {
+            referans ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("donemPanosu.yapistirmaKaydet", referans);
+        }
+        catch
+        {
+            // Bağlanamadı: "+ Ek yükle" çalışmaya devam eder.
+        }
+    }
+
+    private async Task YapistirmaKapat()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("donemPanosu.yapistirmaKaldir");
+        }
+        catch
+        {
+            // JS gitmiş olabilir.
+        }
+    }
+
+    [JSInvokable]
+    public async Task Yapistirildi(string contentType, string dataUrl, long boyut)
+    {
+        if (yapistirmaTarifi is not { } tarifId) return;
+        var virgul = dataUrl.IndexOf(',');
+        var bytes = Convert.FromBase64String(virgul >= 0 ? dataUrl[(virgul + 1)..] : dataUrl);
+        var uzanti = contentType.Contains("jpeg") || contentType.Contains("jpg") ? ".jpg" : ".png";
+        var ad = $"ekran-goruntusu-{DateTime.Now:yyyyMMdd-HHmmss}{uzanti}";
+        await EkYukle(tarifId, ad, contentType, bytes.LongLength, () => FileApi.UploadGenericBytesAsync(bytes, ad, contentType, "is-tarifi-eki"));
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public Task YapistirmaReddedildi(string tur)
+    {
+        islemHata = $"Panodaki dosya türü ({tur}) yapıştırılamaz; \"+ Ek yükle\" ile seçin.";
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task DosyaSecildi(int tarifId, InputFileChangeEventArgs e)
+    {
+        var dosya = e.File;
+        if (dosya is null) return Task.CompletedTask;
+        return EkYukle(tarifId, dosya.Name, dosya.ContentType, dosya.Size, () => FileApi.UploadGenericAsync(dosya, "is-tarifi-eki"));
+    }
+
+    /// <summary>FileApi'ye yükle → tarif eki kaydı; kayıt tutmazsa dosya yetim kalmasın (Belgeler kartıyla aynı).</summary>
+    private async Task EkYukle(int tarifId, string ad, string? contentType, long boyut,
+                               Func<Task<WebApp.Shared.Dto.Declaration.GenericUploadResultDto?>> yukle)
+    {
+        islemHata = null;
+        if (!Uzantilar.Contains(Path.GetExtension(ad)))
+        {
+            islemHata = "Bu dosya türü eklenemez. İzin verilenler: xlsx, xls, pdf, png, jpg, docx, csv, txt.";
+            return;
+        }
+        if (boyut <= 0 || boyut > EnFazlaBayt)
+        {
+            islemHata = $"Dosya boş ya da {EnFazlaBayt / (1024 * 1024)} MB sınırını aşıyor.";
+            return;
+        }
+
+        yukleniyor = true;
+        int? yuklenenId = null;
+        try
+        {
+            var y = await yukle();
+            if (y is null || y.Id <= 0)
+            {
+                islemHata = "Dosya yüklenemedi. Dosya servisi yanıt vermiyor olabilir.";
+                return;
+            }
+            yuklenenId = y.Id;
+
+            var (ek, mesaj) = await Api.TarifEkEkleAsync(tarifId, new FirmaIsiEkiOlusturDto
+            {
+                FileId = y.Id, DosyaAdi = ad,
+                ContentType = string.IsNullOrWhiteSpace(y.ContentType) ? contentType : y.ContentType,
+                Boyut = y.Length > 0 ? y.Length : boyut
+            });
+            if (ek is null)
+            {
+                islemHata = mesaj ?? "Ek kaydedilemedi.";
+                return;
+            }
+
+            yuklenenId = null;
+            await Tazele();
+        }
+        catch (Exception ex)
+        {
+            islemHata = "Ek eklenirken hata: " + ex.Message;
+        }
+        finally
+        {
+            if (yuklenenId is int fid && fid > 0)
+            {
+                try { await FileApi.DeleteAsync(fid); } catch { }
+            }
+            yukleniyor = false;
+        }
+    }
+
+    private async Task EkSil(int tarifId, FirmaIsiEkiDto ek)
+    {
+        var onay = await DialogService.Confirm($"\"{ek.DosyaAdi}\" tariften silinsin mi? Bütün firmalar için gider.", "Ek sil",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        var (fileId, mesaj) = await Api.TarifEkSilAsync(tarifId, ek.Id);
+        if (fileId is null)
+        {
+            islemHata = mesaj ?? "Ek silinemedi.";
+            return;
+        }
+        if (fileId > 0)
+        {
+            try { await FileApi.DeleteAsync(fileId.Value); } catch { }
+        }
+        await Tazele();
+    }
+
+    private async Task Indir(FirmaIsiEkiDto ek)
+    {
+        var dosya = await FileApi.GetDownloadAsync(ek.FileId);
+        if (string.IsNullOrEmpty(dosya?.PresignedUrl))
+        {
+            islemHata = "Dosya bağlantısı alınamadı.";
+            return;
+        }
+        await JS.InvokeVoidAsync("open", dosya!.PresignedUrl, "_blank");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await YapistirmaKapat();
+        referans?.Dispose();
+    }
+}

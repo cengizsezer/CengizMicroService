@@ -73,6 +73,169 @@ namespace CatalogService.Api.Features.Yapilacaklar.Domain
         /// hiç üretilmez.
         /// </summary>
         public DateTime OlusturmaZamani { get; set; } = DateTime.UtcNow;
+
+        // ---- Prosedür (Prompt 8): nerede yapılır, kime gider, nasıl yapılır ----
+
+        /// <summary>
+        /// Dolu ise bu satır özel iş <b>değildir</b>: firmanın o yasal işi (kod + <see cref="Tekrar"/>)
+        /// için tuttuğu prosedürdür. Tarih ve ad takvimden gelmeye devam eder; satır yalnız
+        /// program, alıcı, adımlar ve ekleri taşır. Liste/kuyruk bu satırları özel iş saymaz.
+        /// </summary>
+        public string? YasalMukellefiyetKodu { get; set; }
+
+        /// <summary>
+        /// İşin yapıldığı sistem (<c>Sistemler.Id</c>); boş = belirtilmemiş. Prompt 8'deki kapalı
+        /// <c>IsProgrami</c> enum'unun yerine geldi — DijitalPlanet, TURMOB gibi sistemler
+        /// enum'da yoktu, ilk hafta "Diğer · serbest metin"e düşerdi. Firmanın mizan formatından
+        /// ve kendi sistemlerinden bağımsız: iş başka yerde yapılıyorsa başka sistem seçilir.
+        /// </summary>
+        public int? SistemId { get; set; }
+
+        /// <summary>"Bordro > Raporlar > Ücret Bordrosu".</summary>
+        public string? MenuYolu { get; set; }
+
+        /// <summary>Çok satırlı serbest metin; her dolu satır bir adım.</summary>
+        public string? NasilYapilir { get; set; }
+
+        /// <summary>Bu iş başka bir işin hazırlığıysa o iş (<see cref="FirmaIsi.Id"/>, aynı firma).</summary>
+        public int? OnAdimiOlduguIsId { get; set; }
+
+        public List<FirmaIsiAlicisi> Alicilar { get; set; } = new();
+        public List<FirmaIsiEki> Ekler { get; set; } = new();
+
+        /// <summary>
+        /// İŞ BAZINDA tarif (Prompt 14, <see cref="IsTarifi"/>). Boş = tarife bağlı değil; iş kendi
+        /// <see cref="NasilYapilir"/>/<see cref="MenuYolu"/> metniyle çalışır. Bu iki alan SİLİNMEDİ:
+        /// tarif varken firmaya özel istisna olarak "Bu firmada farklı" başlığıyla gösterilir.
+        /// </summary>
+        public int? IsTarifiId { get; set; }
+    }
+
+    /// <summary>
+    /// İşin tarifi — FİRMA BAZINDA DEĞİL İŞ BAZINDA (Prompt 14). "Bordro" tarifi dört firmada dört
+    /// kez yazılınca biri güncellenir, diğerleri eskide kalıyordu. Global tablo: firmaya değil işe
+    /// aittir; firmalar <see cref="FirmaIsi.IsTarifiId"/> ile bağlanır. Yasal işlerin tarifi de ortaktır.
+    /// </summary>
+    public class IsTarifi
+    {
+        public int Id { get; set; }
+
+        public string Ad { get; set; } = string.Empty;
+
+        /// <summary>İşin yapıldığı sistem (<c>Sistemler.Id</c>); boş = belirtilmemiş.</summary>
+        public int? SistemId { get; set; }
+
+        public string? MenuYolu { get; set; }
+
+        /// <summary>Çok satırlı; her dolu satır bir adım.</summary>
+        public string? NasilYapilir { get; set; }
+
+        /// <summary>UTC.</summary>
+        public DateTime OlusturmaZamani { get; set; } = DateTime.UtcNow;
+
+        public List<IsTarifiEki> Ekler { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Tarifin eki: PROSEDÜR türünden, kalıcıdır, her ay aynıdır. <see cref="FirmaIsiEki"/> ve
+    /// <see cref="IsTamamlamaEki"/> ile aynı depo (FileApiService) ve aynı sınırlar; AYRI kayıt.
+    /// (FirmaIsiEki'lerin tarife taşınması bu promptta yapılmadı.)
+    /// </summary>
+    public class IsTarifiEki
+    {
+        public int Id { get; set; }
+        public int IsTarifiId { get; set; }
+
+        public int FileId { get; set; }
+        public string DosyaAdi { get; set; } = string.Empty;
+        public string ContentType { get; set; } = "application/octet-stream";
+        public long Boyut { get; set; }
+
+        /// <summary>UTC.</summary>
+        public DateTime YuklemeZamani { get; set; } = DateTime.UtcNow;
+
+        public string? YukleyenKullaniciId { get; set; }
+        public string? YukleyenKullaniciAdi { get; set; }
+    }
+
+    public enum AliciTipi : byte
+    {
+        Kime = 1,
+        Bilgi = 2
+    }
+
+    /// <summary>
+    /// İşin çıktısının gittiği kişi. E-posta zorunlu değil: kişi var, mail gitmiyor olabilir.
+    ///
+    /// Prompt 14: kişinin kendisi <see cref="Kisi"/>dedir (<see cref="KisiId"/>). Aynı kişi birçok işe
+    /// alıcıdır ama e-postası tek yerde durur; adres değişince bağlı işler birden düzelir.
+    /// <see cref="AdSoyad"/>/<see cref="Eposta"/> kişinin OKUMA KOPYASIDIR: her yazmada ve kişi
+    /// düzenlenince kişiden eşitlenir (anasayfa kartı ve dialog bu alanları okumaya devam eder).
+    /// Kime/Bilgi ayrımı (<see cref="AliciTipi"/>) burada, işe göre.
+    /// </summary>
+    public class FirmaIsiAlicisi
+    {
+        public int Id { get; set; }
+        public int FirmaIsiId { get; set; }
+
+        /// <summary>Kişi (aynı firmada). Taşıma öncesi kayıtlarda boş; seed doldurur, yazma her zaman doldurur.</summary>
+        public int? KisiId { get; set; }
+        public Kisi? Kisi { get; set; }
+
+        public string AdSoyad { get; set; } = string.Empty;
+        public string? Eposta { get; set; }
+
+        /// <summary>Serbest metin: "Finans, Hollanda".</summary>
+        public string? Rol { get; set; }
+
+        public AliciTipi AliciTipi { get; set; } = AliciTipi.Kime;
+        public int Sira { get; set; }
+    }
+
+    /// <summary>
+    /// Firmanın bir kişisi (Prompt 14): kim, hangi e-posta. Takip panosunun "Kişiler ve mailler"
+    /// sekmesinde düzenlenir. Aynı firmada aynı e-posta TEK kişidir.
+    ///
+    /// <b>Şifre, kullanıcı adı, erişim bilgisi TUTULMAZ</b> — bu tablo kim / nereye / ne zaman tutar.
+    /// </summary>
+    public class Kisi
+    {
+        public int Id { get; set; }
+        public int FirmaId { get; set; }
+
+        public string Ad { get; set; } = string.Empty;
+        public string? Eposta { get; set; }
+
+        /// <summary>Serbest metin: "Finans, Hollanda".</summary>
+        public string? Rol { get; set; }
+
+        public string? Notu { get; set; }
+
+        public bool Aktif { get; set; } = true;
+    }
+
+    /// <summary>
+    /// İşe ait dosya. Firma belgelerinden (Belgeler kartı) ayrı tablo, AYNI depo: dosya
+    /// FileApiService'te, burada <see cref="FileId"/> + metadata. Ek firmaya değil İŞE
+    /// bağlıdır — "hangi belge hangi işe aitti" sorusu buradan cevaplanır.
+    /// </summary>
+    public class FirmaIsiEki
+    {
+        public int Id { get; set; }
+        public int FirmaIsiId { get; set; }
+
+        /// <summary>FileApiService kaydının Id'si (Belgeler kartındaki <c>FirmaBelgesi.FileId</c> ile aynı).</summary>
+        public int FileId { get; set; }
+
+        public string DosyaAdi { get; set; } = string.Empty;
+        public string ContentType { get; set; } = "application/octet-stream";
+        public long Boyut { get; set; }
+
+        /// <summary>UTC.</summary>
+        public DateTime YuklemeZamani { get; set; } = DateTime.UtcNow;
+
+        public string? YukleyenKullaniciId { get; set; }
+        public string? YukleyenKullaniciAdi { get; set; }
     }
 
     /// <summary>
@@ -113,12 +276,22 @@ namespace CatalogService.Api.Features.Yapilacaklar.Domain
         /// yazar: geçmişin tamamlama kaydı olmadığı için hepsi "gecikti" görünürdü.
         /// </summary>
         public bool Aktif { get; set; } = true;
+
+        /// <summary>
+        /// Kullanıcı Vergi Takvimi ekranından eklemiş ya da adını/son gününü değiştirmiş (Prompt 7B). Seed bu
+        /// satıra ASLA dokunmaz; seed'in ürettiği (işaretsiz) satırlar nominal kurala göre yeniden üretilebilir.
+        /// </summary>
+        public bool ElleDuzenlendi { get; set; }
     }
 
     /// <summary>
-    /// Bir işin bir dönemde yapıldığı. Hem yasal hem özel iş için tek tablo; işaret
-    /// kaldırılınca satır <b>silinir</b>. Böylece "bu dönem yapıldı mı" ile "geçen yıl
-    /// hangi ay yapmışım" aynı tablodan çıkar.
+    /// Bir işin bir dönemdeki kaydı. Hem yasal hem özel iş için tek tablo; "bu dönem yapıldı
+    /// mı" ile "geçen yıl hangi ay yapmışım" aynı tablodan çıkar.
+    ///
+    /// <b>Yapıldı = <see cref="TamamlanmaZamani"/> dolu</b> (Prompt 10B). Zamanı boş kayıt: iş
+    /// yapılmadı ama o döneme not ya da kanıt yazılmış ("müşteri veriyi geç verdi"). Kuyruk,
+    /// geçmiş ve sayılar yalnız zamanı dolu kaydı "yapıldı" sayar. İşaret kaldırılınca not/kanıt
+    /// yoksa satır silinir, varsa yalnız zaman boşalır.
     ///
     /// <see cref="KaynakId"/> iki tabloya bakabildiği için FK yok; özel iş silinince
     /// tamamlamaları servis siler.
@@ -137,10 +310,48 @@ namespace CatalogService.Api.Features.Yapilacaklar.Domain
         /// <summary>"2026-09", "2026-Q3", "2026"; tek seferlik işte "tek".</summary>
         public string DonemAnahtari { get; set; } = string.Empty;
 
-        /// <summary>UTC.</summary>
-        public DateTime TamamlanmaZamani { get; set; } = DateTime.UtcNow;
+        /// <summary>UTC. Boş = yapılmadı (kayıt yalnız not/kanıt taşıyor).</summary>
+        public DateTime? TamamlanmaZamani { get; set; }
 
+        /// <summary>İşaretleyen; zaman boşalınca boşalır.</summary>
         public string? KullaniciId { get; set; }
         public string? KullaniciAdi { get; set; }
+
+        public bool Yapildi => TamamlanmaZamani is not null;
+
+        /// <summary>
+        /// O döneme özel serbest not (Dönem panosu): "Luca'dan gelir tablosunu alıp şablonun 2.
+        /// sayfasına yapıştırdım" ya da yapılmamışsa sebebi. Ertesi dönem "Geçen dönem" bloğunda
+        /// gösterilir. İşaret kaldırılınca KORUNUR; yalnız "Bu dönem kaydını sil" siler.
+        /// </summary>
+        public string? Not { get; set; }
+
+        public List<IsTamamlamaEki> Ekler { get; set; } = new();
+    }
+
+    /// <summary>
+    /// DÖNEM eki: "bu ay yaptım, çıktı bu". O dönemin tamamlamasına bağlıdır.
+    ///
+    /// <see cref="FirmaIsiEki"/> (PROSEDÜR eki: işe ait, kalıcı, her dönem aynı) ile
+    /// BİRLEŞTİRİLMEDİ — iki ayrı kayıt, aynı depo (FileApiService) ve aynı sınırlar.
+    /// İşaret geri alınınca ek de silinir; dosyayı FileApi'den istemci siler.
+    /// </summary>
+    public class IsTamamlamaEki
+    {
+        public int Id { get; set; }
+        public long IsTamamlamaId { get; set; }
+
+        /// <summary>FileApiService kaydının Id'si (<see cref="FirmaIsiEki.FileId"/> ile aynı anlam).</summary>
+        public int FileId { get; set; }
+
+        public string DosyaAdi { get; set; } = string.Empty;
+        public string ContentType { get; set; } = "application/octet-stream";
+        public long Boyut { get; set; }
+
+        /// <summary>UTC.</summary>
+        public DateTime YuklemeZamani { get; set; } = DateTime.UtcNow;
+
+        public string? YukleyenKullaniciId { get; set; }
+        public string? YukleyenKullaniciAdi { get; set; }
     }
 }

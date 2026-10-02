@@ -469,6 +469,295 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.FirmaIsleriController",
+    "Method": "EkEkle",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/isler/{isId}/ekler",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "isId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.FirmaIsiEkiOlusturDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.FirmaIsiEkiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.FirmaIsleriController",
+    "Method": "EkSil",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/isler/{isId}/ekler/{ekId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "isId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "ekId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.FirmaIsleriController",
+    "Method": "Kopyala",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/isler/kopyala",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.IsKopyalaDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.TopluSonucDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.FirmaIsleriController",
+    "Method": "Prosedur",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/isler/prosedur",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "kaynakTip",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "kaynakId",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "tumGecmis",
+        "Type": "System.Boolean",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.IsProsedurDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.FirmaIsleriController",
+    "Method": "Sablon",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/isler/sablon",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.FirmaIsleriController",
+    "Method": "TopluEkle",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/isler/toplu/ekle",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.TopluEkleDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.TopluSonucDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.FirmaIsleriController",
+    "Method": "TopluOnizle",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/isler/toplu/onizle",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "istek",
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.TopluOnizleIstekDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.TopluOnizlemeDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.FirmaIsleriController",
+    "Method": "YasalAc",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/isler/yasal/{kod}/{tekrar}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "kod",
+        "Type": "System.String",
+        "IsRequired": true
+      },
+      {
+        "Name": "tekrar",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.FirmaIsiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.FirmaIsleriController",
+    "Method": "YasalProsedur",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/isler/yasal/{kod}/{tekrar}/prosedur",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "kod",
+        "Type": "System.String",
+        "IsRequired": true
+      },
+      {
+        "Name": "tekrar",
+        "Type": "System.String",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.IsProsedurKaydetDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.FirmaIsiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
     "ContainingType": "CatalogService.Api.Features.Anasayfa.Controllers.AnasayfaController",
     "Method": "Notlar",
     "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/notlar",
@@ -588,6 +877,27 @@
       {
         "Name": "dto",
         "Type": "CatalogService.Api.Features.Anasayfa.Dtos.FirmaSiniflandirmaKaydetDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Sistemler.Controllers.FirmaSistemleriController",
+    "Method": "Kaydet",
+    "RelativePath": "api/catalog/anasayfa/firmalar/{firmaId}/sistemler",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Sistemler.Dtos.FirmaSistemleriKaydetDto",
         "IsRequired": true
       }
     ],
@@ -2610,6 +2920,192 @@
       }
     ],
     "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.DonemPanosuController",
+    "Method": "Pano",
+    "RelativePath": "api/catalog/donem-panosu",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "yil",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "ay",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "firmaId",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.DonemPanosuDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.DonemPanosuController",
+    "Method": "Hucre",
+    "RelativePath": "api/catalog/donem-panosu/hucre",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "kaynakTip",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "kaynakId",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "donemAnahtari",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.DonemHucresiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.DonemPanosuController",
+    "Method": "KayitSil",
+    "RelativePath": "api/catalog/donem-panosu/hucre",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "kaynakTip",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "kaynakId",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "firmaId",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "donemAnahtari",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.DonemPanosuController",
+    "Method": "EkEkle",
+    "RelativePath": "api/catalog/donem-panosu/hucre/ekler",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.DonemEkiOlusturDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.FirmaIsiEkiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.DonemPanosuController",
+    "Method": "EkSil",
+    "RelativePath": "api/catalog/donem-panosu/hucre/ekler/{ekId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "ekId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.DonemPanosuController",
+    "Method": "Not",
+    "RelativePath": "api/catalog/donem-panosu/hucre/not",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.DonemNotuDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.DonemPanosuController",
+    "Method": "Ozet",
+    "RelativePath": "api/catalog/donem-panosu/ozet",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.DonemOzetiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
   },
   {
     "ContainingType": "CatalogService.Api.Features.Education.Controller.EducationController",
@@ -5230,6 +5726,213 @@
     ]
   },
   {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.IsTarifleriController",
+    "Method": "Liste",
+    "RelativePath": "api/catalog/is-tarifleri",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.Yapilacaklar.Dtos.IsTarifiOzetDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.IsTarifleriController",
+    "Method": "Olustur",
+    "RelativePath": "api/catalog/is-tarifleri",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "anahtar",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "firmaId",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "form",
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.IsTarifiKaydetDto",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.TarifUretimRaporuDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.IsTarifleriController",
+    "Method": "Guncelle",
+    "RelativePath": "api/catalog/is-tarifleri/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.IsTarifiKaydetDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.IsTarifiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.IsTarifleriController",
+    "Method": "HepsiniBagla",
+    "RelativePath": "api/catalog/is-tarifleri/{id}/bagla-hepsi",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "firmaIsiIdleri",
+        "Type": "System.Collections.Generic.List\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.IsTarifleriController",
+    "Method": "Bagla",
+    "RelativePath": "api/catalog/is-tarifleri/{id}/bagla/{firmaIsiId}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "firmaIsiId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.IsTarifleriController",
+    "Method": "EkEkle",
+    "RelativePath": "api/catalog/is-tarifleri/{id}/ekler",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.FirmaIsiEkiOlusturDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.FirmaIsiEkiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.IsTarifleriController",
+    "Method": "EkSil",
+    "RelativePath": "api/catalog/is-tarifleri/{id}/ekler/{ekId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "ekId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.IsTarifleriController",
+    "Method": "Detay",
+    "RelativePath": "api/catalog/is-tarifleri/detay",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "anahtar",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.IsTarifiDetayDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
     "ContainingType": "CatalogService.Api.Features.Jobs.Controller.JobsController",
     "Method": "Create",
     "RelativePath": "api/catalog/jobs",
@@ -6038,6 +6741,156 @@
     "ReturnTypes": [
       {
         "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.KdvBeyanname.Dtos.BeklenenKolonDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.KisilerController",
+    "Method": "Ekle",
+    "RelativePath": "api/catalog/kisiler",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.KisiKaydetDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.KisiOzetDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.KisilerController",
+    "Method": "Birlestir",
+    "RelativePath": "api/catalog/kisiler/{hedefId}/birlestir/{kaynakId}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "hedefId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "kaynakId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Boolean",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.KisilerController",
+    "Method": "Guncelle",
+    "RelativePath": "api/catalog/kisiler/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.KisiKaydetDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.KisiOzetDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.KisilerController",
+    "Method": "Onizle",
+    "RelativePath": "api/catalog/kisiler/onizle",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "istek",
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.AliciOnizlemeIstegiDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.Yapilacaklar.Dtos.AliciOnizlemeDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Yapilacaklar.Controllers.KisilerController",
+    "Method": "Pano",
+    "RelativePath": "api/catalog/kisiler/pano",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "yil",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "ay",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "firmaId",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Yapilacaklar.Dtos.KisilerPanosuDto",
         "MediaTypes": [
           "text/plain",
           "application/json",
@@ -7432,6 +8285,125 @@
     ]
   },
   {
+    "ContainingType": "CatalogService.Api.Features.Sistemler.Controllers.SistemlerController",
+    "Method": "Liste",
+    "RelativePath": "api/catalog/sistemler",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "tur",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "pasiflerDahil",
+        "Type": "System.Boolean",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.Sistemler.Dtos.SistemDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Sistemler.Controllers.SistemlerController",
+    "Method": "Ekle",
+    "RelativePath": "api/catalog/sistemler",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Sistemler.Dtos.SistemEkleDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Sistemler.Dtos.SistemDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Sistemler.Controllers.SistemlerController",
+    "Method": "Guncelle",
+    "RelativePath": "api/catalog/sistemler/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Sistemler.Dtos.SistemGuncelleDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Sistemler.Dtos.SistemDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Sistemler.Controllers.SistemlerController",
+    "Method": "Birlestir",
+    "RelativePath": "api/catalog/sistemler/{id}/birlestir",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.Sistemler.Dtos.SistemBirlestirDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Sistemler.Dtos.SistemBirlestirmeSonucuDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
     "ContainingType": "CatalogService.Api.Features.SmmmTakip.Controllers.SmmmTakipController",
     "Method": "UpsertHadDegeri",
     "RelativePath": "api/catalog/smmm-takip/admin/had-degeri",
@@ -8545,6 +9517,11 @@
       {
         "Name": "filtre",
         "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "firmaId",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
         "IsRequired": false
       }
     ],

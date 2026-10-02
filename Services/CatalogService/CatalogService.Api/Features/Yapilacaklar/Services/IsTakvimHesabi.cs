@@ -49,6 +49,28 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
             _ => new(Tekrar, Yil + 1, 1)
         };
 
+        public IsDonemi Onceki() => Tekrar switch
+        {
+            IsTekrari.Aylik => No == 1 ? new(Tekrar, Yil - 1, 12) : new(Tekrar, Yil, No - 1),
+            IsTekrari.UcAylik => No == 1 ? new(Tekrar, Yil - 1, 4) : new(Tekrar, Yil, No - 1),
+            _ => new(Tekrar, Yil - 1, 1)
+        };
+
+        /// <summary>
+        /// Bu ayda KAPANAN dönemler (Dönem panosu): her ay aylık dönem; mart, haziran, eylül ve
+        /// aralıkta çeyrek; aralıkta yıl. Dönem ve sonu <see cref="Icin"/>/<see cref="Bit"/>'ten
+        /// okunur — ayrı bir takvim hesabı yok.
+        /// </summary>
+        public static IEnumerable<IsDonemi> AydaKapananlar(int yil, int ay)
+        {
+            var ayBasi = new DateTime(yil, ay, 1);
+            foreach (var tekrar in new[] { IsTekrari.Aylik, IsTekrari.UcAylik, IsTekrari.Yillik })
+            {
+                var donem = Icin(tekrar, ayBasi);
+                if (donem.Bit.Year == yil && donem.Bit.Month == ay) yield return donem;
+            }
+        }
+
         /// <summary>Tarihin düştüğü dönem.</summary>
         public static IsDonemi Icin(IsTekrari tekrar, DateTime tarih) => tekrar switch
         {

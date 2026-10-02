@@ -1,9 +1,11 @@
-﻿@using Radzen
+@using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services
 @using WebApp.Shared.Dto.Anasayfa
 
 @inject IAnasayfaApiClient Api
+@inject ILogger<FirmaPaneli> Log
+@inject IJSRuntime JS
 
 @*
     Anasayfanın ana içeriği: solda firma listesi, sağda seçili firmanın bilgileri.
@@ -48,6 +50,11 @@
         {
             <div class="fp-liste-bos">Yükleniyor…</div>
         }
+        else if (hata is not null && panel.Firmalar.Count == 0)
+        {
+            @* Prompt 12: yüklenemeyen liste "Firma kaydı yok" gibi görünmesin — boş liste ile hata ayrı. *@
+            <div style="padding:8px"><AnKartHatasi YenidenDene="@YenidenDene" /></div>
+        }
         else if (Suzulmus.Count == 0)
         {
             <div class="fp-liste-bos">
@@ -65,16 +72,17 @@
                     <div class="fp-satir-metin">
                         <div class="fp-satir-ad">@firma.Ad</div>
                         <div class="fp-satir-vkn">@firma.VergiKimlikNo · @(firma.MizanFormati ?? "—")</div>
+                        @* Prompt 12: rozet YALNIZ gerekli alanları sayar; ikisi de yoksa ÇIKMAZ (yeşil tik da yok). *@
+                        @if (firma.Rozet != KunyeRozeti.Yok)
+                        {
+                            <span class="@RozetSinifi(firma.Rozet)" title="@RozetBasligi(firma)">@RozetMetni(firma)</span>
+                        }
                     </div>
 
-                    @* Kırmızı (mizan yok) sarıya (eksik alan) baskın: daha ağır olan. *@
+                    @* Mizan durumu AYRI gösterge (Prompt 6B): rozetin sayısına girmez. *@
                     @if (firma.MizanYok)
                     {
-                        <span class="an-rozet an-rozet-mizan" title="@RozetBasligi(firma)">!</span>
-                    }
-                    else if (Sayi(firma) > 0)
-                    {
-                        <span class="an-rozet an-rozet-eksik" title="@RozetBasligi(firma)">@Sayi(firma)</span>
+                        <span class="an-rozet an-rozet-mizan" title="Hiç mizan yüklenmemiş">!</span>
                     }
                 </div>
             }
@@ -83,8 +91,9 @@
         @if (!yukleniyor && panel.Firmalar.Count > 0)
         {
             <div class="an-ray-aciklama">
-                <span class="an-rozet an-rozet-eksik">3</span> eksik alan + uyarı sayısı ·
-                <span class="an-rozet an-rozet-mizan">!</span> hiç mizan yüklenmemiş
+                <span class="an-kunye-rozet an-kunye-gerekli">N gerekli</span>@(" künye alanı eksik · ")
+                <span class="an-kunye-rozet an-kunye-tamamlaniyor">gri</span>@($" ilk {panel.YeniFirmaToleransGun} gün · ")
+                <span class="an-rozet an-rozet-mizan">!</span>@(" hiç mizan yüklenmemiş")
             </div>
         }
     </div>
@@ -96,9 +105,9 @@
             <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate"
                                        Size="ProgressBarCircularSize.Small" />
         }
-        else if (hata is not null)
+        else if (hata is not null && panel.Secili is null)
         {
-            <RadzenAlert AlertStyle="AlertStyle.Warning" Shade="Shade.Lighter" AllowClose="false">@hata</RadzenAlert>
+            <AnKartHatasi YenidenDene="@YenidenDene" />
         }
         else if (panel.Secili is null)
         {
@@ -109,6 +118,16 @@
         else
         {
             <div class="@(detayYukleniyor ? "fp-detay-govde fp-solgun" : "fp-detay-govde")">
+                @if (baslangicUyarisi is not null)
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Warning" Shade="Shade.Lighter" AllowClose="true" Size="AlertSize.Small"
+                                 Close="@(() => baslangicUyarisi = null)">@baslangicUyarisi</RadzenAlert>
+                }
+                @if (hata is not null)
+                {
+                    @* Tazeleme ya da firma değiştirme başarısız: eldeki künye silinmez, üstünde tek satır. *@
+                    <AnKartHatasi Metin="Firma bilgileri güncellenemedi" YenidenDene="@YenidenDene" />
+                }
                 <div class="fp-detay-basi">
                     <div>
                         <div class="fp-detay-ad">@panel.Secili.Ad</div>
@@ -225,6 +244,15 @@
     .an-eksik-metin { flex:1; min-width:0; }
     .an-eksik-fazla { color:#975a16; white-space:nowrap; }
     .an-uyari-cumle { display:block; margin-top:2px; }
+
+    /* Prompt 12: künye rozeti (yalnız gerekli alanlar) ve gruplu şerit */
+    .an-kunye-rozet { display:inline-block; margin-top:3px; font-size:10.5px; font-weight:600; border-radius:999px;
+                      padding:0 7px; line-height:16px; white-space:nowrap; }
+    .an-kunye-gerekli { background:#fed7d7; color:#9b2c2c; }
+    .an-kunye-uyari { background:#fefcbf; color:#975a16; }
+    .an-kunye-tamamlaniyor { background:#edf2f7; color:#4a5568; }
+    .an-eksik-grup { display:block; }
+    .an-eksik-serit-yeni { border-color:#cbd5e0; background:#f7fafc; color:#4a5568; }
     .an-kod-cipler { display:flex; flex-wrap:wrap; gap:4px; }
     .an-kod-cip { font-size:11.5px; border-radius:999px; padding:1px 8px; background:#edf2f7; color:#4a5568;
                   white-space:nowrap; }
@@ -259,6 +287,16 @@
     .an-denge { display:inline-block; font-size:11.5px; border-radius:999px; padding:1px 8px; }
     .an-denge-tamam { background:#e6fffa; color:#276749; }
     .an-denge-fark { background:#fffaf0; color:#975a16; }
+
+    /* Kullanılan sistemler kartı (Prompt 9) */
+    .an-sistemler { display:flex; flex-wrap:wrap; gap:4px; }
+    .an-sistem { font-size:12px; border-radius:4px; padding:1px 8px; background:#f7fafc; color:#2d3748;
+                 border:1px solid #e2e8f0; white-space:nowrap; }
+    .an-sistem-pasif { color:#a0aec0; border-style:dashed; }
+    .an-sistem-kod { font-family:Consolas,"Courier New",monospace; color:#718096; margin-left:4px; }
+    .an-sistem-satir { border-top:1px solid #edf2f7; margin-top:.6rem; padding-top:.55rem; }
+    .an-sistem-not { font-size:12.5px; color:#4a5568; white-space:pre-wrap; word-break:break-word; }
+    .an-sgk-oran { font-size:11px; color:#718096; margin-left:4px; }
 </style>
 
 @code {
@@ -290,20 +328,65 @@
               @onclick="@(() => filtre = deger)">@ad @sayi</span>
     };
 
-    /// <summary>Sarı rozetin sayısı: eksik alanlar + uyarılar (imza yetkisi, pay oranı, geçerli yetkili).</summary>
-    private static int Sayi(FirmaPaneliOzetDto f) => f.EksikSayisi + f.UyariSayisi;
+    /// <summary>"Eksik" filtresi: rozeti olan firma (gerekli eksik ya da uyarı). İkincil boşluk saymaz.</summary>
+    private static int Sayi(FirmaPaneliOzetDto f) => f.Rozet == KunyeRozeti.Yok ? 0 : 1;
 
-    /// <summary>Renk tek başına anlam taşımasın: rozetin başlığı ne olduğunu yazar.</summary>
+    /// <summary>Rozet metni (Prompt 12). Karar (tür) sunucudan; istemci yalnız yazar ve boyar.</summary>
+    private static string RozetMetni(FirmaPaneliOzetDto f) => f.Rozet switch
+    {
+        KunyeRozeti.GerekliEksik => $"{f.GerekliEksikSayisi} gerekli alan eksik",
+        KunyeRozeti.Tamamlaniyor => $"Künye tamamlanıyor · {f.GerekliEksikSayisi} gerekli alan",
+        KunyeRozeti.Uyari => $"{f.UyariSayisi} uyarı",
+        _ => string.Empty
+    };
+
+    private static string RozetSinifi(KunyeRozeti r) => r switch
+    {
+        KunyeRozeti.GerekliEksik => "an-kunye-rozet an-kunye-gerekli",
+        KunyeRozeti.Tamamlaniyor => "an-kunye-rozet an-kunye-tamamlaniyor",
+        _ => "an-kunye-rozet an-kunye-uyari"
+    };
+
+    /// <summary>Renk tek başına anlam taşımasın: title eksik alanların ADLARINI sayar.</summary>
     private static string RozetBasligi(FirmaPaneliOzetDto f)
     {
-        var parcalar = new List<string>();
-        if (f.MizanYok) parcalar.Add("hiç mizan yüklenmemiş");
-        if (f.EksikSayisi > 0) parcalar.Add($"{f.EksikSayisi} eksik alan");
-        if (f.UyariSayisi > 0) parcalar.Add($"{f.UyariSayisi} uyarı");
-        return string.Join(" · ", parcalar);
+        if (f.GerekliEksikler.Count > 0) return "Eksik: " + string.Join(", ", f.GerekliEksikler);
+        return f.Uyarilar.Count > 0 ? "Uyarı: " + string.Join(" · ", f.Uyarilar.Select(u => u.Mesaj.TrimEnd('.'))) : string.Empty;
     }
 
-    protected override async Task OnInitializedAsync() => await Yukle(null, ilk: true);
+    /// <summary>Adresten gelen firma (Prompt 13); yoksa sunucu ilk firmayı seçer.</summary>
+    [Parameter] public int? BaslangicFirmaId { get; set; }
+
+    /// <summary>"isler": açılışta firma işleri kartına kaydırılır (mevcut anOdakla, vurgulu).</summary>
+    [Parameter] public string? OdakKart { get; set; }
+
+    /// <summary>Adresteki firma bulunamadı (pasif/silinmiş): sunucu başka firmaya düştü — söylenir, kaydırılmaz.</summary>
+    private string? baslangicUyarisi;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Yukle(BaslangicFirmaId, ilk: true);
+        if (BaslangicFirmaId is not { } istenen || hata is not null) return;
+
+        if (SeciliId != istenen)
+        {
+            // Sessizce yanlış firmanın kartına GÖTÜRÜLMEZ.
+            baslangicUyarisi = "İstenen firma bulunamadı (pasif ya da silinmiş olabilir); listeden firmayı seçin.";
+            return;
+        }
+
+        if (string.Equals(OdakKart, "isler", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("anOdakla", "ys-kart-isler");   // kart DOM'a gelene kadar bekler
+            }
+            catch
+            {
+                // Kaydırma olmazsa sayfa etkilenmez.
+            }
+        }
+    }
 
     /// <summary>
     /// Dışarıdan (anasayfanın "Yenile" düğmesi) tazeleme. Olay üst bileşende
@@ -335,14 +418,16 @@
 
             if (sonuc is null)
             {
+                Log.LogWarning("Firma paneli ucu veri döndürmedi (firma {FirmaId}).", firmaId);
                 hata = "Firma bilgileri alınamadı. Sunucuya ulaşılamıyor olabilir.";
                 return;
             }
 
             panel = sonuc;
         }
-        catch
+        catch (Exception ex)
         {
+            Log.LogWarning(ex, "Firma paneli yüklenemedi (firma {FirmaId}).", firmaId);
             hata = "Firma bilgileri alınamadı. Sunucuya ulaşılamıyor olabilir.";
         }
         finally
@@ -351,6 +436,9 @@
             detayYukleniyor = false;
         }
     }
+
+    /// <summary>"Yeniden dene": yalnız künye çağrısı; seçili firma korunur.</summary>
+    private Task YenidenDene() => Yukle(SeciliId > 0 ? SeciliId : null, ilk: panel.Firmalar.Count == 0);
 
     private void AramaDegisti(ChangeEventArgs e) => arama = e.Value?.ToString();
 

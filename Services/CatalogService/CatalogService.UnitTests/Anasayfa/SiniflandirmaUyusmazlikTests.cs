@@ -33,7 +33,7 @@ namespace CatalogService.UnitTests.Anasayfa
         }
 
         private static Task<FirmaPaneliDto> Panel(CatalogContext db)
-            => new FirmaPaneliService(db, () => Bugun).PanelAsync(1);
+            => new FirmaPaneliService(db, TestSaati.Gun(Bugun)).PanelAsync(1);
 
         [Fact]
         public async Task Celiskide_deger_korunur_uyari_grubunda_gorunur_rayda_sayilir()

@@ -53,7 +53,7 @@ namespace CatalogService.UnitTests.Anasayfa
             => new(db, Yazici(db, kullanici), new SabitKullanici(kullanici));
 
         private static Task<FirmaPaneliDto> Panel(CatalogContext db, int kullanici = Ben)
-            => new FirmaPaneliService(db, () => Bugun).PanelAsync(Dgr, default, kullanici.ToString());
+            => new FirmaPaneliService(db, TestSaati.Gun(Bugun)).PanelAsync(Dgr, default, kullanici.ToString());
 
         // ---- Sorumlu ----
 

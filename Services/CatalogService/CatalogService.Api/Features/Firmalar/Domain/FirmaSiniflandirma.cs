@@ -37,6 +37,50 @@ namespace CatalogService.Api.Features.Firmalar.Domain
         Elle = 2
     }
 
+    public enum FirmaTipi : byte
+    {
+        Belirsiz = 0,
+        SermayeSirketi = 1,
+        Sahis = 2,
+        AdiOrtaklik = 3,
+        IsOrtakligi = 4
+    }
+
+    public enum SgkTesvikKademesi : byte
+    {
+        Belirsiz = 0,
+        Tesviksiz = 1,
+        ImalatDisi = 2,
+        Imalat = 3
+    }
+
+    public enum MuhtasarDonemi : byte
+    {
+        Belirsiz = 0,
+        Aylik = 1,
+        UcAylik = 2
+    }
+
+    /// <summary>
+    /// SGK teşvik kademelerinin işveren prim oranı — ekranda kademenin yanında gösterilir,
+    /// hiçbir hesaplamaya girmez.
+    ///
+    /// ORANLAR DEĞİŞİRSE BURAYI GÜNCELLE. Tek tanım yeri burası; istemci oranı sunucunun
+    /// gönderdiği listeden okur, kendi kopyası yok.
+    /// </summary>
+    public static class SgkTesvikOranlari
+    {
+        public static readonly IReadOnlyList<(SgkTesvikKademesi Kademe, string Ad, decimal IsverenOrani)> Liste = new[]
+        {
+            (SgkTesvikKademesi.Tesviksiz, "Teşviksiz", 21.75m),
+            (SgkTesvikKademesi.ImalatDisi, "İmalat dışı", 19.75m),
+            (SgkTesvikKademesi.Imalat, "İmalat", 16.75m)
+        };
+
+        public static decimal? Oran(SgkTesvikKademesi kademe)
+            => Liste.Where(k => k.Kademe == kademe).Select(k => (decimal?)k.IsverenOrani).FirstOrDefault();
+    }
+
     /// <summary>
     /// Mizan formatı seçenekleri — şimdilik sabit liste. İleride mizan format profili
     /// tablosuna bağlanacak; o gelene kadar alan bu listedeki metinlerden birini taşır.
@@ -86,5 +130,25 @@ namespace CatalogService.Api.Features.Firmalar.Domain
         };
 
         public const string SablonYokMesaji = "Bu programın gerçek mizan çıktısı henüz görülmedi; şablon yok.";
+
+        /// <summary>
+        /// Muhasebe programı adına uyan mizan formatları — yalnız <b>öneri</b>. Mizan formatı
+        /// bir mizan profilidir ("ORKA — döviz kolonlu"), program değildir; ikisi birleşmez.
+        /// </summary>
+        public static IReadOnlyList<string> ProgramIcin(string? programAdi)
+        {
+            var ad = Sistemler.Domain.SistemAdi.Normalize(programAdi);
+            if (ad.Length == 0) return Array.Empty<string>();
+
+            return Liste.Where(f => f != Belirsiz && Sistemler.Domain.SistemAdi.Normalize(ProgramAdi(f)) == ad).ToList();
+        }
+
+        /// <summary>Formatın ait olduğu programın adı: "ORKA — döviz kolonlu" → "ORKA".</summary>
+        public static string? ProgramAdi(string? format)
+        {
+            if (!Secili(format)) return null;
+            var tire = format!.IndexOf('—');
+            return (tire > 0 ? format[..tire] : format).Trim();
+        }
     }
 }

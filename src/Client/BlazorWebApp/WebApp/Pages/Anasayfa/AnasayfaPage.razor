@@ -12,6 +12,7 @@
 @inject IAnasayfaApiClient Api
 @inject ISonFirmalarStore SonFirmalar
 @inject NavigationManager Nav
+@inject ILogger<AnasayfaPage> Log
 
 @*
     Anasayfa — giriş sonrası varsayılan sayfa.
@@ -76,7 +77,7 @@
     </RadzenStack>
 
     @* Ana içerik: firma bilgi paneli. Kendi verisini TEK çağrıda alıyor. *@
-    <FirmaPaneli @ref="firmaPaneli" />
+    <FirmaPaneli @ref="firmaPaneli" BaslangicFirmaId="@FirmaIdParam" OdakKart="@KartParam" />
 
     <div class="as-bolum-basi">
         <span>Dönem özeti</span>
@@ -89,9 +90,8 @@
     }
     else if (ozet is null)
     {
-        <RadzenAlert AlertStyle="AlertStyle.Warning" Shade="Shade.Lighter" AllowClose="false">
-            Özet alınamadı. Sunucuya ulaşılamıyor olabilir; "Yenile" ile tekrar deneyin.
-        </RadzenAlert>
+        @* Prompt 12: yalnız bu bölüm; künye ve firma işleri ayakta. "Yeniden dene" yalnız özeti çağırır. *@
+        <AnKartHatasi YenidenDene="@OzetYukle" />
     }
     else
     {
@@ -219,6 +219,12 @@
 @code {
     private static readonly CultureInfo Tr = new("tr-TR");
 
+    /// <summary>Prompt 13: Yapılacaklar'ın "Firma işleri kartına git"i — açılışta bu firma seçilir.</summary>
+    [SupplyParameterFromQuery(Name = "firmaId")] public int? FirmaIdParam { get; set; }
+
+    /// <summary>"isler" = açılışta firma işleri kartına kaydır.</summary>
+    [SupplyParameterFromQuery(Name = "kart")] public string? KartParam { get; set; }
+
     private AnasayfaOzetDto? ozet;
     private List<SonFirmaDto> sonFirmalar = new();
     private bool yukleniyor = true;
@@ -249,12 +255,38 @@
         yukleniyor = true;
         try
         {
-            ozet = await Api.OzetAsync();
-            sonFirmalar = await SonFirmalar.GetAsync();
+            await OzetYukle();
+            try
+            {
+                sonFirmalar = await SonFirmalar.GetAsync();
+            }
+            catch (Exception ex)
+            {
+                Log.LogWarning(ex, "Son kullanılan firmalar okunamadı.");
+                sonFirmalar = new();   // asla null değil
+            }
         }
         finally
         {
             yukleniyor = false;
+        }
+    }
+
+    /// <summary>
+    /// Dönem özeti — kendi try/catch'inde (Prompt 12). Önceden catch yoktu: ağ hatası OnInitializedAsync'ten
+    /// taşıp bütün sayfayı düşürüyordu. Hata log'a, kullanıcıya tek satır.
+    /// </summary>
+    private async Task OzetYukle()
+    {
+        try
+        {
+            ozet = await Api.OzetAsync();
+            if (ozet is null) Log.LogWarning("Anasayfa özeti veri döndürmedi.");
+        }
+        catch (Exception ex)
+        {
+            Log.LogWarning(ex, "Anasayfa özeti yüklenemedi.");
+            ozet = null;
         }
     }
 

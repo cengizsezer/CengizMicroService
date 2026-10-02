@@ -49,6 +49,12 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             builder.Property(x => x.HesapDonemi).HasConversion<byte?>();
             builder.Property(x => x.OzelDonemBas).HasColumnType("date");
             builder.Property(x => x.OzelDonemBit).HasColumnType("date");
+            builder.Property(x => x.FirmaTipi).HasConversion<byte>();
+            builder.Property(x => x.SgkTesvikKademesi).HasConversion<byte>();
+            builder.Property(x => x.MuhtasarDonemi).HasConversion<byte>();
+
+            // Kullanılan sistemler kartının serbest notu.
+            builder.Property(x => x.SistemNotu).HasMaxLength(500);
 
             // Sorumlu: IdentityService kullanıcısı; servisler arası FK yok, ad anlık görüntü.
             builder.Property(x => x.SorumluKullaniciAdi).HasMaxLength(100);

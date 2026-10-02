@@ -39,7 +39,9 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
         {
             bugun = bugun.Date;
 
-            var tamamlar = tamamlamalar.ToDictionary(t => (t.KaynakTip, t.KaynakId, t.FirmaId, t.DonemAnahtari));
+            // Yalnız yapılmış kayıt (zamanı dolu); not/kanıt taşıyan yapılmamış kayıt kuyruğu değiştirmez.
+            var tamamlar = tamamlamalar.Where(t => t.Yapildi)
+                                       .ToDictionary(t => (t.KaynakTip, t.KaynakId, t.FirmaId, t.DonemAnahtari));
 
             // Seriler: aynı kodun aynı tekrardaki takvim satırları, son güne göre sıralı.
             var seriler = takvim
@@ -51,7 +53,8 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
                                            t.MukellefiyetKodu, t.Tekrar))
                     .ToList());
 
-            var ozelByFirma = ozelIsler.Where(i => i.Aktif).ToLookup(i => i.FirmaId);
+            // Yasal işin prosedür satırı özel iş değildir; dönemi takvimden gelir.
+            var ozelByFirma = ozelIsler.Where(i => i.Aktif && i.YasalMukellefiyetKodu is null).ToLookup(i => i.FirmaId);
 
             var sonuc = new List<IsSatiriDto>();
 
@@ -97,13 +100,19 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
                 yield break;
             }
 
-            var donem = IsDonemi.Icin(isi.Tekrar, OlusturmaGunu(isi));
+            var donem = OzelIlkDonem(isi);
             for (var i = 0; i < EnFazlaDonem; i++, donem = donem.Sonraki())
             {
                 yield return new Donem(isi.Id, donem.Anahtar, IsTakvimHesabi.SonGun(isi.GunKurali, isi.AyinGunu, donem),
                                        isi.Baslik, donem.Etiket, null, isi.Tekrar);
             }
         }
+
+        /// <summary>
+        /// Tekrarlayan özel işin ilk dönemi: eklendiği günün dönemi. Kuyruk (<see cref="OzelDonemler"/>)
+        /// ve Dönem panosu aynı kuralı buradan okur — ikinci bir dönem hesabı yok.
+        /// </summary>
+        public static IsDonemi OzelIlkDonem(FirmaIsi isi) => IsDonemi.Icin(isi.Tekrar, OlusturmaGunu(isi));
 
         /// <summary>Eklenme anının yerel günü (kayıt UTC).</summary>
         private static DateTime OlusturmaGunu(FirmaIsi isi)
@@ -147,7 +156,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
 
         private static DateTime? SonYapilma(IEnumerable<IsTamamlama> tamamlar, IsKaynagi tip, int firmaId, HashSet<int> kaynaklar)
             => tamamlar.Where(t => t.KaynakTip == tip && t.FirmaId == firmaId && kaynaklar.Contains(t.KaynakId))
-                       .Select(t => (DateTime?)DateTime.SpecifyKind(t.TamamlanmaZamani, DateTimeKind.Utc))
+                       .Select(t => (DateTime?)DateTime.SpecifyKind(t.TamamlanmaZamani!.Value, DateTimeKind.Utc))
                        .Max();
 
         private static IsSatiriDto Satir(IsKaynagi tip, Donem d, FirmaGirdisi firma, bool tamam, DateTime bugun,
@@ -241,22 +250,30 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
 
         public static FirmaIsleriKartDto Kart(int firmaId, IEnumerable<IsSatiriDto> satirlar, IEnumerable<FirmaIsi> tanimlar,
                                              IReadOnlyCollection<string> kodlar, IEnumerable<string> takvimKodlari,
-                                             DateTime bugun)
+                                             DateTime bugun, SistemBaglami? sistem = null)
         {
             bugun = bugun.Date;
+            sistem ??= SistemBaglami.Bos;
             var firmaninki = satirlar.Where(s => s.FirmaId == firmaId).ToList();
             var takvimde = takvimKodlari.ToHashSet();
+            var firmaTanimlari = tanimlar.Where(t => t.FirmaId == firmaId).ToList();
+            var adlar = firmaTanimlari.ToDictionary(t => t.Id, t => t.Baslik);
 
             return new FirmaIsleriKartDto
             {
                 FirmaId = firmaId,
                 Yasal = firmaninki.Where(s => s.KaynakTip == IsKaynagi.Yasal).ToList(),
                 Ozel = firmaninki.Where(s => s.KaynakTip == IsKaynagi.Ozel).ToList(),
-                OzelTanimlar = tanimlar.Where(t => t.FirmaId == firmaId)
+                OzelTanimlar = firmaTanimlari.Where(t => t.YasalMukellefiyetKodu is null)
                     .OrderByDescending(t => t.Aktif)
                     .ThenBy(t => t.Baslik, StringComparer.Create(IsTakvimHesabi.Tr, true))
-                    .Select(Tanim)
+                    .Select(t => Tanim(t, adlar, sistem.Adlar))
                     .ToList(),
+                YasalProsedurler = firmaTanimlari.Where(t => t.YasalMukellefiyetKodu is not null)
+                    .Select(t => Tanim(t, adlar, sistem.Adlar))
+                    .ToList(),
+                VarsayilanSistemId = sistem.Varsayilan(),
+                Sistemler = sistem.Secenekler(firmaTanimlari.Select(t => t.SistemId)),
                 GeciktiSayisi = firmaninki.Count(s => s.Durum == IsDurumu.Gecikti),
                 BuAySayisi = firmaninki.Count(s => !s.Tamamlandi && s.Durum != IsDurumu.Gecikti
                                                    && s.SonGun.Year == bugun.Year && s.SonGun.Month == bugun.Month),
@@ -265,8 +282,20 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
             };
         }
 
-        public static FirmaIsiDto Tanim(FirmaIsi t) => new()
+        /// <param name="adlar">Firmanın iş Id → başlık sözlüğü; ön adım hedefinin adı buradan.</param>
+        /// <param name="sistemAdlari">Sistem Id → ad; program çipinin metni.</param>
+        public static FirmaIsiDto Tanim(FirmaIsi t, IReadOnlyDictionary<int, string>? adlar = null,
+                                        IReadOnlyDictionary<int, string>? sistemAdlari = null) => new()
         {
+            YasalMukellefiyetKodu = t.YasalMukellefiyetKodu,
+            SistemId = t.SistemId,
+            SistemAdi = t.SistemId is { } s && sistemAdlari is not null && sistemAdlari.TryGetValue(s, out var sAd) ? sAd : null,
+            MenuYolu = t.MenuYolu,
+            NasilYapilir = t.NasilYapilir,
+            OnAdimiOlduguIsId = t.OnAdimiOlduguIsId,
+            OnAdimiBaslik = t.OnAdimiOlduguIsId is { } hedef && adlar is not null && adlar.TryGetValue(hedef, out var ad) ? ad : null,
+            Alicilar = t.Alicilar.OrderBy(a => a.Sira).ThenBy(a => a.Id).Select(Alici).ToList(),
+            EkSayisi = t.Ekler.Count,
             Id = t.Id,
             FirmaId = t.FirmaId,
             Baslik = t.Baslik,
@@ -280,5 +309,159 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
             Aktif = t.Aktif,
             KuralMetni = IsTakvimHesabi.KuralMetni(t.Tekrar, t.GunKurali, t.AyinGunu, t.TekSeferTarih)
         };
+
+        public static FirmaIsiAlicisiDto Alici(FirmaIsiAlicisi a) => new()
+        {
+            Id = a.Id,
+            AdSoyad = a.AdSoyad,
+            Eposta = a.Eposta,
+            Rol = a.Rol,
+            AliciTipi = a.AliciTipi,
+            Sira = a.Sira
+        };
+
+        /// <summary>Dönem eki prosedür ekiyle aynı görünümde (ayrı tablo, aynı DTO).</summary>
+        public static FirmaIsiEkiDto Ek(IsTamamlamaEki e) => new()
+        {
+            Id = e.Id,
+            FileId = e.FileId,
+            DosyaAdi = e.DosyaAdi,
+            ContentType = e.ContentType,
+            Boyut = e.Boyut,
+            YuklemeZamani = DateTime.SpecifyKind(e.YuklemeZamani, DateTimeKind.Utc),
+            YukleyenKullaniciAdi = e.YukleyenKullaniciAdi
+        };
+
+        public static FirmaIsiEkiDto Ek(FirmaIsiEki e) => new()
+        {
+            Id = e.Id,
+            FileId = e.FileId,
+            DosyaAdi = e.DosyaAdi,
+            ContentType = e.ContentType,
+            Boyut = e.Boyut,
+            YuklemeZamani = DateTime.SpecifyKind(e.YuklemeZamani, DateTimeKind.Utc),
+            YukleyenKullaniciAdi = e.YukleyenKullaniciAdi
+        };
+
+        // ---- Prosedür paneli ----
+
+        /// <summary>"Nasıl yapılır" metninin adımları: her dolu satır bir adım, boş satır atlanır.</summary>
+        public static List<string> Adimlar(string? metin)
+            => string.IsNullOrWhiteSpace(metin)
+                ? new List<string>()
+                : metin.Split('\n').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
+
+        /// <summary>Özel işin geçmişi; <paramref name="adet"/> boşsa hepsi.</summary>
+        public static (List<IsGecmisSatiriDto> Satirlar, int Toplam) OzelGecmis(FirmaIsi isi, IEnumerable<IsTamamlama> tamamlamalar,
+                                                                              DateTime bugun, int? adet)
+            => Gecmis(OzelDonemler(isi), IsKaynagi.Ozel, isi.FirmaId, tamamlamalar, bugun, adet);
+
+        /// <summary>
+        /// Yasal işin geçmişi: serinin (kod + tekrar) takvim satırları. Pasif satır yalnız
+        /// işaretlenmişse görünür — seed'in pasif yazdığı eski dönemler "yapılmadı" diye dolmasın.
+        /// </summary>
+        public static (List<IsGecmisSatiriDto> Satirlar, int Toplam) YasalGecmis(IEnumerable<VergiTakvimi> seri, int firmaId,
+                                                                               IEnumerable<IsTamamlama> tamamlamalar,
+                                                                               DateTime bugun, int? adet)
+        {
+            var tamamlar = tamamlamalar.Where(t => t.Yapildi && t.KaynakTip == IsKaynagi.Yasal && t.FirmaId == firmaId)
+                                       .Select(t => t.KaynakId).ToHashSet();
+
+            var donemler = seri
+                .Where(t => t.Aktif || tamamlar.Contains(t.Id))
+                .OrderBy(t => t.SonGun).ThenBy(t => t.Id)
+                .Select(t =>
+                {
+                    var d = new IsDonemi(t.Tekrar, t.Yil, t.DonemNo);
+                    return new Donem(t.Id, d.Anahtar, t.SonGun.Date, t.Ad, d.Etiket, t.MukellefiyetKodu, t.Tekrar);
+                });
+
+            return Gecmis(donemler, IsKaynagi.Yasal, firmaId, tamamlamalar, bugun, adet);
+        }
+
+        /// <summary>
+        /// Son günü geçmiş dönemler ve erken yapılmış olanlar, yeniden eskiye. Sıradaki açık
+        /// dönemde durur (özel işin dönemleri sonsuz).
+        /// </summary>
+        private static (List<IsGecmisSatiriDto>, int) Gecmis(IEnumerable<Donem> sirali, IsKaynagi tip, int firmaId,
+                                                             IEnumerable<IsTamamlama> tamamlamalar, DateTime bugun, int? adet)
+        {
+            bugun = bugun.Date;
+            var tamamlar = tamamlamalar.Where(t => t.Yapildi && t.KaynakTip == tip && t.FirmaId == firmaId)
+                                       .GroupBy(t => (t.KaynakId, t.DonemAnahtari))
+                                       .ToDictionary(g => g.Key, g => g.First());
+
+            var satirlar = new List<IsGecmisSatiriDto>();
+            foreach (var d in sirali)
+            {
+                tamamlar.TryGetValue((d.KaynakId, d.Anahtar), out var t);
+                if (t is null && d.SonGun >= bugun) break;
+
+                satirlar.Add(new IsGecmisSatiriDto
+                {
+                    DonemAnahtari = d.Anahtar,
+                    DonemEtiketi = string.IsNullOrEmpty(d.Etiket) ? null : d.Etiket,
+                    SonGun = d.SonGun,
+                    Yapildi = t is not null,
+                    TamamlanmaZamani = t is null ? null : DateTime.SpecifyKind(t.TamamlanmaZamani!.Value, DateTimeKind.Utc),
+                    TamamlayanAdi = t?.KullaniciAdi,
+                    Yapilmadi = t is null
+                });
+            }
+
+            satirlar.Reverse();
+            var toplam = satirlar.Count;
+            return (adet is { } n ? satirlar.Take(n).ToList() : satirlar, toplam);
+        }
+    }
+
+    /// <summary>
+    /// Kartın sistem bilgisi: ortak liste ve firmanın atamaları. Saf — servis doldurur.
+    /// </summary>
+    /// <param name="Liste">Bütün sistemler (pasifler dahil; ad çözümü için).</param>
+    /// <param name="FirmaSistemIdleri">Firmanın "Kullanılan sistemler" atamaları, sırayla.</param>
+    /// <param name="MizanFormati">Firmanın mizan formatı; muhasebe programı atanmamışsa öneri buradan.</param>
+    public sealed record SistemBaglami(IReadOnlyList<Sistemler.Domain.Sistem> Liste, IReadOnlyList<int> FirmaSistemIdleri,
+                                       string? MizanFormati)
+    {
+        public static readonly SistemBaglami Bos = new(Array.Empty<Sistemler.Domain.Sistem>(), Array.Empty<int>(), null);
+
+        public IReadOnlyDictionary<int, string> Adlar { get; } = Liste.ToDictionary(s => s.Id, s => s.Ad);
+
+        /// <summary>
+        /// Yeni işin önerilen sistemi: firmanın ilk muhasebe programı; yoksa mizan formatının
+        /// programıyla aynı adlı aktif muhasebe kaydı ("ORKA — döviz kolonlu" → ORKA).
+        /// </summary>
+        public int? Varsayilan()
+        {
+            var muhasebe = FirmaSistemIdleri
+                .Select(id => Liste.FirstOrDefault(s => s.Id == id))
+                .FirstOrDefault(s => s is { Tur: Sistemler.Domain.SistemTuru.Muhasebe });
+            if (muhasebe is not null) return muhasebe.Id;
+
+            var program = Firmalar.Domain.MizanFormatlari.ProgramAdi(MizanFormati);
+            if (program is null) return null;
+
+            return Liste.FirstOrDefault(s => s.Aktif && s.Tur == Sistemler.Domain.SistemTuru.Muhasebe
+                                             && Sistemler.Domain.SistemAdi.Normalize(s.Ad) == Sistemler.Domain.SistemAdi.Normalize(program))?.Id;
+        }
+
+        /// <summary>Aktif sistemler + işlerde hâlâ kullanılan pasifler; firmanınkiler önde, sonra türe ve ada göre.</summary>
+        public List<IsSistemSecenegiDto> Secenekler(IEnumerable<int?> kullanilan)
+        {
+            var kullanilanlar = kullanilan.OfType<int>().ToHashSet();
+            var firmanin = FirmaSistemIdleri.ToHashSet();
+
+            return Liste
+                .Where(s => s.Aktif || kullanilanlar.Contains(s.Id))
+                .OrderByDescending(s => firmanin.Contains(s.Id))
+                .ThenBy(s => s.Tur)
+                .ThenBy(s => s.Ad, StringComparer.Create(IsTakvimHesabi.Tr, true))
+                .Select(s => new IsSistemSecenegiDto
+                {
+                    Id = s.Id, Ad = s.Ad, Tur = s.Tur, Aktif = s.Aktif, Firmanin = firmanin.Contains(s.Id)
+                })
+                .ToList();
+        }
     }
 }

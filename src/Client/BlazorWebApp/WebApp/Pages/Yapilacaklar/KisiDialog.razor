@@ -1,0 +1,91 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@inject IYapilacaklarApiClient Api
+@inject DialogService DialogService
+
+@*
+    Kişi ekle / düzenle (Prompt 14). Kim, hangi e-posta, rol, not. ŞİFRE, KULLANICI ADI, ERİŞİM
+    BİLGİSİ ALANI YOK ve eklenmeyecek. Düzenlemede firma değişmez; e-posta değişirse bağlı bütün
+    işlerin alıcısı birden düzelir (sunucu eşitler).
+*@
+
+<div class="ys-form">
+    @if (KisiId is null)
+    {
+        <div>
+            <RadzenLabel Text="Firma" Component="firma" />
+            <RadzenDropDown Name="firma" TValue="int?" Data="@Firmalar" TextProperty="Ad" ValueProperty="Id" @bind-Value="firmaId"
+                            AllowFiltering="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" Placeholder="Firma seçin" Style="width:100%" />
+        </div>
+    }
+    <div>
+        <RadzenLabel Text="Ad soyad" Component="ad" />
+        <RadzenTextBox Name="ad" @bind-Value="model.Ad" MaxLength="150" Style="width:100%" />
+    </div>
+    <div>
+        <RadzenLabel Text="E-posta" Component="eposta" />
+        <RadzenTextBox Name="eposta" @bind-Value="model.Eposta" MaxLength="200" Style="width:100%" Placeholder="boş bırakılabilir" />
+    </div>
+    <div>
+        <RadzenLabel Text="Rol" Component="rol" />
+        <RadzenTextBox Name="rol" @bind-Value="model.Rol" MaxLength="100" Style="width:100%" Placeholder="ör. Finans, Hollanda" />
+    </div>
+    <div>
+        <RadzenLabel Text="Not" Component="notu" />
+        <RadzenTextArea Name="notu" @bind-Value="model.Notu" MaxLength="1000" Rows="2" Style="width:100%" />
+    </div>
+    @if (KisiId is not null)
+    {
+        <label style="display:flex; gap:6px; align-items:center; font-size:13px">
+            <input type="checkbox" @bind="model.Aktif" /> Aktif
+        </label>
+    }
+    @if (hata is not null)
+    {
+        <div class="dp-hata">@hata</div>
+    }
+    <div style="display:flex; justify-content:flex-end; gap:.5rem">
+        <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(false))" />
+        <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" IsBusy="@kaydediliyor"
+                      Disabled="@(KisiId is null && firmaId is null)" Click="@Kaydet" />
+    </div>
+</div>
+
+@code {
+    [Parameter] public int? KisiId { get; set; }
+    [Parameter] public KisiKaydetDto? Mevcut { get; set; }
+    [Parameter] public List<DonemFirmaSecenegi> Firmalar { get; set; } = new();
+    [Parameter] public int? VarsayilanFirmaId { get; set; }
+
+    private KisiKaydetDto model = new();
+    private int? firmaId;
+    private string? hata;
+    private bool kaydediliyor;
+
+    protected override void OnInitialized()
+    {
+        model = Mevcut is { } m
+            ? new KisiKaydetDto { FirmaId = m.FirmaId, Ad = m.Ad, Eposta = m.Eposta, Rol = m.Rol, Notu = m.Notu, Aktif = m.Aktif }
+            : new KisiKaydetDto();
+        firmaId = Mevcut?.FirmaId ?? (Firmalar.Any(f => f.Id == VarsayilanFirmaId) ? VarsayilanFirmaId : null);
+    }
+
+    private async Task Kaydet()
+    {
+        hata = null;
+        kaydediliyor = true;
+        try
+        {
+            model.FirmaId = firmaId ?? model.FirmaId;
+            hata = KisiId is { } id ? await Api.KisiGuncelleAsync(id, model) : await Api.KisiEkleAsync(model);
+            if (hata is null) DialogService.Close(true);
+        }
+        finally
+        {
+            kaydediliyor = false;
+        }
+    }
+}

@@ -1,0 +1,549 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Pages.Anasayfa
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@implements IAsyncDisposable
+
+@inject IYapilacaklarApiClient Api
+@inject DialogService DialogService
+@inject IJSRuntime JS
+@inject WebApp.Application.Services.Interfaces.IFileApiService FileApi
+
+@*
+    Takip panosunun DÖNEM sekmesi (Prompt 14). DÖNEM merkezli ("Ağustos kapandı mı");
+    Yapılacaklar VADE merkezli. Ağustos'un KDV'si 28 Eylül'de verilir ama burada Ağustos'ta durur.
+
+    İki görünüm, AYNI veri (sunucuda DonemPanosuKurucu):
+      • Liste (varsayılan): satır = firma × iş. [tik] · Firma · İş · Program · Kime gider · Son gün · Not/ek.
+        Sıra sunucudan gelir ve DURUMDAN BAĞIMSIZDIR — işaretlenen satır üstü çizili ve soluk olur ama
+        yerinden zıplamaz; "Sadece eksikler" açıldığı andaki satırları tutar, tiklenen satır kaybolmaz.
+        Satıra tıklayınca sağda Prompt 10'un hücre paneli açılır (taşındı, yeniden yazılmadı).
+      • Matris (Prompt 10): satır = firma, kolon = iş; yapıldı / eksik / bu firmada yok üç ayrı hâl.
+
+    Firma filtresi (&firma=) sunucuda uygulanır: şerit, matris ve liste AYNI kümeyi sayar; şerit neyi
+    saydığını yazar ("17 firma · Eylül 2026" ya da "AITEX TURKEY · Eylül 2026").
+
+    Ekleme (Prompt 15): + İş ekle / Yapıştır / şablon / kopyala kabuğun eylem grubunda (IsTakipEylemleri,
+    MEVCUT dialoglar). Sekme odaktayken Ctrl+V aynı toplu ekleme önizlemesini açar (firmaIsleri.js bağlaması).
+
+    İzolasyon: pano yüklenemezse yalnız mesaj; hücre paneli patlarsa yalnız panel.
+*@
+
+<div class="dp-kok" @onclick="PaneliKapat" @ref="sekmeOgesi" tabindex="0"
+     title="Sekme seçiliyken Ctrl+V ile Excel'den iş satırları yapıştırabilirsiniz">
+    @* ---- Üst şerit ---- *@
+    <div class="dp-serit">
+        <div class="dp-donem">
+            <span class="dp-ok" role="button" title="Önceki ay" @onclick="@(() => AyKaydir.InvokeAsync(-1))" @onclick:stopPropagation="true">◀</span>
+            <span class="dp-donem-ad">@(pano?.Etiket ?? Etiket(Yil ?? 0, Ay ?? 0))</span>
+            <span class="dp-ok" role="button" title="Sonraki ay" @onclick="@(() => AyKaydir.InvokeAsync(1))" @onclick:stopPropagation="true">▶</span>
+        </div>
+
+        @if (pano is not null)
+        {
+            @* Şerit neyi saydığını yazar; filtre varsa yanında tek tıkla temizleme. *@
+            <span class="@(FirmaId is null ? "dp-kapsam" : "dp-kapsam dp-firma-filtre")" @onclick:stopPropagation="true">
+                @if (FirmaId is null)
+                {
+                    <span><b>@pano.Satirlar.Count firma</b> · @pano.Etiket</span>
+                }
+                else
+                {
+                    <span><b>@FiltreFirmaAdi</b> · @pano.Etiket</span>
+                    <span class="dp-kapat" role="button" title="Filtreyi kaldır — bütün firmalar" @onclick="@(() => FirmaFiltresiKaldir.InvokeAsync())">×</span>
+                }
+            </span>
+
+            <div class="dp-ozet">
+                <span><b>@pano.Yapilan / @pano.Toplam</b> yapıldı</span>
+                <div class="dp-cubuk"><div class="dp-cubuk-dolu" style="width:@(Yuzde)%"></div></div>
+                <span class="dp-yuzde">%@Yuzde</span>
+            </div>
+
+            <div class="@(pano.Eksikler.Count == 0 ? "dp-eksik dp-eksik-yok" : "dp-eksik")">
+                @if (pano.Eksikler.Count == 0)
+                {
+                    <span>Eksik yok@(pano.Toplam == 0 ? " — bu ayda kapanan iş yok" : "")</span>
+                }
+                else
+                {
+                    <b>@(pano.Toplam - pano.Yapilan) eksik:</b>
+                    @* Tek firmada "1 firmada" demek bilgi taşımaz: yalnız iş adları. *@
+                    <span>@string.Join(" · ", pano.Eksikler.Take(4).Select(e => FirmaId is null ? $"{e.Baslik} {e.FirmaSayisi} firmada" : e.Baslik))</span>
+                    @if (pano.Eksikler.Count > 4)
+                    {
+                        <span class="dp-alt"> +@(pano.Eksikler.Count - 4) iş daha</span>
+                    }
+                }
+            </div>
+        }
+    </div>
+
+    @SeritEki
+
+    @if (pano is not null)
+    {
+        <div class="dp-arac" @onclick:stopPropagation="true">
+            <span class="dp-gorunum">
+                <span class="@(matris ? "dp-gorunum-ad" : "dp-gorunum-ad dp-gorunum-aktif")" role="button" @onclick="@(() => GorunumSec(false))">Liste</span>
+                <span class="@(matris ? "dp-gorunum-ad dp-gorunum-aktif" : "dp-gorunum-ad")" role="button" @onclick="@(() => GorunumSec(true))">Matris</span>
+            </span>
+            <label class="dp-filtre">
+                <input type="checkbox" checked="@sadeceEksikler" @onchange="@SadeceEksiklerDegisti" /> Sadece eksikler
+            </label>
+            @if (!matris)
+            {
+                <label class="dp-filtre">
+                    <input type="checkbox" @bind="grupla" /> Firmaya göre grupla
+                </label>
+            }
+        </div>
+    }
+
+    @if (hata is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">@hata</RadzenAlert>
+    }
+    else if (pano is null)
+    {
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+    }
+    else if (pano.Kolonlar.Count == 0)
+    {
+        @* Prompt 15 · 2.3: boş dönemde ekleme yolu görünür; düğmeler kabuğun MEVCUT eylemleri. *@
+        <div class="ys-bos dp-bos-ekle" @onclick:stopPropagation="true">
+            <div>@pano.Etiket döneminde @(FirmaId is null ? "" : FiltreFirmaAdi + " için ")iş yok.@(" ")<b>+ İş ekle</b>@(" ile ekleyebilir ya da Excel'den ")<b>Ctrl+V</b>@(" ile yapıştırabilirsin.")</div>
+            <div class="dp-eylemler">
+                <span class="dp-eylem dp-eylem-ana" role="button" @onclick="@(() => IsEkle.InvokeAsync())">+ İş ekle</span>
+                <span class="dp-eylem" role="button" @onclick="@(() => Yapistir.InvokeAsync())">Yapıştır</span>
+            </div>
+        </div>
+    }
+    else if (!matris)
+    {
+        @Liste()
+    }
+    else
+    {
+        @* ---- Matris (Prompt 10) ---- *@
+        <div class="dp-tablo-kutu">
+            <table class="dp-tablo">
+                <thead>
+                    <tr>
+                        <th class="dp-firma-kolon">Firma</th>
+                        @foreach (var k in pano.Kolonlar)
+                        {
+                            <th class="dp-is-kolon" title="@(k.MukellefiyetKodu is null ? "Firmaya özel" : "Yasal " + k.MukellefiyetKodu) · @IsMetin.Tekrar(k.Tekrar)">
+                                @k.Baslik
+                            </th>
+                        }
+                        <th class="dp-oran-kolon"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in pano.Satirlar.Where(s => !sadeceEksikler || s.Yapilan < s.Gecerli))
+                    {
+                        <tr class="@(s.Yapilan < s.Gecerli ? "dp-satir-eksik" : "")">
+                            <td class="dp-firma-kolon">@s.FirmaAdi</td>
+                            @for (var i = 0; i < pano.Kolonlar.Count; i++)
+                            {
+                                var h = s.Hucreler[i];
+                                var kolon = pano.Kolonlar[i];
+                                @Hucre(s, h, kolon)
+                            }
+                            <td class="dp-oran-kolon">
+                                <span class="@(s.Gecerli == 0 ? "dp-oran dp-oran-bos" : s.Yapilan == s.Gecerli ? "dp-oran dp-oran-tam" : "dp-oran")">
+                                    @(s.Gecerli == 0 ? "—" : $"{s.Yapilan}/{s.Gecerli}")
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @* ---- Hücre paneli (Prompt 10, aynı bileşen): matriste hücreye yakın, listede sağda. Hata yalnız paneli etkiler. ---- *@
+    @if (secili is not null)
+    {
+        <ErrorBoundary @key="secili">
+            <ChildContent>
+                <DonemHucrePaneli @ref="panel" Hucre="@secili" Top="@konum.Top" Left="@konum.Left"
+                                  Sag="@(seciliSatir is not null)" Satir="@seciliSatir"
+                                  Kapat="@PaneliKapat" Degisti="@Tazele" />
+            </ChildContent>
+            <ErrorContent>
+                <div class="@(seciliSatir is not null ? "dp-panel dp-panel-sag" : "dp-panel")"
+                     style="@(seciliSatir is not null ? "" : $"top:{konum.Top}px;left:{konum.Left}px")" @onclick:stopPropagation="true">
+                    <div class="dp-hata">Panel açılamadı. Liste ve matris etkilenmedi; sayfayı yenileyip tekrar deneyin.</div>
+                    <span class="dp-bag" role="button" @onclick="PaneliKapat">Kapat</span>
+                </div>
+            </ErrorContent>
+        </ErrorBoundary>
+    }
+</div>
+
+@code {
+    /// <summary>Gösterilen ay; ikisi de boşsa sunucu bir önceki ayı seçer (saat sunucuda tek yerden).</summary>
+    [Parameter] public int? Yil { get; set; }
+    [Parameter] public int? Ay { get; set; }
+
+    /// <summary>Yalnız bu firma (adres: <c>&amp;firma=</c>); sunucuda uygulanır, sayılar da ona uyar.</summary>
+    [Parameter] public int? FirmaId { get; set; }
+
+    /// <summary>Bütün aktif firmalar (firma filtresinin adı için).</summary>
+    [Parameter] public IReadOnlyList<DonemOzetSatirDto>? Firmalar { get; set; }
+
+    /// <summary>◀ ▶: kabuk adresi değiştirir, bileşen parametreden yeniden yüklenir.</summary>
+    [Parameter] public EventCallback<int> AyKaydir { get; set; }
+    [Parameter] public EventCallback FirmaFiltresiKaldir { get; set; }
+
+    /// <summary>İşaret/not/kanıt/iş değişti — kabuk sekme rozetlerini tazeler.</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    /// <summary>Kabuktan: bir ekleme bitti, sekme kendini tazelesin (Prompt 15 · 2.1).</summary>
+    [Parameter] public int Surum { get; set; }
+
+    /// <summary>Kabuğun MEVCUT eylemleri (+ İş ekle / Yapıştır / Ctrl+V) — bu sekme ekleme yazmaz.</summary>
+    [Parameter] public EventCallback IsEkle { get; set; }
+    [Parameter] public EventCallback Yapistir { get; set; }
+    [Parameter] public EventCallback<string> Yapistirildi { get; set; }
+
+    /// <summary>Üst şeridin altına (ör. "Kapanmamış önceki dönem" kutusu).</summary>
+    [Parameter] public RenderFragment? SeritEki { get; set; }
+
+    private DonemPanosuDto? pano;
+    private string? hata;
+    private (int? Yil, int? Ay, int? Firma, int Surum)? yuklenen;
+
+    private bool matris, grupla, sadeceEksikler;
+
+    /// <summary>"Sadece eksikler" açıldığı andaki eksik satırlar — tiklenen satır listeden düşmesin.</summary>
+    private HashSet<string>? eksikAnahtarlari;
+
+    private readonly HashSet<string> isleniyor = new();
+
+    private IsIsaretDto? secili;
+    private DonemIsSatiriDto? seciliSatir;
+    private DonemHucrePaneli? panel;
+    private (int Top, int Left) konum;
+
+    private int Yuzde => pano is { Toplam: > 0 } p ? (int)Math.Round(100.0 * p.Yapilan / p.Toplam) : 0;
+
+    private string FiltreFirmaAdi
+        => pano?.Satirlar.FirstOrDefault(s => s.FirmaId == FirmaId)?.FirmaAdi
+           ?? Firmalar?.FirstOrDefault(f => f.FirmaId == FirmaId)?.FirmaAdi ?? $"Firma #{FirmaId}";
+
+    private static string Anahtar(DonemIsSatiriDto s) => $"{s.FirmaId}|{s.KolonAnahtari}";
+
+    private IEnumerable<DonemIsSatiriDto> GorunenIsler
+        => pano!.Isler.Where(s => eksikAnahtarlari is null || eksikAnahtarlari.Contains(Anahtar(s)));
+
+    private static string Etiket(int y, int a)
+        => a is >= 1 and <= 12 ? $"{new System.Globalization.CultureInfo("tr-TR").DateTimeFormat.GetMonthName(a)} {y}" : "…";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (yuklenen == (Yil, Ay, FirmaId, Surum)) return;
+        yuklenen = (Yil, Ay, FirmaId, Surum);
+        PaneliKapat();
+        pano = null;
+        eksikAnahtarlari = null;
+        sadeceEksikler = false;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        hata = null;
+        var (sonuc, mesaj) = await Api.DonemPanosuAsync(Yil, Ay, firmaId: FirmaId);
+        if (sonuc is null)
+        {
+            // Pano yüklenemezse sayfa çökmez: yalnız mesaj.
+            hata = mesaj ?? "Dönem panosu yüklenemedi.";
+            pano = null;
+            return;
+        }
+
+        pano = sonuc;
+    }
+
+    /// <summary>Değişiklik: pano (ve üst şerit) yeniden okunur; satır sırası sunucudan, durumdan bağımsız; panel açık kalır.</summary>
+    private async Task Tazele()
+    {
+        if (pano is null) return;
+        var (sonuc, _) = await Api.DonemPanosuAsync(pano.Yil, pano.Ay, firmaId: FirmaId);
+        if (sonuc is not null) pano = sonuc;
+        StateHasChanged();
+        await Degisti.InvokeAsync();
+    }
+
+    private void GorunumSec(bool m)
+    {
+        matris = m;
+        PaneliKapat();
+    }
+
+    private void SadeceEksiklerDegisti(ChangeEventArgs e)
+    {
+        sadeceEksikler = e.Value is true;
+        eksikAnahtarlari = sadeceEksikler && pano is not null
+            ? pano.Isler.Where(s => s.Durum != DonemHucreDurumu.Yapildi).Select(Anahtar).ToHashSet()
+            : null;
+    }
+
+    private void PaneliKapat()
+    {
+        secili = null;
+        seciliSatir = null;
+        panel = null;
+    }
+
+    // ---- Liste ----
+
+    private RenderFragment Liste() => __builder =>
+    {
+        var isler = GorunenIsler.ToList();
+        <div class="dp-tablo-kutu">
+            <table class="dp-tablo dp-liste">
+                <thead>
+                    <tr>
+                        <th class="dp-tik-kolon" title="Bu dönem yapıldı"></th>
+                        <th>Firma</th>
+                        <th>İş</th>
+                        <th>Program</th>
+                        <th>Kime gider</th>
+                        <th>Son gün</th>
+                        <th>Not/ek</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (isler.Count == 0)
+                    {
+                        <tr><td colspan="7" class="dp-bos" style="padding:14px">Gösterilecek iş yok.</td></tr>
+                    }
+                    @if (grupla)
+                    {
+                        // Firma adına göre sunucu zaten sıraladı; GroupBy ilk görülme sırasını korur.
+                        foreach (var g in isler.GroupBy(s => s.FirmaId))
+                        {
+                            var hepsi = pano!.Isler.Where(s => s.FirmaId == g.Key).ToList();
+                            <tr class="dp-grup">
+                                <td colspan="7">
+                                    <b>@g.First().FirmaAdi</b>
+                                    <span class="dp-alt">@hepsi.Count(s => s.Durum == DonemHucreDurumu.Yapildi)/@hepsi.Count</span>
+                                </td>
+                            </tr>
+                            foreach (var s in g)
+                            {
+                                @Satir(s)
+                            }
+                        }
+                    }
+                    else
+                    {
+                        foreach (var s in isler)
+                        {
+                            @Satir(s)
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    };
+
+    private RenderFragment Satir(DonemIsSatiriDto s) => __builder =>
+    {
+        var yapildi = s.Durum == DonemHucreDurumu.Yapildi;
+        var seciliMi = seciliSatir is { } x && Anahtar(x) == Anahtar(s);
+        var mesgul = isleniyor.Contains(Anahtar(s));
+        <tr class="@($"dp-satir{(yapildi ? " dp-satir-yapildi" : "")}{(seciliMi ? " dp-satir-secili" : "")}")"
+            @onclick="@(() => SatirAc(s))" @onclick:stopPropagation="true">
+            <td class="dp-tik-kolon" @onclick:stopPropagation="true">
+                <input type="checkbox" checked="@yapildi" disabled="@mesgul" title="Bu dönem yapıldı olarak işaretle"
+                       @onchange="@(e => Isaretle(s, e.Value is true))" />
+            </td>
+            <td class="dp-liste-firma" title="@s.FirmaAdi">@s.FirmaAdi</td>
+            <td class="dp-liste-is">
+                <span class="dp-is-ad">@s.Baslik</span>
+                <DonemSatirCipleri Satir="@s" Yalniz="yasal" />
+            </td>
+            <td><DonemSatirCipleri Satir="@s" Yalniz="program" /></td>
+            <td class="dp-liste-alici"><DonemSatirCipleri Satir="@s" Yalniz="alici" /></td>
+            <td class="dp-liste-tarih">@(s.SonGun?.ToString("dd.MM.yyyy") ?? "—")</td>
+            <td title="@DurumMetni(s.Durum, s.NotVar, s.EkSayisi)">
+                @if (s.NotVar)
+                {
+                    <span class="@(yapildi ? "dp-rozet-not" : "dp-rozet-not dp-rozet-not-eksik")">✎ not</span>
+                }
+                @if (s.EkSayisi > 0)
+                {
+                    <span class="dp-rozet-not">📎 @s.EkSayisi</span>
+                }
+            </td>
+        </tr>
+    };
+
+    /// <summary>
+    /// Satırdaki tik — panelinkiyle AYNI uç ve aynı 10B kuralı: işaret kaldırmak not ve kanıtı
+    /// silmez, yalnız zaman boşalır. Satır yerinde kalır (sıra sunucudan, durumdan bağımsız).
+    /// </summary>
+    private async Task Isaretle(DonemIsSatiriDto s, bool yapildi)
+    {
+        var anahtar = Anahtar(s);
+        if (!isleniyor.Add(anahtar)) return;
+        hata = null;
+        try
+        {
+            var (dosyalar, mesaj) = await Api.IsaretleKanitlaAsync(new IsIsaretleDto { Yapildi = yapildi, Isler = { s.Isaret() } });
+            if (mesaj is not null)
+            {
+                await DialogService.Alert(mesaj, "İşaretlenemedi");
+                return;
+            }
+            // Panelle aynı sözleşme: sunucu dosya döndürürse FileApi'den de temizlenir (işaretlemede boş gelir).
+            foreach (var fileId in dosyalar.Where(i => i > 0))
+            {
+                try { await FileApi.DeleteAsync(fileId); } catch { }
+            }
+        }
+        finally
+        {
+            isleniyor.Remove(anahtar);
+        }
+
+        await Tazele();
+        if (panel is not null && seciliSatir is { } x && Anahtar(x) == anahtar)
+        {
+            seciliSatir = pano?.Isler.FirstOrDefault(i => Anahtar(i) == anahtar) ?? seciliSatir;
+            await panel.Tazele();   // yazılmakta olan not ezilmez
+        }
+    }
+
+    private void SatirAc(DonemIsSatiriDto s)
+    {
+        if (seciliSatir is { } x && Anahtar(x) == Anahtar(s)) return;
+        seciliSatir = s;
+        secili = s.Isaret();
+    }
+
+    // ---- Ctrl+V (Prompt 15 · 2.2): firmaIsleri.js'teki MEVCUT bağlama bu sekmenin öğesine ----
+
+    private ElementReference sekmeOgesi;
+    private DotNetObjectReference<DonemSekmesi>? referans;
+
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        if (!ilk) return;
+        try
+        {
+            referans = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("firmaIsleri.kaydet", sekmeOgesi, referans);
+        }
+        catch
+        {
+            // Bağlanamadı: "Yapıştır" düğmesi elle yapıştırma kutusuyla çalışmaya devam eder.
+        }
+    }
+
+    /// <summary>Sekme odaktayken Ctrl+V (metin) — kabuğun toplu ekleme eylemine (aynı dialog, aynı ayrıştırıcı).</summary>
+    /// <remarks>
+    /// Hücre/satır paneli AÇIKKEN yok sayılır: oradaki Ctrl+V kanıt yapıştırmadır (Prompt 10). Excel'den kopyalanan
+    /// içerik panoda hem görsel hem metin taşır; ikisi birden çalışırsa kanıt yüklenirken toplu ekleme de açılırdı.
+    /// </remarks>
+    [JSInvokable]
+    public Task MetinYapistirildi(string metin) => secili is not null ? Task.CompletedTask : Yapistirildi.InvokeAsync(metin);
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("firmaIsleri.kaldir", sekmeOgesi);
+        }
+        catch
+        {
+            // Sayfa kapanırken JS gitmiş olabilir.
+        }
+        referans?.Dispose();
+    }
+
+    // ---- Matris hücresi (Prompt 10) ----
+
+    private RenderFragment Hucre(DonemPanosuSatirDto satir, DonemPanosuHucreDto h, DonemPanosuKolonDto kolon) => __builder =>
+    {
+        <td>
+            @if (h.Durum == DonemHucreDurumu.Yok)
+            {
+                <span class="dp-hucre dp-hucre-yok" title="Bu firmada bu dönemde yok">—</span>
+            }
+            else
+            {
+                var seciliMi = secili is { } s && s.FirmaId == satir.FirmaId && s.KaynakId == h.KaynakId
+                               && s.KaynakTip == h.KaynakTip && s.DonemAnahtari == h.DonemAnahtari;
+                var yapildi = h.Durum == DonemHucreDurumu.Yapildi;
+                <span class="@($"dp-hucre {(yapildi ? "dp-hucre-yapildi" : "dp-hucre-eksik")}{(seciliMi ? " dp-hucre-secili" : "")}")"
+                      role="button" title="@($"{satir.FirmaAdi} · {kolon.Baslik} · {DurumMetni(h.Durum, h.NotVar, h.EkSayisi)}")"
+                      @onclick="@(e => HucreAc(e, satir, h))" @onclick:stopPropagation="true"
+                      id="@HucreId(satir, h)">
+                    @if (yapildi)
+                    {
+                        @("✓")
+                    }
+                    else if (h.NotVar || h.EkSayisi > 0)
+                    {
+                        @* Eksik ama sebebi yazılmış: kesikli çerçeve aynı, içinde not işareti. *@
+                        <span class="dp-eksik-not">✎</span>
+                    }
+                    @if (h.EkSayisi > 0)
+                    {
+                        <span class="dp-atac" title="@h.EkSayisi kanıt">📎</span>
+                    }
+                    @if (yapildi && h.NotVar)
+                    {
+                        <span class="dp-notlu" title="Bu dönemin notu var">●</span>
+                    }
+                </span>
+            }
+        </td>
+    };
+
+    /// <summary>Renk tek başına anlam taşımasın: durum metinle de yazılır ("yapılmadı · notu var", 10B).</summary>
+    private static string DurumMetni(DonemHucreDurumu durum, bool notVar, int ekSayisi)
+    {
+        if (durum == DonemHucreDurumu.Yapildi)
+            return notVar ? "yapıldı · notu var" : "yapıldı";
+
+        var ekler = new List<string>();
+        if (notVar) ekler.Add("notu var");
+        if (ekSayisi > 0) ekler.Add("kanıtı var");
+        return ekler.Count == 0 ? "eksik" : "yapılmadı · " + string.Join(" · ", ekler);
+    }
+
+    private static string HucreId(DonemPanosuSatirDto s, DonemPanosuHucreDto h)
+        => $"dp-h-{s.FirmaId}-{(byte)h.KaynakTip}-{h.KaynakId}-{h.DonemAnahtari}";
+
+    private async Task HucreAc(MouseEventArgs e, DonemPanosuSatirDto satir, DonemPanosuHucreDto h)
+    {
+        try
+        {
+            var k = await JS.InvokeAsync<Konum>("donemPanosu.konumId", HucreId(satir, h), 380, 460);
+            konum = (k.Top, k.Left);
+        }
+        catch
+        {
+            // Konum alınamazsa tıklanan noktanın yanına.
+            konum = ((int)e.ClientY + 12, (int)Math.Max(8, e.ClientX - 40));
+        }
+
+        seciliSatir = null;
+        secili = new IsIsaretDto { KaynakTip = h.KaynakTip, KaynakId = h.KaynakId, FirmaId = satir.FirmaId, DonemAnahtari = h.DonemAnahtari };
+    }
+
+    private sealed class Konum
+    {
+        public int Top { get; set; }
+        public int Left { get; set; }
+    }
+}

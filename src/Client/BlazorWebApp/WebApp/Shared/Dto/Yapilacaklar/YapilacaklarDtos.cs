@@ -64,6 +64,22 @@ namespace WebApp.Shared.Dto.Yapilacaklar
         public string? SorumluKullaniciAdi { get; set; }
     }
 
+    /// <summary>İş dialogunun program seçeneği (ortak sistem listesinden).</summary>
+    public class IsSistemSecenegiDto
+    {
+        public int Id { get; set; }
+        public string Ad { get; set; } = string.Empty;
+        public WebApp.Shared.Dto.Sistemler.SistemTuru Tur { get; set; }
+        public bool Aktif { get; set; }
+        public bool Firmanin { get; set; }
+    }
+
+    public enum AliciTipi : byte
+    {
+        Kime = 1,
+        Bilgi = 2
+    }
+
     public class FirmaIsiDto
     {
         public int Id { get; set; }
@@ -78,9 +94,107 @@ namespace WebApp.Shared.Dto.Yapilacaklar
         public string? SorumluKullaniciAdi { get; set; }
         public bool Aktif { get; set; }
         public string KuralMetni { get; set; } = string.Empty;
+
+        public string? YasalMukellefiyetKodu { get; set; }
+        public int? SistemId { get; set; }
+        public string? SistemAdi { get; set; }
+        public string? MenuYolu { get; set; }
+        public string? NasilYapilir { get; set; }
+        public int? OnAdimiOlduguIsId { get; set; }
+        public string? OnAdimiBaslik { get; set; }
+        public List<FirmaIsiAlicisiDto> Alicilar { get; set; } = new();
+        public int EkSayisi { get; set; }
     }
 
-    public class FirmaIsiKaydetDto
+    public class FirmaIsiAlicisiDto
+    {
+        public int Id { get; set; }
+        public string AdSoyad { get; set; } = string.Empty;
+        public string? Eposta { get; set; }
+        public string? Rol { get; set; }
+        public AliciTipi AliciTipi { get; set; } = AliciTipi.Kime;
+        public int Sira { get; set; }
+    }
+
+    public class IsProsedurKaydetDto
+    {
+        public int? SistemId { get; set; }
+        public string? MenuYolu { get; set; }
+        public string? NasilYapilir { get; set; }
+        public int? OnAdimiOlduguIsId { get; set; }
+        public string? OnAdimiYasalKodu { get; set; }
+        public IsTekrari? OnAdimiYasalTekrar { get; set; }
+
+        /// <summary><c>null</c> = alıcılara dokunma; liste = bütün alıcılar.</summary>
+        public List<FirmaIsiAlicisiDto>? Alicilar { get; set; }
+    }
+
+    public class FirmaIsiEkiDto
+    {
+        public int Id { get; set; }
+        public int FileId { get; set; }
+        public string DosyaAdi { get; set; } = string.Empty;
+        public string ContentType { get; set; } = string.Empty;
+        public long Boyut { get; set; }
+        public DateTime YuklemeZamani { get; set; }
+        public string? YukleyenKullaniciAdi { get; set; }
+    }
+
+    public class FirmaIsiEkiOlusturDto
+    {
+        public int FileId { get; set; }
+        public string DosyaAdi { get; set; } = string.Empty;
+        public string? ContentType { get; set; }
+        public long Boyut { get; set; }
+    }
+
+    public class IsGecmisSatiriDto
+    {
+        public string DonemAnahtari { get; set; } = string.Empty;
+        public string? DonemEtiketi { get; set; }
+        public DateTime SonGun { get; set; }
+        public bool Yapildi { get; set; }
+        public DateTime? TamamlanmaZamani { get; set; }
+        public string? TamamlayanAdi { get; set; }
+        public bool Yapilmadi { get; set; }
+    }
+
+    public class IsProsedurDto
+    {
+        public int? IsId { get; set; }
+        public int FirmaId { get; set; }
+        public IsKaynagi KaynakTip { get; set; }
+        public string Baslik { get; set; } = string.Empty;
+        public string? MukellefiyetKodu { get; set; }
+        public IsTekrari Tekrar { get; set; }
+        public string KuralMetni { get; set; } = string.Empty;
+        public int? SistemId { get; set; }
+        public string? SistemAdi { get; set; }
+        public string? MenuYolu { get; set; }
+        public string? NasilYapilir { get; set; }
+        public List<string> Adimlar { get; set; } = new();
+        public int? OnAdimiOlduguIsId { get; set; }
+        public string? OnAdimiBaslik { get; set; }
+        public List<FirmaIsiAlicisiDto> Alicilar { get; set; } = new();
+        public List<FirmaIsiEkiDto> Ekler { get; set; } = new();
+        public string? MizanFormati { get; set; }
+
+        /// <summary>İş bir muhasebe programında ama firmanınki başka: "Firmanın muhasebe programı X" notu.</summary>
+        public string? FarkliMuhasebeProgrami { get; set; }
+
+        public List<IsGecmisSatiriDto> Gecmis { get; set; } = new();
+        public int GecmisToplam { get; set; }
+
+        // İş tarifi (Prompt 14): panel önce tarifi okur.
+        public string TarifAnahtari { get; set; } = string.Empty;
+        public int? TarifId { get; set; }
+        public string? TarifSistemAdi { get; set; }
+        public string? TarifMenuYolu { get; set; }
+        public List<string> TarifAdimlar { get; set; } = new();
+        public bool FirmayaOzel { get; set; }
+    }
+
+    public class FirmaIsiKaydetDto : IsProsedurKaydetDto
     {
         public string Baslik { get; set; } = string.Empty;
         public string? Aciklama { get; set; }
@@ -99,6 +213,10 @@ namespace WebApp.Shared.Dto.Yapilacaklar
         public List<IsSatiriDto> Yasal { get; set; } = new();
         public List<IsSatiriDto> Ozel { get; set; } = new();
         public List<FirmaIsiDto> OzelTanimlar { get; set; } = new();
+        public List<FirmaIsiDto> YasalProsedurler { get; set; } = new();
+        /// <summary>Yeni işte program önerisi (firmanın muhasebe programı); kilit değil.</summary>
+        public int? VarsayilanSistemId { get; set; }
+        public List<IsSistemSecenegiDto> Sistemler { get; set; } = new();
         public int GeciktiSayisi { get; set; }
         public int BuAySayisi { get; set; }
         public List<string> MukellefiyetKodlari { get; set; } = new();
@@ -167,6 +285,9 @@ namespace WebApp.Shared.Dto.Yapilacaklar
         public DateTime DonemBit { get; set; }
         public DateTime SonGun { get; set; }
         public bool Aktif { get; set; }
+
+        /// <summary>Elle eklendi ya da düzenlendi: seed dokunmaz (Prompt 7B).</summary>
+        public bool ElleDuzenlendi { get; set; }
         public int TamamlamaSayisi { get; set; }
     }
 
@@ -211,5 +332,17 @@ namespace WebApp.Shared.Dto.Yapilacaklar
         };
 
         public static string Kaynak(IsKaynagi k) => k == IsKaynagi.Yasal ? "Yasal" : "Firmaya özel";
+
+        /// <summary>Kart satırının prosedür tanımı: özelde kendi tanımı, yasalda kod + tekrar ile açılmış satır.</summary>
+        public static FirmaIsiDto? Tanim(FirmaIsleriKartDto kart, IsSatiriDto s)
+            => s.KaynakTip == IsKaynagi.Ozel
+                ? kart.OzelTanimlar.FirstOrDefault(t => t.Id == s.KaynakId)
+                : kart.YasalProsedurler.FirstOrDefault(t => t.YasalMukellefiyetKodu == s.MukellefiyetKodu && t.Tekrar == s.Tekrar);
+
+        /// <summary>"Nasıl yapılır" metninin adımları — sunucudaki YapilacaklarKurucu.Adimlar ile aynı kural.</summary>
+        public static List<string> Adimlar(string? metin)
+            => string.IsNullOrWhiteSpace(metin)
+                ? new List<string>()
+                : metin.Split('\n').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
     }
 }

@@ -1,0 +1,59 @@
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@*
+    Dönem satırının çipleri — satır listesinde ve sağ panelin başlığında AYNI bileşen.
+    Program mor (Prompt 9 SistemId), yoksa kesikli "program yok". Yasal iş mavi "yasal" çipi
+    taşır; adı ve tarihi takvimden gelir, kilitlidir. Yalnız="..." ile tek çip çizilir.
+*@
+
+@if (Goster("yasal") && Satir.KaynakTip == IsKaynagi.Yasal)
+{
+    <span class="dp-cip dp-cip-yasal" title="Yasal iş · @Satir.MukellefiyetKodu — adı ve tarihi Vergi takviminden, kilitli">🔒 yasal</span>
+}
+@if (Goster("program"))
+{
+    @if (Satir.SistemAdi is { } sistem)
+    {
+        <span class="dp-cip dp-cip-program" title="Program">@sistem</span>
+    }
+    else
+    {
+        <span class="dp-cip dp-cip-yok" title="Bu işin programı girilmemiş">program yok</span>
+    }
+}
+@if (Goster("alici"))
+{
+    @if (Satir.Kime.Count > 0)
+    {
+        <span class="dp-cip dp-cip-alici" title="@AliciBasligi">→ @string.Join(", ", Satir.Kime)@(Satir.Bilgi.Count > 0 ? $" +{Satir.Bilgi.Count} bilgi" : "")</span>
+    }
+    else if (Satir.Bilgi.Count > 0)
+    {
+        <span class="dp-cip dp-cip-alici" title="@AliciBasligi">bilgi: @string.Join(", ", Satir.Bilgi)</span>
+    }
+    else if (Yalniz is null)
+    {
+        <span class="dp-cip dp-cip-yok" title="Alıcı girilmemiş">alıcı yok</span>
+    }
+    else
+    {
+        <span class="dp-alt">—</span>
+    }
+}
+@if (Goster("songun") && Satir.SonGun is { } sg)
+{
+    <span class="dp-cip dp-cip-tarih" title="Son gün">@sg.ToString("dd.MM.yyyy")</span>
+}
+
+@code {
+    [Parameter, EditorRequired] public DonemIsSatiriDto Satir { get; set; } = default!;
+
+    /// <summary>Boş = hepsi; "yasal", "program", "alici", "songun" = yalnız o çip (liste kolonları).</summary>
+    [Parameter] public string? Yalniz { get; set; }
+
+    private bool Goster(string ad) => Yalniz is null || Yalniz == ad;
+
+    private string AliciBasligi
+        => (Satir.Kime.Count > 0 ? "Kime: " + string.Join(", ", Satir.Kime) : "")
+           + (Satir.Bilgi.Count > 0 ? (Satir.Kime.Count > 0 ? " · " : "") + "Bilgi: " + string.Join(", ", Satir.Bilgi) : "");
+}

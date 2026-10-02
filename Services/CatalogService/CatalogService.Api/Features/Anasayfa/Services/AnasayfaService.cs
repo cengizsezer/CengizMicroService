@@ -34,19 +34,21 @@ namespace CatalogService.Api.Features.Anasayfa.Services
 
         private readonly CatalogContext _db;
         private readonly IFirmaOzetService _firmaOzet;
+        private readonly TimeProvider _saat;
 
-        public AnasayfaService(CatalogContext db, IFirmaOzetService firmaOzet)
+        public AnasayfaService(CatalogContext db, IFirmaOzetService firmaOzet, TimeProvider? saat = null)
         {
             _db = db;
             _firmaOzet = firmaOzet;
+            _saat = saat ?? TimeProvider.System;
         }
 
         public async Task<AnasayfaOzetDto> OzetAsync(int yil, int ay, CancellationToken ct = default)
         {
-            if (yil < 2000 || yil > 2100) yil = DateTime.Today.Year;
-            if (ay is < 1 or > 12) ay = DateTime.Today.Month;
-
-            var bugun = DateTime.Today;
+            // Prompt 7B: saat enjekte edilir (DateTime.Today değil); davranış aynı.
+            var bugun = _saat.GetLocalNow().Date;
+            if (yil < 2000 || yil > 2100) yil = bugun.Year;
+            if (ay is < 1 or > 12) ay = bugun.Month;
 
             var ayinBeyannameleri = await _db.Declarations.AsNoTracking()
                 .Where(d => d.Year == yil && d.Month == ay)

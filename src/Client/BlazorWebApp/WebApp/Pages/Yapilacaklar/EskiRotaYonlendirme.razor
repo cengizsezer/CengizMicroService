@@ -1,0 +1,18 @@
+﻿@page "/donem-panosu"
+
+@inject NavigationManager Nav
+
+@*
+    Dönem panosunun eski adresi (Prompt 10–14). Sayfa Prompt 15'te "İş Takip Panosu" oldu ve
+    /is-takip-panosu adresine taşındı. Kayıtlı bağlantılar ve yer imleri kırılmasın diye rota duruyor,
+    içerik yok — yalnız yeni adrese yönlendiriyor. SORGU PARAMETRELERİ (donem, firma, sekme, is, kisi)
+    olduğu gibi taşınır.
+
+    replace: true — geri düğmesi eski adrese dönüp sonsuz yönlendirme kurmasın (projedeki diğer
+    EskiRotaYonlendirme bileşenleriyle aynı desen).
+*@
+
+@code {
+    protected override void OnInitialized()
+        => Nav.NavigateTo(IsTakipPanosuAdres.Yol + new Uri(Nav.Uri).Query, forceLoad: false, replace: true);
+}

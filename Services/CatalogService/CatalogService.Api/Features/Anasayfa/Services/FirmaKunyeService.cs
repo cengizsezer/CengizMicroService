@@ -77,6 +77,13 @@ namespace CatalogService.Api.Features.Anasayfa.Services
             if (dto.HesapDonemi is { } hd && !Enum.IsDefined(hd))
                 throw new FirmaKunyeKuralException(nameof(dto.HesapDonemi), "Geçersiz hesap dönemi.");
 
+            if (!Enum.IsDefined(dto.FirmaTipi))
+                throw new FirmaKunyeKuralException(nameof(dto.FirmaTipi), "Geçersiz firma tipi.");
+            if (!Enum.IsDefined(dto.SgkTesvikKademesi))
+                throw new FirmaKunyeKuralException(nameof(dto.SgkTesvikKademesi), "Geçersiz SGK teşvik kademesi.");
+            if (!Enum.IsDefined(dto.MuhtasarDonemi))
+                throw new FirmaKunyeKuralException(nameof(dto.MuhtasarDonemi), "Geçersiz muhtasar dönemi.");
+
             DateTime? bas = null, bit = null;
             if (dto.HesapDonemi == HesapDonemi.OzelHesapDonemi)
             {
@@ -107,10 +114,14 @@ namespace CatalogService.Api.Features.Anasayfa.Services
                 firma.VergiTuruKaynagi = SiniflandirmaKaynagi.Elle;
             }
 
-            firma.MizanFormati = format;
+            // Boş = dokunma: mizan formatı artık Kullanılan sistemler kartında yazılıyor.
+            if (format is not null) firma.MizanFormati = format;
             firma.HesapDonemi = dto.HesapDonemi;
             firma.OzelDonemBas = bas;
             firma.OzelDonemBit = bit;
+            firma.FirmaTipi = dto.FirmaTipi;
+            firma.SgkTesvikKademesi = dto.SgkTesvikKademesi;
+            firma.MuhtasarDonemi = dto.MuhtasarDonemi;
 
             // Elle onay: kodlarla uyuşmasa da kayıtlı değer kullanıcının kararıdır.
             if (dto.Onayla)

@@ -1,4 +1,4 @@
-﻿using CatalogService.Api.Features.AccountPlan;
+using CatalogService.Api.Features.AccountPlan;
 using CatalogService.Api.Features.Banka.Domain;
 using CatalogService.Api.Features.Declarations.Entities;
 using CatalogService.Api.Features.Education.Domain;
@@ -83,6 +83,35 @@ namespace CatalogService.Api.Infrastructure.Context
 
         public DbSet<Features.Yapilacaklar.Domain.IsTamamlama> IsTamamlamalari
             => Set<Features.Yapilacaklar.Domain.IsTamamlama>();
+
+        // İş prosedürü (Prompt 8): alıcılar ve işe ait ekler.
+        public DbSet<Features.Yapilacaklar.Domain.FirmaIsiAlicisi> FirmaIsiAlicilari
+            => Set<Features.Yapilacaklar.Domain.FirmaIsiAlicisi>();
+
+        public DbSet<Features.Yapilacaklar.Domain.FirmaIsiEki> FirmaIsiEkleri
+            => Set<Features.Yapilacaklar.Domain.FirmaIsiEki>();
+
+        // Dönem panosu (Prompt 10): tamamlamanın dönem ekleri.
+        public DbSet<Features.Yapilacaklar.Domain.IsTamamlamaEki> IsTamamlamaEkleri
+            => Set<Features.Yapilacaklar.Domain.IsTamamlamaEki>();
+
+        // Takip panosu (Prompt 14): iş bazında tarif ve tarifin (prosedür türü) ekleri.
+        public DbSet<Features.Yapilacaklar.Domain.IsTarifi> IsTarifleri
+            => Set<Features.Yapilacaklar.Domain.IsTarifi>();
+
+        public DbSet<Features.Yapilacaklar.Domain.IsTarifiEki> IsTarifiEkleri
+            => Set<Features.Yapilacaklar.Domain.IsTarifiEki>();
+
+        // Takip panosu (Prompt 14): firmanın kişileri — alıcılar KisiId ile bağlanır.
+        public DbSet<Features.Yapilacaklar.Domain.Kisi> Kisiler
+            => Set<Features.Yapilacaklar.Domain.Kisi>();
+
+        // Kullanılan sistemler (Prompt 9): ortak sistem listesi + firma atamaları.
+        public DbSet<Features.Sistemler.Domain.Sistem> Sistemler
+            => Set<Features.Sistemler.Domain.Sistem>();
+
+        public DbSet<Features.Sistemler.Domain.FirmaSistemi> FirmaSistemleri
+            => Set<Features.Sistemler.Domain.FirmaSistemi>();
         public DbSet<AccountNode> AccountNodes => Set<AccountNode>();
 
         public DbSet<PayrollParameter> PayrollParameters => Set<PayrollParameter>();
@@ -221,6 +250,14 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new FirmaNotuEntityTypeConfiguration());
             builder.ApplyConfiguration(new FirmaOlayKaydiEntityTypeConfiguration());
             builder.ApplyConfiguration(new FirmaIsiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new FirmaIsiAlicisiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new FirmaIsiEkiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new IsTamamlamaEkiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new IsTarifiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new IsTarifiEkiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new KisiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new SistemEntityTypeConfiguration());
+            builder.ApplyConfiguration(new FirmaSistemiEntityTypeConfiguration());
             builder.ApplyConfiguration(new VergiTakvimiEntityTypeConfiguration());
             builder.ApplyConfiguration(new IsTamamlamaEntityTypeConfiguration());
             builder.ApplyConfiguration(new TaxPaymentConfiguration());

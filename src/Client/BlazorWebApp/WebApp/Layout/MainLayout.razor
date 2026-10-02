@@ -1,4 +1,4 @@
-﻿@using Blazored.LocalStorage
+@using Blazored.LocalStorage
 @using WebApp.Infrastructure
 @using WebApp.Manager
 @inject IPermissionService PermissionService
@@ -85,6 +85,10 @@
 
                 @* Giriş sonrası varsayılan sayfa; kartları ilgili ekranlara götürüyor. *@
                 <RadzenPanelMenuItem Text="Anasayfa" Icon="dashboard" Path="/anasayfa" />
+
+                @* İş Takip Panosu (Prompt 15, eski adı "Dönem panosu"): dönem merkezli — "Ağustos kapandı mı".
+                   Anasayfa'nın hemen altında; eski /donem-panosu adresi buraya yönlenir. *@
+                <RadzenPanelMenuItem Text="İş Takip Panosu" Icon="grid_on" Path="/is-takip-panosu" />
 
                 @* Bütün firmaların işleri aciliyete göre; Beyannameler maddesi yerinde kalır. *@
                 <RadzenPanelMenuItem Text="Yapılacaklar" Icon="checklist" Path="/yapilacaklar" />
@@ -228,6 +232,8 @@
                     <RadzenPanelMenuItem Text="Personel Mailleri" Icon="mail" Path="/yonetim/personel-mailleri" />
                     @* Yapılacaklar'ın yasal işlerinin son günleri: tarihler koda gömülü değil, burada düzenlenir. *@
                     <RadzenPanelMenuItem Text="Vergi Takvimi" Icon="event_note" Path="/yonetim/vergi-takvimi" />
+                    @* Kullanılan sistemler kartının ortak listesi: yeniden adlandır, birleştir, pasife al. *@
+                    <RadzenPanelMenuItem Text="Sistemler" Icon="apps" Path="/yonetim/sistemler" />
                     @if (canViewAjanlar)
                     {
                         @* Ajan yönetimi rolde değil izinde: pkf kullanıcılarının Admin

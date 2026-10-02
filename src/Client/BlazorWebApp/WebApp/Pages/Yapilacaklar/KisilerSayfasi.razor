@@ -1,0 +1,308 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@inject IYapilacaklarApiClient Api
+@inject DialogService DialogService
+
+@*
+    Takip panosu — "Kişiler ve mailler" sheet'i (Prompt 14 · ADIM 4): kim, hangi e-posta, hangi iş,
+    hangi gün. Kişi firmanın kişisidir; aynı firmada aynı e-posta tek kişi. Alıcılar işe KisiId ile
+    bağlıdır — adres değişince bağlı işler birden düzelir.
+
+    Alıcısı girilmemiş iş GİZLENMEZ: amber "eksik" çipiyle satır olarak durur (boş bırakmak da bilgidir).
+    Sağdaki ayın mail takvimi TÜRETİLİR (işin gün kuralı + alıcılar); elle doldurulmaz, işin günü
+    değişince kendiliğinden kayar. Şüpheli eşleşmeler birleştirilmez; kullanıcı karar verir.
+    Şifre, kullanıcı adı, erişim bilgisi tutulmaz.
+*@
+
+<div class="dp-kok">
+    @if (hata is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">@hata</RadzenAlert>
+    }
+    else if (pano is null)
+    {
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+    }
+    else
+    {
+        <div class="dp-arac">
+            <input class="dp-arama" type="search" placeholder="Firma, kişi ya da e-posta ara…" style="min-width:260px"
+                   @bind="arama" @bind:event="oninput" />
+            <label class="dp-filtre"><input type="checkbox" @bind="sadeceEksik" /> Yalnız alıcısı eksik işler</label>
+            @if (KisiFiltresi is { } kf && pano.Satirlar.FirstOrDefault(s => s.KisiId == kf) is { } ks)
+            {
+                <span class="dp-kapsam dp-firma-filtre">
+                    Kişi: <b>@ks.KisiAdi</b> · @ks.FirmaAdi
+                    <span class="dp-kapat" role="button" title="Filtreyi kaldır" @onclick="@(() => KisiFiltresi = null)">×</span>
+                </span>
+            }
+            <span class="dp-alt">@pano.Satirlar.Count(s => s.Eksik) iş alıcısız</span>
+            <RadzenButton Text="+ Kişi ekle" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light" Click="@(() => KisiAc(null))"
+                          Style="margin-left:auto" />
+        </div>
+
+        @if (islemHata is not null)
+        {
+            <div class="dp-hata">@islemHata</div>
+        }
+
+        @* ---- Şüpheli eşleşmeler: otomatik birleştirilmez ---- *@
+        @if (pano.Supheliler.Count > 0)
+        {
+            <div class="dp-kutu dp-kutu-acik">
+                <div class="dp-kutu-baslik">Olası aynı kişi · @pano.Supheliler.Count grup — birleştirilmedi, karar sizin</div>
+                @foreach (var s in pano.Supheliler)
+                {
+                    <div class="dp-suphe">
+                        <b>@s.FirmaAdi</b> · @(s.Tur == SupheTuru.AyniAd ? "aynı ad" : "benzer ad"):
+                        @foreach (var k in s.Kisiler)
+                        {
+                            <span class="dp-cip dp-cip-alici" title="@k.AliciSayisi işte alıcı">
+                                @k.Ad@(k.Eposta is null ? "" : $" <{k.Eposta}>")
+                                <span class="dp-bag" role="button" @onclick="@(() => Birlestir(s, k))"
+                                      title="Bu kaydı tut, diğerlerini buna birleştir">· bunu tut</span>
+                            </span>
+                        }
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="dp-kisi-izgara">
+            @* ---- Tablo ---- *@
+            <div class="dp-tablo-kutu">
+                <table class="dp-tablo dp-liste">
+                    <thead>
+                        <tr>
+                            <th>Firma</th>
+                            <th>Kişi</th>
+                            <th>E-posta</th>
+                            <th>Hangi iş</th>
+                            <th>Ne zaman</th>
+                            <th>Rol</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in Gorunenler)
+                        {
+                            <tr class="@(s.KisiId is null ? "" : "dp-satir")" @onclick="@(() => KisiAc(s))">
+                                <td class="dp-liste-firma" title="@s.FirmaAdi">@s.FirmaAdi</td>
+                                <td>
+                                    @if (s.Eksik)
+                                    {
+                                        <span class="dp-cip dp-cip-eksik" title="Bu işin alıcısı girilmemiş">eksik</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="@(s.KisiAktif ? "" : "dp-alt")">@s.KisiAdi</span>
+                                        @if (!string.IsNullOrWhiteSpace(s.KisiRolu))
+                                        {
+                                            <div class="dp-alt">@s.KisiRolu</div>
+                                        }
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(s.Eposta))
+                                    {
+                                        <a href="mailto:@s.Eposta" @onclick:stopPropagation="true">@s.Eposta</a>
+                                    }
+                                    else if (!s.Eksik)
+                                    {
+                                        <span class="dp-alt">e-posta yok</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (s.IsBaslik is not null)
+                                    {
+                                        @s.IsBaslik
+                                        @if (s.Yasal)
+                                        {
+                                            <span class="dp-cip dp-cip-yasal" style="margin-left:4px">yasal</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="dp-alt">hiçbir işte alıcı değil</span>
+                                    }
+                                </td>
+                                <td class="dp-alt">@s.NeZaman</td>
+                                <td>
+                                    @if (s.AliciTipi is { } tip)
+                                    {
+                                        <span class="@(tip == AliciTipi.Kime ? "dp-cip dp-cip-alici" : "dp-cip dp-cip-yok")">@(tip == AliciTipi.Kime ? "Kime" : "Bilgi")</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        @if (!Gorunenler.Any())
+                        {
+                            <tr><td colspan="6" class="dp-bos" style="padding:14px">Eşleşen satır yok.</td></tr>
+                        }
+                    </tbody>
+                </table>
+                @* Kapsam yazılı olsun (Prompt 14B). *@
+                <div class="dp-alt dp-kapsam-notu">
+                    Prosedür satırı açılmamış yasal işler bu listede yok. Bir yasal işe alıcı eklemek için o işin prosedür
+                    satırını açmanız yeterli (anasayfa · Firma işleri · iş · Düzenle).
+                </div>
+            </div>
+
+            @* ---- Sağ kolon: ayın mail takvimi (türetilir) ---- *@
+            <aside class="dp-takvim">
+                <div class="dp-donem">
+                    <span class="dp-ok" role="button" title="Önceki ay" @onclick="@(() => AyKaydir(-1))">◀</span>
+                    <span class="dp-donem-ad" style="font-size:14px">@pano.Etiket</span>
+                    <span class="dp-ok" role="button" title="Sonraki ay" @onclick="@(() => AyKaydir(1))">▶</span>
+                </div>
+                <div class="dp-alt">İşlerin gün kuralından türetilir; elle doldurulmaz.</div>
+
+                @if (pano.Takvim.Count == 0)
+                {
+                    <div class="dp-bos">Bu ay alıcılı iş yok.</div>
+                }
+                @foreach (var g in pano.Takvim)
+                {
+                    <div class="dp-takvim-gun">
+                        <div class="dp-takvim-tarih">@g.Tarih.Day</div>
+                        <div class="dp-takvim-isler">
+                            @foreach (var m in g.Isler)
+                            {
+                                <div title="@string.Join(", ", m.Firmalar)">
+                                    <b>@m.Baslik</b> · @string.Join(", ", m.Kime)@(m.Bilgi.Count > 0 ? $" (bilgi: {string.Join(", ", m.Bilgi)})" : "")
+                                    · <span class="dp-alt">@m.Firmalar.Count firma</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="@(pano.AlicisizIsler.Count == 0 ? "dp-kutu dp-kutu-tamam" : "dp-kutu dp-kutu-acik")">
+                    <div class="dp-kutu-baslik">Alıcısı olmayan işler · @pano.Etiket</div>
+                    @if (pano.AlicisizIsler.Count == 0)
+                    {
+                        <div>Yok.</div>
+                    }
+                    @foreach (var a in pano.AlicisizIsler)
+                    {
+                        <div>@a.SonGun.Day · @a.Baslik · <span class="dp-alt">@a.FirmaAdi</span></div>
+                    }
+                </div>
+            </aside>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>"+ Kişi ekle"nin firma seçenekleri (bütün aktif firmalar).</summary>
+    [Parameter] public List<DonemFirmaSecenegi> Firmalar { get; set; } = new();
+
+    /// <summary>İş dialogundaki "Kişiyi düzenle"den gelindiyse o kişi (adres: <c>&amp;kisi=</c>).</summary>
+    [Parameter] public int? Kisi { get; set; }
+
+    /// <summary>İş Takip Panosu'nun firma seçimi (Prompt 15): yalnız o firmanın kişileri ve takvimi.</summary>
+    [Parameter] public int? FirmaId { get; set; }
+
+    /// <summary>Kabuktan: bir ekleme bitti, yeniden oku.</summary>
+    [Parameter] public int Surum { get; set; }
+
+    private (int? Firma, int Surum)? yuklenenDurum;
+
+    private int? KisiFiltresi, sonKisiParam;
+
+    protected override void OnParametersSet()
+    {
+        if (Kisi == sonKisiParam) return;   // yalnız adres değişince; kaldırılan filtre geri gelmesin
+        sonKisiParam = Kisi;
+        KisiFiltresi = Kisi;
+    }
+
+    private static readonly System.Globalization.CultureInfo Tr = new("tr-TR");
+
+    private KisilerPanosuDto? pano;
+    private string? hata, islemHata;
+    private string arama = string.Empty;
+    private bool sadeceEksik;
+
+    private IEnumerable<KisiSatiriDto> Gorunenler
+    {
+        get
+        {
+            var q = arama.Trim().ToLower(Tr);
+            return pano!.Satirlar.Where(s =>
+                (!sadeceEksik || s.Eksik)
+                && (KisiFiltresi is null || s.KisiId == KisiFiltresi)
+                && (q.Length == 0
+                    || s.FirmaAdi.ToLower(Tr).Contains(q)
+                    || (s.KisiAdi ?? "").ToLower(Tr).Contains(q)
+                    || (s.Eposta ?? "").ToLower(Tr).Contains(q)));
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (yuklenenDurum == (FirmaId, Surum)) return;
+        yuklenenDurum = (FirmaId, Surum);
+        await Yukle(pano?.Yil, pano?.Ay);
+    }
+
+    private async Task Yukle(int? yil, int? ay)
+    {
+        var (sonuc, mesaj) = await Api.KisilerPanosuAsync(yil, ay, firmaId: FirmaId);
+        if (sonuc is null)
+        {
+            hata = mesaj ?? "Kişiler yüklenemedi.";
+            return;
+        }
+        hata = null;
+        pano = sonuc;
+    }
+
+    private async Task AyKaydir(int fark)
+    {
+        if (pano is null) return;
+        var t = new DateTime(pano.Yil, pano.Ay, 1).AddMonths(fark);
+        await Yukle(t.Year, t.Month);
+    }
+
+    private async Task KisiAc(KisiSatiriDto? s)
+    {
+        if (s is not null && s.KisiId is null) return;   // eksik satır: alıcı işin formunda eklenir
+        islemHata = null;
+
+        var kaydedildi = await DialogService.OpenAsync<KisiDialog>(s is null ? "Kişi ekle" : $"Kişi — {s.FirmaAdi}",
+            new Dictionary<string, object?>
+            {
+                { nameof(KisiDialog.KisiId), s?.KisiId },
+                { nameof(KisiDialog.Mevcut), s is null ? null : new KisiKaydetDto
+                    {
+                        FirmaId = s.FirmaId, Ad = s.KisiAdi ?? "", Eposta = s.Eposta, Rol = s.KisiRolu, Notu = s.Notu, Aktif = s.KisiAktif
+                    } },
+                { nameof(KisiDialog.Firmalar), Firmalar },
+                { nameof(KisiDialog.VarsayilanFirmaId), FirmaId }   // sayfanın firma seçimi önceden seçili
+            }!,
+            new DialogOptions { Width = "min(460px, 96vw)" });
+
+        if (kaydedildi is true) await Yukle(pano?.Yil, pano?.Ay);
+    }
+
+    /// <summary>Kullanıcının kararı: seçilen kaydı tut, gruptaki diğerlerini ona birleştir.</summary>
+    private async Task Birlestir(SupheliKisiDto grup, KisiOzetDto tutulan)
+    {
+        var digerleri = grup.Kisiler.Where(k => k.Id != tutulan.Id).ToList();
+        var onay = await DialogService.Confirm(
+            $"{string.Join(", ", digerleri.Select(k => k.Eposta is null ? k.Ad : $"{k.Ad} <{k.Eposta}>"))} kaydı "
+            + $"\"{tutulan.Ad}\" kişisine birleştirilecek; alıcı oldukları işler ona geçer. Farklı e-posta kişinin notuna yazılır.",
+            "Kişileri birleştir", new ConfirmOptions { OkButtonText = "Birleştir", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        foreach (var k in digerleri)
+        {
+            islemHata = await Api.KisiBirlestirAsync(tutulan.Id, k.Id);
+            if (islemHata is not null) break;
+        }
+        await Yukle(pano?.Yil, pano?.Ay);
+    }
+}

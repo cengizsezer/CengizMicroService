@@ -1,0 +1,591 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Pages.Yapilacaklar
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@inject IYapilacaklarApiClient Api
+@inject IFileApiService FileApi
+@inject DialogService DialogService
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+@*
+    İş prosedürü paneli (tasarım I) — sağdan açılır, 760px. Beş bölüm, bu sırayla:
+    nerede yapılır, kime gider, nasıl yapılır, ekler, geçmiş. Altta sabit şerit: bu dönemin
+    son günü + "Yapıldı işaretle".
+
+    Ekler Belgeler kartıyla AYNI depoyu kullanır: dosya FileApiService'e yüklenir, burada
+    yalnız FileId + metadata. Ama ek İŞE bağlıdır, firmaya değil — Belgeler kartı
+    etkilenmez.
+
+    Yasal işin prosedür satırı ilk yazmada açılır (kayıt ya da ilk ek); o zamana kadar
+    bölümler boş görünür.
+
+    Prompt 14: "Nerede" ve "Nasıl yapılır" ÖNCE işin tarifini (iş bazında, takip panosunun Nasıl yapılır
+    sekmesi) okur; firmanın kendi metni tariften farklıysa altında "Bu firmada farklı" başlığıyla durur —
+    Nasıl yapılır sekmesindeki AYNI düzen. Tarif burada düzenlenmez: "Tarifi düzenle" o sekmeye gider.
+    Yerleşim, boyut ve diğer bölümler değişmedi.
+
+    Her yazmadan sonra Degisti çağrılır: kart arkada tazelenir (çipler, işaret). Panel de
+    kart verisini yeniden alır — ikinci "Düzenle" bayat tanımla açılmasın.
+*@
+
+<YsStiller />
+
+<div class="ys-panel">
+    <div class="ys-panel-ust">
+        <div>
+            <div class="ys-panel-baslik">
+                @if (Satir.KaynakTip == IsKaynagi.Yasal)
+                {
+                    <RadzenIcon Icon="lock" class="ys-kilit" title="Mükellefiyetten türetildi; ad ve tarih değiştirilemez" />
+                }
+                @(p?.Baslik ?? Satir.Baslik)
+            </div>
+            <div class="ys-alt">
+                @FirmaAdi · @IsMetin.Kaynak(Satir.KaynakTip)@(Satir.MukellefiyetKodu is null ? "" : " " + Satir.MukellefiyetKodu)
+                · @(p?.KuralMetni ?? IsMetin.Tekrar(Satir.Tekrar))
+            </div>
+            @if (p?.OnAdimiBaslik is { } hedef)
+            {
+                <div class="ys-onadim">→ @hedef işinin hazırlığı</div>
+            }
+        </div>
+        <RadzenButton Text="Düzenle" Icon="edit" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light"
+                      Disabled="@(p is null)" Click="@(() => Duzenle(0))" />
+    </div>
+
+    @if (p is null)
+    {
+        <div class="ys-bos" style="padding:1rem 0">@(hata ?? "Yükleniyor…")</div>
+    }
+    else
+    {
+        <div class="ys-panel-govde">
+
+            @* 1. Nerede yapılır *@
+            <section>
+                <div class="ys-bolum-ad">Nerede yapılır</div>
+                @if (p.TarifId is not null)
+                {
+                    @* Tarif: program tarifte yoksa firmanınki. *@
+                    <div class="ys-nerede">
+                        @if ((p.TarifSistemAdi ?? p.SistemAdi) is { } prg)
+                        {
+                            <span class="ys-cip ys-cip-program">@prg</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(p.TarifMenuYolu))
+                        {
+                            <span class="ys-menu-yolu">@p.TarifMenuYolu</span>
+                        }
+                    </div>
+                    @if (p.FirmayaOzel && !string.IsNullOrWhiteSpace(p.MenuYolu))
+                    {
+                        <div class="ys-gri-not">Bu firmada farklı: <span class="ys-menu-yolu">@p.MenuYolu</span></div>
+                    }
+                }
+                else if (p.SistemAdi is null && string.IsNullOrWhiteSpace(p.MenuYolu))
+                {
+                    <div class="ys-bos">Program belirtilmemiş. <span class="ys-bag" role="button" @onclick="@(() => Duzenle(1))">Ekle</span></div>
+                }
+                else
+                {
+                    <div class="ys-nerede">
+                        @if (p.SistemAdi is not null)
+                        {
+                            <span class="ys-cip ys-cip-program">@p.SistemAdi</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(p.MenuYolu))
+                        {
+                            <span class="ys-menu-yolu">@p.MenuYolu</span>
+                        }
+                    </div>
+                }
+                @if (p.FarkliMuhasebeProgrami is { } firmaninki)
+                {
+                    <div class="ys-gri-not">Firmanın muhasebe programı @firmaninki</div>
+                }
+            </section>
+
+            @* 2. Kime gider *@
+            <section>
+                <div class="ys-bolum-ad">
+                    <span>Kime gider</span>
+                    <span class="ys-bag" role="button" @onclick="@(() => Duzenle(1))">+ Alıcı ekle</span>
+                </div>
+                @if (p.Alicilar.Count == 0)
+                {
+                    <div class="ys-bos">Alıcı yok.</div>
+                }
+                else
+                {
+                    <table class="ys-alicilar">
+                        @foreach (var a in p.Alicilar)
+                        {
+                            <tr>
+                                <td style="font-weight:600">@a.AdSoyad</td>
+                                <td>@a.Rol</td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(a.Eposta))
+                                    {
+                                        <a href="mailto:@a.Eposta">@a.Eposta</a>
+                                    }
+                                    else
+                                    {
+                                        <span class="ys-alt">e-posta yok</span>
+                                    }
+                                </td>
+                                <td style="text-align:right">
+                                    <span class="@(a.AliciTipi == AliciTipi.Kime ? "ys-tip ys-tip-kime" : "ys-tip ys-tip-bilgi")">
+                                        @(a.AliciTipi == AliciTipi.Kime ? "Kime" : "Bilgi")
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </table>
+                }
+            </section>
+
+            @* 3. Nasıl yapılır *@
+            <section>
+                <div class="ys-bolum-ad">
+                    <span>Nasıl yapılır</span>
+                    @if (!string.IsNullOrEmpty(p.TarifAnahtari))
+                    {
+                        <span class="ys-bag" role="button" @onclick="TarifiDuzenle"
+                              title="Tarif iş bazındadır; takip panosunun Nasıl yapılır sekmesinde düzenlenir">Tarifi düzenle</span>
+                    }
+                </div>
+                @if (p.TarifId is not null)
+                {
+                    @if (p.TarifAdimlar.Count == 0)
+                    {
+                        <div class="ys-bos">Tarifte adım yazılmamış.</div>
+                    }
+                    else
+                    {
+                        <ol class="ys-adimlar">
+                            @foreach (var adim in p.TarifAdimlar)
+                            {
+                                <li>@adim</li>
+                            }
+                        </ol>
+                    }
+                    @if (p.FirmayaOzel && p.Adimlar.Count > 0)
+                    {
+                        <div class="ys-gri-not" style="margin-top:6px">Bu firmada farklı</div>
+                        <ol class="ys-adimlar">
+                            @foreach (var adim in p.Adimlar)
+                            {
+                                <li>@adim</li>
+                            }
+                        </ol>
+                    }
+                }
+                else if (p.Adimlar.Count == 0)
+                {
+                    <div class="ys-bos">Adım yazılmamış. <span class="ys-bag" role="button" @onclick="@(() => Duzenle(1))">Yaz</span></div>
+                }
+                else
+                {
+                    <ol class="ys-adimlar">
+                        @foreach (var adim in p.Adimlar)
+                        {
+                            <li>@adim</li>
+                        }
+                    </ol>
+                }
+            </section>
+
+            @* 4. Ekler *@
+            <section>
+                <div class="ys-bolum-ad">
+                    <span>Ekler</span>
+                    <label class="@(yukleniyor ? "ys-dosya-ekle ys-pasif" : "ys-dosya-ekle")">
+                        <RadzenIcon Icon="attach_file" Style="font-size:15px" />
+                        @(yukleniyor ? "Yükleniyor…" : "+ Dosya ekle")
+                        <InputFile accept="@Kabul" disabled="@yukleniyor" OnChange="@DosyaEkle" style="display:none" />
+                    </label>
+                </div>
+                @if (p.Ekler.Count == 0)
+                {
+                    <div class="ys-bos">Ek yok. png, jpg, pdf, xlsx, xls, docx, csv, txt · en çok @(EnFazlaBayt / (1024 * 1024)) MB</div>
+                }
+                else
+                {
+                    <div class="ys-ekler">
+                        @foreach (var ek in p.Ekler)
+                        {
+                            <div class="ys-ek">
+                                @if (onizlemeler.TryGetValue(ek.FileId, out var url))
+                                {
+                                    <img class="ys-ek-onizleme" src="@url" alt="@ek.DosyaAdi" />
+                                }
+                                else
+                                {
+                                    <span class="ys-ek-ikon"><RadzenIcon Icon="@Ikon(ek.DosyaAdi)" /></span>
+                                }
+                                <div class="ys-ek-bilgi">
+                                    <div class="ys-ek-ad" title="@ek.DosyaAdi">@ek.DosyaAdi</div>
+                                    <div class="ys-ek-alt">@Boyut(ek.Boyut) · @ek.YuklemeZamani.ToLocalTime().ToString("dd.MM.yyyy")</div>
+                                </div>
+                                <RadzenButton Icon="download" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                                              title="İndir" Click="@(() => Indir(ek))" />
+                                <RadzenButton Icon="delete" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Danger"
+                                              Variant="Variant.Text" title="Sil" Click="@(() => EkSil(ek))" />
+                            </div>
+                        }
+                    </div>
+                }
+            </section>
+
+            @* 5. Geçmiş *@
+            <section>
+                <div class="ys-bolum-ad">
+                    <span>Geçmiş</span>
+                    @if (p.GecmisToplam > p.Gecmis.Count)
+                    {
+                        <span class="ys-bag" role="button" @onclick="TumGecmis">Tüm geçmiş (@p.GecmisToplam)</span>
+                    }
+                </div>
+                @if (p.Gecmis.Count == 0)
+                {
+                    <div class="ys-bos">Henüz son günü geçmiş dönem yok.</div>
+                }
+                else
+                {
+                    <table class="ys-tablo">
+                        <thead>
+                            <tr><th>Dönem</th><th>Son gün</th><th>Tarih</th><th>Kim</th><th>Durum</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var g in p.Gecmis)
+                            {
+                                <tr class="@(g.Yapilmadi ? "ys-gecmis-yapilmadi" : "")">
+                                    <td>@(g.DonemEtiketi ?? "tek sefer")</td>
+                                    <td>@g.SonGun.ToString("dd.MM.yyyy")</td>
+                                    <td>@(g.TamamlanmaZamani?.ToLocalTime().ToString("dd.MM.yyyy") ?? "—")</td>
+                                    <td>@(g.TamamlayanAdi ?? "—")</td>
+                                    <td>@(g.Yapildi ? "Yapıldı" : "Yapılmadı")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </section>
+
+            @if (hata is not null)
+            {
+                <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">@hata</RadzenAlert>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(Satir.DonemAnahtari))
+        {
+        <div class="ys-panel-alt">
+            <span class="ys-panel-alt-metin">
+                @(Satir.DonemEtiketi is null ? "Son gün" : $"{Satir.DonemEtiketi} · son gün")
+                <b>@Satir.SonGun.ToString("dd.MM.yyyy")</b>
+                <span class="@IsMetin.RozetSinifi(tamamlandi ? IsDurumu.Tamam : Satir.Durum)" style="margin-left:6px">
+                    @IsMetin.Rozet(tamamlandi ? IsDurumu.Tamam : Satir.Durum, Satir.Gun)
+                </span>
+            </span>
+            <RadzenButton Text="@(tamamlandi ? "İşareti kaldır" : "Yapıldı işaretle")" Icon="@(tamamlandi ? "undo" : "check")"
+                          ButtonStyle="@(tamamlandi ? ButtonStyle.Light : ButtonStyle.Success)" IsBusy="@isaretleniyor"
+                          Click="@Isaretle" />
+        </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+    [Parameter] public string FirmaAdi { get; set; } = string.Empty;
+
+    /// <summary>Paneli açan liste satırı — hangi dönemin işaretleneceği buradan.</summary>
+    [Parameter, EditorRequired] public IsSatiriDto Satir { get; set; } = default!;
+
+    /// <summary>Düzenle dialoğu ön adım seçeneklerini buradan kurar.</summary>
+    [Parameter, EditorRequired] public FirmaIsleriKartDto Kart { get; set; } = default!;
+
+    /// <summary>Panel bir şey yazdı (prosedür, ek, işaret); kart tazelensin.</summary>
+    [Parameter] public Func<Task>? Degisti { get; set; }
+
+    /// <summary>Sunucudaki sınırla aynı (FirmaBilgiService.EnFazlaBayt — Belgeler kartı).</summary>
+    private const long EnFazlaBayt = 20 * 1024 * 1024;
+
+    private const string Kabul = ".png,.jpg,.jpeg,.pdf,.xlsx,.xls,.docx,.csv,.txt";
+    private static readonly HashSet<string> Uzantilar = new(Kabul.Split(','), StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> Gorseller = new(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg" };
+
+    private IsProsedurDto? p;
+    private FirmaIsleriKartDto kart = default!;
+    private bool tumGecmis;
+    private bool tamamlandi;
+    private bool yukleniyor;
+    private bool isaretleniyor;
+    private string? hata;
+    private readonly Dictionary<int, string> onizlemeler = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        kart = Kart;
+        tamamlandi = Satir.Tamamlandi;
+        await Yukle();
+    }
+
+    /// <summary>Yazmadan sonra: panel ve kart verisi yeniden, üst bileşene haber.</summary>
+    private async Task DegistiAsync()
+    {
+        await Yukle();
+        kart = await Api.FirmaIsleriAsync(FirmaId) ?? kart;
+        if (Degisti is not null) await Degisti();
+    }
+
+    private async Task Yukle()
+    {
+        var sonuc = await Api.ProsedurAsync(FirmaId, Satir.KaynakTip, Satir.KaynakId, tumGecmis);
+        if (sonuc is null)
+        {
+            hata = "Prosedür alınamadı.";
+            return;
+        }
+
+        p = sonuc;
+        await OnizlemeleriYukle();
+    }
+
+    /// <summary>Görsel ekler için küçük önizleme: presigned URL, yalnız henüz alınmamışlar.</summary>
+    private async Task OnizlemeleriYukle()
+    {
+        foreach (var ek in p!.Ekler.Where(e => Gorseller.Contains(Path.GetExtension(e.DosyaAdi)) && !onizlemeler.ContainsKey(e.FileId)))
+        {
+            try
+            {
+                var dosya = await FileApi.GetDownloadAsync(ek.FileId);
+                if (!string.IsNullOrEmpty(dosya?.PresignedUrl)) onizlemeler[ek.FileId] = dosya!.PresignedUrl!;
+            }
+            catch
+            {
+                // Önizleme yoksa ikon gösterilir.
+            }
+        }
+    }
+
+    private async Task TumGecmis()
+    {
+        tumGecmis = true;
+        await Yukle();
+    }
+
+    private async Task Duzenle(int sekme)
+    {
+        var yasal = Satir.KaynakTip == IsKaynagi.Yasal;
+        var mevcut = yasal
+            ? kart.YasalProsedurler.FirstOrDefault(t => t.Id == p?.IsId) ?? ProsedurdenTanim()
+            : kart.OzelTanimlar.FirstOrDefault(t => t.Id == Satir.KaynakId);
+
+        var kaydedildi = await DialogService.OpenAsync<FirmaIsiDialog>(
+            (yasal ? "Prosedür — " : "İşi düzenle — ") + FirmaAdi,
+            new Dictionary<string, object?>
+            {
+                { nameof(FirmaIsiDialog.FirmaId), FirmaId },
+                { nameof(FirmaIsiDialog.Kart), kart },
+                { nameof(FirmaIsiDialog.Mevcut), mevcut },
+                { nameof(FirmaIsiDialog.YasalSatir), yasal ? Satir : null },
+                { nameof(FirmaIsiDialog.Sekme), sekme }
+            }!,
+            new DialogOptions { Width = "min(640px, 96vw)" });
+
+        if (kaydedildi is not true) return;
+        await DegistiAsync();
+    }
+
+    /// <summary>Kart açıldıktan sonra açılmış prosedür satırı (ör. ilk ek): kartta yok, panelden kurulur.</summary>
+    private FirmaIsiDto? ProsedurdenTanim() => p?.IsId is not { } id ? null : new FirmaIsiDto
+    {
+        Id = id,
+        FirmaId = FirmaId,
+        Baslik = p.Baslik,
+        Tekrar = p.Tekrar,
+        YasalMukellefiyetKodu = p.MukellefiyetKodu,
+        SistemId = p.SistemId,
+        SistemAdi = p.SistemAdi,
+        MenuYolu = p.MenuYolu,
+        NasilYapilir = p.NasilYapilir,
+        OnAdimiOlduguIsId = p.OnAdimiOlduguIsId,
+        OnAdimiBaslik = p.OnAdimiBaslik,
+        Alicilar = p.Alicilar,
+        EkSayisi = p.Ekler.Count,
+        Aktif = true
+    };
+
+    private async Task Isaretle()
+    {
+        hata = null;
+        isaretleniyor = true;
+        try
+        {
+            var sonuc = await Api.IsaretleAsync(new IsIsaretleDto
+            {
+                Yapildi = !tamamlandi,
+                Isler = { IsIsaretDto.Satirdan(Satir) }
+            });
+            if (sonuc is not null)
+            {
+                hata = sonuc;
+                return;
+            }
+
+            tamamlandi = !tamamlandi;
+            await DegistiAsync();
+        }
+        finally
+        {
+            isaretleniyor = false;
+        }
+    }
+
+    // ---- Ekler ----
+
+    private async Task DosyaEkle(InputFileChangeEventArgs e)
+    {
+        var dosya = e.File;
+        if (dosya is null || p is null) return;
+
+        hata = null;
+
+        if (!Uzantilar.Contains(Path.GetExtension(dosya.Name)))
+        {
+            hata = "Bu dosya türü eklenemez. İzin verilenler: png, jpg, pdf, xlsx, xls, docx, csv, txt.";
+            return;
+        }
+
+        if (dosya.Size <= 0 || dosya.Size > EnFazlaBayt)
+        {
+            hata = $"Dosya boş ya da {EnFazlaBayt / (1024 * 1024)} MB sınırını aşıyor.";
+            return;
+        }
+
+        yukleniyor = true;
+        int? yuklenenFileId = null;
+
+        try
+        {
+            // Yasal işin prosedür satırı henüz yoksa önce açılır: ek bir işe bağlanmalı.
+            var isId = p.IsId;
+            if (isId is null)
+            {
+                var (acilan, acmaHatasi) = await Api.YasalProsedurAcAsync(FirmaId, Satir.MukellefiyetKodu!, Satir.Tekrar);
+                if (acilan is null)
+                {
+                    hata = acmaHatasi ?? "Prosedür açılamadı.";
+                    return;
+                }
+                isId = acilan.Id;
+            }
+
+            var yukleme = await FileApi.UploadGenericAsync(dosya, "firma-isi-eki");
+            if (yukleme is null || yukleme.Id <= 0)
+            {
+                hata = "Dosya yüklenemedi. Dosya servisi yanıt vermiyor olabilir.";
+                return;
+            }
+
+            yuklenenFileId = yukleme.Id;
+
+            var (ek, mesaj) = await Api.EkEkleAsync(FirmaId, isId.Value, new FirmaIsiEkiOlusturDto
+            {
+                FileId = yukleme.Id,
+                DosyaAdi = dosya.Name,
+                ContentType = string.IsNullOrWhiteSpace(yukleme.ContentType) ? dosya.ContentType : yukleme.ContentType,
+                Boyut = yukleme.Length > 0 ? yukleme.Length : dosya.Size
+            });
+
+            if (ek is null)
+            {
+                hata = mesaj ?? "Ek kaydedilemedi.";
+                return;
+            }
+
+            // Kayıt tuttu: telafi silmesi yapılmayacak.
+            yuklenenFileId = null;
+            await DegistiAsync();
+        }
+        catch (Exception ex)
+        {
+            hata = "Ek eklenirken hata: " + ex.Message;
+        }
+        finally
+        {
+            // Yükleme başarılı ama kayıt başarısızsa dosya yetim kalmasın (Belgeler kartıyla aynı).
+            if (yuklenenFileId is int fid && fid > 0)
+            {
+                try { await FileApi.DeleteAsync(fid); } catch { }
+            }
+
+            yukleniyor = false;
+        }
+    }
+
+    private async Task EkSil(FirmaIsiEkiDto ek)
+    {
+        if (p?.IsId is not { } isId) return;
+
+        var onay = await DialogService.Confirm($"\"{ek.DosyaAdi}\" silinsin mi?", "Ek sil",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        var (fileId, mesaj) = await Api.EkSilAsync(FirmaId, isId, ek.Id);
+        if (fileId is null)
+        {
+            hata = mesaj ?? "Ek silinemedi.";
+            return;
+        }
+
+        if (fileId > 0)
+        {
+            try { await FileApi.DeleteAsync(fileId.Value); } catch { }
+        }
+
+        onizlemeler.Remove(ek.FileId);
+        await DegistiAsync();
+    }
+
+    private async Task Indir(FirmaIsiEkiDto ek)
+    {
+        var dosya = await FileApi.GetDownloadAsync(ek.FileId);
+        if (string.IsNullOrEmpty(dosya?.PresignedUrl))
+        {
+            hata = "Dosya bağlantısı alınamadı.";
+            return;
+        }
+
+        await JS.InvokeVoidAsync("open", dosya!.PresignedUrl, "_blank");
+    }
+
+    private static string Ikon(string ad) => Path.GetExtension(ad).ToLowerInvariant() switch
+    {
+        ".pdf" => "picture_as_pdf",
+        ".xlsx" or ".xls" or ".csv" => "table_chart",
+        ".docx" => "description",
+        ".png" or ".jpg" or ".jpeg" => "image",
+        _ => "article"
+    };
+
+    private static string Boyut(long bayt)
+        => bayt < 1024 ? $"{bayt} B"
+         : bayt < 1024 * 1024 ? $"{bayt / 1024.0:0.#} KB"
+         : $"{bayt / (1024.0 * 1024):0.#} MB";
+
+    /// <summary>Tarif tek yerden düzenlenir: paneli kapat, takip panosunun Nasıl yapılır sekmesine git.</summary>
+    private void TarifiDuzenle()
+    {
+        if (p is null || string.IsNullOrEmpty(p.TarifAnahtari)) return;
+        DialogService.CloseSide();
+        Nav.NavigateTo(IsTakipPanosuAdres.Tarif(p.TarifAnahtari, FirmaId));
+    }
+}

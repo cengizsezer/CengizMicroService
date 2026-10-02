@@ -1,0 +1,39 @@
+@using Radzen
+@using Radzen.Blazor
+
+@*
+    Sayfanın kendi firma seçimi — İş Takip Panosu (Prompt 15 · 2.0) ve Yapılacaklar (Prompt 16) AYNI bileşen.
+    Varsayılan "Bütün firmalar"; × ile geri dönülür. Seçimi sayfa adreste (?firma=) taşır; bu bileşen yalnız
+    seçer ve haber verir — başka sayfanın seçimine ve Anasayfa'nın seçili firmasına dokunmaz.
+*@
+
+<span class="dp-firma-secici">
+    <span class="dp-etiket">Firma</span>
+    <RadzenDropDown TValue="int?" Data="@Secenekler" TextProperty="Ad" ValueProperty="Id" Value="@Secili"
+                    ValueChanged="@((int? f) => Sec(f))" AllowClear="true" AllowFiltering="true"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                    Placeholder="Bütün firmalar" Disabled="@(Secenekler.Count == 0)" Style="min-width:220px" />
+    @if (Secili is not null)
+    {
+        <span class="dp-kapat" role="button" title="Bütün firmalar" @onclick="@(() => Sec(null))">×</span>
+    }
+</span>
+
+<style>
+    .dp-firma-secici { display:inline-flex; align-items:center; gap:6px; }
+    .dp-firma-secici .dp-etiket { font-size:11px; color:#718096; text-transform:uppercase; letter-spacing:.02em; font-weight:600; }
+    .dp-firma-secici .dp-kapat { cursor:pointer; color:#a0aec0; font-size:15px; }
+    .dp-firma-secici .dp-kapat:hover { color:#2d3748; }
+</style>
+
+@code {
+    /// <summary>Seçili firma; boş = Bütün firmalar.</summary>
+    [Parameter] public int? Secili { get; set; }
+
+    [Parameter, EditorRequired] public List<DonemFirmaSecenegi> Secenekler { get; set; } = new();
+
+    /// <summary>Seçim değişti (null = Bütün firmalar) — sayfa adresi günceller.</summary>
+    [Parameter] public EventCallback<int?> Secildi { get; set; }
+
+    private Task Sec(int? firmaId) => firmaId == Secili ? Task.CompletedTask : Secildi.InvokeAsync(firmaId);
+}

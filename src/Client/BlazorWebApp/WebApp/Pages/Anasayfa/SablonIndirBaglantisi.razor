@@ -1,0 +1,75 @@
+@inject IJSRuntime JS
+@inject ILogger<SablonIndirBaglantisi> Log
+
+@*
+    "Boş şablon indir" (Prompt 13) — anasayfadaki BÜTÜN şablon bağlantıları bu bileşen: firma işleri
+    kartının başlığı, toplu ekleme dialogu (iki yer) ve Kullanılan sistemler kartındaki mizan şablonu.
+    İki indirme bağlantısının farklı davranması kafa karıştırır; ne indirildiği dışarıdan gelir
+    (Getir + DosyaAdi), davranış tek yerde.
+
+    İlk indirmede ~1,4 sn sessizlik oluyordu (ClosedXML/OpenXml derlemeleri ilk kullanımda yükleniyor)
+    ve kullanıcı butonun çalışmadığını sanıp tekrar basıyordu. Sorun süre değil geri bildirim yokluğu:
+    basıldığı anda "Hazırlanıyor…" ve pasif; dosya gelince eski hâline döner. Hata olursa bağlantı geri
+    açılır ve yanında tek satır hata görünür. İstek sürerken ikinci tık yeni istek AÇMAZ.
+    Ön-ısıtma / önbellek bilerek yok.
+*@
+
+<span class="an-sablon">
+    <span class="@(hazirlaniyor ? $"{Sinif} an-sablon-bekliyor" : Sinif)" role="button" aria-disabled="@(hazirlaniyor ? "true" : "false")"
+          @onclick="Indir">@(hazirlaniyor ? "Hazırlanıyor…" : Metin)</span>
+    @if (hata is not null)
+    {
+        <span class="an-sablon-hata" role="alert">@hata</span>
+    }
+</span>
+
+<style>
+    .an-sablon { display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; }
+    .an-sablon-bekliyor { color:#a0aec0 !important; cursor:progress !important; text-decoration:none !important; }
+    .an-sablon-hata { font-size:11.5px; color:#c53030; }
+</style>
+
+@code {
+    /// <summary>Şablonu getiren çağrı: içerik ya da kullanıcıya gösterilecek hata; (null, null) = vazgeçildi.</summary>
+    [Parameter, EditorRequired] public Func<Task<(byte[]? Icerik, string? Hata)>> Getir { get; set; } = default!;
+
+    [Parameter, EditorRequired] public string DosyaAdi { get; set; } = "sablon.xlsx";
+
+    [Parameter] public string Metin { get; set; } = "Boş şablon indir";
+
+    /// <summary>Bulunduğu kartın bağlantı sınıfı ("ys-bag", "an-baglanti").</summary>
+    [Parameter] public string Sinif { get; set; } = "ys-bag";
+
+    private bool hazirlaniyor;
+    private string? hata;
+
+    private async Task Indir()
+    {
+        if (hazirlaniyor) return;   // çift tık: ikinci istek yok
+        hazirlaniyor = true;
+        hata = null;
+        StateHasChanged();          // "Hazırlanıyor…" istek gitmeden görünsün
+
+        try
+        {
+            var (icerik, mesaj) = await Getir();
+            if (icerik is null)
+            {
+                // (null, null) = çağıran vazgeçti (ör. İş Takip Panosu'nda firma sorusu iptal): sessiz.
+                // Uçların hata dönüşü her zaman bir mesaj taşır.
+                if (mesaj is not null) hata = mesaj;
+                return;
+            }
+            await JS.InvokeVoidAsync("downloadFileFromBytes", DosyaAdi, icerik);
+        }
+        catch (Exception ex)
+        {
+            Log.LogWarning(ex, "Şablon indirilemedi ({DosyaAdi}).", DosyaAdi);
+            hata = "Şablon indirilemedi.";
+        }
+        finally
+        {
+            hazirlaniyor = false;
+        }
+    }
+}

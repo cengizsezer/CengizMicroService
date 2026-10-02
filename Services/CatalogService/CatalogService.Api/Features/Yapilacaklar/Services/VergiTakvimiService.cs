@@ -56,7 +56,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
 
         public async Task<VergiTakvimiDto> EkleAsync(VergiTakvimiKaydetDto dto, CancellationToken ct = default)
         {
-            var satir = new VergiTakvimi();
+            var satir = new VergiTakvimi { ElleDuzenlendi = true };   // kullanıcının satırı: seed dokunmaz
             await UygulaAsync(satir, dto, ct);
 
             _db.VergiTakvimi.Add(satir);
@@ -76,9 +76,15 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
             if (sayi > 0 && (satir.MukellefiyetKodu != dto.MukellefiyetKodu?.Trim() || satir.Tekrar != dto.Tekrar
                              || satir.Yil != dto.Yil || satir.DonemNo != dto.DonemNo))
                 throw new YapilacaklarKuralException(nameof(dto.DonemNo),
-                    "Bu satırda yapıldı işareti var; kod ve dönem değiştirilemez. Son gün, ad ve aktiflik düzeltilebilir.");
+                    "Bu satırda yapıldı işareti ya da dönem notu var; kod ve dönem değiştirilemez. Son gün, ad ve aktiflik düzeltilebilir.");
 
+            var (eskiAd, eskiSonGun) = (satir.Ad, satir.SonGun.Date);
             await UygulaAsync(satir, dto, ct);
+
+            // Ad ya da son gün elle değiştiyse seed bu satırı bir daha yeniden üretmez (Prompt 7B).
+            // Yalnız aktiflik değişikliği tarihi "elle" yapmaz.
+            if (satir.Ad != eskiAd || satir.SonGun.Date != eskiSonGun) satir.ElleDuzenlendi = true;
+
             await _db.SaveChangesAsync(ct);
             return Dto(satir, sayi);
         }
@@ -90,7 +96,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
 
             if (await TamamlamaSayisiAsync(id, ct) > 0)
                 throw new YapilacaklarKuralException("id",
-                    "Bu satırda yapıldı işareti var; silinemez. İş üretmesin istiyorsanız pasife alın.");
+                    "Bu satırda yapıldı işareti ya da dönem notu var; silinemez. İş üretmesin istiyorsanız pasife alın.");
 
             _db.VergiTakvimi.Remove(satir);
             await _db.SaveChangesAsync(ct);
@@ -98,8 +104,8 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
 
         public async Task<int> VarsayilanlariYukleAsync(CancellationToken ct = default)
         {
-            var (eklenen, _) = await VergiTakvimiSeed.SeedAsync(_db, _saat.GetLocalNow().Date, ct);
-            return eklenen;
+            var sonuc = await VergiTakvimiSeed.SeedAsync(_db, _saat.GetLocalNow().Date, ct);
+            return sonuc.Eklenen;
         }
 
         private Task<int> TamamlamaSayisiAsync(int id, CancellationToken ct)
@@ -160,6 +166,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
             DonemBit = s.DonemBit,
             SonGun = s.SonGun,
             Aktif = s.Aktif,
+            ElleDuzenlendi = s.ElleDuzenlendi,
             TamamlamaSayisi = tamamlama
         };
     }

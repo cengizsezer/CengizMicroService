@@ -1,0 +1,475 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Pages.Anasayfa
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@implements IAsyncDisposable
+
+@inject IYapilacaklarApiClient Api
+@inject IFileApiService FileApi
+@inject DialogService DialogService
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+@*
+    Dönem panosunun hücre paneli — hücreye yakın küçük kutu (sağdan sürgü değil). Sırayla:
+    başlık · yapıldı işaretle · kanıt (Ctrl+V ya da dosya) · bu döneme not · geçen dönem ·
+    "Nasıl yapılır" + Kaydet. "Nasıl yapılır" Prompt 14'ten beri takip panosunun Nasıl yapılır
+    sekmesine, O İŞİN tarifine gider (önceden Prompt 8'in prosedür panelini açıyordu).
+
+    Prompt 14: aynı panel dönem sheet'inin satır listesinde SAĞDA açılır (Sag=true) — mantık
+    taşındı, yeniden yazılmadı. Sağ yerleşimde başlığın altında satırın program / alıcı / son gün
+    çipleri durur ve sıra 2.2'deki gibidir: işaret · not · kanıt · geçen dönem · alt. Not kanıttan
+    önce gelir (her iki yerleşimde) — işaretsiz dönemde en çok yazılan şey sebeptir.
+
+    DÖNEM eki (IsTamamlamaEki) ≠ PROSEDÜR eki (FirmaIsiEki): bu panel yalnız o ayın kanıtını
+    tutar; işin kalıcı ekleri "Nasıl yapılır" panelinde, bu panelden dokunulmaz.
+
+    Not ve kanıt işaretsiz dönemde de yazılır (Prompt 10B): boş hücrenin SEBEBİ ("müşteri veriyi
+    geç verdi") en çok merak edilen şey. Kayıt açılır ama iş yapılmış sayılmaz. İşaret kaldırmak
+    not ve kanıtı SİLMEZ; kaydın tamamını yalnız "Bu dönem kaydını sil" siler (önce sorar).
+*@
+
+<div class="@(Sag ? "dp-panel dp-panel-sag" : "dp-panel")" style="@(Sag ? "" : $"top:{Top}px;left:{Left}px")" @onclick:stopPropagation="true">
+    <div class="dp-panel-ust">
+        <div class="dp-panel-baslik">
+            @(h?.FirmaAdi ?? "…") · @(h?.DonemEtiketi ?? Hucre.DonemAnahtari) · <b>@(h?.Baslik ?? "")</b>
+        </div>
+        <span class="dp-kapat" role="button" title="Kapat" @onclick="@(() => Kapat.InvokeAsync())">✕</span>
+    </div>
+
+    @if (Satir is { } sr)
+    {
+        <div class="dp-cipler">
+            <DonemSatirCipleri Satir="@sr" />
+        </div>
+    }
+
+    @if (h is null)
+    {
+        <div class="dp-bos">@(hata ?? "Yükleniyor…")</div>
+    }
+    else
+    {
+        @* 2. Yapıldı *@
+        <label class="dp-yapildi">
+            <input type="checkbox" checked="@h.Yapildi" disabled="@isleniyor" @onchange="@IsaretDegisti" />
+            Bu dönem yapıldı olarak işaretle
+            @if (h.Yapildi && h.TamamlanmaZamani is { } z)
+            {
+                <span class="dp-alt">@z.ToLocalTime().ToString("dd.MM.yyyy")@(h.TamamlayanAdi is null ? "" : " · " + h.TamamlayanAdi)</span>
+            }
+        </label>
+
+        @* 3. Bu döneme not — işaretsiz dönemde de yazılır (10B) *@
+        <div class="dp-etiket">Bu döneme not</div>
+        <textarea class="dp-not" rows="3" maxlength="2000"
+                  placeholder="@(h.Yapildi ? "ör. Kur satırını elle güncellemek gerekti" : "ör. Müşteri veriyi geç verdi")"
+                  @bind="not" @bind:event="oninput"></textarea>
+        @if (!h.Yapildi && h.KayitVar)
+        {
+            <div class="dp-alt">Not ve kanıt bu dönemi yapılmış saymaz; hücre eksik görünmeye devam eder.</div>
+        }
+
+        @* 4. Kanıt (Ctrl+V ya da dosya) *@
+        <div class="dp-yapistir" tabindex="0">
+            <span><b>Ctrl+V</b> ile ekran görüntüsü yapıştır</span>
+            <span class="dp-alt">ya da</span>
+            <label class="@(yukleniyor ? "dp-dosya-sec dp-kapali" : "dp-dosya-sec")">
+                dosya seç
+                <InputFile accept="@Kabul" disabled="@yukleniyor" OnChange="@DosyaSecildi" style="display:none" />
+            </label>
+            @if (yukleniyor)
+            {
+                <span class="dp-alt">yükleniyor…</span>
+            }
+        </div>
+
+        @if (h.Ekler.Count > 0)
+        {
+            <ul class="dp-ekler">
+                @foreach (var ek in h.Ekler)
+                {
+                    <li>
+                        <span class="dp-ek-ad" title="@ek.DosyaAdi">📎 @ek.DosyaAdi</span>
+                        <span class="dp-alt">@Boyut(ek.Boyut)</span>
+                        <span class="dp-bag" role="button" @onclick="@(() => Indir(ek))">indir</span>
+                        <span class="dp-bag dp-sil" role="button" @onclick="@(() => EkSil(ek))">sil</span>
+                    </li>
+                }
+            </ul>
+        }
+
+        @* 5. Geçen dönem — kayıt yoksa bölüm çıkmaz *@
+        @if (h.GecenDonem is { } g)
+        {
+            <div class="dp-gecen">
+                <div class="dp-etiket">Geçen dönem · @(g.DonemEtiketi ?? g.DonemAnahtari)
+                    @if (g.TamamlanmaZamani is { } gz)
+                    {
+                        <span class="dp-alt">yapıldı @gz.ToLocalTime().ToString("dd.MM.yyyy")@(g.TamamlayanAdi is null ? "" : " · " + g.TamamlayanAdi)</span>
+                    }
+                    else
+                    {
+                        <span class="dp-alt">yapılmadı</span>
+                    }
+                </div>
+                @if (!string.IsNullOrWhiteSpace(g.Not))
+                {
+                    <div class="dp-gecen-not">@g.Not</div>
+                }
+                @foreach (var ek in g.Ekler)
+                {
+                    <div><span class="dp-bag" role="button" @onclick="@(() => Indir(ek))">📎 @ek.DosyaAdi</span></div>
+                }
+            </div>
+        }
+
+        @if (hata is not null)
+        {
+            <div class="dp-hata">@hata</div>
+        }
+
+        @* 6. Alt *@
+        <div class="dp-panel-alt">
+            <span>
+                <span class="dp-bag" role="button" @onclick="NasilYapilir">Nasıl yapılır</span>
+                @if (h.KayitVar)
+                {
+                    <span class="dp-bag dp-sil" role="button" style="margin-left:10px" @onclick="KayitSil"
+                          title="İşaret, not ve kanıtların tamamını siler">Bu dönem kaydını sil</span>
+                }
+            </span>
+            <RadzenButton Text="Kaydet" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Primary" IsBusy="@kaydediliyor"
+                          Disabled="@(not == (h.Not ?? string.Empty))" Click="@NotKaydet" />
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IsIsaretDto Hucre { get; set; } = default!;
+    [Parameter] public int Top { get; set; }
+    [Parameter] public int Left { get; set; }
+    [Parameter] public EventCallback Kapat { get; set; }
+
+    /// <summary>Dönem sheet'inde sağdan panel (Prompt 14); yoksa hücreye yakın kutu (matris).</summary>
+    [Parameter] public bool Sag { get; set; }
+
+    /// <summary>Satır listesinden açıldıysa başlık çipleri için satır.</summary>
+    [Parameter] public DonemIsSatiriDto? Satir { get; set; }
+
+    /// <summary>İşaret, ek ya da not değişti: matris tazelensin.</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    /// <summary>Prosedür ekleriyle aynı türler ve sınır (sunucu: YapilacaklarService.EkDogrula).</summary>
+    private const string Kabul = ".xlsx,.xls,.pdf,.png,.jpg,.jpeg,.docx,.csv,.txt";
+    private static readonly HashSet<string> Uzantilar = new(Kabul.Split(','), StringComparer.OrdinalIgnoreCase);
+    private const long EnFazlaBayt = 20 * 1024 * 1024;
+
+    private DonemHucresiDto? h;
+    private string not = string.Empty;
+    private string? hata;
+    private bool isleniyor, yukleniyor, kaydediliyor;
+    private DotNetObjectReference<DonemHucrePaneli>? referans;
+    private IsIsaretDto? yuklenen;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ReferenceEquals(yuklenen, Hucre)) return;
+        yuklenen = Hucre;
+        h = null;
+        hata = null;
+        await Yukle();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        if (!ilk) return;
+        try
+        {
+            referans = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("donemPanosu.yapistirmaKaydet", referans);
+        }
+        catch
+        {
+            // Yapıştırma kurulamadı (JS yok/eski tarayıcı): dosya seçme yolu çalışmaya devam eder.
+        }
+    }
+
+    private async Task Yukle()
+    {
+        var (sonuc, mesaj) = await Api.DonemHucresiAsync(Hucre);
+        if (sonuc is null)
+        {
+            hata = mesaj ?? "Hücre bilgisi alınamadı.";
+            return;
+        }
+
+        h = sonuc;
+        not = h.Not ?? string.Empty;
+    }
+
+    private async Task IsaretDegisti(ChangeEventArgs e)
+    {
+        if (h is null) return;
+        var yapildi = e.Value is true;
+        hata = null;
+
+        // İşaret kaldırmak not ve kanıtı SİLMEZ (yalnız "yapıldı" geri alınır) — sormaya gerek yok.
+        isleniyor = true;
+        try
+        {
+            var (dosyalar, mesaj) = await Api.IsaretleKanitlaAsync(new IsIsaretleDto
+            {
+                Yapildi = yapildi,
+                Isler = { h.Isaret() }
+            });
+            if (mesaj is not null)
+            {
+                hata = mesaj;
+                return;
+            }
+
+            // Sözleşme gereği: sunucu dosya döndürürse FileApi'den de temizlenir (işaretlemede boş gelir).
+            foreach (var fileId in dosyalar.Where(i => i > 0))
+            {
+                try { await FileApi.DeleteAsync(fileId); } catch { }
+            }
+
+            await YukleKoru();
+            await Degisti.InvokeAsync();
+        }
+        finally
+        {
+            isleniyor = false;
+        }
+    }
+
+    /// <summary>"Bu dönem kaydını sil": işaret, not ve kanıtların tamamı — önce sorulur.</summary>
+    private async Task KayitSil()
+    {
+        if (h is null) return;
+
+        var neler = new List<string>();
+        if (h.Yapildi) neler.Add("\"yapıldı\" işareti");
+        if (h.Ekler.Count > 0) neler.Add($"{h.Ekler.Count} kanıt dosyası");
+        if (!string.IsNullOrWhiteSpace(h.Not)) neler.Add("dönem notu");
+
+        var onay = await DialogService.Confirm(
+            $"Bu dönemin {string.Join(", ", neler)} silinecek. Geri alınamaz.", "Bu dönem kaydını sil",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        hata = null;
+        var (dosyalar, mesaj) = await Api.DonemKaydiSilAsync(h.Isaret());
+        if (mesaj is not null)
+        {
+            hata = mesaj;
+            return;
+        }
+
+        // Kanıt dosyaları FileApi'den de temizlenir.
+        foreach (var fileId in dosyalar.Where(i => i > 0))
+        {
+            try { await FileApi.DeleteAsync(fileId); } catch { }
+        }
+
+        await Yukle();
+        await Degisti.InvokeAsync();
+    }
+
+    // ---- Kanıt ----
+
+    [JSInvokable]
+    public async Task Yapistirildi(string contentType, string dataUrl, long boyut)
+    {
+        if (h is null) return;   // panel yüklenmeden yapıştırma
+
+        var virgul = dataUrl.IndexOf(',');
+        var bytes = Convert.FromBase64String(virgul >= 0 ? dataUrl[(virgul + 1)..] : dataUrl);
+        var uzanti = contentType.Contains("jpeg") || contentType.Contains("jpg") ? ".jpg" : ".png";
+        var ad = $"ekran-goruntusu-{h.DonemAnahtari}-{DateTime.Now:HHmmss}{uzanti}";
+
+        await Yukle(ad, contentType, bytes.LongLength, () => FileApi.UploadGenericBytesAsync(bytes, ad, contentType, "is-donem-eki"));
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public Task YapistirmaReddedildi(string tur)
+    {
+        hata = $"Panodaki dosya türü ({tur}) yapıştırılamaz; dosya seçerek yükleyin.";
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task DosyaSecildi(InputFileChangeEventArgs e)
+    {
+        var dosya = e.File;
+        if (dosya is null || h is null) return Task.CompletedTask;
+        return Yukle(dosya.Name, dosya.ContentType, dosya.Size, () => FileApi.UploadGenericAsync(dosya, "is-donem-eki"));
+    }
+
+    /// <summary>FileApi'ye yükle → dönem eki kaydı; kayıt tutmazsa dosya yetim kalmasın (Belgeler kartıyla aynı).</summary>
+    private async Task Yukle(string ad, string? contentType, long boyut,
+                             Func<Task<WebApp.Shared.Dto.Declaration.GenericUploadResultDto?>> yukle)
+    {
+        hata = null;
+        if (!Uzantilar.Contains(Path.GetExtension(ad)))
+        {
+            hata = "Bu dosya türü eklenemez. İzin verilenler: xlsx, xls, pdf, png, jpg, docx, csv, txt.";
+            return;
+        }
+        if (boyut <= 0 || boyut > EnFazlaBayt)
+        {
+            hata = $"Dosya boş ya da {EnFazlaBayt / (1024 * 1024)} MB sınırını aşıyor.";
+            return;
+        }
+
+        yukleniyor = true;
+        int? yuklenenId = null;
+        try
+        {
+            var y = await yukle();
+            if (y is null || y.Id <= 0)
+            {
+                hata = "Dosya yüklenemedi. Dosya servisi yanıt vermiyor olabilir.";
+                return;
+            }
+            yuklenenId = y.Id;
+
+            var (ek, mesaj) = await Api.DonemEkEkleAsync(new DonemEkiOlusturDto
+            {
+                KaynakTip = h!.KaynakTip, KaynakId = h.KaynakId, FirmaId = h.FirmaId, DonemAnahtari = h.DonemAnahtari,
+                FileId = y.Id, DosyaAdi = ad,
+                ContentType = string.IsNullOrWhiteSpace(y.ContentType) ? contentType : y.ContentType,
+                Boyut = y.Length > 0 ? y.Length : boyut
+            });
+            if (ek is null)
+            {
+                hata = mesaj ?? "Kanıt kaydedilemedi.";
+                return;
+            }
+
+            yuklenenId = null;
+            await YukleKoru();
+            await Degisti.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            hata = "Kanıt eklenirken hata: " + ex.Message;
+        }
+        finally
+        {
+            if (yuklenenId is int fid && fid > 0)
+            {
+                try { await FileApi.DeleteAsync(fid); } catch { }
+            }
+            yukleniyor = false;
+        }
+    }
+
+    /// <summary>Dışarıdan (satırdaki tik) değişti: yeniden oku, yazılmakta olan not korunur.</summary>
+    public async Task Tazele()
+    {
+        await YukleKoru();
+        StateHasChanged();
+    }
+
+    /// <summary>Yeniden yükle ama yazılmakta olan notu ezme.</summary>
+    private async Task YukleKoru()
+    {
+        var yazilan = not;
+        var kayitli = h?.Not ?? string.Empty;
+        await Yukle();
+        if (yazilan != kayitli) not = yazilan;
+    }
+
+    private async Task EkSil(FirmaIsiEkiDto ek)
+    {
+        var onay = await DialogService.Confirm($"\"{ek.DosyaAdi}\" silinsin mi?", "Kanıt sil",
+            new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        var (fileId, mesaj) = await Api.DonemEkSilAsync(ek.Id);
+        if (fileId is null)
+        {
+            hata = mesaj ?? "Kanıt silinemedi.";
+            return;
+        }
+        if (fileId > 0)
+        {
+            try { await FileApi.DeleteAsync(fileId.Value); } catch { }
+        }
+
+        await YukleKoru();
+        await Degisti.InvokeAsync();
+    }
+
+    private async Task Indir(FirmaIsiEkiDto ek)
+    {
+        var dosya = await FileApi.GetDownloadAsync(ek.FileId);
+        if (string.IsNullOrEmpty(dosya?.PresignedUrl))
+        {
+            hata = "Dosya bağlantısı alınamadı.";
+            return;
+        }
+        await JS.InvokeVoidAsync("open", dosya!.PresignedUrl, "_blank");
+    }
+
+    // ---- Not ----
+
+    private async Task NotKaydet()
+    {
+        if (h is null) return;
+        hata = null;
+        kaydediliyor = true;
+        try
+        {
+            hata = await Api.DonemNotuKaydetAsync(new DonemNotuDto
+            {
+                KaynakTip = h.KaynakTip, KaynakId = h.KaynakId, FirmaId = h.FirmaId, DonemAnahtari = h.DonemAnahtari,
+                Not = not
+            });
+            if (hata is not null) return;
+
+            await Yukle();
+            await Degisti.InvokeAsync();
+        }
+        finally
+        {
+            kaydediliyor = false;
+        }
+    }
+
+    // ---- Nasıl yapılır (Prompt 14): takip panosunun "Nasıl yapılır" sekmesi, O İŞİN tarifi ----
+
+    /// <summary>
+    /// Sekmeye gider: ?sekme=nasil&amp;is=…&amp;firma=… — adres değişir, geri tuşu dönem sekmesine döner.
+    /// Tarif iş bazında; firma yalnız "Kime gider" ve "Bu firmada farklı"da öne alınır.
+    /// </summary>
+    private void NasilYapilir()
+    {
+        if (h is null || string.IsNullOrEmpty(h.TarifAnahtari)) return;
+        Nav.NavigateTo(IsTakipPanosuAdres.Tarif(h.TarifAnahtari, h.FirmaId));
+    }
+    private static string Boyut(long bayt)
+        => bayt < 1024 ? $"{bayt} B"
+         : bayt < 1024 * 1024 ? $"{bayt / 1024.0:0.#} KB"
+         : $"{bayt / (1024.0 * 1024):0.#} MB";
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("donemPanosu.yapistirmaKaldir");
+        }
+        catch
+        {
+            // Sayfa kapanırken JS gitmiş olabilir.
+        }
+        referans?.Dispose();
+    }
+}

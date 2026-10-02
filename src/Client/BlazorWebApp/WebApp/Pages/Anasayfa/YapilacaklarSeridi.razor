@@ -5,6 +5,7 @@
 @using WebApp.Shared.Dto.Yapilacaklar
 
 @inject IYapilacaklarApiClient Api
+@inject ILogger<YapilacaklarSeridi> Log
 
 @*
     Anasayfanın en üstündeki tek satır: bütün firmaların gecikmiş ve bu haftaki işleri.
@@ -30,12 +31,29 @@
 @code {
     private YapilacaklarOzetDto? ozet;
 
-    protected override async Task OnInitializedAsync() => ozet = await Api.OzetAsync();
+    protected override Task OnInitializedAsync() => Oku();
 
     /// <summary>Anasayfanın "Yenile" düğmesi.</summary>
     public async Task Tazele()
     {
-        ozet = await Api.OzetAsync();
+        await Oku();
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// Prompt 12: hata sayfayı düşürmez. Şerit zaten "gecikmiş yoksa çizilmez" — okunamazsa da çizilmez
+    /// (bir uyarı şeridi, kart değil); ayrıntı log'a.
+    /// </summary>
+    private async Task Oku()
+    {
+        try
+        {
+            ozet = await Api.OzetAsync();
+        }
+        catch (Exception ex)
+        {
+            Log.LogWarning(ex, "Yapılacaklar şeridi okunamadı.");
+            ozet = null;
+        }
     }
 }

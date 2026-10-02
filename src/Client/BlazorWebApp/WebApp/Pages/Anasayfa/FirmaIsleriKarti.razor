@@ -4,9 +4,16 @@
 @using WebApp.Pages.Yapilacaklar
 @using WebApp.Shared.Dto.Yapilacaklar
 
+@using WebApp.Application.Services.Interfaces
+
+@implements IAsyncDisposable
+
 @inject IYapilacaklarApiClient Api
+@inject IFileApiService FileApi
 @inject DialogService DialogService
 @inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject ILogger<FirmaIsleriKarti> Log
 
 @*
     Firma işleri (tasarım F) — seçili firmanın iki gruplu iş listesi.
@@ -21,10 +28,24 @@
 
     Kendi verisini ayrı çağrıyla alır: durum hesabı sunucunun saat servisine bağlı ve firma
     paneli servisi değişmesin diye panel çağrısına katılmadı.
+
+    Prosedür (tasarım H, Prompt 8): satır yapısı aynı, altına üç çip — program (mor),
+    alıcı (mavi; yoksa kesikli "alıcı yok"), ek (yeşil). Sağda "Nasıl yapılır" prosedür
+    panelini açar. Yasal işte de program/alıcı/ekler doldurulur; ad ve tarih kilitli kalır.
+
+    Toplu ekleme (Prompt 11): kart odaktayken Ctrl+V (Excel satırları) ya da "Yapıştır"
+    düğmesi → önizleme dialogu → onay → ekleme. Sessiz ekleme yok. "Başka firmadan kopyala"
+    özel işleri tek seferde alır.
+
+    İzolasyon (Prompt 12): /isler yüklenemezse YALNIZ bu kart "Bu bölüm yüklenemedi · Yeniden dene"
+    gösterir; kart null bırakılmaz (boş listeli DTO). Önceden null kalan kart "+ İş ekle" ile dialoga
+    geçiyor, dialog Kart.Sistemler'de NullReferenceException atıp bütün uygulamayı düşürüyordu.
+    Yüklenemeyen kartta araçlar gizlenir. "İş yok" (boş liste) ile "yüklenemedi" ayrı görünür.
 *@
 
 <YsStiller />
 
+<div @ref="kartOgesi" tabindex="0" class="ys-kart-odak" title="Kart seçiliyken Ctrl+V ile Excel'den iş satırları yapıştırabilirsiniz">
 <RadzenCard Variant="Variant.Outlined" class="fp-bolum" id="ys-kart-isler">
     <div class="fp-bolum-basi">
         <span class="fp-bolum-ad">
@@ -39,12 +60,24 @@
                 <span class="ys-sayi ys-rozet-hafta">@kart.BuAySayisi bu ay</span>
             }
         </span>
-        <span class="ys-bag" role="button" @onclick="Ekle">+ İş ekle</span>
+        @if (kart is not null && !yuklenemedi)
+        {
+            <span class="ys-kart-araclar">
+                <span class="ys-bag" role="button" @onclick="YapistirDugmesi" title="Excel'den kopyaladığınız satırları ekle">Yapıştır</span>
+                <SablonIndirBaglantisi Getir="@(() => Api.IsSablonuAsync(FirmaId))" DosyaAdi="firma-isleri-sablonu.xlsx" />
+                <span class="ys-bag" role="button" @onclick="KopyalaAc">Başka firmadan kopyala</span>
+                <span class="ys-bag" role="button" @onclick="Ekle">+ İş ekle</span>
+            </span>
+        }
     </div>
 
     @if (kart is null)
     {
-        <div class="ys-bos">@(hata ?? "Yükleniyor…")</div>
+        <div class="ys-bos">Yükleniyor…</div>
+    }
+    else if (yuklenemedi)
+    {
+        <AnKartHatasi YenidenDene="@YenidenDene" />
     }
     else
     {
@@ -98,10 +131,14 @@
                     <div>
                         <div class="ys-baslik">@t.Baslik</div>
                         <div class="ys-alt">Firmaya özel · @t.KuralMetni</div>
+                        @Prosedur(t)
                     </div>
                     <span class="ys-songun">—</span>
                     <span>
                         <span class="ys-rozet ys-rozet-sonra">@(t.Aktif ? "Tarihi yok" : "Pasif")</span>
+                        <span class="ys-islem">
+                            <span class="ys-nasil" role="button" @onclick="@(() => PanelAc(t))">Nasıl yapılır</span>
+                        </span>
                         @Islemler(t)
                     </span>
                 </div>
@@ -115,6 +152,7 @@
         }
     }
 </RadzenCard>
+</div>
 
 @code {
     [Parameter, EditorRequired] public int FirmaId { get; set; }
@@ -127,6 +165,9 @@
     private int yukluFirma;
     private string? hata;
     private bool isleniyor;
+
+    /// <summary>Son yükleme başarısız — "iş yok"tan AYRI durum.</summary>
+    private bool yuklenemedi;
 
     /// <summary>Görünen dönemi olmayan tanımlar (pasif ya da tarihsiz) — düzenlenebilsin diye ayrıca listelenir.</summary>
     private IEnumerable<FirmaIsiDto> PasifTanimlar
@@ -142,9 +183,121 @@
 
     private async Task Yukle()
     {
-        var sonuc = await Api.FirmaIsleriAsync(FirmaId);
-        hata = sonuc is null ? "Firma işleri alınamadı." : null;
-        kart = sonuc ?? kart;
+        FirmaIsleriKartDto? sonuc;
+        try
+        {
+            sonuc = await Api.FirmaIsleriAsync(FirmaId);
+        }
+        catch (Exception ex)
+        {
+            Log.LogWarning(ex, "Firma işleri yüklenemedi (firma {FirmaId}).", FirmaId);
+            sonuc = null;
+        }
+
+        if (sonuc is null)
+        {
+            Log.LogWarning("Firma işleri ucu veri döndürmedi (firma {FirmaId}).", FirmaId);
+            // Asla null bırakılmaz: boş listeli kart + hata durumu; dialoglar boş listeyle güvenli.
+            kart = new FirmaIsleriKartDto { FirmaId = FirmaId };
+            yuklenemedi = true;
+            return;
+        }
+
+        kart = sonuc;
+        yuklenemedi = false;
+    }
+
+    /// <summary>"Yeniden dene": YALNIZ bu kartın çağrısı.</summary>
+    private async Task YenidenDene()
+    {
+        hata = null;
+        await Yukle();
+        StateHasChanged();
+    }
+
+    // ---- Toplu ekleme (Prompt 11): Ctrl+V, "Yapıştır", şablon, kopyalama ----
+
+    private ElementReference kartOgesi;
+    private DotNetObjectReference<FirmaIsleriKarti>? referans;
+
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        if (!ilk) return;
+        try
+        {
+            referans = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("firmaIsleri.kaydet", kartOgesi, referans);
+        }
+        catch
+        {
+            // Yapıştırma kurulamadı: "Yapıştır" düğmesi elle yapıştırma kutusuyla çalışmaya devam eder.
+        }
+    }
+
+    /// <summary>Kart odaktayken Ctrl+V (JS 'paste' olayı, text/plain).</summary>
+    [JSInvokable]
+    public Task MetinYapistirildi(string metin) => TopluAc(metin);
+
+    /// <summary>Pano izni varsa panodan okur; yoksa dialog elle yapıştırma kutusuyla açılır.</summary>
+    private async Task YapistirDugmesi()
+    {
+        string? metin = null;
+        try
+        {
+            metin = await JS.InvokeAsync<string?>("firmaIsleri.panodanOku");
+        }
+        catch
+        {
+            // İzin yok / tarayıcı desteklemiyor.
+        }
+        await TopluAc(metin);
+    }
+
+    private async Task TopluAc(string? metin)
+    {
+        var eklendi = await DialogService.OpenAsync<TopluIsDialog>(
+            "Toplu iş ekle — " + FirmaAdi,
+            new Dictionary<string, object?>
+            {
+                { nameof(TopluIsDialog.FirmaId), FirmaId },
+                { nameof(TopluIsDialog.Metin), metin }
+            }!,
+            new DialogOptions { Width = "min(1100px, 96vw)" });
+
+        if (eklendi is not true) return;
+        await Yukle();
+        StateHasChanged();
+        await Degisti.InvokeAsync();
+    }
+
+    private async Task KopyalaAc()
+    {
+        var kopyalandi = await DialogService.OpenAsync<IsKopyalaDialog>(
+            "Başka firmadan kopyala — " + FirmaAdi,
+            new Dictionary<string, object?>
+            {
+                { nameof(IsKopyalaDialog.FirmaId), FirmaId },
+                { nameof(IsKopyalaDialog.MevcutBasliklar), kart?.OzelTanimlar.Select(t => t.Baslik).ToList() ?? new List<string>() }
+            }!,
+            new DialogOptions { Width = "min(860px, 96vw)" });
+
+        if (kopyalandi is not true) return;
+        await Yukle();
+        await Degisti.InvokeAsync();
+    }
+
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("firmaIsleri.kaldir", kartOgesi);
+        }
+        catch
+        {
+            // Sayfa kapanırken JS gitmiş olabilir.
+        }
+        referans?.Dispose();
     }
 
     /// <summary>Aynı işin birden çok satırı (yapılmış + sıradaki) olabilir; düzenle/sil yalnız sonuncusunda.</summary>
@@ -166,16 +319,52 @@
                     @s.Baslik
                 </div>
                 <div class="ys-alt">@AltSatir(s)</div>
+                @Prosedur(IsMetin.Tanim(kart!, s))
             </div>
             <span class="ys-songun">@s.SonGun.ToString("dd.MM.yyyy")</span>
             <span>
                 <span class="@IsMetin.RozetSinifi(s.Durum)">@IsMetin.Rozet(s.Durum, s.Gun)</span>
+                <span class="ys-islem">
+                    <span class="ys-nasil" role="button" @onclick="@(() => PanelAc(s))">Nasıl yapılır</span>
+                </span>
                 @if (duzenlenebilir && kart!.OzelTanimlar.FirstOrDefault(t => t.Id == s.KaynakId) is { } tanim)
                 {
                     @Islemler(tanim)
                 }
             </span>
         </div>
+    };
+
+    /// <summary>
+    /// Çipler ve ön adım satırı. Tanım yoksa (yasal işin prosedürü hiç açılmamış) yalnız
+    /// "alıcı yok" çipi — bilgisizlik de bilgidir.
+    /// </summary>
+    private RenderFragment Prosedur(FirmaIsiDto? t) => __builder =>
+    {
+        <div class="ys-cipler">
+            @if (t?.SistemAdi is { } sistem)
+            {
+                <span class="ys-cip ys-cip-program" title="Nerede yapılır">@sistem</span>
+            }
+            @if (t is null || t.Alicilar.Count == 0)
+            {
+                <span class="ys-cip ys-cip-alici-yok" title="Kime gittiği girilmemiş">alıcı yok</span>
+            }
+            else
+            {
+                <span class="ys-cip ys-cip-alici" title="@string.Join(", ", t.Alicilar.Select(a => a.AdSoyad))">
+                    @(t.Alicilar.Count == 1 ? $"1 alıcı · {t.Alicilar[0].AdSoyad}" : $"{t.Alicilar.Count} alıcı")
+                </span>
+            }
+            @if (t is { EkSayisi: > 0 })
+            {
+                <span class="ys-cip ys-cip-ek">@t.EkSayisi ek</span>
+            }
+        </div>
+        @if (t?.OnAdimiBaslik is { } hedef)
+        {
+            <div class="ys-onadim">→ @hedef işinin hazırlığı</div>
+        }
     };
 
     private RenderFragment Islemler(FirmaIsiDto tanim) => __builder =>
@@ -233,23 +422,78 @@
             new Dictionary<string, object?>
             {
                 { nameof(FirmaIsiDialog.FirmaId), FirmaId },
+                { nameof(FirmaIsiDialog.Kart), kart },
                 { nameof(FirmaIsiDialog.Mevcut), tanim }
             }!,
-            new DialogOptions { Width = "min(520px, 96vw)" });
+            new DialogOptions { Width = "min(640px, 96vw)" });
 
         if (kaydedildi is not true) return;
         await Yukle();
         await Degisti.InvokeAsync();
     }
 
+    /// <summary>Prosedür paneli (tasarım I): sağdan, 760px.</summary>
+    private async Task PanelAc(IsSatiriDto s)
+    {
+        await DialogService.OpenSideAsync<IsProsedurPaneli>(
+            s.Baslik,
+            new Dictionary<string, object?>
+            {
+                { nameof(IsProsedurPaneli.FirmaId), FirmaId },
+                { nameof(IsProsedurPaneli.FirmaAdi), FirmaAdi },
+                { nameof(IsProsedurPaneli.Satir), s },
+                { nameof(IsProsedurPaneli.Kart), kart },
+                { nameof(IsProsedurPaneli.Degisti), (Func<Task>)PaneldenDegisti }
+            }!,
+            new SideDialogOptions
+            {
+                Width = "min(760px, 100vw)",
+                Position = DialogPosition.Right,
+                ShowTitle = false,
+                ShowMask = true,
+                CloseDialogOnOverlayClick = true
+            });
+    }
+
+    private async Task PaneldenDegisti()
+    {
+        await Yukle();
+        StateHasChanged();
+        await Degisti.InvokeAsync();
+    }
+
+    /// <summary>
+    /// Pasif/tarihsiz tanımın görünen dönemi yok; panel tanımla açılır. Dönem anahtarı boş
+    /// gider — panel işaretleme şeridini çizmez, prosedür yine okunur ve düzenlenir.
+    /// </summary>
+    private Task PanelAc(FirmaIsiDto t) => PanelAc(new IsSatiriDto
+    {
+        KaynakTip = IsKaynagi.Ozel,
+        KaynakId = t.Id,
+        FirmaId = FirmaId,
+        FirmaAdi = FirmaAdi,
+        Baslik = t.Baslik,
+        Tekrar = t.Tekrar,
+        DonemAnahtari = string.Empty,
+        SonGun = t.TekSeferTarih ?? DateTime.Today,
+        Durum = IsDurumu.Sonra
+    });
+
     private async Task Sil(FirmaIsiDto tanim)
     {
         var onay = await DialogService.Confirm(
-            $"\"{tanim.Baslik}\" ve bütün \"yapıldı\" kayıtları silinecek.", "İş silme",
+            $"\"{tanim.Baslik}\", bütün \"yapıldı\" kayıtları ve ekleri silinecek.", "İş silme",
             new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
         if (onay != true) return;
 
-        var sonuc = await Api.IsSilAsync(FirmaId, tanim.Id);
+        var (fileIds, sonuc) = await Api.IsSilAsync(FirmaId, tanim.Id);
+
+        // Eklerin dosyaları FileApiService'ten de silinir (Belgeler kartıyla aynı sorumluluk).
+        foreach (var fileId in fileIds.Where(i => i > 0))
+        {
+            try { await FileApi.DeleteAsync(fileId); } catch { }
+        }
+
         await Yukle();
         hata = sonuc ?? hata;
         if (hata is null) await Degisti.InvokeAsync();

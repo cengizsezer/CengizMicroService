@@ -5,6 +5,7 @@
 @using WebApp.Shared.Components
 @using WebApp.Shared.Dto.Anasayfa
 @using WebApp.Shared.Dto.FirmaBilgileri
+@using WebApp.Shared.Dto.Sistemler
 
 @inject NavigationManager Nav
 @inject IFileApiService FileApi
@@ -14,7 +15,8 @@
 @inject IJSRuntime JS
 
 @*
-    Seçili firmanın künyesi: mükellefiyet, sicil, ortaklık, imza yetkilileri, belgeler.
+    Seçili firmanın künyesi: mükellefiyet, sınıflandırma, kullanılan sistemler, sicil,
+    ortaklık, imza yetkilileri, belgeler.
 
     Ekran OKUMA odaklı. Her bölümün "Düzenle" bağlantısı mevcut Firma Bilgileri
     ekranına götürüyor; buraya ikinci bir düzenleme yüzeyi konmadı — aynı alanı iki
@@ -28,24 +30,33 @@
     @* Eksik bilgi şeridi: raydaki sayı rozetiyle aynı liste (sunucuda FirmaEksikBilgi). *@
     @* Uyarılar (imza yetkisi, pay oranı, geçerli yetkili yok) aynı şeritte ayrı cümlede;
        eskiden ayrı kutudaydı ve raydan düşmüştü. *@
-    @if (Detay.Eksikler.Count > 0 || RaydakiUyarilar.Count > 0)
+    @* Prompt 12: şerit KART BAŞLIĞINA göre gruplu; her grup kendi kartına kaydırır. Gruplar künyenin tek
+       ucundan gelen Eksikler listesinden türetilir (ikinci uç yok). Yalnız GEREKLİ alanlar ve durum (mizan)
+       şeritte; ikincil boşluklar kartta "—" olarak durur, burada ve rozette sayılmaz. Başlık raydaki rozetle
+       aynı karar: yeni firmada gri "Künye tamamlanıyor". Metinlerdeki boşluklar C# dizesinin İÇİNDE —
+       Blazor etiketle ifade arasındaki boşluğu atıyordu ("Eksik bilgi:Sınıflandırma" hatası). *@
+    @if (SeritGruplari.Count > 0 || RaydakiUyarilar.Count > 0)
     {
-        <div class="an-eksik-serit">
+        <div class="@(Detay.YeniFirma && Detay.GerekliEksikSayisi > 0 ? "an-eksik-serit an-eksik-serit-yeni" : "an-eksik-serit")">
             <RadzenIcon Icon="edit_note" Style="font-size:17px;flex-shrink:0" />
             <span class="an-eksik-metin">
-                @if (Detay.Eksikler.Count > 0)
+                @if (Detay.GerekliEksikSayisi > 0)
                 {
-                    <b>Eksik bilgi:</b>
-                    @string.Join(" · ", Detay.Eksikler.Take(3).Select(e => $"{e.Kart} › {e.Alan}"))
-                    @if (Detay.Eksikler.Count > 3)
-                    {
-                        <span class="an-eksik-fazla"> +@(Detay.Eksikler.Count - 3) tane daha</span>
-                    }
+                    <b>@(Detay.YeniFirma
+                             ? $"Künye tamamlanıyor · {Detay.GerekliEksikSayisi} gerekli alan"
+                             : $"Eksik bilgi: {Detay.GerekliEksikSayisi} gerekli alan eksik")</b>
+                }
+                @foreach (var g in SeritGruplari)
+                {
+                    <span class="an-eksik-grup">
+                        <span class="an-baglanti" role="button" title="@($"{g.Kart} kartına git")"
+                              @onclick="@(() => KartaGit(g.Kart))">@g.Kart</span>@($": {string.Join(", ", g.Alanlar)}")
+                    </span>
                 }
                 @if (RaydakiUyarilar.Count > 0)
                 {
-                    <span class="@(Detay.Eksikler.Count > 0 ? "an-uyari-cumle" : "")">
-                        <b>Uyarı:</b> @string.Join(" · ", RaydakiUyarilar.Select(u => u.Mesaj.TrimEnd('.')))
+                    <span class="an-uyari-cumle">
+                        <b>@("Uyarı: ")</b>@string.Join(" · ", RaydakiUyarilar.Select(u => u.Mesaj.TrimEnd('.')))
                     </span>
                 }
             </span>
@@ -56,7 +67,7 @@
 
 
     @* ---- Mükellefiyet ---- *@
-    <RadzenCard Variant="Variant.Outlined" class="fp-bolum">
+    <RadzenCard Variant="Variant.Outlined" class="fp-bolum" id="an-kart-mukellefiyet">
         @Baslik("badge", "Mükellefiyet")
 
         <div class="fp-alanlar">
@@ -98,17 +109,18 @@
         </div>
     </RadzenCard>
 
-    @* ---- Sınıflandırma ve mizan ---- *@
-    <RadzenCard Variant="Variant.Outlined" class="fp-bolum">
+    @* ---- Sınıflandırma (vergi ve mevzuat) ---- *@
+    <RadzenCard Variant="Variant.Outlined" class="fp-bolum" id="an-kart-siniflandirma">
         <div class="fp-bolum-basi">
             <span class="fp-bolum-ad">
                 <RadzenIcon Icon="category" Style="font-size:17px" />
-                Sınıflandırma ve mizan
+                Sınıflandırma
             </span>
             <span class="fp-duzenle" role="button" @onclick="@(() => SiniflandirmaDuzenle(null))">Düzenle</span>
         </div>
 
         <div class="fp-alanlar">
+            @Alan("Firma tipi", FirmaTipiAdi(Sinif.FirmaTipi))
             <div class="fp-alan">
                 <div class="fp-etiket">Defter usulü</div>
                 <div class="fp-deger">@DefterUsuluAdi(Sinif.DefterUsulu)</div>
@@ -125,12 +137,78 @@
                     <div class="an-oto">@OtomatikNotu(vk)</div>
                 }
             </div>
+            @Alan("Hesap dönemi", HesapDonemiMetni())
+            <div class="fp-alan">
+                <div class="fp-etiket">SGK teşvik kademesi</div>
+                <div class="fp-deger">
+                    @(SgkKademeAdi() ?? "—")
+                    @if (Sinif.SgkIsverenOrani is { } oran)
+                    {
+                        <span class="an-sgk-oran">işveren %@oran.ToString("0.00", Tr)</span>
+                    }
+                </div>
+            </div>
+            @Alan("Muhtasar dönemi", MuhtasarDonemiAdi(Sinif.MuhtasarDonemi))
+        </div>
+    </RadzenCard>
+
+    @* ---- Kullanılan sistemler (hangi iş nerede yapılıyor) ----
+       ORKA firma kodu ve mizan formatı Firma kaydının kendi alanları; kart gösterir ve
+       aynı alanlara yazar. Mizan satırı eski karttan aynen taşındı. *@
+    <RadzenCard Variant="Variant.Outlined" class="fp-bolum" id="an-kart-sistemler">
+        <div class="fp-bolum-basi">
+            <span class="fp-bolum-ad">
+                <RadzenIcon Icon="apps" Style="font-size:17px" />
+                Kullanılan sistemler
+            </span>
+            <span class="fp-duzenle" role="button" @onclick="@(() => SistemlerDuzenle(null))">Düzenle</span>
+        </div>
+
+        <div class="fp-alanlar">
+            @SistemAlani("Muhasebe programı", SistemTuru.Muhasebe)
+            @SistemAlani("e-Fatura entegratörü", SistemTuru.EFatura)
+            @SistemAlani("Bordro", SistemTuru.Bordro)
+            @SistemAlani("Beyanname", SistemTuru.Beyanname)
+            @SistemAlani("Banka portalları", SistemTuru.Banka)
+            @if (Sistemler.Atamalar.Any(a => a.Tur == SistemTuru.Diger))
+            {
+                @SistemAlani("Diğer sistemler", SistemTuru.Diger)
+            }
+        </div>
+
+        <div class="fp-alanlar an-sistem-satir">
+            @Alan("ORKA firma kodu", Sinif.OrkaFirmaKodu)
+            <div class="fp-alan">
+                <div class="fp-etiket">Diğer sistemlerdeki firma kodları</div>
+                @if (Sistemler.Atamalar.Any(a => !Bos(a.FirmaKodu)))
+                {
+                    <div class="an-sistemler">
+                        @foreach (var a in Sistemler.Atamalar.Where(a => !Bos(a.FirmaKodu)))
+                        {
+                            <span class="an-sistem">@a.Ad<span class="an-sistem-kod">@a.FirmaKodu</span></span>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="fp-deger">—</div>
+                }
+            </div>
+            <div class="fp-alan">
+                <div class="fp-etiket">Sistem notu</div>
+                <div class="@(Bos(Sistemler.SistemNotu) ? "fp-deger" : "an-sistem-not")">@(Bos(Sistemler.SistemNotu) ? "—" : Sistemler.SistemNotu)</div>
+            </div>
+        </div>
+
+        <div class="an-mizan">
             <div class="fp-alan">
                 <div class="fp-etiket">Mizan formatı</div>
                 <div class="fp-deger">@(MizanFormatlari.Secili(Sinif.MizanFormati) ? Sinif.MizanFormati : "—")</div>
                 @if (MizanFormatlari.SablonVar(Sinif.MizanFormati))
                 {
-                    <span class="an-baglanti" role="button" @onclick="SablonIndir">Boş şablon indir</span>
+                    @* Firma işleri şablonuyla AYNI bileşen (Prompt 13): "Hazırlanıyor…", çift tık koruması, tek satır hata. *@
+                    <SablonIndirBaglantisi Getir="@(() => Api.MizanSablonuAsync(Sinif.MizanFormati!))"
+                                           DosyaAdi="mizan-sablonu.xlsx" Sinif="an-baglanti" />
                 }
                 else if (MizanFormatlari.Secili(Sinif.MizanFormati))
                 {
@@ -143,11 +221,6 @@
                     <span class="an-baglanti an-pasif" title="Önce mizan formatını seçin">Boş şablon indir</span>
                 }
             </div>
-            @Alan("ORKA firma kodu", Sinif.OrkaFirmaKodu)
-            @Alan("Hesap dönemi", HesapDonemiMetni())
-        </div>
-
-        <div class="an-mizan">
             @Alan("Son yüklenen mizan", SonMizanMetni())
             @Alan("Yükleme zamanı", Sinif.SonMizan?.YuklenmeZamani?.ToLocalTime().ToString("dd.MM.yyyy HH:mm"))
             <div class="fp-alan">
@@ -173,7 +246,7 @@
     </RadzenCard>
 
     @* ---- Sicil ---- *@
-    <RadzenCard Variant="Variant.Outlined" class="fp-bolum">
+    <RadzenCard Variant="Variant.Outlined" class="fp-bolum" id="an-kart-sicil">
         @Baslik("apartment", "Sicil")
 
         <div class="fp-alanlar">
@@ -190,7 +263,7 @@
     </RadzenCard>
 
     @* ---- Ortaklık ---- *@
-    <RadzenCard Variant="Variant.Outlined" class="fp-bolum">
+    <RadzenCard Variant="Variant.Outlined" class="fp-bolum" id="an-kart-ortaklik">
         @Baslik("groups", "Ortaklık")
 
         @if (Detay.Ortaklik.Ortaklar.Count == 0)
@@ -233,7 +306,7 @@
     </RadzenCard>
 
     @* ---- İmza yetkilileri ---- *@
-    <RadzenCard Variant="Variant.Outlined" class="fp-bolum">
+    <RadzenCard Variant="Variant.Outlined" class="fp-bolum" id="an-kart-imza">
         @Baslik("draw", "İmza yetkilileri", YetkiRozeti())
 
         @if (Detay.Yetkililer.Count == 0)
@@ -354,23 +427,8 @@
             </div>
         </div>
 
-        <div class="an-takip-bolum">
-            <div class="an-takip-basi">
-                <span class="fp-etiket">Not</span>
-                <span class="an-baglanti" role="button" @onclick="NotlariAc">
-                    @(Takip.NotSayisi > 1 ? $"Tüm notlar ({Takip.NotSayisi})" : Takip.NotSayisi == 1 ? "Tüm notlar" : "Not ekle")
-                </span>
-            </div>
-            @if (Takip.SonNot is { } not)
-            {
-                <div class="an-not">@not.Metin</div>
-                <div class="an-oto">@(not.OlusturanKullaniciAdi ?? "—") · @not.OlusturmaZamani.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
-            }
-            else
-            {
-                <div class="fp-bos-satir">Not yok.</div>
-            }
-        </div>
+        @* Prompt 7B: "Not" bölümü kaldırıldı — aynı FirmaNotu kayıtları "Kalıcı talimatlar" kartında da
+           görünüyordu (aynı not iki yerde). Tek yer Kalıcı talimatlar; veri silinmedi. *@
 
         <div class="an-takip-bolum">
             <div class="an-takip-basi">
@@ -393,14 +451,51 @@
 
     @* ---- Firma işleri + Kalıcı talimatlar (Prompt 7) ----
        Firma işleri: yasal (mükellefiyetten, kilitli) + firmaya özel. Kalıcı talimatlar:
-       Takip kartının notlarıyla aynı veri (FirmaNotu); tarihi ve durumu yok. *@
-    <FirmaIsleriKarti FirmaId="@Detay.FirmaId" FirmaAdi="@Detay.Ad" Degisti="@Degisti" />
-    <KaliciTalimatlarKarti FirmaId="@Detay.FirmaId" NotSayisi="@Takip.NotSayisi" Degisti="@Degisti" />
+       FirmaNotu kayıtlarının TEK gösterildiği yer (Prompt 7B); tarihi ve durumu yok. *@
+    @* Prompt 12 izolasyon: kendi verisini yükleyen kartlar ErrorBoundary içinde (Dönem panosundaki desen) —
+       kartın render hatası yalnız o kartı düşürür; "Yeniden dene" yalnız onu yeniden kurar. *@
+    <ErrorBoundary @ref="islerSiniri">
+        <ChildContent>
+            <FirmaIsleriKarti FirmaId="@Detay.FirmaId" FirmaAdi="@Detay.Ad" Degisti="@Degisti" />
+        </ChildContent>
+        <ErrorContent>
+            <RadzenCard Variant="Variant.Outlined" class="fp-bolum">
+                <div class="fp-bolum-basi"><span class="fp-bolum-ad">Firma işleri</span></div>
+                <AnKartHatasi YenidenDene="@(() => islerSiniri?.Recover())" />
+            </RadzenCard>
+        </ErrorContent>
+    </ErrorBoundary>
+    <ErrorBoundary @ref="talimatSiniri">
+        <ChildContent>
+            <KaliciTalimatlarKarti FirmaId="@Detay.FirmaId" NotSayisi="@Takip.NotSayisi" Degisti="@Degisti" />
+        </ChildContent>
+        <ErrorContent>
+            <RadzenCard Variant="Variant.Outlined" class="fp-bolum">
+                <div class="fp-bolum-basi"><span class="fp-bolum-ad">Kalıcı talimatlar</span></div>
+                <AnKartHatasi YenidenDene="@(() => talimatSiniri?.Recover())" />
+            </RadzenCard>
+        </ErrorContent>
+    </ErrorBoundary>
 
 </RadzenStack>
 
 @code {
     [Parameter, EditorRequired] public FirmaPaneliDetayDto Detay { get; set; } = new();
+
+    private ErrorBoundary? islerSiniri, talimatSiniri;
+
+    protected override void OnParametersSet()
+    {
+        // Firma değişince hata durumundaki kart sıfırlanır: yeni firmanın kartı yeniden denensin.
+        if (Detay.FirmaId != sinirFirmasi)
+        {
+            sinirFirmasi = Detay.FirmaId;
+            islerSiniri?.Recover();
+            talimatSiniri?.Recover();
+        }
+    }
+
+    private int sinirFirmasi;
 
     /// <summary>Kart üzerinden bir şey kaydedildi; üst bileşen paneli tazeler.</summary>
     [Parameter] public EventCallback Degisti { get; set; }
@@ -416,9 +511,45 @@
     /// ekrandaki formda, sorumlu Takip kartında, geri kalanı (mükellefiyet, sicil, ortak,
     /// yetkili) tek düzenleme yeri olan Firma Bilgileri ekranında.
     /// </summary>
+    private sealed record SeritGrubu(string Kart, List<string> Alanlar);
+
+    /// <summary>Şeridin grupları: gerekli eksikler ve durum maddeleri, kart sırasıyla (sunucunun listesi).</summary>
+    private List<SeritGrubu> SeritGruplari
+        => Detay.Eksikler.Where(e => e.Gerekli || e.Durum)
+                         .GroupBy(e => e.Kart)
+                         .Select(g => new SeritGrubu(g.Key, g.Select(e => e.Alan).ToList()))
+                         .ToList();
+
+    /// <summary>Kart başlığı → kartın id'si (kaydırma hedefi). Mizan bölümü Kullanılan sistemler kartında.</summary>
+    private static string KartId(string kart) => kart switch
+    {
+        "Mükellefiyet" => "an-kart-mukellefiyet",
+        "Sınıflandırma" => "an-kart-siniflandirma",
+        "Kullanılan sistemler" or "Mizan" => "an-kart-sistemler",
+        "Sicil" => "an-kart-sicil",
+        "Ortaklık" => "an-kart-ortaklik",
+        "İmza yetkilileri" => "an-kart-imza",
+        "Takip" => "an-kart-takip",
+        _ => "an-kart-mukellefiyet"
+    };
+
+    /// <summary>Şerit grubuna tıklanınca o karta kayar ve kısa süre vurgular (mevcut anOdakla).</summary>
+    private async Task KartaGit(string kart)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("anOdakla", KartId(kart));
+        }
+        catch
+        {
+            // JS yoksa kaydırma olmaz; sayfa etkilenmez.
+        }
+    }
+
     private async Task Tamamla()
     {
-        var ilk = Detay.Eksikler.FirstOrDefault();
+        // Prompt 12: önce GEREKLİ eksik; yoksa durum (mizan); ikincil boşluk "Tamamla"yı tetiklemez.
+        var ilk = Detay.Eksikler.FirstOrDefault(e => e.Gerekli) ?? Detay.Eksikler.FirstOrDefault(e => e.Durum);
         if (ilk is null)
         {
             // Eksik yok, yalnız uyarı var: pay oranı ortaklığa, imza uyarıları yetkililere.
@@ -441,6 +572,9 @@
         {
             case "Sınıflandırma":
                 await SiniflandirmaDuzenle(ilk.Odak);
+                break;
+            case "Kullanılan sistemler":
+                await SistemlerDuzenle(ilk.Odak);
                 break;
             case "Takip":
                 await SorumluAta();
@@ -480,16 +614,6 @@
         if (kaydedildi is true) await Degisti.InvokeAsync();
     }
 
-    private async Task NotlariAc()
-    {
-        await DialogService.OpenAsync<FirmaNotlariDialog>(
-            "Notlar — " + Detay.Ad,
-            new Dictionary<string, object> { { nameof(FirmaNotlariDialog.FirmaId), Detay.FirmaId } },
-            new DialogOptions { Width = "min(640px, 96vw)" });
-
-        // Diyalogda not eklenmiş ya da silinmiş olabilir; kart son notu yeniden okusun.
-        await Degisti.InvokeAsync();
-    }
 
     private Task HareketleriAc()
         => DialogService.OpenAsync<FirmaHareketleriDialog>(
@@ -595,7 +719,71 @@
 
     private void Duzenle() => Nav.NavigateTo($"/yonetim/firmalar/{Detay.FirmaId}/bilgiler");
 
-    // ---- Sınıflandırma ve mizan ----
+    // ---- Sınıflandırma ----
+
+    private static string FirmaTipiAdi(FirmaTipi t) => t switch
+    {
+        FirmaTipi.SermayeSirketi => "Sermaye şirketi",
+        FirmaTipi.Sahis => "Şahıs",
+        FirmaTipi.AdiOrtaklik => "Adi ortaklık",
+        FirmaTipi.IsOrtakligi => "İş ortaklığı",
+        _ => string.Empty
+    };
+
+    private static string MuhtasarDonemiAdi(MuhtasarDonemi m) => m switch
+    {
+        MuhtasarDonemi.Aylik => "Aylık",
+        MuhtasarDonemi.UcAylik => "Üç aylık",
+        _ => string.Empty
+    };
+
+    /// <summary>Kademenin adı sunucunun listesinden (oranla aynı yer).</summary>
+    private string? SgkKademeAdi()
+        => Sinif.SgkKademeleri.FirstOrDefault(k => k.Kademe == Sinif.SgkTesvikKademesi)?.Ad;
+
+    // ---- Kullanılan sistemler ----
+
+    private FirmaPaneliSistemlerDto Sistemler => Detay.Sistemler;
+
+    /// <summary>Türün atamaları; pasife alınmış sistem kesikli çerçeveyle (atama bozulmaz). Boşsa "—".</summary>
+    private RenderFragment SistemAlani(string etiket, SistemTuru tur) => __builder =>
+    {
+        var atamalar = Sistemler.Atamalar.Where(a => a.Tur == tur).ToList();
+        <div class="fp-alan">
+            <div class="fp-etiket">@etiket</div>
+            @if (atamalar.Count == 0)
+            {
+                <div class="fp-deger">—</div>
+            }
+            else
+            {
+                <div class="an-sistemler">
+                    @foreach (var a in atamalar)
+                    {
+                        <span class="@(a.Aktif ? "an-sistem" : "an-sistem an-sistem-pasif")"
+                              title="@(a.Aktif ? null : "Pasife alınmış sistem; yeni seçimde çıkmaz")">@a.Ad</span>
+                    }
+                </div>
+            }
+        </div>
+    };
+
+    public async Task SistemlerDuzenle(string? odak)
+    {
+        var kaydedildi = await DialogService.OpenAsync<KullanilanSistemlerDialog>(
+            "Kullanılan sistemler — " + Detay.Ad,
+            new Dictionary<string, object?>
+            {
+                { nameof(KullanilanSistemlerDialog.FirmaId), Detay.FirmaId },
+                { nameof(KullanilanSistemlerDialog.Mevcut), Sistemler },
+                { nameof(KullanilanSistemlerDialog.OrkaFirmaKodu), Sinif.OrkaFirmaKodu },
+                { nameof(KullanilanSistemlerDialog.MizanFormati), Sinif.MizanFormati },
+                { nameof(KullanilanSistemlerDialog.Odak), odak }
+            }!,
+            new DialogOptions { Width = "min(760px, 96vw)" });
+
+        if (kaydedildi is true) await Degisti.InvokeAsync();
+    }
 
     private static string DefterUsuluAdi(DefterUsulu d) => d switch
     {
@@ -654,17 +842,6 @@
         if (kaydedildi is true) await Degisti.InvokeAsync();
     }
 
-    private async Task SablonIndir()
-    {
-        var (icerik, hata) = await Api.MizanSablonuAsync(Sinif.MizanFormati!);
-        if (icerik is null)
-        {
-            Notif.Notify(NotificationSeverity.Warning, "Şablon indirilemedi", hata, 6000);
-            return;
-        }
-
-        await JS.InvokeVoidAsync("downloadFileFromBytes", "mizan-sablonu.xlsx", icerik);
-    }
 
     /// <summary>Belge görüntüleme Firma Bilgileri ekranıyla aynı altyapı: presigned URL + PDF diyaloğu.</summary>
     private async Task Goruntule(FirmaBelgesiDto belge, string turAdi)

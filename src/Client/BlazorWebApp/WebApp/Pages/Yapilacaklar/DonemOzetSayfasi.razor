@@ -1,0 +1,166 @@
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@*
+    Takip panosu — Özet sheet (Prompt 14). Satır firma, kolon dönem (alt şeritteki AYNI dönemler),
+    hücre "5/6" çipi. Hücreye tıklayınca o dönemin sekmesi o firmaya filtreli açılır.
+
+    Hiçbir sayı burada hesaplanmaz: her ayın sayıları sunucuda o ayın matrisinden
+    (DonemPanosuKurucu) gelir; renk (EksikTonu) de sunucuda tek eşikten. Özet matrisin yerine
+    geçmez, yanına gelir.
+*@
+
+@{
+    var sec = Ozet.Donemler.ElementAtOrDefault(SeciliIndex);
+}
+
+<div class="dp-kok">
+    @* ---- Üst şerit: üç kutu ---- *@
+    <div class="dp-kutular">
+        @if (sec is not null)
+        {
+            var yuzde = sec.Toplam > 0 ? (int)Math.Round(100.0 * sec.Yapilan / sec.Toplam) : 0;
+            <div class="dp-kutu">
+                <div class="dp-kutu-baslik">@sec.Etiket@(sec.IcindeBulunulan ? " · içinde bulunulan ay" : "")</div>
+                <div class="dp-ozet">
+                    <span><b>@sec.Yapilan / @sec.Toplam</b> yapıldı</span>
+                    <div class="dp-cubuk"><div class="dp-cubuk-dolu" style="width:@(yuzde)%"></div></div>
+                    <span class="dp-yuzde">%@yuzde</span>
+                </div>
+            </div>
+
+            <div class="@(sec.Eksikler.Count == 0 ? "dp-kutu dp-kutu-tamam" : "dp-kutu dp-kutu-eksik")">
+                <div class="dp-kutu-baslik">Eksikler nerede</div>
+                @if (sec.Eksikler.Count == 0)
+                {
+                    <div>Eksik yok@(sec.Toplam == 0 ? " — bu ayda kapanan iş yok" : "")</div>
+                }
+                else
+                {
+                    <div>
+                        @string.Join(" · ", sec.Eksikler.Take(4).Select(e => $"{e.Baslik} {e.FirmaSayisi} firmada"))
+                        @if (sec.Eksikler.Count > 4)
+                        {
+                            <span class="dp-alt"> +@(sec.Eksikler.Count - 4) iş daha</span>
+                        }
+                    </div>
+                }
+            </div>
+
+            <DonemAcikKutusu Donemler="@Ozet.Donemler" SeciliAnahtar="@sec.Anahtar" Git="@(a => Git.InvokeAsync((a, (int?)null)))" />
+        }
+    </div>
+
+    <div class="dp-serit">
+        <span class="dp-alt">Kutular seçili dönemi gösterir; dönem başlığına tıklayarak değiştirin. Hücreye tıklayınca o ayın sekmesi o firmaya filtreli açılır.</span>
+        <label class="dp-filtre" style="margin-left:auto">
+            <input type="checkbox" @bind="sadeceEksikler" /> Sadece eksikler
+        </label>
+    </div>
+
+    @if (Ozet.Satirlar.Count == 0)
+    {
+        <div class="ys-bos">Aktif firma yok.</div>
+    }
+    else if (Ozet.Satirlar.All(s => s.Hucreler.All(h => h.Gecerli == 0)))
+    {
+        @* Prompt 15 · 2.3: hiç iş yok — ekleme yolu görünür; düğmeler kabuğun MEVCUT eylemleri. *@
+        <div class="ys-bos dp-bos-ekle">
+            <div>@("Bu dönemlerde iş yok. ")<b>+ İş ekle</b>@(" ile ekleyebilir ya da Excel'den ")<b>Ctrl+V</b>@(" ile yapıştırabilirsin.")</div>
+            <div class="dp-eylemler">
+                <span class="dp-eylem dp-eylem-ana" role="button" @onclick="@(() => IsEkle.InvokeAsync())">+ İş ekle</span>
+                <span class="dp-eylem" role="button" @onclick="@(() => Yapistir.InvokeAsync())">Yapıştır</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="dp-tablo-kutu">
+            <table class="dp-tablo dp-ozet-tablo">
+                <thead>
+                    <tr>
+                        <th class="dp-firma-kolon">Firma</th>
+                        @for (var i = 0; i < Ozet.Donemler.Count; i++)
+                        {
+                            var d = Ozet.Donemler[i];
+                            var index = i;
+                            <th class="@(i == SeciliIndex ? "dp-is-kolon dp-ozet-secili" : "dp-is-kolon")" role="button"
+                                title="Üst kutular bu dönemi göstersin" @onclick="@(() => SeciliIndex = index)">
+                                @d.Etiket
+                                @if (d.IcindeBulunulan)
+                                {
+                                    <div class="dp-alt">içinde bulunulan</div>
+                                }
+                            </th>
+                        }
+                        <th class="dp-sorumlu-kolon">Sorumlu</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in GorunenSatirlar)
+                    {
+                        <tr class="@(FirmaId is { } fs && s.FirmaId != fs ? "dp-ozet-soluk" : FirmaId == s.FirmaId ? "dp-ozet-firma" : "")">
+                            <td class="dp-firma-kolon" title="@s.FirmaAdi">@s.FirmaAdi</td>
+                            @for (var i = 0; i < Ozet.Donemler.Count; i++)
+                            {
+                                var h = s.Hucreler[i];
+                                var d = Ozet.Donemler[i];
+                                <td>
+                                    @if (h.Gecerli == 0)
+                                    {
+                                        <span class="dp-oran dp-oran-bos" title="Bu firmada bu dönemde iş yok">—</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="@CipSinifi(h.Ton)" role="button"
+                                              title="@($"{s.FirmaAdi} · {d.Etiket} · {h.Yapilan}/{h.Gecerli} yapıldı — sekmeyi aç")"
+                                              @onclick="@(() => Git.InvokeAsync((d.Anahtar, s.FirmaId)))">
+                                            @h.Yapilan/@h.Gecerli
+                                        </span>
+                                    }
+                                </td>
+                            }
+                            <td class="dp-sorumlu-kolon">@(s.SorumluKullaniciAdi ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public DonemOzetiDto Ozet { get; set; } = default!;
+
+    /// <summary>Sayfanın firma seçimi: o firmanın satırı önde, diğerleri soluk.</summary>
+    [Parameter] public int? FirmaId { get; set; }
+
+    /// <summary>Kabuğun MEVCUT eylemleri (boş özet için).</summary>
+    [Parameter] public EventCallback IsEkle { get; set; }
+    [Parameter] public EventCallback Yapistir { get; set; }
+
+    /// <summary>(dönem anahtarı, firma filtresi) — kabuk adresi değiştirir.</summary>
+    [Parameter] public EventCallback<(string Anahtar, int? FirmaId)> Git { get; set; }
+
+    private int SeciliIndex = -1;
+    private bool sadeceEksikler;
+
+    protected override void OnParametersSet()
+    {
+        // Varsayılan seçim: bir önceki dönem (kapanan ay) — sekmenin varsayılanıyla aynı.
+        if (SeciliIndex < 0 || SeciliIndex >= Ozet.Donemler.Count)
+            SeciliIndex = Math.Max(0, Ozet.Donemler.FindIndex(d => d.Anahtar == Ozet.VarsayilanAnahtar));
+    }
+
+    /// <summary>Firma seçiliyse o firmanın satırı ÖNDE, diğerleri soluk (Prompt 15 · 2.0).</summary>
+    private IEnumerable<DonemOzetSatirDto> GorunenSatirlar
+        => Ozet.Satirlar.Where(s => !sadeceEksikler || s.Hucreler.Any(h => h.Ton != EksikTonu.Yok))
+                        .OrderBy(s => FirmaId is { } f && s.FirmaId == f ? 0 : 1);
+
+    /// <summary>Renk sunucunun tonundan; eşik burada yok.</summary>
+    public static string CipSinifi(EksikTonu ton) => ton switch
+    {
+        EksikTonu.Yok => "dp-oran dp-oran-tam",
+        EksikTonu.Az => "dp-oran dp-ton-az",
+        _ => "dp-oran dp-ton-cok"
+    };
+}

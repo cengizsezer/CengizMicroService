@@ -2,6 +2,7 @@
 @using Radzen.Blazor
 @using WebApp.Application.Services
 @using WebApp.Application.Services.Interfaces
+@using WebApp.Pages.Yapilacaklar
 @using WebApp.Shared.Dto.Admin
 @using WebApp.Shared.Dto.Yapilacaklar
 
@@ -10,73 +11,200 @@
 @inject DialogService DialogService
 
 @*
-    Firma işleri kartı — firmaya özel iş ekle / düzenle. Yalnız özel iş; yasal işler
-    mükellefiyetten türer, burada eklenmez.
+    Firma işleri kartı — iş ekle / düzenle. İki sekme: Zamanlama ve Prosedür.
 
-    Uygulama işi YAPMAZ (e-posta atmaz); yalnız hatırlatır. Talimat değil iş: tarihi ve
-    "yapıldı" hali var.
+    Özel iş: iki sekme de düzenlenir, tek kayıtta yazılır.
+    Yasal iş (YasalSatir dolu): ad, tarih ve sorumlu takvimden/firmadan gelir, Zamanlama
+    sekmesi yalnız gösterir. Prosedür (program, menü yolu, adımlar, alıcılar, ön adım)
+    firmanın kendi çalışma şeklidir, doldurulur.
+
+    Ekler burada DEĞİL, prosedür panelinde: dosya kaydedilmemiş bir işe bağlanamaz.
+
+    Uygulama işi YAPMAZ (e-posta atmaz); yalnız hatırlatır. Alıcılar "kime gidiyordu"
+    sorusunun cevabıdır.
 *@
 
+<YsStiller />
+
+@* Prompt 14B: alıcının kişi durumu satırı (yeni sınıflar dp- önekli; ys- sınıflarına dokunulmadı). *@
+<style>
+    .dp-alici-kisi { display:flex; flex-wrap:wrap; gap:4px 10px; align-items:center; font-size:11.5px; color:#718096;
+                     margin:-2px 0 6px 2px; }
+    .dp-alici-uyari { color:#975a16; background:#fefcbf; border:1px solid #f6e05e; border-radius:4px; padding:0 6px; }
+</style>
+
 <div class="ys-form">
-    <div>
-        <RadzenLabel Text="Başlık" Component="baslik" />
-        <RadzenTextBox Name="baslik" @bind-Value="model.Baslik" MaxLength="200" Style="width:100%"
-                       Placeholder="ör. Yönetim raporu e-postası" />
-    </div>
+    <RadzenTabs @bind-SelectedIndex="sekme" RenderMode="TabRenderMode.Client">
+        <Tabs>
+            <RadzenTabsItem Text="Zamanlama">
+                <div class="ys-form">
+                    @if (Yasal)
+                    {
+                        <div>
+                            <RadzenLabel Text="Başlık" />
+                            <div class="ys-kilitli-alan">
+                                <RadzenIcon Icon="lock" class="ys-kilit" /> @YasalSatir!.Baslik
+                                <span class="ys-alt">· @YasalSatir.MukellefiyetKodu</span>
+                            </div>
+                        </div>
+                        <div>
+                            <RadzenLabel Text="Tekrar · son gün" />
+                            <div class="ys-kilitli-alan">
+                                @IsMetin.Tekrar(YasalSatir.Tekrar) · bu dönem @YasalSatir.SonGun.ToString("dd.MM.yyyy")
+                            </div>
+                            <div class="ys-alt">Yasal işin adı ve tarihi Vergi takviminden gelir, burada değiştirilmez.
+                                Program, alıcı ve adımlar "Prosedür" sekmesinde.</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div>
+                            <RadzenLabel Text="Başlık" Component="baslik" />
+                            <RadzenTextBox Name="baslik" @bind-Value="model.Baslik" MaxLength="200" Style="width:100%"
+                                           Placeholder="ör. Bordroyu hazırla ve Hollanda'ya gönder" />
+                        </div>
 
-    <div>
-        <RadzenLabel Text="Açıklama (isteğe bağlı)" Component="aciklama" />
-        <RadzenTextArea Name="aciklama" @bind-Value="model.Aciklama" MaxLength="1000" Rows="2" Style="width:100%" />
-    </div>
+                        <div>
+                            <RadzenLabel Text="Açıklama (isteğe bağlı)" Component="aciklama" />
+                            <RadzenTextArea Name="aciklama" @bind-Value="model.Aciklama" MaxLength="1000" Rows="2" Style="width:100%" />
+                        </div>
 
-    <div class="ys-form-iki">
-        <div>
-            <RadzenLabel Text="Tekrar" Component="tekrar" />
-            <RadzenDropDown Name="tekrar" TValue="IsTekrari" Data="@Tekrarlar" TextProperty="Ad" ValueProperty="Deger"
-                            @bind-Value="model.Tekrar" Style="width:100%" />
-        </div>
+                        <div class="ys-form-iki">
+                            <div>
+                                <RadzenLabel Text="Tekrar" Component="tekrar" />
+                                <RadzenDropDown Name="tekrar" TValue="IsTekrari" Data="@Tekrarlar" TextProperty="Ad" ValueProperty="Deger"
+                                                @bind-Value="model.Tekrar" Style="width:100%" />
+                            </div>
 
-        @if (model.Tekrar == IsTekrari.TekSefer)
-        {
-            <div>
-                <RadzenLabel Text="Tarih" Component="tarih" />
-                <RadzenDatePicker Name="tarih" TValue="DateTime?" @bind-Value="model.TekSeferTarih"
-                                  DateFormat="dd.MM.yyyy" Style="width:100%" />
-            </div>
-        }
-        else
-        {
-            <div>
-                <RadzenLabel Text="Son gün" Component="kural" />
-                <RadzenDropDown Name="kural" TValue="IsGunKurali" Data="@Kurallar" TextProperty="Ad" ValueProperty="Deger"
-                                @bind-Value="model.GunKurali" Style="width:100%" />
-            </div>
-        }
-    </div>
+                            @if (model.Tekrar == IsTekrari.TekSefer)
+                            {
+                                <div>
+                                    <RadzenLabel Text="Tarih" Component="tarih" />
+                                    <RadzenDatePicker Name="tarih" TValue="DateTime?" @bind-Value="model.TekSeferTarih"
+                                                      DateFormat="dd.MM.yyyy" Style="width:100%" />
+                                </div>
+                            }
+                            else
+                            {
+                                <div>
+                                    <RadzenLabel Text="Son gün" Component="kural" />
+                                    <RadzenDropDown Name="kural" TValue="IsGunKurali" Data="@Kurallar" TextProperty="Ad" ValueProperty="Deger"
+                                                    @bind-Value="model.GunKurali" Style="width:100%" />
+                                </div>
+                            }
+                        </div>
 
-    @if (model.Tekrar != IsTekrari.TekSefer && model.GunKurali == IsGunKurali.AyinGunu)
-    {
-        <div>
-            <RadzenLabel Text="Ayın günü (1–31)" Component="gun" />
-            <RadzenNumeric Name="gun" TValue="int?" @bind-Value="model.AyinGunu" Min="1" Max="31" Style="width:120px" />
-            <div class="ys-alt">31 seçilirse 30 çeken ayda 30'una, şubatta 28/29'una düşer.
-                @(model.Tekrar == IsTekrari.Aylik ? "" : "Gün, dönemin ilk ayında sayılır.")</div>
-        </div>
-    }
+                        @if (model.Tekrar != IsTekrari.TekSefer && model.GunKurali == IsGunKurali.AyinGunu)
+                        {
+                            <div>
+                                <RadzenLabel Text="Ayın günü (1–31)" Component="gun" />
+                                <RadzenNumeric Name="gun" TValue="int?" @bind-Value="model.AyinGunu" Min="1" Max="31" Style="width:120px" />
+                                <div class="ys-alt">31 seçilirse 30 çeken ayda 30'una, şubatta 28/29'una düşer.
+                                    @(model.Tekrar == IsTekrari.Aylik ? "" : "Gün, dönemin ilk ayında sayılır.")</div>
+                            </div>
+                        }
 
-    <div>
-        <RadzenLabel Text="Sorumlu" Component="sorumlu" />
-        <RadzenDropDown Name="sorumlu" TValue="int?" Data="@kullanicilar" TextProperty="@nameof(UserListItemDto.DisplayName)"
-                        ValueProperty="@nameof(UserListItemDto.Id)" @bind-Value="model.SorumluKullaniciId"
-                        AllowFiltering="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                        AllowClear="true" Placeholder="Firmanın sorumlusu" Style="width:100%" />
-    </div>
+                        <div>
+                            <RadzenLabel Text="Sorumlu" Component="sorumlu" />
+                            <RadzenDropDown Name="sorumlu" TValue="int?" Data="@kullanicilar" TextProperty="@nameof(UserListItemDto.DisplayName)"
+                                            ValueProperty="@nameof(UserListItemDto.Id)" @bind-Value="model.SorumluKullaniciId"
+                                            AllowFiltering="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                            AllowClear="true" Placeholder="Firmanın sorumlusu" Style="width:100%" />
+                        </div>
 
-    @if (Mevcut is not null)
-    {
-        <RadzenCheckBox @bind-Value="model.Aktif" Name="aktif" />
-        <RadzenLabel Text="Aktif (pasif iş listelerde görünmez, tanımı kalır)" Component="aktif" Style="margin-left:6px" />
-    }
+                        @if (Mevcut is not null)
+                        {
+                            <div>
+                                <RadzenCheckBox @bind-Value="model.Aktif" Name="aktif" />
+                                <RadzenLabel Text="Aktif (pasif iş listelerde görünmez, tanımı kalır)" Component="aktif" Style="margin-left:6px" />
+                            </div>
+                        }
+                    }
+                </div>
+            </RadzenTabsItem>
+
+            <RadzenTabsItem Text="Prosedür">
+                <div class="ys-form">
+                    <div>
+                        <RadzenLabel Text="Program / sistem" Component="program" />
+                        <RadzenDropDown Name="program" TValue="int?" Data="@Programlar" TextProperty="Ad" ValueProperty="Deger"
+                                        @bind-Value="model.SistemId" AllowClear="true" AllowFiltering="true"
+                                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                        Placeholder="Belirtilmemiş" Style="width:100%" />
+                        @if (model.SistemId is { } secili && Kart.Sistemler.Any(s => s.Firmanin)
+                             && Kart.Sistemler.FirstOrDefault(s => s.Id == secili) is { Firmanin: false } disari)
+                        {
+                            <div class="ys-alt">@disari.Ad firmanın Kullanılan sistemler kartında yok — iş başka yerde yapılıyorsa doğru.</div>
+                        }
+                        else
+                        {
+                            <div class="ys-alt">Liste ortak; yeni sistem Kullanılan sistemler kartından ya da Yönetim → Sistemler'den eklenir.</div>
+                        }
+                    </div>
+
+                    <div>
+                        <RadzenLabel Text="Menü yolu" Component="menu" />
+                        <RadzenTextBox Name="menu" @bind-Value="model.MenuYolu" MaxLength="300" Style="width:100%"
+                                       Placeholder="ör. Bordro > Raporlar > Ücret Bordrosu" />
+                    </div>
+
+                    <div>
+                        <RadzenLabel Text="Nasıl yapılır — her satır bir adım" Component="nasil" />
+                        <RadzenTextArea Name="nasil" @bind-Value="model.NasilYapilir" MaxLength="4000" Rows="6" Style="width:100%"
+                                        Placeholder="@("Puantajı gir\nBordroyu hesapla\nPDF al ve gönder")" />
+                        <div class="ys-alt">@IsMetin.Adimlar(model.NasilYapilir).Count adım · boş satırlar atlanır</div>
+                    </div>
+
+                    <div>
+                        <RadzenLabel Text="Alıcılar" />
+                        @for (var i = 0; i < alicilar.Count; i++)
+                        {
+                            var a = alicilar[i];
+                            var o = onizleme.ElementAtOrDefault(i);
+                            <div class="ys-alici-satir">
+                                <RadzenTextBox @bind-Value="a.AdSoyad" MaxLength="150" Placeholder="Ad soyad" Change="@(_ => Onizle())" />
+                                <RadzenTextBox @bind-Value="a.Rol" MaxLength="100" Placeholder="Rol (Finans, Hollanda)" />
+                                <RadzenTextBox @bind-Value="a.Eposta" MaxLength="200" Placeholder="E-posta (isteğe bağlı)" Change="@(_ => Onizle())" />
+                                <RadzenDropDown TValue="AliciTipi" Data="@AliciTipleri" TextProperty="Ad" ValueProperty="Deger"
+                                                @bind-Value="a.AliciTipi" />
+                                <RadzenButton Icon="close" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
+                                              title="Alıcıyı çıkar" Click="@(() => AliciCikar(a))" />
+                            </div>
+                            @* Prompt 14B: kişi kayıtlıysa e-posta ve ad kişi kaydından gelir — kaydetmeden ÖNCE söylenir. *@
+                            @if (o is { Kayitli: true })
+                            {
+                                <div class="dp-alici-kisi">
+                                    @if (o.EpostaKisidenGelir)
+                                    {
+                                        <span class="dp-alici-uyari">E-posta kişi kaydından geliyor, burada silinmez.</span>
+                                    }
+                                    @if (o.AdFarkli && !string.IsNullOrWhiteSpace(a.Eposta))
+                                    {
+                                        <span class="dp-alici-uyari">Bu e-posta @(o.KayitliAd)'a kayıtlı. Ad kişi kaydından gelir.</span>
+                                    }
+                                    else if (o.AdFarkli)
+                                    {
+                                        <span class="dp-alici-uyari">Bu ad @(o.KayitliAd) olarak kayıtlı. Ad kişi kaydından gelir.</span>
+                                    }
+                                    <span>Bu kişi kayıtlı · @(o.KayitliEposta ?? "e-posta yok") · Kişiler sekmesinden düzenlenir.</span>
+                                    @* Yeni sekmede: dialogdaki kaydedilmemiş değişiklikler kaybolmasın. *@
+                                    <a class="ys-bag" href="@(WebApp.Pages.Yapilacaklar.IsTakipPanosuAdres.Kisi(o.KisiId!.Value))" target="_blank">Kişiyi düzenle</a>
+                                </div>
+                            }
+                        }
+                        <span class="ys-bag" role="button" @onclick="AliciEkle">+ Alıcı ekle</span>
+                    </div>
+
+                    <div>
+                        <RadzenLabel Text="Ön adımı olduğu iş" Component="onadim" />
+                        <RadzenDropDown Name="onadim" TValue="string" Data="@onAdimSecenekleri" TextProperty="Ad" ValueProperty="Deger"
+                                        @bind-Value="onAdimAnahtar" AllowClear="true" Placeholder="— yok (bağımsız iş)" Style="width:100%" />
+                        <div class="ys-alt">Bu iş başka bir işin hazırlığıysa (ör. KDV hesabı → KDV beyannamesi).</div>
+                    </div>
+                </div>
+            </RadzenTabsItem>
+        </Tabs>
+    </RadzenTabs>
 
     @if (hata is not null)
     {
@@ -86,7 +214,7 @@
     <div class="ys-form-dugmeler">
         <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(false))" />
         <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" IsBusy="@kaydediliyor"
-                      Disabled="@string.IsNullOrWhiteSpace(model.Baslik)" Click="@Kaydet" />
+                      Disabled="@(!Yasal && string.IsNullOrWhiteSpace(model.Baslik))" Click="@Kaydet" />
     </div>
 </div>
 
@@ -100,11 +228,26 @@
 @code {
     [Parameter, EditorRequired] public int FirmaId { get; set; }
 
-    /// <summary>Düzenlemede mevcut tanım; eklemede boş.</summary>
+    /// <summary>Ön adım seçenekleri ve program önerisi için.</summary>
+    [Parameter, EditorRequired] public FirmaIsleriKartDto Kart { get; set; } = default!;
+
+    /// <summary>Düzenlemede mevcut tanım (özel iş ya da yasal işin prosedür satırı); eklemede boş.</summary>
     [Parameter] public FirmaIsiDto? Mevcut { get; set; }
 
+    /// <summary>Dolu ise yasal işin prosedürü düzenlenir; ad ve tarih kilitli.</summary>
+    [Parameter] public IsSatiriDto? YasalSatir { get; set; }
+
+    /// <summary>0 = Zamanlama, 1 = Prosedür.</summary>
+    [Parameter] public int Sekme { get; set; }
+
+    private bool Yasal => YasalSatir is not null;
+
     private FirmaIsiKaydetDto model = new();
+    private List<FirmaIsiAlicisiDto> alicilar = new();
+    private List<Secenek<string>> onAdimSecenekleri = new();
+    private string? onAdimAnahtar;
     private List<UserListItemDto> kullanicilar = new();
+    private int sekme;
     private bool kaydediliyor;
     private string? hata;
 
@@ -125,8 +268,25 @@
         new(IsGunKurali.DonemSonu, "Dönem sonu")
     };
 
+    /// <summary>
+    /// Ortak sistem listesi (sunucu sıralar: firmanınkiler önde). Pasif kayıt yalnız bu
+    /// firmanın bir işinde hâlâ kullanılıyorsa gelir; adının yanında yazılır.
+    /// </summary>
+    private List<Secenek<int?>> Programlar => Kart.Sistemler
+        .Select(s => new Secenek<int?>(s.Id,
+            $"{s.Ad} · {WebApp.Shared.Dto.Sistemler.SistemMetin.Tur(s.Tur)}{(s.Firmanin ? " · firmanın" : "")}{(s.Aktif ? "" : " · pasif")}"))
+        .ToList();
+
+    private static readonly List<Secenek<AliciTipi>> AliciTipleri = new()
+    {
+        new(AliciTipi.Kime, "Kime"),
+        new(AliciTipi.Bilgi, "Bilgi")
+    };
+
     protected override async Task OnInitializedAsync()
     {
+        sekme = Sekme;
+
         if (Mevcut is not null)
         {
             model = new FirmaIsiKaydetDto
@@ -139,9 +299,28 @@
                 TekSeferTarih = Mevcut.TekSeferTarih,
                 SorumluKullaniciId = Mevcut.SorumluKullaniciId,
                 SorumluKullaniciAdi = Mevcut.SorumluKullaniciAdi,
-                Aktif = Mevcut.Aktif
+                Aktif = Mevcut.Aktif,
+                SistemId = Mevcut.SistemId,
+                MenuYolu = Mevcut.MenuYolu,
+                NasilYapilir = Mevcut.NasilYapilir
             };
+            alicilar = Mevcut.Alicilar.Select(a => new FirmaIsiAlicisiDto
+            {
+                AdSoyad = a.AdSoyad, Eposta = a.Eposta, Rol = a.Rol, AliciTipi = a.AliciTipi, Sira = a.Sira
+            }).ToList();
         }
+        else if (!Yasal)
+        {
+            // Öneri, kilit değil: firmanın muhasebe programı; iş başka yerde yapılıyorsa değiştirilir.
+            model.SistemId = Kart.VarsayilanSistemId;
+        }
+
+        OnAdimSecenekleriniKur();
+
+        // Kayıtlı alıcılar açılışta da "Bu kişi kayıtlı" satırını taşısın (Prompt 14B).
+        if (alicilar.Count > 0) await Onizle();
+
+        if (Yasal) return;
 
         try
         {
@@ -155,18 +334,114 @@
         }
     }
 
+    /// <summary>
+    /// Seçenek anahtarı: özel iş "O:{id}", yasal iş "Y:{kod}:{tekrar}". Yasal hedefin prosedür
+    /// satırı henüz yoksa sunucu kayıtta açar.
+    /// </summary>
+    private void OnAdimSecenekleriniKur()
+    {
+        var ozel = Kart.OzelTanimlar
+            .Where(t => t.Id != Mevcut?.Id || Yasal)
+            .Select(t => new Secenek<string>($"O:{t.Id}", $"{t.Baslik} · firmaya özel"));
+
+        var yasal = Kart.Yasal
+            .GroupBy(s => (s.MukellefiyetKodu, s.Tekrar))
+            .Where(g => !(Yasal && g.Key.MukellefiyetKodu == YasalSatir!.MukellefiyetKodu && g.Key.Tekrar == YasalSatir.Tekrar))
+            .Select(g => new Secenek<string>($"Y:{g.Key.MukellefiyetKodu}:{(int)g.Key.Tekrar}",
+                                             $"{g.First().Baslik} · yasal {g.Key.MukellefiyetKodu}"));
+
+        onAdimSecenekleri = yasal.Concat(ozel).ToList();
+
+        if (Mevcut?.OnAdimiOlduguIsId is not { } hedef) return;
+        if (Kart.YasalProsedurler.FirstOrDefault(p => p.Id == hedef) is { } p)
+            onAdimAnahtar = $"Y:{p.YasalMukellefiyetKodu}:{(int)p.Tekrar}";
+        else if (Kart.OzelTanimlar.Any(t => t.Id == hedef))
+            onAdimAnahtar = $"O:{hedef}";
+    }
+
+    /// <summary>Alıcıların kişi durumu (sunucu: KisiEslestirici — yazma yoluyla aynı kural; kaydetmez).</summary>
+    private List<AliciOnizlemeDto> onizleme = new();
+
+    private async Task Onizle()
+    {
+        try
+        {
+            onizleme = await Api.AliciOnizleAsync(new AliciOnizlemeIstegiDto { FirmaId = FirmaId, Alicilar = alicilar.ToList() }) ?? new();
+        }
+        catch
+        {
+            onizleme = new();   // önizleme yalnız bilgi; hata kaydetmeyi engellemez
+        }
+        StateHasChanged();
+    }
+
+    private async Task AliciCikar(FirmaIsiAlicisiDto a)
+    {
+        alicilar.Remove(a);
+        await Onizle();
+    }
+
+    private void AliciEkle()
+        => alicilar.Add(new FirmaIsiAlicisiDto { AliciTipi = alicilar.Count == 0 ? AliciTipi.Kime : AliciTipi.Bilgi });
+
+    private void OnAdimiYaz(IsProsedurKaydetDto dto)
+    {
+        dto.OnAdimiOlduguIsId = null;
+        dto.OnAdimiYasalKodu = null;
+        dto.OnAdimiYasalTekrar = null;
+
+        var parca = onAdimAnahtar?.Split(':');
+        if (parca is ["O", var id] && int.TryParse(id, out var isId))
+        {
+            dto.OnAdimiOlduguIsId = isId;
+        }
+        else if (parca is ["Y", var kod, var tekrar] && byte.TryParse(tekrar, out var t))
+        {
+            dto.OnAdimiYasalKodu = kod;
+            dto.OnAdimiYasalTekrar = (IsTekrari)t;
+        }
+    }
+
     private async Task Kaydet()
     {
         hata = null;
+
+        // Boş bırakılan alıcı satırı (adı yok) kaydedilmez.
+        var gonderilecek = alicilar.Where(a => !string.IsNullOrWhiteSpace(a.AdSoyad)).ToList();
+        if (alicilar.Any(a => string.IsNullOrWhiteSpace(a.AdSoyad) &&
+                              (!string.IsNullOrWhiteSpace(a.Eposta) || !string.IsNullOrWhiteSpace(a.Rol))))
+        {
+            hata = "Alıcı satırında ad soyad boş; ya adı yazın ya satırı çıkarın.";
+            sekme = 1;
+            return;
+        }
+
         kaydediliyor = true;
         try
         {
-            model.SorumluKullaniciAdi = kullanicilar.FirstOrDefault(k => k.Id == model.SorumluKullaniciId)?.DisplayName
-                                        ?? (model.SorumluKullaniciId == Mevcut?.SorumluKullaniciId ? Mevcut?.SorumluKullaniciAdi : null);
+            if (Yasal)
+            {
+                var dto = new IsProsedurKaydetDto
+                {
+                    SistemId = model.SistemId,
+                    MenuYolu = model.MenuYolu,
+                    NasilYapilir = model.NasilYapilir,
+                    Alicilar = gonderilecek
+                };
+                OnAdimiYaz(dto);
+                hata = await Api.YasalProsedurKaydetAsync(FirmaId, YasalSatir!.MukellefiyetKodu!, YasalSatir.Tekrar, dto);
+            }
+            else
+            {
+                model.Alicilar = gonderilecek;
+                OnAdimiYaz(model);
+                model.SorumluKullaniciAdi = kullanicilar.FirstOrDefault(k => k.Id == model.SorumluKullaniciId)?.DisplayName
+                                            ?? (model.SorumluKullaniciId == Mevcut?.SorumluKullaniciId ? Mevcut?.SorumluKullaniciAdi : null);
 
-            hata = Mevcut is null
-                ? await Api.IsEkleAsync(FirmaId, model)
-                : await Api.IsGuncelleAsync(FirmaId, Mevcut.Id, model);
+                hata = Mevcut is null
+                    ? await Api.IsEkleAsync(FirmaId, model)
+                    : await Api.IsGuncelleAsync(FirmaId, Mevcut.Id, model);
+            }
         }
         finally
         {

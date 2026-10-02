@@ -20,6 +20,15 @@ namespace WebApp.Shared.Dto.Anasayfa
         public string Mesaj { get; set; } = string.Empty;
     }
 
+    /// <summary>Raydaki rozetin türü (sunucu: FirmaEksikBilgi.Rozet). Renk ve metin bundan; istemci eşik tanımlamaz.</summary>
+    public enum KunyeRozeti : byte
+    {
+        Yok = 0,
+        GerekliEksik = 1,
+        Uyari = 2,
+        Tamamlaniyor = 3
+    }
+
     /// <summary>Sol listedeki firma satırı.</summary>
     public class FirmaPaneliOzetDto
     {
@@ -31,8 +40,17 @@ namespace WebApp.Shared.Dto.Anasayfa
 
         public bool UyariVar => Uyarilar.Count > 0;
 
-        /// <summary>Boş künye alanı sayısı; sunucunun tek listesinden (16 kontrol).</summary>
+        /// <summary>Boş künye maddesi (gerekli + ikincil + durum); rozet bunu SAYMAZ.</summary>
         public int EksikSayisi { get; set; }
+
+        /// <summary>Boş GEREKLİ alan sayısı — rozetin sayısı.</summary>
+        public int GerekliEksikSayisi { get; set; }
+
+        /// <summary>Rozetin title'ı: "Eksik: vergi dairesi, defter usulü".</summary>
+        public List<string> GerekliEksikler { get; set; } = new();
+
+        public bool YeniFirma { get; set; }
+        public KunyeRozeti Rozet { get; set; }
 
         /// <summary>İmza yetkisi / pay oranı / geçerli yetkili yok uyarılarının sayısı.</summary>
         public int UyariSayisi { get; set; }
@@ -49,6 +67,12 @@ namespace WebApp.Shared.Dto.Anasayfa
         public string Kart { get; set; } = string.Empty;
         public string Alan { get; set; } = string.Empty;
         public string Odak { get; set; } = string.Empty;
+
+        /// <summary>Gerekli alan (rozete girer); değilse ikincil ya da durum.</summary>
+        public bool Gerekli { get; set; }
+
+        /// <summary>Künye eksiği değil durum (cari dönem mizanı); rozete girmez.</summary>
+        public bool Durum { get; set; }
     }
 
     public class FirmaMukellefiyetDto
@@ -109,6 +133,54 @@ namespace WebApp.Shared.Dto.Anasayfa
         OzelHesapDonemi = 2
     }
 
+    public enum FirmaTipi : byte
+    {
+        Belirsiz = 0,
+        SermayeSirketi = 1,
+        Sahis = 2,
+        AdiOrtaklik = 3,
+        IsOrtakligi = 4
+    }
+
+    public enum SgkTesvikKademesi : byte
+    {
+        Belirsiz = 0,
+        Tesviksiz = 1,
+        ImalatDisi = 2,
+        Imalat = 3
+    }
+
+    public enum MuhtasarDonemi : byte
+    {
+        Belirsiz = 0,
+        Aylik = 1,
+        UcAylik = 2
+    }
+
+    /// <summary>SGK kademesi ve işveren oranı — oranlar SUNUCUDAN gelir (SgkTesvikOranlari), burada kopya yok.</summary>
+    public class SgkKademeSecenegiDto
+    {
+        public SgkTesvikKademesi Kademe { get; set; }
+        public string Ad { get; set; } = string.Empty;
+        public decimal IsverenOrani { get; set; }
+    }
+
+    public class FirmaSistemAtamasiDto
+    {
+        public int SistemId { get; set; }
+        public string Ad { get; set; } = string.Empty;
+        public WebApp.Shared.Dto.Sistemler.SistemTuru Tur { get; set; }
+        public bool Aktif { get; set; }
+        public string? FirmaKodu { get; set; }
+        public int Sira { get; set; }
+    }
+
+    public class FirmaPaneliSistemlerDto
+    {
+        public List<FirmaSistemAtamasiDto> Atamalar { get; set; } = new();
+        public string? SistemNotu { get; set; }
+    }
+
     /// <summary>
     /// Mizan formatı seçenekleri; sunucudaki <c>MizanFormatlari.Liste</c> ile aynı. Profil
     /// tablosu gelene kadar sabit liste.
@@ -136,6 +208,20 @@ namespace WebApp.Shared.Dto.Anasayfa
         /// </summary>
         public static bool SablonVar(string? format)
             => format is "ORKA — döviz kolonlu" or "ORKA — döviz kolonsuz" or "Luca";
+
+        /// <summary>
+        /// Muhasebe programına uyan formatlar — yalnız öneri (sunucudaki MizanFormatlari.ProgramIcin
+        /// ile aynı kural: formatın "—" öncesi program adı, büyük/küçük harf ve boşluk farkı yok).
+        /// </summary>
+        public static List<string> ProgramIcin(string? programAdi)
+        {
+            static string N(string? s) => new string((s ?? string.Empty).ToLower(new System.Globalization.CultureInfo("tr-TR"))
+                .Where(c => !char.IsWhiteSpace(c) && c is not ('.' or '-' or '_')).Select(c => c == 'ı' ? 'i' : c).ToArray());
+
+            var ad = N(programAdi);
+            if (ad.Length == 0) return new();
+            return Liste.Where(f => f != Belirsiz && N(f.Split('—')[0]) == ad).ToList();
+        }
     }
 
     /// <summary>Son yüklenen mizanın durumu; özet alanları eski kayıtlarda boş ("—").</summary>
@@ -166,6 +252,12 @@ namespace WebApp.Shared.Dto.Anasayfa
         public DateTime? OzelDonemBit { get; set; }
         public FirmaPaneliMizanDurumuDto? SonMizan { get; set; }
         public string? UyusmazlikMesaji { get; set; }
+
+        public FirmaTipi FirmaTipi { get; set; }
+        public SgkTesvikKademesi SgkTesvikKademesi { get; set; }
+        public MuhtasarDonemi MuhtasarDonemi { get; set; }
+        public decimal? SgkIsverenOrani { get; set; }
+        public List<SgkKademeSecenegiDto> SgkKademeleri { get; set; } = new();
     }
 
     // ---- Takip kartı (sayısal değerler sunucuyla ortak) ----
@@ -244,10 +336,16 @@ namespace WebApp.Shared.Dto.Anasayfa
     {
         public DefterUsulu DefterUsulu { get; set; }
         public VergiTuru VergiTuru { get; set; }
+
+        /// <summary>Gönderilmez (null = dokunma): mizan formatı Kullanılan sistemler formunda.</summary>
         public string? MizanFormati { get; set; }
+
         public HesapDonemi? HesapDonemi { get; set; }
         public DateTime? OzelDonemBas { get; set; }
         public DateTime? OzelDonemBit { get; set; }
+        public FirmaTipi FirmaTipi { get; set; }
+        public SgkTesvikKademesi SgkTesvikKademesi { get; set; }
+        public MuhtasarDonemi MuhtasarDonemi { get; set; }
 
         /// <summary>Kayıtlı sınıflandırmayı kodlarla uyuşmasa da onayla (kaynak "elle" olur).</summary>
         public bool Onayla { get; set; }
@@ -273,8 +371,12 @@ namespace WebApp.Shared.Dto.Anasayfa
         public string Ad { get; set; } = string.Empty;
         public string Unvan { get; set; } = string.Empty;
 
+        public int GerekliEksikSayisi { get; set; }
+        public bool YeniFirma { get; set; }
+
         public FirmaMukellefiyetDto Mukellefiyet { get; set; } = new();
         public FirmaPaneliSiniflandirmaDto Siniflandirma { get; set; } = new();
+        public FirmaPaneliSistemlerDto Sistemler { get; set; } = new();
         public FirmaPaneliSicilDto Sicil { get; set; } = new();
         public FirmaOrtaklikDto Ortaklik { get; set; } = new();
         public List<FirmaPaneliYetkiliDto> Yetkililer { get; set; } = new();
@@ -293,5 +395,8 @@ namespace WebApp.Shared.Dto.Anasayfa
     {
         public List<FirmaPaneliOzetDto> Firmalar { get; set; } = new();
         public FirmaPaneliDetayDto? Secili { get; set; }
+
+        /// <summary>Sunucunun yeni firma toleransı (gün); istemcide sabit yok.</summary>
+        public int YeniFirmaToleransGun { get; set; }
     }
 }
