@@ -90,6 +90,13 @@ namespace WebApp.Shared.Dto.Yapilacaklar
         public IsGunKurali GunKurali { get; set; }
         public int? AyinGunu { get; set; }
         public DateTime? TekSeferTarih { get; set; }
+
+        /// <summary>Kayıtlı başlangıç ayı ("2026-09"); boş = eklendiği aydan (Prompt 17).</summary>
+        public string? IlkDonem { get; set; }
+
+        /// <summary>Etkin başlangıcın ilk ayı; tek seferlik ve yasal satırda boş.</summary>
+        public string? BaslangicDonemi { get; set; }
+
         public int? SorumluKullaniciId { get; set; }
         public string? SorumluKullaniciAdi { get; set; }
         public bool Aktif { get; set; }
@@ -202,6 +209,10 @@ namespace WebApp.Shared.Dto.Yapilacaklar
         public IsGunKurali GunKurali { get; set; } = IsGunKurali.AyinGunu;
         public int? AyinGunu { get; set; } = 1;
         public DateTime? TekSeferTarih { get; set; }
+
+        /// <summary>Başlangıç ayı "2026-09" (Prompt 17); boş = eklendiği aydan. Tek seferlikte yok sayılır.</summary>
+        public string? IlkDonem { get; set; }
+
         public int? SorumluKullaniciId { get; set; }
         public string? SorumluKullaniciAdi { get; set; }
         public bool Aktif { get; set; } = true;
@@ -332,6 +343,44 @@ namespace WebApp.Shared.Dto.Yapilacaklar
         };
 
         public static string Kaynak(IsKaynagi k) => k == IsKaynagi.Yasal ? "Yasal" : "Firmaya özel";
+
+        // ---- Başlangıç dönemi (Prompt 17) — anahtar "2026-09", sunucudaki aylık dönem anahtarıyla aynı ----
+
+        private static readonly System.Globalization.CultureInfo Tr = new("tr-TR");
+
+        /// <summary>"2026-09" → 01.09.2026; biçim bozuksa null.</summary>
+        public static DateTime? AyCoz(string? anahtar)
+        {
+            var p = anahtar?.Trim().Split('-');
+            return p is { Length: 2 } && int.TryParse(p[0], out var y) && int.TryParse(p[1], out var a)
+                   && y is >= 2000 and <= 2100 && a is >= 1 and <= 12
+                ? new DateTime(y, a, 1) : null;
+        }
+
+        public static string AyAnahtari(DateTime t) => $"{t.Year:0000}-{t.Month:00}";
+
+        /// <summary>"Eylül 2026".</summary>
+        public static string AyEtiketi(DateTime t) => $"{Tr.DateTimeFormat.GetMonthName(t.Month)} {t.Year}";
+
+        /// <summary>
+        /// "Eylül 2026'dan beri" — yalnız kayıtlı başlangıç ayı GEÇMİŞTEYSE (içinde bulunulan aydan önce).
+        /// Boş başlangıç (eklendiği aydan başlayan iş) için not çıkmaz.
+        /// </summary>
+        public static string? BeriNotu(string? ilkDonem, DateTime bugun)
+        {
+            if (AyCoz(ilkDonem) is not { } ay || ay >= new DateTime(bugun.Year, bugun.Month, 1)) return null;
+            return $"{AyEtiketi(ay)}'{AyrilmaEki(ay.Year)} beri";
+        }
+
+        /// <summary>Yılın okunuşuna göre ayrılma eki: 2026 (altı) → "dan", 2027 (yedi) → "den", 2025 (beş) → "ten".</summary>
+        private static string AyrilmaEki(int yil)
+        {
+            var birler = yil % 10;
+            var onlar = yil / 10 % 10;
+            if (birler != 0) return birler switch { 3 or 4 or 5 => "ten", 6 or 9 => "dan", _ => "den" };
+            if (onlar != 0) return onlar switch { 1 or 3 or 9 => "dan", 4 or 6 => "tan", 7 => "ten", _ => "den" };
+            return "den";   // bin, yüz
+        }
 
         /// <summary>Kart satırının prosedür tanımı: özelde kendi tanımı, yasalda kod + tekrar ile açılmış satır.</summary>
         public static FirmaIsiDto? Tanim(FirmaIsleriKartDto kart, IsSatiriDto s)

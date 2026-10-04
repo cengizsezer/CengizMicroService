@@ -4157,6 +4157,11 @@ namespace CatalogService.Api.Migrations
                     b.Property<byte>("GunKurali")
                         .HasColumnType("tinyint");
 
+                    b.Property<string>("IlkDonem")
+                        .HasMaxLength(7)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(7)");
+
                     b.Property<int?>("IsTarifiId")
                         .HasColumnType("int");
 

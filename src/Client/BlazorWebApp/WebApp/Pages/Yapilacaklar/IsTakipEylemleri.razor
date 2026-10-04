@@ -40,6 +40,12 @@
     /// <summary>Firma sorusunun seçenekleri (aktif firmalar).</summary>
     [Parameter] public List<DonemFirmaSecenegi> Firmalar { get; set; } = new();
 
+    /// <summary>
+    /// Açık dönem sekmesinin ayı ("2026-09", Prompt 17): eklenen/yapıştırılan/kopyalanan işin başlangıç
+    /// dönemi bununla ön dolu gelir. Dönem dışı sekmede (Özet, Nasıl yapılır, Kişiler) boş = içinde bulunulan ay.
+    /// </summary>
+    [Parameter] public string? Donem { get; set; }
+
     /// <summary>İş eklendi/kopyalandı — kabuk açık sekmeyi ve rozetleri tazeler.</summary>
     [Parameter] public EventCallback Eklendi { get; set; }
 
@@ -101,7 +107,8 @@
             {
                 { nameof(FirmaIsiDialog.FirmaId), firmaId },
                 { nameof(FirmaIsiDialog.Kart), kart },
-                { nameof(FirmaIsiDialog.Mevcut), null }
+                { nameof(FirmaIsiDialog.Mevcut), null },
+                { nameof(FirmaIsiDialog.BaslangicDonemi), Donem }
             }!,
             new DialogOptions { Width = "min(640px, 96vw)" });
 
@@ -135,7 +142,8 @@
             new Dictionary<string, object?>
             {
                 { nameof(TopluIsDialog.FirmaId), firmaId },
-                { nameof(TopluIsDialog.Metin), metin }
+                { nameof(TopluIsDialog.Metin), metin },
+                { nameof(TopluIsDialog.BaslangicDonemi), Donem }
             }!,
             new DialogOptions { Width = "min(1100px, 96vw)" });
 
@@ -154,7 +162,8 @@
             new Dictionary<string, object?>
             {
                 { nameof(IsKopyalaDialog.FirmaId), firmaId },
-                { nameof(IsKopyalaDialog.MevcutBasliklar), kart.OzelTanimlar.Select(t => t.Baslik).ToList() }
+                { nameof(IsKopyalaDialog.MevcutBasliklar), kart.OzelTanimlar.Select(t => t.Baslik).ToList() },
+                { nameof(IsKopyalaDialog.BaslangicDonemi), Donem }
             }!,
             new DialogOptions { Width = "min(860px, 96vw)" });
 

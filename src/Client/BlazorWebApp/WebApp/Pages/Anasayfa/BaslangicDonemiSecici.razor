@@ -1,0 +1,23 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@*
+    Başlangıç dönemi — ay seçici (Prompt 17). Değer "2026-09" (sunucudaki aylık dönem anahtarı).
+    İş dialogu, toplu ekleme ve kopyalama ortak kullanır. Geçmiş ve gelecek ay serbest; doğrulama sunucuda.
+*@
+
+<RadzenDatePicker TValue="DateTime?" Name="@Name" Value="@IsMetin.AyCoz(Value)" ValueChanged="@Degisti"
+                  ShowDays="false" DateFormat="MMMM yyyy" Culture="@Tr" AllowClear="false" Style="@Style" />
+
+@code {
+    private static readonly System.Globalization.CultureInfo Tr = new("tr-TR");
+
+    /// <summary>"2026-09".</summary>
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string? Name { get; set; }
+    [Parameter] public string Style { get; set; } = "width:180px";
+
+    private Task Degisti(DateTime? t) => t is { } d ? ValueChanged.InvokeAsync(IsMetin.AyAnahtari(d)) : Task.CompletedTask;
+}

@@ -109,10 +109,27 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
         }
 
         /// <summary>
-        /// Tekrarlayan özel işin ilk dönemi: eklendiği günün dönemi. Kuyruk (<see cref="OzelDonemler"/>)
-        /// ve Dönem panosu aynı kuralı buradan okur — ikinci bir dönem hesabı yok.
+        /// Tekrarlayan özel işin ilk dönemi: <see cref="FirmaIsi.IlkDonem"/> doluysa o ayın düştüğü dönem
+        /// (Prompt 17 — Ekim'de girilen Eylül işi Eylül'den başlar), boşsa eklendiği günün dönemi.
+        /// Kuyruk (<see cref="OzelDonemler"/>), Dönem panosu, Özet ve mail takvimi aynı kuralı buradan
+        /// okur — ikinci bir dönem hesabı yok.
         /// </summary>
-        public static IsDonemi OzelIlkDonem(FirmaIsi isi) => IsDonemi.Icin(isi.Tekrar, OlusturmaGunu(isi));
+        public static IsDonemi OzelIlkDonem(FirmaIsi isi)
+            => IsDonemi.Icin(isi.Tekrar, IsDonemi.Coz(IsTekrari.Aylik, isi.IlkDonem) is { } ilk ? ilk.Bas : OlusturmaGunu(isi));
+
+        /// <summary>
+        /// Başlangıç ayının kayda yazılacak hali (Prompt 17): geçersiz biçim reddedilir (<c>Gecersiz</c>);
+        /// tek seferlik işte ve boş girişte <c>null</c>; eklenme ayına eşitse de <c>null</c> — o zaman
+        /// davranış zaten eski kuralla aynıdır, kayıt "bugünkü davranıştaki iş" olarak kalır.
+        /// </summary>
+        public static (string? Deger, bool Gecersiz) IlkDonemNormalize(string? giris, IsTekrari tekrar, DateTime olusturmaZamani)
+        {
+            if (tekrar == IsTekrari.TekSefer || string.IsNullOrWhiteSpace(giris)) return (null, false);
+            if (IsDonemi.Coz(IsTekrari.Aylik, giris) is not { } ay) return (null, true);
+
+            var eklenme = OlusturmaGunu(new FirmaIsi { OlusturmaZamani = olusturmaZamani });
+            return ay.Yil == eklenme.Year && ay.No == eklenme.Month ? (null, false) : (ay.Anahtar, false);
+        }
 
         /// <summary>Eklenme anının yerel günü (kayıt UTC).</summary>
         private static DateTime OlusturmaGunu(FirmaIsi isi)
@@ -304,6 +321,9 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
             GunKurali = t.GunKurali,
             AyinGunu = t.AyinGunu,
             TekSeferTarih = t.TekSeferTarih,
+            IlkDonem = t.IlkDonem,
+            BaslangicDonemi = t.Tekrar == IsTekrari.TekSefer || t.YasalMukellefiyetKodu is not null
+                ? null : IsDonemi.Icin(IsTekrari.Aylik, OzelIlkDonem(t).Bas).Anahtar,
             SorumluKullaniciId = t.SorumluKullaniciId,
             SorumluKullaniciAdi = t.SorumluKullaniciAdi,
             Aktif = t.Aktif,

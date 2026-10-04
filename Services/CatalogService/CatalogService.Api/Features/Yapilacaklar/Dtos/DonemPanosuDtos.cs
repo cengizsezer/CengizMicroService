@@ -122,6 +122,9 @@ namespace CatalogService.Api.Features.Yapilacaklar.Dtos
 
         public List<string> Kime { get; set; } = new();
         public List<string> Bilgi { get; set; } = new();
+
+        /// <summary>Özel işin kayıtlı başlangıç ayı ("2026-09", Prompt 17); boşsa "…'dan beri" notu çıkmaz.</summary>
+        public string? IlkDonem { get; set; }
     }
 
     /// <summary>Bir önceki dönemin notu ve kanıtı — "geçen ay nasıl yapmıştım".</summary>

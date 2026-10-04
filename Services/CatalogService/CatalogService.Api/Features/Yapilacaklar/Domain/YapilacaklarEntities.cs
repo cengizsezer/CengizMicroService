@@ -74,6 +74,16 @@ namespace CatalogService.Api.Features.Yapilacaklar.Domain
         /// </summary>
         public DateTime OlusturmaZamani { get; set; } = DateTime.UtcNow;
 
+        /// <summary>
+        /// Tekrarlayan işin başlangıç ayı (Prompt 17): "2026-09", aylık dönem anahtarıyla AYNI biçim.
+        /// Dış muhasebede Ekim'de oturup Eylül'ün işi girilir — ilk dönem kullanıcının seçtiği aydır.
+        /// Boş = eski davranış, ilk dönem <see cref="OlusturmaZamani"/>'ndan türer (mevcut kayıtlar).
+        /// Üç aylık/yıllık işte de ay yazılır; o ayın düştüğü dönemden başlar. Tek seferlik işte
+        /// yok sayılır (<see cref="TekSeferTarih"/> geçerli). Okuyan tek yer
+        /// <c>YapilacaklarKurucu.OzelIlkDonem</c>.
+        /// </summary>
+        public string? IlkDonem { get; set; }
+
         // ---- Prosedür (Prompt 8): nerede yapılır, kime gider, nasıl yapılır ----
 
         /// <summary>

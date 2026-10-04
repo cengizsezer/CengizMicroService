@@ -91,7 +91,14 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="ys-alt">Tamamlamalar, ekler, ön adım bağı ve sorumlu kopyalanmaz.</div>
+                <div class="ys-toplu-ust">
+                    <span class="ys-toplu-secim">
+                        <b>Başlangıç dönemi: @IsMetin.AyEtiketi(IsMetin.AyCoz(ilkDonem) ?? DateTime.Today)</b>
+                        <BaslangicDonemiSecici @bind-Value="ilkDonem" />
+                    </span>
+                    <span class="ys-alt">Kopyalanan işler bu firmada bu dönemden itibaren takip edilir.</span>
+                </div>
+                <div class="ys-alt">Tamamlamalar, ekler, ön adım bağı, sorumlu ve kaynaktaki başlangıç dönemi kopyalanmaz.</div>
             }
         }
 
@@ -117,6 +124,11 @@
     /// <summary>Hedef firmanın özel iş başlıkları — aynı başlık atlanacak diye önceden gösterilir.</summary>
     [Parameter] public List<string> MevcutBasliklar { get; set; } = new();
 
+    /// <summary>Panoda açık sekmenin ayı ("2026-09"); boş = içinde bulunulan ay (Anasayfa).</summary>
+    [Parameter] public string? BaslangicDonemi { get; set; }
+
+    private string? ilkDonem;
+
     private sealed record Secenek(int Id, string Ad);
 
     private List<Secenek> firmalar = new();
@@ -135,6 +147,7 @@
     protected override async Task OnInitializedAsync()
     {
         MevcutBasliklar = MevcutBasliklar.Select(Anahtar).ToList();
+        ilkDonem = IsMetin.AyAnahtari(IsMetin.AyCoz(BaslangicDonemi) ?? DateTime.Today);
         try
         {
             firmalar = (await Firmalar.GetAllAsync())
@@ -187,7 +200,7 @@
         isleniyor = true;
         try
         {
-            var (s, mesaj) = await Api.KopyalaAsync(FirmaId, new IsKopyalaDto { KaynakFirmaId = kaynakId!.Value, IsIdleri = secili.ToList() });
+            var (s, mesaj) = await Api.KopyalaAsync(FirmaId, new IsKopyalaDto { KaynakFirmaId = kaynakId!.Value, IsIdleri = secili.ToList(), IlkDonem = ilkDonem });
             if (s is null)
             {
                 hata = mesaj ?? "Kopyalanamadı.";

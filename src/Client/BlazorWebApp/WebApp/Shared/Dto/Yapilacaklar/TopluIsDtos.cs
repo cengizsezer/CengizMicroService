@@ -64,6 +64,9 @@ namespace WebApp.Shared.Dto.Yapilacaklar
     {
         public List<FirmaIsiKaydetDto> Isler { get; set; } = new();
         public bool UzerineYazma { get; set; } = true;
+
+        /// <summary>Eklenen bütün işlerin başlangıç ayı (Prompt 17) — tek değer.</summary>
+        public string? IlkDonem { get; set; }
     }
 
     public class TopluAtlananDto
@@ -83,6 +86,9 @@ namespace WebApp.Shared.Dto.Yapilacaklar
     {
         public int KaynakFirmaId { get; set; }
         public List<int> IsIdleri { get; set; } = new();
+
+        /// <summary>Kopyaların hedefteki başlangıç ayı (Prompt 17); kaynağınki taşınmaz.</summary>
+        public string? IlkDonem { get; set; }
     }
 
     public static class TopluMetin

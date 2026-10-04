@@ -104,6 +104,17 @@
                             </div>
                         }
 
+                        @* Prompt 17: tek seferlik işte tarih zaten dönemi belirler. *@
+                        @if (model.Tekrar != IsTekrari.TekSefer)
+                        {
+                            <div>
+                                <RadzenLabel Text="Başlangıç dönemi" Component="baslangic" />
+                                <div><BaslangicDonemiSecici Name="baslangic" @bind-Value="model.IlkDonem" /></div>
+                                <div class="ys-alt">Bu iş hangi dönemden itibaren takip edilsin.
+                                    @(model.Tekrar == IsTekrari.Aylik ? "" : "Seçilen ayın düştüğü dönemden başlar.")</div>
+                            </div>
+                        }
+
                         <div>
                             <RadzenLabel Text="Sorumlu" Component="sorumlu" />
                             <RadzenDropDown Name="sorumlu" TValue="int?" Data="@kullanicilar" TextProperty="@nameof(UserListItemDto.DisplayName)"
@@ -240,6 +251,12 @@
     /// <summary>0 = Zamanlama, 1 = Prosedür.</summary>
     [Parameter] public int Sekme { get; set; }
 
+    /// <summary>
+    /// Yeni işin önerilen başlangıç ayı ("2026-09", Prompt 17): İş Takip Panosu'nda açık sekmenin dönemi.
+    /// Boş = içinde bulunulan ay (Anasayfa kartı — eski davranış). Kullanıcı değiştirebilir.
+    /// </summary>
+    [Parameter] public string? BaslangicDonemi { get; set; }
+
     private bool Yasal => YasalSatir is not null;
 
     private FirmaIsiKaydetDto model = new();
@@ -297,6 +314,7 @@
                 GunKurali = Mevcut.GunKurali,
                 AyinGunu = Mevcut.AyinGunu ?? 1,
                 TekSeferTarih = Mevcut.TekSeferTarih,
+                IlkDonem = Mevcut.IlkDonem ?? Mevcut.BaslangicDonemi,
                 SorumluKullaniciId = Mevcut.SorumluKullaniciId,
                 SorumluKullaniciAdi = Mevcut.SorumluKullaniciAdi,
                 Aktif = Mevcut.Aktif,
@@ -313,6 +331,9 @@
         {
             // Öneri, kilit değil: firmanın muhasebe programı; iş başka yerde yapılıyorsa değiştirilir.
             model.SistemId = Kart.VarsayilanSistemId;
+
+            // Prompt 17: panodan açık sekmenin ayı, anasayfadan içinde bulunulan ay.
+            model.IlkDonem = IsMetin.AyCoz(BaslangicDonemi) is { } ay ? IsMetin.AyAnahtari(ay) : IsMetin.AyAnahtari(DateTime.Today);
         }
 
         OnAdimSecenekleriniKur();
@@ -435,12 +456,18 @@
             {
                 model.Alicilar = gonderilecek;
                 OnAdimiYaz(model);
+
+                // Eski kayıt (başlangıcı eklendiği günden) ve alan dokunulmadıysa boş kalır: davranış ve
+                // "…'dan beri" notu değişmesin (üç aylıkta gösterilen ay çeyreğin ilk ayıdır).
+                var secilenAy = model.IlkDonem;
+                if (Mevcut is { IlkDonem: null } && model.IlkDonem == Mevcut.BaslangicDonemi) model.IlkDonem = null;
                 model.SorumluKullaniciAdi = kullanicilar.FirstOrDefault(k => k.Id == model.SorumluKullaniciId)?.DisplayName
                                             ?? (model.SorumluKullaniciId == Mevcut?.SorumluKullaniciId ? Mevcut?.SorumluKullaniciAdi : null);
 
                 hata = Mevcut is null
                     ? await Api.IsEkleAsync(FirmaId, model)
                     : await Api.IsGuncelleAsync(FirmaId, Mevcut.Id, model);
+                model.IlkDonem = secilenAy;   // hata olursa form seçimi göstermeye devam etsin
             }
         }
         finally

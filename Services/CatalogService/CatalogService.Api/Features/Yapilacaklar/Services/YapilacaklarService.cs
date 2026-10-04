@@ -447,6 +447,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
             await FirmaVarAsync(firmaId, ct);
             if (dto.Isler.Count > TopluEnFazlaIs)
                 throw new YapilacaklarKuralException(nameof(dto.Isler), $"Bir seferde en çok {TopluEnFazlaIs} iş eklenebilir.");
+            IlkDonemDogrula(dto.IlkDonem);
 
             var sonuc = new TopluSonucDto();
             var mevcut = await MevcutBasliklarAsync(firmaId, ct);
@@ -469,6 +470,8 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
                         continue;
                     }
 
+                    // Prompt 17: bütün satırlar TEK başlangıç ayı alır (önizlemenin üstündeki seçim).
+                    isDto.IlkDonem = dto.IlkDonem;
                     var eklenen = await IsEkleAsync(firmaId, isDto, ct);
                     mevcut[anahtar] = eklenen.Id;   // aynı istekte ikinci kez gelirse atlansın
                     sonuc.Eklenen++;
@@ -486,13 +489,15 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
 
         /// <summary>
         /// Güncellemede yapıştırmada OLMAYAN alanlar mevcut değerini korur: sorumlu, aktiflik,
-        /// nasıl yapılır, ön adım; boş gelen program/menü/açıklama da korunur. Alıcı listesi
-        /// yapıştırmada yoksa dokunulmaz (null).
+        /// nasıl yapılır, ön adım, başlangıç ayı (Prompt 17 — mevcut işin geçmiş dönemleri
+        /// kaybolmasın); boş gelen program/menü/açıklama da korunur. Alıcı listesi yapıştırmada
+        /// yoksa dokunulmaz (null).
         /// </summary>
         private async Task<FirmaIsiKaydetDto> BirlestirAsync(int mevcutId, FirmaIsiKaydetDto yeni, CancellationToken ct)
         {
             var m = await _db.FirmaIsleri.AsNoTracking().FirstAsync(i => i.Id == mevcutId, ct);
 
+            yeni.IlkDonem = m.IlkDonem;
             yeni.SorumluKullaniciId = m.SorumluKullaniciId;
             yeni.SorumluKullaniciAdi = m.SorumluKullaniciAdi;
             yeni.Aktif = m.Aktif;
@@ -510,6 +515,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
             if (dto.KaynakFirmaId == hedefFirmaId)
                 throw new YapilacaklarKuralException(nameof(dto.KaynakFirmaId), "Firma kendisinden kopyalanamaz.");
             await FirmaVarAsync(dto.KaynakFirmaId, ct);
+            IlkDonemDogrula(dto.IlkDonem);
 
             // Yalnız ÖZEL işler: yasal işler mükellefiyetten türer, prosedür satırları (yasal) kopyalanmaz.
             var kaynaklar = await _db.FirmaIsleri.AsNoTracking().Include(i => i.Alicilar)
@@ -532,6 +538,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
 
                 // Kopyalanan: başlık, açıklama, tekrar, gün kuralı, program, menü yolu, nasıl yapılır, alıcılar.
                 // Kopyalanmayan: tamamlamalar, dönem/prosedür ekleri, ön adım bağı, sorumlu — firmaya özgü.
+                // Başlangıç ayı da TAŞINMAZ (Prompt 17): kopya hedefte seçilen aydan başlar.
                 var kopya = new FirmaIsiKaydetDto
                 {
                     Baslik = k.Baslik,
@@ -540,6 +547,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
                     GunKurali = k.GunKurali,
                     AyinGunu = k.AyinGunu,
                     TekSeferTarih = k.TekSeferTarih,
+                    IlkDonem = dto.IlkDonem,
                     Aktif = k.Aktif,
                     SistemId = k.SistemId is { } s && !pasifSistemler.Contains(s) ? s : null,
                     MenuYolu = k.MenuYolu,
@@ -1037,6 +1045,9 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
                 return;
             }
 
+            // Prompt 17: geçmiş ve gelecek ay serbest; yalnız biçim denetlenir.
+            IlkDonemDogrula(dto.IlkDonem);
+
             if (!Enum.IsDefined(dto.GunKurali))
                 throw new YapilacaklarKuralException(nameof(dto.GunKurali), "Geçersiz gün kuralı.");
 
@@ -1045,6 +1056,12 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
 
             if (dto.SorumluKullaniciId is <= 0)
                 throw new YapilacaklarKuralException(nameof(dto.SorumluKullaniciId), "Geçersiz sorumlu.");
+        }
+
+        private static void IlkDonemDogrula(string? ilkDonem)
+        {
+            if (YapilacaklarKurucu.IlkDonemNormalize(ilkDonem, IsTekrari.Aylik, DateTime.UtcNow).Gecersiz)
+                throw new YapilacaklarKuralException("IlkDonem", "Başlangıç dönemi geçersiz (beklenen: 2026-09).");
         }
 
         /// <summary>Kurala uymayan alanlar boşaltılır: tek seferlikte gün kuralı, ayın günü dışında gün sayısı.</summary>
@@ -1056,6 +1073,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
             isi.GunKurali = dto.Tekrar == IsTekrari.TekSefer ? IsGunKurali.AyinGunu : dto.GunKurali;
             isi.AyinGunu = dto.Tekrar != IsTekrari.TekSefer && dto.GunKurali == IsGunKurali.AyinGunu ? dto.AyinGunu : null;
             isi.TekSeferTarih = dto.Tekrar == IsTekrari.TekSefer ? dto.TekSeferTarih!.Value.Date : null;
+            isi.IlkDonem = YapilacaklarKurucu.IlkDonemNormalize(dto.IlkDonem, dto.Tekrar, isi.OlusturmaZamani).Deger;
             isi.SorumluKullaniciId = dto.SorumluKullaniciId;
             isi.SorumluKullaniciAdi = dto.SorumluKullaniciId is null ? null
                 : string.IsNullOrWhiteSpace(dto.SorumluKullaniciAdi) ? null

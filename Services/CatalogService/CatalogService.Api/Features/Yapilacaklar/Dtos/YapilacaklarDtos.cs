@@ -82,6 +82,16 @@ namespace CatalogService.Api.Features.Yapilacaklar.Dtos
         public IsGunKurali GunKurali { get; set; }
         public int? AyinGunu { get; set; }
         public DateTime? TekSeferTarih { get; set; }
+
+        /// <summary>Kayıtlı başlangıç ayı ("2026-09"); boş = eklendiği aydan (Prompt 17).</summary>
+        public string? IlkDonem { get; set; }
+
+        /// <summary>
+        /// Etkin başlangıç: ilk dönemin İLK AYI ("2026-07"; üç aylıkta çeyreğin ilk ayı). Düzenleme
+        /// formu bunu gösterir. Tek seferlik işte ve yasal prosedür satırında boş.
+        /// </summary>
+        public string? BaslangicDonemi { get; set; }
+
         public int? SorumluKullaniciId { get; set; }
         public string? SorumluKullaniciAdi { get; set; }
         public bool Aktif { get; set; }
@@ -153,6 +163,13 @@ namespace CatalogService.Api.Features.Yapilacaklar.Dtos
         public IsGunKurali GunKurali { get; set; } = IsGunKurali.AyinGunu;
         public int? AyinGunu { get; set; }
         public DateTime? TekSeferTarih { get; set; }
+
+        /// <summary>
+        /// Başlangıç ayı "2026-09" (Prompt 17). Boş = eklendiği aydan. Biçim sunucuda doğrulanır;
+        /// geçmiş ve gelecek ay serbest. Tek seferlik işte yok sayılır.
+        /// </summary>
+        public string? IlkDonem { get; set; }
+
         public int? SorumluKullaniciId { get; set; }
         public string? SorumluKullaniciAdi { get; set; }
         public bool Aktif { get; set; } = true;

@@ -26,6 +26,9 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             entity.Property(x => x.SorumluKullaniciAdi).HasMaxLength(100);
             entity.Property(x => x.OlusturanKullaniciId).HasMaxLength(64);
 
+            // Prompt 17: başlangıç ayı "2026-09"; boş = ilk dönem eklenme gününden (eski kayıtlar).
+            entity.Property(x => x.IlkDonem).HasMaxLength(7).IsUnicode(false);
+
             entity.HasOne<Firma>().WithMany().HasForeignKey(x => x.FirmaId).OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(x => x.FirmaId);
 

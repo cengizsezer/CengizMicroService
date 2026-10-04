@@ -45,7 +45,8 @@
        firmasına dokunmaz (anasayfa firmayı yalnız kendi adresinden/ilk firmadan alır). *@
     <div class="dp-ust-serit">
         <FirmaSecici Secili="@Firma" Secenekler="@FirmaSecenekleri" Secildi="@FirmaSec" />
-        <IsTakipEylemleri @ref="eylemler" FirmaId="@Firma" Firmalar="@FirmaSecenekleri" Eklendi="@Eklendi" />
+        <IsTakipEylemleri @ref="eylemler" FirmaId="@Firma" Firmalar="@FirmaSecenekleri" Eklendi="@Eklendi"
+                          Donem="@(SabitSekme ? null : secili?.Anahtar)" />
     </div>
 
     <div class="dp-icerik">

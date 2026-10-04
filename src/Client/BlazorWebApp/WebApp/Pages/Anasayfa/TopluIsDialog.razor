@@ -63,6 +63,15 @@
     }
     else
     {
+        @* 0. Başlangıç dönemi (Prompt 17): satır satır değil, HEPSİ için tek değer. *@
+        <div class="ys-toplu-ust">
+            <span class="ys-toplu-secim">
+                <b>Başlangıç dönemi: @IsMetin.AyEtiketi(IsMetin.AyCoz(ilkDonem) ?? DateTime.Today)</b>
+                <BaslangicDonemiSecici @bind-Value="ilkDonem" />
+            </span>
+            <span class="ys-alt">Eklenen bütün işler bu dönemden itibaren takip edilir.</span>
+        </div>
+
         @* 1. Kolon eşleşmesi *@
         <div class="ys-toplu-ust">
             <label class="ys-toplu-secim">
@@ -177,7 +186,11 @@
     /// <summary>Panodan gelen metin; boşsa dialog elle yapıştırma kutusuyla açılır.</summary>
     [Parameter] public string? Metin { get; set; }
 
+    /// <summary>Panoda açık sekmenin ayı ("2026-09"); boş = içinde bulunulan ay (Anasayfa).</summary>
+    [Parameter] public string? BaslangicDonemi { get; set; }
+
     private string? metin;
+    private string? ilkDonem;
     private TopluOnizlemeDto? onizleme;
     private TopluSonucDto? sonuc;
     private readonly HashSet<int> atlanan = new();
@@ -192,6 +205,7 @@
     protected override async Task OnInitializedAsync()
     {
         metin = Metin;
+        ilkDonem = IsMetin.AyAnahtari(IsMetin.AyCoz(BaslangicDonemi) ?? DateTime.Today);
         if (!string.IsNullOrWhiteSpace(metin)) await Onizle(ilk: true);
     }
 
@@ -327,7 +341,7 @@
         isleniyor = true;
         try
         {
-            var (s, mesaj) = await Api.TopluEkleAsync(FirmaId, new TopluEkleDto { Isler = Eklenecekler, UzerineYazma = uzerineYazma });
+            var (s, mesaj) = await Api.TopluEkleAsync(FirmaId, new TopluEkleDto { Isler = Eklenecekler, UzerineYazma = uzerineYazma, IlkDonem = ilkDonem });
             if (s is null)
             {
                 hata = mesaj ?? "İşler eklenemedi.";

@@ -369,6 +369,10 @@
             <td class="dp-liste-is">
                 <span class="dp-is-ad">@s.Baslik</span>
                 <DonemSatirCipleri Satir="@s" Yalniz="yasal" />
+                @if (IsMetin.BeriNotu(s.IlkDonem, DateTime.Today) is { } beri)
+                {
+                    <span class="dp-alt" title="Başlangıç dönemi">@beri</span>
+                }
             </td>
             <td><DonemSatirCipleri Satir="@s" Yalniz="program" /></td>
             <td class="dp-liste-alici"><DonemSatirCipleri Satir="@s" Yalniz="alici" /></td>

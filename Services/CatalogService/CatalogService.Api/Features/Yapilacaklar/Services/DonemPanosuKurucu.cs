@@ -17,8 +17,8 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
     /// <item>yasal: firmanın mükellefiyet kodu × o dönemin takvim satırı. Satırın Aktif bayrağına
     /// BAKILMAZ (Prompt 10B): pasif bayrağı Yapılacaklar kuyruğunu temiz tutmak içindir, geçmiş
     /// dönem görünümünü kısıtlamaz — Temmuz'un KDV'si pasif diye "yok" görünmez;</item>
-    /// <item>özel: ilk dönemi <see cref="YapilacaklarKurucu.OzelIlkDonem"/> (eklendiği günün
-    /// dönemi) — öncesi "bu firmada yok"; pasif iş yalnız işaretli dönemde görünür;</item>
+    /// <item>özel: ilk dönemi <see cref="YapilacaklarKurucu.OzelIlkDonem"/> (başlangıç ayı ya da
+    /// eklendiği günün dönemi) — öncesi "bu firmada yok"; pasif iş yalnız işaretli dönemde görünür;</item>
     /// <item>tek seferlik iş: tarihinin ayında.</item>
     /// </list>
     /// </summary>
@@ -187,7 +187,8 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
                         SistemId = h.Prosedur?.SistemId,
                         SistemAdi = h.Prosedur?.SistemId is { } sid ? sistemAdlari.GetValueOrDefault(sid) : null,
                         Kime = alicilar.Where(a => a.AliciTipi == AliciTipi.Kime).Select(a => a.AdSoyad).ToList(),
-                        Bilgi = alicilar.Where(a => a.AliciTipi == AliciTipi.Bilgi).Select(a => a.AdSoyad).ToList()
+                        Bilgi = alicilar.Where(a => a.AliciTipi == AliciTipi.Bilgi).Select(a => a.AdSoyad).ToList(),
+                        IlkDonem = h.Tip == IsKaynagi.Ozel ? h.Prosedur?.IlkDonem : null
                     });
                 }
             }

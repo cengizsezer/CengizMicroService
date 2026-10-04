@@ -98,6 +98,12 @@ namespace CatalogService.Api.Features.Yapilacaklar.Dtos
         /// ve raporlanır. Kapalıysa mevcut iş güncellenir.
         /// </summary>
         public bool UzerineYazma { get; set; } = true;
+
+        /// <summary>
+        /// Eklenen BÜTÜN işlerin başlangıç ayı "2026-09" (Prompt 17) — satır satır değil, tek değer.
+        /// Boş = eklendiği aydan. Aynı başlıkla güncellenen mevcut iş kendi başlangıcını korur.
+        /// </summary>
+        public string? IlkDonem { get; set; }
     }
 
     public class TopluAtlananDto
@@ -118,5 +124,8 @@ namespace CatalogService.Api.Features.Yapilacaklar.Dtos
     {
         public int KaynakFirmaId { get; set; }
         public List<int> IsIdleri { get; set; } = new();
+
+        /// <summary>Kopyaların hedef firmadaki başlangıç ayı (Prompt 17); kaynağın başlangıcı taşınmaz. Boş = eklendiği aydan.</summary>
+        public string? IlkDonem { get; set; }
     }
 }

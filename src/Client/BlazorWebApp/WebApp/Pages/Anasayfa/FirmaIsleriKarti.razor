@@ -360,6 +360,11 @@
             {
                 <span class="ys-cip ys-cip-ek">@t.EkSayisi ek</span>
             }
+            @* Prompt 17: geriye dönük başlatılmış iş; eklendiği aydan başlayan işte not yok. *@
+            @if (IsMetin.BeriNotu(t?.IlkDonem, DateTime.Today) is { } beri)
+            {
+                <span class="ys-alt" title="Başlangıç dönemi">@beri</span>
+            }
         </div>
         @if (t?.OnAdimiBaslik is { } hedef)
         {

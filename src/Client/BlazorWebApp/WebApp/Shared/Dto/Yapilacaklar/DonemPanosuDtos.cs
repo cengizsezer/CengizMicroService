@@ -82,6 +82,9 @@ namespace WebApp.Shared.Dto.Yapilacaklar
         public List<string> Kime { get; set; } = new();
         public List<string> Bilgi { get; set; } = new();
 
+        /// <summary>Özel işin kayıtlı başlangıç ayı (Prompt 17); boşsa "…'dan beri" notu çıkmaz.</summary>
+        public string? IlkDonem { get; set; }
+
         public IsIsaretDto Isaret() => new() { KaynakTip = KaynakTip, KaynakId = KaynakId, FirmaId = FirmaId, DonemAnahtari = DonemAnahtari };
     }
 
