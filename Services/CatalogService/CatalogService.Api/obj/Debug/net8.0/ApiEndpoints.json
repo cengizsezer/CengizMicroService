@@ -8046,6 +8046,148 @@
     ]
   },
   {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollAcikController",
+    "Method": "Calculate",
+    "RelativePath": "api/catalog/payroll/acik/calculate",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Payroll.Dtos.Requests.CalculatePayrollRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Payroll.Dtos.Responses.CalculatePayrollResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollAcikController",
+    "Method": "CompareDistribution",
+    "RelativePath": "api/catalog/payroll/acik/compare-distribution",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Payroll.Commands.CompareDistribution.CompareDistributionCommand",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.Payroll.Dtos.Shared.DistributionComparisonResultDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollAcikController",
+    "Method": "ExportComparisonExcel",
+    "RelativePath": "api/catalog/payroll/acik/compare-distribution/export-excel",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Payroll.Commands.CompareDistribution.CompareDistributionCommand",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollAcikController",
+    "Method": "ExportComparisonPdf",
+    "RelativePath": "api/catalog/payroll/acik/compare-distribution/export-pdf",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Payroll.Commands.CompareDistribution.CompareDistributionCommand",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollAcikController",
+    "Method": "ExportExcel",
+    "RelativePath": "api/catalog/payroll/acik/export-excel",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Payroll.Dtos.Requests.CalculatePayrollRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollAcikController",
+    "Method": "ExportPdf",
+    "RelativePath": "api/catalog/payroll/acik/export-pdf",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CatalogService.Api.Features.Payroll.Dtos.Requests.CalculatePayrollRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollAcikController",
+    "Method": "GetLawTypes",
+    "RelativePath": "api/catalog/payroll/acik/law-types",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "year",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.Payroll.Dtos.Shared.PayrollLawTypeDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
     "ContainingType": "CatalogService.Api.Features.Payroll.Controllers.PayrollController",
     "Method": "GetBootstrap",
     "RelativePath": "api/catalog/payroll/bootstrap",

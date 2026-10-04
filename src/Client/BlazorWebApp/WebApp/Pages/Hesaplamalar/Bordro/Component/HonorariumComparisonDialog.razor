@@ -2,7 +2,6 @@
 @using WebApp.Pages.Hesaplamalar.Bordro.Model
 @using WebApp.Pages.Hesaplamalar.Bordro.Services
 @inject DialogService DialogService
-@inject IPayrollApiService PayrollApiService
 @inject IJSRuntime JS
 
 <div class="comparison-dialog">
@@ -201,6 +200,14 @@
     [Parameter] public decimal NetReceived { get; set; }
     [Parameter] public int Year { get; set; } = 2026;
 
+    /// <summary>
+    /// Sunucu kapısı — açan bileşen kendi kapısını geçirir: uygulama içinde girişli
+    /// PayrollApiService, açık sayfada token'sız PayrollAcikApiService (KARARLAR §155).
+    /// Pencere oturumu bilmez; kendisi enjekte etseydi açık sayfada girişli uca gidip
+    /// 401 alırdı.
+    /// </summary>
+    [Parameter, EditorRequired] public IPayrollHesapApi HesapApi { get; set; } = default!;
+
     private decimal selectedStopajRate = 0.15m;
     private int selectedYear;
     private readonly List<int> yearOptions = new() { 2023, 2024, 2025, 2026 };
@@ -261,7 +268,7 @@
                 StopajOrani = selectedStopajRate
             };
 
-            result = await PayrollApiService.CompareDistributionAsync(request, token);
+            result = await HesapApi.CompareDistributionAsync(request, token);
         }
         catch (Exception ex)
         {
@@ -288,7 +295,7 @@
         if (result is null) return;
         await DownloadAsync(
             $"kar_dagitimi_karsilastirma_{selectedYear}.xlsx",
-            ct => PayrollApiService.ExportComparisonExcelAsync(BuildRequest(), ct),
+            ct => HesapApi.ExportComparisonExcelAsync(BuildRequest(), ct),
             "Excel");
     }
 
@@ -297,7 +304,7 @@
         if (result is null) return;
         await DownloadAsync(
             $"kar_dagitimi_karsilastirma_{selectedYear}.pdf",
-            ct => PayrollApiService.ExportComparisonPdfAsync(BuildRequest(), ct),
+            ct => HesapApi.ExportComparisonPdfAsync(BuildRequest(), ct),
             "PDF");
     }
 

@@ -118,6 +118,9 @@ builder.Services.AddTransient<AuthForwardingHandler>();
 // Ajan ve insan token'ları aynı imzayı taşıyor; ayrımı politikalar yapıyor
 // (hub'a yalnız ajan, durum ucuna yalnız insan).
 builder.Services.AddAuthorization(AjanPolitikalari.Ekle);
+// Açık (girişsiz) bordro uçlarının IP başına hız sınırı; değer ayardan (KARARLAR §155).
+builder.Services.AddRateLimiter(o =>
+    CatalogService.Api.Features.Payroll.Acik.BordroAcikHizSiniri.Ekle(o, builder.Configuration));
 builder.Services.AddScoped<IAccountPlanService, AccountPlanService>();
 builder.Services.AddScoped<IDeclarationQueryService, DeclarationQueryService>();
 builder.Services.AddScoped<IDeclarationCommandService, DeclarationCommandService>();
@@ -721,6 +724,8 @@ app.UseHttpsRedirection();
 app.UseCors("wasm");
 app.UseAuthentication();
 app.UseAuthorization();
+// Yalnız [EnableRateLimiting] taşıyan uçları etkiler (şu an yalnız PayrollAcikController).
+app.UseRateLimiter();
 
 // Routing
 app.MapControllers();

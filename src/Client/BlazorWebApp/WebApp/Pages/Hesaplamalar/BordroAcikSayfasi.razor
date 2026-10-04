@@ -1,0 +1,23 @@
+@page "/payroll-calculator"
+@page "/payrollcalculator"
+@layout AcikLayout
+
+@using WebApp.Pages.Hesaplamalar.Bordro
+
+@*
+    Bordro hesaplayıcısının açık (girişsiz) adresi — KARARLAR §155.
+
+    [Authorize] YOK ve bilinçli olarak [AllowAnonymous] da yok: LoginPage ile aynı desen
+    (yetki bayrağı koymamak + @layout). AuthorizeRouteView bayraksız sayfayı herkese açar.
+
+    İçerik uygulama içi Hesaplamalar > Bordro ile AYNI bileşen; tek fark AcikErisim.
+    Hesaplama mantığının ikinci kopyası yok. Girişli biri bu adrese gelse de aynı sade
+    sayfa açılır, kabuğa döndürülmez.
+
+    /payroll-calculator eski yer imleri için (eskiden EskiRotaYonlendirme ile girişli
+    sekmeye gidiyordu, o yönlendirme kaldırıldı); /payrollcalculator ikinci yazım.
+*@
+
+<PageTitle>Bordro Hesaplama</PageTitle>
+
+<BordroHesaplamasi AcikErisim="true" />

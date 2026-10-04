@@ -4,18 +4,22 @@
 @using WebApp.Pages.Hesaplamalar.Bordro.Model
 @using WebApp.Pages.Hesaplamalar.Bordro.Services
 @inject IPayrollApiService PayrollApiService
+@inject PayrollAcikApiService PayrollAcikApiService
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 
 @inject IJSRuntime JS
 
 @*
-    Hesaplamalar > Bordro Hesaplaması sekmesinin içeriği.
+    Bordro hesaplayıcısının TEK kopyası. İki yerden açılır (KARARLAR §155):
+      - Hesaplamalar > Bordro Hesaplaması (girişli, MainLayout) — sekmeyi
+        HesaplamalarPage basıyor (bkz. HesaplamaSekmesi kayıt listesi).
+      - /payroll-calculator açık sayfası (girişsiz) — AcikErisim="true" ile.
 
-    Kendi @page rotası YOK: sekmeyi HesaplamalarPage basıyor (bkz. HesaplamaSekmesi
-    kayit listesi). Eskiden /payroll-calculator adresinde, girisin disinda, kendi
-    PublicPayrollLayout kabuğunda duruyordu; ikisi de kaldırıldı (KARARLAR §78).
-    Hesaplama mantığı taşımada DEĞİŞMEDİ.
+    Kendi @page rotası YOK. Oturum, firma ya da menü BİLMEZ; tek ayar AcikErisim.
+    İki modda da işlevler aynı (hesap, Excel/PDF, kâr dağıtımı karşılaştırması); fark
+    yalnız hangi kapıdan gidildiği — açık modda token'sız /catalog/payroll/acik uçları.
+    Karşılaştırma penceresi de aynı kapıyı parametre olarak alır.
 *@
 
 <div class="payroll-page">
@@ -400,6 +404,18 @@
 </div>
 
 @code {
+    /// <summary>
+    /// true: girişsiz açık sayfa — bütün çağrılar açık uçlardan (token'sız) gider.
+    /// Varsayılan false — uygulama içi. Görünen işlevler iki modda aynı.
+    /// </summary>
+    [Parameter] public bool AcikErisim { get; set; }
+
+    /// <summary>
+    /// Bütün sunucu çağrılarının gittiği kapı (hesap, dosya, karşılaştırma).
+    /// Karşılaştırma penceresine de bu geçirilir.
+    /// </summary>
+    private IPayrollHesapApi HesapApi => AcikErisim ? PayrollAcikApiService : PayrollApiService;
+
     private readonly PayrollPageModel model = new();
     private List<PayrollMonthInputModel> monthInputs = new();
     private CalculatePayrollResponse? result;
@@ -441,7 +457,7 @@
     {
         monthInputs = BuildDefaultMonths();
 
-        lawTypes = await PayrollApiService.GetLawTypesAsync(model.Year);
+        lawTypes = await HesapApi.GetLawTypesAsync(model.Year);
 
         if (!lawTypes.Any(x => x.Code == model.LawCode))
         {
@@ -460,7 +476,7 @@
             model.Year = Convert.ToInt32(value);
         }
 
-        lawTypes = await PayrollApiService.GetLawTypesAsync(model.Year);
+        lawTypes = await HesapApi.GetLawTypesAsync(model.Year);
 
         if (!lawTypes.Any(x => x.Code == model.LawCode))
         {
@@ -562,7 +578,7 @@
 
             var request = BuildRequest();
 
-            result = await PayrollApiService.CalculateAsync(request, cancellationToken);
+            result = await HesapApi.CalculateAsync(request, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -578,13 +594,13 @@
     private async Task ExportExcelAsync()
     {
         await DownloadAsync("Excel", BuildFileName("xlsx"),
-            ct => PayrollApiService.ExportExcelAsync(BuildRequest(), ct));
+            ct => HesapApi.ExportExcelAsync(BuildRequest(), ct));
     }
 
     private async Task ExportPdfAsync()
     {
         await DownloadAsync("PDF", BuildFileName("pdf"),
-            ct => PayrollApiService.ExportPdfAsync(BuildRequest(), ct));
+            ct => HesapApi.ExportPdfAsync(BuildRequest(), ct));
     }
 
     private string BuildFileName(string ext)
@@ -635,7 +651,8 @@
                 { "GrossAmount", GetCurrentHonorariumGrossTotal() },
                 { "TaxCost", GetCurrentHonorariumTaxCost() },
                 { "NetReceived", GetCurrentHonorariumNetAmount() },
-                { "Year", model.Year }
+                { "Year", model.Year },
+                { "HesapApi", HesapApi }
             },
             new DialogOptions
             {

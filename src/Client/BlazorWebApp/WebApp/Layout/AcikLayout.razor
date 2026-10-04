@@ -1,0 +1,45 @@
+@inherits LayoutComponentBase
+
+@*
+    Girişsiz açık sayfaların sade kabuğu (şu an yalnız /payroll-calculator — KARARLAR §155).
+
+    Menü, firma seçici, kullanıcı şeridi YOK; oturum yüklemez (MainLayout'un aksine
+    SessionManager'a dokunmaz). Logo ve başlık bağlantı DEĞİL: açık sayfa uygulamanın
+    hiçbir bölümüne yol göstermez. Radzen dialog/bildirim altyapısı AuthLayout'taki
+    gibi burada — hesaplayıcı bildirimleri ve karşılaştırma penceresi bunlara bağlı.
+
+    Stiller bilinçli olarak sayfa içinde (.razor.css DEĞİL): WebApp.styles.css
+    bağlantısında sürüm parametresi yok, tarayıcı eski paketi tutarsa kabuk stilsiz
+    kalıyordu (800 px'lik logo). Logonun boyutu ayrıca öznitelik + satır içi stille
+    sabit — CSS hiç yüklenmese de büyümez.
+*@
+
+<style>
+    .acik-kabuk { min-height: 100vh; background: #f3f3f3; }
+    .acik-serit { height: 64px; background: #ffffff; border-bottom: 1px solid #e5e7eb;
+                  display: flex; align-items: center; }
+    .acik-serit-ic { width: 100%; max-width: 1720px; margin: 0 auto; padding: 0 16px;
+                     display: flex; align-items: center; gap: 14px; box-sizing: border-box; }
+    .acik-logo { display: block; }
+    .acik-baslik { font-size: 20px; font-weight: 700; color: #1f2937; line-height: 1; }
+    .acik-govde { padding: 10px 16px 12px 16px; }
+</style>
+
+<RadzenDialog />
+<RadzenNotification />
+<RadzenTooltip />
+<RadzenContextMenu />
+
+<div class="acik-kabuk">
+    <header class="acik-serit">
+        <div class="acik-serit-ic">
+            <img src="/img/pkf-logo.svg" alt="PKF" class="acik-logo"
+                 height="48" style="height:48px;width:auto;" />
+            <span class="acik-baslik">Bordro Hesaplama</span>
+        </div>
+    </header>
+
+    <main class="acik-govde">
+        @Body
+    </main>
+</div>

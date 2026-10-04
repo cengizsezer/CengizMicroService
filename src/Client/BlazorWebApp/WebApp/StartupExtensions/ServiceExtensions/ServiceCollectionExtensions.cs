@@ -47,6 +47,9 @@ namespace WebApp.StartupExtensions.ServiceExtensions
         {
 
             services.AddScoped<IPayrollApiService, PayrollApiService>();
+            // Açık bordro sayfası: handler'sız istemci — token/tenant gitmez (KARARLAR §155).
+            services.AddScoped(sp => new PayrollAcikApiService(
+                sp.GetRequiredService<IHttpClientFactory>().CreateClient("GatewayBare")));
             services.AddScoped<IFinansmanKisitlamaApiService, FinansmanKisitlamaApiService>();
 
 

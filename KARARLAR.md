@@ -3818,3 +3818,98 @@ sebebini yok ederdi.
   gerçek uyarılarla aynı görünüp onları değersizleştiriyordu.
 - **Model yönergesi:** açıklama artık taşıyıcı, dekoratif değil — "her satır için
   mutlaka yaz, ekranda kesilmişse görüneni yaz, tamamlama" eklendi.
+
+## 155. Bordro hesaplayıcısı yeniden girişsiz açıldı — uygulama içi ekranla aynı işlevlerle
+
+**§78'deki kapatma güvenlik gerekçeli DEĞİLDİ.** Kararı veren kişi kullanımı kısıtlamak
+istemişti: hesaplayıcı dışarıdan kullanılmasın diye kapatılmıştı. Uçlar veri döndürmüyor,
+kod içindeki sabit oranlarla (`PayrollYearConfigStore`, `PayrollLawTypeConfigStore`) hesap
+yapıyor; veritabanına, firmaya, kullanıcıya dokunmuyor. Bu yüzden geri açmak §78'deki
+bir güvenlik kararını tersine çevirmek değil.
+
+**Kapsam iki adımda genişledi.**
+1. İlk turda bilinçli olarak dardı: yalnız `GET law-types` ve `POST calculate`; dışa
+   aktarma ve karşılaştırma dışarıda bırakılmış, düğmeleri açık sayfada çizilmiyordu.
+2. Ardından **uygulama içi ekranla aynı işlevlere** açıldı: `export-excel`, `export-pdf`,
+   `compare-distribution`, `compare-distribution/export-excel`,
+   `compare-distribution/export-pdf`. Gerekçe: açık sayfayı çalışanlar da kullanacak ve
+   ekranın yarım hali işe yaramıyor — en önemlisi **Kâr Dağıtımı Karşılaştırması**, huzur
+   hakkı hesabının asıl sorusu o. Bu uçlar da veri döndürmüyor, yalnız gönderilen girdiden
+   hesap/dosya üretiyor; açılmalarının güvenlik tarafı hesaplamadan farklı değil, fark
+   yalnız sunucu yükü (aşağıda ayrı sınır).
+
+Açılmayanlar: `bootstrap`, `parameters/{year}` — hiçbir ekran çağırmıyor. Açık önek
+altında 404 döner. Eski `PayrollPublicController` bunları da açıyordu; bu sefer açılmadı.
+
+`PayrollAcikController` her ucu girişli `PayrollController` ile birebir aynı akışla
+yürütüyor: aynı MediatR handler'ları, aynı `IPayrollCalculationExportService` /
+`IDistributionExportService`. Hesap ve dosya üretim kodu kopyalanmadı. Tek tekrar,
+istekten komuta alan eşlemesi (`CalculatePayrollEslemesi`) — `PayrollController`'a
+dokunulmadığı için ayrı; sapmasını `PayrollAcikTests` iki eşlemeyi aynı dolu istekle
+karşılaştırarak engelliyor. Bir test ayrıca açık uçların hepsinin girişli controller'da
+aynı rota ve metotla karşılığı olduğunu sabitliyor (yeni uç icat edilmedi).
+
+**Hesaplayıcı tek kopya.** `BordroHesaplamasi.razor` iki yerden açılıyor; fark tek bir
+`AcikErisim` parametresi ve yalnız **hangi kapıdan** gidildiğini belirliyor — görünen
+işlevler iki modda aynı. Bütün çağrılar `IPayrollHesapApi` üzerinden; iki uygulaması var:
+girişli `PayrollApiService` (`/catalog/payroll`) ve açık `PayrollAcikApiService`
+(`/catalog/payroll/acik`, `GatewayBare` — token, tenant başlığı ve token yenileme
+eklenmiyor). `IPayrollApiService` artık kendi metodu olmayan boş bir DI anahtarı; kayıt
+ve girişli taraf değişmesin diye bilinçli olarak kaldırılmadı. Arayüzde `bootstrap` /
+`parameters` metotları yok.
+
+**Karşılaştırma penceresi kapıyı parametre olarak alıyor.** `HonorariumComparisonDialog`
+eskiden girişli `IPayrollApiService`'i kendisi enjekte ediyordu; açık sayfada açılsaydı
+token'sız istek girişli uca gidip 401 alırdı. Artık `HesapApi` parametresiyle açan
+bileşenin kapısını kullanıyor; pencere oturumu bilmiyor.
+
+**Hız sınırı gerçek istemci IP'sine göre.** Zincir tarayıcı → nginx → Ocelot →
+CatalogService; servis `RemoteIpAddress` olarak gateway'in iç adresini görüyor. Servis
+genelinde `UseForwardedHeaders` yok ve bilinçli olarak EKLENMEDİ (bütün servisin
+`RemoteIpAddress`'ini değiştirirdi). Bunun yerine yalnız bu sınırın anahtarı
+(`BordroAcikHizSiniri.IstemciAnahtari`) başlıkları okuyor: doğrudan karşıdaki adres iç
+ağdaysa `X-Real-IP` (nginx üzerine yazıyor) → `X-Forwarded-For`'un SON girdisi → karşı
+adres. Dışarıdan doğrudan gelen istek başlık uydurarak kova değiştiremez.
+Ocelot'un iki başlığı da olduğu gibi aktardığı yerelde doğrulandı.
+
+**İki politika, iki bağımsız kova** (ikisi de IP başına, sabit 1 dakikalık pencere):
+
+| Politika | Uçlar | Varsayılan | Ayar |
+|---|---|---|---|
+| `bordro-acik` | law-types, calculate, **compare-distribution** | 60/dk | `BordroAcik:DakikadaIstek` |
+| `bordro-acik-dosya` | dört Excel/PDF ucu | 30/dk | `BordroAcik:DosyaDakikadaIstek` |
+
+- `compare-distribution` dosya üretmiyor ve pencere açılınca + yıl/stopaj listesi
+  değişince **kendiliğinden** çağrılıyor; çalışanlar takılmasın diye hesap sınırında.
+- Dosya uçları daha dar: PDF/Excel üretimi (QuestPDF/ClosedXML) hesaptan belirgin
+  şekilde ağır, ama tıklamayla çalışıyor. Ofiste 10 kişinin aynı dakikada 2–3 dosya
+  alması 30'a sığıyor; kötüye kullanımda dakikada 30 PDF sunucu için önemsiz.
+- Aksiyon üzerindeki `[EnableRateLimiting]` controller'dakini ezdiği için dosya isteği
+  hesap kovasından, hesap isteği dosya kovasından yemiyor.
+- Ofisin tamamı tek dış IP'den çıkıyor; sınırlar ayardan (ya da `BordroAcik__…` ortam
+  değişkeninden) artırılır, derleme gerekmez, yeniden başlatma yeter.
+- Takılan istek 429 + `Retry-After: 60` + politikaya göre okunur Türkçe mesaj alıyor
+  ("…çok fazla istek…" / "…çok fazla dosya isteği (Excel/PDF)…"); istemci mesajı
+  olduğu gibi gösteriyor.
+
+**Gateway:** `/catalog/payroll/acik/{everything}` kimliksiz rotası `ocelot.json` ve
+`.Docker.json`'da, `Priority: 2` ile (Bearer'lı `/catalog/{everything}` varsayılan 1).
+Sıraya güvenilmedi. Yeni uçlar aynı rotanın altında; gateway'de ek değişiklik yok.
+`ocelot.Development.json`'a eklenmedi: orada catalog zaten kimliksiz. Not: gateway
+yalnız `ocelot.{env}.json` yüklüyor; sade `ocelot.json` fiilen okunmuyor, tutarlılık
+için yine güncellendi.
+
+**Açık sayfanın kabuğu (`AcikLayout`) stillerini sayfa içinde taşıyor**, `.razor.css`
+ile değil. `WebApp.styles.css` bağlantısında sürüm parametresi yok; tarayıcı eski paketi
+tuttuğunda kabuk stilsiz kalıp 800 px'lik logo basıyordu. Logo boyutu ayrıca `height`
+özniteliği + satır içi stille sabit. `index.html`'e ve genel önbellek ayarlarına
+dokunulmadı.
+
+**Kalan risk:** sunucuda 5000 (gateway) portu internete açıksa, biri nginx'i atlayıp
+`X-Real-IP` uydurarak hız sınırını aşabilir. Bu yalnız sınırı aşmak demek, veri sızıntısı
+değil (uçlar zaten herkese açık ve veri döndürmüyor). Çözümü gateway/güvenlik duvarı
+düzeyinde; bu turda dokunulmadı.
+
+**Bilinen, kapsam dışı:** uyarı metnindeki ve bordro Excel/PDF alt notundaki
+`PKF [TAM UNVAN]` yer tutucusu (iki ayrı sabit: istemci `PayrollDisclaimerTexts`, sunucu
+`PayrollExportFooterTexts`) yayından önce elle doldurulacak.

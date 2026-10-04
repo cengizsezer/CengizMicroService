@@ -1,6 +1,22 @@
 {
   "Routes": [
     {
+      // Açık (girişsiz) bordro hesaplayıcısı — KARARLAR §155. Bilinçli olarak
+      // AuthenticationOptions YOK. Aşağıdaki Bearer'lı /catalog/{everything} rotası da
+      // bu yolu eşleştirdiği için Priority açıkça yüksek verildi (varsayılan 1); sıraya
+      // güvenilmiyor. Controller yalnız law-types + calculate açıyor ve IP başına hız
+      // sınırının arkasında (CatalogService: PayrollAcikController).
+      "UseServiceDiscovery": true,
+      "ServiceName": "CatalogService",
+      "DownstreamPathTemplate": "/api/catalog/payroll/acik/{everything}",
+      "DownstreamScheme": "http",
+
+      "UpstreamPathTemplate": "/catalog/payroll/acik/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "OPTIONS" ],
+      "UpstreamScheme": "http",
+      "Priority": 2
+    },
+    {
       "UseServiceDiscovery": true,
       "ServiceName": "CatalogService",
       "DownstreamPathTemplate": "/api/catalog/jobs/assignments/{assignmentId}/status",
