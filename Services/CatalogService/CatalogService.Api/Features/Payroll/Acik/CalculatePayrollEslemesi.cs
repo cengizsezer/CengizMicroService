@@ -30,6 +30,7 @@ namespace CatalogService.Api.Features.Payroll.Acik
                 Months = request.Months,
                 LawCode = request.LawCode,
                 IsManufacturingSector = request.IsManufacturingSector,
+                ArGeEgitimDurumu = request.ArGeEgitimDurumu,
             };
     }
 }

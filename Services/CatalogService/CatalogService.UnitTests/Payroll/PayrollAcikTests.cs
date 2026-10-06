@@ -132,7 +132,8 @@ namespace CatalogService.UnitTests.Payroll
                 PreviousCumulativeTaxBase = 12345.67m,
                 Months = new() { new PayrollMonthInputDto { Month = 3, Amount = 50000m } },
                 LawCode = "05510",
-                IsManufacturingSector = true
+                IsManufacturingSector = true,
+                ArGeEgitimDurumu = PayrollArGeEgitimDurumu.Doktora95
             };
 
             var girisli = (CalculatePayrollCommand)typeof(PayrollController)

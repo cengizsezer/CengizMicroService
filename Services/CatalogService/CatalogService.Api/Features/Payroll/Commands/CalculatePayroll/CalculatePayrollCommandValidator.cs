@@ -12,6 +12,9 @@ namespace CatalogService.Api.Features.Payroll.Commands.CalculatePayroll
             RuleFor(x => x.StartMonth)
                 .InclusiveBetween(1, 12);
 
+            RuleFor(x => x.ArGeEgitimDurumu)
+                .IsInEnum();
+
             RuleFor(x => x.Months)
                 .NotNull()
                 .Must(months => months != null && months.Count > 0)

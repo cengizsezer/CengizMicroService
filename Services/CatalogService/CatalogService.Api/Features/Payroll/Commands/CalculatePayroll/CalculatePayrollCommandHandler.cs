@@ -32,7 +32,8 @@ namespace CatalogService.Api.Features.Payroll.Commands.CalculatePayroll
                 Parameter = yearConfig.Parameter,
                 TaxBrackets = yearConfig.TaxBrackets.ToList(),
                 DisabilityExemption = disabilityExemption,
-                IsManufacturingSector = request.IsManufacturingSector
+                IsManufacturingSector = request.IsManufacturingSector,
+                EmployeeTaxIncentive = PayrollEmployeeTaxIncentive.Resolve(request.LawCode, request.ArGeEgitimDurumu)
             };
 
             var response = _payrollCalculationEngine.Calculate(request, calculationContext);

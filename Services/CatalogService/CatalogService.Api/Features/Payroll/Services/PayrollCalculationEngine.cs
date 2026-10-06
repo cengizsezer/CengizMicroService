@@ -158,11 +158,16 @@ namespace CatalogService.Api.Features.Payroll.Services
                 incomeTaxBase,
                 context);
 
-            var incomeTaxExemption = (grossSalary > 0 && command.IncludeMinimumWageExemption)
+            var minimumWageIncomeTaxExemption = (grossSalary > 0 && command.IncludeMinimumWageExemption)
      ? CalculateMinimumWageIncomeTaxExemption(ref minimumWageCumulativeTaxBase, context, command.EmployeeType)
      : 0m;
 
-            var payableIncomeTax = Round2(Math.Max(0, calculatedIncomeTax - incomeTaxExemption));
+            // Kanun teşviki (4691/5746): AÜ istisnasından sonra kalan vergiye uygulanır.
+            var remainingIncomeTax = Round2(Math.Max(0, calculatedIncomeTax - minimumWageIncomeTaxExemption));
+            var incomeTaxIncentive = Round2(remainingIncomeTax * context.EmployeeTaxIncentive.IncomeTaxIncentiveRate);
+
+            var incomeTaxExemption = Round2(minimumWageIncomeTaxExemption + incomeTaxIncentive);
+            var payableIncomeTax = Round2(remainingIncomeTax - incomeTaxIncentive);
 
             var calculatedStampTax = command.IncludeStampTax
     ? CalculateStampTax(grossSalary, context)
@@ -171,6 +176,9 @@ namespace CatalogService.Api.Features.Payroll.Services
             var stampTaxExemption = (grossSalary > 0 && command.IncludeStampTax && command.IncludeMinimumWageExemption)
        ? CalculateMinimumWageStampTaxExemption(context)
        : 0m;
+
+            if (context.EmployeeTaxIncentive.IsStampTaxExempt)
+                stampTaxExemption = calculatedStampTax;
 
             var payableStampTax = Round2(Math.Max(0, calculatedStampTax - stampTaxExemption));
 
@@ -231,6 +239,26 @@ namespace CatalogService.Api.Features.Payroll.Services
                 minimumWageCumulativeTaxBase,
                 command,
                 context);
+
+            // Hedef neti veren en küçük brütü bul: bir kuruş eksiği de hedefi tutturuyorsa geri in (en fazla 10 adım).
+            for (int step = 0; step < 10; step++)
+            {
+                var candidate = grossEstimate - 0.01m;
+                var tempMinimumWageCumulativeTaxBase = minimumWageCumulativeTaxBase;
+
+                var candidateResult = CalculateSalaryGrossToNetMonth(
+                    month: 0,
+                    inputAmount: candidate,
+                    previousCumulativeTaxBase: previousCumulativeTaxBase,
+                    minimumWageCumulativeTaxBase: ref tempMinimumWageCumulativeTaxBase,
+                    command: command,
+                    context: context);
+
+                if (candidateResult.NetSalary < targetNet)
+                    break;
+
+                grossEstimate = candidate;
+            }
 
             return CalculateSalaryGrossToNetMonth(
                 month,
@@ -350,7 +378,10 @@ namespace CatalogService.Api.Features.Payroll.Services
         {
             if (!hasMandatoryBes) return 0m;
             if (employeeType != PayrollEmployeeType.Normal) return 0m;
-            return Round2(grossSalary * context.Parameter.BesEmployeeRate);
+
+            var besBase = Round2(Math.Min(grossSalary, context.Parameter.MinimumWageGrossAmount * context.Parameter.SgkCeilingMultiplier));
+
+            return Round2(besBase * context.Parameter.BesEmployeeRate);
         }
 
         private HonorariumPayrollMonthResultDto CalculateHonorariumNetToGrossMonth(
@@ -421,7 +452,9 @@ namespace CatalogService.Api.Features.Payroll.Services
                 ? context.Parameter.RetiredSgkEmployeeRate
                 : context.Parameter.SgkEmployeeRate;
 
-            return Round2(grossSalary * rate);
+            var sgkBase = Round2(Math.Min(grossSalary, context.Parameter.MinimumWageGrossAmount * context.Parameter.SgkCeilingMultiplier));
+
+            return Round2(sgkBase * rate);
         }
 
         private decimal CalculateUnemploymentEmployee(
@@ -433,7 +466,9 @@ namespace CatalogService.Api.Features.Payroll.Services
                 ? context.Parameter.RetiredUnemploymentEmployeeRate
                 : context.Parameter.UnemploymentEmployeeRate;
 
-            return Round2(grossSalary * rate);
+            var sgkBase = Round2(Math.Min(grossSalary, context.Parameter.MinimumWageGrossAmount * context.Parameter.SgkCeilingMultiplier));
+
+            return Round2(sgkBase * rate);
         }
 
         private decimal CalculateIncomeTaxBase(

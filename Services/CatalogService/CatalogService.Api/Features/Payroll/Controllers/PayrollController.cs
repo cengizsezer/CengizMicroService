@@ -143,6 +143,7 @@ namespace CatalogService.Api.Features.Payroll.Controllers
                 Months = request.Months,
                 LawCode = request.LawCode,
                 IsManufacturingSector = request.IsManufacturingSector,
+                ArGeEgitimDurumu = request.ArGeEgitimDurumu,
             };
 
     }

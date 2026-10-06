@@ -5,11 +5,10 @@ using CatalogService.Api.Features.Payroll.Services.Models;
 namespace CatalogService.Api.Features.Payroll.Services.Strategies
 {
     // 5746 sayılı Araştırma, Geliştirme ve Tasarım Faaliyetlerinin Desteklenmesi Kanunu (AR-GE Merkezi):
-    //   Çalışan: hesaplanan gelir vergisinin %80'i Hazine'den karşılanır (çalışan %20 öder). Damga vergisi normal.
+    //   Çalışan: AÜ istisnası sonrası kalan GV'nin eğitim durumuna göre %95/%90/%80'i teşvik, DV istisna (motorda).
     //   İşveren: SGK payının %50'si Hazine tarafından karşılanır.
     public class Law05746Strategy : IPayrollIncentiveStrategy
     {
-        private const decimal IncomeTaxExemptionRate = 0.80m;
         private const decimal EmployerSgkIncentiveRate = 0.50m;
 
         public void EnrichEmployerCosts(CalculatePayrollResponse response, PayrollCalculationContext context)
@@ -18,20 +17,7 @@ namespace CatalogService.Api.Features.Payroll.Services.Strategies
 
             foreach (var month in response.Months)
             {
-                // --- Çalışan tarafı: GV %80 muafiyeti ---
-                var incomeTaxExemption = Round2(month.CalculatedIncomeTax * IncomeTaxExemptionRate);
-                var payableIncomeTax = Round2(month.CalculatedIncomeTax - incomeTaxExemption);
-
-                month.IncomeTaxExemption = incomeTaxExemption;
-                month.PayableIncomeTax = payableIncomeTax;
-                month.TotalDeductions = Round2(
-                    month.SgkEmployeeAmount +
-                    month.UnemploymentEmployeeAmount +
-                    payableIncomeTax +
-                    month.PayableStampTax +
-                    month.BesAmount);
-                month.NetSalary = Round2(month.GrossSalary - month.TotalDeductions);
-
+                // Çalışan tarafı (GV/DV teşviki) motorda: PayrollEmployeeTaxIncentive.
                 // --- İşveren tarafı: %50 SGK teşviki ---
                 var sgkBase = Round2(Math.Min(month.GrossSalary, p.MinimumWageGrossAmount * p.SgkCeilingMultiplier));
                 var sgkEmployerGross = Round2(sgkBase * (p.SgkEmployerMYORate + p.SgkEmployerGSSRate + p.SgkEmployerKVSKRate));
@@ -48,11 +34,6 @@ namespace CatalogService.Api.Features.Payroll.Services.Strategies
             }
 
             if (response.Totals is null) return;
-
-            response.Totals.TotalIncomeTaxExemption = Round2(response.Months.Sum(x => x.IncomeTaxExemption));
-            response.Totals.TotalPayableIncomeTax = Round2(response.Months.Sum(x => x.PayableIncomeTax));
-            response.Totals.TotalDeductions = Round2(response.Months.Sum(x => x.TotalDeductions));
-            response.Totals.TotalNetSalary = Round2(response.Months.Sum(x => x.NetSalary));
 
             response.Totals.TotalSgkEmployerGross = Round2(response.Months.Sum(x => x.SgkEmployerGross ?? 0));
             response.Totals.TotalSgkEmployerIncentive = Round2(response.Months.Sum(x => x.SgkEmployerIncentive ?? 0));

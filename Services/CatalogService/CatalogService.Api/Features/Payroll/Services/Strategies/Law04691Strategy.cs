@@ -17,17 +17,7 @@ namespace CatalogService.Api.Features.Payroll.Services.Strategies
 
             foreach (var month in response.Months)
             {
-                // --- Çalışan tarafı: GV ve DV muafiyeti ---
-                month.IncomeTaxExemption = month.CalculatedIncomeTax;
-                month.PayableIncomeTax = 0m;
-                month.StampTaxExemption = month.CalculatedStampTax;
-                month.PayableStampTax = 0m;
-                month.TotalDeductions = Round2(
-                    month.SgkEmployeeAmount +
-                    month.UnemploymentEmployeeAmount +
-                    month.BesAmount);
-                month.NetSalary = Round2(month.GrossSalary - month.TotalDeductions);
-
+                // Çalışan tarafı (GV/DV teşviki) motorda: PayrollEmployeeTaxIncentive.
                 // --- İşveren tarafı: %50 SGK teşviki ---
                 var sgkBase = Round2(Math.Min(month.GrossSalary, p.MinimumWageGrossAmount * p.SgkCeilingMultiplier));
                 var sgkEmployerGross = Round2(sgkBase * (p.SgkEmployerMYORate + p.SgkEmployerGSSRate + p.SgkEmployerKVSKRate));
@@ -44,13 +34,6 @@ namespace CatalogService.Api.Features.Payroll.Services.Strategies
             }
 
             if (response.Totals is null) return;
-
-            response.Totals.TotalIncomeTaxExemption = Round2(response.Months.Sum(x => x.IncomeTaxExemption));
-            response.Totals.TotalPayableIncomeTax = 0m;
-            response.Totals.TotalStampTaxExemption = Round2(response.Months.Sum(x => x.StampTaxExemption));
-            response.Totals.TotalPayableStampTax = 0m;
-            response.Totals.TotalDeductions = Round2(response.Months.Sum(x => x.TotalDeductions));
-            response.Totals.TotalNetSalary = Round2(response.Months.Sum(x => x.NetSalary));
 
             response.Totals.TotalSgkEmployerGross = Round2(response.Months.Sum(x => x.SgkEmployerGross ?? 0));
             response.Totals.TotalSgkEmployerIncentive = Round2(response.Months.Sum(x => x.SgkEmployerIncentive ?? 0));

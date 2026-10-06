@@ -177,7 +177,7 @@ namespace CatalogService.Api.Features.Payroll.Configuration
                     SgkEmployerGSSRate = 0.075m,
                     SgkEmployerKVSKRate = 0.0225m,
                     UnemploymentEmployerRate = 0.02m,
-                    SgkCeilingMultiplier = 7.5m,
+                    SgkCeilingMultiplier = 9m, // 33030.00 × 9 = 297270.00
 
                     Incentive05510TreasuryRate = 0.02m,
                     Incentive05510ManufacturingRate = 0.05m,
