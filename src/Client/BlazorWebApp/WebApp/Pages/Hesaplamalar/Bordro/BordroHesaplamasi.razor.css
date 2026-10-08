@@ -14,16 +14,14 @@ body {
     background: #f3f3f3;
     padding: 8px 0;
     display: flex;
-    justify-content: center;
     overflow: hidden;
     box-sizing: border-box;
 }
 
 .payroll-container {
     width: 100%;
-    max-width: 1680px;
     height: calc(100vh - 16px);
-    margin: 0 auto;
+    margin: 0;
     padding: 0 10px 6px 10px;
     font-family: Arial, sans-serif;
     color: #222;

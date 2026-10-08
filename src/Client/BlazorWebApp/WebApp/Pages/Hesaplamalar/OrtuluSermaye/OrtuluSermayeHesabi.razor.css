@@ -1,0 +1,484 @@
+/* Hesaplamalar > Örtülü Sermaye. Maketin (ortulu-sermaye.html) düzeni, projenin paleti
+   (FinansmanKisitlamaHesabi ile aynı renkler). Sekme şeridinin altındaki normal akışta
+   kalır; html/body'ye dokunmaz. */
+
+.os-sayfa {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: #222;
+    display: grid;
+    gap: 14px;
+}
+
+    /* Kök yalnız Ctrl+V için odaklanabilir; odak çerçevesi gereksiz. */
+    .os-sayfa:focus {
+        outline: none;
+    }
+
+.os-alt {
+    margin: 0;
+    color: #4a5568;
+    max-width: 90ch;
+}
+
+.os-panel {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+    padding: 12px 14px;
+    min-width: 0;
+}
+
+.os-panel-h {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+    .os-panel-h h2,
+    .os-adim-baslik {
+        font-size: 14px;
+        font-weight: 600;
+        margin: 0;
+    }
+
+.os-ipucu {
+    font-size: 12px;
+    color: #718096;
+}
+
+/* ---- Parametreler ---- */
+
+.os-ayarlar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 12px;
+}
+
+.os-alan {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+    .os-alan label {
+        font-size: 12px;
+        color: #4a5568;
+    }
+
+.os-girdi-uyari {
+    font-size: 11.5px;
+    color: #9b2c2c;
+}
+
+/* ---- Ana ızgara: muavin + sonuç ---- */
+
+.os-ana {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    gap: 14px;
+    align-items: start;
+}
+
+@media (max-width: 1100px) {
+    .os-ana {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.os-sekmeler {
+    display: flex;
+    gap: 2px;
+    border-bottom: 1px solid #e2e8f0;
+    flex-wrap: wrap;
+}
+
+.os-sekme {
+    border: 1px solid transparent;
+    border-bottom: none;
+    background: none;
+    padding: 8px 14px;
+    font: inherit;
+    color: #4a5568;
+    cursor: pointer;
+    border-radius: 4px 4px 0 0;
+}
+
+    .os-sekme[aria-selected="true"] {
+        background: #fff;
+        border-color: #e2e8f0;
+        color: #2b6cb0;
+        font-weight: 600;
+        margin-bottom: -1px;
+    }
+
+.os-sayi {
+    font-size: 11px;
+    color: #718096;
+    margin-left: 6px;
+}
+
+.os-arac {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 10px 0;
+}
+
+.os-ornek {
+    font-size: 11px;
+    font-weight: 600;
+    color: #975a16;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.os-elle {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+    .os-elle textarea {
+        width: 100%;
+        font: inherit;
+        border: 1px solid #cbd5e0;
+        border-radius: 4px;
+        padding: 6px 8px;
+    }
+
+.os-elle-dugme {
+    display: flex;
+    gap: 6px;
+}
+
+.os-hata,
+.os-bilgi {
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.os-hata {
+    border: 1px solid #fbb6b6;
+    background: #fff5f5;
+    color: #9b2c2c;
+}
+
+    .os-hata ul {
+        margin: 4px 0 0;
+        padding-left: 18px;
+    }
+
+.os-bilgi {
+    border: 1px solid #cfe0f5;
+    background: #f2f7ff;
+    color: #2c5282;
+}
+
+.os-dropzone {
+    border: 1px dashed #2b6cb0;
+    border-radius: 4px;
+    padding: 8px 12px;
+    color: #4a5568;
+    font-size: 12px;
+    background: #f2f7ff;
+}
+
+/* ---- Hesap seçimi ---- */
+
+.os-hesaplar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.os-hesap {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 3px 8px;
+    cursor: pointer;
+}
+
+.os-kod {
+    font-family: Consolas, monospace;
+}
+
+.os-hesap-ad {
+    color: #718096;
+}
+
+.os-hesap-uyari {
+    color: #975a16;
+    background: #fffaf0;
+    border-radius: 3px;
+    padding: 0 5px;
+    font-size: 11px;
+}
+
+/* ---- Muavin tablosu ---- */
+
+.os-tablo-kutu {
+    overflow: auto;
+    max-height: 430px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.os-tablo {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 12.5px;
+}
+
+    .os-tablo th,
+    .os-tablo td {
+        padding: 5px 8px;
+        border-bottom: 1px solid #f0f4f8;
+        white-space: nowrap;
+        text-align: left;
+    }
+
+    .os-tablo th {
+        position: sticky;
+        top: 0;
+        background: #f7fafc;
+        color: #4a5568;
+        font-weight: 600;
+        font-size: 12px;
+        z-index: 1;
+    }
+
+        .os-tablo th.n,
+        .os-tablo td.n {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+    .os-tablo td.aciklama {
+        white-space: normal;
+        min-width: 220px;
+    }
+
+    .os-tablo tr.zirve td {
+        background: #fefcbf;
+        font-weight: 600;
+    }
+
+.os-bos {
+    padding: 18px !important;
+    color: #a0aec0;
+    white-space: normal !important;
+}
+
+.os-pill {
+    display: inline-block;
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    color: #718096;
+}
+
+.os-sinif {
+    font: inherit;
+    font-size: 12px;
+    padding: 2px 4px;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    background: #fff;
+}
+
+/* ---- Sonuç: Excel'deki sarı hücre düzeni ---- */
+
+.os-sonuc {
+    display: grid;
+    gap: 14px;
+}
+
+.os-rpt {
+    border: 2px solid #222;
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+}
+
+.os-rpt-baslik {
+    color: #c53030;
+    font-weight: 700;
+    text-align: center;
+    font-size: 12px;
+    letter-spacing: .02em;
+}
+
+.os-rsatir {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    border: 1px solid #222;
+}
+
+    .os-rsatir .lb {
+        padding: 4px 8px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+        .os-rsatir .lb small {
+            display: block;
+            font-weight: 400;
+            color: #718096;
+        }
+
+    .os-rsatir .v {
+        background: #fff6b8;
+        color: #3a3200;
+        font-weight: 600;
+        text-align: right;
+        padding: 4px 8px;
+        min-width: 130px;
+        font-variant-numeric: tabular-nums;
+        border-left: 1px solid #222;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+
+    .os-rsatir.bas .v {
+        background: transparent;
+        color: #c53030;
+    }
+
+.os-rtarih {
+    font-weight: 400;
+}
+
+.os-adim-baslik {
+    margin-bottom: 8px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.os-rozet {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+    .os-rozet.var {
+        background: #fff5f5;
+        color: #c53030;
+    }
+
+    .os-rozet.yok {
+        background: #f0fff4;
+        color: #2f855a;
+    }
+
+    .os-rozet.bekle {
+        background: #edf2f7;
+        color: #4a5568;
+    }
+
+.os-adimlar {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+    .os-adimlar li {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        font-size: 13px;
+        border-bottom: 1px dotted #e2e8f0;
+        padding-bottom: 4px;
+    }
+
+        .os-adimlar li span:last-child {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .os-adimlar li.toplam {
+            font-weight: 600;
+        }
+
+        .os-adimlar li.bilgi {
+            color: #718096;
+            font-size: 12px;
+            border-bottom: none;
+        }
+
+.os-not {
+    background: #fffaf0;
+    border: 1px solid #fbd38d;
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+/* ---- Hesap kartları ve mevzuat ---- */
+
+.os-kartlar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 10px;
+}
+
+.os-kart {
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 8px 10px;
+}
+
+    .os-kart b {
+        font-family: Consolas, monospace;
+        color: #2b6cb0;
+    }
+
+    .os-kart p {
+        margin: 4px 0 0;
+        font-size: 12.5px;
+        color: #4a5568;
+    }
+
+.os-mevzuat {
+    border-top: 1px solid #e2e8f0;
+    padding: 8px 0;
+}
+
+    .os-mevzuat summary {
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+    .os-mevzuat p {
+        margin: 6px 0 0;
+        max-width: 90ch;
+        line-height: 1.5;
+    }
+
+.os-madde {
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    color: #2b6cb0;
+    margin-right: 6px;
+}

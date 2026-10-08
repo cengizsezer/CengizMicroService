@@ -1,0 +1,591 @@
+@using System.Globalization
+@using WebApp.Pages.Hesaplamalar.OrtuluSermaye.Model
+@using WebApp.Pages.Hesaplamalar.OrtuluSermaye.Services
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@*
+    Hesaplamalar > Örtülü Sermaye sekmesinin içeriği (KVK 12, KVK 11/1-b). Maket:
+    proje kökündeki ortulu-sermaye.html.
+
+    Kendi @page rotası YOK: sekmeyi HesaplamalarPage basıyor (HesaplamaSekmesi, KARARLAR §79).
+    Hesap tamamen istemcide, kalıcılık yok (KARARLAR §156): iki muavin yapıştırılır,
+    OrtuluSermayeHesaplayici her çizimde baştan hesaplar.
+
+    Ctrl+V: firmaIsleri.js'teki MEVCUT bağlama sayfa kökünde (tabindex=0). Sayfaya
+    tıklanmışken yapıştırılan metin aktif sekmeye yüklenir; giriş kutularına yapılan
+    yapıştırma engellenmez.
+*@
+
+<div class="os-sayfa" @ref="kokOgesi" tabindex="0">
+
+    <p class="os-alt">
+        ORKA muavinini iki sayfaya yapıştırın: ilişkili kişi borç hesapları ve gider/gelir hesapları.
+        Ekran en yüksek borcu tarihiyle bulur, 3 kat sınırını aşan kısmı ayırır ve beyanname
+        tablosundaki sarı hücreleri doldurur.
+    </p>
+
+    @* ---------------- Parametreler ---------------- *@
+    <section class="os-panel">
+        <div class="os-panel-h">
+            <h2>Dönem ve parametreler</h2>
+            <span class="os-ipucu">KVK 12 · 1 Seri No'lu KVK GT 12</span>
+        </div>
+        <div class="os-ayarlar">
+            <div class="os-alan">
+                <label>Dönem sonu (tablodaki tarih)</label>
+                <RadzenDatePicker TValue="DateTime?" @bind-Value="donemSonu" DateFormat="dd.MM.yyyy" Style="width:100%" />
+            </div>
+            <div class="os-alan">
+                <label>Dönem başı öz sermaye (VUK, TL)</label>
+                <RadzenNumeric TValue="decimal?" @bind-Value="ozSermaye" Format="N2" Placeholder="0,00" Style="width:100%" />
+                @if (ozSermaye < 0)
+                {
+                    <span class="os-girdi-uyari">Öz sermaye negatif; sınır 0 alındı, borcun tamamı örtülü sayılıyor.</span>
+                }
+            </div>
+            <div class="os-alan">
+                <label>Sınır katsayısı</label>
+                <RadzenDropDown TValue="bool" @bind-Value="iliskiliBanka" Data="@KatSecenekleri"
+                                TextProperty="Ad" ValueProperty="Deger" Style="width:100%" />
+            </div>
+            <div class="os-alan">
+                <label>Borç veren</label>
+                <RadzenDropDown TValue="BorcVerenTipi" @bind-Value="borcVeren" Data="@BorcVerenSecenekleri"
+                                TextProperty="Ad" ValueProperty="Deger" Style="width:100%" />
+            </div>
+            <div class="os-alan">
+                <label>Kâr payı stopaj oranı (%)</label>
+                <RadzenNumeric TValue="decimal" @bind-Value="stopajYuzde" Min="0" Max="100" Step="1" Format="N2" Style="width:100%" />
+            </div>
+        </div>
+    </section>
+
+    @{
+        var zirve = OrtuluSermayeHesaplayici.EnYuksekBorc(borcSatirlari, haricHesaplar);
+        var sonuc = OrtuluSermayeHesaplayici.Hesapla(Parametre(), borcSatirlari, haricHesaplar, giderSatirlari);
+        var ozSermayeVar = ozSermaye is not null;
+        var gider = aktif == Sekme.Gider;
+        var mesaj = gider ? giderMesaj : borcMesaj;
+    }
+
+    <div class="os-ana">
+
+        @* ---------------- Muavin sekmeleri ---------------- *@
+        <section class="os-panel">
+            <div class="os-sekmeler" role="tablist">
+                <button type="button" class="os-sekme" role="tab" aria-selected="@(!gider ? "true" : "false")"
+                        @onclick="() => SekmeSec(Sekme.Borc)">
+                    1 · İlişkili Borç Muavini<span class="os-sayi">@(borcSatirlari.Count > 0 ? borcSatirlari.Count.ToString() : "")</span>
+                </button>
+                <button type="button" class="os-sekme" role="tab" aria-selected="@(gider ? "true" : "false")"
+                        @onclick="() => SekmeSec(Sekme.Gider)">
+                    2 · Gider / Gelir Muavini<span class="os-sayi">@(giderSatirlari.Count > 0 ? giderSatirlari.Count.ToString() : "")</span>
+                </button>
+            </div>
+
+            <div class="os-arac">
+                <RadzenButton Text="Excel'den yapıştır" Icon="content_paste" Size="ButtonSize.Small" Click="@YapistirDugmesi" />
+                <RadzenButton Text="Örnek veriyi yükle" Icon="science" Size="ButtonSize.Small"
+                              ButtonStyle="ButtonStyle.Light" Click="@OrnekYukle" />
+                <RadzenButton Text="Temizle" Icon="delete_sweep" Size="ButtonSize.Small"
+                              ButtonStyle="ButtonStyle.Light" Click="@Temizle" />
+                @if (ornekVeri)
+                {
+                    <span class="os-ornek">Örnek veri</span>
+                }
+            </div>
+
+            @if (elleKutusu)
+            {
+                <div class="os-elle">
+                    <textarea rows="4" @bind="elleMetin" @bind:event="oninput"
+                              placeholder="Panoya erişilemedi. Excel'de A–I sütunlarını (Acc. No … Balance) kopyalayıp buraya yapıştırın, sonra Yükle'ye basın. Başlık satırı varsa otomatik atlanır."></textarea>
+                    <div class="os-elle-dugme">
+                        <RadzenButton Text="Yükle" Size="ButtonSize.Small" Click="@ElleYukle" Disabled="@string.IsNullOrWhiteSpace(elleMetin)" />
+                        <RadzenButton Text="Vazgeç" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light"
+                                      Click="@(() => { elleKutusu = false; elleMetin = ""; })" />
+                    </div>
+                </div>
+            }
+
+            @if (mesaj.Hatalar.Count > 0)
+            {
+                <div class="os-hata">
+                    <b>Yapıştırılan metin yüklenmedi:</b>
+                    <ul>
+                        @foreach (var h in mesaj.Hatalar)
+                        {
+                            <li>@h</li>
+                        }
+                    </ul>
+                </div>
+            }
+            @if (mesaj.Bilgi is not null)
+            {
+                <div class="os-bilgi">@mesaj.Bilgi</div>
+            }
+
+            <div class="os-dropzone">
+                Bu sayfaya tıklanmışken Ctrl+V da çalışır. Beklenen sütunlar:
+                Acc. No · Acc Name · Date · Slip Type · Slip No · Description · Debit · Credit · Balance
+            </div>
+
+            @if (!gider && hesaplar.Count > 0)
+            {
+                <div class="os-ipucu" style="margin-top:8px">En yüksek borca dahil edilecek ilişkili hesaplar:</div>
+                <div class="os-hesaplar">
+                    @foreach (var (kod, ad) in hesaplar)
+                    {
+                        <label class="os-hesap">
+                            <RadzenCheckBox TValue="bool" Value="@(!haricHesaplar.Contains(kod))"
+                                            Change="@(v => HesapSec(kod, v))" />
+                            <span class="os-kod">@kod</span>
+                            <span class="os-hesap-ad">@ad</span>
+                            @if (OrtuluSermayeHesaplayici.VarsayilanHaricMi(kod))
+                            {
+                                <span class="os-hesap-uyari">Olağan vadeyi aşan ticari borçsa dahil edin.</span>
+                            }
+                        </label>
+                    }
+                </div>
+            }
+
+            <div class="os-tablo-kutu">
+                <table class="os-tablo">
+                    <thead>
+                        <tr>
+                            <th>Acc. No</th>
+                            <th>Acc Name</th>
+                            <th>Date</th>
+                            <th>Slip Type</th>
+                            <th>Slip No</th>
+                            <th>Description</th>
+                            <th class="n">Debit</th>
+                            <th class="n">Credit</th>
+                            <th class="n">Balance</th>
+                            @if (gider)
+                            {
+                                <th>Sınıf</th>
+                            }
+                            else
+                            {
+                                <th class="n">Kümülatif ilişkili borç</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            // Sayfa 1 tarih sırasıyla gösterilir: kümülatif sütun hesaptaki sırayla aynı aksın.
+                            var gosterilen = gider ? giderSatirlari : borcSatirlari.OrderBy(s => s.Tarih.Date).ToList();
+                        }
+                        @if (gosterilen.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="10" class="os-bos">
+                                    Henüz satır yok.
+                                    @(gider
+                                        ? "656, 646, 780/661, 191 ve 360 muavinini yapıştırın."
+                                        : "331, 336, 431 gibi ilişkili kişi hesaplarının muavinini yapıştırın.")
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var s in gosterilen)
+                        {
+                            <tr class="@(!gider && ReferenceEquals(s, zirve.ZirveSatiri) ? "zirve" : "")">
+                                <td>@s.HesapKodu</td>
+                                <td>@s.HesapAdi</td>
+                                <td>@s.Tarih.ToString("dd.MM.yyyy", Tr)</td>
+                                <td>@s.FisTuru</td>
+                                <td>@s.FisNo</td>
+                                <td class="aciklama">@s.Aciklama</td>
+                                <td class="n">@(s.Borc != 0 ? Tutar(s.Borc) : "")</td>
+                                <td class="n">@(s.Alacak != 0 ? Tutar(s.Alacak) : "")</td>
+                                <td class="n">@Tutar(s.Bakiye)</td>
+                                @if (gider)
+                                {
+                                    <td>
+                                        <select class="os-sinif" value="@s.Sinif" @onchange="@(e => s.Sinif = Enum.Parse<MuavinSinifi>((string)e.Value!))">
+                                            @foreach (var (deger, ad) in SinifAdlari)
+                                            {
+                                                <option value="@deger">@ad</option>
+                                            }
+                                        </select>
+                                    </td>
+                                }
+                                else
+                                {
+                                    <td class="n">
+                                        @if (zirve.Kumulatif.TryGetValue(s, out var k))
+                                        {
+                                            @Tutar(k)
+                                        }
+                                        else
+                                        {
+                                            <span class="os-pill">hariç</span>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="os-ipucu">
+                @if (gider)
+                {
+                    @:Sınıf sütunu hesap koduna ve açıklamaya göre otomatik atanır; ilişkili borca ait olmayan satırları "—" yapın.
+                }
+                else if (zirve.ZirveSatiri is not null)
+                {
+                    @:Vurgulu satır: seçili hesapların toplam bakiyesinin dönem içinde en yükseğe çıktığı gün.
+                }
+            </p>
+        </section>
+
+        @* ---------------- Sonuç ---------------- *@
+        <aside class="os-panel os-sonuc">
+            <div class="os-rpt" aria-label="İlişkili şirket detay tablosu">
+                <div class="os-rpt-baslik">İLİŞKİLİ ŞİRKET DETAY TABLOSU / RELATED PARTIES DETAILED TABLE</div>
+                <div class="os-rsatir bas">
+                    <div class="lb">İlişkili kişilere olan en yüksek borç<small>Highest Debt to Related Parties</small></div>
+                    <div class="v">
+                        <span class="os-rtarih">@((sonuc.EnYuksekBorcTarihi ?? donemSonu)?.ToString("dd.MM.yyyy", Tr))</span>
+                        @Tutar(sonuc.EnYuksekBorc)
+                    </div>
+                </div>
+                <div class="os-rsatir"><div class="lb">Örtülü Sermaye Kur Farkı Gideri<small>Thin Cap. FX Loss</small></div><div class="v">@Hucre(sonuc.KurFarkiGideri)</div></div>
+                <div class="os-rsatir"><div class="lb">Örtülü Sermaye Kur Farkı Geliri<small>Thin Cap. FX Income</small></div><div class="v">@Hucre(sonuc.KurFarkiGeliri)</div></div>
+                <div class="os-rsatir"><div class="lb">Örtülü Sermaye Faiz Gideri<small>Thin Cap. Interest Exp.</small></div><div class="v">@Hucre(sonuc.FaizGideri)</div></div>
+                <div class="os-rsatir"><div class="lb">Örtülü Sermaye Faiz Stopajı<small>Thin Cap. Interest Withholding</small></div><div class="v">@Hucre(sonuc.FaizStopaji)</div></div>
+                <div class="os-rsatir"><div class="lb">Örtülü Sermaye Faiz KDV<small>Thin Cap. Interest VAT</small></div><div class="v">@Hucre(sonuc.FaizKdv)</div></div>
+                <div class="os-rsatir"><div class="lb">Örtülü Sermaye Kredi Sözleşme DV<small>Thin Cap. Loan Contract Stamp Tax</small></div><div class="v">@Hucre(sonuc.DamgaVergisi)</div></div>
+            </div>
+
+            <div>
+                <h2 class="os-adim-baslik">
+                    Hesap adımları
+                    @if (!ozSermayeVar)
+                    {
+                        <span class="os-rozet bekle">Öz sermaye girin</span>
+                    }
+                    else if (sonuc.OrtuluSermayeVar)
+                    {
+                        <span class="os-rozet var">Örtülü sermaye var</span>
+                    }
+                    else
+                    {
+                        <span class="os-rozet yok">Sınır aşılmıyor</span>
+                    }
+                </h2>
+                <ul class="os-adimlar">
+                    <li><span>En yüksek ilişkili borç (@(sonuc.EnYuksekBorcTarihi?.ToString("dd.MM.yyyy", Tr) ?? "—"))</span><span>@Tutar(sonuc.EnYuksekBorc)</span></li>
+                    @if (iliskiliBanka)
+                    {
+                        <li><span>Dikkate alınan (borcun yarısı)</span><span>@Tutar(sonuc.DikkateAlinanBorc)</span></li>
+                    }
+                    <li><span>Dönem başı öz sermaye × 3</span><span>@(ozSermayeVar ? Tutar(sonuc.Sinir) : "—")</span></li>
+                    <li class="toplam"><span>Örtülü sermaye (aşan kısım)</span><span>@(ozSermayeVar ? Tutar(sonuc.AsanKisim) : "—")</span></li>
+                    <li><span>Örtülü oran (aşan ÷ borç)</span><span>@(ozSermayeVar ? Yuzde(sonuc.OrtuluOran) : "—")</span></li>
+                    <li><span>Toplam kur farkı gideri (656)</span><span>@Tutar(sonuc.Toplamlar.KurFarkiGideri)</span></li>
+                    <li><span>Toplam kur farkı geliri (646)</span><span>@Tutar(sonuc.Toplamlar.KurFarkiGeliri)</span></li>
+                    <li><span>Toplam faiz gideri</span><span>@Tutar(sonuc.Toplamlar.FaizGideri)</span></li>
+                    <li><span>Toplam faiz KDV</span><span>@Tutar(sonuc.Toplamlar.FaizKdv)</span></li>
+                    <li><span>Toplam DV</span><span>@Tutar(sonuc.Toplamlar.DamgaVergisi)</span></li>
+                    <li class="bilgi"><span>Stopaj kayıtları (360) — bilgi, beyannameye girmez</span><span>@Tutar(sonuc.Toplamlar.Stopaj)</span></li>
+                </ul>
+            </div>
+
+            <div class="os-not">
+                @if (!ozSermayeVar)
+                {
+                    <span><b>Beyanname:</b> Hesap için dönem başı öz sermayeyi girin.</span>
+                }
+                else if (sonuc.OrtuluSermayeVar)
+                {
+                    <span>
+                        <b>Beyanname:</b> KKEG olarak ilave <b>@Tutar(sonuc.KkegToplam)</b> (kur farkı gideri + faiz + KDV + DV).
+                        Kur farkı geliri <b>@Tutar(sonuc.KurFarkiGeliri)</b> ayrıca "Zarar Olsa Dahi İndirilecek İstisna ve
+                        İndirimler" bölümünde indirilir; gidere mahsup edilmez.
+                    </span>
+                }
+                else
+                {
+                    <span>
+                        <b>Beyanname:</b> En yüksek borç öz sermayenin @(iliskiliBanka ? "6" : "3") katı sınırının altında
+                        kaldığı için örtülü sermaye düzeltmesi gerekmiyor.
+                    </span>
+                }
+            </div>
+        </aside>
+    </div>
+
+    @* ---------------- Hangi hesaplara bakılır? ---------------- *@
+    <section class="os-panel">
+        <div class="os-panel-h"><h2>Hangi hesaplara bakılır?</h2><span class="os-ipucu">Tek Düzen Hesap Planı</span></div>
+        <div class="os-kartlar">
+            <div class="os-kart"><b>331 / 431</b> Ortaklara Borçlar<p>Sayfa 1. Ortaktan alınan borç; en yüksek bakiye buradan çıkar.</p></div>
+            <div class="os-kart"><b>332 · 333 / 432 · 433</b> İştiraklere / Bağlı Ortaklıklara Borçlar<p>Sayfa 1. Grup şirketi borçları.</p></div>
+            <div class="os-kart"><b>336 / 436</b> Diğer Çeşitli Borçlar<p>Sayfa 1. Yalnızca ilişkili kişi alt hesapları. Ticari borçlar (320) dahil edilmez.</p></div>
+            <div class="os-kart"><b>300 / 400</b> Banka Kredileri<p>Sayfa 1. Yalnızca ilişkili banka veya ilişkili kişi garantili krediler.</p></div>
+            <div class="os-kart"><b>656</b> Kambiyo Zararları<p>Sayfa 2. İlişkili borca ait kur farkı gideri → KKEG.</p></div>
+            <div class="os-kart"><b>646</b> Kambiyo Kârları<p>Sayfa 2. İlişkili borca ait kur farkı geliri → indirim. Gidere mahsup edilmez.</p></div>
+            <div class="os-kart"><b>780 / 661</b> Finansman Giderleri / Kısa Vadeli Borçlanma Giderleri<p>Sayfa 2. İlişkili borç faizi ve damga vergisi.</p></div>
+            <div class="os-kart"><b>191 · 360</b> İndirilecek KDV · Ödenecek Vergi ve Fonlar<p>Sayfa 2. Faiz faturası KDV'si, sorumlu KDV ve stopaj kayıtları.</p></div>
+        </div>
+    </section>
+
+    @* ---------------- Mevzuat ---------------- *@
+    <section class="os-panel">
+        <div class="os-panel-h"><h2>Mevzuat</h2><span class="os-ipucu">Özet; güncel metni GİB'den kontrol edin</span></div>
+        <details class="os-mevzuat" open><summary><span class="os-madde">KVK 12/1</span>Örtülü sermaye tanımı</summary>
+            <p>Kurumların ortaklarından veya ortaklarla ilişkili kişilerden temin ettikleri borçların, hesap dönemi içinde herhangi bir tarihte dönem başı öz sermayenin üç katını aşan kısmı örtülü sermaye sayılır. Bu nedenle ekran dönem içindeki en yüksek bakiyeyi esas alır.</p></details>
+        <details class="os-mevzuat"><summary><span class="os-madde">KVK 12/2</span>İlişkili kişi</summary>
+            <p>Sermayede, oy veya kâr payında doğrudan ya da dolaylı en az %10 payı olan ortaklar ve bu ortaklarla ilişkili kişiler.</p></details>
+        <details class="os-mevzuat"><summary><span class="os-madde">KVK 12/3</span>Banka ve finans kurumları</summary>
+            <p>İlişkili kişi olan banka veya finans kurumlarından alınan borçların yarısı dikkate alınır. Bu, fiilen 6 kat sınırına denk gelir. İlişkili olmayan bankadan, ilişkili kişinin teminatı olmadan alınan krediler kapsam dışıdır.</p></details>
+        <details class="os-mevzuat"><summary><span class="os-madde">KVK 11/1-b</span>Gider kısıtlaması</summary>
+            <p>Örtülü sermaye üzerinden ödenen veya hesaplanan faiz, kur farkı ve benzeri giderler kurum kazancından indirilemez (KKEG).</p></details>
+        <details class="os-mevzuat"><summary><span class="os-madde">KVK 12/7</span>Örtülü kâr payı</summary>
+            <p>Örtülü sermaye üzerinden kur farkı hariç faiz ve benzeri tutarlar, şartların gerçekleştiği hesap döneminin son günü itibarıyla dağıtılmış kâr payı sayılır. Borç veren gerçek kişi veya dar mükellefse kâr payı stopajı gündeme gelir. Kur farkı stopaja konu olmaz.</p></details>
+        <details class="os-mevzuat"><summary><span class="os-madde">GT 12.3</span>Kur farkı geliri</summary>
+            <p>Gideri kabul edilmeyen örtülü sermayede TL'nin değer kazanmasıyla oluşan kur farkı geliri de kazançta dikkate alınmaz. GİB özelgelerine göre gelir ve gider birbirinden mahsup edilmez, ayrı ayrı gösterilir.</p></details>
+        <details class="os-mevzuat"><summary><span class="os-madde">KDVK 30/d</span>KDV</summary>
+            <p>Kazancın tespitinde kabul edilmeyen giderlere ait KDV indirilemez. Örtülü kısma isabet eden faiz KDV'si indirim hesabından çıkarılır.</p></details>
+    </section>
+</div>
+
+@code {
+    // Tutarlar ambient kültüre bırakılmadan Türkçe biçimde (FinansmanKisitlamaHesabi ile aynı, KARARLAR §80).
+    private static readonly CultureInfo Tr = new("tr-TR");
+
+    private enum Sekme { Borc, Gider }
+
+    private sealed record Secenek<T>(T Deger, string Ad);
+
+    private static readonly Secenek<bool>[] KatSecenekleri =
+    {
+        new(false, "3 kat (genel)"),
+        new(true, "6 kat (ilişkili banka/finans kurumu, borcun yarısı)")
+    };
+
+    private static readonly Secenek<BorcVerenTipi>[] BorcVerenSecenekleri =
+    {
+        new(BorcVerenTipi.TamMukellefKurum, "Tam mükellef kurum (stopaj yok)"),
+        new(BorcVerenTipi.GercekKisiVeyaDarMukellef, "Gerçek kişi / dar mükellef (stopaj var)")
+    };
+
+    private static readonly (MuavinSinifi Deger, string Ad)[] SinifAdlari =
+    {
+        (MuavinSinifi.Yok, "—"),
+        (MuavinSinifi.KurFarkiGideri, "Kur farkı gideri"),
+        (MuavinSinifi.KurFarkiGeliri, "Kur farkı geliri"),
+        (MuavinSinifi.FaizGideri, "Faiz gideri"),
+        (MuavinSinifi.FaizKdv, "Faiz KDV"),
+        (MuavinSinifi.Stopaj, "Stopaj"),
+        (MuavinSinifi.DamgaVergisi, "Damga vergisi")
+    };
+
+    /// <summary>Sekmenin son yükleme mesajı: hatalar (yüklenmedi) ya da bilgi (yüklendi, şu kadar satır atlandı).</summary>
+    private sealed record YuklemeMesaji(IReadOnlyList<string> Hatalar, string? Bilgi)
+    {
+        public static readonly YuklemeMesaji Bos = new(Array.Empty<string>(), null);
+    }
+
+    // Parametreler — muavinler boş açılır, dönem sonu içinde bulunulan yılın 30.09'u; örnek veri
+    // düğmesi maketteki değerleri doldurur.
+    private DateTime? donemSonu = new DateTime(DateTime.Today.Year, 9, 30);
+    private decimal? ozSermaye;
+    private bool iliskiliBanka;
+    private BorcVerenTipi borcVeren = BorcVerenTipi.TamMukellefKurum;
+    private decimal stopajYuzde = 15m;
+
+    // Muavinler
+    private List<MuavinSatiri> borcSatirlari = new();
+    private List<MuavinSatiri> giderSatirlari = new();
+    private HashSet<string> haricHesaplar = new();
+    private List<(string Kod, string Ad)> hesaplar = new();
+    private Sekme aktif = Sekme.Borc;
+    private bool ornekVeri;
+    private YuklemeMesaji borcMesaj = YuklemeMesaji.Bos;
+    private YuklemeMesaji giderMesaj = YuklemeMesaji.Bos;
+
+    // "Excel'den yapıştır": pano izni yoksa elle yapıştırma kutusu.
+    private bool elleKutusu;
+    private string elleMetin = "";
+
+    private ElementReference kokOgesi;
+    private DotNetObjectReference<OrtuluSermayeHesabi>? referans;
+
+    private OrtuluSermayeParametre Parametre() => new()
+    {
+        DonemSonu = donemSonu ?? DateTime.Today,
+        DonemBasiOzSermaye = ozSermaye ?? 0,
+        IliskiliBankaMi = iliskiliBanka,
+        BorcVerenTipi = borcVeren,
+        StopajOrani = stopajYuzde / 100m
+    };
+
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        if (!ilk) return;
+        try
+        {
+            referans = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("firmaIsleri.kaydet", kokOgesi, referans);
+        }
+        catch
+        {
+            // Bağlanamadı: "Excel'den yapıştır" düğmesi elle yapıştırma kutusuyla çalışmaya devam eder.
+        }
+    }
+
+    /// <summary>Sayfa odaktayken Ctrl+V (firmaIsleri.js, text/plain) — aktif sekmeye.</summary>
+    [JSInvokable]
+    public Task MetinYapistirildi(string metin)
+    {
+        Yukle(metin);
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task YapistirDugmesi()
+    {
+        string? metin = null;
+        try
+        {
+            metin = await JS.InvokeAsync<string?>("firmaIsleri.panodanOku");
+        }
+        catch
+        {
+            // İzin yok / tarayıcı desteklemiyor.
+        }
+
+        if (string.IsNullOrWhiteSpace(metin))
+        {
+            elleKutusu = true;
+            elleMetin = "";
+            return;
+        }
+        Yukle(metin);
+    }
+
+    private void ElleYukle()
+    {
+        if (Yukle(elleMetin))
+        {
+            elleKutusu = false;
+            elleMetin = "";
+        }
+    }
+
+    /// <summary>Metni aktif sekmeye yükler. Hata varsa mevcut satırlar KORUNUR, hatalar gösterilir.</summary>
+    private bool Yukle(string metin)
+    {
+        var sonuc = MuavinTsvParser.Ayristir(metin);
+        if (!sonuc.Basarili)
+        {
+            MesajYaz(new YuklemeMesaji(sonuc.Hatalar, null));
+            return false;
+        }
+
+        // Örnek veri üstüne gerçek veri gelirse iki sekme de temizlenir: örnekle gerçek karışmasın.
+        if (ornekVeri)
+        {
+            borcSatirlari = new();
+            giderSatirlari = new();
+            HesaplariYenile();
+            borcMesaj = giderMesaj = YuklemeMesaji.Bos;
+            ornekVeri = false;
+        }
+
+        var bilgi = $"{sonuc.Satirlar.Count} satır yüklendi."
+                    + (sonuc.AtlananSatir > 0 ? $" {sonuc.AtlananSatir} toplam satırı atlandı (hesap kodu boş)." : "");
+        MesajYaz(new YuklemeMesaji(Array.Empty<string>(), bilgi));
+
+        if (aktif == Sekme.Borc)
+        {
+            borcSatirlari = sonuc.Satirlar.ToList();
+            HesaplariYenile();
+        }
+        else
+        {
+            giderSatirlari = sonuc.Satirlar.ToList();
+        }
+        return true;
+    }
+
+    private void MesajYaz(YuklemeMesaji m)
+    {
+        if (aktif == Sekme.Borc) borcMesaj = m;
+        else giderMesaj = m;
+    }
+
+    /// <summary>Hesap kutucukları ve varsayılan hariçler (320) borç muavininden yeniden kurulur.</summary>
+    private void HesaplariYenile()
+    {
+        hesaplar = borcSatirlari.GroupBy(s => s.HesapKodu)
+                                .Select(g => (g.Key, g.First().HesapAdi))
+                                .ToList();
+        haricHesaplar = OrtuluSermayeHesaplayici.VarsayilanHaricler(borcSatirlari);
+    }
+
+    private void HesapSec(string kod, bool dahil)
+    {
+        if (dahil) haricHesaplar.Remove(kod);
+        else haricHesaplar.Add(kod);
+    }
+
+    private void SekmeSec(Sekme s)
+    {
+        aktif = s;
+        elleKutusu = false;
+    }
+
+    private void Temizle()
+    {
+        if (aktif == Sekme.Borc)
+        {
+            borcSatirlari = new();
+            HesaplariYenile();
+        }
+        else
+        {
+            giderSatirlari = new();
+        }
+        MesajYaz(YuklemeMesaji.Bos);
+        ornekVeri = false;
+    }
+
+    private void OrnekYukle()
+    {
+        borcSatirlari = MuavinTsvParser.Ayristir(OrnekVeri.BorcMuavini).Satirlar.ToList();
+        giderSatirlari = MuavinTsvParser.Ayristir(OrnekVeri.GiderMuavini).Satirlar.ToList();
+        HesaplariYenile();
+        borcMesaj = giderMesaj = YuklemeMesaji.Bos;
+        donemSonu = OrnekVeri.DonemSonu;
+        ozSermaye = OrnekVeri.DonemBasiOzSermaye;
+        ornekVeri = true;
+        elleKutusu = false;
+    }
+
+    private static string Tutar(decimal d) => d.ToString("N2", Tr);
+
+    private static string Yuzde(decimal oran) => "%" + (oran * 100).ToString("N2", Tr);
+
+    /// <summary>Öz sermaye girilmeden oranlı tutarlar anlamsız: sarı hücre boş kalır.</summary>
+    private string Hucre(decimal d) => ozSermaye is null ? "" : Tutar(d);
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("firmaIsleri.kaldir", kokOgesi);
+        }
+        catch
+        {
+            // Sayfa kapanırken JS gitmiş olabilir.
+        }
+        referans?.Dispose();
+    }
+}

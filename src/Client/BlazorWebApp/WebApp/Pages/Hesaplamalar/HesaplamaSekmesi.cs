@@ -32,7 +32,9 @@ namespace WebApp.Pages.Hesaplamalar
         {
             new HesaplamaSekmesi("bordro", "Bordro Hesaplaması", "payments", typeof(BordroHesaplamasi)),
             new HesaplamaSekmesi("finansman-gider-kisitlamasi", "Finansman Gider Kısıtlaması", "percent",
-                typeof(FinansmanGiderKisitlamasi.FinansmanKisitlamaHesabi))
+                typeof(FinansmanGiderKisitlamasi.FinansmanKisitlamaHesabi)),
+            new HesaplamaSekmesi("ortulu-sermaye", "Örtülü Sermaye", "account_balance",
+                typeof(OrtuluSermaye.OrtuluSermayeHesabi))
         };
 
         /// <summary>Kök adresin açtığı sekme.</summary>

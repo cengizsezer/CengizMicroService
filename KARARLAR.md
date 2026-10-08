@@ -3913,3 +3913,13 @@ düzeyinde; bu turda dokunulmadı.
 **Bilinen, kapsam dışı:** uyarı metnindeki ve bordro Excel/PDF alt notundaki
 `PKF [TAM UNVAN]` yer tutucusu (iki ayrı sabit: istemci `PayrollDisclaimerTexts`, sunucu
 `PayrollExportFooterTexts`) yayından önce elle doldurulacak.
+
+## 156. Örtülü sermaye: tek zirve, tek oran, client tarafında
+
+- En yüksek borç, seçili hesapların aynı gündeki toplam bakiyesinin zirvesidir; hesap
+  bazında maksimumlar toplanmaz.
+- 320 hesapları varsayılan olarak hariçtir.
+- Kur farkı geliri gidere mahsup edilmez.
+- Giderler tek orana (aşan ÷ dikkate alınan borç) göre ayrılır; tarih bazlı ayrım ileride
+  değerlendirilecektir.
+- Hesap tamamen client tarafındadır; kalıcılık yoktur.

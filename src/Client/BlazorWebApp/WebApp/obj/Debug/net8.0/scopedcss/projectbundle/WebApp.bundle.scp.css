@@ -158,16 +158,14 @@ body[b-fw2jhspjsg] {
     background: #f3f3f3;
     padding: 8px 0;
     display: flex;
-    justify-content: center;
     overflow: hidden;
     box-sizing: border-box;
 }
 
 .payroll-container[b-fw2jhspjsg] {
     width: 100%;
-    max-width: 1680px;
     height: calc(100vh - 16px);
-    margin: 0 auto;
+    margin: 0;
     padding: 0 10px 6px 10px;
     font-family: Arial, sans-serif;
     color: #222;
@@ -448,7 +446,6 @@ body[b-fw2jhspjsg] {
 .fgk-sayfa[b-15ii1t2tab] {
     font-family: Arial, sans-serif;
     color: #222;
-    max-width: 1400px;
 }
 
 /* ---- Üst şerit: yıl + geçerli oran + oran tablosu düğmesi ---- */
@@ -698,6 +695,491 @@ body[b-fw2jhspjsg] {
     line-height: 1.5;
     color: #4a5568;
     margin-bottom: 8px;
+}
+/* /Pages/Hesaplamalar/OrtuluSermaye/OrtuluSermayeHesabi.razor.rz.scp.css */
+/* Hesaplamalar > Örtülü Sermaye. Maketin (ortulu-sermaye.html) düzeni, projenin paleti
+   (FinansmanKisitlamaHesabi ile aynı renkler). Sekme şeridinin altındaki normal akışta
+   kalır; html/body'ye dokunmaz. */
+
+.os-sayfa[b-hro91ghaty] {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: #222;
+    display: grid;
+    gap: 14px;
+}
+
+    /* Kök yalnız Ctrl+V için odaklanabilir; odak çerçevesi gereksiz. */
+    .os-sayfa:focus[b-hro91ghaty] {
+        outline: none;
+    }
+
+.os-alt[b-hro91ghaty] {
+    margin: 0;
+    color: #4a5568;
+    max-width: 90ch;
+}
+
+.os-panel[b-hro91ghaty] {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+    padding: 12px 14px;
+    min-width: 0;
+}
+
+.os-panel-h[b-hro91ghaty] {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+    .os-panel-h h2[b-hro91ghaty],
+    .os-adim-baslik[b-hro91ghaty] {
+        font-size: 14px;
+        font-weight: 600;
+        margin: 0;
+    }
+
+.os-ipucu[b-hro91ghaty] {
+    font-size: 12px;
+    color: #718096;
+}
+
+/* ---- Parametreler ---- */
+
+.os-ayarlar[b-hro91ghaty] {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 12px;
+}
+
+.os-alan[b-hro91ghaty] {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+    .os-alan label[b-hro91ghaty] {
+        font-size: 12px;
+        color: #4a5568;
+    }
+
+.os-girdi-uyari[b-hro91ghaty] {
+    font-size: 11.5px;
+    color: #9b2c2c;
+}
+
+/* ---- Ana ızgara: muavin + sonuç ---- */
+
+.os-ana[b-hro91ghaty] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    gap: 14px;
+    align-items: start;
+}
+
+@media (max-width: 1100px) {
+    .os-ana[b-hro91ghaty] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.os-sekmeler[b-hro91ghaty] {
+    display: flex;
+    gap: 2px;
+    border-bottom: 1px solid #e2e8f0;
+    flex-wrap: wrap;
+}
+
+.os-sekme[b-hro91ghaty] {
+    border: 1px solid transparent;
+    border-bottom: none;
+    background: none;
+    padding: 8px 14px;
+    font: inherit;
+    color: #4a5568;
+    cursor: pointer;
+    border-radius: 4px 4px 0 0;
+}
+
+    .os-sekme[aria-selected="true"][b-hro91ghaty] {
+        background: #fff;
+        border-color: #e2e8f0;
+        color: #2b6cb0;
+        font-weight: 600;
+        margin-bottom: -1px;
+    }
+
+.os-sayi[b-hro91ghaty] {
+    font-size: 11px;
+    color: #718096;
+    margin-left: 6px;
+}
+
+.os-arac[b-hro91ghaty] {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 10px 0;
+}
+
+.os-ornek[b-hro91ghaty] {
+    font-size: 11px;
+    font-weight: 600;
+    color: #975a16;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.os-elle[b-hro91ghaty] {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+    .os-elle textarea[b-hro91ghaty] {
+        width: 100%;
+        font: inherit;
+        border: 1px solid #cbd5e0;
+        border-radius: 4px;
+        padding: 6px 8px;
+    }
+
+.os-elle-dugme[b-hro91ghaty] {
+    display: flex;
+    gap: 6px;
+}
+
+.os-hata[b-hro91ghaty],
+.os-bilgi[b-hro91ghaty] {
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.os-hata[b-hro91ghaty] {
+    border: 1px solid #fbb6b6;
+    background: #fff5f5;
+    color: #9b2c2c;
+}
+
+    .os-hata ul[b-hro91ghaty] {
+        margin: 4px 0 0;
+        padding-left: 18px;
+    }
+
+.os-bilgi[b-hro91ghaty] {
+    border: 1px solid #cfe0f5;
+    background: #f2f7ff;
+    color: #2c5282;
+}
+
+.os-dropzone[b-hro91ghaty] {
+    border: 1px dashed #2b6cb0;
+    border-radius: 4px;
+    padding: 8px 12px;
+    color: #4a5568;
+    font-size: 12px;
+    background: #f2f7ff;
+}
+
+/* ---- Hesap seçimi ---- */
+
+.os-hesaplar[b-hro91ghaty] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.os-hesap[b-hro91ghaty] {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 3px 8px;
+    cursor: pointer;
+}
+
+.os-kod[b-hro91ghaty] {
+    font-family: Consolas, monospace;
+}
+
+.os-hesap-ad[b-hro91ghaty] {
+    color: #718096;
+}
+
+.os-hesap-uyari[b-hro91ghaty] {
+    color: #975a16;
+    background: #fffaf0;
+    border-radius: 3px;
+    padding: 0 5px;
+    font-size: 11px;
+}
+
+/* ---- Muavin tablosu ---- */
+
+.os-tablo-kutu[b-hro91ghaty] {
+    overflow: auto;
+    max-height: 430px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.os-tablo[b-hro91ghaty] {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 12.5px;
+}
+
+    .os-tablo th[b-hro91ghaty],
+    .os-tablo td[b-hro91ghaty] {
+        padding: 5px 8px;
+        border-bottom: 1px solid #f0f4f8;
+        white-space: nowrap;
+        text-align: left;
+    }
+
+    .os-tablo th[b-hro91ghaty] {
+        position: sticky;
+        top: 0;
+        background: #f7fafc;
+        color: #4a5568;
+        font-weight: 600;
+        font-size: 12px;
+        z-index: 1;
+    }
+
+        .os-tablo th.n[b-hro91ghaty],
+        .os-tablo td.n[b-hro91ghaty] {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+    .os-tablo td.aciklama[b-hro91ghaty] {
+        white-space: normal;
+        min-width: 220px;
+    }
+
+    .os-tablo tr.zirve td[b-hro91ghaty] {
+        background: #fefcbf;
+        font-weight: 600;
+    }
+
+.os-bos[b-hro91ghaty] {
+    padding: 18px !important;
+    color: #a0aec0;
+    white-space: normal !important;
+}
+
+.os-pill[b-hro91ghaty] {
+    display: inline-block;
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    color: #718096;
+}
+
+.os-sinif[b-hro91ghaty] {
+    font: inherit;
+    font-size: 12px;
+    padding: 2px 4px;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    background: #fff;
+}
+
+/* ---- Sonuç: Excel'deki sarı hücre düzeni ---- */
+
+.os-sonuc[b-hro91ghaty] {
+    display: grid;
+    gap: 14px;
+}
+
+.os-rpt[b-hro91ghaty] {
+    border: 2px solid #222;
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+}
+
+.os-rpt-baslik[b-hro91ghaty] {
+    color: #c53030;
+    font-weight: 700;
+    text-align: center;
+    font-size: 12px;
+    letter-spacing: .02em;
+}
+
+.os-rsatir[b-hro91ghaty] {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    border: 1px solid #222;
+}
+
+    .os-rsatir .lb[b-hro91ghaty] {
+        padding: 4px 8px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+        .os-rsatir .lb small[b-hro91ghaty] {
+            display: block;
+            font-weight: 400;
+            color: #718096;
+        }
+
+    .os-rsatir .v[b-hro91ghaty] {
+        background: #fff6b8;
+        color: #3a3200;
+        font-weight: 600;
+        text-align: right;
+        padding: 4px 8px;
+        min-width: 130px;
+        font-variant-numeric: tabular-nums;
+        border-left: 1px solid #222;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+
+    .os-rsatir.bas .v[b-hro91ghaty] {
+        background: transparent;
+        color: #c53030;
+    }
+
+.os-rtarih[b-hro91ghaty] {
+    font-weight: 400;
+}
+
+.os-adim-baslik[b-hro91ghaty] {
+    margin-bottom: 8px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.os-rozet[b-hro91ghaty] {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+    .os-rozet.var[b-hro91ghaty] {
+        background: #fff5f5;
+        color: #c53030;
+    }
+
+    .os-rozet.yok[b-hro91ghaty] {
+        background: #f0fff4;
+        color: #2f855a;
+    }
+
+    .os-rozet.bekle[b-hro91ghaty] {
+        background: #edf2f7;
+        color: #4a5568;
+    }
+
+.os-adimlar[b-hro91ghaty] {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+    .os-adimlar li[b-hro91ghaty] {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        font-size: 13px;
+        border-bottom: 1px dotted #e2e8f0;
+        padding-bottom: 4px;
+    }
+
+        .os-adimlar li span:last-child[b-hro91ghaty] {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .os-adimlar li.toplam[b-hro91ghaty] {
+            font-weight: 600;
+        }
+
+        .os-adimlar li.bilgi[b-hro91ghaty] {
+            color: #718096;
+            font-size: 12px;
+            border-bottom: none;
+        }
+
+.os-not[b-hro91ghaty] {
+    background: #fffaf0;
+    border: 1px solid #fbd38d;
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+/* ---- Hesap kartları ve mevzuat ---- */
+
+.os-kartlar[b-hro91ghaty] {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 10px;
+}
+
+.os-kart[b-hro91ghaty] {
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 8px 10px;
+}
+
+    .os-kart b[b-hro91ghaty] {
+        font-family: Consolas, monospace;
+        color: #2b6cb0;
+    }
+
+    .os-kart p[b-hro91ghaty] {
+        margin: 4px 0 0;
+        font-size: 12.5px;
+        color: #4a5568;
+    }
+
+.os-mevzuat[b-hro91ghaty] {
+    border-top: 1px solid #e2e8f0;
+    padding: 8px 0;
+}
+
+    .os-mevzuat summary[b-hro91ghaty] {
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+    .os-mevzuat p[b-hro91ghaty] {
+        margin: 6px 0 0;
+        max-width: 90ch;
+        line-height: 1.5;
+    }
+
+.os-madde[b-hro91ghaty] {
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    color: #2b6cb0;
+    margin-right: 6px;
 }
 /* /Pages/LoginPage.razor.rz.scp.css */
 /*.login-container {
