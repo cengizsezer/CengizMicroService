@@ -139,7 +139,7 @@
                     listesinden üretiliyor; menüye satır eklemek yalnız o listeye satır
                     eklendiğinde gerekir (Hesaplamalar'daki kalıp, KARARLAR §79).
                 *@
-                <RadzenPanelMenuItem Text="Beyannameler" Icon="description" Path="/beyannameler">
+                <RadzenPanelMenuItem Text="Beyannameler" Icon="description">
                     @if (canViewBeyannameTakip)
                     {
                         <RadzenPanelMenuItem Text="Takip" Icon="receipt_long" Path="/beyannameler/takip" />
@@ -196,13 +196,13 @@
                 </RadzenPanelMenuItem>
 
                 @*
-                    Modülün girişi firma seçim ekranıdır (üst öğenin kendi yolu): önce
-                    hangi firmada çalışılacağı seçilir, seçim tenant bağlamını gerçekten
-                    değiştirir. Alt öğeler firma içi iki sekme — Aktar günlük iş ve banka
-                    kapsülü, Tanımlar firmanın kurulumu (hesap planı, banka hesapları,
-                    bankadan bağımsız tanımlar).
+                    Aktar günlük iş ve banka kapsülü (tüm firmaların hesapları), Tanımlar
+                    kurulum (hesap planı, banka hesapları, bankadan bağımsız tanımlar).
+                    Firma seçim ekranı yok (KARARLAR §99). Başlığın kendi Path'i yok:
+                    kök adres Aktar'a yönlendirdiği için tıklama grubu yeniden açıyor ve
+                    grup hiç kapanmıyordu (Beyannameler ve Hesaplamalar'da da aynı).
                 *@
-                <RadzenPanelMenuItem Text="Banka Otomasyon" Icon="account_balance_wallet" Path="/banka-otomasyon">
+                <RadzenPanelMenuItem Text="Banka Otomasyon" Icon="account_balance_wallet">
                     <RadzenPanelMenuItem Text="Aktar" Icon="fact_check" Path="/banka-otomasyon/aktar" />
                     <RadzenPanelMenuItem Text="Tanımlar" Icon="settings" Path="/banka-otomasyon/tanimlar" />
                 </RadzenPanelMenuItem>
@@ -212,7 +212,7 @@
                     üretiliyor; menüye yeni bir satır eklemek yalnız o listeye satır
                     eklendiğinde gerekir (bkz. KARARLAR §79).
                 *@
-                <RadzenPanelMenuItem Text="Hesaplamalar" Icon="calculate" Path="/hesaplamalar">
+                <RadzenPanelMenuItem Text="Hesaplamalar" Icon="calculate">
                     <RadzenPanelMenuItem Text="Bordro Hesaplaması" Icon="payments" Path="/hesaplamalar/bordro" />
                     <RadzenPanelMenuItem Text="Finansman Gider Kısıtlaması" Icon="percent" Path="/hesaplamalar/finansman-gider-kisitlamasi" />
                     <RadzenPanelMenuItem Text="Örtülü Sermaye" Icon="account_balance" Path="/hesaplamalar/ortulu-sermaye" />
