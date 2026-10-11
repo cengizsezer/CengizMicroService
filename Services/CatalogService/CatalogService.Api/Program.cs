@@ -193,6 +193,7 @@ builder.Services.AddScoped<IBankaTakipService, BankaTakipService>();
 builder.Services.AddScoped<IHesapNotService, HesapNotService>();
 builder.Services.AddScoped<CatalogService.Api.Features.TicaretSicil.Services.ITicaretSicilService, CatalogService.Api.Features.TicaretSicil.Services.TicaretSicilService>();
 builder.Services.AddScoped<CatalogService.Api.Features.MevzuatNotlari.Services.IMevzuatNotuService, CatalogService.Api.Features.MevzuatNotlari.Services.MevzuatNotuService>();
+builder.Services.AddScoped<CatalogService.Api.Features.MevzuatGrafigi.Services.IMevzuatGrafigiService, CatalogService.Api.Features.MevzuatGrafigi.Services.MevzuatGrafigiService>();
 builder.Services.AddScoped<CatalogService.Api.Features.SmmmTakip.Services.ISmmmTakipService, CatalogService.Api.Features.SmmmTakip.Services.SmmmTakipService>();
 builder.Services.AddScoped<CatalogService.Api.Features.FinansmanGiderKisitlamasi.Services.IFinansmanGiderKisitlamasiService, CatalogService.Api.Features.FinansmanGiderKisitlamasi.Services.FinansmanGiderKisitlamasiService>();
 // Tekdüzen plan şablonu: dosyadan okunur, yükleme başına bir kez çözülür.
@@ -625,60 +626,65 @@ IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf')
             // bırakıyordu (catalog.BeyannameTurleri'nin yayında boş kalma sebebi).
             var globalSeeder = new CatalogContextSeed();
 
-            await SeedAdimi.CalistirAsync(logger, "Payroll",
+            await SeedAdimi.CalistirAsync(logger, "Payroll", ctxOnce,
                 () => PayrollSeedData.SeedAsync(ctxOnce));
 
-            await SeedAdimi.CalistirAsync(logger, "Firmalar", async () =>
+            await SeedAdimi.CalistirAsync(logger, "Firmalar", ctxOnce, async () =>
             {
                 await globalSeeder.SeedFirmalarAsync(ctxOnce, envHost, logger);
                 await globalSeeder.SeedMukelleflerAsync(ctxOnce, envHost, logger);
             });
 
             // Mükellefiyet kodlarından vergi türü / defter usulü önerisi (elle seçilene dokunmaz).
-            await SeedAdimi.CalistirAsync(logger, "Firma sınıflandırması",
+            await SeedAdimi.CalistirAsync(logger, "Firma sınıflandırması", ctxOnce,
                 () => CatalogService.Api.Features.Firmalar.FirmaSiniflandirmaSeed.SeedAsync(ctxOnce, logger));
 
-            await SeedAdimi.CalistirAsync(logger, "Ticaret Sicil İşlemleri",
+            await SeedAdimi.CalistirAsync(logger, "Ticaret Sicil İşlemleri", ctxOnce,
                 () => CatalogService.Api.Features.TicaretSicil.TicaretSicilSeed.SeedAsync(ctxOnce));
 
-            await SeedAdimi.CalistirAsync(logger, "SMMM Takip",
+            await SeedAdimi.CalistirAsync(logger, "SMMM Takip", ctxOnce,
                 () => CatalogService.Api.Features.SmmmTakip.SmmmTakipSeed.SeedAsync(ctxOnce));
 
-            await SeedAdimi.CalistirAsync(logger, "Finansman gider kısıtlaması oranları",
+            // Mevzuat Grafiği örnek içeriği (mockup verisi): yalnız kart tablosu boşsa, tek seferlik.
+            // Veri bağlantı/dışlama kurallarına uymazsa hiçbir şey yazmadan durur ve ihlalleri loglar.
+            await SeedAdimi.CalistirAsync(logger, "Mevzuat Grafiği", ctxOnce,
+                () => CatalogService.Api.Features.MevzuatGrafigi.MevzuatGrafigiSeed.SeedVeLoglaAsync(ctxOnce, logger));
+
+            await SeedAdimi.CalistirAsync(logger, "Finansman gider kısıtlaması oranları", ctxOnce,
                 () => CatalogService.Api.Features.FinansmanGiderKisitlamasi
                           .FinansmanGiderKisitlamasiSeed.SeedAsync(ctxOnce));
 
             // Banka ekstresi şablon/desen/kural tabloları: banka bazlı referans, tenant'tan bağımsız.
-            await SeedAdimi.CalistirAsync(logger, "Banka ekstresi yapılandırması",
+            await SeedAdimi.CalistirAsync(logger, "Banka ekstresi yapılandırması", ctxOnce,
                 () => CatalogService.Api.Features.BankaEkstre.BankaEkstreSeed.SeedAsync(ctxOnce));
 
             // Beyanname türü tanımları: ülke çapında aynı, tenant'tan bağımsız. Sonuç
             // loglanır; tablo boş kalırsa log hata seviyesinde uyarır.
-            await SeedAdimi.CalistirAsync(logger, "Beyanname türleri",
+            await SeedAdimi.CalistirAsync(logger, "Beyanname türleri", ctxOnce,
                 () => CatalogService.Api.Features.Declarations.BeyannameTuruSeed
                           .SeedVeLoglaAsync(ctxOnce, logger));
 
             // Vergi takvimi (Yapılacaklar'ın yasal işleri): yalnız eksik satırı ekler,
             // elle düzeltilmiş tarihe dokunmaz. Son günü geçmiş satırlar pasif başlar.
-            await SeedAdimi.CalistirAsync(logger, "Vergi takvimi",
+            await SeedAdimi.CalistirAsync(logger, "Vergi takvimi", ctxOnce,
                 () => CatalogService.Api.Features.Yapilacaklar.VergiTakvimiSeed.SeedVeLoglaAsync(
                           ctxOnce, sp.GetRequiredService<TimeProvider>().GetLocalNow().Date, logger));
 
             // Kullanılan sistemler: ortak liste (Luca, ORKA, DijitalPlanet…); eksik olanı ekler.
-            await SeedAdimi.CalistirAsync(logger, "Sistemler",
+            await SeedAdimi.CalistirAsync(logger, "Sistemler", ctxOnce,
                 () => CatalogService.Api.Features.Sistemler.SistemSeed.SeedVeLoglaAsync(ctxOnce, logger));
 
             // İş tarifleri (Prompt 14): tek seferlik, tablo boşsa mevcut işlerden üretilir. Farklı
             // metinli kayıt bağlanmaz, başlık başlık loglanır. Sistemler'den sonra (SistemId FK).
-            await SeedAdimi.CalistirAsync(logger, "İş tarifleri",
+            await SeedAdimi.CalistirAsync(logger, "İş tarifleri", ctxOnce,
                 () => CatalogService.Api.Features.Yapilacaklar.IsTarifiSeed.SeedVeLoglaAsync(ctxOnce, logger));
 
             // Kişiler (Prompt 14): kişiye bağlanmamış alıcılardan kişi; şüpheli eşleşme birleştirilmez, loglanır.
-            await SeedAdimi.CalistirAsync(logger, "Kişiler",
+            await SeedAdimi.CalistirAsync(logger, "Kişiler", ctxOnce,
                 () => CatalogService.Api.Features.Yapilacaklar.KisiSeed.SeedVeLoglaAsync(ctxOnce, logger));
 
             // Kurumlar vergisi beyanname kalemleri: katalog firmadan bağımsız, bir kez yüklenir.
-            await SeedAdimi.CalistirAsync(logger, "Vergi kalemleri",
+            await SeedAdimi.CalistirAsync(logger, "Vergi kalemleri", ctxOnce,
                 () => CatalogService.Api.Features.FirmaKontrol.VergiKalemSeed.SeedAsync(ctxOnce, envHost));
         }
 

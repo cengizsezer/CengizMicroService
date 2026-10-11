@@ -1,0 +1,190 @@
+@page "/mevzuat-grafigi"
+@using Microsoft.AspNetCore.Authorization
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.MevzuatGrafigi
+@attribute [Authorize]
+@implements IAsyncDisposable
+@inject IMevzuatGrafigiApi Api
+@inject IJSRuntime JS
+
+@*
+    Mevzuat Grafiği — kök dizindeki mevzuat-grafigi.html mockup'ının uygulamadaki hali.
+
+    İskelet burada, çizim ve etkileşim wwwroot/js/mevzuatGrafigi.js'te, stiller
+    wwwroot/css/mevzuatGrafigi.css'te (her seçici .mg-kok altında). JS iskeletin içini
+    innerHTML ile çizdiği için bu bileşen açılıştan sonra iskeleti YENİDEN ÇİZMEMELİ:
+    tek değişen durum mesajı, o da iskeletin kardeşi olarak eklenip kaldırılıyor.
+
+    Kök .mg-kok position:absolute; inset:0 — rz-body transform'lu olduğu için onun
+    içine oturur, yükseklik hesabı gerekmez.
+*@
+
+<PageTitle>Mevzuat Grafiği</PageTitle>
+
+<div class="mg-kok" @ref="kokOgesi">
+    <header class="mg-bar">
+        <div class="mg-crumb"><b>Mevzuat Grafiği</b><span>DijitalMasraf</span></div>
+        <div class="mg-tabs" id="mg-tabs" role="tablist"></div>
+        <div class="mg-sp"></div>
+        <button class="mg-tbtn" id="mg-tg-bb" aria-pressed="true">Kütüphane</button>
+        <button class="mg-tbtn" id="mg-tg-insp" aria-pressed="true">Inspector</button>
+        <button class="mg-tbtn" id="mg-tg-prev" aria-pressed="true">Önizleme</button>
+        <div class="mg-zoom">
+            <button class="mg-tbtn" id="mg-z-out" aria-label="Uzaklaş">−</button>
+            <output id="mg-z-lbl">100%</output>
+            <button class="mg-tbtn" id="mg-z-in" aria-label="Yakınlaş">+</button>
+            <button class="mg-tbtn" id="mg-z-fit">Sığdır</button>
+        </div>
+    </header>
+
+    <div class="mg-stage" id="mg-stage">
+        <div class="mg-world" id="mg-world">
+            <svg id="mg-edges" viewBox="-5000 -5000 12000 12000" xmlns="http://www.w3.org/2000/svg"></svg>
+            <div id="mg-nodes"></div>
+        </div>
+
+        <div class="mg-bos-tuval" id="mg-bos-tuval" hidden>İlk tuvali oluşturun: sekme şeridindeki + ile.</div>
+
+        <aside class="mg-panel mg-bb" id="mg-bb">
+            <div class="mg-ph"><h2>Kart Kütüphanesi</h2><small id="mg-bb-count"></small></div>
+            <div class="mg-pb">
+                <input class="mg-inp" id="mg-bb-q" placeholder="Kart ya da madde ara…" autocomplete="off">
+                <div id="mg-bb-list" style="display:flex;flex-direction:column;gap:10px"></div>
+                <div class="mg-field">
+                    <span class="mg-lbl">Yeni kart</span>
+                    <div class="mg-newcard">
+                        <select class="mg-inp" id="mg-nk-type"></select>
+                        <input class="mg-inp" id="mg-nk-title" placeholder="Kart adı" maxlength="200">
+                        <button class="mg-btn" id="mg-nk-add">Ekle</button>
+                    </div>
+                </div>
+                <div class="mg-rules">
+                    <div class="mg-flow">Firma → İşlem veya doğrudan İstisna / İndirim → Kanun / Şart</div>
+                    Bağlantı sadece bu sırayla kurulur. Kırmızı kesikli çizgi: iki teşvik aynı matrah için birlikte kullanılamaz.
+                    <p class="mg-note">Kartlar tekildir: bir kart birden çok tuvalde görünür, düzenleme her yere yansır. Mevzuat güncelliği doğrulanmalı.</p>
+                </div>
+            </div>
+        </aside>
+
+        <aside class="mg-panel mg-insp" id="mg-insp">
+            <div class="mg-ph"><h2>Inspector</h2><small id="mg-insp-sub"></small></div>
+            <div class="mg-pb" id="mg-insp-body"></div>
+        </aside>
+
+        <aside class="mg-panel mg-prev" id="mg-prev">
+            <div class="mg-ph"><h2>Ana Önizleme</h2><small id="mg-prev-sub"></small></div>
+            <div class="mg-pb" id="mg-prev-body"></div>
+        </aside>
+
+        <div class="mg-hint">Başlıktan sürükle: taşı · Sağ porttan sürükle: bağla · Sol porttan tut: bağlantıyı taşı · Tekerlek: yakınlaş · Boşluk sürükle: kaydır</div>
+        <div class="mg-toast" id="mg-toast" hidden></div>
+    </div>
+
+    @if (durum is not null)
+    {
+        <div class="mg-durum">@durum</div>
+    }
+</div>
+
+@code {
+    private ElementReference kokOgesi;
+    private DotNetObjectReference<MevzuatGrafigiPage>? referans;
+    private string? durum = "Mevzuat grafiği yükleniyor…";
+    private bool basladi;
+    private bool kapandi;
+
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        if (!ilk) return;
+
+        var sonuc = await Api.GetAsync();
+        if (kapandi) return;
+
+        if (!sonuc.Basarili || sonuc.Veri is null)
+        {
+            durum = $"Mevzuat grafiği yüklenemedi. {sonuc.Mesaj}";
+            StateHasChanged();
+            return;
+        }
+
+        try
+        {
+            referans = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("mevzuatGrafigi.baslat", kokOgesi, referans, sonuc.Veri);
+            basladi = true;
+            durum = null;
+        }
+        catch (Exception)
+        {
+            durum = "Mevzuat grafiği açılamadı. Sayfayı yenileyip tekrar deneyin.";
+        }
+        StateHasChanged();
+    }
+
+    // ---- JS → API köprüsü. Hepsi sonuç döner, fırlatmaz; JS başarısızlıkta geri alır. ----
+
+    [JSInvokable]
+    public Task<MevzuatGrafigiSonuc<List<MevzuatYerlesimDto>>> YerlesimKaydet(int tuvalId, List<MevzuatYerlesimDto> liste)
+        => Api.YerlesimGuncelleAsync(tuvalId, liste);
+
+    [JSInvokable]
+    public Task<MevzuatGrafigiSonuc<MevzuatBaglantiDto>> BaglantiEkle(MevzuatBaglantiSaveDto dto)
+        => Api.BaglantiEkleAsync(dto);
+
+    [JSInvokable]
+    public Task<MevzuatGrafigiSonuc> BaglantiSil(int id)
+        => Api.BaglantiSilAsync(id);
+
+    [JSInvokable]
+    public Task<MevzuatGrafigiSonuc<MevzuatKartDto>> KartEkle(MevzuatKartSaveDto dto)
+        => Api.KartEkleAsync(dto);
+
+    [JSInvokable]
+    public Task<MevzuatGrafigiSonuc<MevzuatKartDto>> KartGuncelle(int id, MevzuatKartSaveDto dto)
+        => Api.KartGuncelleAsync(id, dto);
+
+    [JSInvokable]
+    public Task<MevzuatGrafigiSonuc> KartSil(int id)
+        => Api.KartSilAsync(id);
+
+    [JSInvokable]
+    public Task<MevzuatGrafigiSonuc<MevzuatYerlesimDto>> TuvaleKartEkle(int tuvalId, MevzuatYerlesimDto dto)
+        => Api.TuvaleKartEkleAsync(tuvalId, dto);
+
+    [JSInvokable]
+    public Task<MevzuatGrafigiSonuc> TuvaldenKartKaldir(int tuvalId, int kartId)
+        => Api.TuvaldenKartKaldirAsync(tuvalId, kartId);
+
+    [JSInvokable]
+    public Task<MevzuatGrafigiSonuc<MevzuatTuvalDto>> TuvalEkle(MevzuatTuvalSaveDto dto)
+        => Api.TuvalEkleAsync(dto);
+
+    [JSInvokable]
+    public Task<MevzuatGrafigiSonuc<MevzuatTuvalDto>> TuvalGuncelle(int id, MevzuatTuvalSaveDto dto)
+        => Api.TuvalGuncelleAsync(id, dto);
+
+    [JSInvokable]
+    public Task<MevzuatGrafigiSonuc<MevzuatSartTakipDto>> SartTakipKaydet(MevzuatSartTakipDto dto)
+        => Api.SartTakipKaydetAsync(dto);
+
+    public async ValueTask DisposeAsync()
+    {
+        kapandi = true;
+        if (basladi)
+        {
+            try
+            {
+                // kaldir, Inspector'da bekleyen düzenlemeyi debounce'u beklemeden gönderir ve
+                // gönderim bitince çözülen promise döner (InvokeVoidAsync onu bekler). Gönderim
+                // bu nesnenin [JSInvokable] KartGuncelle'sini çağırdığı için referans ancak
+                // bundan SONRA serbest bırakılabilir. Gönderim hatası JS'te console'a yazılır.
+                await JS.InvokeVoidAsync("mevzuatGrafigi.kaldir", kokOgesi);
+            }
+            catch
+            {
+                // Sayfa kapanırken JS gitmiş olabilir; kapanışı engelleme.
+            }
+        }
+        referans?.Dispose();
+    }
+}

@@ -3012,6 +3012,161 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("KdvBeyannameYevmiye", (string)null);
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatBaglanti", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("HedefKartId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("KaynakKartId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HedefKartId");
+
+                    b.HasIndex("KaynakKartId", "HedefKartId")
+                        .IsUnique();
+
+                    b.ToTable("MevzuatBaglantilar", "catalog", t =>
+                        {
+                            t.HasCheckConstraint("CK_MevzuatBaglantilar_KendineDegil", "[KaynakKartId] <> [HedefKartId]");
+                        });
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatDislama", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AKartId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BKartId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Not")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BKartId");
+
+                    b.HasIndex("AKartId", "BKartId")
+                        .IsUnique();
+
+                    b.ToTable("MevzuatDislamalar", "catalog", t =>
+                        {
+                            t.HasCheckConstraint("CK_MevzuatDislamalar_Sirali", "[AKartId] < [BKartId]");
+                        });
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatKart", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Baslik")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Madde")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Ozet")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<byte>("Tur")
+                        .HasColumnType("tinyint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Tur");
+
+                    b.ToTable("MevzuatKartlar", "catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatSartTakip", b =>
+                {
+                    b.Property<int>("FirmaKartId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SartKartId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Tamamlandi")
+                        .HasColumnType("bit");
+
+                    b.HasKey("FirmaKartId", "SartKartId");
+
+                    b.HasIndex("SartKartId");
+
+                    b.ToTable("MevzuatSartTakipleri", "catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatTuval", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Sira")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("MevzuatTuvaller", "catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatTuvalKarti", b =>
+                {
+                    b.Property<int>("TuvalId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("KartId")
+                        .HasColumnType("int");
+
+                    b.Property<double>("X")
+                        .HasColumnType("float");
+
+                    b.Property<double>("Y")
+                        .HasColumnType("float");
+
+                    b.HasKey("TuvalId", "KartId");
+
+                    b.HasIndex("KartId");
+
+                    b.ToTable("MevzuatTuvalKartlari", "catalog");
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.MevzuatNotlari.Domain.MevzuatNotu", b =>
                 {
                     b.Property<int>("Id")
@@ -4932,6 +5087,66 @@ namespace CatalogService.Api.Migrations
                     b.Navigation("Firma");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatBaglanti", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatKart", null)
+                        .WithMany()
+                        .HasForeignKey("HedefKartId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatKart", null)
+                        .WithMany()
+                        .HasForeignKey("KaynakKartId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatDislama", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatKart", null)
+                        .WithMany()
+                        .HasForeignKey("AKartId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatKart", null)
+                        .WithMany()
+                        .HasForeignKey("BKartId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatSartTakip", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatKart", null)
+                        .WithMany()
+                        .HasForeignKey("FirmaKartId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatKart", null)
+                        .WithMany()
+                        .HasForeignKey("SartKartId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatTuvalKarti", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatKart", null)
+                        .WithMany()
+                        .HasForeignKey("KartId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatTuval", null)
+                        .WithMany("Kartlar")
+                        .HasForeignKey("TuvalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.Muhasebe.Domain.FisSatir", b =>
                 {
                     b.HasOne("CatalogService.Api.Features.Muhasebe.Domain.Fis", "Fis")
@@ -5159,6 +5374,11 @@ namespace CatalogService.Api.Migrations
                     b.Navigation("Assignments");
 
                     b.Navigation("Attachments");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.MevzuatGrafigi.Domain.MevzuatTuval", b =>
+                {
+                    b.Navigation("Kartlar");
                 });
 
             modelBuilder.Entity("CatalogService.Api.Features.Muhasebe.Domain.Fis", b =>

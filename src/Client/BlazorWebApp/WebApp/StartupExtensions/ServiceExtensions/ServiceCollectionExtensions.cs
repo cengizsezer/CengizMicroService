@@ -186,6 +186,9 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             services.AddScoped<IMevzuatNotuApi>(sp =>
                 new MevzuatNotuApi(sp.GetRequiredService<HttpClient>()));
 
+            services.AddScoped<IMevzuatGrafigiApi>(sp =>
+                new MevzuatGrafigiApi(sp.GetRequiredService<HttpClient>()));
+
             services.AddScoped<ISmmmTakipApi>(sp =>
                 new SmmmTakipApi(sp.GetRequiredService<HttpClient>()));
 

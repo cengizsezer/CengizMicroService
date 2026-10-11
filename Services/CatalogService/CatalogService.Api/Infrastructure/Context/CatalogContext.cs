@@ -177,6 +177,14 @@ namespace CatalogService.Api.Infrastructure.Context
         // Mevzuat Notları modülü (ortak referans içerik; tenant'a bağlı değil)
         public DbSet<Features.MevzuatNotlari.Domain.MevzuatNotu> MevzuatNotlari => Set<Features.MevzuatNotlari.Domain.MevzuatNotu>();
 
+        // Mevzuat Grafiği modülü (ortak referans içerik; tenant'a bağlı değil)
+        public DbSet<Features.MevzuatGrafigi.Domain.MevzuatKart> MevzuatKartlar => Set<Features.MevzuatGrafigi.Domain.MevzuatKart>();
+        public DbSet<Features.MevzuatGrafigi.Domain.MevzuatBaglanti> MevzuatBaglantilar => Set<Features.MevzuatGrafigi.Domain.MevzuatBaglanti>();
+        public DbSet<Features.MevzuatGrafigi.Domain.MevzuatDislama> MevzuatDislamalar => Set<Features.MevzuatGrafigi.Domain.MevzuatDislama>();
+        public DbSet<Features.MevzuatGrafigi.Domain.MevzuatTuval> MevzuatTuvaller => Set<Features.MevzuatGrafigi.Domain.MevzuatTuval>();
+        public DbSet<Features.MevzuatGrafigi.Domain.MevzuatTuvalKarti> MevzuatTuvalKartlari => Set<Features.MevzuatGrafigi.Domain.MevzuatTuvalKarti>();
+        public DbSet<Features.MevzuatGrafigi.Domain.MevzuatSartTakip> MevzuatSartTakipleri => Set<Features.MevzuatGrafigi.Domain.MevzuatSartTakip>();
+
         // SMMM Takip modülü (ortak referans içerik; tenant'a bağlı değil)
         public DbSet<Features.SmmmTakip.Domain.SmmmKonu> SmmmKonular => Set<Features.SmmmTakip.Domain.SmmmKonu>();
         public DbSet<Features.SmmmTakip.Domain.SmmmHad> SmmmHadler => Set<Features.SmmmTakip.Domain.SmmmHad>();
@@ -299,6 +307,14 @@ namespace CatalogService.Api.Infrastructure.Context
 
             // Mevzuat Notları modülü
             builder.ApplyConfiguration(new MevzuatNotuEntityTypeConfiguration());
+
+            // Mevzuat Grafiği modülü
+            builder.ApplyConfiguration(new MevzuatKartEntityTypeConfiguration());
+            builder.ApplyConfiguration(new MevzuatBaglantiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new MevzuatDislamaEntityTypeConfiguration());
+            builder.ApplyConfiguration(new MevzuatTuvalEntityTypeConfiguration());
+            builder.ApplyConfiguration(new MevzuatTuvalKartiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new MevzuatSartTakipEntityTypeConfiguration());
 
             // SMMM Takip modülü
             builder.ApplyConfiguration(new SmmmKonuEntityTypeConfiguration());

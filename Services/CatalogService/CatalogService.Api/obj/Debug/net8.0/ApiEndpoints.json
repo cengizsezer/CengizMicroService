@@ -6901,6 +6901,259 @@
     ]
   },
   {
+    "ContainingType": "CatalogService.Api.Features.MevzuatGrafigi.Controllers.MevzuatGrafigiController",
+    "Method": "Get",
+    "RelativePath": "api/catalog/mevzuat-grafigi",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "CatalogService.Api.Features.MevzuatGrafigi.Dtos.MevzuatGrafigiDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.MevzuatGrafigi.Controllers.MevzuatGrafigiController",
+    "Method": "CreateBaglanti",
+    "RelativePath": "api/catalog/mevzuat-grafigi/baglantilar",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.MevzuatGrafigi.Dtos.MevzuatBaglantiSaveDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.MevzuatGrafigi.Controllers.MevzuatGrafigiController",
+    "Method": "DeleteBaglanti",
+    "RelativePath": "api/catalog/mevzuat-grafigi/baglantilar/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.MevzuatGrafigi.Controllers.MevzuatGrafigiController",
+    "Method": "CreateDislama",
+    "RelativePath": "api/catalog/mevzuat-grafigi/dislamalar",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.MevzuatGrafigi.Dtos.MevzuatDislamaSaveDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.MevzuatGrafigi.Controllers.MevzuatGrafigiController",
+    "Method": "DeleteDislama",
+    "RelativePath": "api/catalog/mevzuat-grafigi/dislamalar/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.MevzuatGrafigi.Controllers.MevzuatGrafigiController",
+    "Method": "CreateKart",
+    "RelativePath": "api/catalog/mevzuat-grafigi/kartlar",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.MevzuatGrafigi.Dtos.MevzuatKartSaveDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.MevzuatGrafigi.Controllers.MevzuatGrafigiController",
+    "Method": "UpdateKart",
+    "RelativePath": "api/catalog/mevzuat-grafigi/kartlar/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.MevzuatGrafigi.Dtos.MevzuatKartSaveDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.MevzuatGrafigi.Controllers.MevzuatGrafigiController",
+    "Method": "DeleteKart",
+    "RelativePath": "api/catalog/mevzuat-grafigi/kartlar/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.MevzuatGrafigi.Controllers.MevzuatGrafigiController",
+    "Method": "SartTakipKaydet",
+    "RelativePath": "api/catalog/mevzuat-grafigi/sart-takip",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.MevzuatGrafigi.Dtos.MevzuatSartTakipDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.MevzuatGrafigi.Controllers.MevzuatGrafigiController",
+    "Method": "CreateTuval",
+    "RelativePath": "api/catalog/mevzuat-grafigi/tuvaller",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.MevzuatGrafigi.Dtos.MevzuatTuvalSaveDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.MevzuatGrafigi.Controllers.MevzuatGrafigiController",
+    "Method": "UpdateTuval",
+    "RelativePath": "api/catalog/mevzuat-grafigi/tuvaller/{id}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.MevzuatGrafigi.Dtos.MevzuatTuvalSaveDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.MevzuatGrafigi.Controllers.MevzuatGrafigiController",
+    "Method": "TuvaleKartEkle",
+    "RelativePath": "api/catalog/mevzuat-grafigi/tuvaller/{id}/kartlar",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "CatalogService.Api.Features.MevzuatGrafigi.Dtos.MevzuatYerlesimDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.MevzuatGrafigi.Controllers.MevzuatGrafigiController",
+    "Method": "TuvaldenKartKaldir",
+    "RelativePath": "api/catalog/mevzuat-grafigi/tuvaller/{id}/kartlar/{kartId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "kartId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CatalogService.Api.Features.MevzuatGrafigi.Controllers.MevzuatGrafigiController",
+    "Method": "YerlesimGuncelle",
+    "RelativePath": "api/catalog/mevzuat-grafigi/tuvaller/{id}/yerlesim",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "liste",
+        "Type": "System.Collections.Generic.List\u00601[[CatalogService.Api.Features.MevzuatGrafigi.Dtos.MevzuatYerlesimDto, CatalogService.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "CatalogService.Api.Features.MevzuatNotlari.Controllers.MevzuatNotlariController",
     "Method": "GetAll",
     "RelativePath": "api/catalog/mevzuat-notlari",
