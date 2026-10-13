@@ -2,6 +2,9 @@
 
 # This stage is used when running from VS in fast mode (Default for Debug configuration)
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+# Data Protection anahtar klasörü (Yönetim › Parolalar şifreleri). docker-compose'da catalog_dp_keys volume'ü buraya
+# bağlanır; boş volume ilk bağlanışta bu klasörün sahipliğini alır, bu yüzden USER'dan ÖNCE oluşturulup $APP_UID'e verilir.
+RUN mkdir -p /var/catalog-dp-keys && chown -R $APP_UID:$APP_UID /var/catalog-dp-keys
 USER $APP_UID
 WORKDIR /app
 EXPOSE 5004

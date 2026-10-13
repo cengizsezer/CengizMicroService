@@ -143,6 +143,7 @@ namespace WebApp.Shared.Dto.FirmaPortfoyu
         public string? SonMizanDonemi { get; set; }
         public List<string> Uyarilar { get; set; } = new();
         public PortfoyGostergeleriDto Gostergeler { get; set; } = new();
+        /// <summary>Seçili dönemin yılının Ocak–Aralık'ı (12 eleman); mizanı olmayan ve gelecek ay boş, Not nedeni.</summary>
         public List<PortfoyAyDto> Seri { get; set; } = new();
     }
 

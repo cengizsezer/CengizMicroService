@@ -123,6 +123,13 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<Features.FirmaPortfoyu.Domain.AylikMizanSatiri> AylikMizanSatirlari
             => Set<Features.FirmaPortfoyu.Domain.AylikMizanSatiri>();
 
+        // Yönetim › Parolalar: Entegratör / Dijital VD / SGK girişleri (şifreler şifreli) + erişim kaydı.
+        public DbSet<Features.Parolalar.Domain.Parola> Parolalar
+            => Set<Features.Parolalar.Domain.Parola>();
+
+        public DbSet<Features.Parolalar.Domain.ParolaErisimKaydi> ParolaErisimKayitlari
+            => Set<Features.Parolalar.Domain.ParolaErisimKaydi>();
+
         // Takip panosu (Prompt 14): firmanın kişileri — alıcılar KisiId ile bağlanır.
         public DbSet<Features.Yapilacaklar.Domain.Kisi> Kisiler
             => Set<Features.Yapilacaklar.Domain.Kisi>();
@@ -291,6 +298,8 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new ChecklistSablonMaddesiEntityTypeConfiguration());
             builder.ApplyConfiguration(new AylikMizanEntityTypeConfiguration());
             builder.ApplyConfiguration(new AylikMizanSatiriEntityTypeConfiguration());
+            builder.ApplyConfiguration(new ParolaEntityTypeConfiguration());
+            builder.ApplyConfiguration(new ParolaErisimKaydiEntityTypeConfiguration());
             builder.ApplyConfiguration(new SistemEntityTypeConfiguration());
             builder.ApplyConfiguration(new FirmaSistemiEntityTypeConfiguration());
             builder.ApplyConfiguration(new VergiTakvimiEntityTypeConfiguration());

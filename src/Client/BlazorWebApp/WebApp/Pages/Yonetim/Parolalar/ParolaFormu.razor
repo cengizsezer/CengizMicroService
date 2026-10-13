@@ -1,0 +1,274 @@
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Parolalar
+@inject IParolaApiClient Api
+
+@*
+    Parolalar — yeni / düzenle penceresi (taslaktaki .pw-perde; Radzen dialogu değil, .pw-kok içinde kalsın diye).
+    Firma: Firmalarım'daki aktif firmalar (+ düzenlenen kaydın kendi pasif firması) ya da "elle yazacağım".
+    Düzenlemede şifre kutuları BOŞ gelir ("değiştirmek için yazın"); boş bırakılan şifre sunucuda değişmez.
+    Yazılan şifreler kayıttan / vazgeçten sonra bellekten silinir. Kayıt sunucuda yapılır; sunucu hatası alanına bağlanır.
+*@
+
+<div class="pw-perde" @onclick="PerdeTiklandi" @onkeydown="TusaBasildi">
+    <div class="pw-pencere" role="dialog" aria-modal="true" aria-labelledby="pwPencereBaslik" @onclick:stopPropagation="true">
+        <header>
+            <h2 id="pwPencereBaslik">@(Kayit is null ? $"Yeni {Tur.Tekil}" : $"Düzenle · {ParolaListesi.FirmaGorunenAd(Kayit)}")</h2>
+            <p>@Tur.Ad · @Tur.Alt</p>
+        </header>
+
+        <form class="pw-form" id="pwForm" novalidate @onsubmit="Kaydet">
+            <div class="pw-alan pw-tam @Hatali("firma")">
+                <label for="pwFFirma">Firma</label>
+                <select id="pwFFirma" @ref="ilkAlan" value="@firmaSecim" @onchange="FirmaDegisti">
+                    <option value="" disabled selected="@(firmaSecim == string.Empty)">Firma seçin</option>
+                    @foreach (var f in FirmaSecenekleri)
+                    {
+                        <option value="@f.Deger" selected="@(f.Deger == firmaSecim)">@f.Ad</option>
+                    }
+                </select>
+                @if (firmaSecim == ParolaListesi.Elle)
+                {
+                    <input id="pwFFirmaElle" placeholder="Firma adı" autocomplete="off" maxlength="200"
+                           value="@elleFirma" @oninput="@(e => elleFirma = e.Value?.ToString() ?? string.Empty)" />
+                }
+                <span class="pw-ipucu">Liste Firmalarım'daki aktif firmalardan gelir.</span>
+            </div>
+
+            @foreach (var a in FormAlanlari)
+            {
+                var id = "pwF_" + a.Anahtar;
+                <div class="pw-alan @(a.Tam ? "pw-tam" : "") @Hatali(a.Anahtar)">
+                    <label for="@id">@a.Etiket@if (!a.Zorunlu) {<span> (isteğe bağlı)</span>}</label>
+                    @if (a.Anahtar == "entegrator")
+                    {
+                        <select id="@id" value="@Deger(a.Anahtar)" @onchange="@(e => degerler[a.Anahtar] = e.Value?.ToString() ?? string.Empty)">
+                            <option value="" disabled selected="@(Deger(a.Anahtar) == string.Empty)">Entegratör seçin</option>
+                            @foreach (var o in ParolaListesi.Entegratorler)
+                            {
+                                <option value="@o" selected="@(o == Deger(a.Anahtar))">@o</option>
+                            }
+                        </select>
+                    }
+                    else if (a.Sifre)
+                    {
+                        <div class="pw-sifre-kutu">
+                            <input id="@id" class="pw-mono" type="@(acikSifreler.Contains(a.Anahtar) ? "text" : "password")"
+                                   autocomplete="new-password" spellcheck="false" maxlength="200"
+                                   placeholder="@(Kayit is null ? "" : "değiştirmek için yazın")"
+                                   value="@Deger(a.Anahtar)" @oninput="@(e => degerler[a.Anahtar] = e.Value?.ToString() ?? string.Empty)" />
+                            <button class="pw-ikonbtn" type="button" aria-label="Göster/gizle" title="Göster/gizle"
+                                    @onclick="@(() => SifreGorunurlugu(a.Anahtar))">
+                                @(acikSifreler.Contains(a.Anahtar) ? PwIkon.GozKapali : PwIkon.Goz)
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <input id="@id" class="@(a.Mono ? "pw-mono" : "")" type="@(a.Anahtar == "portal" ? "url" : "text")"
+                               autocomplete="off" spellcheck="false" placeholder="@(a.Anahtar == "portal" ? "https://" : "")"
+                               value="@Deger(a.Anahtar)" @oninput="@(e => degerler[a.Anahtar] = e.Value?.ToString() ?? string.Empty)" />
+                    }
+                    @if (a.Sifre && Kayit is not null)
+                    {
+                        <span class="pw-ipucu">@(Dolu(a.Anahtar) ? "Kayıtlı; boş bırakırsanız değişmez." : "Kayıtlı değer yok.")</span>
+                    }
+                    else if (a.Ipucu is not null)
+                    {
+                        <span class="pw-ipucu">@a.Ipucu</span>
+                    }
+                </div>
+            }
+
+            <div class="pw-alan pw-tam @Hatali("not")">
+                <label for="pwFNot">Not <span>(isteğe bağlı)</span></label>
+                <textarea id="pwFNot" rows="2" maxlength="1000" value="@not" @oninput="@(e => not = e.Value?.ToString() ?? string.Empty)"></textarea>
+            </div>
+
+            @if (hata is not null)
+            {
+                <div class="pw-hata" role="alert">@hata</div>
+            }
+        </form>
+
+        <footer>
+            <button class="pw-btn" type="button" @onclick="Vazgec" disabled="@kaydediliyor">Vazgeç</button>
+            <button class="pw-btn pw-ana" type="submit" form="pwForm" disabled="@kaydediliyor">@(kaydediliyor ? "Kaydediliyor…" : "Kaydet")</button>
+        </footer>
+    </div>
+</div>
+
+@code {
+    private sealed record FormAlani(string Anahtar, string Etiket, bool Sifre, bool Zorunlu, bool Mono, bool Tam, string? Ipucu);
+
+    [Parameter, EditorRequired] public PwTur Tur { get; set; } = default!;
+
+    /// <summary>Düzenlenen kayıt; null = yeni.</summary>
+    [Parameter] public ParolaDto? Kayit { get; set; }
+
+    [Parameter] public List<PwFirmaSecenegi> FirmaSecenekleri { get; set; } = new();
+
+    /// <summary>Kapanınca: kaydedilen kayıt ya da null (vazgeç).</summary>
+    [Parameter] public EventCallback<ParolaDto?> Kapandi { get; set; }
+
+    private ElementReference ilkAlan;
+    private string firmaSecim = string.Empty;
+    private string elleFirma = string.Empty;
+    private string not = string.Empty;
+    private readonly Dictionary<string, string> degerler = new();
+    private readonly HashSet<string> acikSifreler = new();
+    private readonly HashSet<string> hataliAlanlar = new();
+    private string? hata;
+    private bool kaydediliyor;
+
+    private IEnumerable<FormAlani> FormAlanlari
+    {
+        get
+        {
+            if (Tur.Tur == ParolaTuru.Entegrator)
+                yield return new FormAlani("entegrator", "Entegratör", false, true, false, true, null);
+            if (Tur.Tur == ParolaTuru.Sgk)
+                yield return new FormAlani("sube", "Şube / işyeri", false, false, false, false, "Tek işyeri varsa boş bırakın");
+            foreach (var a in Tur.Alanlar)
+                yield return new FormAlani(a.Anahtar, a.Etiket, a.Sifre, a.Zorunlu, a.Mono, a.Anahtar == "portal", a.Ipucu);
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        if (Kayit is { } k)
+        {
+            firmaSecim = k.FirmaId is { } f ? $"f:{f}" : ParolaListesi.Elle;
+            elleFirma = k.FirmaId is null ? k.FirmaAdi : string.Empty;
+            not = k.Not ?? string.Empty;
+            degerler["entegrator"] = k.Entegrator ?? string.Empty;
+            degerler["portal"] = k.PortalAdresi ?? string.Empty;
+            degerler["kullanici"] = k.KullaniciAdi;
+            degerler["ek"] = k.KullaniciKoduEk ?? string.Empty;
+            degerler["sube"] = k.Sube ?? string.Empty;
+            // Şifre kutuları bilerek boş: mevcut değer istemciye hiç gelmez.
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try { await ilkAlan.FocusAsync(); } catch { /* öğe gitmiş olabilir */ }
+        }
+    }
+
+    private string Deger(string anahtar) => degerler.TryGetValue(anahtar, out var v) ? v : string.Empty;
+
+    private bool Dolu(string anahtar) => Kayit is not null && ParolaListesi.SifreDolu(Kayit, anahtar);
+
+    private string Hatali(string anahtar) => hataliAlanlar.Contains(anahtar) ? "pw-hatali" : string.Empty;
+
+    private void FirmaDegisti(ChangeEventArgs e) => firmaSecim = e.Value?.ToString() ?? string.Empty;
+
+    private void SifreGorunurlugu(string anahtar)
+    {
+        if (!acikSifreler.Remove(anahtar)) acikSifreler.Add(anahtar);
+    }
+
+    private async Task Kaydet()
+    {
+        if (kaydediliyor) return;
+        hata = null;
+        hataliAlanlar.Clear();
+
+        var eksik = new List<string>();
+        if (firmaSecim == string.Empty || (firmaSecim == ParolaListesi.Elle && string.IsNullOrWhiteSpace(elleFirma)))
+        {
+            eksik.Add("Firma");
+            hataliAlanlar.Add("firma");
+        }
+        foreach (var a in FormAlanlari)
+        {
+            // Düzenlemede şifre boş kalabilir (değişmez); yenide zorunlu.
+            var zorunlu = a.Zorunlu && !(a.Sifre && Kayit is not null);
+            if (zorunlu && string.IsNullOrWhiteSpace(Deger(a.Anahtar)))
+            {
+                eksik.Add(a.Etiket);
+                hataliAlanlar.Add(a.Anahtar);
+            }
+        }
+        if (eksik.Count > 0)
+        {
+            hata = "Doldurulması gereken: " + string.Join(", ", eksik);
+            return;
+        }
+
+        var dto = new ParolaKaydetDto
+        {
+            Tur = Tur.Tur,
+            FirmaId = firmaSecim.StartsWith("f:") && int.TryParse(firmaSecim[2..], out var fid) ? fid : null,
+            FirmaAdi = firmaSecim == ParolaListesi.Elle ? elleFirma.Trim() : null,
+            Entegrator = Bos(Deger("entegrator")),
+            PortalAdresi = Bos(Deger("portal")),
+            KullaniciAdi = Bos(Deger("kullanici")),
+            KullaniciKoduEk = Bos(Deger("ek")),
+            Sube = Bos(Deger("sube")),
+            Not = Bos(not),
+            Sifre = Bos(Deger("sifre"), kirpma: false),
+            Parola = Bos(Deger("parola"), kirpma: false),
+            SistemSifresi = Bos(Deger("sistemSifresi"), kirpma: false),
+            IsyeriSifresi = Bos(Deger("isyeriSifresi"), kirpma: false)
+        };
+
+        kaydediliyor = true;
+        try
+        {
+            var (kayit, alan, mesaj) = Kayit is null ? await Api.EkleAsync(dto) : await Api.GuncelleAsync(Kayit.Id, dto);
+            if (kayit is null)
+            {
+                hata = mesaj ?? "Kaydedilemedi.";
+                if (SunucuAlani(alan) is { } a) hataliAlanlar.Add(a);
+                return;
+            }
+            SifreleriUnut();
+            await Kapandi.InvokeAsync(kayit);
+        }
+        finally
+        {
+            dto.Sifre = dto.Parola = dto.SistemSifresi = dto.IsyeriSifresi = null;
+            kaydediliyor = false;
+        }
+    }
+
+    private async Task Vazgec()
+    {
+        SifreleriUnut();
+        await Kapandi.InvokeAsync(null);
+    }
+
+    private async Task PerdeTiklandi()
+    {
+        if (!kaydediliyor) await Vazgec();
+    }
+
+    private async Task TusaBasildi(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape" && !kaydediliyor) await Vazgec();
+    }
+
+    private void SifreleriUnut()
+    {
+        foreach (var alan in new[] { "sifre", "parola", "sistemSifresi", "isyeriSifresi" }) degerler.Remove(alan);
+        acikSifreler.Clear();
+    }
+
+    /// <summary>Sunucunun hata alanı → form alanı.</summary>
+    private static string? SunucuAlani(string? alan) => alan switch
+    {
+        "firmaId" or "firmaAdi" => "firma",
+        "kullaniciAdi" => "kullanici",
+        "portalAdresi" => "portal",
+        "kullaniciKoduEk" => "ek",
+        null => null,
+        _ => alan
+    };
+
+    /// <summary>Boş → null. Şifreler kırpılmaz (baştaki/sondaki boşluk şifrenin parçası olabilir).</summary>
+    private static string? Bos(string? s, bool kirpma = true)
+        => string.IsNullOrWhiteSpace(s) ? null : kirpma ? s.Trim() : s;
+}

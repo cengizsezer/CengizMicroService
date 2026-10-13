@@ -228,24 +228,62 @@ namespace CatalogService.UnitTests.FirmaPortfoyu
         }
 
         [Fact]
-        public async Task Seri_secili_aya_biten_12_ay_ve_varsayilan_donem_son_yuklenen_ay()
+        public async Task Seri_secili_yilin_Ocak_Aralik_ayi_ve_varsayilan_donem_son_yuklenen_ay()
         {
             using var db = Context();
             var s = Servis(db);
+            await Yukle(s, Lime, 2025, 12, Mizan(12000m, 6000m, 2400m));   // geçen yıl: seriye girmez
+            await Yukle(s, Lime, 2026, 1, Mizan(900m, 450m, 100m));
             await Yukle(s, Lime, 2026, 7, Mizan(7000m, 3500m, 1200m));
             await Yukle(s, Lime, 2026, 8, Mizan(8000m, 4000m, 1500m));
 
-            var p = await s.PortfoyAsync(null, null);
+            var p = await s.PortfoyAsync(null, null);   // bugün 13.10.2026
 
             Assert.Equal("2026-08", p.Donem);
             var seri = p.Firmalar.Single(f => f.FirmaId == Lime).Seri;
             Assert.Equal(12, seri.Count);
-            Assert.Equal((2025, 9), (seri[0].Yil, seri[0].Ay));
-            Assert.Equal((2026, 8), (seri[11].Yil, seri[11].Ay));
-            Assert.Equal(1000m, seri[11].NetSatis);
-            Assert.Null(seri[10].NetSatis);                        // Temmuz: Haziran yok
-            Assert.Equal(PortfoyHesaplayici.NotOncekiAyEksik, seri[10].Not);
-            Assert.Equal(PortfoyHesaplayici.NotYuklenmedi, seri[0].Not);
+            Assert.Equal(Enumerable.Range(1, 12), seri.Select(a => a.Ay));
+            Assert.All(seri, a => Assert.Equal(2026, a.Yil));
+
+            Assert.Equal(900m, seri[0].NetSatis);                  // Ocak'ın aylık değeri = Ocak kümülatifi
+            Assert.Equal(PortfoyHesaplayici.NotYuklenmedi, seri[1].Not);
+            Assert.Null(seri[6].NetSatis);                         // Temmuz: Haziran yok
+            Assert.Equal(PortfoyHesaplayici.NotOncekiAyEksik, seri[6].Not);
+            Assert.Equal(1000m, seri[7].NetSatis);                 // Ağustos
+            Assert.Equal(PortfoyHesaplayici.NotYuklenmedi, seri[9].Not);   // Ekim (bu ay): mizan yok
+
+            foreach (var gelecek in seri.Skip(10))                 // Kasım, Aralık
+            {
+                Assert.False(gelecek.Yuklu);
+                Assert.Null(gelecek.NetSatis);
+                Assert.Null(gelecek.Smm);
+                Assert.Null(gelecek.FaaliyetGiderleri);
+                Assert.Null(gelecek.DonemKari);
+                Assert.Null(gelecek.HazirDegerler);
+                Assert.Equal(PortfoyHesaplayici.NotGelecekAy, gelecek.Not);
+            }
+        }
+
+        [Fact]
+        public async Task Seri_secili_ay_yilin_basindaysa_da_yilin_tamami_gostergeler_degismez()
+        {
+            using var db = Context();
+            var s = Servis(db);
+            await Yukle(s, Lime, 2025, 12, Mizan(12000m, 6000m, 2400m));
+            await Yukle(s, Lime, 2026, 1, Mizan(900m, 450m, 100m));
+            await Yukle(s, Lime, 2026, 2, Mizan(2000m, 1000m, 300m));
+            await Yukle(s, Lime, 2026, 3, Mizan(3500m, 1700m, 500m));
+
+            var f = (await s.PortfoyAsync("2026-02", "ay")).Firmalar.Single(x => x.FirmaId == Lime);
+
+            Assert.Equal(Enumerable.Range(1, 12), f.Seri.Select(a => a.Ay));
+            Assert.All(f.Seri, a => Assert.Equal(2026, a.Yil));
+            Assert.Equal(1100m, f.Seri[1].NetSatis);               // Şubat: 2000 − 900
+            Assert.Equal(1500m, f.Seri[2].NetSatis);               // seçili aydan sonraki yüklü Mart da seride
+
+            // Göstergeler seçili aya göre, karşılaştırma önceki ay — değişmedi.
+            Assert.Equal(1100m, f.Gostergeler.NetSatis.Deger);
+            Assert.Equal(900m, f.Gostergeler.NetSatis.Karsilastirma);
         }
 
         [Fact]

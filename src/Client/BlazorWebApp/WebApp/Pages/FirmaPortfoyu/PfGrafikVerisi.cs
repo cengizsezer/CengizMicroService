@@ -27,12 +27,15 @@ namespace WebApp.Pages.FirmaPortfoyu
         public const string RenkFaaliyetGideri = "#1baf7a";
 
         /// <summary>
-        /// Firmanın 12 aylık çizgisi: aylık net satış, SMM, faaliyet gideri — sunucunun Seri[12]'si. Değeri olmayan ay
-        /// null kalır (JS çizgide boşluk bırakır, sıfır çizmez); ipucunda nedeni (Not) gösterilir.
+        /// Firmanın 12 aylık çizgisi: aylık net satış, SMM, faaliyet gideri — sunucunun Seri[12]'si (seçili yılın
+        /// Ocak–Aralık'ı). Değeri olmayan ay (mizan yok, gelecek ay) null kalır (JS çizgide boşluk bırakır, sıfır
+        /// çizmez); ipucunda nedeni (Not) gösterilir. Vurgulanan sütun seçili ay.
         /// </summary>
-        public static PfCizgiVerisi Cizgi(PortfoyFirmasiDto f, int yukseklik = 260)
+        public static PfCizgiVerisi Cizgi(PortfoyFirmasiDto f, int seciliAy, int yukseklik = 260)
         {
             var seri = f.Seri;
+            var secili = seri.FindIndex(a => a.Ay == seciliAy);
+            var yil = seri.Count > 0 ? seri[0].Yil : (int?)null;
             return new PfCizgiVerisi(
                 "cizgi",
                 seri.Select(a => new PfAyEtiketi($"{PfAy.Kisa(a.Ay)} {a.Yil % 100:D2}", $"{PfAy.Uzun(a.Ay)} {a.Yil}")).ToList(),
@@ -43,9 +46,9 @@ namespace WebApp.Pages.FirmaPortfoyu
                     new("Faaliyet gideri", RenkFaaliyetGideri, seri.Select(a => a.FaaliyetGiderleri).ToList())
                 },
                 seri.Select(a => a.Not).ToList(),
-                seri.Count > 0 ? seri.Count - 1 : null,
+                secili >= 0 ? secili : null,
                 yukseklik,
-                $"{f.KisaAd} aylık net satış, satışların maliyeti ve faaliyet gideri, son 12 ay");
+                $"{f.KisaAd} aylık net satış, satışların maliyeti ve faaliyet gideri, {yil} Ocak–Aralık");
         }
 
         /// <summary>

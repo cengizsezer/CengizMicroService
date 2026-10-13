@@ -23,7 +23,7 @@
     <div class="pf-dlg-ust">
         <div style="flex:1;min-width:0">
             <h3>Mizan yükle</h3>
-            <div class="pf-dlg-ozet">Yıl başından kümülatif aylık mizan (ORKA Excel). Yalnız 3 haneli ana hesaplar kaydedilir.</div>
+            <div class="pf-dlg-ozet">Yıl başından kümülatif aylık mizan (ORKA / Luca Excel). Yalnız 3 haneli ana hesaplar kaydedilir.</div>
         </div>
         <button type="button" class="pf-kapat" aria-label="Kapat" @onclick="@(() => DialogService.Close())">×</button>
     </div>
@@ -88,9 +88,10 @@
                     <div class="pf-d">@o.FirmaAdi · @PfAy.Uzun(o.Ay) @o.Yil</div>
                 </div>
                 <div class="pf-kutu">
-                    <div class="pf-k">Borç / alacak bakiye</div>
-                    <div class="pf-v" title="@Tl(o.BorcToplami) / @Tl(o.AlacakToplami)">@Tl(o.BorcToplami)</div>
-                    <div class="pf-d">alacak @Tl(o.AlacakToplami)</div>
+                    @* Tek tutar = mizan toplamı (dengeliyse borç bakiye = alacak bakiye); alacak tutarı gibi okunmasın. *@
+                    <div class="pf-k">Mizan toplamı (kontrol)</div>
+                    <div class="pf-v" title="borç bakiye @Tl(o.BorcToplami) · alacak bakiye @Tl(o.AlacakToplami)">@Tl(o.BorcToplami)</div>
+                    <div class="pf-d">@(o.Dengeli ? "borç bakiye = alacak bakiye" : $"borç bakiye ≠ alacak bakiye · fark {Tl(o.DengeFarki)}")</div>
                 </div>
                 <div class="pf-kutu">
                     <div class="pf-k">Denge</div>

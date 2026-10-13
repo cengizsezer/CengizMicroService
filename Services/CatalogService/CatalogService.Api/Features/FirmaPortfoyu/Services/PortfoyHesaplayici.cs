@@ -179,6 +179,7 @@ namespace CatalogService.Api.Features.FirmaPortfoyu.Services
         public const string NotOncekiAyEksik = "önceki ay eksik";
         public const string NotKapanisSonrasi = "kapanış sonrası";
         public const string NotGelirTablosuYok = "gelir tablosu hesabı yok";
+        public const string NotGelecekAy = "gelecek ay";
 
         /// <summary>
         /// Dönem kârı (vergi öncesi), kümülatif = −Σ(600–689); 690/691/692 dahil değil. 6'lı ↔ 7'li kuralı SMM ve

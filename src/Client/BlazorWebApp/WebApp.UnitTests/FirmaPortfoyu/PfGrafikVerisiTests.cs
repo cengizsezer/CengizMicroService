@@ -30,7 +30,7 @@ namespace WebApp.UnitTests.FirmaPortfoyu
                 }
             };
 
-            var v = PfGrafikVerisi.Cizgi(f);
+            var v = PfGrafikVerisi.Cizgi(f, seciliAy: 9);
 
             Assert.Equal("cizgi", v.Tur);
             Assert.Equal(new[] { "Net satış", "SMM", "Faaliyet gideri" }, v.Seriler.Select(s => s.Ad));
@@ -41,6 +41,26 @@ namespace WebApp.UnitTests.FirmaPortfoyu
             Assert.Equal("Ağustos 2026", v.Aylar[1].Uzun);
             Assert.Equal("mizan yüklenmedi", v.Notlar[1]);
             Assert.Equal(2, v.Secili);
+            Assert.EndsWith("2026 Ocak–Aralık", v.Aria);
+        }
+
+        [Fact]
+        public void Cizgi_yilin_12_ayi_gelecek_ay_bos_secili_ay_vurgulu()
+        {
+            var f = new PortfoyFirmasiDto { KisaAd = "LIME" };
+            for (var a = 1; a <= 12; a++)
+                f.Seri.Add(a <= 9
+                    ? new PortfoyAyDto { Yil = 2026, Ay = a, Yuklu = true, NetSatis = a * 100m }
+                    : new PortfoyAyDto { Yil = 2026, Ay = a, Not = "gelecek ay" });
+
+            var v = PfGrafikVerisi.Cizgi(f, seciliAy: 3);
+
+            Assert.Equal(12, v.Aylar.Count);
+            Assert.Equal("Oca 26", v.Aylar[0].Kisa);
+            Assert.Equal("Ara 26", v.Aylar[11].Kisa);
+            Assert.Equal(2, v.Secili);                              // Mart, son eleman değil
+            Assert.All(v.Seriler[0].Degerler.Skip(9), d => Assert.Null(d));
+            Assert.Equal("gelecek ay", v.Notlar[11]);
         }
 
         [Fact]

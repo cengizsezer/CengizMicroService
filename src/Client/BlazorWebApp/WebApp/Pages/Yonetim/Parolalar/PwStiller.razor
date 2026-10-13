@@ -1,0 +1,118 @@
+@*
+    Parolalar stilleri — taslak: parolalar.html. KURAL: her seçici .pw-kok ile başlar, değişkenler --pw- önekli ve
+    .pw-kok üzerinde; html/body/:root yok. Taslağın kısa durum sınıfları (ana, tehlike, gizli, mono, tam, tamam, t-ent…)
+    pw- önekiyle yeniden adlandırıldı. Kart başlık renkleri taslaktaki gibi: Entegratör sarı, Dijital VD somon, SGK
+    lavanta. Uygulama açık temada; taslağın koyu teması alınmadı (PfStiller / CkStiller ile aynı karar).
+    Form penceresi Radzen dialogu değil, sayfanın içindeki perde (.pw-perde) — stiller kapsam içinde kalsın diye.
+*@
+<style>
+    .pw-kok {
+        --pw-bg:#f4f5f9; --pw-yuzey:#ffffff; --pw-cizgi:#e1e3ec; --pw-metin:#1d2033; --pw-soluk:#6a6f86;
+        --pw-vurgu:#4a3fd1; --pw-vurgu-acik:#ecebfd; --pw-vurgu-metin:#ffffff;
+        --pw-ent:#fbf0c9; --pw-ent-k:#8a6a00;
+        --pw-dvd:#fde3d6; --pw-dvd-k:#a2481b;
+        --pw-sgk:#dfe4f7; --pw-sgk-k:#34489a;
+        --pw-tehlike:#c8312b; --pw-tehlike-acik:#fdecea; --pw-iyi:#1c8a55; --pw-uyari-acik:#fff6db;
+        --pw-golge:0 1px 2px rgba(25,28,60,.06),0 2px 8px rgba(25,28,60,.05);
+        --pw-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+        color:var(--pw-metin); font-size:14px; line-height:1.45; max-width:1240px; margin:0 auto; padding:8px 0 48px;
+    }
+    .pw-kok *, .pw-kok *::before, .pw-kok *::after { box-sizing:border-box; }
+    .pw-kok [hidden] { display:none !important; }
+    .pw-kok button, .pw-kok select, .pw-kok input, .pw-kok textarea { font:inherit; color:inherit; }
+
+    .pw-kok .pw-iz { font-size:12.5px; color:var(--pw-soluk); margin-bottom:6px; }
+    .pw-kok .pw-iz b { color:var(--pw-metin); font-weight:500; }
+    .pw-kok .pw-ust { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; }
+    .pw-kok .pw-baslik { display:flex; align-items:center; gap:12px; }
+    .pw-kok .pw-baslik h1 { font-size:24px; font-weight:700; margin:0; letter-spacing:-.01em; }
+    .pw-kok .pw-ikon { width:40px; height:40px; border-radius:10px; background:var(--pw-vurgu-acik); color:var(--pw-vurgu); display:grid; place-items:center; }
+    .pw-kok .pw-sayac { font-size:12px; background:var(--pw-yuzey); border:1px solid var(--pw-cizgi); border-radius:999px; padding:2px 9px; color:var(--pw-soluk); }
+
+    .pw-kok .pw-btn { font-weight:600; font-size:13px; border-radius:8px; border:1px solid var(--pw-cizgi); background:var(--pw-yuzey); color:var(--pw-metin); padding:8px 14px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; text-decoration:none; }
+    .pw-kok .pw-btn:hover { border-color:var(--pw-vurgu); }
+    .pw-kok .pw-btn:disabled { opacity:.6; cursor:default; }
+    .pw-kok .pw-btn:focus-visible, .pw-kok .pw-ikonbtn:focus-visible, .pw-kok .pw-sekme:focus-visible,
+    .pw-kok input:focus-visible, .pw-kok select:focus-visible, .pw-kok textarea:focus-visible { outline:2px solid var(--pw-vurgu); outline-offset:2px; }
+    .pw-kok .pw-btn.pw-ana { background:var(--pw-vurgu); border-color:var(--pw-vurgu); color:var(--pw-vurgu-metin); }
+    .pw-kok .pw-btn.pw-tehlike { background:var(--pw-tehlike); border-color:var(--pw-tehlike); color:#fff; }
+
+    .pw-kok .pw-not { margin:16px 0 18px; display:flex; gap:10px; align-items:flex-start; background:var(--pw-yuzey); border:1px solid var(--pw-cizgi); border-left:3px solid var(--pw-vurgu); border-radius:10px; padding:10px 14px; font-size:13px; color:var(--pw-soluk); }
+    .pw-kok .pw-not b { color:var(--pw-metin); font-weight:600; }
+    .pw-kok .pw-uyari-kutu { margin:0 0 14px; background:var(--pw-tehlike-acik); color:var(--pw-tehlike); border-radius:10px; padding:10px 14px; font-size:13px; font-weight:600; }
+
+    .pw-kok .pw-sekmeler { display:flex; gap:4px; border-bottom:1px solid var(--pw-cizgi); overflow-x:auto; }
+    .pw-kok .pw-sekme { font-weight:600; font-size:14px; border:0; background:none; color:var(--pw-soluk); padding:10px 14px 11px; cursor:pointer; border-bottom:3px solid transparent; display:flex; align-items:center; gap:8px; white-space:nowrap; }
+    .pw-kok .pw-sekme .pw-nokta { width:10px; height:10px; border-radius:3px; }
+    .pw-kok .pw-sekme[aria-selected="true"] { color:var(--pw-metin); border-bottom-color:var(--pw-vurgu); }
+    .pw-kok .pw-sekme small { font-weight:500; font-size:12px; color:var(--pw-soluk); }
+
+    .pw-kok .pw-arac { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:16px 0; }
+    .pw-kok .pw-arac input, .pw-kok .pw-arac select { font-size:13.5px; border:1px solid var(--pw-cizgi); background:var(--pw-yuzey); color:var(--pw-metin); border-radius:8px; padding:8px 11px; }
+    .pw-kok .pw-arac input { flex:1 1 240px; min-width:0; }
+    .pw-kok .pw-arac select { flex:0 1 220px; }
+    .pw-kok .pw-arac .pw-btn.pw-ana { margin-left:auto; }
+
+    .pw-kok .pw-izgara { display:grid; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); gap:14px; align-items:start; }
+    .pw-kok .pw-kart { background:var(--pw-yuzey); border:1px solid var(--pw-cizgi); border-radius:12px; box-shadow:var(--pw-golge); overflow:hidden; min-width:0; }
+    .pw-kok .pw-kart-bas { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 12px 9px 14px; }
+    .pw-kok .pw-kart-bas h3 { margin:0; font-size:14px; font-weight:700; letter-spacing:.02em; text-transform:uppercase; min-width:0; overflow-wrap:anywhere; }
+    .pw-kok .pw-kart-bas .pw-alt { font-size:12px; font-weight:500; text-transform:none; letter-spacing:0; opacity:.85; margin-left:6px; }
+    .pw-kok .pw-t-ent .pw-kart-bas { background:var(--pw-ent); color:var(--pw-ent-k); }
+    .pw-kok .pw-t-dvd .pw-kart-bas { background:var(--pw-dvd); color:var(--pw-dvd-k); }
+    .pw-kok .pw-t-sgk .pw-kart-bas { background:var(--pw-sgk); color:var(--pw-sgk-k); }
+    .pw-kok .pw-kart.pw-pasif .pw-kart-bas h3 { opacity:.7; }
+    .pw-kok .pw-etiket { font-size:11px; font-weight:600; border-radius:999px; padding:2px 8px; background:var(--pw-yuzey); color:var(--pw-soluk); white-space:nowrap; }
+
+    .pw-kok .pw-satirlar { padding:4px 0; margin:0; }
+    .pw-kok .pw-satir { display:grid; grid-template-columns:118px 1fr auto; align-items:center; gap:8px; padding:6px 10px 6px 14px; border-top:1px solid var(--pw-cizgi); }
+    .pw-kok .pw-satir:first-child { border-top:0; }
+    .pw-kok .pw-satir dt { font-size:11.5px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--pw-soluk); margin:0; }
+    .pw-kok .pw-satir dd { margin:0; font-family:var(--pw-mono); font-size:13.5px; min-width:0; overflow-wrap:anywhere; }
+    .pw-kok .pw-satir dd.pw-gizli { letter-spacing:.18em; color:var(--pw-soluk); }
+    .pw-kok .pw-satir dd.pw-bos-deger { font-family:inherit; font-size:13px; color:var(--pw-soluk); }
+    .pw-kok .pw-satir dd a { color:var(--pw-vurgu); font-size:13px; text-decoration:none; }
+    .pw-kok .pw-satir dd a:hover { text-decoration:underline; }
+    .pw-kok .pw-butonlar { display:flex; gap:2px; align-items:center; }
+    .pw-kok .pw-ikonbtn { width:30px; height:30px; border-radius:7px; border:0; background:none; color:var(--pw-soluk); cursor:pointer; display:grid; place-items:center; padding:0; }
+    .pw-kok .pw-ikonbtn:hover { background:var(--pw-vurgu-acik); color:var(--pw-vurgu); }
+    .pw-kok .pw-ikonbtn:disabled { opacity:.5; cursor:default; }
+    .pw-kok .pw-ikonbtn.pw-tamam { color:var(--pw-iyi); }
+
+    .pw-kok .pw-kart-alt { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px 8px 14px; border-top:1px solid var(--pw-cizgi); font-size:12px; color:var(--pw-soluk); }
+    .pw-kok .pw-kart-not { padding:0 14px 8px; font-size:12.5px; color:var(--pw-soluk); white-space:pre-wrap; }
+    .pw-kok .pw-sil-onay { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 14px; background:var(--pw-tehlike-acik); font-size:13px; }
+    .pw-kok .pw-sil-onay span { flex:1 1 140px; color:var(--pw-tehlike); font-weight:600; }
+    .pw-kok .pw-bos { grid-column:1/-1; border:1.5px dashed var(--pw-cizgi); border-radius:12px; padding:36px 16px; text-align:center; color:var(--pw-soluk); }
+
+    .pw-kok .pw-perde { position:fixed; inset:0; background:rgba(18,20,36,.45); display:grid; place-items:center; padding:16px; z-index:1050; }
+    .pw-kok .pw-pencere { background:var(--pw-yuzey); color:var(--pw-metin); border-radius:14px; width:min(520px,100%); max-height:calc(100% - 32px); overflow:auto; box-shadow:0 20px 50px rgba(0,0,0,.25); }
+    .pw-kok .pw-pencere header { padding:16px 18px 10px; border-bottom:1px solid var(--pw-cizgi); }
+    .pw-kok .pw-pencere h2 { margin:0; font-size:17px; }
+    .pw-kok .pw-pencere header p { margin:3px 0 0; font-size:12.5px; color:var(--pw-soluk); }
+    .pw-kok .pw-form { padding:14px 18px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .pw-kok .pw-alan { display:flex; flex-direction:column; gap:4px; min-width:0; }
+    .pw-kok .pw-alan.pw-tam { grid-column:1/-1; }
+    .pw-kok .pw-alan label { font-size:12px; font-weight:600; color:var(--pw-soluk); }
+    .pw-kok .pw-alan label span { font-weight:400; }
+    .pw-kok .pw-alan input, .pw-kok .pw-alan select, .pw-kok .pw-alan textarea { font-size:14px; border:1px solid var(--pw-cizgi); background:var(--pw-bg); color:var(--pw-metin); border-radius:8px; padding:8px 10px; width:100%; }
+    .pw-kok .pw-alan input.pw-mono { font-family:var(--pw-mono); }
+    .pw-kok .pw-alan.pw-hatali input, .pw-kok .pw-alan.pw-hatali select { border-color:var(--pw-tehlike); }
+    .pw-kok .pw-alan .pw-ipucu { font-size:11.5px; color:var(--pw-soluk); }
+    .pw-kok .pw-sifre-kutu { display:flex; gap:6px; }
+    .pw-kok .pw-sifre-kutu input { flex:1; min-width:0; }
+    .pw-kok .pw-pencere footer { display:flex; justify-content:flex-end; gap:8px; padding:12px 18px 16px; border-top:1px solid var(--pw-cizgi); }
+    .pw-kok .pw-hata { grid-column:1/-1; color:var(--pw-tehlike); font-size:13px; font-weight:600; }
+    .pw-kok .pw-toast { position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); background:var(--pw-metin); color:var(--pw-yuzey); padding:9px 16px; border-radius:999px; font-size:13px; font-weight:600; z-index:1060; }
+
+    @@media (max-width:560px) {
+        .pw-kok .pw-form { grid-template-columns:1fr; }
+        .pw-kok .pw-satir { grid-template-columns:96px 1fr auto; }
+        .pw-kok .pw-arac .pw-btn.pw-ana { margin-left:0; width:100%; justify-content:center; }
+        .pw-kok .pw-arac select { flex:1 1 100%; }
+    }
+    @@media (prefers-reduced-motion:no-preference) {
+        .pw-kok .pw-toast { animation:pwGir .18s ease-out; }
+        @@keyframes pwGir { from { opacity:0; transform:translate(-50%,6px); } }
+    }
+</style>

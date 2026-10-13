@@ -57,6 +57,7 @@ services:
       - ConsulConfig__ServiceName=CatalogService
       - ConsulConfig__ServiceId=Catalog
       - IncomingInvoiceWorker__BaseUrl=http://c_sovos_incominginvoiceworker:5021
+      - DataProtection__KeysFolder=/var/catalog-dp-keys
       - TZ=Europe/Istanbul
     ports:
       - "5004:5004"
@@ -72,6 +73,10 @@ services:
       - s_consul
       - s_rabbitmq
       - s_sqlserver
+    # Data Protection anahtarları (Yönetim › Parolalar şifreleri). Kalıcı olmalı: volume silinirse kayıtlı şifreler
+    # çözülemez. Sovos'un sovos_dp_keys volume'üyle PAYLAŞILMAZ. Yedeği alınmalı.
+    volumes:
+      - catalog_dp_keys:/var/catalog-dp-keys
  
   fileapiservice.api:
     container_name: c_fileapiservice        # ConsulConfig__ServiceAddress ile uyumlu
@@ -302,3 +307,4 @@ volumes:
   sqlserver_data:
   sqlserver_log:
   sovos_dp_keys:
+  catalog_dp_keys:

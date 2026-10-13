@@ -24,6 +24,7 @@ using CatalogService.Api.Infrastructure.Accessor;
 using CatalogService.Api.Infrastructure.Auth;
 using CatalogService.Api.Infrastructure.Context;
 using CatalogService.Api.Infrastructure.Seeding;
+using CatalogService.Api.Infrastructure.VeriKoruma;
 using EventBus.Base;
 using EventBus.Base.Abstraction;
 using EventBus.Factory;
@@ -118,6 +119,10 @@ builder.Services.AddTransient<AuthForwardingHandler>();
 // Ajan ve insan token'ları aynı imzayı taşıyor; ayrımı politikalar yapıyor
 // (hub'a yalnız ajan, durum ucuna yalnız insan).
 builder.Services.AddAuthorization(AjanPolitikalari.Ekle);
+// Parolalar: pkf rolü + insan token'ı; yetkisiz (403) istek erişim kaydına "reddedildi" yazılır.
+builder.Services.AddAuthorization(CatalogService.Api.Features.Parolalar.ParolaYetkisi.Ekle);
+builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationMiddlewareResultHandler,
+                              CatalogService.Api.Features.Parolalar.ParolaReddiKaydedici>();
 // Açık (girişsiz) bordro uçlarının IP başına hız sınırı; değer ayardan (KARARLAR §155).
 builder.Services.AddRateLimiter(o =>
     CatalogService.Api.Features.Payroll.Acik.BordroAcikHizSiniri.Ekle(o, builder.Configuration));
@@ -175,6 +180,15 @@ builder.Services.AddScoped<CatalogService.Api.Features.Yapilacaklar.Services.ICh
 // Firma Portföyü: aylık mizan yükleme + firma × ay durum matrisi (Firma Kontrol'den ayrı).
 builder.Services.AddScoped<CatalogService.Api.Features.FirmaPortfoyu.Services.IFirmaPortfoyuService,
                            CatalogService.Api.Features.FirmaPortfoyu.Services.FirmaPortfoyuService>();
+
+// Yönetim › Parolalar: müşteri firmaların Entegratör / Dijital VD / SGK girişleri. Şifreler Data Protection ile
+// şifreli ("Parolalar.v1"); anahtar klasörü kalıcı olmalı (VeriKorumaAyari, açılışta denetlenir).
+var dpKlasoru = VeriKorumaAyari.KlasorBul(configuration, env);
+builder.Services.AddCatalogVeriKoruma(dpKlasoru);
+builder.Services.AddSingleton<CatalogService.Api.Features.Parolalar.Services.IParolaSifreleyici,
+                              CatalogService.Api.Features.Parolalar.Services.ParolaSifreleyici>();
+builder.Services.AddScoped<CatalogService.Api.Features.Parolalar.Services.IParolaService,
+                           CatalogService.Api.Features.Parolalar.Services.ParolaService>();
 
 // Anasayfa künye yazmaları (sınıflandırma, sorumlu, notlar).
 builder.Services.AddScoped<CatalogService.Api.Features.Anasayfa.Services.IFirmaKunyeService,
@@ -363,6 +377,19 @@ if (args.Contains("--seed-force"))
     var runner = new SeedRunner(app.Services);
     await runner.RunAsync(SeedMode.PayrollOnly);
     return;
+}
+
+// Data Protection açılış denetimi (seed çalıştırması anahtara dokunmaz, bu yüzden ondan sonra). Klasör yazılamıyorsa
+// uygulama açılmaz: geçici anahtarla şifrelenen parolalar yeniden başlatmada çözülemez hale gelirdi.
+try
+{
+    VeriKorumaAyari.Denetle(app.Services, dpKlasoru, app.Logger);
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Data Protection anahtar deposu kullanılamıyor; CatalogService açılmıyor.");
+    await Log.CloseAndFlushAsync();
+    throw;
 }
 
 //if (args.Contains("--seed-force"))

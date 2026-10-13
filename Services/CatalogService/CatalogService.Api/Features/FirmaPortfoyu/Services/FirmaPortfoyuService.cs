@@ -243,11 +243,14 @@ namespace CatalogService.Api.Features.FirmaPortfoyu.Services
             var (yil, ay) = await DonemCozAsync(donem, firmaIdleri, bugun, ct);
             var secili = Endeks(yil, ay);
 
-            // Pencere: 12 aylık seri + ilk ayın önceki ayı; geçen yılın aynı ayı ve öncesi de bu aralıkta.
+            // Pencere: göstergeler için geçen yılın aynı ayı ve onun önceki ayı (secili − 13) → seri için seçili yılın
+            // Aralık'ı (seri seçili yılın Ocak–Aralık'ı; seçili aydan sonraki yüklü aylar da seride görünür).
             var bas = secili - 13;
+            var bitis = Endeks(yil, 12);
+            var bugunEndeks = Endeks(bugun.Year, bugun.Month);
             var mizanlar = await _db.AylikMizanlar.AsNoTracking()
                 .Where(m => firmaIdleri.Contains(m.FirmaId)
-                            && m.Yil * 12 + m.Ay - 1 >= bas && m.Yil * 12 + m.Ay - 1 <= secili)
+                            && m.Yil * 12 + m.Ay - 1 >= bas && m.Yil * 12 + m.Ay - 1 <= bitis)
                 .Select(m => new { m.Id, m.FirmaId, m.Yil, m.Ay, m.Dengeli, m.KapanisSonrasiMi, m.DengeFarki })
                 .ToListAsync(ct);
 
@@ -310,10 +313,13 @@ namespace CatalogService.Api.Features.FirmaPortfoyu.Services
                         ? new List<string>()
                         : PortfoyHesaplayici.Uyarilar(ay, bu.Bakiyeler, ay > 1 ? Getir(yil, ay - 1)?.Bakiyeler : null, bu.DengeFarki),
                     Gostergeler = Gostergeler(Getir, yil, ay, kYil, kAy, yilKars),
-                    Seri = Enumerable.Range(0, 12).Select(i =>
+                    // Seçili yılın Ocak–Aralık'ı. Gelecek ay boş ("gelecek ay"); mizanı olmayan ay boş ("mizan
+                    // yüklenmedi"). Aylık fark kuralı aynı: Ocak'ın aylık değeri Ocak kümülatifi.
+                    Seri = Enumerable.Range(1, 12).Select(a =>
                     {
-                        var k = secili - 11 + i;
-                        var (y, a) = (k / 12, k % 12 + 1);
+                        var y = yil;
+                        if (Endeks(y, a) > bugunEndeks)
+                            return new PortfoyAyDto { Yil = y, Ay = a, Not = PortfoyHesaplayici.NotGelecekAy };
                         var m = Getir(y, a);
                         var g = PortfoyHesaplayici.Aylik(Getir, y, a);
                         return new PortfoyAyDto

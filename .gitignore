@@ -15,3 +15,8 @@ Services/OCRService/OCRService.Api/Config/*.json
 /packages/
 .claude/settings.local.json
 /*.html
+
+# Data Protection anahtarları (CatalogService / Parolalar): anahtar dosyası repoya GİRMEZ. Kökteki dp-keys/ ayrı bir işte
+# temizlenecek (Sovos), bu kurallar ona dokunmaz.
+catalog-dp-keys/
+**/DataProtection-Keys/

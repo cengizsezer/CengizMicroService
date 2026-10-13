@@ -1,0 +1,473 @@
+@attribute [Authorize(Roles = "pkf")]
+@page "/yonetim/parolalar"
+@using Blazored.LocalStorage
+@using Microsoft.AspNetCore.Authorization
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Parolalar
+@using WebApp.Shared.Dto.Yonetim
+@implements IDisposable
+@inject IParolaApiClient Api
+@inject IFirmaApiClient FirmaApi
+@inject IJSRuntime JS
+@inject ILocalStorageService Depo
+
+<PageTitle>Parolalar</PageTitle>
+
+@*
+    Yönetim › Parolalar — taslak: parolalar.html (yerleşim, sekmeler, kartlar, davranışlar). Müşteri firmaların
+    Entegratör / Dijital VD / SGK girişleri; kayıtları kullanıcı elle girer. Erişim Firmalarım ile aynı (rol pkf).
+
+    GÜVENLİK:
+      • Liste şifre İÇERMEZ (yalnız dolu/boş). Göz: değer sunucudan "goruntule" ile tek alan olarak gelir, 20 sn görünür,
+        sonra bellekten silinir. Kopyala: "kopyala" ile o an alınır, panoya yazılır, ekranda gösterilmez. İkisi de
+        sunucuda erişim kaydına yazılır (kim, ne zaman, hangi alan — şifre metni yok).
+      • Sayfadan çıkınca açık değerler ve zamanlayıcılar temizlenir.
+    Kural/süzgeç ParolaListesi'nde (testli); form ParolaFormu; stiller PwStiller (.pw-kok / --pw-).
+*@
+
+<PwStiller />
+
+<div class="pw-kok">
+    <div class="pw-iz">Yönetim › <b>Parolalar</b></div>
+    <div class="pw-ust">
+        <div class="pw-baslik">
+            <div class="pw-ikon">@PwIkon.Kilit</div>
+            <h1>Parolalar</h1>
+            @if (kayitlar is not null)
+            {
+                <span class="pw-sayac">@kayitlar.Count kayıt</span>
+            }
+        </div>
+    </div>
+
+    <div class="pw-not" role="note">
+        @PwIkon.Kalkan
+        <div>
+            <b>Şifreler gizli gelir.</b> Göz simgesiyle 20 saniyeliğine görünür, kopyala simgesiyle panoya alınır.
+            Veritabanında şifreli saklanır; görüntüleme ve kopyalama kim, ne zaman olarak kayda geçer.
+        </div>
+    </div>
+
+    @if (yukHata is not null)
+    {
+        <div class="pw-uyari-kutu" role="alert">@yukHata</div>
+    }
+
+    <div class="pw-sekmeler" role="tablist">
+        @foreach (var t in ParolaListesi.Turler)
+        {
+            <button class="pw-sekme" role="tab" type="button" aria-selected="@(t.Tur == sekme.Tur ? "true" : "false")"
+                    @onclick="@(() => SekmeSec(t))">
+                <span class="pw-nokta" style="background:var(--pw-@(t.Kod)-k)"></span>@t.Ad
+                <small>@(kayitlar?.Count(k => k.Tur == t.Tur) ?? 0)</small>
+            </button>
+        }
+    </div>
+
+    <div class="pw-arac">
+        <input type="search" placeholder="Firma, kullanıcı adı, entegratör veya şube ara" aria-label="Ara"
+               value="@arama" @oninput="@(e => arama = e.Value?.ToString() ?? string.Empty)" />
+        <select aria-label="Firma" value="@firmaSuz" @onchange="@(e => firmaSuz = e.Value?.ToString() ?? string.Empty)">
+            <option value="">Tüm firmalar</option>
+            @foreach (var f in ParolaListesi.SuzgecFirmalari(kayitlar ?? new()))
+            {
+                <option value="@f" selected="@(f == firmaSuz)">@f</option>
+            }
+        </select>
+        <button class="pw-btn pw-ana" type="button" @onclick="YeniAc" disabled="@(kayitlar is null)">
+            @PwIkon.Arti <span>Yeni @sekme.Tekil</span>
+        </button>
+    </div>
+
+    <div class="pw-izgara">
+        @if (kayitlar is null)
+        {
+            <div class="pw-bos">@(yukHata is null ? "Yükleniyor…" : "Kayıtlar alınamadı.")</div>
+        }
+        else if (Gorunen.Count == 0)
+        {
+            <div class="pw-bos">
+                @if (kayitlar.Any(k => k.Tur == sekme.Tur))
+                {
+                    <text>Aramaya uyan kayıt yok.</text>
+                }
+                else
+                {
+                    <text>@sekme.Ad sekmesinde henüz kayıt yok. <b>Yeni @sekme.Tekil</b> ile ilk firmayı ekleyin.</text>
+                }
+            </div>
+        }
+        else
+        {
+            @foreach (var r in Gorunen)
+            {
+                <article class="pw-kart pw-t-@sekme.Kod @(r.FirmaPasif ? "pw-pasif" : "")" @key="r.Id">
+                    <div class="pw-kart-bas">
+                        <h3 title="@(r.ElleYazilan ? "Firmalarım'da yok (elle yazıldı)" : null)">
+                            @ParolaListesi.FirmaGorunenAd(r)@if (r.Tur == ParolaTuru.Sgk && !string.IsNullOrEmpty(r.Sube)) {<span class="pw-alt">· @r.Sube</span>}
+                        </h3>
+                        @if (r.Tur == ParolaTuru.Entegrator && r.Entegrator is not null)
+                        {
+                            <span class="pw-etiket">@r.Entegrator</span>
+                        }
+                    </div>
+
+                    <dl class="pw-satirlar">
+                        @foreach (var a in sekme.Alanlar)
+                        {
+                            <div class="pw-satir">
+                                <dt>@a.Etiket</dt>
+                                @if (a.Sifre)
+                                {
+                                    var anahtar = Anahtar(r, a);
+                                    if (!ParolaListesi.SifreDolu(r, a.Anahtar))
+                                    {
+                                        <dd class="pw-bos-deger">—</dd><div></div>
+                                    }
+                                    else if (acik.TryGetValue(anahtar, out var deger))
+                                    {
+                                        <dd>@deger</dd>
+                                        <div class="pw-butonlar">
+                                            <button class="pw-ikonbtn" type="button" aria-label="Gizle" title="Gizle" @onclick="@(() => Gizle(anahtar))">@PwIkon.GozKapali</button>
+                                            <button class="pw-ikonbtn @(kopyalanan.Contains(anahtar) ? "pw-tamam" : "")" type="button" aria-label="@a.Etiket kopyala" title="Kopyala"
+                                                    disabled="@bekleyen.Contains(anahtar)" @onclick="@(() => SifreKopyala(r, a))">@(kopyalanan.Contains(anahtar) ? PwIkon.Tik : PwIkon.Kopya)</button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <dd class="pw-gizli">••••••••</dd>
+                                        <div class="pw-butonlar">
+                                            <button class="pw-ikonbtn" type="button" aria-label="Göster" title="20 sn göster"
+                                                    disabled="@bekleyen.Contains(anahtar)" @onclick="@(() => Goster(r, a))">@PwIkon.Goz</button>
+                                            <button class="pw-ikonbtn @(kopyalanan.Contains(anahtar) ? "pw-tamam" : "")" type="button" aria-label="@a.Etiket kopyala" title="Kopyala"
+                                                    disabled="@bekleyen.Contains(anahtar)" @onclick="@(() => SifreKopyala(r, a))">@(kopyalanan.Contains(anahtar) ? PwIkon.Tik : PwIkon.Kopya)</button>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    var v = ParolaListesi.DuzDeger(r, a.Anahtar);
+                                    var anahtar = Anahtar(r, a);
+                                    if (string.IsNullOrEmpty(v))
+                                    {
+                                        <dd class="pw-bos-deger">—</dd><div></div>
+                                    }
+                                    else
+                                    {
+                                        if (a.Anahtar == "portal")
+                                        {
+                                            <dd><a href="@v" target="_blank" rel="noopener noreferrer">@ParolaListesi.KisaAdres(v)</a></dd>
+                                        }
+                                        else
+                                        {
+                                            <dd>@v</dd>
+                                        }
+                                        <div class="pw-butonlar">
+                                            <button class="pw-ikonbtn @(kopyalanan.Contains(anahtar) ? "pw-tamam" : "")" type="button" aria-label="@a.Etiket kopyala" title="Kopyala"
+                                                    @onclick="@(() => DuzKopyala(anahtar, v, a.Etiket))">@(kopyalanan.Contains(anahtar) ? PwIkon.Tik : PwIkon.Kopya)</button>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        }
+                    </dl>
+
+                    @if (!string.IsNullOrWhiteSpace(r.Not))
+                    {
+                        <div class="pw-kart-not">@r.Not</div>
+                    }
+
+                    @if (silinecek == r.Id)
+                    {
+                        <div class="pw-sil-onay">
+                            <span>Bu kayıt silinsin mi?</span>
+                            <button class="pw-btn" type="button" @onclick="@(() => silinecek = null)" disabled="@siliniyor">Vazgeç</button>
+                            <button class="pw-btn pw-tehlike" type="button" @onclick="@(() => Sil(r))" disabled="@siliniyor">Sil</button>
+                        </div>
+                    }
+
+                    <div class="pw-kart-alt">
+                        <span>Güncellendi @r.GuncellemeTarihi.ToString("dd.MM.yyyy HH:mm")@(string.IsNullOrWhiteSpace(r.GuncelleyenKullanici) ? "" : " · " + r.GuncelleyenKullanici)</span>
+                        <div class="pw-butonlar" style="gap:4px">
+                            @if (r.Tur == ParolaTuru.Entegrator && !string.IsNullOrEmpty(r.PortalAdresi))
+                            {
+                                <a class="pw-btn" href="@r.PortalAdresi" target="_blank" rel="noopener noreferrer">@PwIkon.Dis Portala git</a>
+                            }
+                            <button class="pw-ikonbtn" type="button" aria-label="Düzenle" title="Düzenle" @onclick="@(() => DuzenleAc(r))">@PwIkon.Kalem</button>
+                            <button class="pw-ikonbtn" type="button" aria-label="Sil" title="Sil" @onclick="@(() => silinecek = r.Id)">@PwIkon.Cop</button>
+                        </div>
+                    </div>
+                </article>
+            }
+        }
+    </div>
+
+    @if (formAcik)
+    {
+        <ParolaFormu Tur="sekme" Kayit="duzenlenen" FirmaSecenekleri="formFirmalari" Kapandi="FormKapandi" />
+    }
+
+    @if (toast is not null)
+    {
+        <div class="pw-toast" role="status">@toast</div>
+    }
+</div>
+
+@code {
+    private const string SekmeAnahtari = "pw-sekme";
+    private static readonly TimeSpan GorunurSure = TimeSpan.FromSeconds(20);
+
+    private List<ParolaDto>? kayitlar;
+    private string? yukHata;
+    private List<FirmaDto> firmalar = new();
+
+    private PwTur sekme = ParolaListesi.Turler[0];
+    private string arama = string.Empty;
+    private string firmaSuz = string.Empty;
+
+    // Görünür şifreler ("id:alan" → değer) ve 20 sn zamanlayıcıları. Sayfadan çıkınca temizlenir.
+    private readonly Dictionary<string, string> acik = new();
+    private readonly Dictionary<string, CancellationTokenSource> zamanlayicilar = new();
+    private readonly HashSet<string> bekleyen = new();
+    private readonly HashSet<string> kopyalanan = new();
+
+    private int? silinecek;
+    private bool siliniyor;
+
+    private bool formAcik;
+    private ParolaDto? duzenlenen;
+    private List<PwFirmaSecenegi> formFirmalari = new();
+
+    private string? toast;
+    private CancellationTokenSource? toastZamani;
+    private bool kapandi;
+
+    private List<ParolaDto> Gorunen => ParolaListesi.Suz(kayitlar ?? new(), sekme.Tur, arama, firmaSuz);
+
+    private static string Anahtar(ParolaDto r, PwAlan a) => $"{r.Id}:{a.Anahtar}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (ParolaListesi.KodBul(await Depo.GetItemAsStringAsync(SekmeAnahtari)) is { } t) sekme = t;
+        }
+        catch
+        {
+            // tarayıcı depolaması yoksa ilk sekme
+        }
+
+        await Yukle();
+
+        try
+        {
+            firmalar = await FirmaApi.GetAllAsync(includeInactive: true);
+        }
+        catch
+        {
+            firmalar = new();   // form yalnız "elle yazacağım" seçeneğiyle açılır
+        }
+    }
+
+    private async Task Yukle()
+    {
+        var (liste, hata) = await Api.ListeAsync();
+        yukHata = hata;
+        if (liste is not null) kayitlar = liste;
+    }
+
+    private async Task SekmeSec(PwTur t)
+    {
+        sekme = t;
+        silinecek = null;
+        try { await Depo.SetItemAsStringAsync(SekmeAnahtari, t.Kod); } catch { /* yoksay */ }
+    }
+
+    // ---- şifre göster / kopyala ----
+
+    private async Task Goster(ParolaDto r, PwAlan a)
+    {
+        var anahtar = Anahtar(r, a);
+        if (!bekleyen.Add(anahtar)) return;
+        try
+        {
+            var (deger, hata) = await Api.AlanAsync(r.Id, a.Anahtar, "goruntule");
+            if (deger is null)
+            {
+                Bildir(hata ?? "Değer alınamadı.");
+                return;
+            }
+            if (kapandi) return;
+
+            Gizle(anahtar);
+            acik[anahtar] = deger;
+            var cts = new CancellationTokenSource();
+            zamanlayicilar[anahtar] = cts;
+            _ = SureDolunca(anahtar, cts.Token);
+        }
+        finally
+        {
+            bekleyen.Remove(anahtar);
+        }
+    }
+
+    private async Task SureDolunca(string anahtar, CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(GorunurSure, ct);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+        if (kapandi) return;
+        await InvokeAsync(() =>
+        {
+            Gizle(anahtar);
+            StateHasChanged();
+        });
+    }
+
+    private void Gizle(string anahtar)
+    {
+        acik.Remove(anahtar);
+        if (zamanlayicilar.Remove(anahtar, out var cts))
+        {
+            cts.Cancel();
+            cts.Dispose();
+        }
+    }
+
+    private async Task SifreKopyala(ParolaDto r, PwAlan a)
+    {
+        var anahtar = Anahtar(r, a);
+        if (!bekleyen.Add(anahtar)) return;
+        try
+        {
+            // Görünür olsa da sunucudan "kopyala" ile yeniden alınır: kopyalama ayrıca kayda geçsin.
+            var (deger, hata) = await Api.AlanAsync(r.Id, a.Anahtar, "kopyala");
+            if (deger is null)
+            {
+                Bildir(hata ?? "Değer alınamadı.");
+                return;
+            }
+            var tamam = await Panoya(deger);
+            deger = null;
+            KopyaSonucu(anahtar, tamam, a.Etiket);
+        }
+        finally
+        {
+            bekleyen.Remove(anahtar);
+        }
+    }
+
+    private async Task DuzKopyala(string anahtar, string metin, string etiket)
+        => KopyaSonucu(anahtar, await Panoya(metin), etiket);
+
+    private async Task<bool> Panoya(string metin)
+    {
+        try
+        {
+            return await JS.InvokeAsync<bool>("parolalar.kopyala", metin);
+        }
+        catch (JSException)
+        {
+            return false;
+        }
+    }
+
+    private void KopyaSonucu(string anahtar, bool tamam, string etiket)
+    {
+        if (!tamam)
+        {
+            Bildir("Kopyalanamadı; göz simgesiyle açıp elle seçin.");
+            return;
+        }
+        Bildir($"{etiket} kopyalandı");
+        kopyalanan.Add(anahtar);
+        _ = Task.Delay(1200).ContinueWith(_ => InvokeAsync(() =>
+        {
+            kopyalanan.Remove(anahtar);
+            if (!kapandi) StateHasChanged();
+        }));
+    }
+
+    // ---- yeni / düzenle / sil ----
+
+    private void YeniAc()
+    {
+        duzenlenen = null;
+        formFirmalari = ParolaListesi.FormFirmalari(firmalar, null);
+        formAcik = true;
+    }
+
+    private void DuzenleAc(ParolaDto r)
+    {
+        silinecek = null;
+        duzenlenen = r;
+        formFirmalari = ParolaListesi.FormFirmalari(firmalar, r);
+        formAcik = true;
+    }
+
+    private async Task FormKapandi(ParolaDto? kayit)
+    {
+        formAcik = false;
+        var duzenlemeydi = duzenlenen is not null;
+        duzenlenen = null;
+        if (kayit is null) return;
+
+        // Şifresi değişmiş olabilir: bu kaydın açık değerleri kapanır.
+        foreach (var k in acik.Keys.Where(k => k.StartsWith($"{kayit.Id}:")).ToList()) Gizle(k);
+        await Yukle();
+        Bildir(duzenlemeydi ? "Kaydedildi" : "Kayıt eklendi");
+    }
+
+    private async Task Sil(ParolaDto r)
+    {
+        siliniyor = true;
+        try
+        {
+            var hata = await Api.SilAsync(r.Id);
+            if (hata is not null)
+            {
+                Bildir(hata);
+                return;
+            }
+            foreach (var k in acik.Keys.Where(k => k.StartsWith($"{r.Id}:")).ToList()) Gizle(k);
+            silinecek = null;
+            await Yukle();
+            Bildir("Kayıt silindi");
+        }
+        finally
+        {
+            siliniyor = false;
+        }
+    }
+
+    private void Bildir(string mesaj)
+    {
+        toast = mesaj;
+        toastZamani?.Cancel();
+        toastZamani?.Dispose();
+        var cts = toastZamani = new CancellationTokenSource();
+        _ = Task.Delay(1800, cts.Token).ContinueWith(t =>
+        {
+            if (t.IsCanceled || kapandi) return;
+            InvokeAsync(() =>
+            {
+                toast = null;
+                StateHasChanged();
+            });
+        });
+    }
+
+    public void Dispose()
+    {
+        kapandi = true;
+        foreach (var k in acik.Keys.ToList()) Gizle(k);
+        acik.Clear();
+        toastZamani?.Cancel();
+        toastZamani?.Dispose();
+    }
+}

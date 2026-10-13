@@ -855,6 +855,6 @@
                 { nameof(PdfGoruntuleyiciDialog.PresignedUrl), dosya?.PresignedUrl ?? string.Empty },
                 { nameof(PdfGoruntuleyiciDialog.Baslik), $"{turAdi} · {belge.FileName}" }
             },
-            new DialogOptions { Width = "min(1100px, 96vw)", Height = "88vh", Resizable = true, Draggable = true });
+            PdfGoruntuleyiciDialog.PencereSecenekleri());
     }
 }

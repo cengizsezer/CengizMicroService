@@ -18,13 +18,13 @@
 @inject ILocalStorageService Depo
 
 @*
-    Firma Portföyü — Firma Panosu'nun 3. sekmesi (FirmaPanosuUst). Menüde ayrı satır yok. Taslak: firma-portfoyu.html.
+    Firma Portföyü — Firma Panosu'nun 3. sekmesi (FirmaPanosuUst); menüde Firma Panosu altında "Portföy" satırı. Taslak: firma-portfoyu.html.
 
     Aşama 2: firma + dönem + karşılaştırma seçimi, seçili firmanın 9 göstergesi + portföy düzeyinde TEK gösterge
     ("Mizanı yüklenen firma x / y"), firma tablosu (sıralama, Tümü / ⚠ Mizan sorunlu, arama), satıra tıklayınca detay.
     Altta Aşama 1'in firma × ay mizan matrisi.
 
-    Aşama 3: grafikler wwwroot/js/firmaPortfoyu.js'te (baslat / guncelle / kaldir). Seçili firmanın 12 aylık çizgisi
+    Aşama 3: grafikler wwwroot/js/firmaPortfoyu.js'te (baslat / guncelle / kaldir). Seçili firmanın 12 aylık çizgisi (seçili yılın Ocak–Aralık'ı)
     ve firma bazında net satış çubukları (seçili firma tam opak; tıklayınca seçilir); veri sunucunun Seri[12]'si ve
     göstergeleri (PfGrafikVerisi). Düşen/yükselen ilk 3'er. Firma, dönem, karşılaştırma ya da mizan değişince
     guncelle; sayfadan çıkınca kaldir.
@@ -164,7 +164,7 @@
             <section class="pf-panel">
                 <div class="pf-panel-ust">
                     <span class="pf-panel-ikon">₺</span>
-                    <h2>@f.KisaAd · 12 ay</h2>
+                    <h2>@f.KisaAd · @portfoy!.Yil Ocak–Aralık</h2>
                     <span class="pf-panel-alt">aylık</span>
                     <span class="pf-bosluk"></span>
                     <PfSeriLejanti />
@@ -454,7 +454,7 @@
         try
         {
             referans ??= DotNetObjectReference.Create(this);
-            baslayanCizgi = await Ciz(cizgiOgesi, baslayanCizgi, PfGrafikVerisi.Cizgi(f));
+            baslayanCizgi = await Ciz(cizgiOgesi, baslayanCizgi, PfGrafikVerisi.Cizgi(f, portfoy.Ay));
             baslayanCubuk = await Ciz(cubukOgesi, baslayanCubuk, PfGrafikVerisi.Cubuk(portfoy, f.FirmaId));
         }
         catch (JSException)

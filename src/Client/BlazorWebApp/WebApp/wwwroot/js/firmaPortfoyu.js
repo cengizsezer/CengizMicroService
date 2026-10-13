@@ -9,7 +9,7 @@
 // hiçbir şey eklenmez) — sayfa kapanınca sızıntı kalmaz.
 //
 // Veri:
-//   çizgi: { tur:'cizgi', aylar:[{kisa:'Eki 25', uzun:'Ekim 2025'}], seriler:[{ad, renk, degerler:[n|null]}],
+//   çizgi: { tur:'cizgi', aylar:[{kisa:'Oca 26', uzun:'Ocak 2026'}], seriler:[{ad, renk, degerler:[n|null]}],
 //            notlar:[metin|null], secili:11, yukseklik:260, aria }
 //   çubuk: { tur:'cubuk', satirlar:[{firmaId, ad, deger}], seciliFirmaId, aria }
 // Değeri olmayan ay (null) çizgide BOŞLUKTUR: sıfır çizilmez, iki yanı birleştirilmez.
@@ -69,7 +69,7 @@ function firmaPortfoyuGrafik(kok, ref) {
 
         const degerler = seriler.flatMap(s => (s.degerler || []).filter(x => x != null));
         if (n === 0 || degerler.length === 0) {
-            kok.innerHTML = '<div class="pf-grafik-bos">Bu 12 ayda gösterilecek aylık değer yok (mizan yüklenmedi ya da önceki ay eksik).</div>';
+            kok.innerHTML = '<div class="pf-grafik-bos">Bu yıl gösterilecek aylık değer yok (mizan yüklenmedi ya da önceki ay eksik).</div>';
             return;
         }
 

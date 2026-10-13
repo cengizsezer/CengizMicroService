@@ -188,7 +188,10 @@ namespace CatalogService.Api.Features.FirmaPortfoyu.Dtos
 
         public PortfoyGostergeleriDto Gostergeler { get; set; } = new();
 
-        /// <summary>Seçili aya biten 12 ay, eskiden yeniye.</summary>
+        /// <summary>
+        /// Seçili dönemin yılının Ocak–Aralık'ı (12 eleman, Ocak'tan Aralık'a). Mizanı olmayan ve gelecek aylarda
+        /// değerler null, Not nedeni söyler.
+        /// </summary>
         public List<PortfoyAyDto> Seri { get; set; } = new();
     }
 

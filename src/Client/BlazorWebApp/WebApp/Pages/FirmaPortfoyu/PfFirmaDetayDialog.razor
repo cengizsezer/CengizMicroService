@@ -9,7 +9,8 @@
 @*
     Firma detayı (Firma Portföyü Aşama 2–3) — tablo satırına ya da düşen/yükselen listesine tıklayınca. Taslaktaki
     gibi: 5 gösterge, dengesizlik notu, 12 aylık çizgi grafiğin küçük hali (firmaPortfoyu.js; pencere kapanınca
-    kaldir) ve 12 aylık tablo (yeniden eskiye). Seçili ayın mizanı yoksa son mizanın ayı gösterilir ve bu söylenir.
+    kaldir) ve 12 aylık tablo (yeniden eskiye) — ikisi de seçili yılın Ocak–Aralık'ı. Seçili ayın mizanı yoksa o yılın
+    seçili aya kadarki son mizanının ayı gösterilir ve bu söylenir.
     Bu ekranda da firmalar toplanmaz — tek firma.
     Dönüş: "yukle" (seçili ayın mizanını yükle) ya da null.
 *@
@@ -69,7 +70,7 @@
 
         @if (gosterilen is null)
         {
-            <div class="pf-bos">Son 12 ayda bu firmanın mizanı yok.</div>
+            <div class="pf-bos">@SeriYili yılında bu firmanın mizanı yok.</div>
         }
         else
         {
@@ -95,7 +96,7 @@
 
             <section class="pf-panel" style="box-shadow:none">
                 <div class="pf-panel-ust">
-                    <h2>12 ay</h2>
+                    <h2>@SeriYili Ocak–Aralık</h2>
                     <span class="pf-panel-alt">aylık</span>
                     <span class="pf-bosluk"></span>
                     <PfSeriLejanti />
@@ -124,7 +125,7 @@
                                     <td class="pf-sol pf-mono">@PfAy.Uzun(a.Ay) @a.Yil</td>
                                     @if (!a.Yuklu)
                                     {
-                                        <td colspan="5" class="pf-sol pf-etiket">mizan yüklenmedi</td>
+                                        <td colspan="5" class="pf-sol pf-etiket">@(a.Not ?? "mizan yüklenmedi")</td>
                                     }
                                     else
                                     {
@@ -165,7 +166,7 @@
         grafikBasladi = true;
         try
         {
-            await JS.InvokeVoidAsync("firmaPortfoyu.baslat", grafikOgesi, null, PfGrafikVerisi.Cizgi(Firma, 200));
+            await JS.InvokeVoidAsync("firmaPortfoyu.baslat", grafikOgesi, null, PfGrafikVerisi.Cizgi(Firma, SeciliAyNo, 200));
         }
         catch (JSException)
         {
@@ -188,6 +189,12 @@
 
     private string DonemAdi => PfBicim.DonemAdi(Donem);
 
+    /// <summary>Donem "2026-09" → 9 (seri içinde seçili ay).</summary>
+    private int SeciliAyNo => Donem.Length >= 7 && int.TryParse(Donem.AsSpan(5, 2), out var a) ? a : 12;
+
+    private int SeriYili => Firma.Seri.FirstOrDefault()?.Yil
+                            ?? (Donem.Length >= 4 && int.TryParse(Donem.AsSpan(0, 4), out var y) ? y : DateTime.Today.Year);
+
     /// <summary>Dengesizlik yukarıdaki notta; burada diğer uyarılar.</summary>
     private List<string> DigerUyarilar => Firma.Uyarilar.Where(u => !u.StartsWith("Mizan dengesiz")).ToList();
 
@@ -195,10 +202,11 @@
     {
         rozet = PfBicim.Rozet(Firma.FirmaId, Firma.KisaAd);
 
-        // Seri seçili aya biter: son eleman seçili ay; yoksa son yüklü ay.
-        var son = Firma.Seri.LastOrDefault();
-        seciliAy = son is { Yuklu: true };
-        gosterilen = seciliAy ? son : Firma.Seri.LastOrDefault(a => a.Yuklu);
+        // Seri seçili yılın Ocak–Aralık'ı: seçili ayın elemanı; mizanı yoksa seçili aya kadarki son yüklü ay. Ocak'ın
+        // önceki ayı seride yok (geçen yılın Aralık'ı) — "önceki aya göre" orada "—".
+        var secilen = Firma.Seri.FirstOrDefault(a => a.Ay == SeciliAyNo);
+        seciliAy = secilen is { Yuklu: true };
+        gosterilen = seciliAy ? secilen : Firma.Seri.LastOrDefault(a => a.Yuklu && a.Ay <= SeciliAyNo);
         var i = gosterilen is null ? -1 : Firma.Seri.IndexOf(gosterilen);
         onceki = i > 0 ? Firma.Seri[i - 1] : null;
     }
