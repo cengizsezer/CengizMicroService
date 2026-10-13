@@ -72,6 +72,12 @@ namespace WebApp.Application.Services.Interfaces
         public List<string> Errors { get; set; } = new();
 
         /// <summary>
+        /// Yüklemeyi durdurmayan uyarılar (ör. mizan dengesiz: ana hesaplarda borç bakiye
+        /// toplamı ≠ alacak bakiye toplamı). Satırlar yine okunur.
+        /// </summary>
+        public List<string> Uyarilar { get; set; } = new();
+
+        /// <summary>
         /// Hesap kırılım ağacının düz listesi: hem üç haneli ana hesaplar (seviye 1) hem
         /// alt kırılımlar ("600 1", "600 1 21"). Ağaç yapısı <c>UstKod</c> ile türetilir.
         ///

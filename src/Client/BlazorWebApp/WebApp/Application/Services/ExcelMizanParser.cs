@@ -7,6 +7,14 @@ using WebApp.Domain.Models.FirmaKontrol;
 
 namespace WebApp.Application.Services
 {
+    /// <summary>
+    /// Mizan Excel okuyucusu. Sütunlar SIRAYLA değil BAŞLIK ADIYLA bulunur (MizanBasliklari):
+    /// başlık satırı ilk 10 satırda "Hesap Kodu" içeren satırdır; ilk sayfada yoksa sonraki
+    /// sayfalara bakılır. Zorunlu başlık eksikse sabit sıraya düşülmez, hata döner.
+    ///
+    /// Bakiye = TL Borç Bakiye − TL Alacak Bakiye (yoksa Borç/Alacak Bakiye). Döviz sütunları
+    /// hiçbir zaman bakiye sayılmaz; "Bakiye" sütunu yalnız basit biçimde okunur.
+    /// </summary>
     public class ExcelMizanParser : IExcelMizanParser
     {
         private static int _encodingRegistered;
@@ -32,20 +40,25 @@ namespace WebApp.Application.Services
             {
                 using var reader = ExcelReaderFactory.CreateReader(excelStream);
 
-                int rowIndex = 0;
+                var sutunlar = BaslikBul(reader, out var hata);
+                if (sutunlar is null)
+                {
+                    result.Errors.Add(hata!);
+                    return Task.FromResult(result);
+                }
+
+                // Denge kontrolü yalnız üç haneli ana hesaplar üzerinden (alt kırılımlar aynı
+                // paradır, çift sayılmaz).
+                decimal borcToplami = 0m, alacakToplami = 0m;
+
                 while (reader.Read())
                 {
-                    rowIndex++;
-                    if (rowIndex == 1) continue; // başlık satırı
-
-                    if (reader.FieldCount < 1) continue;
-
-                    var rawKod = SafeGetString(reader, 0);
+                    var rawKod = SafeGetString(reader, sutunlar.Kod);
                     if (string.IsNullOrWhiteSpace(rawKod)) continue; // boş satır - sessiz atla
 
                     var kod = NormalizeKod(rawKod);
-                    var ad = ReadAd(reader);
-                    var bakiye = ReadBakiye(reader);
+                    var ad = ReadAd(reader, sutunlar);
+                    var (borc, alacak, bakiye) = ReadBakiye(reader, sutunlar);
 
                     if (!IsAnaHesapKodu(kod))
                     {
@@ -53,7 +66,7 @@ namespace WebApp.Application.Services
                         // listesine yazılıyor. Ana hesap sözlüğüne (result.Rows) GİRMEZ —
                         // aynı para ikinci kez sayılmasın diye. İlk parçası üç haneli sayı
                         // olmayan satırlar (başlık, toplam, boş) eskisi gibi atlanır.
-                        if (!DugumEkle(result, kod, ad, reader, bakiye))
+                        if (!DugumEkle(result, kod, ad, borc, alacak, bakiye))
                         {
                             result.AtlananSatirlar.Add(new AtlananSatir
                             {
@@ -67,11 +80,10 @@ namespace WebApp.Application.Services
                         continue;
                     }
 
-
                     // Mizan dosyasının son satırı genelde genel toplam satırıdır:
                     // Borç Toplam = Alacak Toplam ve Borç Bakiye = Alacak Bakiye olur.
-                    // A sütununda sayfa numarası (örn. "186") görünebilir; hesap değildir.
-                    if (IsMizanToplamSatiri(reader))
+                    // Kod sütununda sayfa numarası (örn. "186", "233") görünebilir; hesap değildir.
+                    if (IsMizanToplamSatiri(reader, sutunlar, ad, borc, alacak))
                     {
                         result.AtlananSatirlar.Add(new AtlananSatir
                         {
@@ -99,7 +111,10 @@ namespace WebApp.Application.Services
 
                     // Üç haneli ana hesap: mevcut davranış aynen sürer. Ayrıca ağacın kökü
                     // olarak düğüm listesine de eklenir — o liste hiçbir toplamda kullanılmaz.
-                    DugumEkle(result, kod, ad, reader, bakiye);
+                    DugumEkle(result, kod, ad, borc, alacak, bakiye);
+
+                    borcToplami += borc ?? 0m;
+                    alacakToplami += alacak ?? 0m;
 
                     // MockFirmaKontrolService.UpdateMizanFromExcelAsync, "CariDonem ?? OncekiDonem"
                     // okuyup Donem parametresine göre hedef döneme yazıyor; tek alan yeterli.
@@ -110,6 +125,19 @@ namespace WebApp.Application.Services
                         CariDonem = bakiye
                     });
                 }
+
+                // Basit biçimde borç/alacak ayrımı yok; denge ölçülemez.
+                if (!sutunlar.Basit && result.Rows.Count > 0)
+                {
+                    var fark = Math.Round(borcToplami - alacakToplami, 2);
+                    if (fark != 0m)
+                    {
+                        var tr = new CultureInfo("tr-TR");
+                        result.Uyarilar.Add(
+                            $"Mizan dengesiz: ana hesaplarda borç bakiye toplamı {borcToplami.ToString("N2", tr)}, " +
+                            $"alacak bakiye toplamı {alacakToplami.ToString("N2", tr)} (fark {fark.ToString("N2", tr)}).");
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -117,6 +145,33 @@ namespace WebApp.Application.Services
             }
 
             return Task.FromResult(result);
+        }
+
+        /// <summary>
+        /// Başlık satırını bulur ve okuyucuyu onun hemen altına bırakır. Sayfa sayfa, her
+        /// sayfanın ilk <see cref="MizanBasliklari.BaslikArama"/> satırına bakar. "Hesap Kodu"
+        /// satırı bulunur ama zorunlu başlık eksikse diğer sayfalara geçilmez, hata döner.
+        /// </summary>
+        private static MizanSutunlari? BaslikBul(IExcelDataReader reader, out string? hata)
+        {
+            do
+            {
+                for (var satir = 0; satir < MizanBasliklari.BaslikArama && reader.Read(); satir++)
+                {
+                    var hucreler = Enumerable.Range(0, reader.FieldCount)
+                        .Select(i => SafeGetString(reader, i))
+                        .ToList();
+
+                    if (!MizanBasliklari.BaslikSatiriMi(hucreler)) continue;
+
+                    return MizanBasliklari.Esle(hucreler, out hata);
+                }
+            }
+            while (reader.NextResult());
+
+            hata = $"Mizan başlık satırı bulunamadı: hiçbir sayfanın ilk {MizanBasliklari.BaslikArama} " +
+                   "satırında \"Hesap Kodu\" başlığı yok.";
+            return null;
         }
 
         private static bool IsAnaHesapKodu(string kod) =>
@@ -135,7 +190,7 @@ namespace WebApp.Application.Services
         /// eklenen hiçbir kayıt toplamlara girmez.
         /// </summary>
         private static bool DugumEkle(
-            MizanParseResult result, string kod, string? ad, IExcelDataReader reader, decimal? bakiye)
+            MizanParseResult result, string kod, string? ad, decimal? borc, decimal? alacak, decimal? bakiye)
         {
             var parcalar = HesapDugumu.Parcala(kod);
             if (parcalar.Length == 0 || !HesapDugumu.AnaHesapKoduMu(parcalar[0])) return false;
@@ -157,77 +212,81 @@ namespace WebApp.Application.Services
                 return true;
             }
 
-            var borc = ParseDecimal(SafeGetCell(reader, 5)) ?? 0m;
-            var alacak = ParseDecimal(SafeGetCell(reader, 6)) ?? 0m;
-
-            var dugum = HesapDugumu.Olustur(kod, ad, borc, alacak, bakiye);
+            var dugum = HesapDugumu.Olustur(kod, ad, borc ?? 0m, alacak ?? 0m, bakiye);
             if (dugum is null) return false;
 
             result.HesapDugumleri.Add(dugum);
             return true;
         }
 
-        // PROGROUP formatında D (3) ve E (4) borç/alacak toplamları, F (5) ve G (6)
-        // borç/alacak bakiyeleridir. Mizan denklik kontrolü olarak son satırda
-        // bu dört değer ikili-ikili eşit gelir (mizan tutar). Bu, hesap değil,
-        // genel toplam satırıdır; ham olarak ayıklanmalıdır.
-        private static bool IsMizanToplamSatiri(IExcelDataReader reader)
+        /// <summary>
+        /// Genel toplam satırı: hesap adı BOŞ ve borç/alacak toplamları (pozitif) eşit VE
+        /// borç/alacak bakiyeleri eşit. Toplam sütunu olmayan biçimde (döviz sütunlu) ad boş ve
+        /// bakiyeler eşit (pozitif) olmalı.
+        ///
+        /// Adı dolu satır hiçbir zaman toplam satırı değildir: kapanmış hesap (120 ALICILAR,
+        /// borç toplamı = alacak toplamı, bakiye 0) da bu eşitlikleri sağlar ve 0 olarak yazılır.
+        /// </summary>
+        private static bool IsMizanToplamSatiri(
+            IExcelDataReader reader, MizanSutunlari s, string? ad, decimal? borcBakiye, decimal? alacakBakiye)
         {
-            if (reader.FieldCount <= 6) return false;
-
-            var borcToplam = ParseDecimal(SafeGetCell(reader, 3));
-            var alacakToplam = ParseDecimal(SafeGetCell(reader, 4));
-
-            if (!borcToplam.HasValue || !alacakToplam.HasValue) return false;
-            if (borcToplam.Value <= 0m || alacakToplam.Value <= 0m) return false;
+            if (s.Basit) return false;
+            if (!string.IsNullOrWhiteSpace(ad)) return false;
 
             const decimal eps = 0.01m;
-            if (Math.Abs(borcToplam.Value - alacakToplam.Value) >= eps) return false;
+            var borcB = borcBakiye ?? 0m;
+            var alacakB = alacakBakiye ?? 0m;
 
-            var borcBakiye = ParseDecimal(SafeGetCell(reader, 5)) ?? 0m;
-            var alacakBakiye = ParseDecimal(SafeGetCell(reader, 6)) ?? 0m;
+            if (s.BorcToplam is int bt && s.AlacakToplam is int at)
+            {
+                var borcToplam = ParseDecimal(SafeGetCell(reader, bt));
+                var alacakToplam = ParseDecimal(SafeGetCell(reader, at));
 
-            return Math.Abs(borcBakiye - alacakBakiye) < eps;
+                if (!borcToplam.HasValue || !alacakToplam.HasValue) return false;
+                if (borcToplam.Value <= 0m || alacakToplam.Value <= 0m) return false;
+                if (Math.Abs(borcToplam.Value - alacakToplam.Value) >= eps) return false;
+
+                return Math.Abs(borcB - alacakB) < eps;
+            }
+
+            return borcB > 0m && Math.Abs(borcB - alacakB) < eps;
         }
 
-        // PROGROUP formatında B (index 1) hesap adı; basit formatta sayısal bakiye.
-        // ParseDecimal başarılı oluyorsa basit formattır → ad yok.
-        private static string? ReadAd(IExcelDataReader reader)
+        private static string? ReadAd(IExcelDataReader reader, MizanSutunlari s)
         {
-            if (reader.FieldCount < 2) return null;
+            if (s.Ad is not int i) return null;
 
-            var cell = SafeGetCell(reader, 1);
+            var cell = SafeGetCell(reader, i);
             if (cell is null) return null;
+            // Eski okuyucuyla aynı: sayıya çevrilebilen hücre ad sayılmaz.
             if (ParseDecimal(cell).HasValue) return null;
 
-            var s = cell.ToString()?.Trim();
-            return string.IsNullOrWhiteSpace(s) ? null : s;
+            var metin = cell.ToString()?.Trim();
+            return string.IsNullOrWhiteSpace(metin) ? null : metin;
         }
 
-        // PROGROUP formatı (8+ kolon): F (5)=Borç Bakiye, G (6)=Alacak Bakiye, H (7)=Bakiye
-        // Basit format (2 kolon): B (1)=Bakiye
-        private static decimal? ReadBakiye(IExcelDataReader reader)
+        /// <summary>
+        /// (borç bakiye, alacak bakiye, bakiye). Bakiye = borç − alacak. Boş hücre 0'dır (ORKA
+        /// kapanmış hesapta iki bakiyeyi de boş bırakır); hücrede sayıya çevrilemeyen bir şey
+        /// varsa bakiye okunamamıştır (null). Basit biçimde bakiye "Bakiye" sütunundan gelir.
+        /// </summary>
+        private static (decimal? Borc, decimal? Alacak, decimal? Bakiye) ReadBakiye(IExcelDataReader reader, MizanSutunlari s)
         {
-            if (reader.FieldCount > 7)
-            {
-                var hesaplanmis = ParseDecimal(SafeGetCell(reader, 7));
-                if (hesaplanmis.HasValue) return hesaplanmis;
-            }
+            if (s.BasitBakiye is int b)
+                return (null, null, ParseDecimal(SafeGetCell(reader, b)));
 
-            if (reader.FieldCount > 6)
-            {
-                var borc = ParseDecimal(SafeGetCell(reader, 5)) ?? 0m;
-                var alacak = ParseDecimal(SafeGetCell(reader, 6)) ?? 0m;
-                if (borc != 0m || alacak != 0m) return borc - alacak;
-            }
+            var borcHucre = SafeGetCell(reader, s.BorcBakiye!.Value);
+            var alacakHucre = SafeGetCell(reader, s.AlacakBakiye!.Value);
+            var borc = ParseDecimal(borcHucre);
+            var alacak = ParseDecimal(alacakHucre);
 
-            if (reader.FieldCount > 1)
-            {
-                return ParseDecimal(SafeGetCell(reader, 1));
-            }
+            if ((borc is null && !Bos(borcHucre)) || (alacak is null && !Bos(alacakHucre)))
+                return (borc, alacak, null);
 
-            return null;
+            return (borc, alacak, (borc ?? 0m) - (alacak ?? 0m));
         }
+
+        private static bool Bos(object? hucre) => string.IsNullOrWhiteSpace(hucre?.ToString());
 
         private static string NormalizeKod(string raw)
         {
@@ -246,7 +305,7 @@ namespace WebApp.Application.Services
         {
             try
             {
-                if (reader.IsDBNull(idx)) return null;
+                if (idx >= reader.FieldCount || reader.IsDBNull(idx)) return null;
                 var val = reader.GetValue(idx);
                 return val?.ToString();
             }
@@ -257,7 +316,7 @@ namespace WebApp.Application.Services
         {
             try
             {
-                if (reader.IsDBNull(idx)) return null;
+                if (idx >= reader.FieldCount || reader.IsDBNull(idx)) return null;
                 return reader.GetValue(idx);
             }
             catch { return null; }

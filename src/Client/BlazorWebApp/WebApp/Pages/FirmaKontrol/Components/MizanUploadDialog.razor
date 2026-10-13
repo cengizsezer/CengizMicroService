@@ -19,10 +19,10 @@
             <br />
             <strong>Beklenen Excel formatı:</strong>
             <ul style="margin: 0.5rem 0 0 1.25rem; padding: 0;">
-                <li>İlk satır <em>başlık</em> (atlanır)</li>
-                <li>A: Hesap Kodu (örn. <code>100</code>, <code>120</code>) — sadece <strong>3 haneli ana kodlar</strong> alınır, alt kırılımlar (<code>120 1 1</code> gibi) atlanır</li>
-                <li>F: TL Borç Bakiye, G: TL Alacak Bakiye (PROGROUP formatı) <em>veya</em> H: Bakiye</li>
-                <li>Alternatif basit format: B: Bakiye (TL)</li>
+                <li>Sütunlar <em>başlık adıyla</em> bulunur (sıra önemli değil); başlık satırı ilk 10 satırda "Hesap Kodu" içeren satırdır</li>
+                <li>Zorunlu: <strong>Hesap Kodu</strong>, <strong>Hesap Adı</strong>, <strong>TL Borç Bakiye</strong>, <strong>TL Alacak Bakiye</strong> (yoksa Borç Bakiye / Alacak Bakiye) — döviz sütunları okunmaz</li>
+                <li>Sadece <strong>3 haneli ana kodlar</strong> (örn. <code>100</code>, <code>120</code>) hesaplara yazılır, alt kırılımlar (<code>120 1 1</code> gibi) atlanır</li>
+                <li>Alternatif basit format: yalnız "Hesap Kodu" ve "Bakiye" başlıkları</li>
             </ul>
         </RadzenAlert>
 
@@ -42,6 +42,11 @@
         @if (!string.IsNullOrEmpty(error))
         {
             <RadzenAlert AlertStyle="AlertStyle.Danger" ShowIcon="true">@error</RadzenAlert>
+        }
+
+        @foreach (var uyari in uyarilar)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" Shade="Shade.Lighter" AllowClose="false">@uyari</RadzenAlert>
         }
 
         @if (lastResult is not null)
@@ -116,6 +121,7 @@
 
     private bool busy;
     private string? error;
+    private List<string> uyarilar = new();
     private MizanUpdateResult? lastResult;
     private bool uploaded;
     private bool showDetay;
@@ -168,6 +174,7 @@
     private async Task OnFileSelected(InputFileChangeEventArgs args)
     {
         error = null;
+        uyarilar = new();
         lastResult = null;
 
         var file = args.File;
@@ -185,6 +192,7 @@
             ms.Position = 0;
 
             var parsed = await Parser.ParseAsync(ms);
+            uyarilar = parsed.Uyarilar.ToList();
 
             if (parsed.Errors.Count > 0)
             {
