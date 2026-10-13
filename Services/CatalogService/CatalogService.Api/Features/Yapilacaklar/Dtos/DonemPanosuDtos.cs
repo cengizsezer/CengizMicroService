@@ -55,6 +55,21 @@ namespace CatalogService.Api.Features.Yapilacaklar.Dtos
 
         public int Gecerli { get; set; }
         public int Yapilan { get; set; }
+
+        /// <summary>
+        /// Aynı firmada aynı başlık + tekrarlı ikinci özel iş: kolona sığmadığı için bu ayda gösterilmedi,
+        /// sayılmadı. Uyarı rozeti için; boşsa çakışma yok.
+        /// </summary>
+        public List<DonemGizlenenIsDto> GizlenenIsler { get; set; } = new();
+    }
+
+    /// <summary>Matriste gösterilemeyen özel iş: aynı firmada aynı kolon anahtarı (<see cref="GosterilenIsId"/> gösterildi).</summary>
+    public class DonemGizlenenIsDto
+    {
+        public int IsId { get; set; }
+        public string Baslik { get; set; } = string.Empty;
+        public IsTekrari Tekrar { get; set; }
+        public int GosterilenIsId { get; set; }
     }
 
     /// <summary>Eksiklerin yoğunlaştığı iş: "Fatura girişi 3 firmada".</summary>
@@ -242,6 +257,9 @@ namespace CatalogService.Api.Features.Yapilacaklar.Dtos
 
         /// <summary><see cref="DonemOzetiDto.Donemler"/> ile aynı sırada.</summary>
         public List<DonemOzetHucreDto> Hucreler { get; set; } = new();
+
+        /// <summary>Özetteki herhangi bir ayda gösterilemeyen özel işler (İş Id'sine göre tekil).</summary>
+        public List<DonemGizlenenIsDto> GizlenenIsler { get; set; } = new();
     }
 
     /// <summary>Özet sheet ve sekme şeridi: içinde bulunulan ay + önceki aylar, eskiden yeniye.</summary>

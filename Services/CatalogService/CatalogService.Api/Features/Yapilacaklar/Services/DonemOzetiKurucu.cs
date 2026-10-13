@@ -86,6 +86,8 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
                 foreach (var pano in panolar)
                 {
                     var s = pano.Satirlar.First(x => x.FirmaId == firma.FirmaId);
+                    foreach (var g in s.GizlenenIsler.Where(g => satir.GizlenenIsler.All(x => x.IsId != g.IsId)))
+                        satir.GizlenenIsler.Add(g);
                     satir.Hucreler.Add(new DonemOzetHucreDto
                     {
                         Gecerli = s.Gecerli,

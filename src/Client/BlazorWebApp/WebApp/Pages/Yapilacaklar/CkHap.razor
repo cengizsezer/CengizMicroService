@@ -1,0 +1,62 @@
+@*
+    Filtre hapı (Firma Panosu · Aşama 1): çoklu seçimli açılır menü. Seçim varsa hap renklenir ve seçili sayısını
+    rozetle gösterir. Menü dışına tıklayınca kapanır (şeffaf perde; JS yok). Seçimi sayfa tutar (adreste) —
+    bileşen yalnız yeni kümeyi haber verir. .ck-kok içinde çizilmeli (CkStiller).
+*@
+
+<span class="ck-hap ck-acilir">
+    <button type="button" data-secili="@(Secili.Count > 0 ? "true" : "false")" aria-haspopup="true" aria-expanded="@(acik ? "true" : "false")"
+            disabled="@(Secenekler.Count == 0 && Secili.Count == 0)" @onclick="@(() => acik = !acik)">
+        @Ad
+        @if (Secili.Count > 0)
+        {
+            <span class="ck-hap-sayi">@Secili.Count</span>
+        }
+        <span class="ck-ok">▼</span>
+    </button>
+    @if (acik)
+    {
+        <div class="ck-perde" @onclick="@(() => acik = false)"></div>
+        <div class="ck-menu" role="group" aria-label="@Ad">
+            @foreach (var s in Secenekler)
+            {
+                <label>
+                    <input type="checkbox" checked="@Secili.Contains(s.Deger)" @onchange="@(() => Degistir(s.Deger))" />
+                    @s.Ad
+                    @if (s.Sayi is { } n)
+                    {
+                        <span class="ck-menu-sayi">@n</span>
+                    }
+                </label>
+            }
+            @* Seçili ama artık seçeneklerde olmayan değer (ör. adresten gelen eski sorumlu) kaldırılabilsin. *@
+            @foreach (var d in Secili.Where(d => Secenekler.All(s => s.Deger != d)))
+            {
+                <label>
+                    <input type="checkbox" checked @onchange="@(() => Degistir(d))" />
+                    <span style="color:var(--ck-silik)">@d (bu filtrede yok)</span>
+                </label>
+            }
+        </div>
+    }
+</span>
+
+@code {
+    public sealed record Secenek(string Deger, string Ad, int? Sayi = null);
+
+    [Parameter, EditorRequired] public string Ad { get; set; } = string.Empty;
+    [Parameter] public IReadOnlyList<Secenek> Secenekler { get; set; } = Array.Empty<Secenek>();
+    [Parameter] public IReadOnlySet<string> Secili { get; set; } = new HashSet<string>();
+
+    /// <summary>Yeni seçim kümesi (boş = filtre yok).</summary>
+    [Parameter] public EventCallback<HashSet<string>> Degisti { get; set; }
+
+    private bool acik;
+
+    private Task Degistir(string deger)
+    {
+        var yeni = new HashSet<string>(Secili);
+        if (!yeni.Remove(deger)) yeni.Add(deger);
+        return Degisti.InvokeAsync(yeni);
+    }
+}

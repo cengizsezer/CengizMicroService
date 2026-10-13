@@ -102,6 +102,20 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<Features.Yapilacaklar.Domain.IsTarifiEki> IsTarifiEkleri
             => Set<Features.Yapilacaklar.Domain.IsTarifiEki>();
 
+        // Firma Panosu Aşama 2: iş kategorileri (global) ve yasal işler için mükellefiyet kodu eşlemesi.
+        public DbSet<Features.Yapilacaklar.Domain.IsKategorisi> IsKategorileri
+            => Set<Features.Yapilacaklar.Domain.IsKategorisi>();
+
+        public DbSet<Features.Yapilacaklar.Domain.MukellefiyetKategorisi> MukellefiyetKategorileri
+            => Set<Features.Yapilacaklar.Domain.MukellefiyetKategorisi>();
+
+        // Firma Panosu Aşama 3: checklist şablonları (global iş tanımı paketleri).
+        public DbSet<Features.Yapilacaklar.Domain.ChecklistSablonu> ChecklistSablonlari
+            => Set<Features.Yapilacaklar.Domain.ChecklistSablonu>();
+
+        public DbSet<Features.Yapilacaklar.Domain.ChecklistSablonMaddesi> ChecklistSablonMaddeleri
+            => Set<Features.Yapilacaklar.Domain.ChecklistSablonMaddesi>();
+
         // Takip panosu (Prompt 14): firmanın kişileri — alıcılar KisiId ile bağlanır.
         public DbSet<Features.Yapilacaklar.Domain.Kisi> Kisiler
             => Set<Features.Yapilacaklar.Domain.Kisi>();
@@ -264,6 +278,10 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new IsTarifiEntityTypeConfiguration());
             builder.ApplyConfiguration(new IsTarifiEkiEntityTypeConfiguration());
             builder.ApplyConfiguration(new KisiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new IsKategorisiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new MukellefiyetKategorisiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new ChecklistSablonuEntityTypeConfiguration());
+            builder.ApplyConfiguration(new ChecklistSablonMaddesiEntityTypeConfiguration());
             builder.ApplyConfiguration(new SistemEntityTypeConfiguration());
             builder.ApplyConfiguration(new FirmaSistemiEntityTypeConfiguration());
             builder.ApplyConfiguration(new VergiTakvimiEntityTypeConfiguration());

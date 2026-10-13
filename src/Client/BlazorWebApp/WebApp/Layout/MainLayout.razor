@@ -86,12 +86,13 @@
                 @* Giriş sonrası varsayılan sayfa; kartları ilgili ekranlara götürüyor. *@
                 <RadzenPanelMenuItem Text="Anasayfa" Icon="dashboard" Path="/anasayfa" />
 
-                @* İş Takip Panosu (Prompt 15, eski adı "Dönem panosu"): dönem merkezli — "Ağustos kapandı mı".
-                   Anasayfa'nın hemen altında; eski /donem-panosu adresi buraya yönlenir. *@
-                <RadzenPanelMenuItem Text="İş Takip Panosu" Icon="grid_on" Path="/is-takip-panosu" />
-
-                @* Bütün firmaların işleri aciliyete göre; Beyannameler maddesi yerinde kalır. *@
-                <RadzenPanelMenuItem Text="Yapılacaklar" Icon="checklist" Path="/yapilacaklar" />
+                @* Firma Panosu (Aşama 1): İş Takip ve Yapılacaklar tek grupta, Anasayfa'nın hemen altında. Grup başlığının
+                   Path'i YOK (yalnız açılır); iki sayfanın üstünde aynı sekme şeridi (FirmaPanosuUst). Adresler değişmedi;
+                   eski /donem-panosu adresi /is-takip-panosu'na yönlenir. Beyannameler maddesi yerinde kalır. *@
+                <RadzenPanelMenuItem Text="Firma Panosu" Icon="space_dashboard">
+                    <RadzenPanelMenuItem Text="İş Takip" Icon="grid_on" Path="/is-takip-panosu" />
+                    <RadzenPanelMenuItem Text="Yapılacaklar" Icon="checklist" Path="/yapilacaklar" />
+                </RadzenPanelMenuItem>
 
                 <RadzenPanelMenuItem Text="Şirket" Icon="business_center">
                     @if (canViewCalendar)
@@ -239,6 +240,10 @@
                     <RadzenPanelMenuItem Text="Vergi Takvimi" Icon="event_note" Path="/yonetim/vergi-takvimi" />
                     @* Kullanılan sistemler kartının ortak listesi: yeniden adlandır, birleştir, pasife al. *@
                     <RadzenPanelMenuItem Text="Sistemler" Icon="apps" Path="/yonetim/sistemler" />
+                    @* Firma Panosu Aşama 2: checklist kartının bölümleri, kategorisiz işler, yasal kod eşlemesi. *@
+                    <RadzenPanelMenuItem Text="İş Kategorileri" Icon="category" Path="/yonetim/is-kategorileri" />
+                    @* Firma Panosu Aşama 3: iş tanımı paketleri — "＋ Yeni checklist" penceresi bunlardan iş oluşturur. *@
+                    <RadzenPanelMenuItem Text="Checklist Şablonları" Icon="playlist_add_check" Path="/yonetim/checklist-sablonlari" />
                     @if (canViewAjanlar)
                     {
                         @* Ajan yönetimi rolde değil izinde: pkf kullanıcılarının Admin

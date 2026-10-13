@@ -1,0 +1,73 @@
+﻿@using Radzen
+@using WebApp.Application.Services
+@using WebApp.Pages.Anasayfa
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@inject IYapilacaklarApiClient Api
+@inject DialogService DialogService
+@inject NotificationService Bildirim
+
+@*
+    İş Takip firma satırının uyarısı: aynı firmada aynı başlık + tekrarlı özel işin biri kolona sığmadı
+    (DonemPanosuKurucu) — gösterilmedi, sayılmadı. Sessizce kaybolmasın diye burada görünür. Tıklayınca gizlenen
+    işin düzenleme dialogu açılır (yeniden adlandır ya da pasife al). Otomatik birleştirme/silme YOK.
+    Stil DonemPanosuPage'deki .dp-ayni-ad.
+*@
+
+@foreach (var g in Isler.GroupBy(i => i.GosterilenIsId).OrderBy(g => g.Key))
+{
+    var gizli = g.OrderBy(i => i.IsId).ToList();
+    var n = gizli.Count + 1;
+    <button type="button" class="dp-ayni-ad" disabled="@acik" @onclick="@(() => Duzenle(gizli[0].IsId))" @onclick:stopPropagation="true"
+            title="@Ipucu(gizli, n)" aria-label="@Metin(n)">⚠ aynı ad</button>
+}
+
+@code {
+    [Parameter, EditorRequired] public int FirmaId { get; set; }
+    [Parameter, EditorRequired] public string FirmaAdi { get; set; } = string.Empty;
+    [Parameter] public IReadOnlyList<DonemGizlenenIsDto> Isler { get; set; } = Array.Empty<DonemGizlenenIsDto>();
+
+    /// <summary>İş kaydedildi — ekran tazelensin (rozet de kalkar ya da kalır).</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    private bool acik;
+
+    private static string Metin(int n)
+        => $"Bu firmada aynı başlıklı {n} iş var, {(n == 2 ? "biri" : $"{n - 1} tanesi")} gösterilmiyor";
+
+    private static string Ipucu(List<DonemGizlenenIsDto> gizli, int n)
+        => Metin(n) + "\n"
+           + string.Join("\n", gizli.Select(i => $"Gösterilmeyen: {i.Baslik} · #{i.IsId} (gösterilen #{i.GosterilenIsId})"))
+           + $"\nTıkla: #{gizli[0].IsId} düzenlenir — yeniden adlandır ya da pasife al.";
+
+    private async Task Duzenle(int isId)
+    {
+        acik = true;
+        try
+        {
+            var kart = await Api.FirmaIsleriAsync(FirmaId);
+            var tanim = kart?.OzelTanimlar.FirstOrDefault(t => t.Id == isId);
+            if (kart is null || tanim is null)
+            {
+                Bildirim.Notify(NotificationSeverity.Warning, "İş bulunamadı", $"#{isId} açılamadı; silinmiş olabilir. Ekranı yenileyin.");
+                return;
+            }
+
+            var kaydedildi = await DialogService.OpenAsync<FirmaIsiDialog>(
+                $"İşi düzenle — {FirmaAdi} · #{isId}",
+                new Dictionary<string, object?>
+                {
+                    { nameof(FirmaIsiDialog.FirmaId), FirmaId },
+                    { nameof(FirmaIsiDialog.Kart), kart },
+                    { nameof(FirmaIsiDialog.Mevcut), tanim }
+                }!,
+                new DialogOptions { Width = "min(640px, 96vw)" });
+
+            if (kaydedildi is true) await Degisti.InvokeAsync();
+        }
+        finally
+        {
+            acik = false;
+        }
+    }
+}

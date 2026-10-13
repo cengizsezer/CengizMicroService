@@ -123,6 +123,15 @@
                                             AllowClear="true" Placeholder="Firmanın sorumlusu" Style="width:100%" />
                         </div>
 
+                        @* Firma Panosu Aşama 2: kartın bölümü. Boş = iş tarifinin kategorisi, o da yoksa "Diğer". *@
+                        <div>
+                            <RadzenLabel Text="Kategori" Component="kategori" />
+                            <RadzenDropDown Name="kategori" TValue="int?" Data="@KategoriSecenekleri" TextProperty="Ad" ValueProperty="Deger"
+                                            @bind-Value="model.KategoriId" AllowClear="true"
+                                            Placeholder="İş tarifinden ya da Diğer" Style="width:100%" />
+                            <div class="ys-alt">Checklist kartında hangi bölümde dursun. Boş bırakılırsa iş tarifinin kategorisi, o da yoksa "Diğer".</div>
+                        </div>
+
                         @if (Mevcut is not null)
                         {
                             <div>
@@ -217,7 +226,21 @@
         </Tabs>
     </RadzenTabs>
 
-    @if (hata is not null)
+    @if (ayniAd is not null)
+    {
+        @* Sunucu 409: aynı firmada aynı başlık + tekrar. İş Takip matrisi ikisinden birini gösteremez; ısrar serbest. *@
+        <RadzenAlert AlertStyle="AlertStyle.Warning" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">
+            Bu firmada aynı adlı bir iş zaten var (<b>@ayniAd.MevcutBaslik</b> · #@ayniAd.MevcutId@(ayniAd.MevcutAktif ? "" : ", pasif")).
+            Yine de kaydedilsin mi?
+            <div style="margin-top:6px; display:flex; gap:8px">
+                <RadzenButton Text="Yine de kaydet" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Warning" IsBusy="@kaydediliyor"
+                              Click="@(() => Kaydet(israr: true))" />
+                <RadzenButton Text="Başlığı değiştir" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light"
+                              Click="@(() => { ayniAd = null; sekme = 0; })" />
+            </div>
+        </RadzenAlert>
+    }
+    else if (hata is not null)
     {
         <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">@hata</RadzenAlert>
     }
@@ -225,7 +248,7 @@
     <div class="ys-form-dugmeler">
         <RadzenButton Text="Vazgeç" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(false))" />
         <RadzenButton Text="Kaydet" ButtonStyle="ButtonStyle.Primary" IsBusy="@kaydediliyor"
-                      Disabled="@(!Yasal && string.IsNullOrWhiteSpace(model.Baslik))" Click="@Kaydet" />
+                      Disabled="@(!Yasal && string.IsNullOrWhiteSpace(model.Baslik))" Click="@(() => Kaydet(israr: false))" />
     </div>
 </div>
 
@@ -264,9 +287,11 @@
     private List<Secenek<string>> onAdimSecenekleri = new();
     private string? onAdimAnahtar;
     private List<UserListItemDto> kullanicilar = new();
+    private List<IsKategorisiDto> kategoriler = new();
     private int sekme;
     private bool kaydediliyor;
     private string? hata;
+    private IsAyniAdDto? ayniAd;
 
     private sealed record Secenek<T>(T Deger, string Ad);
 
@@ -294,6 +319,12 @@
             $"{s.Ad} · {WebApp.Shared.Dto.Sistemler.SistemMetin.Tur(s.Tur)}{(s.Firmanin ? " · firmanın" : "")}{(s.Aktif ? "" : " · pasif")}"))
         .ToList();
 
+    /// <summary>Aktif kategoriler; işin kayıtlı kategorisi pasifse o da (adının yanında "pasif") — seçim kaybolmasın.</summary>
+    private List<Secenek<int?>> KategoriSecenekleri => kategoriler
+        .Where(k => k.Aktif || k.Id == Mevcut?.KategoriId)
+        .Select(k => new Secenek<int?>(k.Id, k.Aktif ? k.Ad : $"{k.Ad} · pasif"))
+        .ToList();
+
     private static readonly List<Secenek<AliciTipi>> AliciTipleri = new()
     {
         new(AliciTipi.Kime, "Kime"),
@@ -318,6 +349,7 @@
                 SorumluKullaniciId = Mevcut.SorumluKullaniciId,
                 SorumluKullaniciAdi = Mevcut.SorumluKullaniciAdi,
                 Aktif = Mevcut.Aktif,
+                KategoriId = Mevcut.KategoriId,
                 SistemId = Mevcut.SistemId,
                 MenuYolu = Mevcut.MenuYolu,
                 NasilYapilir = Mevcut.NasilYapilir
@@ -342,6 +374,9 @@
         if (alicilar.Count > 0) await Onizle();
 
         if (Yasal) return;
+
+        // Liste alınamazsa seçim boş kalır; kayıtlı kategori yine gönderilir (model.KategoriId).
+        kategoriler = (await Api.KategorilerAsync()).Liste ?? new();
 
         try
         {
@@ -423,9 +458,10 @@
         }
     }
 
-    private async Task Kaydet()
+    private async Task Kaydet(bool israr)
     {
         hata = null;
+        ayniAd = null;
 
         // Boş bırakılan alıcı satırı (adı yok) kaydedilmez.
         var gonderilecek = alicilar.Where(a => !string.IsNullOrWhiteSpace(a.AdSoyad)).ToList();
@@ -464,9 +500,12 @@
                 model.SorumluKullaniciAdi = kullanicilar.FirstOrDefault(k => k.Id == model.SorumluKullaniciId)?.DisplayName
                                             ?? (model.SorumluKullaniciId == Mevcut?.SorumluKullaniciId ? Mevcut?.SorumluKullaniciAdi : null);
 
-                hata = Mevcut is null
+                model.Israr = israr;
+                var sonuc = Mevcut is null
                     ? await Api.IsEkleAsync(FirmaId, model)
                     : await Api.IsGuncelleAsync(FirmaId, Mevcut.Id, model);
+                model.Israr = false;   // ısrar yalnız bu istek için; başlık değişirse yeniden sorulur
+                (hata, ayniAd) = (sonuc.Hata, sonuc.AyniAd);
                 model.IlkDonem = secilenAy;   // hata olursa form seçimi göstermeye devam etsin
             }
         }

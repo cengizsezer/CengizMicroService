@@ -222,7 +222,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
             bugun = bugun.Date;
 
             return satirlar
-                .GroupBy(s => $"{(byte)s.KaynakTip}|{s.Baslik.Trim().ToUpper(IsTakvimHesabi.Tr)}|{s.SonGun:yyyyMMdd}")
+                .GroupBy(GrupAnahtari)
                 .Select(g =>
                 {
                     var ilk = g.First();
@@ -251,6 +251,10 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
                 .ThenBy(g => g.Baslik, StringComparer.Create(IsTakvimHesabi.Tr, true))
                 .ToList();
         }
+
+        /// <summary>"Aynı iş" anahtarı: tür + ad (büyük/küçük harf, baş/son boşluk yok sayılır) + son gün.</summary>
+        public static string GrupAnahtari(IsSatiriDto s)
+            => $"{(byte)s.KaynakTip}|{s.Baslik.Trim().ToUpper(IsTakvimHesabi.Tr)}|{s.SonGun:yyyyMMdd}";
 
         /// <summary>Anasayfa şeridi: Yapılacaklar'ın filtresiz satır sayıları (aynı gruplama).</summary>
         public static YapilacaklarOzetDto Ozet(IEnumerable<IsGrubuDto> gruplar)
@@ -305,6 +309,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
                                         IReadOnlyDictionary<int, string>? sistemAdlari = null) => new()
         {
             YasalMukellefiyetKodu = t.YasalMukellefiyetKodu,
+            KategoriId = t.KategoriId,
             SistemId = t.SistemId,
             SistemAdi = t.SistemId is { } s && sistemAdlari is not null && sistemAdlari.TryGetValue(s, out var sAd) ? sAd : null,
             MenuYolu = t.MenuYolu,

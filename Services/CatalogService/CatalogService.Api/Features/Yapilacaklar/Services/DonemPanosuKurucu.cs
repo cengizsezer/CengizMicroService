@@ -28,6 +28,14 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
         private sealed record Hucre(string Kolon, string Baslik, IsKaynagi Tip, IsTekrari Tekrar, string? Kod,
                                     int KaynakId, string Anahtar, IsTamamlama? Tamam, DateTime? SonGun, FirmaIsi? Prosedur);
 
+        /// <summary>
+        /// Özel işin matris kolonu: başlık (Trim + Türkçe büyük harf) + tekrar. Firmalar ARASI aynı başlık
+        /// bilinçli olarak tek kolondur. Aynı firmada aynı anahtarlı ikinci iş kolona sığmaz; gösterilmez ama
+        /// <see cref="DonemPanosuSatirDto.GizlenenIsler"/>'e yazılır. Ekleme uyarısı da bu kuralı kullanır.
+        /// </summary>
+        public static string OzelKolonAnahtari(string baslik, IsTekrari tekrar)
+            => $"O|{baslik.Trim().ToUpper(IsTakvimHesabi.Tr)}|{(byte)tekrar}";
+
         /// <param name="ekSayilari">Tamamlama Id → dönem eki sayısı.</param>
         /// <param name="sistemAdlari">Sistem Id → ad (satır listesinin program çipi).</param>
         public static DonemPanosuDto Kur(int yil, int ay,
@@ -55,11 +63,13 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
                 .GroupBy(i => (i.FirmaId, Kod: i.YasalMukellefiyetKodu!, i.Tekrar))
                 .ToDictionary(g => g.Key, g => g.First());
 
-            var firmaHucreleri = new List<(YapilacaklarKurucu.FirmaGirdisi Firma, Dictionary<string, Hucre> Hucreler)>();
+            var firmaHucreleri = new List<(YapilacaklarKurucu.FirmaGirdisi Firma, Dictionary<string, Hucre> Hucreler,
+                                           List<DonemGizlenenIsDto> Gizlenenler)>();
 
             foreach (var firma in firmalar)
             {
                 var hucreler = new Dictionary<string, Hucre>();
+                var gizlenenler = new List<DonemGizlenenIsDto>();
 
                 // ---- Yasal ----
                 foreach (var t in takvimSatirlari.Where(t => firma.Kodlar.Contains(t.MukellefiyetKodu))
@@ -102,12 +112,20 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
                     tamamlar.TryGetValue((IsKaynagi.Ozel, isi.Id, firma.FirmaId, anahtar), out var tamam);
                     if (!isi.Aktif && tamam is not { Yapildi: true }) continue;   // pasif iş: yalnız yapılmış dönemi
 
-                    var kolon = $"O|{isi.Baslik.Trim().ToUpper(IsTakvimHesabi.Tr)}|{(byte)isi.Tekrar}";
-                    hucreler.TryAdd(kolon, new Hucre(kolon, isi.Baslik.Trim(), IsKaynagi.Ozel, isi.Tekrar, null, isi.Id, anahtar, tamam,
-                                                     sonGun, isi));
+                    var kolon = OzelKolonAnahtari(isi.Baslik, isi.Tekrar);
+                    if (!hucreler.TryAdd(kolon, new Hucre(kolon, isi.Baslik.Trim(), IsKaynagi.Ozel, isi.Tekrar, null, isi.Id, anahtar, tamam,
+                                                          sonGun, isi)))
+                    {
+                        // Aynı firmada aynı kolona düşen ikinci iş: sayılmaz (sayımlar değişmesin), ama sessizce
+                        // de kaybolmaz — firma satırında uyarı olur, kullanıcı yeniden adlandırır ya da pasife alır.
+                        gizlenenler.Add(new DonemGizlenenIsDto
+                        {
+                            IsId = isi.Id, Baslik = isi.Baslik.Trim(), Tekrar = isi.Tekrar, GosterilenIsId = hucreler[kolon].KaynakId
+                        });
+                    }
                 }
 
-                firmaHucreleri.Add((firma, hucreler));
+                firmaHucreleri.Add((firma, hucreler, gizlenenler));
             }
 
             // Kolonlar: en az bir firmada geçerli olanlar; boş kolon çizilmez. Yasal önce (koda göre), sonra özel.
@@ -134,9 +152,9 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
                 Kolonlar = kolonlar
             };
 
-            foreach (var (firma, hucreler) in firmaHucreleri.OrderBy(f => f.Firma.Ad, tr))
+            foreach (var (firma, hucreler, gizlenenler) in firmaHucreleri.OrderBy(f => f.Firma.Ad, tr))
             {
-                var satir = new DonemPanosuSatirDto { FirmaId = firma.FirmaId, FirmaAdi = firma.Ad };
+                var satir = new DonemPanosuSatirDto { FirmaId = firma.FirmaId, FirmaAdi = firma.Ad, GizlenenIsler = gizlenenler };
 
                 foreach (var kolon in kolonlar)
                 {

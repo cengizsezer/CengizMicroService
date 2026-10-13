@@ -1,0 +1,241 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@inject IYapilacaklarApiClient Api
+@inject DialogService DialogService
+
+@*
+    Checklist şablonu düzenleyicisi (Firma Panosu Aşama 3; Yönetim → Checklist Şablonları). Ad, açıklama, aktiflik ve
+    madde satırları: başlık, tekrar, gün kuralı, kategori, iş tarifi; sıra yukarı/aşağı.
+
+    Şablon yalnız firmaya özel iş üretir: tek seferlik madde yok (tarih şablonda anlamsız), yasal madde yok. Kurallar
+    sunucuda (ChecklistSablonService); burada yalnız form. Kaydetmek daha önce oluşmuş işleri DEĞİŞTİRMEZ.
+    Dönüş: kaydedilen ChecklistSablonuDto (vazgeçte null).
+*@
+
+<div class="ck-kok ck-dlg">
+    <div class="ck-dlg-ust">
+        <div style="flex:1;min-width:0">
+            <h3>@(Mevcut is null ? "Yeni şablon" : Mevcut.Ad)</h3>
+            <div class="ck-dlg-ozet">
+                @if (Mevcut is { KullanimSayisi: > 0 })
+                {
+                    <text>@Mevcut.KullanimSayisi işte kullanıldı. Değişiklik yalnız bundan sonra oluşturulacak işlere uygulanır.</text>
+                }
+                else
+                {
+                    <text>Maddeler firmaya özel iş olarak eklenir; yasal işler mükellefiyetten gelir.</text>
+                }
+            </div>
+        </div>
+        <button type="button" class="ck-kapat" aria-label="Kapat" @onclick="@(() => DialogService.Close())">×</button>
+    </div>
+
+    <div class="ck-form">
+        <div class="ck-form-satir">
+            <div>
+                <div class="ck-etiket-baslik">Ad</div>
+                <input type="text" class="ck-girdi" maxlength="100" @bind="ad" placeholder="ör. Ay sonu kapanış" />
+            </div>
+            <div>
+                <div class="ck-etiket-baslik">Durum</div>
+                <label style="display:flex;gap:6px;align-items:center;margin:6px 0 0;font-weight:400">
+                    <input type="checkbox" @bind="aktif" /> Aktif (pasif şablondan iş oluşturulmaz)
+                </label>
+            </div>
+        </div>
+        <div>
+            <div class="ck-etiket-baslik">Açıklama</div>
+            <input type="text" class="ck-girdi" maxlength="500" @bind="aciklama" placeholder="Pencerede şablon kartında görünür" />
+        </div>
+
+        <div>
+            <div class="ck-etiket-baslik">Maddeler · @satirlar.Count</div>
+            <table class="ck-tablo">
+                <thead>
+                    <tr>
+                        <th style="width:56px">Sıra</th>
+                        <th>Başlık</th>
+                        <th style="width:120px">Tekrar</th>
+                        <th style="width:190px">Gün kuralı</th>
+                        <th style="width:150px">Kategori</th>
+                        <th style="width:160px">İş tarifi</th>
+                        <th style="width:30px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < satirlar.Count; i++)
+                    {
+                        var s = satirlar[i];
+                        var sira = i;
+                        <tr @key="s">
+                            <td style="white-space:nowrap">
+                                <button type="button" class="ck-ok-dugme" title="Yukarı" disabled="@(sira == 0)" @onclick="@(() => Tasi(sira, -1))">▲</button>
+                                <button type="button" class="ck-ok-dugme" title="Aşağı" disabled="@(sira == satirlar.Count - 1)" @onclick="@(() => Tasi(sira, +1))">▼</button>
+                            </td>
+                            <td><input type="text" maxlength="200" @bind="s.Baslik" placeholder="İş başlığı" /></td>
+                            <td>
+                                <select @bind="s.Tekrar">
+                                    <option value="@IsTekrari.Aylik">Her ay</option>
+                                    <option value="@IsTekrari.UcAylik">Üç ayda bir</option>
+                                    <option value="@IsTekrari.Yillik">Her yıl</option>
+                                </select>
+                            </td>
+                            <td>
+                                <span style="display:flex;gap:4px">
+                                    <select @bind="s.GunKurali">
+                                        <option value="@IsGunKurali.AyinGunu">Ayın günü</option>
+                                        <option value="@IsGunKurali.AySonu">Ay sonu</option>
+                                        <option value="@IsGunKurali.DonemSonu">Dönem sonu</option>
+                                    </select>
+                                    @if (s.GunKurali == IsGunKurali.AyinGunu)
+                                    {
+                                        <input type="number" class="ck-gun" min="1" max="31" @bind="s.AyinGunu" title="Ayın kaçı (1–31)" />
+                                    }
+                                </span>
+                            </td>
+                            <td>
+                                <select @bind="s.KategoriId">
+                                    <option value="">— (Diğer)</option>
+                                    @foreach (var k in kategoriler.Where(k => k.Aktif || k.Id == s.KategoriId))
+                                    {
+                                        <option value="@k.Id">@k.Ad@(k.Aktif ? "" : " (pasif)")</option>
+                                    }
+                                </select>
+                            </td>
+                            <td>
+                                <select @bind="s.IsTarifiId">
+                                    <option value="">—</option>
+                                    @foreach (var t in tarifler)
+                                    {
+                                        <option value="@t.Id">@t.Ad</option>
+                                    }
+                                </select>
+                            </td>
+                            <td><button type="button" class="ck-kapat" title="Maddeyi çıkar" aria-label="Maddeyi çıkar" @onclick="@(() => satirlar.Remove(s))">×</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div style="margin-top:8px">
+                <button type="button" class="ck-dugme" @onclick="Ekle">＋ Madde ekle</button>
+                <span class="ck-soluk" style="margin-left:8px">Pasif kategori uygulanırken taşınmaz; aynı başlık + tekrar iki kez olamaz.</span>
+            </div>
+        </div>
+
+        @if (hata is not null)
+        {
+            <div class="ck-hata" role="alert">@hata</div>
+        }
+    </div>
+
+    <div class="ck-dlg-alt">
+        <span class="ck-bosluk"></span>
+        <button type="button" class="ck-dugme" @onclick="@(() => DialogService.Close())">Vazgeç</button>
+        <button type="button" class="ck-dugme ck-dugme-ana" disabled="@isleniyor" @onclick="Kaydet">@(isleniyor ? "Kaydediliyor…" : "Kaydet")</button>
+    </div>
+</div>
+
+@code {
+    /// <summary>Düzenlenen şablon; boş = yeni.</summary>
+    [Parameter] public ChecklistSablonuDto? Mevcut { get; set; }
+
+    private sealed class Satir
+    {
+        public string Baslik { get; set; } = string.Empty;
+        public IsTekrari Tekrar { get; set; } = IsTekrari.Aylik;
+        public IsGunKurali GunKurali { get; set; } = IsGunKurali.DonemSonu;
+        public int? AyinGunu { get; set; }
+        public int? KategoriId { get; set; }
+        public int? IsTarifiId { get; set; }
+    }
+
+    private sealed record TarifSecenegi(int Id, string Ad);
+
+    private string? ad;
+    private string? aciklama;
+    private bool aktif = true;
+    private List<Satir> satirlar = new();
+    private List<IsKategorisiDto> kategoriler = new();
+    private List<TarifSecenegi> tarifler = new();
+    private bool isleniyor;
+    private string? hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Mevcut is { } m)
+        {
+            ad = m.Ad;
+            aciklama = m.Aciklama;
+            aktif = m.Aktif;
+            satirlar = m.Maddeler.Select(x => new Satir
+            {
+                Baslik = x.Baslik, Tekrar = x.Tekrar, GunKurali = x.GunKurali, AyinGunu = x.AyinGunu,
+                KategoriId = x.KategoriId, IsTarifiId = x.IsTarifiId
+            }).ToList();
+        }
+        if (satirlar.Count == 0) Ekle();
+
+        var (k, _) = await Api.KategorilerAsync();
+        kategoriler = k ?? new();
+
+        // Tarif listesi iş bazında: tarifi olan grupların tarifleri (Nasıl yapılır sekmesiyle aynı kaynak).
+        var (t, _) = await Api.TarifListesiAsync();
+        var tr = StringComparer.Create(new System.Globalization.CultureInfo("tr-TR"), true);
+        tarifler = (t ?? new())
+            .Where(x => x.TarifId is not null)
+            .GroupBy(x => x.TarifId!.Value)
+            .Select(g => new TarifSecenegi(g.Key, g.First().Ad))
+            .OrderBy(x => x.Ad, tr)
+            .ToList();
+
+        // Mevcut maddenin tarifi listede yoksa (ör. bağlı işi kalmamış) adıyla yine görünsün.
+        foreach (var x in Mevcut?.Maddeler.Where(x => x.IsTarifiId is not null && tarifler.All(t2 => t2.Id != x.IsTarifiId)) ?? Enumerable.Empty<ChecklistSablonMaddesiDto>())
+            tarifler.Add(new TarifSecenegi(x.IsTarifiId!.Value, x.IsTarifiAdi ?? $"Tarif #{x.IsTarifiId}"));
+    }
+
+    private void Ekle() => satirlar.Add(new Satir());
+
+    private void Tasi(int i, int yon)
+    {
+        var j = i + yon;
+        if (j < 0 || j >= satirlar.Count) return;
+        (satirlar[i], satirlar[j]) = (satirlar[j], satirlar[i]);
+    }
+
+    private async Task Kaydet()
+    {
+        hata = null;
+        isleniyor = true;
+        try
+        {
+            var dto = new ChecklistSablonuKaydetDto
+            {
+                Ad = ad ?? string.Empty,
+                Aciklama = aciklama,
+                Aktif = aktif,
+                // Tamamen boş satır (eklenip doldurulmamış) gönderilmez; sıra listenin sırası.
+                Maddeler = satirlar.Where(s => !string.IsNullOrWhiteSpace(s.Baslik)).Select(s => new ChecklistSablonMaddesiDto
+                {
+                    Baslik = s.Baslik, Tekrar = s.Tekrar, GunKurali = s.GunKurali,
+                    AyinGunu = s.GunKurali == IsGunKurali.AyinGunu ? s.AyinGunu : null,
+                    KategoriId = s.KategoriId, IsTarifiId = s.IsTarifiId
+                }).ToList()
+            };
+
+            var (sablon, mesaj) = Mevcut is null ? await Api.SablonEkleAsync(dto) : await Api.SablonGuncelleAsync(Mevcut.Id, dto);
+            if (sablon is null)
+            {
+                hata = mesaj ?? "Kaydedilemedi.";
+                return;
+            }
+            DialogService.Close(sablon);
+        }
+        finally
+        {
+            isleniyor = false;
+        }
+    }
+}

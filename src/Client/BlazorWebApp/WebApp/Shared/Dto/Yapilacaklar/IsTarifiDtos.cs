@@ -81,6 +81,9 @@ namespace WebApp.Shared.Dto.Yapilacaklar
         public string? NasilYapilir { get; set; }
         public List<string> Adimlar { get; set; } = new();
         public List<FirmaIsiEkiDto> Ekler { get; set; } = new();
+
+        /// <summary>Tarife bağlı işlerin varsayılan kategorisi (Aşama 2).</summary>
+        public int? KategoriId { get; set; }
     }
 
     /// <summary>Sağ taraf: nerede · kime · nasıl · ekler.</summary>
@@ -107,6 +110,7 @@ namespace WebApp.Shared.Dto.Yapilacaklar
         public int? SistemId { get; set; }
         public string? MenuYolu { get; set; }
         public string? NasilYapilir { get; set; }
+        public int? KategoriId { get; set; }
     }
 
     /// <summary>Tarif üretim raporu: seed ve "Tarif oluştur" aynı raporu döner.</summary>

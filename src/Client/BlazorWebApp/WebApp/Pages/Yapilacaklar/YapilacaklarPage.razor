@@ -1,10 +1,12 @@
 @page "/yapilacaklar"
 
+@using Blazored.LocalStorage
 @using Microsoft.AspNetCore.Authorization
 @using Radzen
 @using Radzen.Blazor
 @using WebApp.Application.Services
 @using WebApp.Application.Services.Yonetim
+@using WebApp.Pages.Anasayfa
 @using WebApp.Shared.Dto.Yapilacaklar
 
 @attribute [Authorize]
@@ -13,53 +15,39 @@
 @inject DialogService DialogService
 @inject IFirmaApiClient Firmalar
 @inject NavigationManager Nav
+@inject ILocalStorageService Depo
 @inject ILogger<YapilacaklarPage> Log
 
 @*
-    Yapılacaklar (tasarım G) — firma üstü: seçili firmadan BAĞIMSIZ, bütün firmaların işleri.
+    Firma Panosu → Yapılacaklar (Aşama 1; taslak firma-panosu.html). Adres aynı (/yapilacaklar).
 
-    Gruplama ACİLİYETE göre, firmaya göre değil: Gecikti (kırmızı) · Bu hafta (amber) ·
-    Bu ay (nötr) · Sonra (katlanmış). Boş grup hiç çizilmez. "Yapıldı" grubu (katlanmış)
-    işaretlenen işin ekrandan kaybolmaması ve işaretin geri alınabilmesi için var.
+    KARTLAR (varsayılan): kart = FİRMA + DÖNEM, DÖNEM merkezli — Ekim kartında Ekim'e ait işler durur, Ekim KDV'sinin son
+    günü Kasım olsa da. Hangi dönemin göründüğü Yapılacaklar'ın KUYRUK kuralıdır (gecikmiş açık dönemler + sıradaki açık
+    dönem + önündeki son yapılmış dönem) — yeni kural yok. Kartın içi şimdilik "Yasal" / "Firma işleri"; bölümleme
+    sunucuda tek yerde (ChecklistKartKurucu.Bolum), Aşama 2'de kategoriler gelecek.
 
-    AYNI İŞ TEK SATIR: aynı ad + aynı son gün birden çok firmadaysa tek satır ("9 firma");
-    açılınca firma firma işaretlenir, tek satırdaki kutu hepsini onay sorarak işaretler.
-    Gruplama sunucuda (YapilacaklarKurucu.Grupla) — anasayfa şeridi de aynı sayıyı verir.
+    SAYAÇLAR madde sayar, vadeye göre (Gecikti / Bu ay / Sonra / Tamamlanan; "Bu hafta" yok). Firma, tür ve sorumlu
+    filtresi SUNUCUDA saymadan önce uygulanır — sayaçlar ekranla tutar. Sayaca tıklamak yalnız gösterimi süzer
+    (sayılar değişmez), tekrar tıklamak kaldırır.
 
-    Beyannameler ekranının yerine geçmez, ona dokunmaz: yasal işler Vergi takviminden türer.
+    LİSTE: önceki Yapılacaklar listesi — aynı iş tek satır ("3 firma", YapilacaklarKurucu.Grupla), çok firmalı kutu
+    önce onay sorar. Bölümler açılır/kapanır; satır tek satır, tür/tekrar/dönem/sorumlu title'da.
 
-    Prompt 13: sayfa TÜRETİLMİŞ bir kuyruktur, kayıt tutmaz — iş ekleme formu BİLEREK YOK (iki ekleme yolu
-    olursa hangisinin hangi firmaya yazdığı karışır). Yalnız yol gösterilir: "İş Takip Panosu'na git" (Prompt 16).
-
-    Prompt 16: firma filtresi bir SEÇENEK, varsayılan değil — sabah sorusu "neyi kaçırdım", varsayılan hâlâ
-    BÜTÜN FİRMALAR. Seçici İş Takip Panosu'nunkinin aynısı (FirmaSecici); seçim adreste (?firma=), dört
-    filtreyle birlikte çalışır, sunucuda gruplamadan önce uygulanır (grup sayıları filtreye uyar).
+    İşaretleme MEVCUT uçtur (PUT yapilacaklar/isaretle); yeni tamamlama yolu yok. Görünüm ve filtreler adreste
+    (?gorunum=&firma=&tur=&sorumlu=); açık/kapalı bölümler tarayıcıda (localStorage, okunamazsa varsayılan).
+    Kayıt tutmaz: yeni iş "＋ Yeni checklist" penceresinden (Aşama 3: şablondan; altında toplu ekle / kopyala) eklenir
+    (IsTakipEylemleri → YeniChecklistDialog). Şablon kartı bölmez; maddelerinin geldiği şablonlar kartta etikettir.
 *@
 
 <PageTitle>Yapılacaklar</PageTitle>
 
 <YsStiller />
+<CkStiller />
 
-<div class="ys-kok">
-    <div class="ys-ust">
-        <div>
-            <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">Yapılacaklar</RadzenText>
-            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">
-                @(Firma is null ? "Bütün firmalar — seçili firmadan bağımsız" : (FirmaAdi ?? $"Firma #{Firma}"))@(veri is null ? "" : $" · bugün {veri.Bugun:dd.MM.yyyy}")@(" · Yeni iş İş Takip Panosu'ndan eklenir.")
-            </RadzenText>
-        </div>
-
-        <div class="ys-filtreler">
-            @PanoyaGitBaglantisi()
-            @Filtre(IsFiltresi.Tumu, "Tümü")
-            @Filtre(IsFiltresi.Bende, "Bende")
-            @Filtre(IsFiltresi.Yasal, "Yasal")
-            @Filtre(IsFiltresi.Ozel, "Firmaya özel")
-            <FirmaSecici Secili="@Firma" Secenekler="@firmaSecenekleri" Secildi="@FirmaSec" />
-            <RadzenButton Icon="refresh" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Light"
-                          Click="@Yukle" Disabled="@yukleniyor" title="Yenile" />
-        </div>
-    </div>
+<div class="ck-kok ck-sayfa">
+    <FirmaPanosuUst Aktif="FirmaPanosuSekmesi.Yapilacaklar" Rozet="@(veri is null ? null : $"{veri.FirmaSayisi} firma")">
+        <IsTakipEylemleri @ref="eylemler" Menu="true" FirmaId="@Firma" Firmalar="@firmaSecenekleri" Eklendi="@Yukle" />
+    </FirmaPanosuUst>
 
     @if (hata is not null)
     {
@@ -70,48 +58,145 @@
     {
         <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
     }
-    else if (veri.Gruplar.Count == 0)
-    {
-        <div class="ys-kart ys-bos">
-            @(filtre == IsFiltresi.Bende ? "Sorumlusu olduğun iş yok." : "Bugün yapılacak iş yok.")@(Firma is null ? "" : $" ({FirmaAdi ?? "seçili firma"})")@(" Yeni iş İş Takip Panosu'ndan eklenir.")
-            <div style="margin-top:.4rem">@PanoyaGitBaglantisi()</div>
-        </div>
-    }
     else
     {
-        @Bolum(IsDurumu.Gecikti, "Gecikti", "ys-kart ys-kart-gecikti", katlanir: false)
-        @Bolum(IsDurumu.BuHafta, "Bu hafta", "ys-kart ys-kart-hafta", katlanir: false)
-        @Bolum(IsDurumu.BuAy, "Bu ay", "ys-kart ys-kart-ay", katlanir: false)
-        @Bolum(IsDurumu.Sonra, "Sonra", "ys-kart ys-kart-sonra", katlanir: true)
-        @Bolum(IsDurumu.Tamam, "Yapıldı", "ys-kart ys-kart-tamam", katlanir: true)
+        <div class="ck-sayaclar">
+            @foreach (var s in veri.Sayaclar)
+            {
+                var kova = s.Kova;
+                <CkSayac Ad="@s.Ad" Sayi="@s.Sayi" Aciklama="@s.Aciklama" RenkSinifi="@PanoMetin.Renk(kova)"
+                         Secili="@(durum == kova)" Tiklandi="@(() => { durum = durum == kova ? null : kova; })" />
+            }
+        </div>
+
+        <div class="ck-panel">
+            <div class="ck-filtre-cubugu">
+                <span class="ck-firma-hap" data-secili="@(Firma is null ? "false" : "true")">
+                    <FirmaSecici Secili="@Firma" Secenekler="@firmaSecenekleri" Secildi="@(f => Git(firma: f, firmaDegisti: true))" />
+                </span>
+                <CkHap Ad="Tür" Secenekler="@TurSecenekleri" Secili="@turler" Degisti="@(t => Git(tur: t))" />
+                <CkHap Ad="Sorumlu" Secenekler="@SorumluSecenekleri" Secili="@sorumluMetin" Degisti="@(s => Git(sorumlu: s))" />
+                @if (FiltreVar)
+                {
+                    <button type="button" class="ck-dugme ck-dugme-hayalet" @onclick="Temizle">✕ Temizle</button>
+                }
+                <span class="ck-bosluk"></span>
+                <button type="button" class="ck-bag" title="Yenile" disabled="@yukleniyor" @onclick="Yukle">↻ Yenile</button>
+                <span class="ck-sayim">@(KartGorunumu ? $"{GorunenKartSayisi} checklist" : $"{GorunenListeSayisi} iş")</span>
+                <div class="ck-gorunum" role="group" aria-label="Görünüm">
+                    <button type="button" aria-pressed="@(KartGorunumu ? "true" : "false")" @onclick="@(() => Git(gorunum: GorunumKart))">▦ Kartlar</button>
+                    <button type="button" aria-pressed="@(KartGorunumu ? "false" : "true")" @onclick="@(() => Git(gorunum: GorunumListe))">☰ Liste</button>
+                </div>
+            </div>
+
+            @if (KartGorunumu)
+            {
+                @Kartlar()
+            }
+            else
+            {
+                @Liste()
+            }
+        </div>
+        <p class="ck-not">
+            Kart = firma + dönem. Dönem merkezli: Eylül KDV'si son günü Ekim'de olsa da Eylül kartında durur.
+            Sayaçlar vadeye göre madde sayar; her işin yalnız son yapılan dönemi "Tamamlanan"dır — geçmişin tamamı İş Takip'te.
+        </p>
     }
 </div>
 
 @code {
-    private YapilacaklarDto? veri;
-    private IsFiltresi filtre = IsFiltresi.Tumu;
+    private const string GorunumKart = "kart";
+    private const string GorunumListe = "liste";
+    private const string DepoAnahtari = "ck-acik-kapali";
+
+    [SupplyParameterFromQuery(Name = "gorunum")] public string? Gorunum { get; set; }
+
+    /// <summary>Firma filtresi (?firma=12) — İş Takip Panosu'nun aynı seçicisi (FirmaSecici). Varsayılan bütün firmalar.</summary>
+    [SupplyParameterFromQuery(Name = "firma")] public int? Firma { get; set; }
+
+    /// <summary>"yasal", "ozel" ya da "yasal,ozel".</summary>
+    [SupplyParameterFromQuery(Name = "tur")] public string? Tur { get; set; }
+
+    /// <summary>Kullanıcı Id'leri, virgülle; 0 = sorumlusu olmayan.</summary>
+    [SupplyParameterFromQuery(Name = "sorumlu")] public string? Sorumlu { get; set; }
+
+    private FirmaPanosuDto? veri;
+    private IsTakipEylemleri? eylemler;
+    private List<DonemFirmaSecenegi> firmaSecenekleri = new();
     private bool yukleniyor;
     private bool isleniyor;
-
-    /// <summary>Onay iptalinde işaret kutusunu eski hâline döndürmek için satır anahtarına eklenir.</summary>
-    private int surum;
     private string? hata;
 
-    /// <summary>Açılmış çok-firmalı satırlar ve açılmış katlanır bölümler.</summary>
-    private readonly HashSet<string> acikSatirlar = new();
-    private readonly HashSet<IsDurumu> acikBolumler = new();
+    /// <summary>Sayaca tıklanınca: yalnız gösterim süzülür, sayılar değişmez.</summary>
+    private PanoKovasi? durum;
 
+    private HashSet<string> turler = new();
+    private HashSet<string> sorumluMetin = new();
+    private string? yuklenenFiltre;
+
+    /// <summary>Onay iptalinde kutuyu sunucudaki hâline döndürmek için satır anahtarına eklenir.</summary>
+    private int surum;
+
+    /// <summary>Kullanıcının açıp kapadığı bölümler (anahtar → açık mı); olmayan anahtar varsayılanı kullanır.</summary>
+    private Dictionary<string, bool> acikKapali = new();
+
+    private readonly HashSet<string> acikSatirlar = new();
+
+    private bool KartGorunumu => Gorunum != GorunumListe;
+    private bool FiltreVar => Firma is not null || turler.Count > 0 || sorumluMetin.Count > 0 || durum is not null;
+
+    private static readonly IReadOnlyList<CkHap.Secenek> TurSecenekleri = new[]
+    {
+        new CkHap.Secenek("yasal", "Yasal"),
+        new CkHap.Secenek("ozel", "Firmaya özel")
+    };
+
+    private IReadOnlyList<CkHap.Secenek> SorumluSecenekleri
+        => veri?.Sorumlular.Select(s => new CkHap.Secenek(s.Id.ToString(), s.Ad, s.Sayi)).ToList() ?? new List<CkHap.Secenek>();
+
+    // ---- Yükleme ----
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            acikKapali = await Depo.GetItemAsync<Dictionary<string, bool>>(DepoAnahtari) ?? new();
+        }
+        catch
+        {
+            // Depo kapalı ya da kayıt bozuk: varsayılan açık/kapalı durumlar.
+            acikKapali = new();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        turler = Parcala(Tur).Where(t => t is "yasal" or "ozel").ToHashSet();
+        sorumluMetin = Parcala(Sorumlu).Where(s => int.TryParse(s, out var id) && id >= 0).ToHashSet();
+
+        if (firmaSecenekleri.Count == 0) await FirmalariYukle();
+
+        var imza = $"{Firma}|{string.Join(',', turler.Order())}|{string.Join(',', sorumluMetin.Order())}";
+        if (imza == yuklenenFiltre) return;
+        yuklenenFiltre = imza;
+        await Yukle();
+    }
+
+    private static IEnumerable<string> Parcala(string? metin)
+        => (metin ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                                  .Select(s => s.ToLowerInvariant());
 
     private async Task Yukle()
     {
         yukleniyor = true;
         try
         {
-            var sonuc = await Api.ListeAsync(filtre, firmaId: Firma);
-            if (sonuc is null) hata = "Liste alınamadı. Sunucuya ulaşılamıyor olabilir.";
+            var (pano, mesaj) = await Api.FirmaPanosuAsync(Firma, turler.ToList(), sorumluMetin.Select(int.Parse).ToList());
+            if (pano is null) hata = mesaj ?? "Liste alınamadı. Sunucuya ulaşılamıyor olabilir.";
             else
             {
-                veri = sonuc;
+                veri = pano;
                 hata = null;
             }
         }
@@ -119,145 +204,6 @@
         {
             yukleniyor = false;
         }
-    }
-
-    private async Task FiltreSec(IsFiltresi f)
-    {
-        if (f == filtre) return;
-        filtre = f;
-        await Yukle();
-    }
-
-    private RenderFragment Filtre(IsFiltresi f, string ad) => __builder =>
-    {
-        <span class="@(filtre == f ? "ys-filtre ys-filtre-secili" : "ys-filtre")" role="button"
-              @onclick="@(() => FiltreSec(f))">@ad</span>
-    };
-
-    private RenderFragment Bolum(IsDurumu durum, string ad, string sinif, bool katlanir) => __builder =>
-    {
-        var gruplar = veri!.Gruplar.Where(g => g.Durum == durum).ToList();
-        if (gruplar.Count == 0) return; // boş grup hiç çizilmez
-
-        var acik = !katlanir || acikBolumler.Contains(durum);
-
-        <div class="@sinif">
-            <div class="@(katlanir ? "ys-kart-basi ys-katlanir" : "ys-kart-basi")"
-                 @onclick="@(() => { if (katlanir && !acikBolumler.Remove(durum)) acikBolumler.Add(durum); })">
-                @if (katlanir)
-                {
-                    <RadzenIcon Icon="@(acik ? "expand_more" : "chevron_right")" Style="font-size:18px" />
-                }
-                @ad
-                <span class="@IsMetin.RozetSinifi(durum)">@gruplar.Count iş</span>
-            </div>
-
-            @if (acik)
-            {
-                <table class="ys-tablo">
-                    <thead>
-                        <tr>
-                            <th style="width:26px"></th>
-                            <th>İş</th>
-                            <th style="width:150px">Firma</th>
-                            <th style="width:95px">Son gün</th>
-                            <th style="width:150px">Durum</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var g in gruplar)
-                        {
-                            @GrupSatiri(g)
-                        }
-                    </tbody>
-                </table>
-            }
-        </div>
-    };
-
-    private RenderFragment GrupSatiri(IsGrubuDto g) => __builder =>
-    {
-        var tekFirma = g.Firmalar.Count == 1;
-        var hepsiTamam = g.Firmalar.All(f => f.Tamamlandi);
-        var acik = !tekFirma && acikSatirlar.Contains(g.Anahtar);
-
-        <tr class="@(hepsiTamam ? "ys-cizili" : "")" @key="@($"{g.Anahtar}#{surum}")">
-            <td>
-                <input type="checkbox" checked="@hepsiTamam" disabled="@isleniyor"
-                       title="@(tekFirma ? (hepsiTamam ? "İşareti kaldır" : "Yapıldı olarak işaretle")
-                                        : (hepsiTamam ? "Bütün firmaların işaretini kaldır" : "Bütün firmaları işaretle"))"
-                       @onchange="@(() => GrubuIsaretle(g))" />
-            </td>
-            <td>
-                <div class="ys-baslik">@g.Baslik</div>
-                <div class="ys-alt">
-                    @IsMetin.Kaynak(g.KaynakTip) · @IsMetin.Tekrar(g.Tekrar)@(g.DonemEtiketi is null ? "" : " · " + g.DonemEtiketi)
-                    @if (tekFirma && g.Firmalar[0].SorumluKullaniciAdi is { } sorumlu)
-                    {
-                        <text> · @sorumlu</text>
-                    }
-                </div>
-            </td>
-            <td>
-                @if (tekFirma)
-                {
-                    @g.Firmalar[0].FirmaAdi
-                }
-                else
-                {
-                    <span class="ys-firma-sayi" role="button"
-                          @onclick="@(() => { if (!acikSatirlar.Remove(g.Anahtar)) acikSatirlar.Add(g.Anahtar); })">
-                        @g.FirmaSayisi firma@(g.TamamlananSayisi > 0 && !hepsiTamam ? $" ({g.TamamlananSayisi} yapıldı)" : "")
-                        <RadzenIcon Icon="@(acik ? "expand_less" : "expand_more")" Style="font-size:15px;vertical-align:-3px" />
-                    </span>
-                }
-            </td>
-            <td class="ys-songun">@g.SonGun.ToString("dd.MM.yyyy")</td>
-            <td><span class="@IsMetin.RozetSinifi(g.Durum)">@IsMetin.Rozet(g.Durum, g.Gun)</span></td>
-        </tr>
-
-        @if (acik)
-        {
-            @foreach (var f in g.Firmalar)
-            {
-                <tr class="@(f.Tamamlandi ? "ys-alt-tablo ys-cizili" : "ys-alt-tablo")">
-                    <td style="padding-left:18px">
-                        <input type="checkbox" checked="@f.Tamamlandi" disabled="@isleniyor"
-                               @onchange="@(() => TekIsaretle(f))" />
-                    </td>
-                    <td colspan="2">
-                        <div class="ys-baslik">@f.FirmaAdi</div>
-                        <div class="ys-alt">
-                            @(f.SorumluKullaniciAdi ?? "sorumlu yok")
-                            @if (f.Tamamlandi && f.TamamlanmaZamani is { } z)
-                            {
-                                <text> · yapıldı @z.ToLocalTime().ToString("dd.MM.yyyy")@(f.TamamlayanAdi is null ? "" : " · " + f.TamamlayanAdi)</text>
-                            }
-                        </div>
-                    </td>
-                    <td class="ys-songun">@f.SonGun.ToString("dd.MM.yyyy")</td>
-                    <td><span class="@IsMetin.RozetSinifi(f.Durum)">@IsMetin.Rozet(f.Durum, f.Gun)</span></td>
-                </tr>
-            }
-        }
-    };
-
-    // ---- Prompt 16: firma filtresi (İş Takip Panosu'nun AYNI seçicisi) + "İş Takip Panosu'na git" ----
-
-    /// <summary>Firma filtresi (?firma=12). Varsayılan bütün firmalar; dört filtreyle birlikte çalışır.</summary>
-    [SupplyParameterFromQuery(Name = "firma")] public int? Firma { get; set; }
-
-    private List<DonemFirmaSecenegi> firmaSecenekleri = new();
-    private int? yuklenenFirma = -1;
-
-    private string? FirmaAdi => firmaSecenekleri.FirstOrDefault(f => f.Id == Firma)?.Ad;
-
-    protected override async Task OnParametersSetAsync()
-    {
-        if (firmaSecenekleri.Count == 0) await FirmalariYukle();
-        if (yuklenenFirma == Firma) return;
-        yuklenenFirma = Firma;
-        await Yukle();
     }
 
     private async Task FirmalariYukle()
@@ -273,27 +219,386 @@
         }
         catch (Exception ex)
         {
-            // Seçici pasif kalır; liste bütün firmalarla çalışmaya devam eder.
+            // Seçici pasif kalır; pano bütün firmalarla çalışmaya devam eder.
             Log.LogWarning(ex, "Firma listesi alınamadı (Yapılacaklar firma filtresi).");
         }
     }
 
-    /// <summary>Seçim adrese yazılır — geri tuşu çalışır. İş Takip Panosu'nun seçimine dokunmaz (ayrı adres).</summary>
-    private void FirmaSec(int? firmaId)
-        => Nav.NavigateTo(firmaId is { } f ? $"/yapilacaklar?firma={f}" : "/yapilacaklar");
+    // ---- Adres: görünüm ve filtreler ----
 
-    /// <summary>
-    /// "İş Takip Panosu'na git" (Prompt 16; Prompt 13'te Anasayfa'ya gidiyordu). İş ekleme artık panonun içinde;
-    /// seçili firma varsa taşınır, yoksa pano bütün firmalarla açılır — hiçbir firma tahmin edilmez.
-    /// </summary>
-    private RenderFragment PanoyaGitBaglantisi() => __builder =>
+    private void Git(string? gorunum = null, int? firma = null, bool firmaDegisti = false,
+                     HashSet<string>? tur = null, HashSet<string>? sorumlu = null)
     {
-        <a class="ys-bag" href="@(Firma is { } f ? $"{IsTakipPanosuAdres.Yol}?firma={f}" : IsTakipPanosuAdres.Yol)"
-           title="Yeni iş İş Takip Panosu'ndan (ya da anasayfadaki firma işleri kartından) eklenir">İş Takip Panosu'na git</a>
+        var g = gorunum ?? (KartGorunumu ? GorunumKart : GorunumListe);
+        var f = firmaDegisti ? firma : Firma;
+        var t = tur ?? turler;
+        var s = sorumlu ?? sorumluMetin;
+
+        var parca = new List<string>();
+        if (g == GorunumListe) parca.Add("gorunum=liste");
+        if (f is { } fid) parca.Add($"firma={fid}");
+        if (t.Count > 0) parca.Add("tur=" + string.Join(',', TurSecenekleri.Select(x => x.Deger).Where(t.Contains)));
+        if (s.Count > 0) parca.Add("sorumlu=" + string.Join(',', s.OrderBy(x => x == "0").ThenBy(x => x)));
+
+        Nav.NavigateTo("/yapilacaklar" + (parca.Count > 0 ? "?" + string.Join('&', parca) : ""));
+    }
+
+    private void Temizle()
+    {
+        durum = null;
+        Git(firma: null, firmaDegisti: true, tur: new(), sorumlu: new());
+    }
+
+    // ---- Açık / kapalı (localStorage) ----
+
+    private bool Acik(string anahtar)
+        => acikKapali.TryGetValue(anahtar, out var a) ? a : Varsayilan(anahtar);
+
+    /// <summary>Gelecek ayların dönem grupları ve listede Sonra/Tamamlanan kapalı başlar; diğerleri açık.</summary>
+    private bool Varsayilan(string anahtar)
+    {
+        if (anahtar.StartsWith("p:") && veri is not null)
+            return string.CompareOrdinal(anahtar[2..], IsMetin.AyAnahtari(veri.Bugun)) <= 0;
+        return anahtar is not ("l:sonra" or "l:tamam");
+    }
+
+    private async Task AcKapa(string anahtar)
+    {
+        acikKapali[anahtar] = !Acik(anahtar);
+        try
+        {
+            await Depo.SetItemAsync(DepoAnahtari, acikKapali);
+        }
+        catch
+        {
+            // Depolama kapalı olabilir; bu oturumda yine çalışır.
+        }
+    }
+
+    // ---- Kartlar ----
+
+    private bool KartGorunur(ChecklistKartiDto k) => durum is not { } d || k.Maddeler.Any(m => m.Kova == d);
+
+    private int GorunenKartSayisi => veri?.Donemler.Sum(d => d.Kartlar.Count(KartGorunur)) ?? 0;
+
+    private RenderFragment Kartlar() => __builder =>
+    {
+        var donemler = veri!.Donemler
+            .Select(d => (Donem: d, Kartlar: d.Kartlar.Where(KartGorunur).ToList()))
+            .Where(x => x.Kartlar.Count > 0)
+            .ToList();
+
+        if (donemler.Count == 0)
+        {
+            <div class="ck-bos">
+                @(FiltreVar ? "Bu filtreye uyan checklist yok." : "Yapılacak iş yok.")
+                Yeni iş "＋ Yeni checklist" menüsünden ya da İş Takip'ten eklenir.
+            </div>
+            return;
+        }
+
+        var sonDonem = donemler[^1].Donem.Anahtar;
+        foreach (var (d, kartlar) in donemler)
+        {
+            // Başlık sayıları GÖRÜNEN kartlardan (sayaç süzmesi açıkken de başlık ekranla tutar).
+            var anahtar = "p:" + d.Anahtar;
+            var acik = Acik(anahtar);
+            var toplam = kartlar.Sum(k => k.Toplam);
+            var tamam = kartlar.Sum(k => k.Tamam);
+            var gecikmis = kartlar.Sum(k => k.Gecikmis);
+
+            <section class="@(acik ? "ck-donem" : "ck-donem ck-kapali")" @key="@anahtar">
+                <button type="button" class="ck-donem-basi" aria-expanded="@(acik ? "true" : "false")" @onclick="@(() => AcKapa(anahtar))">
+                    <span class="ck-ac-kapa">▼</span>
+                    <h2>@d.Etiket dönemi</h2>
+                    <span class="ck-meta">@kartlar.Select(k => k.FirmaId).Distinct().Count() firma · @tamam/@toplam madde</span>
+                    @if (gecikmis > 0)
+                    {
+                        <span class="ck-cip ck-c-gecikti">@gecikmis gecikmiş</span>
+                    }
+                    @if (toplam > 0 && tamam == toplam)
+                    {
+                        <span class="ck-cip ck-c-tamam">tamamlandı</span>
+                    }
+                </button>
+                @if (acik)
+                {
+                    <div class="ck-donem-govde">
+                        <div class="ck-izgara">
+                            @foreach (var k in kartlar)
+                            {
+                                @Kart(k)
+                            }
+                            @if (d.Anahtar == sonDonem)
+                            {
+                                <button type="button" class="ck-yeni-kart" title="Başlangıç dönemi @d.Etiket olarak şablondan oluştur"
+                                        @onclick="@(() => eylemler is null ? Task.CompletedTask : eylemler.YeniChecklist(d.Anahtar))">
+                                    <span class="ck-arti">＋</span>
+                                    <b>Yeni checklist</b>
+                                    <span>Şablondan oluştur · başlangıç @d.Etiket</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            </section>
+        }
     };
 
-    private Task TekIsaretle(IsSatiriDto s)
-        => Isaretle(!s.Tamamlandi, new[] { s });
+    private RenderFragment Kart(ChecklistKartiDto k) => __builder =>
+    {
+        var gecikti = k.Gecikmis > 0;
+        var bitti = k.Durum == PanoKovasi.Tamam;
+        var sinif = "ck-kart" + (gecikti ? " ck-kart-gecikti" : "") + (bitti ? " ck-kart-tamam" : "");
+
+        <button type="button" class="@sinif" @key="@k.Anahtar" @onclick="@(() => DetayAc(k))"
+                aria-label="@($"{k.FirmaAdi} · {k.DonemEtiketi}: {k.Tamam}/{k.Toplam} tamam, {k.Gecikmis} gecikmiş")">
+            <div class="ck-kart-ust">
+                <div class="ck-avatar" style="background:@PanoMetin.FirmaRengi(k.FirmaId)">@PanoMetin.BasHarfler(k.FirmaAdi)</div>
+                <div style="min-width:0">
+                    <div class="ck-kart-ad" title="@k.FirmaAdi">@k.FirmaAdi</div>
+                    <div class="ck-kart-alt">@(k.SorumluKullaniciAdi ?? "sorumlu yok")</div>
+                </div>
+                @if (bitti)
+                {
+                    <span class="ck-durum-ikon" style="background:var(--ck-tamam)" title="Tamamlandı">✓</span>
+                }
+                else if (gecikti)
+                {
+                    <span class="ck-durum-ikon" style="background:var(--ck-gecikti)" title="Gecikmiş madde var">!</span>
+                }
+            </div>
+            <div class="ck-etiketler">
+                <span class="ck-etiket ck-mono">@k.DonemEtiketi</span>
+                @foreach (var sablon in k.Sablonlar)
+                {
+                    <span class="ck-etiket ck-etiket-sablon" title="Maddelerin bir kısmı bu şablondan">@sablon</span>
+                }
+                @if (k.YasalVar)
+                {
+                    <span class="ck-etiket ck-yasal">Yasal</span>
+                }
+            </div>
+            <div class="ck-cubuk" aria-hidden="true">
+                <i class="ck-cubuk-tamam" style="width:@Yuzde(k.Tamam, k.Toplam)"></i>
+                <i class="ck-cubuk-gecikti" style="width:@Yuzde(k.Gecikmis, k.Toplam)"></i>
+            </div>
+            <div class="ck-kart-sayilar">
+                @if (gecikti)
+                {
+                    <span class="ck-yazi-gecikti">@k.Gecikmis gecikmiş</span>
+                }
+                else if (bitti)
+                {
+                    <span class="ck-yazi-tamam">Tamamlandı</span>
+                }
+                else
+                {
+                    <span>Zamanında</span>
+                }
+                <span>@k.Tamam/@k.Toplam</span>
+            </div>
+            @if (k.SiradakiBaslik is { } sirada && k.SiradakiSonGun is { } gun)
+            {
+                <div class="ck-siradaki">
+                    <span>Sıradaki:</span>
+                    <b title="@sirada">@sirada</b>
+                    <span class="ck-bosluk"></span>
+                    <span class="@(k.SiradakiKova == PanoKovasi.Gecikti ? "ck-tarih ck-yazi-gecikti" : "ck-tarih")">@gun.ToString("dd.MM")</span>
+                </div>
+            }
+        </button>
+    };
+
+    private static string Yuzde(int pay, int payda)
+        => payda == 0 ? "0%" : (pay * 100.0 / payda).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%";
+
+    private async Task DetayAc(ChecklistKartiDto k)
+    {
+        var sonuc = await DialogService.OpenAsync<ChecklistKartDialog>(string.Empty,
+            new Dictionary<string, object?>
+            {
+                { nameof(ChecklistKartDialog.Kart), k },
+                { nameof(ChecklistKartDialog.Bugun), veri?.Bugun ?? DateTime.Today },
+                { nameof(ChecklistKartDialog.Renk), PanoMetin.FirmaRengi(k.FirmaId) },
+                { nameof(ChecklistKartDialog.Tazele), (Func<string, Task<ChecklistKartiDto?>>)KartTazele }
+            }!,
+            new DialogOptions
+            {
+                ShowTitle = false,
+                Width = "min(1000px, 96vw)",
+                Style = "--rz-dialog-content-padding:0; padding:0; border-radius:14px; overflow:hidden",
+                CloseDialogOnOverlayClick = true,
+                CloseDialogOnEsc = true
+            });
+
+        switch (sonuc)
+        {
+            case ChecklistKartDialog.ProsedurIstegi p:
+                await ProsedurAc(p.Satir);
+                break;
+            case ChecklistKartDialog.DonemeGit g:
+                Nav.NavigateTo(g.Adres);
+                break;
+        }
+    }
+
+    /// <summary>Detay penceresi işaretledi: veriyi yeniden oku, sayfa da tazelensin, kartı dön.</summary>
+    private async Task<ChecklistKartiDto?> KartTazele(string anahtar)
+    {
+        await Yukle();
+        StateHasChanged();
+        return veri?.Kart(anahtar);
+    }
+
+    /// <summary>Mevcut prosedür paneli (anasayfa firma işleri kartıyla aynı açılış) — yeniden yazılmadı.</summary>
+    private async Task ProsedurAc(IsSatiriDto s)
+    {
+        FirmaIsleriKartDto? kart = null;
+        try
+        {
+            kart = await Api.FirmaIsleriAsync(s.FirmaId);
+        }
+        catch (Exception ex)
+        {
+            Log.LogWarning(ex, "Firma işleri okunamadı (firma {FirmaId}).", s.FirmaId);
+        }
+        if (kart is null)
+        {
+            hata = "Firmanın işleri okunamadı; prosedür paneli açılmadı.";
+            return;
+        }
+
+        await DialogService.OpenSideAsync<IsProsedurPaneli>(
+            s.Baslik,
+            new Dictionary<string, object?>
+            {
+                { nameof(IsProsedurPaneli.FirmaId), s.FirmaId },
+                { nameof(IsProsedurPaneli.FirmaAdi), s.FirmaAdi },
+                { nameof(IsProsedurPaneli.Satir), s },
+                { nameof(IsProsedurPaneli.Kart), kart },
+                { nameof(IsProsedurPaneli.Degisti), (Func<Task>)PaneldenDegisti }
+            }!,
+            new SideDialogOptions
+            {
+                Width = "min(760px, 100vw)",
+                Position = DialogPosition.Right,
+                ShowTitle = false,
+                ShowMask = true,
+                CloseDialogOnOverlayClick = true
+            });
+    }
+
+    private async Task PaneldenDegisti()
+    {
+        await Yukle();
+        StateHasChanged();
+    }
+
+    // ---- Liste: önceki Yapılacaklar listesi, dört açılır bölüm ----
+
+    private IEnumerable<PanoListeSatiriDto> GorunenListe
+        => veri?.Liste.Where(l => durum is not { } d || l.Kova == d) ?? Enumerable.Empty<PanoListeSatiriDto>();
+
+    private int GorunenListeSayisi => GorunenListe.Count();
+
+    private RenderFragment Liste() => __builder =>
+    {
+        var bolumler = PanoMetin.Sira
+            .Where(k => durum is null || durum == k)
+            .Select(k => (Kova: k, Satirlar: veri!.Liste.Where(l => l.Kova == k).ToList()))
+            .Where(x => x.Satirlar.Count > 0)
+            .ToList();
+
+        if (bolumler.Count == 0)
+        {
+            <div class="ck-bos">@(FiltreVar ? "Bu filtreye uyan iş yok." : "Yapılacak iş yok.")</div>
+            return;
+        }
+
+        foreach (var (kova, satirlar) in bolumler)
+        {
+            var anahtar = "l:" + PanoMetin.Kod(kova);
+            var acik = durum == kova || Acik(anahtar);
+            var madde = satirlar.Sum(l => l.Grup.Firmalar.Count);
+
+            <section class="@($"ck-bolum {PanoMetin.Renk(kova)}{(acik ? "" : " ck-kapali")}")" @key="@anahtar">
+                <button type="button" class="ck-bolum-basi" aria-expanded="@(acik ? "true" : "false")" @onclick="@(() => AcKapa(anahtar))">
+                    <span class="ck-ac-kapa">▼</span>
+                    <b>@PanoMetin.Ad(kova)</b>
+                    <span class="ck-rozet" title="@($"{satirlar.Count} satır; çok firmalı satırlar firma başına {madde} madde")">@satirlar.Count iş</span>
+                </button>
+                @if (acik)
+                {
+                    <div class="ck-bolum-govde">
+                        <div class="ck-satir ck-satir-baslik"><span></span><span>İş</span><span>Firma</span><span>Son gün</span><span>Durum</span></div>
+                        @foreach (var l in satirlar)
+                        {
+                            @GrupSatiri(l)
+                        }
+                    </div>
+                }
+            </section>
+        }
+    };
+
+    private RenderFragment GrupSatiri(PanoListeSatiriDto l) => __builder =>
+    {
+        var g = l.Grup;
+        var tekFirma = g.Firmalar.Count == 1;
+        var hepsiTamam = g.Firmalar.All(f => f.Tamamlandi);
+        var acik = !tekFirma && acikSatirlar.Contains(g.Anahtar);
+        var bugun = veri!.Bugun;
+        var aciklama = $"{IsMetin.Kaynak(g.KaynakTip)} · {IsMetin.Tekrar(g.Tekrar)}"
+                       + (g.DonemEtiketi is null ? "" : " · " + g.DonemEtiketi)
+                       + (tekFirma && g.Firmalar[0].SorumluKullaniciAdi is { } sorumlu ? " · " + sorumlu : "");
+
+        <div class="@(hepsiTamam ? "ck-satir ck-yapildi" : "ck-satir")" @key="@($"{g.Anahtar}#{surum}")">
+            <input type="checkbox" checked="@hepsiTamam" disabled="@isleniyor"
+                   title="@(tekFirma ? (hepsiTamam ? "İşareti kaldır" : "Yapıldı olarak işaretle")
+                                    : (hepsiTamam ? "Bütün firmaların işaretini kaldır" : "Bütün firmaları işaretle"))"
+                   @onchange="@(() => GrubuIsaretle(g))" />
+            <span class="ck-is" title="@aciklama">
+                @g.Baslik
+                @if (g.KaynakTip == IsKaynagi.Yasal)
+                {
+                    <span class="ck-yasal-etiket">Yasal</span>
+                }
+            </span>
+            @if (tekFirma)
+            {
+                <span class="ck-firma" title="@g.Firmalar[0].FirmaAdi">@g.Firmalar[0].FirmaAdi</span>
+            }
+            else
+            {
+                <button type="button" class="ck-firma-ac" aria-expanded="@(acik ? "true" : "false")"
+                        @onclick="@(() => { if (!acikSatirlar.Remove(g.Anahtar)) acikSatirlar.Add(g.Anahtar); })">
+                    @g.FirmaSayisi firma@(g.TamamlananSayisi > 0 && !hepsiTamam ? $" ({g.TamamlananSayisi} yapıldı)" : "") @(acik ? "▴" : "▾")
+                </button>
+            }
+            <span class="ck-tarih">@g.SonGun.ToString("dd.MM.yyyy")</span>
+            <span class="@($"ck-durum-rozeti {PanoMetin.Renk(l.Kova)}")">@PanoMetin.Rozet(l.Kova, g.SonGun, bugun)</span>
+        </div>
+
+        @if (acik)
+        {
+            @foreach (var f in g.Firmalar)
+            {
+                var fKova = f.Tamamlandi ? PanoKovasi.Tamam : l.Kova;
+                var fAciklama = (f.SorumluKullaniciAdi ?? "sorumlu yok")
+                                + (f.Tamamlandi && f.TamamlanmaZamani is { } z
+                                    ? $" · yapıldı {z.ToLocalTime():dd.MM.yyyy}" + (f.TamamlayanAdi is null ? "" : " · " + f.TamamlayanAdi)
+                                    : "");
+                <div class="@(f.Tamamlandi ? "ck-satir ck-satir-alt ck-yapildi" : "ck-satir ck-satir-alt")" @key="@($"{g.Anahtar}|{f.FirmaId}#{surum}")">
+                    <input type="checkbox" checked="@f.Tamamlandi" disabled="@isleniyor" @onchange="@(() => Isaretle(!f.Tamamlandi, new[] { f }))" />
+                    <span class="ck-is" title="@fAciklama">@f.FirmaAdi</span>
+                    <span class="ck-firma">@(f.SorumluKullaniciAdi ?? "")</span>
+                    <span class="ck-tarih">@f.SonGun.ToString("dd.MM.yyyy")</span>
+                    <span class="@($"ck-durum-rozeti {PanoMetin.Renk(fKova)}")">@PanoMetin.Rozet(fKova, f.SonGun, bugun)</span>
+                </div>
+            }
+        }
+    };
 
     /// <summary>Tek satırdaki kutu: tek firmada doğrudan, çok firmada ÖNCE onay sorar.</summary>
     private async Task GrubuIsaretle(IsGrubuDto g)
@@ -341,6 +646,7 @@
                 Yapildi = yapildi,
                 Isler = satirlar.Select(IsIsaretDto.Satirdan).ToList()
             });
+            if (sonuc is not null) surum++;
             await Yukle();
             hata = sonuc ?? hata;
         }

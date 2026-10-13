@@ -20,8 +20,25 @@
     Firma: sayfanın firma seçicisi doluysa SORULMAZ, o firmaya eklenir; "Bütün firmalar"da önce
     DonemFirmaSecDialog sorar (Prompt 13'teki pencere). Vazgeçilirse hiçbir şey olmaz.
     Ekleme bitince Eklendi çağrılır; kabuk açık sekmeyi tazeler.
+
+    Menu=true (Firma Panosu → Yapılacaklar): "＋ Yeni checklist" düğmesi. Aşama 3'te şablon penceresini açar
+    (YeniChecklistDialog); Aşama 1'in menüsündeki Toplu iş ekle (TopluIsDialog) ve Başka firmadan kopyala
+    (IsKopyalaDialog) pencerenin altındaki ikincil bağlantılardır — pencere kapanınca burada çalışır. Düğme .ck-kok
+    içinde çizilir (CkStiller).
 *@
 
+@if (Menu)
+{
+    <span class="ck-acilir">
+        <button type="button" class="ck-dugme ck-dugme-ana" aria-haspopup="dialog" @onclick="@(() => YeniChecklist(null))">＋ Yeni checklist</button>
+        @if (hata is not null)
+        {
+            <span class="ck-hata" role="alert">@hata</span>
+        }
+    </span>
+}
+else
+{
 <span class="dp-eylemler">
     <span class="dp-eylem dp-eylem-ana" role="button" @onclick="IsEkle">+ İş ekle</span>
     <span class="dp-eylem" role="button" @onclick="YapistirDugmesi" title="Excel'den kopyaladığınız satırları ekle">Yapıştır</span>
@@ -32,6 +49,7 @@
         <span class="dp-eylem-hata" role="alert">@hata</span>
     }
 </span>
+}
 
 @code {
     /// <summary>Sayfanın firma seçimi (?firma=); boş = Bütün firmalar.</summary>
@@ -49,8 +67,40 @@
     /// <summary>İş eklendi/kopyalandı — kabuk açık sekmeyi ve rozetleri tazeler.</summary>
     [Parameter] public EventCallback Eklendi { get; set; }
 
+    /// <summary>"＋ Yeni checklist" menüsü olarak çiz (Firma Panosu → Yapılacaklar); yoksa İş Takip'in eylem grubu.</summary>
+    [Parameter] public bool Menu { get; set; }
+
     private string? hata;
     private bool soruluyor;
+
+    // ---- ＋ Yeni checklist (Aşama 3): şablon penceresi; ikincil bağlantılar Toplu / Kopyala ----
+
+    /// <param name="donem">Başlangıç dönemi bu kez farklıysa ("2026-11", dönem grubunun yeni kartı); boş = <see cref="Donem"/>.</param>
+    public async Task YeniChecklist(string? donem)
+    {
+        hata = null;
+        var sonuc = await DialogService.OpenAsync<YeniChecklistDialog>(string.Empty,
+            new Dictionary<string, object?>
+            {
+                { nameof(YeniChecklistDialog.Firmalar), Firmalar },
+                { nameof(YeniChecklistDialog.VarsayilanFirmaId), FirmaId },
+                { nameof(YeniChecklistDialog.BaslangicDonemi), donem ?? Donem }
+            }!,
+            CkPencere.Secenekler("min(780px, 96vw)"));
+
+        switch (sonuc)
+        {
+            case YeniChecklistDialog.Sonuc.Olusturuldu:
+                await Eklendi.InvokeAsync();
+                break;
+            case YeniChecklistDialog.Sonuc.Toplu:
+                await TopluAc(null, donem);
+                break;
+            case YeniChecklistDialog.Sonuc.Kopyala:
+                await Kopyala();
+                break;
+        }
+    }
 
     /// <summary>Seçili firma ya da (Bütün firmalar modunda) sorulan firma; vazgeçilirse null.</summary>
     private async Task<int?> FirmaAl()
@@ -133,7 +183,10 @@
     }
 
     /// <summary>Dönem sekmesinde Ctrl+V buraya gelir (firmaIsleri.js'teki mevcut bağlama).</summary>
-    public async Task TopluAc(string? metin)
+    public Task TopluAc(string? metin) => TopluAc(metin, null);
+
+    /// <param name="donem">Başlangıç dönemi bu kez farklıysa ("2026-11"); boş = <see cref="Donem"/>.</param>
+    public async Task TopluAc(string? metin, string? donem)
     {
         hata = null;
         if (await FirmaAl() is not int firmaId) return;
@@ -143,7 +196,7 @@
             {
                 { nameof(TopluIsDialog.FirmaId), firmaId },
                 { nameof(TopluIsDialog.Metin), metin },
-                { nameof(TopluIsDialog.BaslangicDonemi), Donem }
+                { nameof(TopluIsDialog.BaslangicDonemi), donem ?? Donem }
             }!,
             new DialogOptions { Width = "min(1100px, 96vw)" });
 

@@ -17,6 +17,21 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
         public YapilacaklarKuralException(string field, string message) : base(message) => Field = field;
     }
 
+    /// <summary>
+    /// Aynı firmada aynı başlık + tekrarlı özel iş var ve ısrar edilmedi; controller 409'a çevirir. Kural
+    /// istisnası olduğu için toplu ekleme/kopyalama satırı "atlandı" diye raporlar.
+    /// </summary>
+    public class YapilacaklarAyniAdException : YapilacaklarKuralException
+    {
+        public int MevcutId { get; }
+        public string MevcutBaslik { get; }
+        public bool MevcutAktif { get; }
+
+        public YapilacaklarAyniAdException(int mevcutId, string mevcutBaslik, bool mevcutAktif)
+            : base(nameof(FirmaIsiKaydetDto.Baslik), "Bu firmada aynı adlı bir iş zaten var.")
+            => (MevcutId, MevcutBaslik, MevcutAktif) = (mevcutId, mevcutBaslik, mevcutAktif);
+    }
+
     public interface IYapilacaklarService
     {
         Task<FirmaIsleriKartDto> FirmaKartiAsync(int firmaId, CancellationToken ct = default);
@@ -24,6 +39,12 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
         /// <param name="firmaId">Prompt 16: doluysa yalnız o firma (filtrelerle birlikte); varsayılan bütün firmalar.</param>
         Task<YapilacaklarDto> ListeAsync(IsFiltresi filtre, CancellationToken ct = default, int? firmaId = null);
         Task<YapilacaklarOzetDto> OzetAsync(CancellationToken ct = default);
+
+        /// <summary>
+        /// Firma Panosu → Yapılacaklar (Aşama 1): kuyruğun satırları firma + dönem kartlarında, sayaçlar ve
+        /// liste görünümü tek DTO'da. Firma filtresi okumadan, tür/sorumlu kurucuda saymadan önce uygulanır.
+        /// </summary>
+        Task<FirmaPanosuDto> FirmaPanosuAsync(FirmaPanosuFiltresi filtre, CancellationToken ct = default);
 
         /// <summary>Tek ya da çok firma-dönemi birlikte işaretler / işaretini kaldırır. Aynı durumdaki satır atlanır.</summary>
         /// <remarks>
@@ -147,6 +168,25 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
         {
             var (satirlar, _, _) = await SatirlarAsync(null, ct);
             return YapilacaklarKurucu.Ozet(YapilacaklarKurucu.Grupla(satirlar, Bugun));
+        }
+
+        public async Task<FirmaPanosuDto> FirmaPanosuAsync(FirmaPanosuFiltresi filtre, CancellationToken ct = default)
+        {
+            if (filtre.Turler.Any(t => !Enum.IsDefined(t)))
+                throw new YapilacaklarKuralException("tur", "Geçersiz tür.");
+
+            // Aynı okuma ve aynı kuyruk: Yapılacaklar listesi ve anasayfa şeridiyle tek kaynak.
+            var (satirlar, firmalar, _) = await SatirlarAsync(filtre.FirmaId, ct);
+            var kategoriler = await IsKategoriBaglami.YukleAsync(_db, ct);
+
+            // Aşama 3: kart etiketi — maddenin işi hangi şablondan oluştu (FirmaIsi Id → şablon adı).
+            var ozelIdler = satirlar.Where(s => s.KaynakTip == IsKaynagi.Ozel).Select(s => s.KaynakId).Distinct().ToList();
+            var sablonAdlari = await _db.FirmaIsleri.AsNoTracking()
+                .Where(i => i.SablonId != null && ozelIdler.Contains(i.Id))
+                .Join(_db.ChecklistSablonlari.AsNoTracking(), i => i.SablonId!.Value, s => s.Id, (i, s) => new { i.Id, s.Ad })
+                .ToDictionaryAsync(x => x.Id, x => x.Ad, ct);
+
+            return ChecklistKartKurucu.Kur(Bugun, firmalar, satirlar, filtre, kategoriler, sablonAdlari);
         }
 
         /// <summary>
@@ -353,6 +393,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
             Dogrula(dto);
             ProsedurDogrula(dto);
             await FirmaVarAsync(firmaId, ct);
+            await AyniAdKontrolAsync(firmaId, haricId: null, dto, ct);
 
             var isi = new FirmaIsi
             {
@@ -360,6 +401,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
                 OlusturanKullaniciId = KullaniciId(),
                 OlusturmaZamani = _saat.GetUtcNow().UtcDateTime
             };
+            await IsKategoriService.AtanabilirAsync(_db, dto.KategoriId, mevcut: null, ct);
             Uygula(isi, dto);
             await ProsedurUygulaAsync(isi, dto, ct);
 
@@ -384,6 +426,12 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
             if (isi.YasalMukellefiyetKodu is not null)
                 throw new YapilacaklarKuralException(nameof(dto.Baslik), "Yasal işin adı ve tarihi değiştirilemez.");
 
+            // Yalnız çakışma anahtarı değiştiyse (başlık, tekrar, tek seferlikte ay): mevcut kopyaya dokunmayan
+            // düzenleme (ör. sorumlu) eski çakışma yüzünden engellenmez.
+            if (CakismaAnahtari(isi.Baslik, isi.Tekrar, isi.TekSeferTarih) != CakismaAnahtari(dto.Baslik, dto.Tekrar, dto.TekSeferTarih))
+                await AyniAdKontrolAsync(firmaId, haricId: isId, dto, ct);
+
+            await IsKategoriService.AtanabilirAsync(_db, dto.KategoriId, isi.KategoriId, ct);
             Uygula(isi, dto);
             var alicilarDegisti = await ProsedurUygulaAsync(isi, dto, ct);
             if (!alicilarDegisti && !_db.Entry(isi).Properties.Any(p => p.IsModified)) return await TanimAsync(isi, ct);
@@ -503,6 +551,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
             yeni.Aktif = m.Aktif;
             yeni.NasilYapilir = m.NasilYapilir;
             yeni.OnAdimiOlduguIsId = m.OnAdimiOlduguIsId;
+            yeni.KategoriId ??= m.KategoriId;   // yapıştırmada kategori yok: mevcut korunur
             yeni.SistemId ??= m.SistemId;
             yeni.MenuYolu ??= m.MenuYolu;
             yeni.Aciklama ??= m.Aciklama;
@@ -524,6 +573,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
                 .ToListAsync(ct);
 
             var pasifSistemler = (await _db.Sistemler.AsNoTracking().Where(s => !s.Aktif).Select(s => s.Id).ToListAsync(ct)).ToHashSet();
+            var pasifKategoriler = (await _db.IsKategorileri.AsNoTracking().Where(k => !k.Aktif).Select(k => k.Id).ToListAsync(ct)).ToHashSet();
             var mevcut = await MevcutBasliklarAsync(hedefFirmaId, ct);
             var sonuc = new TopluSonucDto();
 
@@ -549,6 +599,8 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
                     TekSeferTarih = k.TekSeferTarih,
                     IlkDonem = dto.IlkDonem,
                     Aktif = k.Aktif,
+                    // Kategori global: taşınır (pasifse taşınmaz — pasif kategori atanamaz).
+                    KategoriId = k.KategoriId is { } kat && !pasifKategoriler.Contains(kat) ? kat : null,
                     SistemId = k.SistemId is { } s && !pasifSistemler.Contains(s) ? s : null,
                     MenuYolu = k.MenuYolu,
                     NasilYapilir = k.NasilYapilir,
@@ -571,6 +623,33 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
             }
 
             return sonuc;
+        }
+
+        /// <summary>
+        /// İş Takip matrisinde aynı kolona düşecek iş (<see cref="DonemPanosuKurucu.OzelKolonAnahtari"/>): biri
+        /// gösterilemez. Ayın dışındaki tek seferlik iş çakışmaz. Pasif iş de sayılır — yapılmış dönemiyle görünür.
+        /// Prosedür satırları (yasal) hariç.
+        /// </summary>
+        private static string CakismaAnahtari(string? baslik, IsTekrari tekrar, DateTime? tekSeferTarih)
+            => DonemPanosuKurucu.OzelKolonAnahtari(baslik ?? string.Empty, tekrar)
+               + (tekrar == IsTekrari.TekSefer ? $"|{tekSeferTarih:yyyy-MM}" : string.Empty);
+
+        /// <exception cref="YapilacaklarAyniAdException">Çakışan iş var ve <see cref="FirmaIsiKaydetDto.Israr"/> yok.</exception>
+        private async Task AyniAdKontrolAsync(int firmaId, int? haricId, FirmaIsiKaydetDto dto, CancellationToken ct)
+        {
+            if (dto.Israr) return;
+
+            var anahtar = CakismaAnahtari(dto.Baslik, dto.Tekrar, dto.TekSeferTarih);
+            var ayni = (await _db.FirmaIsleri.AsNoTracking()
+                    .Where(i => i.FirmaId == firmaId && i.YasalMukellefiyetKodu == null && i.Tekrar == dto.Tekrar
+                                && i.Id != (haricId ?? 0))
+                    .Select(i => new { i.Id, i.Baslik, i.Tekrar, i.TekSeferTarih, i.Aktif })
+                    .ToListAsync(ct))
+                .Where(i => CakismaAnahtari(i.Baslik, i.Tekrar, i.TekSeferTarih) == anahtar)
+                .OrderBy(i => i.Id)
+                .FirstOrDefault();
+
+            if (ayni is not null) throw new YapilacaklarAyniAdException(ayni.Id, ayni.Baslik, ayni.Aktif);
         }
 
         /// <summary>Firmanın özel işleri: başlık anahtarı → Id (yasal prosedür satırları hariç).</summary>
@@ -1025,7 +1104,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
 
         private static string? Bos(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
-        private static void Dogrula(FirmaIsiKaydetDto dto)
+        internal static void Dogrula(FirmaIsiKaydetDto dto)
         {
             var baslik = dto.Baslik?.Trim() ?? string.Empty;
             if (baslik.Length == 0)
@@ -1058,14 +1137,14 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
                 throw new YapilacaklarKuralException(nameof(dto.SorumluKullaniciId), "Geçersiz sorumlu.");
         }
 
-        private static void IlkDonemDogrula(string? ilkDonem)
+        internal static void IlkDonemDogrula(string? ilkDonem)
         {
             if (YapilacaklarKurucu.IlkDonemNormalize(ilkDonem, IsTekrari.Aylik, DateTime.UtcNow).Gecersiz)
                 throw new YapilacaklarKuralException("IlkDonem", "Başlangıç dönemi geçersiz (beklenen: 2026-09).");
         }
 
         /// <summary>Kurala uymayan alanlar boşaltılır: tek seferlikte gün kuralı, ayın günü dışında gün sayısı.</summary>
-        private static void Uygula(FirmaIsi isi, FirmaIsiKaydetDto dto)
+        internal static void Uygula(FirmaIsi isi, FirmaIsiKaydetDto dto)
         {
             isi.Baslik = dto.Baslik.Trim();
             isi.Aciklama = string.IsNullOrWhiteSpace(dto.Aciklama) ? null : dto.Aciklama.Trim();
@@ -1079,6 +1158,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
                 : string.IsNullOrWhiteSpace(dto.SorumluKullaniciAdi) ? null
                 : dto.SorumluKullaniciAdi.Trim() is { Length: > 100 } uzun ? uzun[..100] : dto.SorumluKullaniciAdi.Trim();
             isi.Aktif = dto.Aktif;
+            isi.KategoriId = dto.KategoriId;
         }
 
         private async Task FirmaVarAsync(int firmaId, CancellationToken ct)

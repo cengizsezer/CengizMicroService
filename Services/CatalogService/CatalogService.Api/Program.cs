@@ -166,6 +166,12 @@ builder.Services.AddScoped<CatalogService.Api.Features.Yapilacaklar.Services.IIs
                            CatalogService.Api.Features.Yapilacaklar.Services.IsTarifiService>();
 builder.Services.AddScoped<CatalogService.Api.Features.Yapilacaklar.Services.IKisiService,
                            CatalogService.Api.Features.Yapilacaklar.Services.KisiService>();
+// Firma Panosu Aşama 2: iş kategorileri (Yönetim → İş Kategorileri). Çözüm IsKategoriCozucu'da.
+builder.Services.AddScoped<CatalogService.Api.Features.Yapilacaklar.Services.IIsKategoriService,
+                           CatalogService.Api.Features.Yapilacaklar.Services.IsKategoriService>();
+// Firma Panosu Aşama 3: checklist şablonları (iş tanımı paketi → firmaya özel işler).
+builder.Services.AddScoped<CatalogService.Api.Features.Yapilacaklar.Services.IChecklistSablonService,
+                           CatalogService.Api.Features.Yapilacaklar.Services.ChecklistSablonService>();
 
 // Anasayfa künye yazmaları (sınıflandırma, sorumlu, notlar).
 builder.Services.AddScoped<CatalogService.Api.Features.Anasayfa.Services.IFirmaKunyeService,
@@ -678,6 +684,10 @@ IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'pkf')
             // metinli kayıt bağlanmaz, başlık başlık loglanır. Sistemler'den sonra (SistemId FK).
             await SeedAdimi.CalistirAsync(logger, "İş tarifleri", ctxOnce,
                 () => CatalogService.Api.Features.Yapilacaklar.IsTarifiSeed.SeedVeLoglaAsync(ctxOnce, logger));
+
+            // İş kategorileri (Firma Panosu Aşama 2): tablo boşsa dört başlangıç kategorisi; doluysa dokunmaz.
+            await SeedAdimi.CalistirAsync(logger, "İş kategorileri", ctxOnce,
+                () => CatalogService.Api.Features.Yapilacaklar.IsKategorisiSeed.SeedVeLoglaAsync(ctxOnce, logger));
 
             // Kişiler (Prompt 14): kişiye bağlanmamış alıcılardan kişi; şüpheli eşleşme birleştirilmez, loglanır.
             await SeedAdimi.CalistirAsync(logger, "Kişiler", ctxOnce,

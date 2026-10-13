@@ -1,0 +1,29 @@
+@*
+    Sayaç kartı (Firma Panosu · Aşama 1) — paylaşılabilir: ad, büyük sayı, kısa açıklama, solda renk şeridi.
+    Basılıysa (Secili) kenar ve zemin rengi alır. Renk, kovayı bilmeden RenkSinifi'yle verilir (ck-c-…):
+    başka bir ekran kendi sınıfını geçirip aynı bileşeni kullanabilir. Stil CkStiller'de; .ck-kok içinde çizilmeli.
+*@
+
+<button type="button" class="@($"ck-sayac {RenkSinifi}")" aria-pressed="@(Secili ? "true" : "false")"
+        title="@(Secili ? "Filtreyi kaldır" : $"Yalnız \"{Ad}\" olanları göster")" @onclick="@(() => Tiklandi.InvokeAsync())">
+    <div class="ck-sayac-ad"><i></i>@Ad</div>
+    <div class="ck-sayac-sayi">@Sayi</div>
+    @if (!string.IsNullOrEmpty(Aciklama))
+    {
+        <div class="ck-sayac-aciklama">@Aciklama</div>
+    }
+</button>
+
+@code {
+    [Parameter, EditorRequired] public string Ad { get; set; } = string.Empty;
+    [Parameter] public int Sayi { get; set; }
+    [Parameter] public string? Aciklama { get; set; }
+
+    /// <summary>Renk değişkenlerini kuran sınıf (ör. ck-c-gecikti).</summary>
+    [Parameter] public string RenkSinifi { get; set; } = string.Empty;
+
+    [Parameter] public bool Secili { get; set; }
+
+    /// <summary>Tıklandı — sayfa filtreyi açar ya da (zaten seçiliyse) kaldırır.</summary>
+    [Parameter] public EventCallback Tiklandi { get; set; }
+}

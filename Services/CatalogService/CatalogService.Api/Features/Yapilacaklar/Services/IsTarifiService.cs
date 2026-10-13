@@ -132,6 +132,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
                     Ad = t.Ad,
                     SistemId = t.SistemId,
                     SistemAdi = t.SistemId is { } s ? sistemAdlari.GetValueOrDefault(s) : null,
+                    KategoriId = t.KategoriId,
                     MenuYolu = t.MenuYolu,
                     NasilYapilir = t.NasilYapilir,
                     Adimlar = YapilacaklarKurucu.Adimlar(t.NasilYapilir),
@@ -266,10 +267,12 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
 
             var ilk = uyeler.OrderBy(i => i.Id).First();
             var baslik = ad ?? ilk.Baslik.Trim();
+            await IsKategoriService.AtanabilirAsync(_db, form.KategoriId, mevcut: null, ct);
             var tarif = new IsTarifi
             {
                 Ad = baslik.Length > 200 ? baslik[..200] : baslik,
                 SistemId = form.SistemId,
+                KategoriId = form.KategoriId,
                 MenuYolu = menu,
                 NasilYapilir = nasil,
                 OlusturmaZamani = _saat.GetUtcNow().UtcDateTime
@@ -326,8 +329,10 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
             var (adV, menu, nasil) = await FormDogrulaAsync(dto, adZorunlu: true, ct);
             var ad = adV!;
 
+            await IsKategoriService.AtanabilirAsync(_db, dto.KategoriId, t.KategoriId, ct);
             t.Ad = ad;
             t.SistemId = dto.SistemId;
+            t.KategoriId = dto.KategoriId;
             t.MenuYolu = menu;
             t.NasilYapilir = nasil;
             await _db.SaveChangesAsync(ct);
@@ -335,7 +340,7 @@ namespace CatalogService.Api.Features.Yapilacaklar.Services
             var sistemAdi = t.SistemId is { } s ? await _db.Sistemler.Where(x => x.Id == s).Select(x => x.Ad).FirstOrDefaultAsync(ct) : null;
             return new IsTarifiDto
             {
-                Id = t.Id, Ad = t.Ad, SistemId = t.SistemId, SistemAdi = sistemAdi, MenuYolu = t.MenuYolu,
+                Id = t.Id, Ad = t.Ad, SistemId = t.SistemId, SistemAdi = sistemAdi, MenuYolu = t.MenuYolu, KategoriId = t.KategoriId,
                 NasilYapilir = t.NasilYapilir, Adimlar = YapilacaklarKurucu.Adimlar(t.NasilYapilir),
                 Ekler = t.Ekler.OrderBy(e => e.YuklemeZamani).ThenBy(e => e.Id).Select(Ek).ToList()
             };

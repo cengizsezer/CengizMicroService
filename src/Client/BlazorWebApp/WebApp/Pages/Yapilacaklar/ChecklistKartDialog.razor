@@ -1,0 +1,217 @@
+@using Radzen
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@inject IYapilacaklarApiClient Api
+@inject DialogService DialogService
+@inject NotificationService Bildirim
+
+@*
+    Checklist kartının detay penceresi (Firma Panosu · Aşama 1; taslaktaki "pencere"). Başlıkta durum ikonu, ilerleme,
+    bölümler halinde maddeler. İşaretleme MEVCUT ucu çağırır (PUT yapilacaklar/isaretle); ardından sayfa veriyi yeniden
+    okur ve pencere kartı oradan tazeler (Tazele) — sayılar sayfayla aynı kaynaktan.
+
+    Kuyruk kuralı gereği işaretlenen madde karttan düşebilir (gecikmiş bir önceki dönem dururken sonraki dönem
+    işaretlenirse); kart tamamen boşalırsa pencere bunu söyler.
+
+    Not/kanıt ve prosedür burada YENİDEN YAZILMADI: "Not / kanıt" İş Takip Panosu'nun o ayının dönem sekmesine
+    (DonemHucrePaneli orada), "Nasıl yapılır" prosedür paneline (IsProsedurPaneli) gider — pencere kapanır, sayfa açar.
+
+    Radzen dialogu sayfanın DIŞINDA çizilir: kök kendi .ck-kok kabını taşır (stiller CkStiller'den).
+*@
+
+<div class="ck-kok ck-dlg">
+    @if (kart is null)
+    {
+        <div class="ck-dlg-ust">
+            <div style="flex:1;min-width:0"><h3>@baslik</h3><div class="ck-dlg-ozet">Bu kartta gösterilecek madde kalmadı.</div></div>
+            <button type="button" class="ck-kapat" aria-label="Kapat" @onclick="@(() => DialogService.Close())">×</button>
+        </div>
+        <div class="ck-bos">İşaretlenen dönem kuyruktan çıktı. Geçmişin tamamı İş Takip Panosu'nda.</div>
+    }
+    else
+    {
+        var oran = kart.Toplam == 0 ? 0 : kart.Tamam * 100 / kart.Toplam;
+        var gecikti = kart.Gecikmis > 0;
+        var bitti = kart.Durum == PanoKovasi.Tamam;
+
+        <div class="@($"ck-dlg-ust {(gecikti ? "ck-gecikti" : bitti ? "ck-tamam" : "")}")">
+            <div class="ck-buyuk-ikon" style="background:@(gecikti ? "var(--ck-gecikti)" : bitti ? "var(--ck-tamam)" : Renk)">
+                @(gecikti ? "!" : bitti ? "✓" : PanoMetin.BasHarfler(kart.FirmaAdi))
+            </div>
+            <div style="flex:1;min-width:0">
+                <h3>@kart.FirmaAdi · @kart.DonemEtiketi</h3>
+                <div class="ck-dlg-ozet">
+                    <span class="ck-yazi-tamam">@kart.Tamam tamam</span>
+                    @if (gecikti)
+                    {
+                        <text> · </text><span class="ck-yazi-gecikti">@kart.Gecikmis gecikmiş</span>
+                    }
+                    · @kart.Tamam/@kart.Toplam (%@oran)
+                </div>
+            </div>
+            <div class="ck-etiketler">
+                @if (kart.SorumluKullaniciAdi is { } sorumlu)
+                {
+                    <span class="ck-etiket">@sorumlu</span>
+                }
+                <span class="ck-etiket ck-mono">@kart.DonemEtiketi</span>
+                @foreach (var sablon in kart.Sablonlar)
+                {
+                    <span class="ck-etiket ck-etiket-sablon">@sablon</span>
+                }
+            </div>
+            <button type="button" class="ck-kapat" aria-label="Kapat" @onclick="@(() => DialogService.Close())">×</button>
+        </div>
+
+        <div class="ck-dlg-cubuk">
+            <div class="ck-cubuk" role="img" aria-label="@($"{kart.Tamam} / {kart.Toplam} tamam, {kart.Gecikmis} gecikmiş")">
+                <i class="ck-cubuk-tamam" style="width:@Yuzde(kart.Tamam, kart.Toplam)"></i>
+                <i class="ck-cubuk-gecikti" style="width:@Yuzde(kart.Gecikmis, kart.Toplam)"></i>
+            </div>
+        </div>
+
+        <div class="ck-dlg-govde">
+            @foreach (var b in kart.Bolumler)
+            {
+                var bGecikti = b.Gecikmis > 0;
+                var bBitti = b.Tamam == b.Toplam;
+                <div class="@($"ck-kategori {(bGecikti ? "ck-gecikti" : bBitti ? "ck-tamam" : "")}")">
+                    <div class="ck-kategori-basi">
+                        <span class="ck-kategori-ikon" style="background:@(bGecikti ? "var(--ck-gecikti)" : bBitti ? "var(--ck-tamam)" : "var(--ck-silik)")">@(bGecikti ? "!" : bBitti ? "✓" : "")</span>
+                        @* Bölüm = iş kategorisi (Aşama 2); "Diğer" kategorisi olmayan işler. *@
+                        <b title="@(b.Anahtar == IsKategoriMetin.DigerAnahtari ? "Kategorisi olmayan işler — Yönetim → İş Kategorileri'nden atanır" : null)">@b.Ad</b>
+                        <span title="@($"{b.Tamam} yapıldı · {b.Toplam} madde{(bGecikti ? $" · {b.Gecikmis} gecikmiş" : "")}")">@b.Tamam/@b.Toplam</span>
+                    </div>
+                    @foreach (var m in b.Maddeler)
+                    {
+                        var s = m.Satir;
+                        <label class="@(s.Tamamlandi ? "ck-madde ck-yapildi" : "ck-madde")" @key="@($"{s.KaynakTip}|{s.KaynakId}|{s.DonemAnahtari}#{surum}")">
+                            <input type="checkbox" checked="@s.Tamamlandi" disabled="@isleniyor"
+                                   title="@(s.Tamamlandi ? "İşareti kaldır" : "Yapıldı olarak işaretle")"
+                                   @onchange="@(() => Isaretle(!s.Tamamlandi, new[] { s }))" />
+                            <span style="min-width:0">
+                                <span class="ck-is">@s.Baslik</span>
+                                @if (s.KaynakTip == IsKaynagi.Yasal)
+                                {
+                                    <span class="ck-yasal-etiket">Yasal</span>
+                                }
+                                @if (m.OrtakFirmaSayisi > 1)
+                                {
+                                    <span class="ck-yasal-etiket ck-ortak" title="Aynı iş, aynı son gün @m.OrtakFirmaSayisi firmada">@m.OrtakFirmaSayisi firma</span>
+                                }
+                                <span class="ck-madde-baglar">
+                                    <button type="button" class="ck-bag" title="Bu dönemin notu ve kanıtı — İş Takip Panosu'nda"
+                                            @onclick:preventDefault="true" @onclick="@(() => DialogService.Close(new DonemeGit(Adres(s))))">Not / kanıt</button>
+                                    <button type="button" class="ck-bag" title="Program, alıcılar, adımlar ve ekler"
+                                            @onclick:preventDefault="true" @onclick="@(() => DialogService.Close(new ProsedurIstegi(s)))">Nasıl yapılır</button>
+                                </span>
+                            </span>
+                            <span class="@(m.Kova == PanoKovasi.Gecikti ? "ck-madde-tarih ck-yazi-gecikti" : "ck-madde-tarih")"
+                                  title="@(s.DonemEtiketi is null ? "Son gün" : $"{s.DonemEtiketi} · son gün")">
+                                @(m.Kova == PanoKovasi.Gecikti ? $"{(Bugun.Date - s.SonGun.Date).Days} gün · " : "")@s.SonGun.ToString("dd.MM")
+                            </span>
+                        </label>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="ck-dlg-alt">
+            <span>
+                @(kart.SorumluKullaniciAdi is { } sor ? $"Sorumlu: {sor} · " : "")Dönem merkezli: maddenin son günü sonraki aya düşebilir.
+            </span>
+            @if (hata is not null)
+            {
+                <span class="ck-hata" role="alert">@hata</span>
+            }
+            <span class="ck-bosluk"></span>
+            @if (gecikti)
+            {
+                <button type="button" class="ck-dugme ck-dugme-tamam" disabled="@isleniyor" @onclick="GecikmisleriTamamla">✓ Gecikmişlerin hepsini tamamla</button>
+            }
+            <button type="button" class="ck-dugme" @onclick="@(() => DialogService.Close())">Kapat</button>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Pencere kapanınca sayfanın açacağı prosedür paneli.</summary>
+    public sealed record ProsedurIstegi(IsSatiriDto Satir);
+
+    /// <summary>Pencere kapanınca gidilecek adres (İş Takip Panosu'nun dönem sekmesi).</summary>
+    public sealed record DonemeGit(string Adres);
+
+    [Parameter, EditorRequired] public ChecklistKartiDto Kart { get; set; } = default!;
+    [Parameter] public DateTime Bugun { get; set; } = DateTime.Today;
+
+    /// <summary>Firmanın baş harf kutusunun rengi (kartla aynı).</summary>
+    [Parameter] public string Renk { get; set; } = "var(--ck-vurgu)";
+
+    /// <summary>Sayfa veriyi yeniden okur ve bu anahtarın kartını döner; kart artık yoksa null.</summary>
+    [Parameter, EditorRequired] public Func<string, Task<ChecklistKartiDto?>> Tazele { get; set; } = default!;
+
+    private ChecklistKartiDto? kart;
+    private string baslik = string.Empty;
+    private bool isleniyor;
+    private string? hata;
+
+    /// <summary>Onay iptalinde ya da hata sonrası kutuyu sunucudaki hâline döndürmek için.</summary>
+    private int surum;
+
+    protected override void OnInitialized()
+    {
+        kart = Kart;
+        baslik = $"{Kart.FirmaAdi} · {Kart.DonemEtiketi}";
+    }
+
+    private static string Yuzde(int pay, int payda)
+        => payda == 0 ? "0%" : (pay * 100.0 / payda).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%";
+
+    /// <summary>İş Takip Panosu'nda kartın ayı + firması; maddenin satırı orada, hücre paneli satıra tıklayınca açılır.</summary>
+    private string Adres(IsSatiriDto s) => IsTakipPanosuAdres.Donem(Kart.DonemAnahtari, s.FirmaId);
+
+    private async Task GecikmisleriTamamla()
+    {
+        if (kart is null) return;
+        var hedef = kart.Maddeler.Where(m => m.Kova == PanoKovasi.Gecikti).Select(m => m.Satir).ToList();
+        if (hedef.Count == 0) return;
+
+        var liste = string.Join(", ", hedef.Take(12).Select(s => s.Baslik)) + (hedef.Count > 12 ? $" ve {hedef.Count - 12} madde daha" : "");
+        var onay = await DialogService.Confirm(
+            $"{kart.FirmaAdi} · {kart.DonemEtiketi}: {hedef.Count} gecikmiş madde yapıldı olarak işaretlenecek:\n{liste}",
+            "Gecikmişlerin hepsini tamamla",
+            new ConfirmOptions { OkButtonText = $"{hedef.Count} maddeyi işaretle", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        if (await Isaretle(true, hedef))
+            Bildirim.Notify(NotificationSeverity.Success, $"{hedef.Count} gecikmiş madde tamamlandı", duration: 2500);
+    }
+
+    private async Task<bool> Isaretle(bool yapildi, IReadOnlyCollection<IsSatiriDto> satirlar)
+    {
+        isleniyor = true;
+        hata = null;
+        try
+        {
+            var sonuc = await Api.IsaretleAsync(new IsIsaretleDto
+            {
+                Yapildi = yapildi,
+                Isler = satirlar.Select(IsIsaretDto.Satirdan).ToList()
+            });
+            if (sonuc is not null)
+            {
+                hata = sonuc;
+                surum++;
+                return false;
+            }
+
+            kart = await Tazele(Kart.Anahtar);
+            return true;
+        }
+        finally
+        {
+            isleniyor = false;
+        }
+    }
+}

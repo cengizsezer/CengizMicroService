@@ -157,9 +157,12 @@
     private IsTarifiKaydetDto? formIlk;
     private List<WebApp.Shared.Dto.Sistemler.SistemDto>? sistemler;
 
+    /// <summary>İş kategorileri (Aşama 2), pasifler dahil — tarifin kayıtlı kategorisinin adı için.</summary>
+    private List<IsKategorisiDto>? kategoriler;
+
     /// <summary>Kaydedilmemiş değişiklik var mı (Kaydet kullanıcının; otomatik kaydetme yok).</summary>
     private bool Kirli => form is not null && formIlk is not null
-        && (form.Ad != formIlk.Ad || form.SistemId != formIlk.SistemId
+        && (form.Ad != formIlk.Ad || form.SistemId != formIlk.SistemId || form.KategoriId != formIlk.KategoriId
             || (form.MenuYolu ?? "") != (formIlk.MenuYolu ?? "") || (form.NasilYapilir ?? "") != (formIlk.NasilYapilir ?? ""));
 
     private string? SeciliAnahtar => Is ?? FirmaninIsleri.FirstOrDefault()?.Anahtar;
@@ -192,6 +195,7 @@
         }
         yuklenenSurum = Surum;
         if (liste is null && hata is null) await ListeYukle();
+        kategoriler ??= (await Api.KategorilerAsync()).Liste;
         if (SeciliAnahtar != yuklenenAnahtar) await DetayYukle();
     }
 
@@ -346,6 +350,7 @@
                 @PaylasimUyarisi(KullananSayisi(d), yeni: false)
                 @SistemSecimi()
                 <RadzenTextBox @bind-Value="form.MenuYolu" MaxLength="300" Style="width:100%" Placeholder="Bordro > Raporlar > Ücret Bordrosu" />
+                @KategoriSecimi()
                 @FormDugmeleri()
             }
             else if (t is null)
@@ -366,6 +371,10 @@
                     @if (!string.IsNullOrWhiteSpace(t.MenuYolu))
                     {
                         <code class="dp-menu-yolu">@t.MenuYolu</code>
+                    }
+                    @if (t.KategoriId is { } kid)
+                    {
+                        <span class="dp-cip dp-cip-alici" title="Bu tarife bağlı işlerin varsayılan kategorisi">kategori: @KategoriAdi(kid)</span>
                     }
                 </div>
             }
@@ -430,6 +439,10 @@
                     <div>
                         <RadzenLabel Text="Program" />
                         @SistemSecimi()
+                    </div>
+                    <div>
+                        <RadzenLabel Text="Kategori" />
+                        @KategoriSecimi()
                     </div>
                     <div>
                         <RadzenLabel Text="Menü yolu" />
@@ -550,6 +563,21 @@
                         AllowClear="true" AllowFiltering="true" Placeholder="program yok" Style="width:100%" />
     };
 
+    /// <summary>
+    /// Tarifin kategorisi (Aşama 2): bu tarife bağlı işlerin varsayılanı; işin kendi kategorisi önce gelir.
+    /// Pasif kategori yalnız zaten seçiliyse listede kalır.
+    /// </summary>
+    private RenderFragment KategoriSecimi() => __builder =>
+    {
+        <RadzenDropDown TValue="int?" Data="@(kategoriler?.Where(k => k.Aktif || k.Id == formIlk?.KategoriId)
+                                                  .Select(k => new { k.Id, Ad = k.Aktif ? k.Ad : k.Ad + " · pasif" }).ToList())"
+                        TextProperty="Ad" ValueProperty="Id" @bind-Value="form!.KategoriId"
+                        AllowClear="true" Placeholder="kategori yok (işin kendisi ya da Diğer)" Style="width:100%; margin-top:6px" />
+    };
+
+    private string KategoriAdi(int id) => kategoriler?.FirstOrDefault(k => k.Id == id) is { } k
+        ? (k.Aktif ? k.Ad : k.Ad + " (pasif)") : $"#{id}";
+
     private RenderFragment FormDugmeleri() => __builder =>
     {
         <div style="display:flex; gap:.5rem; justify-content:flex-end; align-items:center">
@@ -588,6 +616,7 @@
 
     private async Task SistemleriYukle(int? seciliId)
     {
+        kategoriler ??= (await Api.KategorilerAsync()).Liste;
         sistemler ??= await Sistemler.ListeAsync(null, false) ?? new();
         // Pasif bir sistem seçiliyse listede kalsın (yeni seçilemez, mevcut kalır — Prompt 9 kuralı).
         if (seciliId is { } sid && sistemler.All(s => s.Id != sid))
@@ -607,14 +636,22 @@
         if (detay?.Tarif is not { } t) return;
         islemHata = null;
         await SistemleriYukle(t.SistemId);
-        FormuAc(bolum, new IsTarifiKaydetDto { Ad = t.Ad, SistemId = t.SistemId, MenuYolu = t.MenuYolu, NasilYapilir = t.NasilYapilir });
+        // Her bölüm bütün formu yazar: kategori de taşınmalı, yoksa "Nasıl yapılır"ı kaydetmek kategoriyi silerdi.
+        FormuAc(bolum, new IsTarifiKaydetDto
+        {
+            Ad = t.Ad, SistemId = t.SistemId, MenuYolu = t.MenuYolu, NasilYapilir = t.NasilYapilir, KategoriId = t.KategoriId
+        });
     }
 
     private void FormuAc(Bolum bolum, IsTarifiKaydetDto deger)
     {
         acik = bolum;
         form = deger;
-        formIlk = new IsTarifiKaydetDto { Ad = deger.Ad, SistemId = deger.SistemId, MenuYolu = deger.MenuYolu, NasilYapilir = deger.NasilYapilir };
+        formIlk = new IsTarifiKaydetDto
+        {
+            Ad = deger.Ad, SistemId = deger.SistemId, MenuYolu = deger.MenuYolu, NasilYapilir = deger.NasilYapilir,
+            KategoriId = deger.KategoriId
+        };
     }
 
     private void FormuKapat()

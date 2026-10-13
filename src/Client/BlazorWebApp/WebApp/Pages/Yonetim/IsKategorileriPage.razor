@@ -1,0 +1,461 @@
+@page "/yonetim/is-kategorileri"
+
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Pages.Yapilacaklar
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@attribute [Authorize]
+
+@inject IYapilacaklarApiClient Api
+@inject DialogService DialogService
+@inject NotificationService Notif
+
+@*
+    Yönetim → İş Kategorileri (Firma Panosu Aşama 2): checklist kartının bölümleri. Global liste.
+
+    Çözüm sunucuda tek yerde (IsKategoriCozucu): özel iş → kendi kategorisi ?? tarifinin ?? "Diğer";
+    yasal iş → mükellefiyet eşlemesi ?? yasal varsayılan (bir kategori; seed'de "Beyanname", adla değil
+    işaretle bulunur — ad değişince yasal işler yerinde kalır). "Diğer" bir kayıt değil, kartın son bölümü.
+    Kullanılan kategori silinmez; pasife alınır (çözümde atlanır, yeniden atanamaz). Yasal varsayılan ne
+    silinir ne pasife alınır; işaret başka bir aktif kategoriye taşınır.
+*@
+
+<PageTitle>İş Kategorileri</PageTitle>
+
+<YsStiller />
+
+<div class="ys-kok ik-kok">
+    <div class="ys-ust">
+        <div>
+            <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">İş Kategorileri</RadzenText>
+            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">
+                Checklist kartının bölümleri. Kategorisi olmayan iş kartta "Diğer"de durur; eşlemesi olmayan yasal iş "@VarsayilanAdi"de.
+            </RadzenText>
+        </div>
+    </div>
+
+    @if (hata is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">@hata</RadzenAlert>
+    }
+
+    <RadzenTabs @bind-SelectedIndex="sekme" RenderMode="TabRenderMode.Client">
+        <Tabs>
+            @* ---- 1. Kategoriler ---- *@
+            <RadzenTabsItem Text="Kategoriler">
+                <div class="ys-kart">
+                    <div class="ys-kart-basi">Kategori ekle</div>
+                    <div class="ik-form">
+                        <RadzenTextBox @bind-Value="yeniAd" MaxLength="100" Placeholder="Ad (ör. SGK)" Style="flex:1;min-width:200px" />
+                        <RadzenButton Text="Ekle" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Primary" IsBusy="@isleniyor"
+                                      Disabled="@string.IsNullOrWhiteSpace(yeniAd)" Click="@Ekle" />
+                    </div>
+                </div>
+
+                <div class="ys-kart">
+                    @if (kategoriler is null)
+                    {
+                        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+                    }
+                    else if (kategoriler.Count == 0)
+                    {
+                        <div class="ys-bos">Kategori yok. Bütün işler kartta "Diğer"de durur.</div>
+                    }
+                    else
+                    {
+                        <table class="ys-tablo">
+                            <thead>
+                                <tr>
+                                    <th style="width:70px">Sıra</th>
+                                    <th>Ad</th>
+                                    <th style="width:220px">Kullanım</th>
+                                    <th style="width:60px">Aktif</th>
+                                    <th style="width:160px"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (var i = 0; i < kategoriler.Count; i++)
+                                {
+                                    var k = kategoriler[i];
+                                    var d = duzen[k.Id];
+                                    var sira = i;
+                                    <tr class="@(k.Aktif ? "" : "ys-pasif")">
+                                        <td class="ik-sira">
+                                            <button type="button" class="ik-ok" title="Yukarı" disabled="@(sira == 0 || isleniyor)"
+                                                    @onclick="@(() => Tasi(sira, -1))">▲</button>
+                                            <button type="button" class="ik-ok" title="Aşağı" disabled="@(sira == kategoriler.Count - 1 || isleniyor)"
+                                                    @onclick="@(() => Tasi(sira, +1))">▼</button>
+                                        </td>
+                                        <td>
+                                            <RadzenTextBox @bind-Value="d.Ad" MaxLength="100" Style="width:100%" />
+                                            @if (k.YasalVarsayilan)
+                                            {
+                                                <div style="margin-top:3px">
+                                                    <span class="ys-rozet ys-rozet-ay" title="Eşlemesi olmayan yasal işler bu kategoride durur. Ad değişse de yerinde kalırlar.">yasal varsayılan</span>
+                                                    <span class="ys-alt">eşlemesi olmayan yasal işler burada</span>
+                                                </div>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (k.KullanimSayisi == 0)
+                                            {
+                                                <span class="ys-alt">kullanılmıyor</span>
+                                            }
+                                            else
+                                            {
+                                                <span>@Kullanim(k)</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <RadzenCheckBox TValue="bool" @bind-Value="d.Aktif" Disabled="@k.YasalVarsayilan"
+                                                            title="@(k.YasalVarsayilan ? "Yasal varsayılan pasife alınamaz; önce varsayılanı başka kategoriye taşıyın." : null)" />
+                                        </td>
+                                        <td>
+                                            @if (k.Ad != d.Ad.Trim() || k.Aktif != d.Aktif)
+                                            {
+                                                <span class="ys-bag" role="button" @onclick="@(() => Kaydet(k, d))">Kaydet</span>
+                                                <span class="ys-bag" role="button" style="margin-left:8px" @onclick="@(() => Geri(k))">Vazgeç</span>
+                                            }
+                                            else if (k.YasalVarsayilan)
+                                            {
+                                                <span class="ys-alt" title="Yasal varsayılan silinmez; önce varsayılanı başka kategoriye taşıyın.">silinemez</span>
+                                            }
+                                            else
+                                            {
+                                                @if (k.KullanimSayisi == 0)
+                                                {
+                                                    <span class="ys-bag" role="button" @onclick="@(() => Sil(k))">Sil</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="ys-alt" title="Kullanılan kategori silinmez; kullanılmasın istiyorsanız pasife alın.">silinemez</span>
+                                                }
+                                                @if (k.Aktif)
+                                                {
+                                                    <div><span class="ys-bag" role="button" title="Eşlemesi olmayan yasal işler bu kategoriye geçer"
+                                                               @onclick="@(() => YasalVarsayilanYap(k))">Yasal varsayılan yap</span></div>
+                                                }
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                                <tr class="ys-pasif">
+                                    <td></td>
+                                    <td>@IsKategoriMetin.Diger <span class="ys-alt">· sabit son bölüm, kategorisi olmayan işler</span></td>
+                                    <td colspan="3"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </RadzenTabsItem>
+
+            @* ---- 2. Kategorisiz işler ---- *@
+            <RadzenTabsItem Text="@($"Kategorisiz işler{(kategorisiz is { Count: > 0 } kz ? $" ({kz.Count})" : "")}")">
+                <div class="ys-kart">
+                    @if (kategorisiz is null)
+                    {
+                        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+                    }
+                    else if (kategorisiz.Count == 0)
+                    {
+                        <div class="ys-bos">Bütün işlerin kategorisi var.</div>
+                    }
+                    else
+                    {
+                        <div class="ys-alt" style="margin-bottom:.35rem">
+                            Kendi kategorisi de iş tarifinin kategorisi de olmayan firma işleri (kartta "Diğer"de). Aynı başlık ve tekrar bir
+                            satırdır; seçilen kategori o satırdaki bütün firmaların işlerine verilir.
+                        </div>
+                        <table class="ys-tablo">
+                            <thead>
+                                <tr>
+                                    <th>Başlık</th>
+                                    <th style="width:110px">Tekrar</th>
+                                    <th style="width:110px">Firma</th>
+                                    <th style="width:220px">Kategori</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var g in kategorisiz)
+                                {
+                                    @* Anahtar + sürüm: onay iptal edilince açılır kutu "Kategori seç…"e döner. *@
+                                    <tr @key="@($"{g.Anahtar}#{secimSurumu}")">
+                                        <td>@g.Baslik</td>
+                                        <td>@IsMetin.Tekrar(g.Tekrar)</td>
+                                        <td>
+                                            @g.FirmaSayisi firma
+                                            @if (g.IsSayisi != g.FirmaSayisi)
+                                            {
+                                                <span class="ys-alt"> · @g.IsSayisi iş</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <RadzenDropDown TValue="int?" Data="@AktifKategoriler" TextProperty="Ad" ValueProperty="Id"
+                                                            Value="@((int?)null)" Placeholder="Kategori seç…" Disabled="@isleniyor"
+                                                            Change="@(v => TopluAta(g, v as int?))" Style="width:100%" />
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </RadzenTabsItem>
+
+            @* ---- 3. Yasal eşleme ---- *@
+            <RadzenTabsItem Text="Yasal eşleme">
+                <div class="ys-kart">
+                    @if (eslemeler is null)
+                    {
+                        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+                    }
+                    else if (eslemeler.Count == 0)
+                    {
+                        <div class="ys-bos">Vergi takviminde mükellefiyet kodu yok.</div>
+                    }
+                    else
+                    {
+                        <div class="ys-alt" style="margin-bottom:.35rem">
+                            Yasal işin kategorisi mükellefiyet kodundan gelir. Boş bırakılan kod "@VarsayilanAdi" bölümünde durur.
+                        </div>
+                        <table class="ys-tablo">
+                            <thead>
+                                <tr>
+                                    <th style="width:80px">Kod</th>
+                                    <th>Ad</th>
+                                    <th style="width:240px">Kategori</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var e in eslemeler)
+                                {
+                                    <tr @key="e.MukellefiyetKodu">
+                                        <td class="ys-songun">@e.MukellefiyetKodu</td>
+                                        <td>@e.Ad</td>
+                                        <td>
+                                            <RadzenDropDown TValue="int?" Data="@EslemeSecenekleri(e)" TextProperty="Ad" ValueProperty="Id"
+                                                            Value="@e.KategoriId" AllowClear="true" Disabled="@isleniyor"
+                                                            Placeholder="@($"{VarsayilanAdi} (varsayılan)")"
+                                                            Change="@(v => EslemeKaydet(e, v as int?))" Style="width:100%" />
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </RadzenTabsItem>
+        </Tabs>
+    </RadzenTabs>
+</div>
+
+<style>
+    .ik-kok .ik-form { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:.4rem; }
+    .ik-kok .ik-sira { white-space:nowrap; }
+    .ik-kok .ik-ok { border:1px solid #e2e8f0; background:#fff; color:#4a5568; border-radius:4px; font-size:10px;
+                     width:22px; height:20px; line-height:1; padding:0; cursor:pointer; }
+    .ik-kok .ik-ok:hover:not(:disabled) { background:#edf2f7; }
+    .ik-kok .ik-ok:disabled { opacity:.35; cursor:default; }
+</style>
+
+@code {
+    private sealed record Secenek(int Id, string Ad);
+
+    private List<IsKategorisiDto>? kategoriler;
+    private Dictionary<int, IsKategorisiKaydetDto> duzen = new();
+    private List<KategorisizGrupDto>? kategorisiz;
+    private List<MukellefiyetEslemeDto>? eslemeler;
+    private string? yeniAd;
+    private string? hata;
+    private bool isleniyor;
+    private int sekme;
+    private int secimSurumu;
+
+    private List<Secenek> AktifKategoriler
+        => kategoriler?.Where(k => k.Aktif).Select(k => new Secenek(k.Id, k.Ad)).ToList() ?? new();
+
+    /// <summary>Aktifler + kodun mevcut eşlemesi pasifse o da (adının yanında "pasif").</summary>
+    private List<Secenek> EslemeSecenekleri(MukellefiyetEslemeDto e)
+        => kategoriler?.Where(k => k.Aktif || k.Id == e.KategoriId)
+               .Select(k => new Secenek(k.Id, k.Aktif ? k.Ad : $"{k.Ad} · pasif ({VarsayilanAdi}'e düşer)")).ToList() ?? new();
+
+    /// <summary>Varsayılan aktif değilse yasal iş "Diğer"e düşer — ekranda da öyle yazsın.</summary>
+    private string VarsayilanAdi
+        => kategoriler?.FirstOrDefault(k => k.YasalVarsayilan)?.Ad ?? IsKategoriMetin.Diger;
+
+    private static string Kullanim(IsKategorisiDto k)
+        => string.Join(" · ", new[] { (k.IsSayisi, "iş"), (k.TarifSayisi, "tarif"), (k.EslemeSayisi, "yasal kod"), (k.SablonMaddeSayisi, "şablon maddesi") }
+                                   .Where(p => p.Item1 > 0).Select(p => $"{p.Item1} {p.Item2}"));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await KategorileriYukle();
+        await Task.WhenAll(KategorisizYukle(), EslemeleriYukle());
+    }
+
+    private async Task KategorileriYukle()
+    {
+        var (liste, mesaj) = await Api.KategorilerAsync();
+        hata = mesaj;
+        kategoriler = liste ?? kategoriler ?? new();
+        duzen = kategoriler.ToDictionary(k => k.Id, k => new IsKategorisiKaydetDto { Ad = k.Ad, Aktif = k.Aktif });
+    }
+
+    private async Task KategorisizYukle()
+    {
+        var (liste, mesaj) = await Api.KategorisizIslerAsync();
+        if (mesaj is not null) hata = mesaj;
+        kategorisiz = liste ?? kategorisiz ?? new();
+    }
+
+    private async Task EslemeleriYukle()
+    {
+        var (liste, mesaj) = await Api.MukellefiyetEslemeleriAsync();
+        if (mesaj is not null) hata = mesaj;
+        eslemeler = liste ?? eslemeler ?? new();
+    }
+
+    // ---- Kategoriler ----
+
+    private async Task Ekle()
+    {
+        isleniyor = true;
+        try
+        {
+            var mesaj = await Api.KategoriEkleAsync(new IsKategorisiKaydetDto { Ad = yeniAd ?? string.Empty });
+            if (mesaj is not null) { Notif.Notify(NotificationSeverity.Warning, "Eklenmedi", mesaj); return; }
+            yeniAd = null;
+            await KategorileriYukle();
+        }
+        finally { isleniyor = false; }
+    }
+
+    private void Geri(IsKategorisiDto k) => duzen[k.Id] = new IsKategorisiKaydetDto { Ad = k.Ad, Aktif = k.Aktif };
+
+    private async Task Kaydet(IsKategorisiDto k, IsKategorisiKaydetDto d)
+    {
+        // Pasife almak kartları değiştirir: o kategorideki işler tarifin kategorisine ya da "Diğer"e düşer.
+        if (k.Aktif && !d.Aktif && k.KullanimSayisi > 0)
+        {
+            var onay = await DialogService.Confirm(
+                $"\"{k.Ad}\" pasife alınacak. Bu kategorideki işler ({Kullanim(k)}) kartlarda " +
+                (k.EslemeSayisi > 0 ? $"tarifin kategorisine, yasal kodlar \"{VarsayilanAdi}\"e, " : "tarifin kategorisine ya da ") +
+                "\"Diğer\" bölümüne düşer. Kayıtlar silinmez; yeniden aktif edince geri gelir.",
+                "Kategoriyi pasife al", new ConfirmOptions { OkButtonText = "Pasife al", CancelButtonText = "Vazgeç" });
+            if (onay != true) return;
+        }
+
+        isleniyor = true;
+        try
+        {
+            var mesaj = await Api.KategoriGuncelleAsync(k.Id, d);
+            if (mesaj is not null) { Notif.Notify(NotificationSeverity.Warning, "Kaydedilmedi", mesaj); return; }
+            await KategorileriYukle();
+            await Task.WhenAll(KategorisizYukle(), EslemeleriYukle());
+        }
+        finally { isleniyor = false; }
+    }
+
+    private async Task Tasi(int sira, int yon)
+    {
+        if (kategoriler is null) return;
+        var idler = kategoriler.Select(k => k.Id).ToList();
+        (idler[sira], idler[sira + yon]) = (idler[sira + yon], idler[sira]);
+
+        isleniyor = true;
+        try
+        {
+            var mesaj = await Api.KategoriSiralaAsync(idler);
+            if (mesaj is not null) Notif.Notify(NotificationSeverity.Warning, "Sıra kaydedilmedi", mesaj);
+            await KategorileriYukle();
+        }
+        finally { isleniyor = false; }
+    }
+
+    private async Task Sil(IsKategorisiDto k)
+    {
+        var onay = await DialogService.Confirm($"\"{k.Ad}\" silinecek. Hiçbir iş, tarif ya da yasal kod kullanmıyor.",
+            "Kategoriyi sil", new ConfirmOptions { OkButtonText = "Sil", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        isleniyor = true;
+        try
+        {
+            var mesaj = await Api.KategoriSilAsync(k.Id);
+            if (mesaj is not null) Notif.Notify(NotificationSeverity.Warning, "Silinmedi", mesaj);
+            await KategorileriYukle();
+        }
+        finally { isleniyor = false; }
+    }
+
+    /// <summary>Yasal varsayılanı taşır: eşlemesi olmayan bütün yasal işler kartlarda yeni kategoriye geçer.</summary>
+    private async Task YasalVarsayilanYap(IsKategorisiDto k)
+    {
+        var onay = await DialogService.Confirm(
+            $"Eşlemesi olmayan yasal işler \"{VarsayilanAdi}\" yerine \"{k.Ad}\" bölümünde duracak. " +
+            $"\"{VarsayilanAdi}\" sıradan kategori olur (pasife alınabilir, kullanılmıyorsa silinebilir).",
+            "Yasal varsayılanı taşı", new ConfirmOptions { OkButtonText = "Taşı", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        isleniyor = true;
+        try
+        {
+            var mesaj = await Api.KategoriYasalVarsayilanYapAsync(k.Id);
+            if (mesaj is not null) Notif.Notify(NotificationSeverity.Warning, "Taşınmadı", mesaj);
+            else Notif.Notify(NotificationSeverity.Success, $"Yasal varsayılan: {k.Ad}", duration: 2000);
+            await KategorileriYukle();
+        }
+        finally { isleniyor = false; }
+    }
+
+    // ---- Kategorisiz işler ----
+
+    private async Task TopluAta(KategorisizGrupDto g, int? kategoriId)
+    {
+        if (kategoriId is not { } id || kategoriler?.FirstOrDefault(k => k.Id == id) is not { } k) return;
+
+        var onay = await DialogService.Confirm(
+            $"\"{g.Baslik}\" ({IsMetin.Tekrar(g.Tekrar)}): {g.FirmaSayisi} firmadaki {g.IsSayisi} işe \"{k.Ad}\" kategorisi verilecek. " +
+            "Kategorisi olan başka işlere dokunulmaz.",
+            "Kategori ata", new ConfirmOptions { OkButtonText = $"{g.IsSayisi} işe uygula", CancelButtonText = "Vazgeç" });
+        if (onay != true)
+        {
+            secimSurumu++;   // seçim geri alınsın: satır yeniden kurulur
+            return;
+        }
+
+        isleniyor = true;
+        try
+        {
+            var (sonuc, mesaj) = await Api.TopluKategoriAtaAsync(new TopluKategoriAtaDto { Anahtar = g.Anahtar, KategoriId = id });
+            if (mesaj is not null) Notif.Notify(NotificationSeverity.Warning, "Atanmadı", mesaj);
+            else Notif.Notify(NotificationSeverity.Success, $"{sonuc!.Guncellenen} işe \"{k.Ad}\" verildi", duration: 2500);
+            await KategorisizYukle();
+            await KategorileriYukle();
+        }
+        finally { isleniyor = false; }
+    }
+
+    // ---- Yasal eşleme ----
+
+    private async Task EslemeKaydet(MukellefiyetEslemeDto e, int? kategoriId)
+    {
+        if (kategoriId == e.KategoriId) return;
+        isleniyor = true;
+        try
+        {
+            var mesaj = await Api.MukellefiyetEslemeKaydetAsync(e.MukellefiyetKodu, kategoriId);
+            if (mesaj is not null) Notif.Notify(NotificationSeverity.Warning, "Kaydedilmedi", mesaj);
+            else Notif.Notify(NotificationSeverity.Success,
+                $"{e.MukellefiyetKodu} → {(kategoriId is { } id ? kategoriler?.FirstOrDefault(k => k.Id == id)?.Ad : VarsayilanAdi + " (varsayılan)")}",
+                duration: 2000);
+            await EslemeleriYukle();
+            await KategorileriYukle();
+        }
+        finally { isleniyor = false; }
+    }
+}

@@ -83,6 +83,9 @@ namespace CatalogService.Api.Features.Yapilacaklar.Dtos
         public string? NasilYapilir { get; set; }
         public List<string> Adimlar { get; set; } = new();
         public List<FirmaIsiEkiDto> Ekler { get; set; } = new();
+
+        /// <summary>Firma Panosu Aşama 2: tarife bağlı işlerin varsayılan kategorisi.</summary>
+        public int? KategoriId { get; set; }
     }
 
     /// <summary>Sağ taraf: nerede · kime · nasıl · ekler.</summary>
@@ -109,6 +112,9 @@ namespace CatalogService.Api.Features.Yapilacaklar.Dtos
         public int? SistemId { get; set; }
         public string? MenuYolu { get; set; }
         public string? NasilYapilir { get; set; }
+
+        /// <summary>Boş = tarifin kategorisi yok (iş kendi kategorisini ya da "Diğer"i alır). Pasif kategori atanamaz.</summary>
+        public int? KategoriId { get; set; }
     }
 
     /// <summary>Tarif üretim raporu: seed ve "Tarif oluştur" aynı raporu döner.</summary>

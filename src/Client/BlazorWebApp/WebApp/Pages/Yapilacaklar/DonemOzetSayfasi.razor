@@ -99,7 +99,14 @@
                     @foreach (var s in GorunenSatirlar)
                     {
                         <tr class="@(FirmaId is { } fs && s.FirmaId != fs ? "dp-ozet-soluk" : FirmaId == s.FirmaId ? "dp-ozet-firma" : "")">
-                            <td class="dp-firma-kolon" title="@s.FirmaAdi">@s.FirmaAdi</td>
+                            <td class="dp-firma-kolon" title="@s.FirmaAdi">
+                                @* Rozet adın ÖNÜNDE: hücre uzun adı üç noktayla keser, sonda kalsa görünmezdi. *@
+                                @if (s.GizlenenIsler.Count > 0)
+                                {
+                                    <DonemAyniAdRozeti FirmaId="@s.FirmaId" FirmaAdi="@s.FirmaAdi" Isler="@s.GizlenenIsler" Degisti="@Degisti" />
+                                }
+                                @s.FirmaAdi
+                            </td>
                             @for (var i = 0; i < Ozet.Donemler.Count; i++)
                             {
                                 var h = s.Hucreler[i];
@@ -136,6 +143,9 @@
 
     /// <summary>Kabuğun MEVCUT eylemleri (boş özet için).</summary>
     [Parameter] public EventCallback IsEkle { get; set; }
+
+    /// <summary>Uyarı rozetinden bir iş düzenlendi — kabuk özeti ve sekmeleri tazeler.</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
     [Parameter] public EventCallback Yapistir { get; set; }
 
     /// <summary>(dönem anahtarı, firma filtresi) — kabuk adresi değiştirir.</summary>

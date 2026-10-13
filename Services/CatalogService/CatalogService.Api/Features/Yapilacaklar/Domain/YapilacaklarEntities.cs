@@ -119,6 +119,60 @@ namespace CatalogService.Api.Features.Yapilacaklar.Domain
         /// tarif varken firmaya özel istisna olarak "Bu firmada farklı" başlığıyla gösterilir.
         /// </summary>
         public int? IsTarifiId { get; set; }
+
+        /// <summary>
+        /// Firma Panosu Aşama 2: işin kendi kategorisi. Boş = tarifin kategorisi, o da yoksa "Diğer"
+        /// (<see cref="Services.IsKategoriCozucu"/>). Prosedür satırında (yasal) kullanılmaz.
+        /// </summary>
+        public int? KategoriId { get; set; }
+
+        /// <summary>
+        /// Firma Panosu Aşama 3: işi üreten checklist şablonu (<see cref="ChecklistSablonu"/>). Yalnız köken
+        /// bilgisidir — kartta etiket olarak görünür; şablon sonradan değişse de bu iş DEĞİŞMEZ. Boş = elle,
+        /// toplu ya da kopyalayarak eklenmiş iş.
+        /// </summary>
+        public int? SablonId { get; set; }
+    }
+
+    /// <summary>
+    /// Checklist şablonu (Firma Panosu Aşama 3) = bir "iş tanımı paketi". GLOBAL. Uygulanınca maddeleri seçilen
+    /// firmalara <see cref="FirmaIsi"/> olarak yazılır; checklist örneği SAKLANMAZ (kart yine firma + dönemdir).
+    /// Yalnız firmaya özel iş üretir — yasal işler mükellefiyetten gelir, şablonda yasal madde yoktur.
+    /// Kullanılmış şablon (<see cref="FirmaIsi.SablonId"/>) silinmez, pasife alınır.
+    /// </summary>
+    public class ChecklistSablonu
+    {
+        public int Id { get; set; }
+        public string Ad { get; set; } = string.Empty;
+        public string? Aciklama { get; set; }
+        public bool Aktif { get; set; } = true;
+
+        public List<ChecklistSablonMaddesi> Maddeler { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Şablonun bir maddesi: oluşacak özel işin tanımı. Tek seferlik madde yoktur (tarihi şablonda anlamsız).
+    /// Sorumlu, alıcı, ek ve tamamlama şablonda tutulmaz — firmaya özgüdür.
+    /// </summary>
+    public class ChecklistSablonMaddesi
+    {
+        public int Id { get; set; }
+        public int SablonId { get; set; }
+
+        /// <summary>Şablon içindeki sıra (küçük önce).</summary>
+        public int Sira { get; set; }
+
+        public string Baslik { get; set; } = string.Empty;
+        public IsTekrari Tekrar { get; set; } = IsTekrari.Aylik;
+        public IsGunKurali GunKurali { get; set; } = IsGunKurali.DonemSonu;
+
+        /// <summary>Yalnız <see cref="IsGunKurali.AyinGunu"/> ise dolu, 1–31.</summary>
+        public int? AyinGunu { get; set; }
+
+        /// <summary>Boş = kategorisiz (tarifin kategorisi ya da "Diğer"). Uygulanırken pasifse taşınmaz.</summary>
+        public int? KategoriId { get; set; }
+
+        public int? IsTarifiId { get; set; }
     }
 
     /// <summary>
@@ -143,7 +197,44 @@ namespace CatalogService.Api.Features.Yapilacaklar.Domain
         /// <summary>UTC.</summary>
         public DateTime OlusturmaZamani { get; set; } = DateTime.UtcNow;
 
+        /// <summary>Firma Panosu Aşama 2: tarife bağlı işlerin varsayılan kategorisi (işin kendi kategorisi önce gelir).</summary>
+        public int? KategoriId { get; set; }
+
         public List<IsTarifiEki> Ekler { get; set; } = new();
+    }
+
+    /// <summary>
+    /// İş kategorisi (Firma Panosu Aşama 2): checklist kartının bölümleri. GLOBAL (tenant'sız). Kullanılan
+    /// kategori silinmez, pasife alınır; pasif kategori çözümde atlanır. "Diğer" burada bir kayıt DEĞİL,
+    /// çözümün sabit son bölümüdür (<see cref="Services.IsKategoriCozucu"/>).
+    /// </summary>
+    public class IsKategorisi
+    {
+        public int Id { get; set; }
+        public string Ad { get; set; } = string.Empty;
+
+        /// <summary>Kartta bölüm sırası (küçük önce).</summary>
+        public int Sira { get; set; }
+
+        public bool Aktif { get; set; } = true;
+
+        /// <summary>
+        /// Eşlemesi olmayan yasal işin kategorisi ("Beyanname"). Ada göre değil bu kolona göre bulunur: ad
+        /// değişince yasal işler yerinde kalır. En fazla bir kayıt (filtreli unique index); bu kayıt silinmez,
+        /// pasife alınmaz — önce varsayılan başka kategoriye taşınır.
+        /// </summary>
+        public bool VarsayilanYasal { get; set; }
+    }
+
+    /// <summary>
+    /// Yasal işin kategorisi mükellefiyet kodundan: "0003 → Bordro". Eşleşme yoksa yasal iş "Beyanname"dedir.
+    /// Eşleme koda gömülmez, burada durur.
+    /// </summary>
+    public class MukellefiyetKategorisi
+    {
+        public int Id { get; set; }
+        public string MukellefiyetKodu { get; set; } = string.Empty;
+        public int KategoriId { get; set; }
     }
 
     /// <summary>

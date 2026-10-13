@@ -75,6 +75,9 @@ namespace CatalogService.Api.Features.Yapilacaklar.Dtos
     public class FirmaIsiDto
     {
         public int Id { get; set; }
+
+        /// <summary>İşin kendi kategorisi (tariften gelen değil); boş = tarifin ya da "Diğer".</summary>
+        public int? KategoriId { get; set; }
         public int FirmaId { get; set; }
         public string Baslik { get; set; } = string.Empty;
         public string? Aciklama { get; set; }
@@ -173,6 +176,28 @@ namespace CatalogService.Api.Features.Yapilacaklar.Dtos
         public int? SorumluKullaniciId { get; set; }
         public string? SorumluKullaniciAdi { get; set; }
         public bool Aktif { get; set; } = true;
+
+        /// <summary>
+        /// Aynı adlı iş uyarısı gösterildi ve kullanıcı yine de kaydetmek istiyor. Uyarı SORULMADAN geçilmez:
+        /// ilk istek her zaman <c>false</c> gider, sunucu aynı firmada aynı başlık + tekrar bulursa 409 döner.
+        /// </summary>
+        public bool Israr { get; set; }
+
+        /// <summary>
+        /// Firma Panosu Aşama 2: işin kendi kategorisi. Boş = tarifin kategorisi, o da yoksa "Diğer".
+        /// Pasif kategori yeni atanamaz (kayıtta zaten olan kalır).
+        /// </summary>
+        public int? KategoriId { get; set; }
+    }
+
+    /// <summary>409 gövdesi: "Bu firmada aynı adlı bir iş zaten var."</summary>
+    public class IsAyniAdDto
+    {
+        public string Field { get; set; } = nameof(FirmaIsiKaydetDto.Baslik);
+        public string Message { get; set; } = string.Empty;
+        public int MevcutId { get; set; }
+        public string MevcutBaslik { get; set; } = string.Empty;
+        public bool MevcutAktif { get; set; }
     }
 
     public class FirmaIsiEkiDto

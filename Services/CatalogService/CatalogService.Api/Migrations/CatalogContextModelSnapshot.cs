@@ -4283,6 +4283,79 @@ namespace CatalogService.Api.Migrations
                     b.ToTable("Vehicles", (string)null);
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.Yapilacaklar.Domain.ChecklistSablonMaddesi", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AyinGunu")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Baslik")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<byte>("GunKurali")
+                        .HasColumnType("tinyint");
+
+                    b.Property<int?>("IsTarifiId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("KategoriId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SablonId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Sira")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("Tekrar")
+                        .HasColumnType("tinyint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsTarifiId");
+
+                    b.HasIndex("KategoriId");
+
+                    b.HasIndex("SablonId");
+
+                    b.ToTable("ChecklistSablonMaddeleri", "catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.Yapilacaklar.Domain.ChecklistSablonu", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("Aktif")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Ad")
+                        .IsUnique();
+
+                    b.ToTable("ChecklistSablonlari", "catalog");
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.Yapilacaklar.Domain.FirmaIsi", b =>
                 {
                     b.Property<int>("Id")
@@ -4320,6 +4393,9 @@ namespace CatalogService.Api.Migrations
                     b.Property<int?>("IsTarifiId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("KategoriId")
+                        .HasColumnType("int");
+
                     b.Property<string>("MenuYolu")
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
@@ -4336,6 +4412,9 @@ namespace CatalogService.Api.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<int?>("OnAdimiOlduguIsId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SablonId")
                         .HasColumnType("int");
 
                     b.Property<int?>("SistemId")
@@ -4364,7 +4443,11 @@ namespace CatalogService.Api.Migrations
 
                     b.HasIndex("IsTarifiId");
 
+                    b.HasIndex("KategoriId");
+
                     b.HasIndex("OnAdimiOlduguIsId");
+
+                    b.HasIndex("SablonId");
 
                     b.HasIndex("SistemId");
 
@@ -4460,6 +4543,40 @@ namespace CatalogService.Api.Migrations
                     b.HasIndex("FirmaIsiId");
 
                     b.ToTable("FirmaIsiEkleri", "catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.Yapilacaklar.Domain.IsKategorisi", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("Aktif")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Sira")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("VarsayilanYasal")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Ad")
+                        .IsUnique();
+
+                    b.HasIndex("VarsayilanYasal")
+                        .IsUnique()
+                        .HasFilter("[VarsayilanYasal] = 1");
+
+                    b.ToTable("IsKategorileri", "catalog");
                 });
 
             modelBuilder.Entity("CatalogService.Api.Features.Yapilacaklar.Domain.IsTamamlama", b =>
@@ -4567,6 +4684,9 @@ namespace CatalogService.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int?>("KategoriId")
+                        .HasColumnType("int");
+
                     b.Property<string>("MenuYolu")
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
@@ -4582,6 +4702,8 @@ namespace CatalogService.Api.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("KategoriId");
 
                     b.HasIndex("SistemId");
 
@@ -4671,6 +4793,32 @@ namespace CatalogService.Api.Migrations
                         .HasFilter("[Eposta] IS NOT NULL");
 
                     b.ToTable("Kisiler", "catalog");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.Yapilacaklar.Domain.MukellefiyetKategorisi", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("KategoriId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MukellefiyetKodu")
+                        .IsRequired()
+                        .HasMaxLength(4)
+                        .HasColumnType("nvarchar(4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KategoriId");
+
+                    b.HasIndex("MukellefiyetKodu")
+                        .IsUnique();
+
+                    b.ToTable("MukellefiyetKategorileri", "catalog");
                 });
 
             modelBuilder.Entity("CatalogService.Api.Features.Yapilacaklar.Domain.VergiTakvimi", b =>
@@ -5242,6 +5390,25 @@ namespace CatalogService.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.Yapilacaklar.Domain.ChecklistSablonMaddesi", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.Yapilacaklar.Domain.IsTarifi", null)
+                        .WithMany()
+                        .HasForeignKey("IsTarifiId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CatalogService.Api.Features.Yapilacaklar.Domain.IsKategorisi", null)
+                        .WithMany()
+                        .HasForeignKey("KategoriId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CatalogService.Api.Features.Yapilacaklar.Domain.ChecklistSablonu", null)
+                        .WithMany("Maddeler")
+                        .HasForeignKey("SablonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.Yapilacaklar.Domain.FirmaIsi", b =>
                 {
                     b.HasOne("CatalogService.Api.Features.Firmalar.Domain.Firma", null)
@@ -5255,10 +5422,20 @@ namespace CatalogService.Api.Migrations
                         .HasForeignKey("IsTarifiId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("CatalogService.Api.Features.Yapilacaklar.Domain.IsKategorisi", null)
+                        .WithMany()
+                        .HasForeignKey("KategoriId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CatalogService.Api.Features.Yapilacaklar.Domain.FirmaIsi", null)
                         .WithMany()
                         .HasForeignKey("OnAdimiOlduguIsId")
                         .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("CatalogService.Api.Features.Yapilacaklar.Domain.ChecklistSablonu", null)
+                        .WithMany()
+                        .HasForeignKey("SablonId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("CatalogService.Api.Features.Sistemler.Domain.Sistem", null)
                         .WithMany()
@@ -5311,6 +5488,11 @@ namespace CatalogService.Api.Migrations
 
             modelBuilder.Entity("CatalogService.Api.Features.Yapilacaklar.Domain.IsTarifi", b =>
                 {
+                    b.HasOne("CatalogService.Api.Features.Yapilacaklar.Domain.IsKategorisi", null)
+                        .WithMany()
+                        .HasForeignKey("KategoriId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CatalogService.Api.Features.Sistemler.Domain.Sistem", null)
                         .WithMany()
                         .HasForeignKey("SistemId")
@@ -5332,6 +5514,15 @@ namespace CatalogService.Api.Migrations
                         .WithMany()
                         .HasForeignKey("FirmaId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.Yapilacaklar.Domain.MukellefiyetKategorisi", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.Yapilacaklar.Domain.IsKategorisi", null)
+                        .WithMany()
+                        .HasForeignKey("KategoriId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -5411,6 +5602,11 @@ namespace CatalogService.Api.Migrations
             modelBuilder.Entity("CatalogService.Api.Features.TicaretSicil.Domain.TicaretSicilIslem", b =>
                 {
                     b.Navigation("Adimlar");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.Yapilacaklar.Domain.ChecklistSablonu", b =>
+                {
+                    b.Navigation("Maddeler");
                 });
 
             modelBuilder.Entity("CatalogService.Api.Features.Yapilacaklar.Domain.FirmaIsi", b =>

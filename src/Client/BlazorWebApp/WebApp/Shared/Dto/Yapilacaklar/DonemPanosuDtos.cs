@@ -36,6 +36,17 @@ namespace WebApp.Shared.Dto.Yapilacaklar
         public List<DonemPanosuHucreDto> Hucreler { get; set; } = new();
         public int Gecerli { get; set; }
         public int Yapilan { get; set; }
+
+        /// <summary>Aynı firmada aynı başlık + tekrar: kolona sığmadığı için gösterilmeyen (sayılmayan) özel işler.</summary>
+        public List<DonemGizlenenIsDto> GizlenenIsler { get; set; } = new();
+    }
+
+    public class DonemGizlenenIsDto
+    {
+        public int IsId { get; set; }
+        public string Baslik { get; set; } = string.Empty;
+        public IsTekrari Tekrar { get; set; }
+        public int GosterilenIsId { get; set; }
     }
 
     public class DonemEksikOzetiDto
@@ -127,6 +138,7 @@ namespace WebApp.Shared.Dto.Yapilacaklar
         public int? SorumluKullaniciId { get; set; }
         public string? SorumluKullaniciAdi { get; set; }
         public List<DonemOzetHucreDto> Hucreler { get; set; } = new();
+        public List<DonemGizlenenIsDto> GizlenenIsler { get; set; } = new();
     }
 
     public class DonemOzetiDto

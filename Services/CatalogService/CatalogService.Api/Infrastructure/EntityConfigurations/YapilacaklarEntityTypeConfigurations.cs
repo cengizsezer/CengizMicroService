@@ -57,6 +57,47 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
             // İş tarifi (Prompt 14). Tarif silinirse iş kendi metniyle devam eder.
             entity.HasOne<IsTarifi>().WithMany().HasForeignKey(x => x.IsTarifiId).OnDelete(DeleteBehavior.SetNull);
             entity.HasIndex(x => x.IsTarifiId);
+
+            // Kategori (Firma Panosu Aşama 2). Kullanılan kategori silinmez — servis "pasife alın" der.
+            entity.HasOne<IsKategorisi>().WithMany().HasForeignKey(x => x.KategoriId).OnDelete(DeleteBehavior.Restrict);
+
+            // Şablon kökeni (Firma Panosu Aşama 3). Kullanılmış şablon silinmez — servis pasife alır.
+            entity.HasOne<ChecklistSablonu>().WithMany().HasForeignKey(x => x.SablonId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => x.SablonId);
+        }
+    }
+
+    /// <summary>Checklist şablonu (Firma Panosu Aşama 3) — global.</summary>
+    public class ChecklistSablonuEntityTypeConfiguration : IEntityTypeConfiguration<ChecklistSablonu>
+    {
+        public void Configure(EntityTypeBuilder<ChecklistSablonu> entity)
+        {
+            entity.ToTable("ChecklistSablonlari", CatalogContext.DEFAULT_SCHEMA);
+
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Ad).IsRequired().HasMaxLength(100);
+            entity.Property(x => x.Aciklama).HasMaxLength(500);
+            entity.HasIndex(x => x.Ad).IsUnique();
+
+            entity.HasMany(x => x.Maddeler).WithOne().HasForeignKey(m => m.SablonId).OnDelete(DeleteBehavior.Cascade);
+        }
+    }
+
+    public class ChecklistSablonMaddesiEntityTypeConfiguration : IEntityTypeConfiguration<ChecklistSablonMaddesi>
+    {
+        public void Configure(EntityTypeBuilder<ChecklistSablonMaddesi> entity)
+        {
+            entity.ToTable("ChecklistSablonMaddeleri", CatalogContext.DEFAULT_SCHEMA);
+
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Baslik).IsRequired().HasMaxLength(200);
+            entity.Property(x => x.Tekrar).HasConversion<byte>();
+            entity.Property(x => x.GunKurali).HasConversion<byte>();
+            entity.HasIndex(x => x.SablonId);
+
+            // Kategori kullanımda silinmez (IsKategoriService şablon maddelerini de sayar); tarif silinirse bağ boşalır.
+            entity.HasOne<IsKategorisi>().WithMany().HasForeignKey(x => x.KategoriId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<IsTarifi>().WithMany().HasForeignKey(x => x.IsTarifiId).OnDelete(DeleteBehavior.SetNull);
         }
     }
 
@@ -77,6 +118,36 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
                   .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasMany(x => x.Ekler).WithOne().HasForeignKey(e => e.IsTarifiId).OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<IsKategorisi>().WithMany().HasForeignKey(x => x.KategoriId).OnDelete(DeleteBehavior.Restrict);
+        }
+    }
+
+    /// <summary>İş kategorisi (Firma Panosu Aşama 2) — global.</summary>
+    public class IsKategorisiEntityTypeConfiguration : IEntityTypeConfiguration<IsKategorisi>
+    {
+        public void Configure(EntityTypeBuilder<IsKategorisi> entity)
+        {
+            entity.ToTable("IsKategorileri", CatalogContext.DEFAULT_SCHEMA);
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Ad).IsRequired().HasMaxLength(100);
+            entity.HasIndex(x => x.Ad).IsUnique();
+
+            // Yasal varsayılan en fazla bir kayıtta.
+            entity.HasIndex(x => x.VarsayilanYasal).IsUnique().HasFilter("[VarsayilanYasal] = 1");
+        }
+    }
+
+    /// <summary>Mükellefiyet kodu → kategori (yasal işler). Kod başına tek satır.</summary>
+    public class MukellefiyetKategorisiEntityTypeConfiguration : IEntityTypeConfiguration<MukellefiyetKategorisi>
+    {
+        public void Configure(EntityTypeBuilder<MukellefiyetKategorisi> entity)
+        {
+            entity.ToTable("MukellefiyetKategorileri", CatalogContext.DEFAULT_SCHEMA);
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.MukellefiyetKodu).IsRequired().HasMaxLength(4);
+            entity.HasIndex(x => x.MukellefiyetKodu).IsUnique();
+            entity.HasOne<IsKategorisi>().WithMany().HasForeignKey(x => x.KategoriId).OnDelete(DeleteBehavior.Restrict);
         }
     }
 

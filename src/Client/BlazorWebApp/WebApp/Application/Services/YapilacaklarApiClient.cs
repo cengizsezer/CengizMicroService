@@ -12,8 +12,9 @@ namespace WebApp.Application.Services
     public interface IYapilacaklarApiClient
     {
         Task<FirmaIsleriKartDto?> FirmaIsleriAsync(int firmaId, CancellationToken ct = default);
-        Task<string?> IsEkleAsync(int firmaId, FirmaIsiKaydetDto dto, CancellationToken ct = default);
-        Task<string?> IsGuncelleAsync(int firmaId, int isId, FirmaIsiKaydetDto dto, CancellationToken ct = default);
+        /// <summary>Aynı firmada aynı başlık + tekrar varsa (409) <see cref="IsKaydetSonucu.AyniAd"/> dolu döner — kullanıcıya sorulur.</summary>
+        Task<IsKaydetSonucu> IsEkleAsync(int firmaId, FirmaIsiKaydetDto dto, CancellationToken ct = default);
+        Task<IsKaydetSonucu> IsGuncelleAsync(int firmaId, int isId, FirmaIsiKaydetDto dto, CancellationToken ct = default);
         /// <returns>Silinen eklerin FileApi Id'leri (oradan da silinmeli) ya da hata.</returns>
         Task<(List<int> FileIds, string? Hata)> IsSilAsync(int firmaId, int isId, CancellationToken ct = default);
 
@@ -33,6 +34,13 @@ namespace WebApp.Application.Services
         Task<YapilacaklarDto?> ListeAsync(IsFiltresi filtre, CancellationToken ct = default, int? firmaId = null);
         Task<YapilacaklarOzetDto?> OzetAsync(CancellationToken ct = default);
         Task<string?> IsaretleAsync(IsIsaretleDto dto, CancellationToken ct = default);
+
+        /// <summary>
+        /// Firma Panosu → Yapılacaklar (Aşama 1): kartlar, sayaçlar, liste. <paramref name="turler"/> "yasal"/"ozel";
+        /// <paramref name="sorumlular"/> kullanıcı Id'leri (0 = sorumlusu yok). Boş liste = filtre yok.
+        /// </summary>
+        Task<(FirmaPanosuDto? Pano, string? Hata)> FirmaPanosuAsync(int? firmaId, IReadOnlyCollection<string> turler,
+                                                                   IReadOnlyCollection<int> sorumlular, CancellationToken ct = default);
 
         // Toplu ekleme ve kopyalama (Prompt 11)
         Task<(TopluOnizlemeDto? Onizleme, string? Hata)> TopluOnizleAsync(int firmaId, TopluOnizleIstekDto istek, CancellationToken ct = default);
@@ -80,6 +88,34 @@ namespace WebApp.Application.Services
         Task<string?> TakvimGuncelleAsync(int id, VergiTakvimiKaydetDto dto, CancellationToken ct = default);
         Task<string?> TakvimSilAsync(int id, CancellationToken ct = default);
         Task<(int? Eklenen, string? Hata)> TakvimVarsayilanlarAsync(CancellationToken ct = default);
+
+        // ---- İş kategorileri (Firma Panosu Aşama 2) ----
+        Task<(List<IsKategorisiDto>? Liste, string? Hata)> KategorilerAsync(CancellationToken ct = default);
+        Task<string?> KategoriEkleAsync(IsKategorisiKaydetDto dto, CancellationToken ct = default);
+        Task<string?> KategoriGuncelleAsync(int id, IsKategorisiKaydetDto dto, CancellationToken ct = default);
+        Task<string?> KategoriSiralaAsync(List<int> idler, CancellationToken ct = default);
+        Task<string?> KategoriSilAsync(int id, CancellationToken ct = default);
+
+        /// <summary>Yasal varsayılanı bu kategoriye taşır (eskisinden kaldırılır).</summary>
+        Task<string?> KategoriYasalVarsayilanYapAsync(int id, CancellationToken ct = default);
+        Task<(List<MukellefiyetEslemeDto>? Liste, string? Hata)> MukellefiyetEslemeleriAsync(CancellationToken ct = default);
+        Task<string?> MukellefiyetEslemeKaydetAsync(string kod, int? kategoriId, CancellationToken ct = default);
+        Task<(List<KategorisizGrupDto>? Liste, string? Hata)> KategorisizIslerAsync(CancellationToken ct = default);
+        Task<(TopluKategoriSonucDto? Sonuc, string? Hata)> TopluKategoriAtaAsync(TopluKategoriAtaDto dto, CancellationToken ct = default);
+
+        // ---- Checklist şablonları (Firma Panosu Aşama 3) ----
+        Task<(List<ChecklistSablonuDto>? Liste, string? Hata)> SablonlarAsync(CancellationToken ct = default);
+        Task<(ChecklistSablonuDto? Sablon, string? Hata)> SablonEkleAsync(ChecklistSablonuKaydetDto dto, CancellationToken ct = default);
+        Task<(ChecklistSablonuDto? Sablon, string? Hata)> SablonGuncelleAsync(int id, ChecklistSablonuKaydetDto dto, CancellationToken ct = default);
+
+        /// <summary>Kullanılmış şablon silinmez, pasife alınır — sonuç hangisinin olduğunu söyler.</summary>
+        Task<(ChecklistSablonSilSonucDto? Sonuc, string? Hata)> SablonSilAsync(int id, CancellationToken ct = default);
+        Task<(FirmadanSablonOnizlemeDto? Onizleme, string? Hata)> FirmadanSablonOnizleAsync(int firmaId, CancellationToken ct = default);
+        Task<(ChecklistSablonuDto? Sablon, string? Hata)> FirmadanSablonAsync(FirmadanSablonDto dto, CancellationToken ct = default);
+
+        /// <summary>Yazmaz: firma başına eklenecek / atlanacak maddeler (gerçek yazmayla aynı plan).</summary>
+        Task<(SablondanSonucDto? Sonuc, string? Hata)> SablondanOnizleAsync(SablondanIstekDto istek, CancellationToken ct = default);
+        Task<(SablondanSonucDto? Sonuc, string? Hata)> SablondanOlusturAsync(SablondanIstekDto istek, CancellationToken ct = default);
     }
 
     /// <inheritdoc cref="IYapilacaklarApiClient"/>
@@ -87,6 +123,8 @@ namespace WebApp.Application.Services
     {
         private const string Anasayfa = "/catalog/anasayfa";
         private const string Yapilacaklar = "/catalog/yapilacaklar";
+        private const string Kategori = "/catalog/is-kategorileri";
+        private const string Sablon = "/catalog/firma-panosu/sablonlar";
         private const string Takvim = "/catalog/vergi-takvimi";
         private const string SunucuYok = "Sunucuya ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.";
 
@@ -97,11 +135,38 @@ namespace WebApp.Application.Services
         public Task<FirmaIsleriKartDto?> FirmaIsleriAsync(int firmaId, CancellationToken ct = default)
             => OkuAsync<FirmaIsleriKartDto>($"{Anasayfa}/firmalar/{firmaId}/isler");
 
-        public Task<string?> IsEkleAsync(int firmaId, FirmaIsiKaydetDto dto, CancellationToken ct = default)
-            => YazAsync(() => _http.PostAsJsonAsync($"{Anasayfa}/firmalar/{firmaId}/isler", dto, ct), ct);
+        public Task<IsKaydetSonucu> IsEkleAsync(int firmaId, FirmaIsiKaydetDto dto, CancellationToken ct = default)
+            => IsKaydetAsync(() => _http.PostAsJsonAsync($"{Anasayfa}/firmalar/{firmaId}/isler", dto, ct), ct);
 
-        public Task<string?> IsGuncelleAsync(int firmaId, int isId, FirmaIsiKaydetDto dto, CancellationToken ct = default)
-            => YazAsync(() => _http.PutAsJsonAsync($"{Anasayfa}/firmalar/{firmaId}/isler/{isId}", dto, ct), ct);
+        public Task<IsKaydetSonucu> IsGuncelleAsync(int firmaId, int isId, FirmaIsiKaydetDto dto, CancellationToken ct = default)
+            => IsKaydetAsync(() => _http.PutAsJsonAsync($"{Anasayfa}/firmalar/{firmaId}/isler/{isId}", dto, ct), ct);
+
+        private static async Task<IsKaydetSonucu> IsKaydetAsync(Func<Task<HttpResponseMessage>> istek, CancellationToken ct)
+        {
+            try
+            {
+                using var resp = await istek();
+                if (resp.IsSuccessStatusCode) return new(null);
+
+                var govde = await resp.Content.ReadAsStringAsync(ct);
+                if (resp.StatusCode == System.Net.HttpStatusCode.Conflict)
+                {
+                    try
+                    {
+                        if (JsonSerializer.Deserialize<IsAyniAdDto>(govde, Json) is { MevcutId: > 0 } ayni) return new(ayni.Message, ayni);
+                    }
+                    catch (JsonException)
+                    {
+                        // Gövde beklenen biçimde değil: düz hata olarak gösterilir.
+                    }
+                }
+                return new(MesajCoz(govde) ?? "Kayıt yapılamadı.");
+            }
+            catch (Exception)
+            {
+                return new(SunucuYok);
+            }
+        }
 
         public async Task<(List<int> FileIds, string? Hata)> IsSilAsync(int firmaId, int isId, CancellationToken ct = default)
         {
@@ -224,6 +289,51 @@ namespace WebApp.Application.Services
             var yol = $"{Tarif}?anahtar={Uri.EscapeDataString(anahtar)}" + (firmaId is { } f ? $"&firmaId={f}" : "");
             var (govde, hata) = await GovdeAsync(() => form is null ? _http.PostAsync(yol, null, ct) : _http.PostAsJsonAsync(yol, form, ct), ct);
             return hata is not null ? (null, hata) : (JsonSerializer.Deserialize<TarifUretimRaporuDto>(govde!, Json), null);
+        }
+
+        // ---- İş kategorileri ----
+
+        public async Task<(List<IsKategorisiDto>? Liste, string? Hata)> KategorilerAsync(CancellationToken ct = default)
+        {
+            var (govde, hata) = await GovdeAsync(() => _http.GetAsync(Kategori, ct), ct);
+            return hata is not null ? (null, hata) : (JsonSerializer.Deserialize<List<IsKategorisiDto>>(govde!, Json), null);
+        }
+
+        public Task<string?> KategoriEkleAsync(IsKategorisiKaydetDto dto, CancellationToken ct = default)
+            => YazAsync(() => _http.PostAsJsonAsync(Kategori, dto, ct), ct);
+
+        public Task<string?> KategoriGuncelleAsync(int id, IsKategorisiKaydetDto dto, CancellationToken ct = default)
+            => YazAsync(() => _http.PutAsJsonAsync($"{Kategori}/{id}", dto, ct), ct);
+
+        public Task<string?> KategoriSiralaAsync(List<int> idler, CancellationToken ct = default)
+            => YazAsync(() => _http.PutAsJsonAsync($"{Kategori}/sira", idler, ct), ct);
+
+        public Task<string?> KategoriSilAsync(int id, CancellationToken ct = default)
+            => YazAsync(() => _http.DeleteAsync($"{Kategori}/{id}", ct), ct);
+
+        public Task<string?> KategoriYasalVarsayilanYapAsync(int id, CancellationToken ct = default)
+            => YazAsync(() => _http.PostAsync($"{Kategori}/{id}/yasal-varsayilan", null, ct), ct);
+
+        public async Task<(List<MukellefiyetEslemeDto>? Liste, string? Hata)> MukellefiyetEslemeleriAsync(CancellationToken ct = default)
+        {
+            var (govde, hata) = await GovdeAsync(() => _http.GetAsync($"{Kategori}/mukellefiyetler", ct), ct);
+            return hata is not null ? (null, hata) : (JsonSerializer.Deserialize<List<MukellefiyetEslemeDto>>(govde!, Json), null);
+        }
+
+        public Task<string?> MukellefiyetEslemeKaydetAsync(string kod, int? kategoriId, CancellationToken ct = default)
+            => YazAsync(() => _http.PutAsJsonAsync($"{Kategori}/mukellefiyetler/{Uri.EscapeDataString(kod)}",
+                                                   new MukellefiyetEslemeKaydetDto { KategoriId = kategoriId }, ct), ct);
+
+        public async Task<(List<KategorisizGrupDto>? Liste, string? Hata)> KategorisizIslerAsync(CancellationToken ct = default)
+        {
+            var (govde, hata) = await GovdeAsync(() => _http.GetAsync($"{Kategori}/kategorisiz-isler", ct), ct);
+            return hata is not null ? (null, hata) : (JsonSerializer.Deserialize<List<KategorisizGrupDto>>(govde!, Json), null);
+        }
+
+        public async Task<(TopluKategoriSonucDto? Sonuc, string? Hata)> TopluKategoriAtaAsync(TopluKategoriAtaDto dto, CancellationToken ct = default)
+        {
+            var (govde, hata) = await GovdeAsync(() => _http.PostAsJsonAsync($"{Kategori}/kategorisiz-isler/ata", dto, ct), ct);
+            return hata is not null ? (null, hata) : (JsonSerializer.Deserialize<TopluKategoriSonucDto>(govde!, Json), null);
         }
 
         public Task<string?> TarifGuncelleAsync(int tarifId, IsTarifiKaydetDto dto, CancellationToken ct = default)
@@ -375,6 +485,64 @@ namespace WebApp.Application.Services
 
         public Task<string?> IsaretleAsync(IsIsaretleDto dto, CancellationToken ct = default)
             => YazAsync(() => _http.PutAsJsonAsync($"{Yapilacaklar}/isaretle", dto, ct), ct);
+
+        public async Task<(FirmaPanosuDto? Pano, string? Hata)> FirmaPanosuAsync(int? firmaId, IReadOnlyCollection<string> turler,
+                                                                                IReadOnlyCollection<int> sorumlular, CancellationToken ct = default)
+        {
+            var parca = new List<string>();
+            if (firmaId is { } f) parca.Add($"firma={f}");
+            if (turler.Count > 0) parca.Add("tur=" + Uri.EscapeDataString(string.Join(',', turler)));
+            if (sorumlular.Count > 0) parca.Add("sorumlu=" + string.Join(',', sorumlular));
+
+            var yol = "/catalog/firma-panosu/kartlar" + (parca.Count > 0 ? "?" + string.Join('&', parca) : "");
+            var (govde, hata) = await GovdeAsync(() => _http.GetAsync(yol, ct), ct);
+            return hata is not null ? (null, hata) : (JsonSerializer.Deserialize<FirmaPanosuDto>(govde!, Json), null);
+        }
+
+        // ---- Checklist şablonları (Firma Panosu Aşama 3) ----
+
+        public Task<(List<ChecklistSablonuDto>? Liste, string? Hata)> SablonlarAsync(CancellationToken ct = default)
+            => JsonAsync<List<ChecklistSablonuDto>>(() => _http.GetAsync(Sablon, ct), ct);
+
+        public Task<(ChecklistSablonuDto? Sablon, string? Hata)> SablonEkleAsync(ChecklistSablonuKaydetDto dto, CancellationToken ct = default)
+            => JsonAsync<ChecklistSablonuDto>(() => _http.PostAsJsonAsync(Sablon, dto, ct), ct);
+
+        public Task<(ChecklistSablonuDto? Sablon, string? Hata)> SablonGuncelleAsync(int id, ChecklistSablonuKaydetDto dto, CancellationToken ct = default)
+            => JsonAsync<ChecklistSablonuDto>(() => _http.PutAsJsonAsync($"{Sablon}/{id}", dto, ct), ct);
+
+        public Task<(ChecklistSablonSilSonucDto? Sonuc, string? Hata)> SablonSilAsync(int id, CancellationToken ct = default)
+            => JsonAsync<ChecklistSablonSilSonucDto>(() => _http.DeleteAsync($"{Sablon}/{id}", ct), ct);
+
+        public Task<(FirmadanSablonOnizlemeDto? Onizleme, string? Hata)> FirmadanSablonOnizleAsync(int firmaId, CancellationToken ct = default)
+            => JsonAsync<FirmadanSablonOnizlemeDto>(() => _http.GetAsync($"{Sablon}/firmadan/onizle?firma={firmaId}", ct), ct);
+
+        public Task<(ChecklistSablonuDto? Sablon, string? Hata)> FirmadanSablonAsync(FirmadanSablonDto dto, CancellationToken ct = default)
+            => JsonAsync<ChecklistSablonuDto>(() => _http.PostAsJsonAsync($"{Sablon}/firmadan", dto, ct), ct);
+
+        public Task<(SablondanSonucDto? Sonuc, string? Hata)> SablondanOnizleAsync(SablondanIstekDto istek, CancellationToken ct = default)
+        {
+            var parca = new List<string> { $"sablon={istek.SablonId}" };
+            parca.AddRange(istek.FirmaIdleri.Select(f => $"firma={f}"));
+            if (!string.IsNullOrWhiteSpace(istek.IlkDonem)) parca.Add("ilkDonem=" + Uri.EscapeDataString(istek.IlkDonem));
+            return JsonAsync<SablondanSonucDto>(() => _http.GetAsync("/catalog/firma-panosu/isler/sablondan/onizle?" + string.Join('&', parca), ct), ct);
+        }
+
+        public Task<(SablondanSonucDto? Sonuc, string? Hata)> SablondanOlusturAsync(SablondanIstekDto istek, CancellationToken ct = default)
+            => JsonAsync<SablondanSonucDto>(() => _http.PostAsJsonAsync("/catalog/firma-panosu/isler/sablondan", istek, ct), ct);
+
+        private static async Task<(T? Deger, string? Hata)> JsonAsync<T>(Func<Task<HttpResponseMessage>> istek, CancellationToken ct) where T : class
+        {
+            var (govde, hata) = await GovdeAsync(istek, ct);
+            if (hata is not null) return (null, hata);
+            try
+            {
+                return (JsonSerializer.Deserialize<T>(govde!, Json), null);
+            }
+            catch (JsonException)
+            {
+                return (null, "Sunucu yanıtı okunamadı.");
+            }
+        }
 
         public Task<List<VergiTakvimiDto>?> TakvimAsync(int? yil, CancellationToken ct = default)
             => OkuAsync<List<VergiTakvimiDto>>(yil is null ? Takvim : $"{Takvim}?yil={yil}");

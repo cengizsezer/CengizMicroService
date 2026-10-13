@@ -1,0 +1,290 @@
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@inject IYapilacaklarApiClient Api
+@inject DialogService DialogService
+@inject NotificationService Bildirim
+
+@*
+    "＋ Yeni checklist" penceresi (Firma Panosu Aşama 3; taslak firma-panosu.html → yeniDlg). Şablon seç, firmaları
+    (çoklu) ve başlangıç dönemini belirle, önizle, oluştur.
+
+    Şablon bir İŞ TANIMI PAKETİDİR: Oluştur maddeleri seçilen firmalara firmaya özel iş olarak yazar; checklist örneği
+    saklanmaz, kart yine firma + dönemdir (kartta şablon adı etiket olur). Yasal işler şablona girmez, mükellefiyetten gelir.
+
+    Önizleme ve yazma sunucuda AYNI plandan (ChecklistSablonPlanlayici): firmada aynı başlık + tekrarla iş varsa madde
+    atlanır, ısrar seçeneği yok. Pasif kategori taşınmaz.
+
+    Alttaki ikincil bağlantılar Aşama 1'in menüsü: pencere kapanır, eylem IsTakipEylemleri'nde çalışır
+    (Sonuc.Toplu / Sonuc.Kopyala). Radzen dialogu sayfa dışında çizilir → kök kendi .ck-kok'unu taşır.
+*@
+
+<div class="ck-kok ck-dlg ck-yeni-dlg">
+    <div class="ck-dlg-ust">
+        <div style="flex:1;min-width:0">
+            <h3>Yeni checklist</h3>
+            <div class="ck-dlg-ozet">Bir şablon seç, sonra firmaları ve başlangıç dönemini belirle.</div>
+        </div>
+        <button type="button" class="ck-kapat" aria-label="Kapat" @onclick="@(() => DialogService.Close())">×</button>
+    </div>
+
+    <div class="ck-form">
+        @if (sablonlar is null)
+        {
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+        }
+        else if (sablonlar.Count == 0)
+        {
+            <div class="ck-bos ck-bos-kucuk">
+                <b>Henüz şablon yok.</b>
+                <div>Bir firmanın mevcut işlerinden ilk şablonu oluşturabilirsin.</div>
+                <button type="button" class="ck-bag" @onclick="FirmadanSablon">Firmadan şablon oluştur</button>
+            </div>
+        }
+        else
+        {
+            <div>
+                <div class="ck-etiket-baslik">Şablon</div>
+                <div class="ck-sablonlar">
+                    @foreach (var s in sablonlar)
+                    {
+                        <button type="button" class="ck-sablon" aria-pressed="@(secili?.Id == s.Id ? "true" : "false")"
+                                @onclick="@(() => SablonSec(s))">
+                            <b>📄 @s.Ad</b>
+                            @if (!string.IsNullOrWhiteSpace(s.Aciklama))
+                            {
+                                <small>@s.Aciklama</small>
+                            }
+                            <em>@s.KategoriSayisi kategori · @s.Maddeler.Count madde</em>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div class="ck-form-satir">
+                <div>
+                    <div class="ck-etiket-baslik">Firmalar</div>
+                    <RadzenDropDown TValue="IEnumerable<int>" Data="@Firmalar" TextProperty="Ad" ValueProperty="Id"
+                                    Value="@firmaIdleri" ValueChanged="@((IEnumerable<int> v) => FirmalarDegisti(v))"
+                                    Multiple="true" Chips="true" AllowFiltering="true" AllowClear="true"
+                                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                    Placeholder="Firma seçin" MaxSelectedLabels="20" Style="width:100%" />
+                </div>
+                <div>
+                    <div class="ck-etiket-baslik">Başlangıç dönemi</div>
+                    <BaslangicDonemiSecici Value="@ilkDonem" ValueChanged="@DonemDegisti" Style="width:100%" />
+                </div>
+            </div>
+
+            @if (secili is not null)
+            {
+                <div class="ck-onizleme" aria-live="polite">
+                    <div class="ck-etiket-baslik">Önizleme · @secili.Maddeler.Count madde</div>
+                    @if (onizleme is not null)
+                    {
+                        <div class="ck-cipler">
+                            @foreach (var k in onizleme.Kategoriler)
+                            {
+                                <span>@k.Ad (@k.Sayi)</span>
+                            }
+                        </div>
+                        @if (onizleme.Firmalar.Count > 0)
+                        {
+                            var atlayan = onizleme.Firmalar.Where(f => f.Atlananlar.Count > 0).ToList();
+                            <div class="ck-onizleme-ozet">
+                                @onizleme.Firmalar.Count firmaya toplam @onizleme.Firmalar.Sum(f => f.Eklenenler.Count) iş eklenecek.
+                            </div>
+                            @if (atlayan.Count > 0)
+                            {
+                                <div class="ck-uyari" role="status">
+                                    <b>Atlanacaklar</b> — firmada aynı başlık ve tekrarla iş var:
+                                    <ul>
+                                        @foreach (var f in atlayan)
+                                        {
+                                            <li>
+                                                <b>@f.FirmaAdi</b>: @f.Eklenenler.Count eklenecek, @f.Atlananlar.Count atlanacak
+                                                <span class="ck-soluk">(@string.Join(", ", f.Atlananlar.Select(a => a.Baslik)))</span>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                        }
+                    }
+                    else if (onizleniyor)
+                    {
+                        <div class="ck-soluk">Önizleniyor…</div>
+                    }
+                    @if (firmaIdleri.Count == 0)
+                    {
+                        <div class="ck-soluk">Firma seçince firma başına eklenecek ve atlanacak işler burada görünür.</div>
+                    }
+                </div>
+            }
+        }
+
+        @if (hata is not null)
+        {
+            <div class="ck-hata" role="alert">@hata</div>
+        }
+    </div>
+
+    <div class="ck-dlg-alt">
+        <button type="button" class="ck-bag" @onclick="@(() => DialogService.Close(Sonuc.Toplu))">Toplu iş ekle</button>
+        <button type="button" class="ck-bag" @onclick="@(() => DialogService.Close(Sonuc.Kopyala))">Başka firmadan kopyala</button>
+        @if (sablonlar is { Count: > 0 })
+        {
+            <button type="button" class="ck-bag" @onclick="FirmadanSablon">Firmadan şablon oluştur</button>
+        }
+        <span class="ck-bosluk"></span>
+        <button type="button" class="ck-dugme" @onclick="@(() => DialogService.Close())">Vazgeç</button>
+        <button type="button" class="ck-dugme ck-dugme-ana" disabled="@(!Olusturulabilir)" @onclick="Olustur">
+            @(yaziliyor ? "Oluşturuluyor…" : "＋ Oluştur")
+        </button>
+    </div>
+</div>
+
+@code {
+    /// <summary>Pencerenin dönüşü: oluşturuldu ya da ikincil bağlantı. Vazgeçte null.</summary>
+    public enum Sonuc
+    {
+        Olusturuldu,
+        Toplu,
+        Kopyala
+    }
+
+    /// <summary>Aktif firmalar (sayfanın firma seçicisiyle aynı liste).</summary>
+    [Parameter] public List<DonemFirmaSecenegi> Firmalar { get; set; } = new();
+
+    /// <summary>Sayfada seçili firma; doluysa ön seçili gelir.</summary>
+    [Parameter] public int? VarsayilanFirmaId { get; set; }
+
+    /// <summary>"2026-10"; boş = içinde bulunulan ay.</summary>
+    [Parameter] public string? BaslangicDonemi { get; set; }
+
+    private List<ChecklistSablonuDto>? sablonlar;
+    private ChecklistSablonuDto? secili;
+    private List<int> firmaIdleri = new();
+    private string? ilkDonem;
+    private SablondanSonucDto? onizleme;
+    private bool onizleniyor;
+    private bool yaziliyor;
+    private string? hata;
+
+    /// <summary>Geç gelen önizleme yanıtı yeni seçimin üzerine yazmasın.</summary>
+    private int istekNo;
+
+    private bool Olusturulabilir => secili is not null && firmaIdleri.Count > 0 && onizleme is not null && !yaziliyor
+                                    && onizleme.Firmalar.Any(f => f.Eklenenler.Count > 0);
+
+    protected override async Task OnInitializedAsync()
+    {
+        ilkDonem = IsMetin.AyAnahtari(IsMetin.AyCoz(BaslangicDonemi) ?? DateTime.Today);
+        if (VarsayilanFirmaId is { } f && Firmalar.Any(x => x.Id == f)) firmaIdleri.Add(f);
+        await SablonlariYukle(null);
+    }
+
+    private async Task SablonlariYukle(int? secilecek)
+    {
+        var (liste, mesaj) = await Api.SablonlarAsync();
+        if (liste is null)
+        {
+            hata = mesaj ?? "Şablonlar alınamadı.";
+            sablonlar = new();
+            return;
+        }
+
+        // Pasif şablondan iş oluşturulmaz; listede yalnız aktifler.
+        sablonlar = liste.Where(s => s.Aktif).ToList();
+        var hedef = sablonlar.FirstOrDefault(s => s.Id == secilecek) ?? (sablonlar.Count == 1 ? sablonlar[0] : null);
+        if (hedef is not null) await SablonSec(hedef);
+    }
+
+    private async Task SablonSec(ChecklistSablonuDto s)
+    {
+        secili = s;
+        await Onizle();
+    }
+
+    private async Task FirmalarDegisti(IEnumerable<int>? v)
+    {
+        firmaIdleri = v?.ToList() ?? new();
+        await Onizle();
+    }
+
+    private async Task DonemDegisti(string? d)
+    {
+        ilkDonem = d;
+        await Onizle();
+    }
+
+    private SablondanIstekDto Istek() => new() { SablonId = secili!.Id, FirmaIdleri = firmaIdleri.ToList(), IlkDonem = ilkDonem };
+
+    private async Task Onizle()
+    {
+        hata = null;
+        onizleme = null;
+        if (secili is null || firmaIdleri.Count == 0) return;
+
+        var no = ++istekNo;
+        onizleniyor = true;
+        try
+        {
+            var (s, mesaj) = await Api.SablondanOnizleAsync(Istek());
+            if (no != istekNo) return;
+            onizleme = s;
+            hata = s is null ? mesaj ?? "Önizleme alınamadı." : null;
+        }
+        finally
+        {
+            if (no == istekNo) onizleniyor = false;
+        }
+    }
+
+    private async Task Olustur()
+    {
+        if (!Olusturulabilir) return;
+        hata = null;
+        yaziliyor = true;
+        try
+        {
+            var (s, mesaj) = await Api.SablondanOlusturAsync(Istek());
+            if (s is null)
+            {
+                hata = mesaj ?? "Oluşturulamadı.";
+                return;
+            }
+
+            // Firma başına "LIME: 9 eklendi, 2 atlandı".
+            var ozet = string.Join(" · ", s.Firmalar.Select(f => $"{f.FirmaAdi}: {f.Eklenenler.Count} eklendi"
+                                                                + (f.Atlananlar.Count > 0 ? $", {f.Atlananlar.Count} atlandı" : "")));
+            Bildirim.Notify(new NotificationMessage
+            {
+                Severity = s.Firmalar.Any(f => f.Atlananlar.Count > 0) ? NotificationSeverity.Warning : NotificationSeverity.Success,
+                Summary = $"\"{s.SablonAdi}\" uygulandı",
+                Detail = ozet,
+                Duration = 8000
+            });
+            DialogService.Close(Sonuc.Olusturuldu);
+        }
+        finally
+        {
+            yaziliyor = false;
+        }
+    }
+
+    private async Task FirmadanSablon()
+    {
+        var olusan = await DialogService.OpenAsync<FirmadanSablonDialog>(string.Empty,
+            new Dictionary<string, object?>
+            {
+                { nameof(FirmadanSablonDialog.Firmalar), Firmalar },
+                { nameof(FirmadanSablonDialog.VarsayilanFirmaId), firmaIdleri.FirstOrDefault() is var f and > 0 ? f : VarsayilanFirmaId }
+            }!,
+            CkPencere.Secenekler("min(760px, 96vw)"));
+
+        if (olusan is ChecklistSablonuDto yeni) await SablonlariYukle(yeni.Id);
+    }
+}

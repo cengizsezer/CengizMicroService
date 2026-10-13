@@ -1,0 +1,170 @@
+@page "/yonetim/checklist-sablonlari"
+
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using WebApp.Application.Services
+@using WebApp.Pages.Yapilacaklar
+@using WebApp.Shared.Dto.Yapilacaklar
+
+@attribute [Authorize]
+
+@inject IYapilacaklarApiClient Api
+@inject DialogService DialogService
+@inject NotificationService Bildirim
+
+@*
+    Yönetim → Checklist Şablonları (Firma Panosu Aşama 3). Şablon = global "iş tanımı paketi": Yapılacaklar'daki
+    "＋ Yeni checklist" penceresi seçilen firmalara maddelerini firmaya özel iş olarak yazar (checklist örneği saklanmaz).
+
+    Düzenleyici ChecklistSablonDialog (madde satırları, yukarı/aşağı). "Firmadan şablon oluştur" FirmadanSablonDialog
+    (firma seç → önizle → oluştur). Kullanılmış şablon silinmez, pasife alınır — sunucu hangisi olduğunu söyler.
+    Şablonu değiştirmek oluşmuş işleri değiştirmez.
+*@
+
+<PageTitle>Checklist Şablonları</PageTitle>
+
+<YsStiller />
+<CkStiller />
+
+<div class="ys-kok ck-kok">
+    <div class="ys-ust">
+        <div>
+            <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">Checklist Şablonları</RadzenText>
+            <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">
+                İş tanımı paketleri. Yapılacaklar → "＋ Yeni checklist" ile seçilen firmalara firmaya özel iş olarak eklenir; yasal işler şablona girmez.
+            </RadzenText>
+        </div>
+        <span style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="ck-dugme" @onclick="FirmadanOlustur">Firmadan şablon oluştur</button>
+            <button type="button" class="ck-dugme ck-dugme-ana" @onclick="@(() => Duzenle(null))">＋ Yeni şablon</button>
+        </span>
+    </div>
+
+    @if (hata is not null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Shade="Shade.Lighter" AllowClose="false" Size="AlertSize.Small">@hata</RadzenAlert>
+    }
+
+    <div class="ys-kart">
+        @if (sablonlar is null)
+        {
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+        }
+        else if (sablonlar.Count == 0)
+        {
+            <div class="ck-bos ck-bos-kucuk">
+                <b>Henüz şablon yok.</b>
+                <div>Sıfırdan yazabilir ya da bir firmanın mevcut işlerinden oluşturabilirsin.</div>
+                <button type="button" class="ck-bag" @onclick="FirmadanOlustur">Firmadan şablon oluştur</button>
+            </div>
+        }
+        else
+        {
+            <table class="ck-tablo">
+                <thead>
+                    <tr>
+                        <th>Ad</th>
+                        <th style="width:160px">Maddeler</th>
+                        <th style="width:140px">Kullanım</th>
+                        <th style="width:150px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in sablonlar)
+                    {
+                        <tr class="@(s.Aktif ? "" : "ck-pasif")" @key="s.Id">
+                            <td>
+                                <b>@s.Ad</b>
+                                @if (!s.Aktif)
+                                {
+                                    <span class="ck-rozet-pasif">pasif</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(s.Aciklama))
+                                {
+                                    <div class="ck-soluk">@s.Aciklama</div>
+                                }
+                                <div class="ck-soluk" title="@string.Join("\n", s.Maddeler.Select(m => $"{m.Baslik} · {m.KuralMetni}"))">
+                                    @string.Join(", ", s.Maddeler.Take(6).Select(m => m.Baslik))@(s.Maddeler.Count > 6 ? $" ve {s.Maddeler.Count - 6} madde daha" : "")
+                                </div>
+                            </td>
+                            <td>@s.KategoriSayisi kategori · @s.Maddeler.Count madde</td>
+                            <td>@(s.KullanimSayisi == 0 ? "kullanılmadı" : $"{s.KullanimSayisi} iş")</td>
+                            <td style="white-space:nowrap">
+                                <button type="button" class="ck-bag" @onclick="@(() => Duzenle(s))">Düzenle</button>
+                                @if (s.KullanimSayisi == 0 || s.Aktif)
+                                {
+                                    <button type="button" class="ck-bag" style="margin-left:10px" @onclick="@(() => Sil(s))"
+                                            title="@(s.KullanimSayisi > 0 ? "Kullanılmış şablon silinmez, pasife alınır" : "Şablonu sil")">
+                                        @(s.KullanimSayisi > 0 ? "Pasife al" : "Sil")
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@code {
+    private List<ChecklistSablonuDto>? sablonlar;
+    private string? hata;
+
+    protected override Task OnInitializedAsync() => Yukle();
+
+    private async Task Yukle()
+    {
+        var (liste, mesaj) = await Api.SablonlarAsync();
+        if (liste is null) hata = mesaj ?? "Şablonlar alınamadı.";
+        else
+        {
+            sablonlar = liste;
+            hata = null;
+        }
+    }
+
+    private async Task Duzenle(ChecklistSablonuDto? s)
+    {
+        var sonuc = await DialogService.OpenAsync<ChecklistSablonDialog>(string.Empty,
+            new Dictionary<string, object?> { { nameof(ChecklistSablonDialog.Mevcut), s } }!,
+            CkPencere.Secenekler("min(1080px, 96vw)"));
+        if (sonuc is ChecklistSablonuDto kaydedilen)
+        {
+            Bildirim.Notify(NotificationSeverity.Success, $"\"{kaydedilen.Ad}\" kaydedildi", duration: 2500);
+            await Yukle();
+        }
+    }
+
+    private async Task FirmadanOlustur()
+    {
+        var sonuc = await DialogService.OpenAsync<FirmadanSablonDialog>(string.Empty, new Dictionary<string, object?>()!,
+                                                                       CkPencere.Secenekler("min(760px, 96vw)"));
+        if (sonuc is ChecklistSablonuDto yeni)
+        {
+            Bildirim.Notify(NotificationSeverity.Success, $"\"{yeni.Ad}\" oluşturuldu · {yeni.Maddeler.Count} madde", duration: 3000);
+            await Yukle();
+        }
+    }
+
+    private async Task Sil(ChecklistSablonuDto s)
+    {
+        if (s.KullanimSayisi > 0 && !s.Aktif) return;
+        var soru = s.KullanimSayisi > 0
+            ? $"\"{s.Ad}\" {s.KullanimSayisi} işte kullanıldı; silinmez, pasife alınır. Oluşan işler yerinde kalır."
+            : $"\"{s.Ad}\" silinsin mi?";
+        var onay = await DialogService.Confirm(soru, s.KullanimSayisi > 0 ? "Pasife al" : "Şablonu sil",
+            new ConfirmOptions { OkButtonText = s.KullanimSayisi > 0 ? "Pasife al" : "Sil", CancelButtonText = "Vazgeç" });
+        if (onay != true) return;
+
+        var (sonuc, mesaj) = await Api.SablonSilAsync(s.Id);
+        if (sonuc is null)
+        {
+            hata = mesaj ?? "Silinemedi.";
+            return;
+        }
+        Bildirim.Notify(sonuc.PasifeAlindi ? NotificationSeverity.Info : NotificationSeverity.Success, sonuc.Mesaj, duration: 4000);
+        await Yukle();
+    }
+}

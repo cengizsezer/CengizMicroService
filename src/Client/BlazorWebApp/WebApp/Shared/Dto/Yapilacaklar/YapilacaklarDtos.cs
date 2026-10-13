@@ -83,6 +83,9 @@ namespace WebApp.Shared.Dto.Yapilacaklar
     public class FirmaIsiDto
     {
         public int Id { get; set; }
+
+        /// <summary>İşin kendi kategorisi (Aşama 2); boş = tarifin ya da "Diğer".</summary>
+        public int? KategoriId { get; set; }
         public int FirmaId { get; set; }
         public string Baslik { get; set; } = string.Empty;
         public string? Aciklama { get; set; }
@@ -216,7 +219,26 @@ namespace WebApp.Shared.Dto.Yapilacaklar
         public int? SorumluKullaniciId { get; set; }
         public string? SorumluKullaniciAdi { get; set; }
         public bool Aktif { get; set; } = true;
+
+        /// <summary>Aynı adlı iş uyarısına ısrar. İlk istek her zaman <c>false</c>; sunucu 409 ile sorar.</summary>
+        public bool Israr { get; set; }
+
+        /// <summary>İşin kendi kategorisi; boş = iş tarifinden ya da "Diğer".</summary>
+        public int? KategoriId { get; set; }
     }
+
+    /// <summary>409 gövdesi: aynı firmada aynı başlık + tekrarlı iş.</summary>
+    public class IsAyniAdDto
+    {
+        public string? Field { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public int MevcutId { get; set; }
+        public string MevcutBaslik { get; set; } = string.Empty;
+        public bool MevcutAktif { get; set; }
+    }
+
+    /// <summary>İş ekle/güncelle sonucu: başarıda ikisi de boş; <see cref="AyniAd"/> doluysa kullanıcıya sorulur.</summary>
+    public sealed record IsKaydetSonucu(string? Hata, IsAyniAdDto? AyniAd = null);
 
     public class FirmaIsleriKartDto
     {

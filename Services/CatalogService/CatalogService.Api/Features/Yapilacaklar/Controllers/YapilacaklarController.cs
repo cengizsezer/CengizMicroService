@@ -181,6 +181,13 @@ namespace CatalogService.Api.Features.Yapilacaklar.Controllers
             {
                 return Ok(await is_());
             }
+            catch (YapilacaklarAyniAdException ex)
+            {
+                return Conflict(new IsAyniAdDto
+                {
+                    Field = ex.Field, Message = ex.Message, MevcutId = ex.MevcutId, MevcutBaslik = ex.MevcutBaslik, MevcutAktif = ex.MevcutAktif
+                });
+            }
             catch (YapilacaklarKuralException ex)
             {
                 return BadRequest(new { field = ex.Field, message = ex.Message });

@@ -33,11 +33,14 @@
 <PageTitle>İş Takip Panosu</PageTitle>
 
 <YsStiller />
+<CkStiller />
 
 <div class="dp-sayfa">
+    @* Firma Panosu (Aşama 1): ortak başlık + üst sekme şeridi (İş Takip | Yapılacaklar). Alt sekme şeridi (dp-sekmeler)
+       aşağıda olduğu gibi duruyor. *@
     <div class="dp-baslik">
-        <RadzenText TextStyle="TextStyle.H5" class="rz-m-0">İş Takip Panosu</RadzenText>
-        <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">Dönem merkezli takip — hangi ayın işi kapandı, nerede eksik var</RadzenText>
+        <FirmaPanosuUst Aktif="FirmaPanosuSekmesi.IsTakip"
+                        Aciklama="Dönem merkezli takip — hangi ayın işi kapandı, nerede eksik var" />
     </div>
 
     @* ---- Üst şerit (Prompt 15 · 2.0–2.1): KALICI firma seçimi + eylemler, her sekmede. Seçim adreste
@@ -88,7 +91,7 @@
         {
             @if (ozet is not null)
             {
-                <DonemOzetSayfasi Ozet="@ozet" FirmaId="@Firma" IsEkle="@EylemIsEkle" Yapistir="@EylemYapistir"
+                <DonemOzetSayfasi Ozet="@ozet" FirmaId="@Firma" IsEkle="@EylemIsEkle" Yapistir="@EylemYapistir" Degisti="@Eklendi"
                                   Git="@(h => DonemeGit(h.Anahtar, h.FirmaId))" />
             }
             else if (ozetHata is null)
@@ -200,6 +203,10 @@
     .dp-eksik-not { font-size:12px; color:#c53030; }
     .dp-oran { font-size:11px; font-weight:700; border-radius:999px; padding:1px 7px; background:#fed7d7; color:#9b2c2c; }
     .dp-oran-tam { background:#c6f6d5; color:#22543d; }
+    .dp-ayni-ad { margin:0 4px; font-size:10.5px; font-weight:700; border:1px solid #f6ad55; border-radius:999px; padding:0 6px;
+                  line-height:16px; background:#fffaf0; color:#9c4221; cursor:pointer; white-space:nowrap; vertical-align:middle; }
+    .dp-ayni-ad:hover { background:#feebc8; }
+    .dp-ayni-ad:disabled { opacity:.6; cursor:wait; }
     .dp-oran-bos { background:transparent; color:#cbd5e0; }
 
     /* Hücre paneli: hücreye yakın kutu */

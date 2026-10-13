@@ -146,7 +146,14 @@
                     @foreach (var s in pano.Satirlar.Where(s => !sadeceEksikler || s.Yapilan < s.Gecerli))
                     {
                         <tr class="@(s.Yapilan < s.Gecerli ? "dp-satir-eksik" : "")">
-                            <td class="dp-firma-kolon">@s.FirmaAdi</td>
+                            <td class="dp-firma-kolon">
+                                @* Rozet adın ÖNÜNDE: hücre uzun adı üç noktayla keser, sonda kalsa görünmezdi. *@
+                                @if (s.GizlenenIsler.Count > 0)
+                                {
+                                    <DonemAyniAdRozeti FirmaId="@s.FirmaId" FirmaAdi="@s.FirmaAdi" Isler="@s.GizlenenIsler" Degisti="@Tazele" />
+                                }
+                                @s.FirmaAdi
+                            </td>
                             @for (var i = 0; i < pano.Kolonlar.Count; i++)
                             {
                                 var h = s.Hucreler[i];
@@ -231,6 +238,11 @@
     private (int Top, int Left) konum;
 
     private int Yuzde => pano is { Toplam: > 0 } p ? (int)Math.Round(100.0 * p.Yapilan / p.Toplam) : 0;
+
+    /// <summary>Bu satırın (gösterilen işin) yüzünden matrise sığmayan aynı adlı işler.</summary>
+    private List<DonemGizlenenIsDto> Gizlenenler(DonemIsSatiriDto s)
+        => pano?.Satirlar.FirstOrDefault(r => r.FirmaId == s.FirmaId)?.GizlenenIsler
+               .Where(g => g.GosterilenIsId == s.KaynakId).ToList() ?? new();
 
     private string FiltreFirmaAdi
         => pano?.Satirlar.FirstOrDefault(s => s.FirmaId == FirmaId)?.FirmaAdi
@@ -368,6 +380,11 @@
             <td class="dp-liste-firma" title="@s.FirmaAdi">@s.FirmaAdi</td>
             <td class="dp-liste-is">
                 <span class="dp-is-ad">@s.Baslik</span>
+                @if (s.KaynakTip == IsKaynagi.Ozel && Gizlenenler(s) is { Count: > 0 } gizli)
+                {
+                    @* Satır listesinde uyarı, gösterilen kopyanın yanında: aynı adlı öteki iş burada yok. *@
+                    <DonemAyniAdRozeti FirmaId="@s.FirmaId" FirmaAdi="@s.FirmaAdi" Isler="@gizli" Degisti="@Tazele" />
+                }
                 <DonemSatirCipleri Satir="@s" Yalniz="yasal" />
                 @if (IsMetin.BeriNotu(s.IlkDonem, DateTime.Today) is { } beri)
                 {
