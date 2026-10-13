@@ -1,0 +1,210 @@
+@using Radzen
+@using WebApp.Shared.Dto.FirmaPortfoyu
+
+@implements IAsyncDisposable
+
+@inject DialogService DialogService
+@inject IJSRuntime JS
+
+@*
+    Firma detayı (Firma Portföyü Aşama 2–3) — tablo satırına ya da düşen/yükselen listesine tıklayınca. Taslaktaki
+    gibi: 5 gösterge, dengesizlik notu, 12 aylık çizgi grafiğin küçük hali (firmaPortfoyu.js; pencere kapanınca
+    kaldir) ve 12 aylık tablo (yeniden eskiye). Seçili ayın mizanı yoksa son mizanın ayı gösterilir ve bu söylenir.
+    Bu ekranda da firmalar toplanmaz — tek firma.
+    Dönüş: "yukle" (seçili ayın mizanını yükle) ya da null.
+*@
+
+<div class="pf-kok pf-dlg">
+    <div class="pf-dlg-ust">
+        <span class="pf-rozet" style="background:@rozet.Renk">@rozet.Harfler</span>
+        <div style="flex:1;min-width:0">
+            <h3>@Firma.KisaAd</h3>
+            <div class="pf-dlg-ozet">
+                @Firma.Unvan
+                @if (!string.IsNullOrWhiteSpace(Firma.Sorumlu))
+                {
+                    <text> · Sorumlu: @Firma.Sorumlu</text>
+                }
+                · son mizan @PfBicim.DonemAdi(Firma.SonMizanDonemi)
+                @if (gosterilen is not null && !seciliAy)
+                {
+                    <span class="pf-dl pf-kotu"> (seçili dönemin mizanı yok, @PfAy.Uzun(gosterilen.Ay) @gosterilen.Yil gösteriliyor)</span>
+                }
+            </div>
+        </div>
+        <button type="button" class="pf-kapat" aria-label="Kapat" @onclick="@(() => DialogService.Close())">×</button>
+    </div>
+
+    <div class="pf-dlg-govde">
+        @if (Firma.Durum == PortfoyMizanDurumu.Dengesiz)
+        {
+            <div class="pf-not pf-not-uyari">
+                <span>⚠</span>
+                <div><b>Bu firmanın @DonemAdi mizanında borç ve alacak toplamı tutmuyor.</b> Rakamlar hatalı olabilir; mizanı doğru biçimde yeniden yükleyin.</div>
+            </div>
+        }
+        else if (Firma.Durum == PortfoyMizanDurumu.Eksik)
+        {
+            <div class="pf-not pf-not-hata">
+                <span>✕</span>
+                <div>
+                    <b>@DonemAdi mizanı yüklenmedi.</b>
+                    <button type="button" class="pf-bag" @onclick="@(() => DialogService.Close("yukle"))">Yükle</button>
+                </div>
+            </div>
+        }
+
+        @if (DigerUyarilar.Count > 0)
+        {
+            <div class="pf-not pf-not-uyari">
+                <span>⚠</span>
+                <ul class="pf-uyarilar">
+                    @foreach (var u in DigerUyarilar)
+                    {
+                        <li>@u</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        @if (gosterilen is null)
+        {
+            <div class="pf-bos">Son 12 ayda bu firmanın mizanı yok.</div>
+        }
+        else
+        {
+            var m = gosterilen;
+            <div class="pf-detay-kpiler">
+                <PfKpi Baslik="Net satış" Deger="@m.NetSatis" Not="@m.Not">
+                    <PfDegisim Bu="@m.NetSatis" Onceki="@onceki?.NetSatis" /> önceki aya göre
+                </PfKpi>
+                <PfKpi Baslik="Brüt marj" Metin="@(Marj(m) is { } mj ? PfBicim.Yuzde(mj) : null)" Not="@m.Not">
+                    satışın maliyeti @PfBicim.Tl(m.Smm)
+                </PfKpi>
+                <PfKpi Baslik="Faaliyet gideri" Deger="@m.FaaliyetGiderleri" Not="@m.Not">
+                    <PfDegisim Bu="@m.FaaliyetGiderleri" Onceki="@onceki?.FaaliyetGiderleri" ArtisIyi="false" /> önceki aya göre
+                </PfKpi>
+                <PfKpi Baslik="Dönem kârı (vergi öncesi)" Deger="@m.DonemKari" Not="@m.Not">
+                    <PfDegisim Bu="@m.DonemKari" Onceki="@onceki?.DonemKari" /> önceki aya göre
+                </PfKpi>
+                <PfKpi Baslik="Yıl başından dönem kârı" Deger="@(seciliAy ? Firma.Gostergeler.DonemKariYilBasindan.Deger : null)"
+                       Not="@(seciliAy ? Firma.Gostergeler.DonemKariYilBasindan.Not : "yalnız seçili ay için")">
+                    Ocak – @PfAy.Uzun(m.Ay) @m.Yil
+                </PfKpi>
+            </div>
+
+            <section class="pf-panel" style="box-shadow:none">
+                <div class="pf-panel-ust">
+                    <h2>12 ay</h2>
+                    <span class="pf-panel-alt">aylık</span>
+                    <span class="pf-bosluk"></span>
+                    <PfSeriLejanti />
+                </div>
+                <div class="pf-govde"><div class="pf-grafik" @ref="grafikOgesi"></div></div>
+            </section>
+
+            <section class="pf-panel" style="box-shadow:none">
+                <div class="pf-panel-ust"><h2>Ay ay</h2><span class="pf-panel-alt">aylık tutarlar · hazır değerler ay sonu bakiyesi</span></div>
+                <div class="pf-tablo-kap">
+                    <table class="pf-tablo pf-aylar">
+                        <thead>
+                            <tr>
+                                <th class="pf-sol">Ay</th>
+                                <th>Net satış</th>
+                                <th>Satışın maliyeti</th>
+                                <th>Faaliyet gideri</th>
+                                <th>Dönem kârı</th>
+                                <th>Hazır değerler</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var a in Enumerable.Reverse(Firma.Seri))
+                            {
+                                <tr class="@(a == gosterilen ? "pf-secili" : "")">
+                                    <td class="pf-sol pf-mono">@PfAy.Uzun(a.Ay) @a.Yil</td>
+                                    @if (!a.Yuklu)
+                                    {
+                                        <td colspan="5" class="pf-sol pf-etiket">mizan yüklenmedi</td>
+                                    }
+                                    else
+                                    {
+                                        <td title="@a.Not">@Hucre(a.NetSatis, a.Not)</td>
+                                        <td title="@a.Not">@Hucre(a.Smm, a.Not)</td>
+                                        <td title="@a.Not">@Hucre(a.FaaliyetGiderleri, a.Not)</td>
+                                        <td title="@a.Not">@Hucre(a.DonemKari, a.Not)</td>
+                                        <td>@PfBicim.Tl(a.HazirDegerler)@(a.Dengeli ? "" : " ⚠")</td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public PortfoyFirmasiDto Firma { get; set; } = new();
+
+    /// <summary>Seçili dönem ("2026-09").</summary>
+    [Parameter] public string Donem { get; set; } = string.Empty;
+
+    private PortfoyAyDto? gosterilen;
+    private PortfoyAyDto? onceki;
+    private bool seciliAy;
+    private (string Harfler, string Renk) rozet;
+
+    private ElementReference grafikOgesi;
+    private bool grafikBasladi;
+
+    /// <summary>Pencere açılınca bir kez çizilir (veri pencere açıkken değişmez); tıklama yok, referans verilmez.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (grafikBasladi || gosterilen is null || string.IsNullOrEmpty(grafikOgesi.Id)) return;
+        grafikBasladi = true;
+        try
+        {
+            await JS.InvokeVoidAsync("firmaPortfoyu.baslat", grafikOgesi, null, PfGrafikVerisi.Cizgi(Firma, 200));
+        }
+        catch (JSException)
+        {
+            // Grafik çizilemese de tablo görünür.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!grafikBasladi) return;
+        try
+        {
+            await JS.InvokeVoidAsync("firmaPortfoyu.kaldir", grafikOgesi);
+        }
+        catch
+        {
+            // Pencere kapanırken JS gitmiş olabilir.
+        }
+    }
+
+    private string DonemAdi => PfBicim.DonemAdi(Donem);
+
+    /// <summary>Dengesizlik yukarıdaki notta; burada diğer uyarılar.</summary>
+    private List<string> DigerUyarilar => Firma.Uyarilar.Where(u => !u.StartsWith("Mizan dengesiz")).ToList();
+
+    protected override void OnParametersSet()
+    {
+        rozet = PfBicim.Rozet(Firma.FirmaId, Firma.KisaAd);
+
+        // Seri seçili aya biter: son eleman seçili ay; yoksa son yüklü ay.
+        var son = Firma.Seri.LastOrDefault();
+        seciliAy = son is { Yuklu: true };
+        gosterilen = seciliAy ? son : Firma.Seri.LastOrDefault(a => a.Yuklu);
+        var i = gosterilen is null ? -1 : Firma.Seri.IndexOf(gosterilen);
+        onceki = i > 0 ? Firma.Seri[i - 1] : null;
+    }
+
+    private static decimal? Marj(PortfoyAyDto a)
+        => a.NetSatis is { } ns && ns != 0m && a.Smm is { } smm ? (ns - smm) / ns : null;
+
+    private static string Hucre(decimal? v, string? not) => v is null ? (not is null ? "—" : "— " + not) : PfBicim.Tl(v);
+}

@@ -19,6 +19,17 @@
 
         public DateTime? PaymentDate { get; set; }
         public string? Note { get; set; }
+
+        /// <summary>
+        /// ESKİ bağ: dbo.CustomerCompanies (seed'li PKF grup listesi). Kod artık okumaz; kolon geçmiş kayıtlar ve
+        /// geri dönüş için duruyor. Yeni kayıtlarda 0.
+        /// </summary>
         public int CustomerCompanyId { get; set; }
+
+        /// <summary>
+        /// Firmalarım (dbo.Firmalar) bağı — AddDeclarationFirmaId migration'ı mevcut kayıtları VKN ile eşledi.
+        /// Boşsa eşleşmeyen kayıttır; Takip'te "Eşleşmeyen firma" grubunda eski CompanyName ile görünür.
+        /// </summary>
+        public int? FirmaId { get; set; }
     }
 }

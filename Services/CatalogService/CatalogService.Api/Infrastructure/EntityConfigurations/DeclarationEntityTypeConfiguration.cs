@@ -1,5 +1,6 @@
 ﻿using CatalogService.Api.Features.Declarations.Entities;
 using CatalogService.Api.Features.Expenses.Domain;
+using CatalogService.Api.Features.Firmalar.Domain;
 using CatalogService.Api.Infrastructure.Context;
 using DocumentFormat.OpenXml.Vml.Office;
 using Microsoft.EntityFrameworkCore;
@@ -35,6 +36,10 @@ namespace CatalogService.Api.Infrastructure.EntityConfigurations
 
             entity.HasIndex(x => new { x.TenantNo, x.Year, x.Month });
             entity.HasIndex(x => new { x.Year, x.Month });
+
+            // Firmalarım bağı. Restrict: beyannamesi olan firma silinmez (pasife alınır).
+            entity.HasOne<Firma>().WithMany().HasForeignKey(x => x.FirmaId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => x.FirmaId);
         }
     }
 }

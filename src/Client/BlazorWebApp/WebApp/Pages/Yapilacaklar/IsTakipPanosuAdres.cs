@@ -1,10 +1,13 @@
 ﻿namespace WebApp.Pages.Yapilacaklar
 {
-    /// <summary>Firma Panosu'nun üst sekmeleri (FirmaPanosuUst): iki ayrı sayfa, ortak şerit.</summary>
+    /// <summary>Firma Panosu'nun üst sekmeleri (FirmaPanosuUst): ayrı sayfalar, ortak şerit.</summary>
     public enum FirmaPanosuSekmesi
     {
         IsTakip,
-        Yapilacaklar
+        Yapilacaklar,
+
+        /// <summary>Firma Portföyü (/firma-portfoyu) — aylık mizanlardan firma bazında göstergeler.</summary>
+        Portfoy
     }
 
     /// <summary>

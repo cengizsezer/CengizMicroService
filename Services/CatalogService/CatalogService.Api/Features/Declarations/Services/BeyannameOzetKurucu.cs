@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.Declarations.Dtos;
+﻿using CatalogService.Api.Features.Declarations.Dtos;
 using CatalogService.Api.Features.Declarations.Entities;
 
 namespace CatalogService.Api.Features.Declarations.Services
@@ -7,14 +7,21 @@ namespace CatalogService.Api.Features.Declarations.Services
     /// Firma × beyanname türü matrisini kurar. <b>Saf fonksiyon</b>: veritabanı bilmez,
     /// listeleri alır matrisi verir — böylece matris kuralları (durum sırası, toplamlar,
     /// eşleşmeyen tür raporu) veritabanı kurmadan sınanabiliyor.
+    ///
+    /// Satırlar Firmalarım firmaları (<see cref="BeyannameFirmasi"/>; hangi firmaların geleceğine — aktif / pasif —
+    /// servis karar verir). FirmaId'si boş (VKN ile eşleşmemiş eski) kayıt varsa sonda bir "Eşleşmeyen firma" satırı
+    /// açılır: kayıt matristen sessizce düşmez.
     /// </summary>
     public static class BeyannameOzetKurucu
     {
+        /// <summary>FirmaId'si boş kayıtların kova anahtarı (gerçek firma Id'si 0 olmaz).</summary>
+        private const int EslesmeyenAnahtar = 0;
+
         public static BeyannameOzetDto Kur(
             int yil,
             int ay,
             IReadOnlyList<BeyannameTuru> turler,
-            IReadOnlyList<CustomerCompany> firmalar,
+            IReadOnlyList<BeyannameFirmasi> firmalar,
             IReadOnlyList<Declaration> beyannameler,
             IReadOnlyList<BeyannameEk> ekler)
         {
@@ -39,7 +46,8 @@ namespace CatalogService.Api.Features.Declarations.Services
                     continue;
                 }
 
-                var anahtar = (beyanname.CustomerCompanyId, tur.Id);
+                // FirmaId'si boş kayıt 0 anahtarında (Eşleşmeyen firma satırı); gerçek firma Id'si hiç 0 olmaz.
+                var anahtar = (beyanname.FirmaId ?? EslesmeyenAnahtar, tur.Id);
                 if (!kovalar.TryGetValue(anahtar, out var liste))
                     kovalar[anahtar] = liste = new List<Declaration>();
 
@@ -52,21 +60,34 @@ namespace CatalogService.Api.Features.Declarations.Services
                 .GroupBy(e => e.DeclarationId)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
-            var sira = 0;
-            foreach (var firma in firmalar)
-            {
-                sira++;
-                var satir = new BeyannameOzetSatirDto
+            var satirFirmalari = firmalar
+                .Select(f => (Anahtar: f.Id, Satir: new BeyannameOzetSatirDto
                 {
-                    Sira = sira,
-                    CustomerCompanyId = firma.Id,
-                    FirmaAdi = firma.CompanyName,
-                    VergiKimlikNo = firma.TaxNumber
-                };
+                    FirmaId = f.Id,
+                    FirmaAdi = f.Ad,
+                    VergiKimlikNo = f.VergiKimlikNo,
+                    FirmaPasif = !f.Aktif
+                }))
+                .ToList();
+
+            if (kovalar.Keys.Any(k => k.FirmaId == EslesmeyenAnahtar))
+            {
+                satirFirmalari.Add((EslesmeyenAnahtar, new BeyannameOzetSatirDto
+                {
+                    FirmaId = null,
+                    FirmaAdi = BeyannameFirmasi.EslesmeyenAdi,
+                    Eslesmeyen = true
+                }));
+            }
+
+            var sira = 0;
+            foreach (var (anahtarFirma, satir) in satirFirmalari)
+            {
+                satir.Sira = ++sira;
 
                 foreach (var tur in sirali)
                 {
-                    kovalar.TryGetValue((firma.Id, tur.Id), out var kayitlar);
+                    kovalar.TryGetValue((anahtarFirma, tur.Id), out var kayitlar);
                     satir.Hucreler.Add(Hucre(tur, kayitlar, eklerBeyannameye));
                 }
 
@@ -159,7 +180,8 @@ namespace CatalogService.Api.Features.Declarations.Services
             PaymentStatus = d.PaymentStatus,
             PaymentDate = d.PaymentDate,
             Note = d.Note,
-            CustomerCompanyId = d.CustomerCompanyId
+            CustomerCompanyId = d.CustomerCompanyId,
+            FirmaId = d.FirmaId
         };
 
         public static BeyannameTuruDto TuruDto(BeyannameTuru tur) => new()

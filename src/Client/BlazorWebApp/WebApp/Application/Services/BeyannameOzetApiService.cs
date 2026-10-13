@@ -14,8 +14,9 @@ namespace WebApp.Application.Services
 
         public BeyannameOzetApiService(HttpClient http) => _http = http;
 
-        public async Task<BeyannameOzetDto?> OzetGetAsync(int yil, int ay, CancellationToken ct = default)
-            => await _http.GetResponseAsync<BeyannameOzetDto>($"{Prefix}/ozet?yil={yil}&ay={ay}");
+        public async Task<BeyannameOzetDto?> OzetGetAsync(int yil, int ay, bool pasifleriGoster = false, CancellationToken ct = default)
+            => await _http.GetResponseAsync<BeyannameOzetDto>(
+                $"{Prefix}/ozet?yil={yil}&ay={ay}" + (pasifleriGoster ? "&pasifleriGoster=true" : ""));
 
         public async Task<List<BeyannameEkDto>> EkleriGetAsync(int declarationId, CancellationToken ct = default)
             => await _http.GetResponseAsync<List<BeyannameEkDto>>($"{Prefix}/{declarationId}/ekler") ?? new();

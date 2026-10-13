@@ -1168,6 +1168,9 @@ namespace CatalogService.Api.Migrations
                     b.Property<DateTime>("DueDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("FirmaId")
+                        .HasColumnType("int");
+
                     b.Property<int>("Month")
                         .HasColumnType("int");
 
@@ -1190,6 +1193,8 @@ namespace CatalogService.Api.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("FirmaId");
 
                     b.HasIndex("Year", "Month");
 
@@ -2387,6 +2392,115 @@ namespace CatalogService.Api.Migrations
                     b.HasIndex("Grup", "SiraNo");
 
                     b.ToTable("VergiKalemleri", (string)null);
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.FirmaPortfoyu.Domain.AylikMizan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("AlacakBakiyeToplami")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("Ay")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("BorcBakiyeToplami")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("DengeFarki")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("Dengeli")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("DosyaAdi")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<int>("FirmaId")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("GiderYontemi")
+                        .HasColumnType("tinyint");
+
+                    b.Property<bool>("KapanisSonrasiMi")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("SatirSayisi")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Yil")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("YuklemeTarihi")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("YukleyenKullanici")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("YukleyenKullaniciId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Yil", "Ay");
+
+                    b.HasIndex("FirmaId", "Yil", "Ay")
+                        .IsUnique();
+
+                    b.ToTable("AylikMizanlar", "catalog", t =>
+                        {
+                            t.HasCheckConstraint("CK_AylikMizanlar_Ay", "[Ay] BETWEEN 1 AND 12");
+                        });
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.FirmaPortfoyu.Domain.AylikMizanSatiri", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("AlacakBakiye")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("AylikMizanId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Bakiye")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("BorcBakiye")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("HesapAdi")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("HesapKodu")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AylikMizanId", "HesapKodu")
+                        .IsUnique();
+
+                    b.ToTable("AylikMizanSatirlari", "catalog");
                 });
 
             modelBuilder.Entity("CatalogService.Api.Features.Firmalar.Domain.Firma", b =>
@@ -4993,6 +5107,14 @@ namespace CatalogService.Api.Migrations
                     b.Navigation("Declaration");
                 });
 
+            modelBuilder.Entity("CatalogService.Api.Features.Declarations.Entities.Declaration", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.Firmalar.Domain.Firma", null)
+                        .WithMany()
+                        .HasForeignKey("FirmaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("CatalogService.Api.Features.Expenses.Domain.ProductDetail", b =>
                 {
                     b.HasOne("CatalogService.Api.Features.Expenses.Domain.ReceiptItem", "ReceiptItem")
@@ -5159,6 +5281,24 @@ namespace CatalogService.Api.Migrations
                         .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("BagliIstisnaKalemi");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.FirmaPortfoyu.Domain.AylikMizan", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.Firmalar.Domain.Firma", null)
+                        .WithMany()
+                        .HasForeignKey("FirmaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.FirmaPortfoyu.Domain.AylikMizanSatiri", b =>
+                {
+                    b.HasOne("CatalogService.Api.Features.FirmaPortfoyu.Domain.AylikMizan", null)
+                        .WithMany("Satirlar")
+                        .HasForeignKey("AylikMizanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("CatalogService.Api.Features.Firmalar.Domain.Firma", b =>
@@ -5557,6 +5697,11 @@ namespace CatalogService.Api.Migrations
                 {
                     b.Navigation("GecmisYilZararlari");
 
+                    b.Navigation("Satirlar");
+                });
+
+            modelBuilder.Entity("CatalogService.Api.Features.FirmaPortfoyu.Domain.AylikMizan", b =>
+                {
                     b.Navigation("Satirlar");
                 });
 

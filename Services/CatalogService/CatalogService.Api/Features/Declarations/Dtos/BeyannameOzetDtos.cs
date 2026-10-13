@@ -80,9 +80,20 @@
     public class BeyannameOzetSatirDto
     {
         public int Sira { get; set; }
+
+        /// <summary>ESKİ alan (dbo.CustomerCompanies); artık doldurulmaz. Satırın firması <see cref="FirmaId"/>.</summary>
         public int CustomerCompanyId { get; set; }
+
+        /// <summary>Firmalarım firması; boş = "Eşleşmeyen firma" satırı (FirmaId'si olmayan eski kayıtlar).</summary>
+        public int? FirmaId { get; set; }
+
         public string FirmaAdi { get; set; } = string.Empty;
         public string? VergiKimlikNo { get; set; }
+
+        /// <summary>Firma Firmalarım'da pasif (yalnız "Pasif firmaları da göster" ile listelenir).</summary>
+        public bool FirmaPasif { get; set; }
+
+        public bool Eslesmeyen { get; set; }
 
         public List<BeyannameOzetHucreDto> Hucreler { get; set; } = new();
 

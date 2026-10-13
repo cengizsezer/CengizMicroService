@@ -1,11 +1,12 @@
 @*
-    Firma Panosu'nun ortak başlığı ve üst sekme şeridi (Aşama 1): İş Takip | Yapılacaklar. İki AYRI sayfa (adresleri
-    değişmedi); sekmeler <a href> — geri tuşu çalışır. İş Takip Panosu'nun kendi alt sekme şeridi (dp-sekmeler)
-    sayfanın altında olduğu gibi durur. Sağ taraf (ChildContent) sayfanın eylemleri için.
+    Firma Panosu'nun ortak başlığı ve üst sekme şeridi (Aşama 1): İş Takip | Yapılacaklar | Portföy. AYRI sayfalar
+    (adresleri değişmedi); sekmeler <a href> — geri tuşu çalışır. İş Takip Panosu'nun kendi alt sekme şeridi
+    (dp-sekmeler) sayfanın altında olduğu gibi durur. Sağ taraf (ChildContent) sayfanın eylemleri için.
+    Portföy (Firma Portföyü) menüde ayrı satır değil; yalnız bu şeritten açılır.
 *@
 
 <div class="ck-kok">
-    <div class="ck-iz"><span>Firma Panosu</span><span>›</span><b>@(Aktif == FirmaPanosuSekmesi.IsTakip ? "İş Takip" : "Yapılacaklar")</b></div>
+    <div class="ck-iz"><span>Firma Panosu</span><span>›</span><b>@SekmeAdi</b></div>
     <div class="ck-baslik-satir">
         <div class="ck-baslik-ikon" aria-hidden="true">☑</div>
         <div>
@@ -18,6 +19,7 @@
         <nav class="ck-sekmeler" aria-label="Firma Panosu">
             <a class="ck-sekme" href="@IsTakipPanosuAdres.Yol" aria-current="@(Aktif == FirmaPanosuSekmesi.IsTakip ? "page" : null)">İş Takip</a>
             <a class="ck-sekme" href="/yapilacaklar" aria-current="@(Aktif == FirmaPanosuSekmesi.Yapilacaklar ? "page" : null)">Yapılacaklar</a>
+            <a class="ck-sekme" href="/firma-portfoyu" aria-current="@(Aktif == FirmaPanosuSekmesi.Portfoy ? "page" : null)">Portföy</a>
         </nav>
         <span class="ck-bosluk"></span>
         @ChildContent
@@ -37,4 +39,11 @@
     [Parameter] public string? Aciklama { get; set; }
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string SekmeAdi => Aktif switch
+    {
+        FirmaPanosuSekmesi.IsTakip => "İş Takip",
+        FirmaPanosuSekmesi.Portfoy => "Portföy",
+        _ => "Yapılacaklar"
+    };
 }

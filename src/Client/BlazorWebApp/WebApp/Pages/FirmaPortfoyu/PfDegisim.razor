@@ -1,0 +1,25 @@
+@*
+    Karşılaştırma değişimi: ▲/▼ yüzde. ArtisIyi=true → artış yeşil (gelir, kâr, hazır değer); false → artış kırmızı
+    (gider, alacak, borç). Karşılaştırma yoksa gri "—". Kural PfBicim.Degisim'de (testli).
+*@
+
+<span class="pf-dl @Sinif" title="@Ipucu">@sonuc.Metin</span>
+
+@code {
+    [Parameter] public decimal? Bu { get; set; }
+    [Parameter] public decimal? Onceki { get; set; }
+    [Parameter] public bool ArtisIyi { get; set; } = true;
+
+    private (string Metin, PfYon Yon) sonuc;
+
+    protected override void OnParametersSet() => sonuc = PfBicim.Degisim(Bu, Onceki, ArtisIyi);
+
+    private string Sinif => sonuc.Yon switch
+    {
+        PfYon.Iyi => "pf-iyi",
+        PfYon.Kotu => "pf-kotu",
+        _ => "pf-yatay"
+    };
+
+    private string Ipucu => Onceki is null ? "karşılaştırılacak değer yok" : $"karşılaştırma: {PfBicim.TamTl(Onceki)}";
+}

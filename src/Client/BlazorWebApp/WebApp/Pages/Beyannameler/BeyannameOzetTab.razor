@@ -17,6 +17,10 @@
     kesişimde durum; satır sonunda firma toplamı, sütun sonunda tür toplamı.
 
     Matrisi sunucu kuruyor (BeyannameOzetKurucu); burada yalnız çizim ve tıklama var.
+
+    Satırlar Firmalarım firmaları (eski CustomerCompanies okunmaz). Varsayılan yalnız aktif firmalar; "Pasif
+    firmaları da göster" ile pasifler de (Takip'le aynı kural). FirmaId'si boş eski kayıtlar sonda "Eşleşmeyen
+    firma" satırında.
 *@
 
 <style>
@@ -41,6 +45,10 @@
 
     .by-hucre-ic { display: flex; flex-direction: column; align-items: center; gap: 2px; }
     .by-tutar { font-size: 11px; color: #718096; font-variant-numeric: tabular-nums; }
+    .by-matris tr.by-pasif td.by-firma { color: #718096; }
+    .by-matris tr.by-eslesmeyen td.by-firma { font-style: italic; }
+    .by-etiket { font-size: 10.5px; border-radius: 8px; padding: 1px 6px; margin-left: 6px; background: #edf2f7; color: #4a5568; }
+    .by-etiket.by-uyari { background: #fffaf0; color: #b7791f; }
 </style>
 
 <RadzenStack Gap="1rem">
@@ -65,6 +73,10 @@
             </RadzenColumn>
 
             <RadzenColumn Size="12" SizeMD="4">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                    <RadzenCheckBox TValue="bool" Value="@pasifleriGoster" ValueChanged="@PasifleriGosterDegisti" Name="ozetPasifleriGoster" />
+                    <RadzenLabel Text="Pasif firmaları da göster" Component="ozetPasifleriGoster" />
+                </RadzenStack>
                 <RadzenText TextStyle="TextStyle.Caption" class="rz-m-0 rz-color-secondary">
                     Hücreye tıklayınca beyannamenin detayı ve belgeleri açılır.
                 </RadzenText>
@@ -148,9 +160,19 @@
                 <tbody>
                     @foreach (var satir in ozet.Satirlar)
                     {
-                        <tr>
+                        <tr class="@(satir.FirmaPasif ? "by-pasif" : satir.Eslesmeyen ? "by-eslesmeyen" : "")">
                             <td style="text-align:center;color:#718096">@satir.Sira</td>
-                            <td class="by-firma">@satir.FirmaAdi</td>
+                            <td class="by-firma">
+                                @satir.FirmaAdi
+                                @if (satir.FirmaPasif)
+                                {
+                                    <span class="by-etiket">pasif</span>
+                                }
+                                @if (satir.Eslesmeyen)
+                                {
+                                    <span class="by-etiket by-uyari" title="VKN ile Firmalarım'a eşlenemeyen eski kayıtlar. Takip'te düzenleyip firma seçerek bağlayabilirsiniz.">Firmalarım'da karşılığı yok</span>
+                                }
+                            </td>
                             <td class="by-vkn">@satir.VergiKimlikNo</td>
 
                             @foreach (var tur in ozet.Turler)
@@ -205,6 +227,13 @@
 
     private BeyannameOzetDto? ozet;
     private bool yukleniyor;
+    private bool pasifleriGoster;
+
+    private async Task PasifleriGosterDegisti(bool deger)
+    {
+        pasifleriGoster = deger;
+        await Yukle();
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -222,7 +251,7 @@
         yukleniyor = true;
         try
         {
-            ozet = await BeyannameApi.OzetGetAsync(yil, ay);
+            ozet = await BeyannameApi.OzetGetAsync(yil, ay, pasifleriGoster);
         }
         finally
         {

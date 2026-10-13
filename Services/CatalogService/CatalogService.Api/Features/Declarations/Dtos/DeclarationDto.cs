@@ -18,5 +18,8 @@ namespace CatalogService.Api.Features.Declarations.Dtos
         public DateTime? PaymentDate { get; set; }
         public string? Note { get; set; }
         public int CustomerCompanyId { get; set; }
+
+        /// <summary>Firmalarım (dbo.Firmalar) bağı; boş = eşleşmeyen eski kayıt.</summary>
+        public int? FirmaId { get; set; }
     }
 }

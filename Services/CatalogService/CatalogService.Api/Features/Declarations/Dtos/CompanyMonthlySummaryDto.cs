@@ -18,5 +18,13 @@
 
         public List<DeclarationDto> Declarations { get; set; } = new();
         public int CustomerCompanyId { get; set; }
+
+        /// <summary>Firmalarım firması; boş = "Eşleşmeyen firma" grubu (FirmaId'si olmayan eski kayıtlar).</summary>
+        public int? FirmaId { get; set; }
+
+        /// <summary>Firma Firmalarım'da pasif (yalnız "Pasif firmaları da göster" ile listelenir).</summary>
+        public bool FirmaPasif { get; set; }
+
+        public bool Eslesmeyen { get; set; }
     }
 }

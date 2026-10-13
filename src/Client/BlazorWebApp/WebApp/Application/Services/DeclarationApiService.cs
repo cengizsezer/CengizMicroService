@@ -20,8 +20,9 @@ namespace WebApp.Application.Services
         public async Task<List<CompanyMonthlySummaryDto>> GetMonthlySummaryAsync(
             int year,
             int month,
-            int? customerCompanyId = null,
-            string? declarationType = null)
+            int? firmaId = null,
+            string? declarationType = null,
+            bool pasifleriGoster = false)
         {
             var query = new List<string>
             {
@@ -29,8 +30,12 @@ namespace WebApp.Application.Services
                 $"month={month}"
             };
 
-            if (customerCompanyId.HasValue)
-                query.Add($"customerCompanyId={customerCompanyId.Value}");
+            // Firma = Firmalarım (FirmaId). Pasif firmanın kayıtları yalnız pasifleriGoster ile.
+            if (firmaId.HasValue)
+                query.Add($"firmaId={firmaId.Value}");
+
+            if (pasifleriGoster)
+                query.Add("pasifleriGoster=true");
 
             if (!string.IsNullOrWhiteSpace(declarationType))
                 query.Add($"declarationType={Uri.EscapeDataString(declarationType)}");

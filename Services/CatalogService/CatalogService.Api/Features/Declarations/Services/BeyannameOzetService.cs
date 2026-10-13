@@ -6,18 +6,17 @@ namespace CatalogService.Api.Features.Declarations.Services
 {
     public interface IBeyannameOzetService
     {
-        Task<BeyannameOzetDto> GetAsync(int yil, int ay, CancellationToken ct = default);
+        Task<BeyannameOzetDto> GetAsync(int yil, int ay, bool pasifleriGoster = false, CancellationToken ct = default);
     }
 
     /// <summary>
     /// Özet matrisinin veri kaynağı. Sorgular burada, matrisin kuralları
     /// <see cref="BeyannameOzetKurucu"/>'da (saf fonksiyon, testleri veritabanısız).
     ///
-    /// <b>Kapsam:</b> satırlar <see cref="Entities.CustomerCompany"/> tablosundan gelir ve o
-    /// tablonun tenant filtresi zaten var. Beyanname kayıtlarında filtre <b>yok</b> (modül
-    /// baştan böyle kurulmuş); matris yalnız görünen firmaların kayıtlarını topladığı için
-    /// dışarıdan bir kayıt sızmıyor. Beyanname tablosunun kendi kapsamı ayrı bir iş —
-    /// bkz. KARARLAR §92.
+    /// <b>Kapsam:</b> satırlar Firmalarım'dan (dbo.Firmalar; global, Firmalarım'la aynı kapsam) — eski
+    /// dbo.CustomerCompanies artık okunmaz. Varsayılan yalnız AKTİF firmalar; <c>pasifleriGoster</c> ile pasifler
+    /// de. Takip'le aynı kural (DeclarationQueryService.Gorunur): pasif firmanın kaydı yalnız istenirse, FirmaId'si
+    /// boş kayıt her zaman ("Eşleşmeyen firma" satırı).
     /// </summary>
     public class BeyannameOzetService : IBeyannameOzetService
     {
@@ -25,7 +24,7 @@ namespace CatalogService.Api.Features.Declarations.Services
 
         public BeyannameOzetService(CatalogContext db) => _db = db;
 
-        public async Task<BeyannameOzetDto> GetAsync(int yil, int ay, CancellationToken ct = default)
+        public async Task<BeyannameOzetDto> GetAsync(int yil, int ay, bool pasifleriGoster = false, CancellationToken ct = default)
         {
             if (yil < 2000 || yil > 2100)
                 throw new BeyannameKuralException(nameof(yil), "Geçersiz yıl.");
@@ -38,16 +37,17 @@ namespace CatalogService.Api.Features.Declarations.Services
                 .OrderBy(t => t.Sira).ThenBy(t => t.Id)
                 .ToListAsync(ct);
 
-            var firmalar = await _db.CustomerCompanies.AsNoTracking()
-                .Where(f => f.IsActive)
-                .OrderBy(f => f.CompanyName)
-                .ToListAsync(ct);
+            var tr = StringComparer.Create(System.Globalization.CultureInfo.GetCultureInfo("tr-TR"), true);
+            var hepsi = await BeyannameFirmasi.HepsiAsync(_db, ct);
+            var firmalar = hepsi
+                .Where(f => f.Aktif || pasifleriGoster)
+                .OrderBy(f => f.Ad, tr)
+                .ToList();
 
-            var firmaIdleri = firmalar.Select(f => f.Id).ToList();
-
-            var beyannameler = await _db.Declarations.AsNoTracking()
-                .Where(d => d.Year == yil && d.Month == ay && firmaIdleri.Contains(d.CustomerCompanyId))
-                .ToListAsync(ct);
+            var beyannameler = DeclarationQueryService.Gorunur(
+                    await _db.Declarations.AsNoTracking().Where(d => d.Year == yil && d.Month == ay).ToListAsync(ct),
+                    hepsi.ToDictionary(f => f.Id), pasifleriGoster)
+                .ToList();
 
             var beyannameIdleri = beyannameler.Select(d => d.Id).ToList();
 

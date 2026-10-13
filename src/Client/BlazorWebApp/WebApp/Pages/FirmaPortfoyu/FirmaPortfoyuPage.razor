@@ -1,0 +1,654 @@
+@page "/firma-portfoyu"
+
+@using Blazored.LocalStorage
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using WebApp.Application.Services
+@using WebApp.Pages.Yapilacaklar
+@using WebApp.Shared.Dto.FirmaPortfoyu
+
+@attribute [Authorize]
+@implements IAsyncDisposable
+
+@inject IFirmaPortfoyuApiClient Api
+@inject IJSRuntime JS
+@inject DialogService DialogService
+@inject NotificationService Bildirim
+@inject NavigationManager Nav
+@inject ILocalStorageService Depo
+
+@*
+    Firma Portföyü — Firma Panosu'nun 3. sekmesi (FirmaPanosuUst). Menüde ayrı satır yok. Taslak: firma-portfoyu.html.
+
+    Aşama 2: firma + dönem + karşılaştırma seçimi, seçili firmanın 9 göstergesi + portföy düzeyinde TEK gösterge
+    ("Mizanı yüklenen firma x / y"), firma tablosu (sıralama, Tümü / ⚠ Mizan sorunlu, arama), satıra tıklayınca detay.
+    Altta Aşama 1'in firma × ay mizan matrisi.
+
+    Aşama 3: grafikler wwwroot/js/firmaPortfoyu.js'te (baslat / guncelle / kaldir). Seçili firmanın 12 aylık çizgisi
+    ve firma bazında net satış çubukları (seçili firma tam opak; tıklayınca seçilir); veri sunucunun Seri[12]'si ve
+    göstergeleri (PfGrafikVerisi). Düşen/yükselen ilk 3'er. Firma, dönem, karşılaştırma ya da mizan değişince
+    guncelle; sayfadan çıkınca kaldir.
+
+    Rakamlar sunucuda (PortfoyHesaplayici); burada yalnız gösterim ve değişim yüzdesi/rengi (PfBicim.Degisim).
+    Firmalar arası TOPLAM hiçbir yerde yok — tablo firmaları yan yana koyar, toplamaz.
+    Adres: ?firma=&donem=2026-09&karsilastir=yil&yil=2026 (matris yılı). Firma seçimi ayrıca bu tarayıcıda hatırlanır.
+*@
+
+<PageTitle>Firma Portföyü</PageTitle>
+
+<CkStiller />
+<PfStiller />
+
+<FirmaPanosuUst Aktif="FirmaPanosuSekmesi.Portfoy" Rozet="@(portfoy is null ? null : $"{portfoy.AktifFirmaSayisi} firma")">
+    <button type="button" class="ck-dugme ck-dugme-ana" disabled="@(portfoy is null || portfoy.Firmalar.Count == 0)"
+            @onclick="@(() => YukleAc(seciliFirmaId, portfoy?.Yil, portfoy?.Ay))">＋ Mizan yükle</button>
+</FirmaPanosuUst>
+
+<div class="pf-kok pf-sayfa" style="margin-top:14px">
+    <div class="pf-ust">
+        <label class="pf-etiket" for="pf-firma">Firma</label>
+        <select id="pf-firma" class="pf-secici" value="@seciliFirmaId" disabled="@(portfoy is null || portfoy.Firmalar.Count == 0)"
+                @onchange="@(e => FirmaSec(int.Parse(e.Value!.ToString()!)))">
+            @foreach (var f in portfoy?.Firmalar ?? new())
+            {
+                <option value="@f.FirmaId">@f.KisaAd</option>
+            }
+        </select>
+        <label class="pf-etiket" for="pf-donem">Dönem</label>
+        <select id="pf-donem" class="pf-secici" value="@portfoy?.Donem" @onchange="@(e => Git(donem: e.Value?.ToString()))">
+            @foreach (var (deger, ad) in Donemler)
+            {
+                <option value="@deger">@ad</option>
+            }
+        </select>
+        <div class="pf-seg" role="group" aria-label="Karşılaştırma">
+            <button type="button" aria-pressed="@(!YilKarsilastirma ? "true" : "false")" @onclick="@(() => Git(karsilastir: "ay"))">Önceki aya göre</button>
+            <button type="button" aria-pressed="@(YilKarsilastirma ? "true" : "false")" @onclick="@(() => Git(karsilastir: "yil"))">Geçen yılın aynı ayına göre</button>
+        </div>
+    </div>
+
+    <div class="pf-not">
+        <span>ⓘ</span>
+        <div>
+            <b>Rakamlar seçili firmanın yüklenen mizanlarından hesaplanır; firmalar birbirine toplanmaz.</b> Yalnız Firmalarım'daki
+            aktif firmalar listelenir. Gelir tablosu hesapları yıl başından kümülatif olduğu için aylık değer = bu ayın mizanı −
+            önceki ayın mizanı; önceki ay yoksa değer gösterilmez. Hem 7/A (750–770) hem 7/B (630–632) gider hesapları desteklenir.
+        </div>
+    </div>
+
+    @if (hata is not null)
+    {
+        <div class="pf-not pf-not-hata" role="alert"><span>✕</span><div>@hata</div></div>
+    }
+
+    @if (portfoy is null)
+    {
+        @if (hata is null)
+        {
+            <div class="pf-bos">Yükleniyor…</div>
+        }
+    }
+    else if (portfoy.Firmalar.Count == 0)
+    {
+        <div class="pf-bos">Firmalarım'da aktif firma yok. Portföyde yalnız aktif firmalar listelenir.</div>
+    }
+    else
+    {
+        var f = SeciliFirma!;
+        var g = f.Gostergeler;
+
+        @if (f.Durum == PortfoyMizanDurumu.Eksik)
+        {
+            <div class="pf-not pf-not-hata">
+                <span>✕</span>
+                <div>
+                    <b>@DonemAdi için @f.KisaAd mizanı yüklenmedi.</b>
+                    @(f.SonMizanDonemi is null ? "Bu firmanın henüz mizanı yok." : $"Son mizan: {PfBicim.DonemAdi(f.SonMizanDonemi)}.")
+                    <button type="button" class="pf-bag" @onclick="@(() => YukleAc(f.FirmaId, portfoy.Yil, portfoy.Ay))">Yükle</button>
+                </div>
+            </div>
+        }
+        else if (f.Durum == PortfoyMizanDurumu.Dengesiz)
+        {
+            <div class="pf-not pf-not-uyari">
+                <span>⚠</span>
+                <div><b>@f.KisaAd · @DonemAdi mizanında borç ve alacak toplamı tutmuyor.</b> Rakamlar hatalı olabilir; mizanı doğru biçimde yeniden yükleyin.</div>
+            </div>
+        }
+
+        <div class="pf-kpiler">
+            <PfKpi Baslik="Net satışlar" Deger="@g.NetSatis.Deger" Not="@g.NetSatis.Not">
+                <PfDegisim Bu="@g.NetSatis.Deger" Onceki="@g.NetSatis.Karsilastirma" /> @KarsAdi
+            </PfKpi>
+            <PfKpi Baslik="Brüt kâr" Deger="@g.BrutKar.Deger" Not="@g.BrutKar.Not">
+                marj @PfBicim.Yuzde(Oran(g.BrutKar.Deger, g.NetSatis.Deger)) · <PfDegisim Bu="@g.BrutKar.Deger" Onceki="@g.BrutKar.Karsilastirma" />
+            </PfKpi>
+            <PfKpi Baslik="Faaliyet giderleri" Deger="@g.FaaliyetGiderleri.Deger" Not="@g.FaaliyetGiderleri.Not">
+                <PfDegisim Bu="@g.FaaliyetGiderleri.Deger" Onceki="@g.FaaliyetGiderleri.Karsilastirma" ArtisIyi="false" /> @KarsAdi
+            </PfKpi>
+            <PfKpi Baslik="Faaliyet kârı" Deger="@g.FaaliyetKari.Deger" Not="@g.FaaliyetKari.Not">
+                <PfDegisim Bu="@g.FaaliyetKari.Deger" Onceki="@g.FaaliyetKari.Karsilastirma" /> @KarsAdi
+            </PfKpi>
+            <PfKpi Baslik="Dönem kârı (vergi öncesi) · yıl başından" Deger="@g.DonemKariYilBasindan.Deger" Not="@g.DonemKariYilBasindan.Not">
+                Ocak – @PfAy.Uzun(portfoy.Ay)
+                @if (YilKarsilastirma)
+                {
+                    <text> · </text><PfDegisim Bu="@g.DonemKariYilBasindan.Deger" Onceki="@g.DonemKariYilBasindan.Karsilastirma" />
+                }
+            </PfKpi>
+            <PfKpi Baslik="Hazır değerler" Deger="@g.HazirDegerler.Deger" Not="@g.HazirDegerler.Not">
+                <PfDegisim Bu="@g.HazirDegerler.Deger" Onceki="@g.HazirDegerler.Karsilastirma" /> · 100–103, 108
+            </PfKpi>
+            <PfKpi Baslik="Ticari alacaklar" Deger="@g.TicariAlacaklar.Deger" Not="@g.TicariAlacaklar.Not">
+                <PfDegisim Bu="@g.TicariAlacaklar.Deger" Onceki="@g.TicariAlacaklar.Karsilastirma" ArtisIyi="false" /> · 120–122
+            </PfKpi>
+            <PfKpi Baslik="Ticari borçlar" Deger="@g.TicariBorclar.Deger" Not="@g.TicariBorclar.Not">
+                <PfDegisim Bu="@g.TicariBorclar.Deger" Onceki="@g.TicariBorclar.Karsilastirma" ArtisIyi="false" /> · 320–322
+            </PfKpi>
+            <PfKpi Baslik="Devreden KDV" Deger="@g.DevredenKdv.Deger" Not="@g.DevredenKdv.Not">
+                @(g.DevredenKdv.Deger > 0 ? "190 · iade/mahsup kontrolü" : "190 · devreden yok")
+            </PfKpi>
+            <PfKpi Baslik="Mizanı yüklenen firma" Metin="@($"{portfoy.MizaniYuklenenFirmaSayisi} / {portfoy.AktifFirmaSayisi}")">
+                @if (portfoy.MizaniYuklenenFirmaSayisi < portfoy.AktifFirmaSayisi)
+                {
+                    <span class="pf-dl pf-kotu">@(portfoy.AktifFirmaSayisi - portfoy.MizaniYuklenenFirmaSayisi) firma eksik</span>
+                }
+                else
+                {
+                    <span class="pf-dl pf-iyi">hepsi tamam</span>
+                }
+            </PfKpi>
+        </div>
+
+        <div class="pf-satir2">
+            <section class="pf-panel">
+                <div class="pf-panel-ust">
+                    <span class="pf-panel-ikon">₺</span>
+                    <h2>@f.KisaAd · 12 ay</h2>
+                    <span class="pf-panel-alt">aylık</span>
+                    <span class="pf-bosluk"></span>
+                    <PfSeriLejanti />
+                </div>
+                <div class="pf-govde"><div class="pf-grafik" @ref="cizgiOgesi"></div></div>
+            </section>
+            <section class="pf-panel">
+                <div class="pf-panel-ust">
+                    <span class="pf-panel-ikon">▤</span>
+                    <h2>Firma bazında net satış</h2>
+                    <span class="pf-panel-alt">@DonemAdi · aylık · tıklayınca firma seçilir</span>
+                </div>
+                <div class="pf-govde">
+                    <div class="pf-grafik" @ref="cubukOgesi"></div>
+                    @if (PfGrafikVerisi.CubuktaOlmayan(portfoy) is > 0 and var eksik)
+                    {
+                        <div class="pf-etiket" style="margin-top:6px">@eksik firmanın @DonemAdi aylık net satışı yok (mizan yok ya da önceki ay eksik), listede değil.</div>
+                    }
+                </div>
+            </section>
+        </div>
+
+        <section class="pf-panel">
+            <div class="pf-panel-ust">
+                <span class="pf-panel-ikon">⇅</span>
+                <h2>Net satışta en büyük değişimler</h2>
+                <span class="pf-panel-alt">@DonemAdi @KarsAdi · firma bazında</span>
+            </div>
+            @{ var (dusenler, yukselenler) = PfGrafikVerisi.Hareketler(portfoy); }
+            <div class="pf-listeler">
+                <div>
+                    <div class="pf-liste-baslik">En çok düşenler</div>
+                    @HareketListesi(dusenler, "Düşen firma yok.")
+                </div>
+                <div>
+                    <div class="pf-liste-baslik">En çok yükselenler</div>
+                    @HareketListesi(yukselenler, "Yükselen firma yok.")
+                </div>
+            </div>
+        </section>
+
+        <section class="pf-panel">
+            <div class="pf-panel-ust">
+                <span class="pf-panel-ikon">☰</span>
+                <h2>Firmalar</h2>
+                <span class="pf-panel-alt">@DonemAdi · @KarsAdi · aylık tutarlar</span>
+            </div>
+            <div class="pf-filtre">
+                <input class="pf-ara" placeholder="Firma ya da sorumlu ara…" autocomplete="off" @bind="arama" @bind:event="oninput" aria-label="Firma ya da sorumlu ara" />
+                <button type="button" class="pf-cip" aria-pressed="@(!sadeceSorunlu ? "true" : "false")" @onclick="@(() => sadeceSorunlu = false)">Tümü</button>
+                <button type="button" class="pf-cip" aria-pressed="@(sadeceSorunlu ? "true" : "false")" @onclick="@(() => sadeceSorunlu = true)">⚠ Mizan sorunlu</button>
+            </div>
+            <div class="pf-tablo-kap">
+                <table class="pf-tablo">
+                    <thead>
+                        <tr>
+                            @foreach (var k in Kolonlar)
+                            {
+                                <th class="@(k.Sol ? "pf-sol" : "")" aria-sort="@(sirala == k.Anahtar ? (azalan ? "descending" : "ascending") : null)">
+                                    <button type="button" @onclick="@(() => Sirala(k.Anahtar))">
+                                        @k.Ad<span class="pf-ok">@(sirala == k.Anahtar ? (azalan ? "▼" : "▲") : "↕")</span>
+                                    </button>
+                                </th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ var satirlar = Satirlar(); }
+                        @foreach (var r in satirlar)
+                        {
+                            var firma = r;
+                            var rz = PfBicim.Rozet(r.FirmaId, r.KisaAd);
+                            var rg = r.Gostergeler;
+                            <tr @key="r.FirmaId" tabindex="0" class="@(r.FirmaId == seciliFirmaId ? "pf-secili" : "")"
+                                @onclick="@(() => DetayAc(firma))" @onkeydown="@(e => { if (e.Key == "Enter") _ = DetayAc(firma); })">
+                                <td class="pf-sol">
+                                    <div class="pf-fc">
+                                        <span class="pf-rozet" style="background:@rz.Renk">@rz.Harfler</span>
+                                        <div><b>@r.KisaAd</b><small>@(string.IsNullOrWhiteSpace(r.Sorumlu) ? "Sorumlu yok" : "Sorumlu: " + r.Sorumlu)</small></div>
+                                    </div>
+                                </td>
+                                <td class="pf-sol"><span class="pf-mono @(r.SonMizanDonemi != portfoy.Donem ? "pf-gecikmis" : "")">@PfBicim.DonemAdi(r.SonMizanDonemi)</span></td>
+                                <td>@Hucre(rg.NetSatis, true)</td>
+                                <td>@(Oran(rg.BrutKar.Deger, rg.NetSatis.Deger) is { } mj ? PfBicim.Yuzde(mj) : "—")</td>
+                                <td>@Hucre(rg.FaaliyetGiderleri, false)</td>
+                                <td>@Hucre(rg.DonemKari, true)</td>
+                                <td>@Hucre(rg.HazirDegerler, true)</td>
+                                <td class="pf-sol">
+                                    @switch (r.Durum)
+                                    {
+                                        case PortfoyMizanDurumu.Tamam:
+                                            <span class="pf-hap pf-hap-iyi">✓ Dengeli</span>
+                                            break;
+                                        case PortfoyMizanDurumu.Dengesiz:
+                                            <span class="pf-hap pf-hap-uyari">⚠ Borç ≠ alacak</span>
+                                            break;
+                                        default:
+                                            <span class="pf-hap pf-hap-kotu">✕ @(r.EksikAySayisi is { } n ? $"{n} ay eksik" : "mizan yok")</span>
+                                            break;
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        @if (satirlar.Count == 0)
+                        {
+                            <tr><td colspan="8" class="pf-sol pf-etiket" style="padding:20px">Bu filtreye uyan firma yok.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="pf-tablo-alt">
+                <span>@satirlar.Count firma</span>
+                @if (SorunluSayisi > 0)
+                {
+                    <span>· @SorunluSayisi firmanın mizanında sorun var</span>
+                }
+                <span class="pf-bosluk"></span>
+                <span>Satıra tıklayınca firma detayı açılır.</span>
+            </div>
+        </section>
+    }
+
+    <section class="pf-panel">
+        <div class="pf-panel-ust">
+            <span class="pf-panel-ikon">▦</span>
+            <h2>Mizanlar</h2>
+            <span class="pf-panel-alt">firma × ay · hangi ay yüklü, hangisi eksik ya da sorunlu</span>
+            <span class="pf-bosluk"></span>
+            <label class="pf-etiket" for="pf-yil">Yıl</label>
+            <select id="pf-yil" class="pf-secici" value="@MatrisYili" @onchange="@(e => Git(yil: int.Parse(e.Value!.ToString()!)))">
+                @foreach (var y in Enumerable.Range(DateTime.Today.Year - 4, 5).Reverse())
+                {
+                    <option value="@y">@y</option>
+                }
+            </select>
+        </div>
+
+        @if (durum is null)
+        {
+            <div class="pf-bos">@(durumHata ?? "Yükleniyor…")</div>
+        }
+        else
+        {
+            <PfMizanMatrisi Durum="@durum" HucreTiklandi="@HucreTiklandi" />
+        }
+    </section>
+</div>
+
+@code {
+    private const string DepoAnahtari = "firmaPortfoyu.sonFirma";
+
+    [SupplyParameterFromQuery(Name = "firma")] public int? FirmaParam { get; set; }
+
+    /// <summary>"2026-09"; boş = sunucu mizanı olan en son ayı seçer.</summary>
+    [SupplyParameterFromQuery(Name = "donem")] public string? DonemParam { get; set; }
+
+    /// <summary>"yil" = geçen yılın aynı ayı; boş/"ay" = önceki ay.</summary>
+    [SupplyParameterFromQuery(Name = "karsilastir")] public string? KarsParam { get; set; }
+
+    /// <summary>Matrisin yılı; boş = seçili dönemin yılı.</summary>
+    [SupplyParameterFromQuery(Name = "yil")] public int? YilParam { get; set; }
+
+    private PortfoyDto? portfoy;
+    private MizanDurumuDto? durum;
+    private string? hata;
+    private string? durumHata;
+    private int? seciliFirmaId;
+    private string arama = string.Empty;
+    private bool sadeceSorunlu;
+    private string sirala = "satis";
+    private bool azalan = true;
+    private (string? Donem, string Kars)? yuklenenPortfoy;
+    private int? yuklenenYil;
+    private int istekNo;
+
+    // ---- grafikler (Aşama 3) ----
+    private ElementReference cizgiOgesi;
+    private ElementReference cubukOgesi;
+    private DotNetObjectReference<FirmaPortfoyuPage>? referans;
+    private string? baslayanCizgi, baslayanCubuk;   // JS'te örneği olan öğelerin Id'si
+    private (PortfoyDto? Portfoy, int? Firma)? cizilen;
+    private bool kapandi;
+
+    private bool YilKarsilastirma => KarsParam == "yil";
+
+    private string DonemAdi => PfBicim.DonemAdi(portfoy?.Donem);
+
+    private string KarsAdi => portfoy is null ? "" : YilKarsilastirma
+        ? $"vs geçen yıl ({PfBicim.DonemAdi(portfoy.KarsilastirmaDonemi)})"
+        : $"vs {PfBicim.DonemAdi(portfoy.KarsilastirmaDonemi)}";
+
+    private int MatrisYili => YilParam is { } y && y >= 2000 && y <= DateTime.Today.Year ? y : portfoy?.Yil ?? DateTime.Today.Year;
+
+    private PortfoyFirmasiDto? SeciliFirma
+        => portfoy?.Firmalar.FirstOrDefault(f => f.FirmaId == seciliFirmaId) ?? portfoy?.Firmalar.FirstOrDefault();
+
+    private int SorunluSayisi => portfoy?.Firmalar.Count(f => f.Durum != PortfoyMizanDurumu.Tamam) ?? 0;
+
+    /// <summary>Bu aydan geriye 24 ay.</summary>
+    private IEnumerable<(string Deger, string Ad)> Donemler
+        => Enumerable.Range(0, 24).Select(i => DateTime.Today.AddMonths(-i))
+            .Select(d => (PfBicim.Donem(d.Year, d.Month), $"{PfAy.Uzun(d.Month)} {d.Year}"));
+
+    private sealed record Kolon(string Anahtar, string Ad, bool Sol = false);
+
+    private static readonly Kolon[] Kolonlar =
+    {
+        new("ad", "Firma", true), new("son", "Son mizan", true), new("satis", "Net satış"), new("marj", "Brüt marj"),
+        new("gider", "Faaliyet gideri"), new("kar", "Dönem kârı"), new("nakit", "Hazır değerler"), new("durum", "Mizan", true)
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var anahtar = (string.IsNullOrWhiteSpace(DonemParam) ? null : DonemParam, YilKarsilastirma ? "yil" : "ay");
+        if (yuklenenPortfoy != anahtar) await PortfoyYukle(anahtar);
+
+        await FirmaBelirle();
+
+        if (yuklenenYil != MatrisYili) await DurumYukle();
+    }
+
+    private async Task PortfoyYukle((string? Donem, string Kars) anahtar)
+    {
+        var no = ++istekNo;
+        var (sonuc, mesaj) = await Api.PortfoyAsync(anahtar.Donem, anahtar.Kars);
+        if (no != istekNo) return;
+        portfoy = sonuc;
+        hata = sonuc is null ? mesaj ?? "Portföy alınamadı." : null;
+        yuklenenPortfoy = anahtar;
+    }
+
+    private async Task DurumYukle()
+    {
+        var yil = MatrisYili;
+        var (sonuc, mesaj) = await Api.DurumAsync(yil);
+        durum = sonuc;
+        durumHata = sonuc is null ? mesaj ?? "Mizan durumu alınamadı." : null;
+        yuklenenYil = yil;
+    }
+
+    /// <summary>Seçili firma: adres → bu tarayıcıda son seçilen → ilk aktif firma.</summary>
+    private async Task FirmaBelirle()
+    {
+        if (portfoy is null || portfoy.Firmalar.Count == 0) return;
+        bool Var(int? id) => id is { } i && portfoy.Firmalar.Any(f => f.FirmaId == i);
+
+        if (Var(FirmaParam)) seciliFirmaId = FirmaParam;
+        else if (!Var(seciliFirmaId))
+        {
+            int? sakli = null;
+            try { sakli = await Depo.GetItemAsync<int?>(DepoAnahtari); }
+            catch { /* depo yok/bozuk: ilk firma */ }
+            seciliFirmaId = Var(sakli) ? sakli : portfoy.Firmalar[0].FirmaId;
+        }
+    }
+
+    private async Task FirmaSec(int firmaId)
+    {
+        seciliFirmaId = firmaId;
+        try { await Depo.SetItemAsync(DepoAnahtari, firmaId); }
+        catch { /* hatırlanmasa da olur */ }
+        Git(firma: firmaId);
+    }
+
+    private void Git(int? firma = null, string? donem = null, string? karsilastir = null, int? yil = null)
+    {
+        var p = new Dictionary<string, object?>();
+        if (firma is not null) p["firma"] = firma;
+        if (donem is not null) p["donem"] = donem;
+        if (karsilastir is not null) p["karsilastir"] = karsilastir == "yil" ? "yil" : null;
+        if (yil is not null) p["yil"] = yil;
+        Nav.NavigateTo(Nav.GetUriWithQueryParameters(p));
+    }
+
+    // ---- grafikler ----
+
+    /// <summary>
+    /// Yanıt ya da seçili firma değiştiyse grafikleri çizer: öğenin JS örneği yoksa baslat, varsa guncelle. Öğeler
+    /// yalnız firma varken çizilir; yeniden oluşturulan öğe (yeni Id) yeniden başlatılır.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (kapandi || portfoy is null || portfoy.Firmalar.Count == 0 || SeciliFirma is not { } f) return;
+        if (cizilen is { } c && ReferenceEquals(c.Portfoy, portfoy) && c.Firma == f.FirmaId) return;
+        cizilen = (portfoy, f.FirmaId);
+
+        try
+        {
+            referans ??= DotNetObjectReference.Create(this);
+            baslayanCizgi = await Ciz(cizgiOgesi, baslayanCizgi, PfGrafikVerisi.Cizgi(f));
+            baslayanCubuk = await Ciz(cubukOgesi, baslayanCubuk, PfGrafikVerisi.Cubuk(portfoy, f.FirmaId));
+        }
+        catch (JSException)
+        {
+            // Grafik çizilemese de sayfa (göstergeler, tablo) çalışır.
+        }
+    }
+
+    private async Task<string?> Ciz(ElementReference oge, string? baslayan, object veri)
+    {
+        if (string.IsNullOrEmpty(oge.Id)) return baslayan;
+        if (baslayan == oge.Id) await JS.InvokeVoidAsync("firmaPortfoyu.guncelle", oge, veri);
+        else await JS.InvokeVoidAsync("firmaPortfoyu.baslat", oge, referans, veri);
+        return oge.Id;
+    }
+
+    /// <summary>Çubuğa tıklandı (firmaPortfoyu.js): o firma seçilir.</summary>
+    [JSInvokable]
+    public Task CubukSecildi(int firmaId) => kapandi ? Task.CompletedTask : FirmaSec(firmaId);
+
+    public async ValueTask DisposeAsync()
+    {
+        kapandi = true;
+        try
+        {
+            if (baslayanCizgi is not null) await JS.InvokeVoidAsync("firmaPortfoyu.kaldir", cizgiOgesi);
+            if (baslayanCubuk is not null) await JS.InvokeVoidAsync("firmaPortfoyu.kaldir", cubukOgesi);
+        }
+        catch
+        {
+            // Sayfa kapanırken JS gitmiş olabilir; kapanışı engelleme.
+        }
+        referans?.Dispose();
+    }
+
+    private RenderFragment HareketListesi(List<PfHareket> liste, string bos) => __builder =>
+    {
+        if (liste.Count == 0)
+        {
+            <div class="pf-liste-bos">@bos</div>
+            return;
+        }
+        for (var i = 0; i < liste.Count; i++)
+        {
+            var h = liste[i];
+            var rz = PfBicim.Rozet(h.Firma.FirmaId, h.Firma.KisaAd);
+            <button type="button" class="pf-liste-satir" @key="h.Firma.FirmaId" @onclick="@(() => DetayAc(h.Firma))">
+                <span class="pf-sira">@(i + 1)</span>
+                <span class="pf-rozet" style="background:@rz.Renk">@rz.Harfler</span>
+                <span class="pf-ad">@h.Firma.KisaAd</span>
+                <span class="pf-karsi" title="@($"{PfBicim.TamTl(h.Bu)} vs {PfBicim.TamTl(h.Onceki)}")">@PfBicim.Tl(h.Bu) vs @PfBicim.Tl(h.Onceki)</span>
+                <PfDegisim Bu="@h.Bu" Onceki="@h.Onceki" />
+            </button>
+        }
+    };
+
+    // ---- tablo ----
+
+    private List<PortfoyFirmasiDto> Satirlar()
+    {
+        if (portfoy is null) return new();
+        var q = arama.Trim();
+        var liste = portfoy.Firmalar
+            .Where(f => !sadeceSorunlu || f.Durum != PortfoyMizanDurumu.Tamam)
+            .Where(f => q.Length == 0
+                        || $"{f.KisaAd} {f.Unvan} {f.Sorumlu}".Contains(q, StringComparison.CurrentCultureIgnoreCase))
+            .ToList();
+
+        var tr = StringComparer.Create(new System.Globalization.CultureInfo("tr-TR"), true);
+        IComparable? Deger(PortfoyFirmasiDto f) => sirala switch
+        {
+            "ad" => f.KisaAd,
+            "son" => f.SonMizanDonemi,
+            "satis" => f.Gostergeler.NetSatis.Deger,
+            "marj" => Oran(f.Gostergeler.BrutKar.Deger, f.Gostergeler.NetSatis.Deger),
+            "gider" => f.Gostergeler.FaaliyetGiderleri.Deger,
+            "kar" => f.Gostergeler.DonemKari.Deger,
+            "nakit" => f.Gostergeler.HazirDegerler.Deger,
+            "durum" => (int)f.Durum,
+            _ => null
+        };
+
+        // Boş değerler yönden bağımsız hep sonda.
+        liste.Sort((a, b) =>
+        {
+            var (va, vb) = (Deger(a), Deger(b));
+            if (va is null && vb is null) return tr.Compare(a.KisaAd, b.KisaAd);
+            if (va is null) return 1;
+            if (vb is null) return -1;
+            var c = va is string sa && vb is string sb ? tr.Compare(sa, sb) : va.CompareTo(vb);
+            return azalan ? -c : c;
+        });
+        return liste;
+    }
+
+    private void Sirala(string anahtar)
+    {
+        if (sirala == anahtar) azalan = !azalan;
+        else
+        {
+            sirala = anahtar;
+            azalan = anahtar is not ("ad" or "durum");
+        }
+    }
+
+    private static decimal? Oran(decimal? pay, decimal? payda) => pay is { } p && payda is { } d && d != 0m ? p / d : null;
+
+    private RenderFragment Hucre(GostergeDto g, bool artisIyi) => __builder =>
+    {
+        if (g.Deger is null)
+        {
+            <span class="pf-etiket" title="@g.Not">—</span>
+        }
+        else
+        {
+            <span class="pf-hucre-deger" title="@PfBicim.TamTl(g.Deger)">@PfBicim.Tl(g.Deger)</span>
+            <PfDegisim Bu="@g.Deger" Onceki="@g.Karsilastirma" ArtisIyi="@artisIyi" />
+        }
+    };
+
+    // ---- pencereler ----
+
+    private async Task DetayAc(PortfoyFirmasiDto firma)
+    {
+        var sonuc = await DialogService.OpenAsync<PfFirmaDetayDialog>(string.Empty,
+            new Dictionary<string, object?>
+            {
+                { nameof(PfFirmaDetayDialog.Firma), firma },
+                { nameof(PfFirmaDetayDialog.Donem), portfoy!.Donem }
+            }!,
+            PfPencere.Secenekler("min(1040px, 96vw)"));
+
+        if (sonuc is "yukle") await YukleAc(firma.FirmaId, portfoy.Yil, portfoy.Ay);
+    }
+
+    private async Task HucreTiklandi((MizanDurumFirmasiDto Firma, MizanDurumHucresiDto Hucre) secim)
+    {
+        var (firma, hucre) = secim;
+        if (!hucre.Yuklu)
+        {
+            await YukleAc(firma.FirmaId, durum!.Yil, hucre.Ay);
+            return;
+        }
+
+        var sonuc = await DialogService.OpenAsync<PfMizanHucreDialog>(string.Empty,
+            new Dictionary<string, object?>
+            {
+                { nameof(PfMizanHucreDialog.FirmaId), firma.FirmaId },
+                { nameof(PfMizanHucreDialog.FirmaAdi), firma.KisaAd },
+                { nameof(PfMizanHucreDialog.Yil), durum!.Yil },
+                { nameof(PfMizanHucreDialog.Hucre), hucre }
+            }!,
+            PfPencere.Secenekler("min(560px, 96vw)"));
+
+        if (sonuc is "degistir")
+        {
+            await YukleAc(firma.FirmaId, durum.Yil, hucre.Ay);
+        }
+        else if (sonuc is "silindi")
+        {
+            Bildirim.Notify(NotificationSeverity.Info, $"{firma.KisaAd} · {PfAy.Uzun(hucre.Ay)} {durum.Yil} mizanı silindi", duration: 3000);
+            await Tazele();
+        }
+    }
+
+    private async Task YukleAc(int? firmaId, int? yil, int? ay)
+    {
+        var firmalar = (portfoy?.Firmalar ?? new()).Select(f => new PfFirmaSecenegi(f.FirmaId, f.KisaAd)).ToList();
+        if (firmalar.Count == 0) return;
+
+        var sonuc = await DialogService.OpenAsync<PfMizanYukleDialog>(string.Empty,
+            new Dictionary<string, object?>
+            {
+                { nameof(PfMizanYukleDialog.Firmalar), firmalar },
+                { nameof(PfMizanYukleDialog.FirmaId), firmaId },
+                { nameof(PfMizanYukleDialog.Yil), yil },
+                { nameof(PfMizanYukleDialog.Ay), ay }
+            }!,
+            PfPencere.Secenekler("min(820px, 96vw)"));
+
+        if (sonuc is AylikMizanOnizlemeDto kayit)
+        {
+            var ek = kayit.Dengeli ? (kayit.Uyarilar.Count > 0 ? $" · {kayit.Uyarilar.Count} uyarı" : "") : " · borç ≠ alacak, sorunlu";
+            Bildirim.Notify(kayit.Dengeli ? NotificationSeverity.Success : NotificationSeverity.Warning,
+                $"{kayit.FirmaAdi} · {PfAy.Uzun(kayit.Ay)} {kayit.Yil} mizanı kaydedildi{ek}", duration: 4000);
+            await Tazele();
+        }
+    }
+
+    /// <summary>Yükleme/silme sonrası: göstergeler ve matris yeniden.</summary>
+    private async Task Tazele()
+    {
+        if (yuklenenPortfoy is { } a) await PortfoyYukle(a);
+        await FirmaBelirle();
+        await DurumYukle();
+    }
+}

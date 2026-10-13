@@ -1,0 +1,320 @@
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Forms
+@using Radzen
+@using WebApp.Application.Services
+@using WebApp.Application.Services.Interfaces
+@using WebApp.Shared.Dto.FirmaPortfoyu
+
+@inject IExcelMizanParser Parser
+@inject IFirmaPortfoyuApiClient Api
+@inject DialogService DialogService
+
+@*
+    Firma Portföyü — aylık mizan yükleme (Aşama 1). Dosya İSTEMCİDE ExcelMizanParser ile okunur (okuyucuya
+    dokunulmaz, yalnız kullanılır); sunucuya ayrıştırılmış ana hesap satırları gider (PortfoyMizanSatirlari).
+
+    Önizleme sunucudan (POST mizan/onizle): kayıtla AYNI doğrulama ve hesap — satır sayısı, toplamlar, denge,
+    yıl başından kümülatif net satış / SMM / faaliyet giderleri, uyarılar, aynı ay var mı. Aynı ay varsa
+    "değiştirilsin mi?" onayı olmadan Kaydet açılmaz; araya başka yükleme girerse sunucu 409 döner, onay yeniden
+    sorulur. Dönüş: kaydedilen önizleme (vazgeçte null).
+*@
+
+<div class="pf-kok pf-dlg">
+    <div class="pf-dlg-ust">
+        <div style="flex:1;min-width:0">
+            <h3>Mizan yükle</h3>
+            <div class="pf-dlg-ozet">Yıl başından kümülatif aylık mizan (ORKA Excel). Yalnız 3 haneli ana hesaplar kaydedilir.</div>
+        </div>
+        <button type="button" class="pf-kapat" aria-label="Kapat" @onclick="@(() => DialogService.Close())">×</button>
+    </div>
+
+    <div class="pf-dlg-govde">
+        <div class="pf-form-satir">
+            <label class="pf-alan">
+                <span class="pf-etiket">Firma</span>
+                <select class="pf-secici" value="@firmaId" @onchange="@(e => SecimDegisti(firma: int.Parse(e.Value!.ToString()!)))">
+                    @foreach (var f in Firmalar)
+                    {
+                        <option value="@f.Id">@f.Ad</option>
+                    }
+                </select>
+            </label>
+            <label class="pf-alan">
+                <span class="pf-etiket">Yıl</span>
+                <select class="pf-secici" value="@yil" @onchange="@(e => SecimDegisti(yil: int.Parse(e.Value!.ToString()!)))">
+                    @foreach (var y in Yillar)
+                    {
+                        <option value="@y">@y</option>
+                    }
+                </select>
+            </label>
+            <label class="pf-alan">
+                <span class="pf-etiket">Ay</span>
+                <select class="pf-secici" value="@ay" @onchange="@(e => SecimDegisti(ay: int.Parse(e.Value!.ToString()!)))">
+                    @for (var a = 1; a <= 12; a++)
+                    {
+                        var ayNo = a;
+                        <option value="@ayNo" disabled="@GelecekMi(yil, ayNo)">@PfAy.Uzun(ayNo)</option>
+                    }
+                </select>
+            </label>
+        </div>
+
+        <div class="pf-dosya">
+            <div class="pf-etiket" style="margin-bottom:6px">Excel dosyası (.xlsx, .xls) — başlıklar adıyla bulunur: Hesap Kodu, Hesap Adı, TL Borç Bakiye, TL Alacak Bakiye</div>
+            <InputFile OnChange="DosyaSecildi" accept=".xlsx,.xls" />
+            @if (dosyaAdi is not null && satirlar is not null)
+            {
+                <div class="pf-etiket" style="margin-top:6px">@dosyaAdi · @satirlar.Count ana hesap okundu</div>
+            }
+        </div>
+
+        @if (isleniyor)
+        {
+            <div class="pf-etiket">İşleniyor…</div>
+        }
+
+        @if (hata is not null)
+        {
+            <div class="pf-not pf-not-hata" role="alert"><span>✕</span><div>@hata</div></div>
+        }
+
+        @if (onizleme is { } o)
+        {
+            <div class="pf-ozet-izgara">
+                <div class="pf-kutu">
+                    <div class="pf-k">Ana hesap</div>
+                    <div class="pf-v">@o.SatirSayisi</div>
+                    <div class="pf-d">@o.FirmaAdi · @PfAy.Uzun(o.Ay) @o.Yil</div>
+                </div>
+                <div class="pf-kutu">
+                    <div class="pf-k">Borç / alacak bakiye</div>
+                    <div class="pf-v" title="@Tl(o.BorcToplami) / @Tl(o.AlacakToplami)">@Tl(o.BorcToplami)</div>
+                    <div class="pf-d">alacak @Tl(o.AlacakToplami)</div>
+                </div>
+                <div class="pf-kutu">
+                    <div class="pf-k">Denge</div>
+                    <div class="pf-v">
+                        @if (o.Dengeli)
+                        {
+                            <span class="pf-hap pf-hap-iyi">✓ Dengeli</span>
+                        }
+                        else
+                        {
+                            <span class="pf-hap pf-hap-uyari">⚠ Borç ≠ alacak</span>
+                        }
+                    </div>
+                    <div class="pf-d">@(o.Dengeli ? "ana hesaplarda borç = alacak" : $"fark {Tl(o.DengeFarki)} — sorunlu olarak kaydedilir")</div>
+                </div>
+                <div class="pf-kutu">
+                    <div class="pf-k">Net satışlar</div>
+                    <div class="pf-v">@Tl(o.NetSatisKumulatif)</div>
+                    <div class="pf-d">yıl başından · 600–602 − 610–612</div>
+                </div>
+                <div class="pf-kutu">
+                    <div class="pf-k">Satışların maliyeti</div>
+                    <div class="pf-v">@Tl(o.SmmKumulatif)</div>
+                    <div class="pf-d">yıl başından · 620–623 (622 boşsa 740)</div>
+                </div>
+                <div class="pf-kutu">
+                    <div class="pf-k">Faaliyet giderleri</div>
+                    <div class="pf-v">@Tl(o.FaaliyetGiderleriKumulatif)</div>
+                    <div class="pf-d">yıl başından · @GiderMetni(o.GiderYontemi)</div>
+                </div>
+            </div>
+
+            @if (o.Uyarilar.Count > 0)
+            {
+                <div class="pf-not pf-not-uyari">
+                    <span>⚠</span>
+                    <ul class="pf-uyarilar">
+                        @foreach (var u in o.Uyarilar)
+                        {
+                            <li>@u</li>
+                        }
+                    </ul>
+                </div>
+            }
+
+            @if (o.Mevcut is { } m)
+            {
+                <label class="pf-onay">
+                    <input type="checkbox" @bind="uzerineYaz" />
+                    <span>
+                        <b>@PfAy.Uzun(o.Ay) @o.Yil mizanı zaten var</b> (@m.DosyaAdi · @m.YuklemeTarihi.ToString("dd.MM.yyyy HH:mm")@(m.YukleyenKullanici is null ? "" : " · " + m.YukleyenKullanici)).
+                        Değiştirilsin mi? Eski satırlar silinip bu dosyanınkiler yazılır.
+                    </span>
+                </label>
+            }
+        }
+    </div>
+
+    <div class="pf-dlg-alt">
+        <span class="pf-bosluk"></span>
+        <button type="button" class="pf-dugme" @onclick="@(() => DialogService.Close())">Vazgeç</button>
+        <button type="button" class="pf-dugme pf-dugme-ana" disabled="@(!KaydedilebilirMi)" @onclick="Kaydet">
+            @(kaydediliyor ? "Kaydediliyor…" : onizleme?.Mevcut is not null ? "Değiştir ve kaydet" : "Kaydet")
+        </button>
+    </div>
+</div>
+
+@code {
+    /// <summary>Aktif firmalar (matristen).</summary>
+    [Parameter] public List<PfFirmaSecenegi> Firmalar { get; set; } = new();
+
+    [Parameter] public int? FirmaId { get; set; }
+    [Parameter] public int? Yil { get; set; }
+    [Parameter] public int? Ay { get; set; }
+
+    private int firmaId;
+    private int yil;
+    private int ay;
+    private string? dosyaAdi;
+    private List<AylikMizanSatiriDto>? satirlar;
+    private AylikMizanOnizlemeDto? onizleme;
+    private bool uzerineYaz;
+    private bool isleniyor;
+    private bool kaydediliyor;
+    private string? hata;
+    private int istekNo;
+
+    private static readonly CultureInfo Tr = CultureInfo.GetCultureInfo("tr-TR");
+
+    private IEnumerable<int> Yillar => Enumerable.Range(DateTime.Today.Year - 4, 5).Reverse();
+
+    private bool KaydedilebilirMi => onizleme is not null && satirlar is not null && !isleniyor && !kaydediliyor
+                                     && (onizleme.Mevcut is null || uzerineYaz);
+
+    protected override void OnInitialized()
+    {
+        var gecenAy = DateTime.Today.AddMonths(-1);
+        firmaId = FirmaId is { } f && Firmalar.Any(x => x.Id == f) ? f : Firmalar.FirstOrDefault()?.Id ?? 0;
+        yil = Yil ?? gecenAy.Year;
+        ay = Ay ?? gecenAy.Month;
+    }
+
+    private static bool GelecekMi(int yil, int ay)
+        => yil > DateTime.Today.Year || (yil == DateTime.Today.Year && ay > DateTime.Today.Month);
+
+    private async Task SecimDegisti(int? firma = null, int? yil = null, int? ay = null)
+    {
+        if (firma is { } f) firmaId = f;
+        if (yil is { } y) this.yil = y;
+        if (ay is { } a) this.ay = a;
+        if (GelecekMi(this.yil, this.ay)) this.ay = this.yil == DateTime.Today.Year ? DateTime.Today.Month : this.ay;
+        uzerineYaz = false;
+        await Onizle();
+    }
+
+    private async Task DosyaSecildi(InputFileChangeEventArgs e)
+    {
+        hata = null;
+        onizleme = null;
+        satirlar = null;
+        uzerineYaz = false;
+        dosyaAdi = e.File?.Name;
+        if (e.File is null) return;
+
+        isleniyor = true;
+        try
+        {
+            await using var kaynak = e.File.OpenReadStream(maxAllowedSize: 20 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await kaynak.CopyToAsync(ms);
+            ms.Position = 0;
+
+            var sonuc = await Parser.ParseAsync(ms);
+            if (sonuc.Errors.Count > 0)
+            {
+                hata = string.Join(" | ", sonuc.Errors);
+                return;
+            }
+            if (sonuc.Rows.Count == 0)
+            {
+                hata = "Excel'de okunabilir ana hesap satırı bulunamadı.";
+                return;
+            }
+            satirlar = PortfoyMizanSatirlari.Hazirla(sonuc);
+        }
+        catch (Exception ex)
+        {
+            hata = $"Dosya okunamadı: {ex.Message}";
+            return;
+        }
+        finally
+        {
+            isleniyor = false;
+        }
+
+        await Onizle();
+    }
+
+    private AylikMizanKaydetDto Istek() => new()
+    {
+        FirmaId = firmaId,
+        Yil = yil,
+        Ay = ay,
+        DosyaAdi = dosyaAdi,
+        UzerineYaz = uzerineYaz,
+        Satirlar = satirlar!
+    };
+
+    /// <summary>Seçim ya da dosya değişince; eski yanıt yenisinin üstüne yazmasın diye istek numarası.</summary>
+    private async Task Onizle()
+    {
+        if (satirlar is null) return;
+        var no = ++istekNo;
+        hata = null;
+        isleniyor = true;
+        try
+        {
+            var (sonuc, mesaj) = await Api.OnizleAsync(Istek());
+            if (no != istekNo) return;
+            onizleme = sonuc;
+            hata = sonuc is null ? mesaj ?? "Önizleme alınamadı." : null;
+        }
+        finally
+        {
+            if (no == istekNo) isleniyor = false;
+        }
+    }
+
+    private async Task Kaydet()
+    {
+        if (!KaydedilebilirMi) return;
+        hata = null;
+        kaydediliyor = true;
+        try
+        {
+            var (sonuc, cakisma, mesaj) = await Api.KaydetAsync(Istek());
+            if (cakisma)
+            {
+                // Bu arada aynı aya başka bir yükleme yapılmış: onay yeniden sorulur.
+                onizleme = sonuc;
+                uzerineYaz = false;
+                hata = "Bu ayın mizanı az önce yüklenmiş. Değiştirmek için yeniden onaylayın.";
+                return;
+            }
+            if (sonuc is null)
+            {
+                hata = mesaj ?? "Kaydedilemedi.";
+                return;
+            }
+            DialogService.Close(sonuc);
+        }
+        finally
+        {
+            kaydediliyor = false;
+        }
+    }
+
+    private static string Tl(decimal? v) => v is null ? "—" : v.Value.ToString("N2", Tr) + " ₺";
+
+    private static string GiderMetni(GiderYontemi y) => y switch
+    {
+        GiderYontemi.YediB => "7/B: 630–632",
+        GiderYontemi.YediA => "7/A: 750/760/770",
+        GiderYontemi.Ikisi => "ikisi dolu, 630–632 alındı",
+        _ => "gider hesabı yok"
+    };
+}

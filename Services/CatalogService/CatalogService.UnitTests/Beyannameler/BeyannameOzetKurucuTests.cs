@@ -1,4 +1,4 @@
-using CatalogService.Api.Features.Declarations.Dtos;
+﻿using CatalogService.Api.Features.Declarations.Dtos;
 using CatalogService.Api.Features.Declarations.Entities;
 using CatalogService.Api.Features.Declarations.Services;
 
@@ -25,10 +25,11 @@ namespace CatalogService.UnitTests.Beyannameler
             new BeyannameTuru { Id = 4, Deger = "SGK", Kod = "4101", Ad = "SGK Primi", Sira = 40, Aktif = true }
         };
 
-        private static List<CustomerCompany> Firmalar() => new()
+        // Firmalar Firmalarım'dan (BeyannameFirmasi) — eski CustomerCompanies artık okunmuyor.
+        private static List<BeyannameFirmasi> Firmalar() => new()
         {
-            new CustomerCompany { Id = 1, CompanyName = "ALPHA AHŞAP", TaxNumber = "7721471008", IsActive = true },
-            new CustomerCompany { Id = 3, CompanyName = "CİTADEL GAYRİMENKUL", TaxNumber = "7280624888", IsActive = true }
+            new BeyannameFirmasi(1, "ALPHA AHŞAP", "7721471008", true),
+            new BeyannameFirmasi(3, "CİTADEL GAYRİMENKUL", "7280624888", true)
         };
 
         private static Declaration Beyanname(int id, int firmaId, string tur, decimal tutar,
@@ -36,7 +37,7 @@ namespace CatalogService.UnitTests.Beyannameler
                                              PaymentStatus odeme = PaymentStatus.Pending) => new()
         {
             Id = id,
-            CustomerCompanyId = firmaId,
+            FirmaId = firmaId,
             DeclarationType = tur,
             Year = Yil,
             Month = Ay,

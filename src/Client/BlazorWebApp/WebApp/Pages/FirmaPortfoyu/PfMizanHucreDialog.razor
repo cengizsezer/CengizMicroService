@@ -1,0 +1,120 @@
+@using System.Globalization
+@using Radzen
+@using WebApp.Application.Services
+@using WebApp.Shared.Dto.FirmaPortfoyu
+
+@inject IFirmaPortfoyuApiClient Api
+@inject DialogService DialogService
+
+@*
+    Matriste dolu hücre (Firma Portföyü Aşama 1): o firma-ay mizanının bilgisi + Değiştir / Sil. Silme onayla.
+    Dönüş: "degistir" (sayfa yükleme penceresini bu firma-ay için açar), "silindi" ya da null.
+*@
+
+<div class="pf-kok pf-dlg">
+    <div class="pf-dlg-ust">
+        <div style="flex:1;min-width:0">
+            <h3>@FirmaAdi · @PfAy.Uzun(Hucre.Ay) @Yil</h3>
+            <div class="pf-dlg-ozet">
+                @if (!Hucre.Dengeli)
+                {
+                    <span class="pf-hap pf-hap-uyari">⚠ Borç ≠ alacak — mizan sorunlu</span>
+                }
+                else
+                {
+                    <span class="pf-hap pf-hap-iyi">✓ Dengeli</span>
+                }
+            </div>
+        </div>
+        <button type="button" class="pf-kapat" aria-label="Kapat" @onclick="@(() => DialogService.Close())">×</button>
+    </div>
+
+    <div class="pf-dlg-govde">
+        <dl class="pf-tanim">
+            <dt>Dosya</dt>
+            <dd>@Hucre.DosyaAdi</dd>
+            <dt>Yüklendi</dt>
+            <dd>@Hucre.YuklemeTarihi?.ToString("dd.MM.yyyy HH:mm")@(Hucre.YukleyenKullanici is null ? "" : " · " + Hucre.YukleyenKullanici)</dd>
+            <dt>Ana hesap</dt>
+            <dd class="pf-sayi">@Hucre.SatirSayisi</dd>
+            @if (!Hucre.Dengeli)
+            {
+                <dt>Denge farkı</dt>
+                <dd class="pf-sayi">@Hucre.DengeFarki.ToString("N2", CultureInfo.GetCultureInfo("tr-TR")) ₺</dd>
+            }
+        </dl>
+
+        @if (Hucre.Uyarilar.Count > 0)
+        {
+            <div class="pf-not pf-not-uyari">
+                <span>⚠</span>
+                <ul class="pf-uyarilar">
+                    @foreach (var u in Hucre.Uyarilar)
+                    {
+                        <li>@u</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        @if (silmeSorusu)
+        {
+            <div class="pf-not pf-not-hata">
+                <span>✕</span>
+                <div><b>@PfAy.Uzun(Hucre.Ay) @Yil mizanı silinsin mi?</b> Satırlarıyla birlikte silinir; geri alınamaz.</div>
+            </div>
+        }
+
+        @if (hata is not null)
+        {
+            <div class="pf-hata" role="alert">@hata</div>
+        }
+    </div>
+
+    <div class="pf-dlg-alt">
+        @if (silmeSorusu)
+        {
+            <button type="button" class="pf-dugme" @onclick="@(() => silmeSorusu = false)">Vazgeç</button>
+            <span class="pf-bosluk"></span>
+            <button type="button" class="pf-dugme pf-dugme-tehlike" disabled="@isleniyor" @onclick="Sil">@(isleniyor ? "Siliniyor…" : "Evet, sil")</button>
+        }
+        else
+        {
+            <button type="button" class="pf-dugme pf-dugme-tehlike" @onclick="@(() => silmeSorusu = true)">Sil</button>
+            <span class="pf-bosluk"></span>
+            <button type="button" class="pf-dugme" @onclick="@(() => DialogService.Close())">Kapat</button>
+            <button type="button" class="pf-dugme pf-dugme-ana" @onclick="@(() => DialogService.Close("degistir"))">Değiştir…</button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public int FirmaId { get; set; }
+    [Parameter] public string FirmaAdi { get; set; } = string.Empty;
+    [Parameter] public int Yil { get; set; }
+    [Parameter] public MizanDurumHucresiDto Hucre { get; set; } = new();
+
+    private bool silmeSorusu;
+    private bool isleniyor;
+    private string? hata;
+
+    private async Task Sil()
+    {
+        hata = null;
+        isleniyor = true;
+        try
+        {
+            var mesaj = await Api.SilAsync(FirmaId, Yil, Hucre.Ay);
+            if (mesaj is not null)
+            {
+                hata = mesaj;
+                return;
+            }
+            DialogService.Close("silindi");
+        }
+        finally
+        {
+            isleniyor = false;
+        }
+    }
+}

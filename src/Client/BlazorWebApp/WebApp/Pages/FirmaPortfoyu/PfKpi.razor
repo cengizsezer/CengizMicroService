@@ -1,0 +1,36 @@
+@*
+    Bir gösterge kutusu (Firma Portföyü). Değer normal metin renginde; yoksa "—" ve altında nedeni (Not).
+    Alt satır (ChildContent) değişim ve açıklama için; değer yokken Not gösterilir.
+*@
+
+<div class="pf-kpi">
+    <div class="pf-k">@Baslik</div>
+    <div class="pf-v @(Bos ? "pf-yok" : "")" title="@(Metin ?? PfBicim.TamTl(Deger))">@(Metin ?? PfBicim.Tl(Deger))</div>
+    <div class="pf-d">
+        @if (Bos && !string.IsNullOrEmpty(Not))
+        {
+            @Not
+        }
+        else
+        {
+            @ChildContent
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Baslik { get; set; } = string.Empty;
+
+    /// <summary>Tutar (₺ biçimiyle gösterilir).</summary>
+    [Parameter] public decimal? Deger { get; set; }
+
+    /// <summary>Tutar yerine hazır metin ("3 / 5", "%32,1").</summary>
+    [Parameter] public string? Metin { get; set; }
+
+    /// <summary>Değer yokken gösterilecek neden ("önceki ay eksik").</summary>
+    [Parameter] public string? Not { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool Bos => Metin is null && Deger is null;
+}

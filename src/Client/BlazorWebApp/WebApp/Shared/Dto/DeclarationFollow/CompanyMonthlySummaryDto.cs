@@ -19,5 +19,10 @@
         public List<DeclarationDto> Declarations { get; set; } = new();
 
         public int CustomerCompanyId { get; set; }
+
+        /// <summary>Firmalarım firması; boş = "Eşleşmeyen firma" grubu.</summary>
+        public int? FirmaId { get; set; }
+        public bool FirmaPasif { get; set; }
+        public bool Eslesmeyen { get; set; }
     }
 }

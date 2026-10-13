@@ -167,6 +167,9 @@ namespace WebApp.StartupExtensions.ServiceExtensions
             // Firma işleri kartı, Yapılacaklar ekranı ve Yönetim → Vergi Takvimi.
             services.AddScoped<IYapilacaklarApiClient>(sp =>
                 new YapilacaklarApiClient(sp.GetRequiredService<HttpClient>()));
+            // Firma Portföyü: aylık mizan yükleme + firma × ay matrisi.
+            services.AddScoped<IFirmaPortfoyuApiClient>(sp =>
+                new FirmaPortfoyuApiClient(sp.GetRequiredService<HttpClient>()));
             services.AddScoped<ISistemApiClient>(sp =>
                 new SistemApiClient(sp.GetRequiredService<HttpClient>()));
             services.AddScoped<ISonFirmalarStore>(sp =>

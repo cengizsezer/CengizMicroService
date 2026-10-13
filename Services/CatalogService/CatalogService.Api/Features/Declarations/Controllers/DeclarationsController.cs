@@ -23,41 +23,59 @@ namespace CatalogService.Api.Features.Declarations.Controllers
         public async Task<IActionResult> GetMonthlySummary(
             [FromQuery] int year,
             [FromQuery] int month,
-            [FromQuery] int? customerCompanyId ,
-            [FromQuery] string? declarationType)
+            [FromQuery] int? firmaId,
+            [FromQuery] string? declarationType,
+            [FromQuery] bool pasifleriGoster = false)
         {
-            var result = await _queryService.GetMonthlySummaryAsync(year, month, customerCompanyId, declarationType);
+            // Firma = Firmalarım (FirmaId). Eski customerCompanyId parametresi kaldırıldı; pasif firmanın kayıtları
+            // yalnız pasifleriGoster ile, FirmaId'si boş kayıtlar "Eşleşmeyen firma" grubunda.
+            var result = await _queryService.GetMonthlySummaryAsync(year, month, firmaId, declarationType, pasifleriGoster);
             return Ok(result);
         }
 
         [HttpGet("yearly-summary")]
         public async Task<IActionResult> GetYearlySummary(
             [FromQuery] int year,
-            [FromQuery] int? customerCompanyId)
+            [FromQuery] int? firmaId,
+            [FromQuery] bool pasifleriGoster = false)
         {
-            var result = await _queryService.GetYearlySummaryAsync(year, customerCompanyId);
+            var result = await _queryService.GetYearlySummaryAsync(year, firmaId, pasifleriGoster);
             return Ok(result);
         }
 
         [HttpGet("company-yearly-summary")]
-        public async Task<IActionResult> GetCompanyYearlySummary([FromQuery] int year)
+        public async Task<IActionResult> GetCompanyYearlySummary([FromQuery] int year, [FromQuery] bool pasifleriGoster = false)
         {
-            var result = await _queryService.GetCompanyYearlySummaryAsync(year);
+            var result = await _queryService.GetCompanyYearlySummaryAsync(year, pasifleriGoster);
             return Ok(result);
         }
          
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateDeclarationRequest request)
         {
-            var id = await _commandService.CreateAsync(request);
-            return Ok(new { Id = id });
+            try
+            {
+                var id = await _commandService.CreateAsync(request);
+                return Ok(new { Id = id });
+            }
+            catch (BeyannameKuralException ex)
+            {
+                return BadRequest(new { field = ex.Field, message = ex.Message });
+            }
         }
 
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateDeclarationRequest request)
         {
-            await _commandService.UpdateAsync(id, request);
-            return NoContent();
+            try
+            {
+                await _commandService.UpdateAsync(id, request);
+                return NoContent();
+            }
+            catch (BeyannameKuralException ex)
+            {
+                return BadRequest(new { field = ex.Field, message = ex.Message });
+            }
         }
 
         [HttpDelete("{id:int}")]

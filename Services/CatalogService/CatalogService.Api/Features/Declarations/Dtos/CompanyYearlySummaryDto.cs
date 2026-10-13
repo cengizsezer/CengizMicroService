@@ -12,5 +12,8 @@
 
         public int DeclarationCount { get; set; }
         public int CustomerCompanyId { get; set; }
+
+        /// <summary>Firmalarım firması; boş = eşleşmeyen eski kayıtlar.</summary>
+        public int? FirmaId { get; set; }
     }
 }

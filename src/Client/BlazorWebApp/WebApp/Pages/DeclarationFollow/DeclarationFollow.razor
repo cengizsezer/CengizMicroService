@@ -5,7 +5,10 @@
     DynamicComponent ile basıyor — Hesaplamalar sayfasındaki kalıbın aynısı (KARARLAR §79).
     Eski adres /beyanname-takip yönlendirme olarak duruyor (EskiRotaYonlendirme.razor).
 
-    Ekranın içeriği değişmedi.
+    Firma = Firmalarım (dbo.Firmalar, IFirmaApiClient) — eski CustomerCompanies (seed'li PKF grup listesi) artık
+    okunmaz. Firma kutusunda yalnız aktif firmalar; "Pasif firmaları da göster" işaretlenince pasif firmalar ve
+    onların kayıtları da görünür. FirmaId'si boş eski kayıtlar "Eşleşmeyen firma" grubunda, kayıttaki eski adla.
+    Seçenek kuralı BeyannameFirmaSecenekleri'nde (testli); görünürlük kuralı sunucuda (DeclarationQueryService).
 *@
 @using System.Globalization
 @using CatalogService.Api.Features.Declarations.Dtos
@@ -14,9 +17,12 @@
 @using Microsoft.AspNetCore.Authorization
 @using WebApp.Application.Services.Interfaces
 @using WebApp.Manager
+@using WebApp.Application.Services.Yonetim
+@using WebApp.Shared.Dto.Yonetim
 @inject DialogService DialogService
+@inject NotificationService NotificationService
 @inject IDeclarationApiService DeclarationApiService
-@inject ICustomerCompanyApiService CustomerCompanyApiService
+@inject IFirmaApiClient FirmaApi
 @inject IPermissionService PermissionService
 @inject IBeyannameTuruApiService BeyannameTuruApi
 @inject NavigationManager Navigation
@@ -55,14 +61,16 @@
 
             <RadzenColumn Size="12" SizeMD="3">
                 <RadzenFormField Text="Firma" Style="width:100%">
-                    <RadzenDropDown Data="@customerCompanies"
-                                    TextProperty="CompanyName"
+                    <RadzenDropDown Data="@filtreSecenekleri"
+                                    TextProperty="Ad"
                                     ValueProperty="Id"
-                                    @bind-Value="selectedCompanyId"
+                                    @bind-Value="selectedFirmaId"
                                     AllowClear="true"
+                                    AllowFiltering="true"
+                                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                                     Change="@OnCompanyFilterChanged"
                                     Style="width:100%"
-                                    Placeholder="Firma seçiniz" />
+                                    Placeholder="Tüm firmalar" />
                 </RadzenFormField>
             </RadzenColumn>
 
@@ -85,6 +93,10 @@
                               Style="width:100%" />
             </RadzenColumn>
         </RadzenRow>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" class="rz-mt-3">
+            <RadzenCheckBox TValue="bool" Value="@pasifleriGoster" ValueChanged="@PasifleriGosterDegisti" Name="pasifleriGoster" />
+            <RadzenLabel Text="Pasif firmaları da göster" Component="pasifleriGoster" />
+        </RadzenStack>
     </RadzenCard>
 
     @* Üstteki dört özet kartı (Bu Ay Toplam Vergi / Ödenen / Bekleyen, Bu Yıl Toplam
@@ -110,6 +122,8 @@
                                 AllowPaging="false"
                                 AllowSorting="true">
                     <Columns>
+                        @* Eşleşmeyen grupta kayıtlar farklı eski firmalara ait olabilir: kayıttaki ad gösterilir. *@
+                        <RadzenDataGridColumn Property="CompanyName" Title="Kayıttaki firma" Visible="@company.Eslesmeyen" />
                         <RadzenDataGridColumn Property="DeclarationType" Title="Beyanname Türü" />
 
                         <RadzenDataGridColumn Property="Amount" Title="Tutar">
@@ -169,7 +183,20 @@
         </Template>
 
         <Columns>
-            <RadzenDataGridColumn Property="CompanyName" Title="Firma" />
+            <RadzenDataGridColumn Property="CompanyName" Title="Firma">
+                <Template Context="item">
+                    @item.CompanyName
+                    @if (item.FirmaPasif)
+                    {
+                        <RadzenBadge Text="pasif" BadgeStyle="BadgeStyle.Light" class="rz-ms-2" />
+                    }
+                    @if (item.Eslesmeyen)
+                    {
+                        <RadzenBadge Text="Firmalarım'da karşılığı yok" BadgeStyle="BadgeStyle.Warning" class="rz-ms-2"
+                                     title="VKN ile Firmalarım'a eşlenemeyen eski kayıtlar. Düzenleyip firma seçerek bağlayabilirsiniz." />
+                    }
+                </Template>
+            </RadzenDataGridColumn>
 
             <RadzenDataGridColumn Property="TotalAmount" Title="Aylık Toplam Vergi">
                 <Template Context="item">
@@ -193,7 +220,6 @@
 
 @code {
     private readonly CultureInfo trCulture = new("tr-TR");
-    [Parameter] public List<CustomerCompanyDto> Companies { get; set; } = new();
     private RadzenDataGrid<CompanyMonthlySummaryDto>? grid;
    
     private List<CompanyMonthlySummaryDto> monthlyData = new();
@@ -202,11 +228,13 @@
     private int selectedMonth = DateTime.Now.Month;
    
     private string? selectedDeclarationType;
-    private List<CustomerCompanyDto> customerCompanies = new();
+    // Firmalarım firmaları (pasifler dahil — pasif kayıtların adı ve "Pasif firmaları da göster" için).
+    private List<FirmaDto> firmalar = new();
+    private List<BeyannameFirmaSecenegi> filtreSecenekleri = new();
+    private bool pasifleriGoster;
     private List<int> years = new();
     private List<MonthOption> months = new();
-    private List<DropdownOption> companyOptions = new();
-    private int? selectedCompanyId;
+    private int? selectedFirmaId;
     // Beyanname türleri artık burada sabit DEĞİL: catalog.BeyannameTurleri tablosundan
     // geliyor — Özet sekmesiyle aynı kaynak. İki liste ayrı durduğu sürece biri
     // doluyken diğeri boş kalabiliyordu. Tanımlar sekmesinden yönetilir.
@@ -233,11 +261,20 @@
     {
         if (value == null)
         {
-            selectedCompanyId = null;
+            selectedFirmaId = null;
             return;
         }
 
-        selectedCompanyId = Convert.ToInt32(value);
+        selectedFirmaId = Convert.ToInt32(value);
+    }
+
+    /// <summary>Pasif firmalar kutuya ve listeye eklenir/çıkar; seçili pasif firma gizlenince seçim kalkar.</summary>
+    private async Task PasifleriGosterDegisti(bool deger)
+    {
+        pasifleriGoster = deger;
+        filtreSecenekleri = BeyannameFirmaSecenekleri.Filtre(firmalar, pasifleriGoster);
+        if (selectedFirmaId is { } f && filtreSecenekleri.All(s => s.Id != f)) selectedFirmaId = null;
+        await LoadData();
     }
     protected override async Task OnInitializedAsync()
     {
@@ -275,7 +312,8 @@
         };
 
             // 🔥 4. API çağrıları
-            customerCompanies = await CustomerCompanyApiService.GetAllAsync();
+            firmalar = await FirmaApi.GetAllAsync(includeInactive: true);
+            filtreSecenekleri = BeyannameFirmaSecenekleri.Filtre(firmalar, pasifleriGoster);
 
             beyannameTurleri = await BeyannameTuruApi.GetHepsiAsync();
             turSecenekleri = beyannameTurleri.Select(Secenek).ToList();
@@ -318,8 +356,9 @@
             monthlyData = await DeclarationApiService.GetMonthlySummaryAsync(
                 selectedYear,
                 selectedMonth,
-                selectedCompanyId,
-                selectedDeclarationType) ?? new();
+                selectedFirmaId,
+                selectedDeclarationType,
+                pasifleriGoster) ?? new();
 
             // Yıllık özet sorgusu (yearly-summary) BURADAN KALDIRILDI: tek işi
             // "Bu Yıl Toplam Vergi" kartını beslemekti, kart da kaldırıldı.
@@ -375,7 +414,7 @@
     new Dictionary<string, object>
     {
         { "Model", model },
-        { "Companies", customerCompanies },
+        { "Firmalar", BeyannameFirmaSecenekleri.Form(firmalar, null) },
         { "Turler", beyannameTurleri }
     },
     new DialogOptions
@@ -394,6 +433,10 @@
             {
                 await LoadData();
             }
+            else
+            {
+                KaydedilemediBildir();
+            }
         }
     }
 
@@ -401,7 +444,7 @@
     {
         var model = new CreateDeclarationRequest
         {
-            CustomerCompanyId = item.CustomerCompanyId,
+            FirmaId = item.FirmaId,
             CompanyName = item.CompanyName,
             DeclarationType = item.DeclarationType,
             Year = item.Year,
@@ -419,7 +462,7 @@
     new Dictionary<string, object>
     {
         { "Model", model },
-        { "Companies", customerCompanies },
+        { "Firmalar", BeyannameFirmaSecenekleri.Form(firmalar, item.FirmaId) },
         { "Turler", beyannameTurleri }
     },
     new DialogOptions
@@ -434,7 +477,7 @@
         {
             var updateRequest = new UpdateDeclarationRequest
             {
-                CustomerCompanyId = form.CustomerCompanyId,
+                FirmaId = form.FirmaId,
                 CompanyName = form.CompanyName,
                 DeclarationType = form.DeclarationType,
                 Year = form.Year,
@@ -452,8 +495,20 @@
             {
                 await LoadData();
             }
+            else
+            {
+                KaydedilemediBildir();
+            }
         }
     }
+
+    private void KaydedilemediBildir() => NotificationService.Notify(new NotificationMessage
+    {
+        Severity = NotificationSeverity.Error,
+        Summary = "Beyanname kaydedilemedi",
+        Detail = "Firma seçili ve Firmalarım'da aktif olmalı.",
+        Duration = 5000
+    });
 
     private void RowRender(RowRenderEventArgs<CompanyMonthlySummaryDto> args)
     {
@@ -497,5 +552,4 @@
     };
 
     public record MonthOption(int Value, string Text);
-    public record DropdownOption(string Value, string Text);
 }

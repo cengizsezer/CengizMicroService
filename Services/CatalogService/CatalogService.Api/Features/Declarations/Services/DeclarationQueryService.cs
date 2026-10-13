@@ -1,10 +1,15 @@
-﻿using CatalogService.Api.Features.Declarations.Dtos;
+using CatalogService.Api.Features.Declarations.Dtos;
 using CatalogService.Api.Features.Declarations.Entities;
 using CatalogService.Api.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 
 namespace CatalogService.Api.Features.Declarations.Services
 {
+    /// <summary>
+    /// Beyanname Takip sorguları. Firma = Firmalarım (<see cref="Declaration.FirmaId"/>); eski CustomerCompanyId
+    /// okunmaz. Pasif firmanın kayıtları varsayılan gizli (<c>pasifleriGoster</c> ile görünür); FirmaId'si boş kayıtlar
+    /// her zaman "Eşleşmeyen firma" grubunda, kendi CompanyName'leriyle.
+    /// </summary>
     public class DeclarationQueryService : IDeclarationQueryService
     {
         private readonly CatalogContext _context;
@@ -17,16 +22,17 @@ namespace CatalogService.Api.Features.Declarations.Services
         public async Task<List<CompanyMonthlySummaryDto>> GetMonthlySummaryAsync(
             int year,
             int month,
-            int? customerCompanyId = null,
-            string? declarationType = null)
+            int? firmaId = null,
+            string? declarationType = null,
+            bool pasifleriGoster = false)
         {
             var query = _context.Declarations
                 .AsNoTracking()
                 .Where(x => x.Year == year && x.Month == month);
 
-            if (customerCompanyId.HasValue)
+            if (firmaId.HasValue)
             {
-                query = query.Where(x => x.CustomerCompanyId == customerCompanyId.Value);
+                query = query.Where(x => x.FirmaId == firmaId.Value);
             }
 
             if (!string.IsNullOrWhiteSpace(declarationType))
@@ -36,62 +42,53 @@ namespace CatalogService.Api.Features.Declarations.Services
             }
 
             var declarations = await query
-                .OrderBy(x => x.CompanyName)
-                .ThenBy(x => x.DueDate)
+                .OrderBy(x => x.DueDate)
                 .ToListAsync();
 
-            var result = declarations
-                .GroupBy(x => new { x.CustomerCompanyId, x.TenantNo, x.CompanyName })
-                .Select(g => new CompanyMonthlySummaryDto
-                {
-                    CustomerCompanyId = g.Key.CustomerCompanyId,
-                    TenantNo = g.Key.TenantNo,
-                    CompanyName = g.Key.CompanyName,
-                    Year = year,
-                    Month = month,
-                    DeclarationCount = g.Count(),
-                    ApprovedCount = g.Count(x => x.DeclarationStatus == DeclarationStatus.Approved),
-                    PaidCount = g.Count(x => x.PaymentStatus == PaymentStatus.Paid),
-                    TotalAmount = g.Sum(x => x.Amount),
-                    PaidAmount = g.Where(x => x.PaymentStatus == PaymentStatus.Paid).Sum(x => x.Amount),
-                    PendingAmount = g.Where(x => x.PaymentStatus != PaymentStatus.Paid).Sum(x => x.Amount),
-                    Declarations = g.Select(x => new DeclarationDto
-                    {
-                        Id = x.Id,
-                        CustomerCompanyId = x.CustomerCompanyId,
-                        TenantNo = x.TenantNo,
-                        CompanyName = x.CompanyName,
-                        DeclarationType = x.DeclarationType,
-                        Year = x.Year,
-                        Month = x.Month,
-                        Amount = x.Amount,
-                        DueDate = x.DueDate,
-                        DeclarationStatus = x.DeclarationStatus,
-                        PaymentStatus = x.PaymentStatus,
-                        PaymentDate = x.PaymentDate,
-                        Note = x.Note
-                    })
-                    .OrderBy(x => x.DueDate)
-                    .ToList()
-                })
-                .OrderBy(x => x.CompanyName)
-                .ToList();
+            var firmalar = (await BeyannameFirmasi.HepsiAsync(_context)).ToDictionary(f => f.Id);
 
-            return result;
+            return Gorunur(declarations, firmalar, pasifleriGoster)
+                .GroupBy(x => x.FirmaId)
+                .Select(g =>
+                {
+                    var firma = g.Key is int id && firmalar.TryGetValue(id, out var f) ? f : null;
+                    return new CompanyMonthlySummaryDto
+                    {
+                        FirmaId = g.Key,
+                        FirmaPasif = firma is { Aktif: false },
+                        Eslesmeyen = g.Key is null,
+                        TenantNo = g.First().TenantNo,
+                        CompanyName = firma?.Ad ?? BeyannameFirmasi.EslesmeyenAdi,
+                        Year = year,
+                        Month = month,
+                        DeclarationCount = g.Count(),
+                        ApprovedCount = g.Count(x => x.DeclarationStatus == DeclarationStatus.Approved),
+                        PaidCount = g.Count(x => x.PaymentStatus == PaymentStatus.Paid),
+                        TotalAmount = g.Sum(x => x.Amount),
+                        PaidAmount = g.Where(x => x.PaymentStatus == PaymentStatus.Paid).Sum(x => x.Amount),
+                        PendingAmount = g.Where(x => x.PaymentStatus != PaymentStatus.Paid).Sum(x => x.Amount),
+                        Declarations = g.Select(Dto).OrderBy(x => x.DueDate).ToList()
+                    };
+                })
+                // Eşleşmeyen grup en sonda.
+                .OrderBy(x => x.Eslesmeyen)
+                .ThenBy(x => x.CompanyName, StringComparer.Create(System.Globalization.CultureInfo.GetCultureInfo("tr-TR"), true))
+                .ToList();
         }
 
-        public async Task<YearlyTaxSummaryDto> GetYearlySummaryAsync(int year, int? customerCompanyId = null)
+        public async Task<YearlyTaxSummaryDto> GetYearlySummaryAsync(int year, int? firmaId = null, bool pasifleriGoster = false)
         {
             var query = _context.Declarations
                 .AsNoTracking()
                 .Where(x => x.Year == year);
 
-            if (customerCompanyId.HasValue)
+            if (firmaId.HasValue)
             {
-                query = query.Where(x => x.CustomerCompanyId == customerCompanyId.Value);
+                query = query.Where(x => x.FirmaId == firmaId.Value);
             }
 
-            var declarations = await query.ToListAsync();
+            var firmalar = (await BeyannameFirmasi.HepsiAsync(_context)).ToDictionary(f => f.Id);
+            var declarations = Gorunur(await query.ToListAsync(), firmalar, pasifleriGoster).ToList();
 
             return new YearlyTaxSummaryDto
             {
@@ -100,27 +97,27 @@ namespace CatalogService.Api.Features.Declarations.Services
                 PaidAmount = declarations.Where(x => x.PaymentStatus == PaymentStatus.Paid).Sum(x => x.Amount),
                 PendingAmount = declarations.Where(x => x.PaymentStatus != PaymentStatus.Paid).Sum(x => x.Amount),
                 TotalCompanyCount = declarations
-                    .Select(x => x.CustomerCompanyId)
+                    .Select(x => x.FirmaId)
                     .Distinct()
                     .Count(),
                 TotalDeclarationCount = declarations.Count
             };
         }
 
-        public async Task<List<CompanyYearlySummaryDto>> GetCompanyYearlySummaryAsync(int year)
+        public async Task<List<CompanyYearlySummaryDto>> GetCompanyYearlySummaryAsync(int year, bool pasifleriGoster = false)
         {
-            var declarations = await _context.Declarations
-                .AsNoTracking()
-                .Where(x => x.Year == year)
-                .ToListAsync();
+            var firmalar = (await BeyannameFirmasi.HepsiAsync(_context)).ToDictionary(f => f.Id);
+            var declarations = Gorunur(
+                await _context.Declarations.AsNoTracking().Where(x => x.Year == year).ToListAsync(),
+                firmalar, pasifleriGoster);
 
-            var result = declarations
-                .GroupBy(x => new { x.CustomerCompanyId, x.TenantNo, x.CompanyName })
+            return declarations
+                .GroupBy(x => x.FirmaId)
                 .Select(g => new CompanyYearlySummaryDto
                 {
-                    CustomerCompanyId = g.Key.CustomerCompanyId,
-                    TenantNo = g.Key.TenantNo,
-                    CompanyName = g.Key.CompanyName,
+                    FirmaId = g.Key,
+                    TenantNo = g.First().TenantNo,
+                    CompanyName = g.Key is int id && firmalar.TryGetValue(id, out var f) ? f.Ad : BeyannameFirmasi.EslesmeyenAdi,
                     Year = year,
                     DeclarationCount = g.Count(),
                     TotalAmount = g.Sum(x => x.Amount),
@@ -129,8 +126,35 @@ namespace CatalogService.Api.Features.Declarations.Services
                 })
                 .OrderByDescending(x => x.TotalAmount)
                 .ToList();
-
-            return result;
         }
+
+        /// <summary>
+        /// Görünürlük kuralı (Takip ve Özet aynı): pasif firmanın kaydı yalnız <paramref name="pasifleriGoster"/> ile;
+        /// FirmaId'si boş kayıt her zaman (Eşleşmeyen firma). Firmalarım'da artık olmayan bir FirmaId (FK Restrict ile
+        /// olamaz) eşleşmeyen sayılmaz — gizlenir.
+        /// </summary>
+        public static IEnumerable<Declaration> Gorunur(IEnumerable<Declaration> kayitlar,
+                                                        IReadOnlyDictionary<int, BeyannameFirmasi> firmalar,
+                                                        bool pasifleriGoster)
+            => kayitlar.Where(d => d.FirmaId is not int id
+                                   || (firmalar.TryGetValue(id, out var f) && (f.Aktif || pasifleriGoster)));
+
+        private static DeclarationDto Dto(Declaration x) => new()
+        {
+            Id = x.Id,
+            CustomerCompanyId = x.CustomerCompanyId,
+            FirmaId = x.FirmaId,
+            TenantNo = x.TenantNo,
+            CompanyName = x.CompanyName,
+            DeclarationType = x.DeclarationType,
+            Year = x.Year,
+            Month = x.Month,
+            Amount = x.Amount,
+            DueDate = x.DueDate,
+            DeclarationStatus = x.DeclarationStatus,
+            PaymentStatus = x.PaymentStatus,
+            PaymentDate = x.PaymentDate,
+            Note = x.Note
+        };
     }
 }

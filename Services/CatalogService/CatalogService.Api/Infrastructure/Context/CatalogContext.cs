@@ -116,6 +116,13 @@ namespace CatalogService.Api.Infrastructure.Context
         public DbSet<Features.Yapilacaklar.Domain.ChecklistSablonMaddesi> ChecklistSablonMaddeleri
             => Set<Features.Yapilacaklar.Domain.ChecklistSablonMaddesi>();
 
+        // Firma Portföyü: firmanın aylık mizanları (Firma Kontrol'ün yıllık mizanlarından ayrı).
+        public DbSet<Features.FirmaPortfoyu.Domain.AylikMizan> AylikMizanlar
+            => Set<Features.FirmaPortfoyu.Domain.AylikMizan>();
+
+        public DbSet<Features.FirmaPortfoyu.Domain.AylikMizanSatiri> AylikMizanSatirlari
+            => Set<Features.FirmaPortfoyu.Domain.AylikMizanSatiri>();
+
         // Takip panosu (Prompt 14): firmanın kişileri — alıcılar KisiId ile bağlanır.
         public DbSet<Features.Yapilacaklar.Domain.Kisi> Kisiler
             => Set<Features.Yapilacaklar.Domain.Kisi>();
@@ -282,6 +289,8 @@ namespace CatalogService.Api.Infrastructure.Context
             builder.ApplyConfiguration(new MukellefiyetKategorisiEntityTypeConfiguration());
             builder.ApplyConfiguration(new ChecklistSablonuEntityTypeConfiguration());
             builder.ApplyConfiguration(new ChecklistSablonMaddesiEntityTypeConfiguration());
+            builder.ApplyConfiguration(new AylikMizanEntityTypeConfiguration());
+            builder.ApplyConfiguration(new AylikMizanSatiriEntityTypeConfiguration());
             builder.ApplyConfiguration(new SistemEntityTypeConfiguration());
             builder.ApplyConfiguration(new FirmaSistemiEntityTypeConfiguration());
             builder.ApplyConfiguration(new VergiTakvimiEntityTypeConfiguration());

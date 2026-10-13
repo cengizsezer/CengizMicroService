@@ -29,11 +29,12 @@ namespace CatalogService.Api.Features.Declarations.Controllers
         /// <summary>Bir dönemin firma × tür matrisi.</summary>
         [HttpGet("ozet")]
         public async Task<ActionResult<BeyannameOzetDto>> Ozet([FromQuery] int yil, [FromQuery] int ay,
+                                                               [FromQuery] bool pasifleriGoster = false,
                                                                CancellationToken ct = default)
         {
             try
             {
-                return Ok(await _ozet.GetAsync(yil, ay, ct));
+                return Ok(await _ozet.GetAsync(yil, ay, pasifleriGoster, ct));
             }
             catch (BeyannameKuralException ex)
             {

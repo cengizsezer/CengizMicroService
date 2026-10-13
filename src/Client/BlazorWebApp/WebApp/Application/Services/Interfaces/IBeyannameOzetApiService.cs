@@ -8,7 +8,7 @@ namespace WebApp.Application.Services.Interfaces
     /// </summary>
     public interface IBeyannameOzetApiService
     {
-        Task<BeyannameOzetDto?> OzetGetAsync(int yil, int ay, CancellationToken ct = default);
+        Task<BeyannameOzetDto?> OzetGetAsync(int yil, int ay, bool pasifleriGoster = false, CancellationToken ct = default);
 
         Task<List<BeyannameEkDto>> EkleriGetAsync(int declarationId, CancellationToken ct = default);
 

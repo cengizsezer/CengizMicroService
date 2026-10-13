@@ -172,6 +172,9 @@ builder.Services.AddScoped<CatalogService.Api.Features.Yapilacaklar.Services.IIs
 // Firma Panosu Aşama 3: checklist şablonları (iş tanımı paketi → firmaya özel işler).
 builder.Services.AddScoped<CatalogService.Api.Features.Yapilacaklar.Services.IChecklistSablonService,
                            CatalogService.Api.Features.Yapilacaklar.Services.ChecklistSablonService>();
+// Firma Portföyü: aylık mizan yükleme + firma × ay durum matrisi (Firma Kontrol'den ayrı).
+builder.Services.AddScoped<CatalogService.Api.Features.FirmaPortfoyu.Services.IFirmaPortfoyuService,
+                           CatalogService.Api.Features.FirmaPortfoyu.Services.FirmaPortfoyuService>();
 
 // Anasayfa künye yazmaları (sınıflandırma, sorumlu, notlar).
 builder.Services.AddScoped<CatalogService.Api.Features.Anasayfa.Services.IFirmaKunyeService,

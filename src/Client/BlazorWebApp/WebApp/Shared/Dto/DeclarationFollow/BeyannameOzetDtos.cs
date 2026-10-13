@@ -71,6 +71,11 @@ namespace CatalogService.Api.Features.Declarations.Dtos
     {
         public int Sira { get; set; }
         public int CustomerCompanyId { get; set; }
+
+        /// <summary>Firmalarım firması; boş = "Eşleşmeyen firma" satırı.</summary>
+        public int? FirmaId { get; set; }
+        public bool FirmaPasif { get; set; }
+        public bool Eslesmeyen { get; set; }
         public string FirmaAdi { get; set; } = string.Empty;
         public string? VergiKimlikNo { get; set; }
         public List<BeyannameOzetHucreDto> Hucreler { get; set; } = new();

@@ -1,0 +1,97 @@
+@using WebApp.Shared.Dto.FirmaPortfoyu
+
+@*
+    Firma × ay matrisi (Firma Portföyü Aşama 1). Hücre: ✓ yüklendi · ✓! yüklendi, uyarı var (sorunlu sayılmaz:
+    gelir düşük, 6xx yok, kapanış sonrası, iki gider yöntemi) · ⚠ dengesiz (mizan sorunlu) · + yüklenmedi
+    (tıklayınca yükleme) · gelecek ay kapalı. Dolu hücre tıklanınca Değiştir / Sil. Tutar yok, toplam yok.
+*@
+
+@if (Durum.Firmalar.Count == 0)
+{
+    <div class="pf-bos">Firmalarım'da aktif firma yok. Portföyde yalnız aktif firmalar listelenir.</div>
+}
+else
+{
+    <div class="pf-tablo-kap">
+        <table class="pf-matris">
+            <thead>
+                <tr>
+                    <th>Firma</th>
+                    @for (var a = 1; a <= 12; a++)
+                    {
+                        <th>@PfAy.Kisa(a)</th>
+                    }
+                    <th>Yüklü</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var f in Durum.Firmalar)
+                {
+                    <tr @key="f.FirmaId">
+                        <td class="pf-firma">
+                            <b>@f.KisaAd</b>
+                            @if (!string.IsNullOrWhiteSpace(f.Sorumlu))
+                            {
+                                <small>Sorumlu: @f.Sorumlu</small>
+                            }
+                        </td>
+                        @foreach (var h in f.Aylar)
+                        {
+                            var hucre = h;
+                            var firma = f;
+                            <td>
+                                @if (hucre.Yuklu)
+                                {
+                                    <button type="button" class="pf-hucre @(hucre.Dengeli ? (hucre.Uyarilar.Count > 0 ? "pf-hucre-uyari" : "pf-hucre-iyi") : "pf-hucre-kotu")"
+                                            title="@Ipucu(firma, hucre)" aria-label="@Ipucu(firma, hucre)"
+                                            @onclick="@(() => HucreTiklandi.InvokeAsync((firma, hucre)))">
+                                        @(hucre.Dengeli ? (hucre.Uyarilar.Count > 0 ? "✓!" : "✓") : "⚠")
+                                    </button>
+                                }
+                                else if (Gelecek(hucre.Ay))
+                                {
+                                    <button type="button" class="pf-hucre" disabled title="Gelecek ay">·</button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="pf-hucre" title="@($"{firma.KisaAd} · {PfAy.Uzun(hucre.Ay)} {Durum.Yil}: mizan yüklenmedi — yükle")"
+                                            aria-label="@($"{firma.KisaAd} {PfAy.Uzun(hucre.Ay)} mizanı yükle")"
+                                            @onclick="@(() => HucreTiklandi.InvokeAsync((firma, hucre)))">+</button>
+                                }
+                            </td>
+                        }
+                        <td class="pf-sayac pf-sayi">@f.YukluAySayisi / @AcikAySayisi</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="pf-lejant">
+        <span><span class="pf-hucre pf-hucre-iyi">✓</span> yüklendi</span>
+        <span><span class="pf-hucre pf-hucre-uyari">✓!</span> yüklendi, uyarı var (sorunlu değil)</span>
+        <span><span class="pf-hucre pf-hucre-kotu">⚠</span> borç ≠ alacak — mizan sorunlu</span>
+        <span><span class="pf-hucre">+</span> yüklenmedi</span>
+        <span class="pf-bosluk"></span>
+        <span>Hücreye tıklayınca yükle / değiştir / sil.</span>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public MizanDurumuDto Durum { get; set; } = new();
+
+    [Parameter] public EventCallback<(MizanDurumFirmasiDto Firma, MizanDurumHucresiDto Hucre)> HucreTiklandi { get; set; }
+
+    private bool Gelecek(int ay)
+        => Durum.Yil > DateTime.Today.Year || (Durum.Yil == DateTime.Today.Year && ay > DateTime.Today.Month);
+
+    /// <summary>Bu yılın geçmiş ve içinde bulunulan ayları (geçmiş yıl 12).</summary>
+    private int AcikAySayisi => Durum.Yil < DateTime.Today.Year ? 12 : Durum.Yil == DateTime.Today.Year ? DateTime.Today.Month : 0;
+
+    private string Ipucu(MizanDurumFirmasiDto f, MizanDurumHucresiDto h)
+    {
+        var s = $"{f.KisaAd} · {PfAy.Uzun(h.Ay)} {Durum.Yil}: {h.DosyaAdi}";
+        if (!h.Dengeli) s += " — borç ≠ alacak";
+        if (h.Uyarilar.Count > 0) s += "\n" + string.Join("\n", h.Uyarilar);
+        return s;
+    }
+}
