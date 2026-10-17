@@ -134,6 +134,18 @@ namespace WebApp.UnitTests.Hesaplamalar
             Assert.Empty(acikIstekler);
         }
 
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task Yol_yemek_dugmesi_iki_modda_var_kapaliyken_girdiler_yok(bool acikErisim)
+        {
+            var (html, _, _) = await CizAsync(acikErisim);
+
+            Assert.Contains("Yol / Yemek", html);
+            Assert.DoesNotContain("Aylık Gün", html);
+            Assert.DoesNotContain("Kartla", html);
+        }
+
         [Fact]
         public void Karsilastirma_dugmesi_ve_disa_aktarma_acik_moda_bagli_degil()
         {
@@ -200,10 +212,11 @@ namespace WebApp.UnitTests.Hesaplamalar
                 new SahteGirisliApi(), new PayrollAcikApiService(new HttpClient()));
 
             // Stil paketi yüklenmese de logo büyümesin: öznitelik + satır içi stil.
-            Assert.Contains("src=\"/img/pkf-logo.svg\"", html);
-            Assert.Contains("height=\"48\"", html);
-            Assert.Contains("height:48px;width:auto;", html);
+            Assert.Contains("src=\"/img/bordro-logo.svg\"", html);
+            Assert.Contains("height=\"40\"", html);
+            Assert.Contains("height:40px;width:auto;", html);
             Assert.Contains("Bordro Hesaplama", html);
+            Assert.DoesNotContain("PKF", html, StringComparison.OrdinalIgnoreCase);
 
             // Uygulamanın hiçbir yerine yol yok.
             Assert.DoesNotContain("<a ", html);

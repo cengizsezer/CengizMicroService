@@ -72,7 +72,7 @@ namespace WebApp.Pages.Hesaplamalar.Bordro.Services
         /// <summary>
         /// Hız sınırına takılan istek (429) sessizce düşmesin: sunucunun gönderdiği
         /// açıklama (hesap ya da dosya sınırına göre ayrı) olduğu gibi kullanıcıya gider.
-        /// Diğer hatalar eskisi gibi.
+        /// Teşvik girdisi hatası (400, düz metin) da mesajıyla gider. Diğer hatalar eskisi gibi.
         /// </summary>
         private static async Task HataVarsaFirlatAsync(HttpResponseMessage response, CancellationToken cancellationToken)
         {
@@ -87,6 +87,7 @@ namespace WebApp.Pages.Hesaplamalar.Bordro.Services
                     HttpStatusCode.TooManyRequests);
             }
 
+            await PayrollGirdiHatasi.VarsaFirlatAsync(response, cancellationToken);
             response.EnsureSuccessStatusCode();
         }
     }

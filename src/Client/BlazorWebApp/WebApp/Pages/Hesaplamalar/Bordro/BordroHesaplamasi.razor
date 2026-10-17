@@ -26,7 +26,7 @@
     <div class="payroll-container">
 
       @*   <div class="payroll-header">
-            <img src="/img/pkf-logo.svg" alt="PKF" class="payroll-logo" />
+            <img src="/img/bordro-logo.svg" alt="Bordro Hesaplama" class="payroll-logo" />
             <h1 class="page-title">@(IsHonorarium ? "Huzur Hakkı Hesaplama" : "Ücret Bordrosu")</h1>
         </div> *@
 
@@ -48,10 +48,93 @@
                                 TextProperty="Label"
                                 ValueProperty="Code"
                                 AllowClear="false"
-                                Style="width:220px;"
+                                Disabled="@IsHonorarium"
+                                Style="width:300px;"
                                 PopupStyle="max-height: 400px;"
-                                Change="@(_ => TriggerRecalculateAsync())" />
+                                Change="@(_ => OnLawChangedAsync())" />
             </div>
+
+            @* Seçilen teşvikin istediği ek girdiler — hangisinin sorulacağı sunucudaki kural tablosundan gelir. *@
+            @if (!IsHonorarium && SelectedLaw is { } law)
+            {
+                @if (law.AltSecimler.Count > 0)
+                {
+                    <div class="filter-item">
+                        <label>@law.AltSecimBasligi</label>
+                        <RadzenDropDown TValue="int?"
+                                        Data="@law.AltSecimler"
+                                        TextProperty="Ad"
+                                        ValueProperty="Deger"
+                                        @bind-Value="model.TesvikAltSecimi"
+                                        Placeholder="Seçiniz"
+                                        Style="width:170px;"
+                                        Change="@(_ => TriggerRecalculateAsync())" />
+                    </div>
+                }
+
+                @if (law.EgitimDurumuSorulur)
+                {
+                    <div class="filter-item">
+                        <label>Eğitim Durumu</label>
+                        <RadzenDropDown TValue="int"
+                                        Data="@egitimDurumlari"
+                                        TextProperty="Text"
+                                        ValueProperty="Value"
+                                        @bind-Value="model.ArGeEgitimDurumu"
+                                        Style="width:170px;"
+                                        Change="@(_ => TriggerRecalculateAsync())" />
+                    </div>
+                }
+
+                @if (law.OnayMetni is not null)
+                {
+                    <div class="filter-item switch-item">
+                        <label>&nbsp;</label>
+                        <div class="switch-wrap">
+                            <RadzenSwitch class="payroll-switch" @bind-Value="model.TurizmKonaklamaOnayi"
+                                          Change="@(_ => TriggerRecalculateAsync())" />
+                            <span>@law.OnayMetni</span>
+                        </div>
+                    </div>
+                    <div class="filter-item">
+                        <label>Prim Günü</label>
+                        <RadzenNumeric TValue="int" @bind-Value="model.TurizmPrimGunu" Min="1" Max="30"
+                                       Style="width:80px;"
+                                       Change="@(_ => TriggerRecalculateAsync())" />
+                    </div>
+                }
+
+                @if (law.AylikTutarSorulur)
+                {
+                    <div class="filter-item">
+                        <label>Aylık Tutar (TL)</label>
+                        <RadzenNumeric TValue="decimal" @bind-Value="model.IsgDestegiTutari" Min="0" Format="N2"
+                                       Style="width:130px;"
+                                       Change="@(_ => TriggerRecalculateAsync())" />
+                    </div>
+                }
+
+                @if (law.ManuelSorulur)
+                {
+                    <div class="filter-item">
+                        <label>Teşvik Türü</label>
+                        <RadzenDropDown TValue="int?"
+                                        Data="@manuelTurleri"
+                                        TextProperty="Text"
+                                        ValueProperty="Value"
+                                        @bind-Value="model.ManuelTesvikTuru"
+                                        Placeholder="Seçiniz"
+                                        Style="width:150px;"
+                                        Change="@(_ => TriggerRecalculateAsync())" />
+                    </div>
+                    <div class="filter-item">
+                        <label>@(model.ManuelTesvikTuru == 2 ? "Aylık Tutar (TL)" : "Oran (%)")</label>
+                        <RadzenNumeric TValue="decimal" @bind-Value="model.ManuelTesvikDegeri" Min="0" Format="N2"
+                                       Style="width:120px;"
+                                       Change="@(_ => TriggerRecalculateAsync())" />
+                    </div>
+                }
+            }
 
             <div class="filter-item">
                 <label>Hesaplama Tipi</label>
@@ -72,7 +155,7 @@
                                 ValueProperty="Value"
                                 @bind-Value="model.EmployeeType"
                                 Style="width:170px;"
-                                Change="@(_ => TriggerRecalculateAsync())" />
+                                Change="@(_ => OnEmployeeTypeChangedAsync())" />
             </div>
 
             <div class="filter-item">
@@ -82,7 +165,7 @@
                                 TextProperty="Text"
                                 ValueProperty="Value"
                                 @bind-Value="model.DisabilityType"
-                                Style="width:140px;"
+                                Style="width:225px;"
                                 Change="@(_ => TriggerRecalculateAsync())" />
             </div>
 
@@ -91,7 +174,7 @@
                 <div class="filter-item switch-item">
                     <label>&nbsp;</label>
                     <div class="switch-wrap">
-                        <RadzenSwitch class="pkf-switch" @bind-Value="model.IncludeMinimumWageExemption"
+                        <RadzenSwitch class="payroll-switch" @bind-Value="model.IncludeMinimumWageExemption"
                                       Change="@((bool value) => TriggerRecalculateAsync())" />
                         <span>AÜVİ Uygula</span>
                     </div>
@@ -100,7 +183,7 @@
                 <div class="filter-item switch-item">
                     <label>&nbsp;</label>
                     <div class="switch-wrap">
-                        <RadzenSwitch class="pkf-switch" @bind-Value="model.ShowManufacturingOption"
+                        <RadzenSwitch class="payroll-switch" @bind-Value="model.ShowManufacturingOption"
                                       Change="@(_ => TriggerRecalculateAsync())" />
                         <span>İmalat Sektörü</span>
                     </div>
@@ -109,7 +192,7 @@
                 <div class="filter-item switch-item">
                     <label>&nbsp;</label>
                     <div class="switch-wrap">
-                        <RadzenSwitch class="pkf-switch" @bind-Value="model.HasMandatoryBes"
+                        <RadzenSwitch class="payroll-switch" @bind-Value="model.HasMandatoryBes"
                                       Change="@((bool value) => TriggerRecalculateAsync())" />
                         <span>Zorunlu BES</span>
                     </div>
@@ -118,7 +201,7 @@
                 <div class="filter-item switch-item">
                     <label>&nbsp;</label>
                     <div class="switch-wrap">
-                        <RadzenSwitch class="pkf-switch" @bind-Value="model.IncludeStampTax"
+                        <RadzenSwitch class="payroll-switch" @bind-Value="model.IncludeStampTax"
                                       Change="@(_ => TriggerRecalculateAsync())" />
                         <span>Damga Vergisi</span>
                     </div>
@@ -127,24 +210,87 @@
                 <div class="filter-item switch-item">
                     <label>&nbsp;</label>
                     <div class="switch-wrap">
-                        <RadzenSwitch class="pkf-switch" @bind-Value="model.IncludeEmployerCost"
+                        <RadzenSwitch class="payroll-switch" @bind-Value="model.IncludeEmployerCost"
                                       Change="@(_ => TriggerRecalculateAsync())"
                                       />
                         
                         <span>İşveren Maliyetleri</span>
                     </div>
                 </div>
-                
+
+            }
+
+            @* Yol / Yemek (2026+). Huzur hakkında diğer düğmeler gibi gizli; 2026 öncesinde kilitli.
+               İkisinde de istekte gönderilmez. *@
+            @if (!IsHonorarium)
+            {
+                <div class="filter-item switch-item">
+                    <label>&nbsp;</label>
+                    <div class="switch-wrap">
+                        <RadzenSwitch class="payroll-switch" @bind-Value="model.YolYemekAcik"
+                                      Disabled="@(!YolYemekKullanilabilir)"
+                                      Change="@(_ => TriggerRecalculateAsync())" />
+                        <span>Yol / Yemek</span>
+                    </div>
+                </div>
+            }
+
+            @if (YolYemekUygulanir)
+            {
+                @* Beş girdi tek grup: sığmazsa grubun tamamı alt satıra geçer (içi bölünmez). *@
+                <div class="yol-yemek-grup">
+                    <div class="filter-item">
+                        <label>Aylık Gün</label>
+                        <RadzenNumeric TValue="int" @bind-Value="model.YolYemekGunSayisi" Min="1" Max="31"
+                                       Style="width:70px;"
+                                       Change="@(_ => TriggerRecalculateAsync())" />
+                    </div>
+                    <div class="filter-item">
+                        <label>Yemek Günlük (TL)</label>
+                        <RadzenNumeric TValue="decimal" @bind-Value="model.YemekGunlukTutar" Min="0" Format="N2"
+                                       Style="width:110px;"
+                                       Change="@(_ => TriggerRecalculateAsync())" />
+                    </div>
+                    <div class="filter-item">
+                        <label>Yemek Ödeme</label>
+                        <RadzenDropDown TValue="int"
+                                        Data="@yemekOdemeSekilleri"
+                                        TextProperty="Text"
+                                        ValueProperty="Value"
+                                        @bind-Value="model.YemekOdemeSekli"
+                                        Style="width:170px;"
+                                        Change="@(_ => TriggerRecalculateAsync())" />
+                    </div>
+                    <div class="filter-item">
+                        <label>Yol Günlük (TL)</label>
+                        <RadzenNumeric TValue="decimal" @bind-Value="model.YolGunlukTutar" Min="0" Format="N2"
+                                       Style="width:110px;"
+                                       Change="@(_ => TriggerRecalculateAsync())" />
+                    </div>
+                    <div class="filter-item">
+                        <label>Yol Ödeme</label>
+                        <RadzenDropDown TValue="int"
+                                        Data="@yolOdemeSekilleri"
+                                        TextProperty="Text"
+                                        ValueProperty="Value"
+                                        @bind-Value="model.YolOdemeSekli"
+                                        Style="width:170px;"
+                                        Change="@(_ => TriggerRecalculateAsync())" />
+                    </div>
+                </div>
             }
 
             @if (IsHonorarium)
             {
                 <div class="filter-item action-link">
                     <label>&nbsp;</label>
+                    @* PDF İndir ile aynı stil (Outlined + Primary); yükseklik/odak: .karsilastirma-btn *@
                     <RadzenButton Text="Kar Dağıtımı Karşılaştırma"
                                   Icon="compare_arrows"
                                   Click="@OpenComparisonPopup"
-                                  ButtonStyle="ButtonStyle.Light" />
+                                  Variant="Variant.Outlined"
+                                  ButtonStyle="ButtonStyle.Primary"
+                                  class="karsilastirma-btn" />
                 </div>
             }
 
@@ -160,8 +306,19 @@
                             <th>Aylar</th>
                             <th>Tutar</th>
                             <th>Brüt<br />Ücret</th>
+                            @if (HasYolYemek)
+                            {
+                                <th>Yemek<br />Tutarı</th>
+                                <th>Yol<br />Tutarı</th>
+                                <th>SGK'ya Tabi<br />Yan Hak</th>
+                                <th>GV'ye Tabi<br />Yan Hak</th>
+                            }
                             <th>SGK<br />İşçi</th>
                             <th>İSP<br />İşçi</th>
+                            @if (HasEmployeeSgkIncentive)
+                            {
+                                <th>SGK İşçi<br />Teşvik</th>
+                            }
                             @if (model.DisabilityType > 0)
                             {
                                 <th>Engel<br />İndirimi</th>
@@ -180,6 +337,10 @@
                             }
                             <th>Kesintiler<br />Toplamı</th>
                             <th>Net<br />Ücret</th>
+                            @if (HasYolYemek)
+                            {
+                                <th>Kartla<br />Ödenen</th>
+                            }
                             @if (model.IncludeEmployerCost)
                             {
                                 <th>SGK İşveren<br />Brüt</th>
@@ -189,6 +350,10 @@
                                 }
                                 <th>SGK İşveren<br />Net</th>
                                 <th>İSP<br />İşveren</th>
+                                @if (HasSupport)
+                                {
+                                    <th>@SupportLabel</th>
+                                }
                                 <th>Toplam İşveren<br />Maliyet</th>
                             }
                         </tr>
@@ -214,8 +379,19 @@
                                 </td>
 
                                 <td>@FormatMoney(monthResult?.GrossSalary)</td>
+                                @if (HasYolYemek)
+                                {
+                                    <td>@FormatMoney(monthResult?.MealAmount)</td>
+                                    <td>@FormatMoney(monthResult?.TransportAmount)</td>
+                                    <td>@FormatMoney(monthResult?.SgkTaxableBenefits)</td>
+                                    <td>@FormatMoney(monthResult?.IncomeTaxableBenefits)</td>
+                                }
                                 <td>@FormatMoney(monthResult?.SgkEmployeeAmount)</td>
                                 <td>@FormatMoney(monthResult?.UnemploymentEmployeeAmount)</td>
+                                @if (HasEmployeeSgkIncentive)
+                                {
+                                    <td>@FormatMoney(monthResult?.EmployeeSgkIncentive)</td>
+                                }
                                 @if (model.DisabilityType > 0)
                                 {
                                     <td>@FormatMoney(monthResult?.DisabilityExemptionAmount)</td>
@@ -234,6 +410,10 @@
                                 }
                                 <td>@FormatMoney(monthResult?.TotalDeductions)</td>
                                 <td>@FormatMoney(monthResult?.NetSalary)</td>
+                                @if (HasYolYemek)
+                                {
+                                    <td>@FormatMoney(monthResult?.CardPaidBenefits)</td>
+                                }
                                 @if (model.IncludeEmployerCost)
                                 {
                                     <td>@FormatMoney(monthResult?.SgkEmployerGross)</td>
@@ -243,6 +423,10 @@
                                     }
                                     <td>@FormatMoney(monthResult?.SgkEmployerNet)</td>
                                     <td>@FormatMoney(monthResult?.UnemploymentEmployerAmount)</td>
+                                    @if (HasSupport)
+                                    {
+                                        <td>@FormatMoney(monthResult?.EmployerSupportAmount)</td>
+                                    }
                                     <td>@FormatMoney(monthResult?.TotalEmployerCost)</td>
                                 }
                             </tr>
@@ -251,8 +435,19 @@
                         <tr class="total-row">
                             <td colspan="2">Toplam</td>
                             <td>@FormatMoney(result?.Totals?.TotalGrossSalary)</td>
+                            @if (HasYolYemek)
+                            {
+                                <td>@FormatMoney(result?.Totals?.TotalMealAmount)</td>
+                                <td>@FormatMoney(result?.Totals?.TotalTransportAmount)</td>
+                                <td>@FormatMoney(result?.Totals?.TotalSgkTaxableBenefits)</td>
+                                <td>@FormatMoney(result?.Totals?.TotalIncomeTaxableBenefits)</td>
+                            }
                             <td>@FormatMoney(result?.Totals?.TotalSgkEmployeeAmount)</td>
                             <td>@FormatMoney(result?.Totals?.TotalUnemploymentEmployeeAmount)</td>
+                            @if (HasEmployeeSgkIncentive)
+                            {
+                                <td>@FormatMoney(result?.Totals?.TotalEmployeeSgkIncentive)</td>
+                            }
                             @if (model.DisabilityType > 0)
                             {
                                 <td>@FormatMoney(result?.Totals?.TotalDisabilityExemptionAmount)</td>
@@ -271,6 +466,10 @@
                             }
                             <td>@FormatMoney(result?.Totals?.TotalDeductions)</td>
                             <td>@FormatMoney(result?.Totals?.TotalNetSalary)</td>
+                            @if (HasYolYemek)
+                            {
+                                <td>@FormatMoney(result?.Totals?.TotalCardPaidBenefits)</td>
+                            }
                             @if (model.IncludeEmployerCost)
                             {
                                 <td>@FormatMoney(result?.Totals?.TotalSgkEmployerGross)</td>
@@ -280,6 +479,10 @@
                                 }
                                 <td>@FormatMoney(result?.Totals?.TotalSgkEmployerNet)</td>
                                 <td>@FormatMoney(result?.Totals?.TotalUnemploymentEmployerAmount)</td>
+                                @if (HasSupport)
+                                {
+                                    <td>@FormatMoney(result?.Totals?.TotalEmployerSupportAmount)</td>
+                                }
                                 <td>@FormatMoney(result?.Totals?.TotalEmployerCost)</td>
                             }
                         </tr>
@@ -400,6 +603,16 @@
         {
             <div class="error-box">@errorMessage</div>
         }
+
+        @if (result?.Warnings is { Count: > 0 } uyarilar)
+        {
+            <div class="warning-box">
+                @foreach (var uyari in uyarilar)
+                {
+                    <div>@uyari</div>
+                }
+            </div>
+        }
     </div>
 </div>
 
@@ -425,7 +638,18 @@
     private CancellationTokenSource? debounceCts;
     private List<PayrollLawTypeDto> lawTypes = new();
     private bool IsHonorarium => model.EmployeeType == 3;
-    private bool HasIncentive => model.LawCode != "00000";
+    private PayrollLawTypeDto? SelectedLaw => lawTypes.FirstOrDefault(x => x.Code == model.LawCode);
+    // Ayrı satır destekte (Turizm, İSG) SGK teşvik kolonu yerine destek kolonu görünür.
+    private bool HasSupport => SelectedLaw?.AyriSatirDestek == true;
+    private bool HasIncentive => model.LawCode != "00000" && !HasSupport;
+    private bool HasEmployeeSgkIncentive => result?.Months?.Any(x => x.EmployeeSgkIncentive != 0) == true;
+    // Yol / yemek yalnız 2026+ ücret bordrosunda; sütunlar hesaplanan sonuca göre.
+    private const int YolYemekIlkYil = 2026;
+    private bool YolYemekKullanilabilir => !IsHonorarium && model.Year >= YolYemekIlkYil;
+    private bool YolYemekUygulanir => YolYemekKullanilabilir && model.YolYemekAcik;
+    private bool HasYolYemek => result?.YolYemekDahil == true;
+    private string SupportLabel =>
+        result?.Months?.FirstOrDefault(x => x.EmployerSupportSource != null)?.EmployerSupportSource ?? "Destek";
     private string IncentiveLabel =>
         result?.Months?.FirstOrDefault(x => x.IncentiveSource != null)?.IncentiveSource is string src
             ? $"SGK Teşvik ({src})"
@@ -445,12 +669,38 @@
         new() { Value = 3, Text = "Huzur Hakkı" }
     };
 
+    private List<LookupItem> egitimDurumlari = new()
+    {
+        new() { Value = 0, Text = "Diğer (%80)" },
+        new() { Value = 1, Text = "Yüksek lisans (%90)" },
+        new() { Value = 2, Text = "Doktora (%95)" }
+    };
+
+    private List<LookupItem> manuelTurleri = new()
+    {
+        new() { Value = 1, Text = "Oran (%)" },
+        new() { Value = 2, Text = "Aylık tutar" }
+    };
+
+    private List<LookupItem> yemekOdemeSekilleri = new()
+    {
+        new() { Value = 1, Text = "Nakit" },
+        new() { Value = 2, Text = "Kart/Çek" }
+    };
+
+    private List<LookupItem> yolOdemeSekilleri = new()
+    {
+        new() { Value = 1, Text = "Nakit" },
+        new() { Value = 2, Text = "Kart/Bilet" }
+    };
+
     private List<LookupItem> disabilityTypes = new()
     {
         new() { Value = 0, Text = "Normal" },
-        new() { Value = 1, Text = "1. Derece" },
-        new() { Value = 2, Text = "2. Derece" },
-        new() { Value = 3, Text = "3. Derece" }
+        // Yalnız görünen metin (GVK md. 31 oranları); değer ve hesap aynı.
+        new() { Value = 1, Text = "1. Derece (%80 ve üzeri)" },
+        new() { Value = 2, Text = "2. Derece (%60 – %79)" },
+        new() { Value = 3, Text = "3. Derece (%40 – %59)" }
     };
 
     protected override async Task OnInitializedAsync()
@@ -505,6 +755,64 @@
         };
     }
 
+    private async Task OnLawChangedAsync()
+    {
+        // Alt seçim (bölge / dönem) teşvike özgü; teşvik değişince yeniden seçilsin.
+        model.TesvikAltSecimi = null;
+        await TriggerRecalculateAsync();
+    }
+
+    private async Task OnEmployeeTypeChangedAsync()
+    {
+        // Huzur hakkında teşvik kutusu kilitli ve teşviksiz.
+        if (IsHonorarium)
+        {
+            model.LawCode = "00000";
+            model.TesvikAltSecimi = null;
+            // Yol / Yemek de kapanır; başka tipe dönülünce kapalı başlar.
+            model.YolYemekAcik = false;
+        }
+        await TriggerRecalculateAsync();
+    }
+
+    /// <summary>
+    /// Sunucudaki PayrollTesvikDogrulama'nın ekrandaki karşılığı: eksik girdiyle sunucuya
+    /// gitmeden okunur mesaj gösterilir. Sunucu yine son kapı.
+    /// </summary>
+    private string? EksikTesvikGirdisi()
+    {
+        if (IsHonorarium || SelectedLaw is not { } law) return null;
+
+        if (law.AltSecimler.Count > 0 && law.AltSecimler.All(x => x.Deger != model.TesvikAltSecimi))
+            return $"{law.Name} için {law.AltSecimBasligi?.ToLowerInvariant()} seçin.";
+        if (law.EngelZorunlu && model.DisabilityType == 0)
+            return $"{law.Name} için Engel Durumu en az 1. derece olmalı.";
+        if (law.OnayMetni is not null && !model.TurizmKonaklamaOnayi)
+            return $"{law.Name} için \"{law.OnayMetni}\" onayını işaretleyin.";
+        if (law.OnayMetni is not null && model.TurizmPrimGunu is < 1 or > 30)
+            return "Prim günü 1 ile 30 arasında olmalı.";
+        if (law.AylikTutarSorulur && model.IsgDestegiTutari <= 0)
+            return $"{law.Name} için aylık tutar girin.";
+        if (law.ManuelSorulur && model.ManuelTesvikTuru is null)
+            return "Manuel teşvik için tür seçin.";
+        if (law.ManuelSorulur && model.ManuelTesvikDegeri <= 0)
+            return "Manuel teşvik için değer girin.";
+        if (law.ManuelSorulur && model.ManuelTesvikTuru == 1 && model.ManuelTesvikDegeri > 100)
+            return "Manuel teşvik oranı %100'ü aşamaz.";
+        return null;
+    }
+
+    /// <summary>Sunucudaki yol / yemek kontrolünün ekrandaki karşılığı.</summary>
+    private string? EksikYolYemekGirdisi()
+    {
+        if (!YolYemekUygulanir) return null;
+        if (model.YolYemekGunSayisi is < 1 or > 31)
+            return "Yol / yemek için aylık gün sayısı 1 ile 31 arasında olmalı.";
+        if (model.YemekGunlukTutar < 0 || model.YolGunlukTutar < 0)
+            return "Yol / yemek günlük tutarı negatif olamaz.";
+        return null;
+    }
+
     private async Task OnAmountChangedAsync(PayrollMonthInputModel item, object? value)
     {
         var amount = value is decimal dec ? dec : 0m;
@@ -545,7 +853,7 @@
     private CalculatePayrollRequest BuildRequest() => new()
     {
         Year = model.Year,
-        LawCode = model.LawCode,
+        LawCode = IsHonorarium ? "00000" : model.LawCode,
         CalculationType = model.CalculationType,
         EmployeeType = model.EmployeeType,
         HasMandatoryBes = model.HasMandatoryBes,
@@ -554,6 +862,24 @@
         IncludeStampTax = model.IncludeStampTax,
         IncludeEmployerCost = model.IncludeEmployerCost,
         IsManufacturingSector = model.ShowManufacturingOption,
+        // Sorulmayan girdi varsayılanda gider (2026 öncesi yıllarda eğitim hep %80 — dondurulmuş).
+        ArGeEgitimDurumu = SelectedLaw?.EgitimDurumuSorulur == true ? model.ArGeEgitimDurumu : 0,
+        TesvikAltSecimi = SelectedLaw?.AltSecimler.Count > 0 ? model.TesvikAltSecimi : null,
+        TurizmKonaklamaOnayi = model.TurizmKonaklamaOnayi,
+        TurizmPrimGunu = model.TurizmPrimGunu,
+        IsgDestegiTutari = model.IsgDestegiTutari,
+        ManuelTesvikTuru = model.ManuelTesvikTuru,
+        ManuelTesvikDegeri = model.ManuelTesvikDegeri,
+        YolYemek = YolYemekUygulanir
+            ? new PayrollYolYemekRequest
+            {
+                GunSayisi = model.YolYemekGunSayisi,
+                YemekGunlukTutar = model.YemekGunlukTutar,
+                YemekOdemeSekli = model.YemekOdemeSekli,
+                YolGunlukTutar = model.YolGunlukTutar,
+                YolOdemeSekli = model.YolOdemeSekli
+            }
+            : null,
         StartMonth = 1,
         PreviousCumulativeTaxBase = model.PreviousCumulativeTaxBase,
         Months = monthInputs
@@ -573,6 +899,13 @@
             if (!monthInputs.Any(x => x.IsEdited))
             {
                 result = null;
+                return;
+            }
+
+            if ((EksikTesvikGirdisi() ?? EksikYolYemekGirdisi()) is { } eksik)
+            {
+                result = null;
+                errorMessage = eksik;
                 return;
             }
 
@@ -719,5 +1052,20 @@
         public bool IncludeStampTax { get; set; } = true;
         public bool IncludeEmployerCost { get; set; } = false;
         public bool ShowManufacturingOption { get; set; }
+
+        public int ArGeEgitimDurumu { get; set; }
+        public int? TesvikAltSecimi { get; set; }
+        public bool TurizmKonaklamaOnayi { get; set; }
+        public int TurizmPrimGunu { get; set; } = 30;
+        public decimal IsgDestegiTutari { get; set; }
+        public int? ManuelTesvikTuru { get; set; }
+        public decimal ManuelTesvikDegeri { get; set; }
+
+        public bool YolYemekAcik { get; set; }
+        public int YolYemekGunSayisi { get; set; } = 22;
+        public decimal YemekGunlukTutar { get; set; }
+        public int YemekOdemeSekli { get; set; } = 2;
+        public decimal YolGunlukTutar { get; set; }
+        public int YolOdemeSekli { get; set; } = 2;
     }
 }

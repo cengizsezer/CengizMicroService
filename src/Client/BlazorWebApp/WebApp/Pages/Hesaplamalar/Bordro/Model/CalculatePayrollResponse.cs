@@ -7,12 +7,15 @@ namespace WebApp.Pages.Hesaplamalar.Bordro.Model
         public int EmployeeType { get; set; }
         public bool HasMandatoryBes { get; set; }
         public int DisabilityType { get; set; }
+        public bool YolYemekDahil { get; set; }
 
         public List<PayrollMonthResultDto> Months { get; set; } = new();
         public PayrollTotalsDto Totals { get; set; } = new();
 
         public List<HonorariumPayrollMonthResultDto> HonorariumMonths { get; set; } = new();
         public HonorariumPayrollTotalsDto? HonorariumTotals { get; set; }
+
+        public List<string> Warnings { get; set; } = new();
     }
 
     public class PayrollMonthResultDto
@@ -32,8 +35,16 @@ namespace WebApp.Pages.Hesaplamalar.Bordro.Model
         public decimal StampTaxExemption { get; set; }
         public decimal PayableStampTax { get; set; }
         public decimal BesAmount { get; set; }
+        public decimal EmployeeSgkIncentive { get; set; }
         public decimal TotalDeductions { get; set; }
         public decimal NetSalary { get; set; }
+
+        public decimal MealAmount { get; set; }
+        public decimal TransportAmount { get; set; }
+        public decimal SgkTaxableBenefits { get; set; }
+        public decimal IncomeTaxableBenefits { get; set; }
+        public decimal CashBenefits { get; set; }
+        public decimal CardPaidBenefits { get; set; }
 
         public decimal? SgkEmployerGross { get; set; }
         public decimal? SgkEmployerIncentive { get; set; }
@@ -41,6 +52,8 @@ namespace WebApp.Pages.Hesaplamalar.Bordro.Model
         public decimal? UnemploymentEmployerAmount { get; set; }
         public decimal? TotalEmployerCost { get; set; }
         public string? IncentiveSource { get; set; }
+        public decimal? EmployerSupportAmount { get; set; }
+        public string? EmployerSupportSource { get; set; }
     }
 
     public class PayrollTotalsDto
@@ -57,13 +70,22 @@ namespace WebApp.Pages.Hesaplamalar.Bordro.Model
         public decimal TotalStampTaxExemption { get; set; }
         public decimal TotalPayableStampTax { get; set; }
         public decimal TotalBesAmount { get; set; }
+        public decimal TotalEmployeeSgkIncentive { get; set; }
         public decimal TotalDeductions { get; set; }
         public decimal TotalNetSalary { get; set; }
+
+        public decimal TotalMealAmount { get; set; }
+        public decimal TotalTransportAmount { get; set; }
+        public decimal TotalSgkTaxableBenefits { get; set; }
+        public decimal TotalIncomeTaxableBenefits { get; set; }
+        public decimal TotalCashBenefits { get; set; }
+        public decimal TotalCardPaidBenefits { get; set; }
 
         public decimal? TotalSgkEmployerGross { get; set; }
         public decimal? TotalSgkEmployerIncentive { get; set; }
         public decimal? TotalSgkEmployerNet { get; set; }
         public decimal? TotalUnemploymentEmployerAmount { get; set; }
         public decimal? TotalEmployerCost { get; set; }
+        public decimal? TotalEmployerSupportAmount { get; set; }
     }
 }

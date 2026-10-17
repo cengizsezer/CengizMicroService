@@ -1,9 +1,11 @@
+using CatalogService.Api.Features.Payroll.Configuration;
 using CatalogService.Api.Features.Payroll.Enums;
 
 namespace CatalogService.Api.Features.Payroll.Services.Models
 {
-    // Çalışan tarafı vergi teşviki: AÜ GV istisnasından sonra kalan vergiye uygulanan oran + DV istisnası.
-    // Kanun kodundan yalnızca Resolve ile çözülür; motor kanun kodunu bilmez.
+    // Çalışan tarafı teşvik: AÜ GV istisnasından sonra kalan vergiye uygulanan oran + DV istisnası
+    // + (26322, 15921, 02828) sigortalı hissesinin karşılanması.
+    // Kural tablosundan yalnızca Resolve ile çözülür; motor kanun kodunu bilmez.
     public class PayrollEmployeeTaxIncentive
     {
         public static readonly PayrollEmployeeTaxIncentive None = new();
@@ -11,28 +13,49 @@ namespace CatalogService.Api.Features.Payroll.Services.Models
         public decimal IncomeTaxIncentiveRate { get; init; }
         public bool IsStampTaxExempt { get; init; }
 
-        // 4691 Teknopark: GV %100, DV istisna
-        private const decimal Law04691IncomeTaxRate = 1.00m;
+        /// <summary>GV ve DV teşvikinin uygulandığı brüt ücret üst sınırı (asgari ücret × 40). null: sınırsız.</summary>
+        public decimal? WageCeiling { get; init; }
 
-        // 5746 Ar-Ge merkezi: eğitim durumuna göre GV oranı, DV istisna
-        private const decimal Law05746DoktoraRate = 0.95m;
-        private const decimal Law05746YuksekLisansRate = 0.90m;
-        private const decimal Law05746DigerRate = 0.80m;
+        /// <summary>Karşılanan sigortalı kalemleri (SGK / İSP), asgari ücret tabanında — net artar.</summary>
+        public TesvikKalemleri EmployeeCoveredItems { get; init; }
 
-        public static PayrollEmployeeTaxIncentive Resolve(string lawCode, PayrollArGeEgitimDurumu egitimDurumu) => lawCode switch
+        // 4691 Teknopark: GV %100
+        private const decimal TamGvRate = 1.00m;
+
+        // 5746 Ar-Ge / TEKMER: eğitim durumuna göre GV oranı
+        private const decimal DoktoraRate = 0.95m;
+        private const decimal YuksekLisansRate = 0.90m;
+        private const decimal DigerRate = 0.80m;
+
+        public static PayrollEmployeeTaxIncentive Resolve(
+            CozulmusTesvik tesvik, PayrollArGeEgitimDurumu egitimDurumu, bool sigortaliKurallariUygulanir,
+            decimal? ucretTavani = null)
         {
-            "04691" => new() { IncomeTaxIncentiveRate = Law04691IncomeTaxRate, IsStampTaxExempt = true },
-            "05746" => new()
+            var kural = tesvik.Kural;
+            var sigortali = sigortaliKurallariUygulanir
+                ? tesvik.Kalemler & TesvikKalemleri.Sigortali
+                : TesvikKalemleri.Yok;
+
+            if (kural.Gv == GvTesvikTuru.Yok && !kural.DvMuaf && sigortali == TesvikKalemleri.Yok)
+                return None;
+
+            return new()
             {
-                IncomeTaxIncentiveRate = egitimDurumu switch
+                IncomeTaxIncentiveRate = kural.Gv switch
                 {
-                    PayrollArGeEgitimDurumu.Doktora95 => Law05746DoktoraRate,
-                    PayrollArGeEgitimDurumu.YuksekLisans90 => Law05746YuksekLisansRate,
-                    _ => Law05746DigerRate
+                    GvTesvikTuru.Tam => TamGvRate,
+                    GvTesvikTuru.EgitimeGore => egitimDurumu switch
+                    {
+                        PayrollArGeEgitimDurumu.Doktora95 => DoktoraRate,
+                        PayrollArGeEgitimDurumu.YuksekLisans90 => YuksekLisansRate,
+                        _ => DigerRate
+                    },
+                    _ => 0m
                 },
-                IsStampTaxExempt = true
-            },
-            _ => None
-        };
+                IsStampTaxExempt = kural.DvMuaf,
+                WageCeiling = kural.Gv != GvTesvikTuru.Yok || kural.DvMuaf ? ucretTavani : null,
+                EmployeeCoveredItems = sigortali
+            };
+        }
     }
 }

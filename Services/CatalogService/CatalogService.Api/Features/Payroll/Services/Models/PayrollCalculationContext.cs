@@ -9,5 +9,8 @@ namespace CatalogService.Api.Features.Payroll.Services.Models
         public PayrollDisabilityExemption? DisabilityExemption { get; set; }
         public bool IsManufacturingSector { get; set; }
         public PayrollEmployeeTaxIncentive EmployeeTaxIncentive { get; set; } = PayrollEmployeeTaxIncentive.None;
+
+        /// <summary>Emekli çalışanda SGDP işveren oranı (2026+). null: işveren tarafında normal çalışan oranları.</summary>
+        public decimal? RetiredSgdpEmployerRate { get; set; }
     }
 }

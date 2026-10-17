@@ -149,6 +149,8 @@ namespace CatalogService.Api.Features.Payroll.Configuration
             const int year = 2026;
             return new PayrollYearConfig
             {
+                RetiredSgdpEmployerRate = 0.225m,           // SGDP işveren %22,5 (+ KVSK %2,25 = %24,75)
+                IncomeTaxIncentiveCeilingMultiplier = 40m,  // 33.030 × 40 = 1.321.200
                 Parameter = new PayrollParameter
                 {
                     Year = year,

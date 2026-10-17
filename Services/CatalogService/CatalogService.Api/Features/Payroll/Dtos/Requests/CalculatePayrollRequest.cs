@@ -22,5 +22,16 @@ namespace CatalogService.Api.Features.Payroll.Dtos.Requests
         public string LawCode { get; set; } = "00000";
         public bool IsManufacturingSector { get; set; } = false;
         public PayrollArGeEgitimDurumu ArGeEgitimDurumu { get; set; } = PayrollArGeEgitimDurumu.Diger80;
+
+        // Teşvik ek girdileri (2026+ kurallar; bkz. PayrollTesvikKurallari)
+        public int? TesvikAltSecimi { get; set; }
+        public bool TurizmKonaklamaOnayi { get; set; }
+        public int TurizmPrimGunu { get; set; } = 30;
+        public decimal IsgDestegiTutari { get; set; }
+        public PayrollManuelTesvikTuru? ManuelTesvikTuru { get; set; }
+        public decimal ManuelTesvikDegeri { get; set; }
+
+        /// <summary>Yol / yemek yan hakkı (2026+); null: kapalı.</summary>
+        public PayrollYolYemekDto? YolYemek { get; set; }
     }
 }

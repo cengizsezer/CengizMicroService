@@ -5,6 +5,7 @@ using CatalogService.Api.Features.Payroll.Dtos.Responses;
 using CatalogService.Api.Features.Payroll.Dtos.Shared;
 using CatalogService.Api.Features.Payroll.Enums;
 using CatalogService.Api.Features.Payroll.Queries.GetPayrollLawTypes;
+using CatalogService.Api.Features.Payroll.Services;
 using CatalogService.Api.Features.Payroll.Services.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -33,6 +34,7 @@ namespace CatalogService.Api.Features.Payroll.Controllers
     [Route("api/catalog/payroll/acik")]
     [AllowAnonymous]
     [EnableRateLimiting(BordroAcikHizSiniri.Politika)]
+    [PayrollGirdiHatasiFiltresi]
     public class PayrollAcikController : ControllerBase
     {
         private readonly IMediator _mediator;

@@ -86,6 +86,24 @@ body {
     min-width: 110px;
 }
 
+/* Yol / Yemek girdileri: filtre satırında TEK öğe. Sığmazsa grubun tamamı alt satıra
+   geçer ve satır başına (Yıl hizası) yaslanır; içi geniş ekranda bölünmez. */
+.yol-yemek-grup {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    gap: 12px 14px;
+}
+
+/* Telefon: grup kendi içinde alt satırlara akabilir; tablo ve diğer filtreler aynı. */
+@media (max-width: 600px) {
+    .yol-yemek-grup {
+        flex: 1 1 100%;
+        flex-wrap: wrap;
+    }
+}
+
 .switch-item {
     min-width: 110px;
 }
@@ -108,10 +126,22 @@ body {
     white-space: nowrap;
 }
 
-::deep .pkf-switch.rz-switch.rz-state-active,
-::deep .pkf-switch.rz-switch.rz-state-active .rz-switch-slider,
-::deep .pkf-switch.rz-switch.rz-state-active .rz-switch-circle,
-::deep .pkf-switch.rz-switch.rz-state-active .rz-switch-handle {
+/* Kar Dağıtımı Karşılaştırma: filtre kutularıyla aynı yükseklik (alt hizada üstü de denk gelsin)
+   ve klavye odağında belirgin çerçeve (material temasında odak çerçevesi kapalı). */
+::deep .karsilastirma-btn.rz-button {
+    height: var(--rz-input-height);
+    background-color: #ffffff;
+}
+
+::deep .karsilastirma-btn.rz-button:focus-visible {
+    outline: 2px solid var(--rz-primary);
+    outline-offset: 2px;
+}
+
+::deep .payroll-switch.rz-switch.rz-state-active,
+::deep .payroll-switch.rz-switch.rz-state-active .rz-switch-slider,
+::deep .payroll-switch.rz-switch.rz-state-active .rz-switch-circle,
+::deep .payroll-switch.rz-switch.rz-state-active .rz-switch-handle {
     background: #2ea3db !important;
     border-color: #2ea3db !important;
 }
@@ -237,6 +267,16 @@ body {
 .status-text {
     margin-top: 8px;
     color: #444;
+    font-size: 13px;
+}
+
+.warning-box {
+    margin-top: 8px;
+    color: #7a4b00;
+    background: #fff6e0;
+    padding: 10px 12px;
+    border: 1px solid #f3d69a;
+    border-radius: 6px;
     font-size: 13px;
 }
 

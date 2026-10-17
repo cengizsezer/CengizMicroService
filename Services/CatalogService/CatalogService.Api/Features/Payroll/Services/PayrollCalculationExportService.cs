@@ -24,9 +24,9 @@ namespace CatalogService.Api.Features.Payroll.Services
             "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
         };
 
-        private static readonly Lazy<byte[]?> PkfLogoBytes = new(LoadPkfLogoBytes);
+        private static readonly Lazy<byte[]?> LogoBytes = new(LoadLogoBytes);
 
-        private static byte[]? LoadPkfLogoBytes()
+        private static byte[]? LoadLogoBytes()
         {
             var asm = typeof(PayrollCalculationExportService).Assembly;
             using var stream = asm.GetManifestResourceStream(PayrollExportFooterTexts.LogoEmbeddedResourceName);
@@ -56,7 +56,7 @@ namespace CatalogService.Api.Features.Payroll.Services
             ws.Cell(1, 1).Style.Font.Bold = true;
             ws.Cell(1, 1).Style.Font.FontSize = 13;
 
-            ws.Cell(2, 1).Value = $"Kanun: {request.LawCode}";
+            ws.Cell(2, 1).Value = $"Kanun: {PayrollTesvikKurallari.Etiket(request.LawCode, request.TesvikAltSecimi)}";
             ws.Cell(2, 3).Value = calcLabel;
             ws.Cell(2, 5).Value = $"Tarih: {DateTime.Now.ToString("dd.MM.yyyy", TrCulture)}";
 
@@ -70,6 +70,14 @@ namespace CatalogService.Api.Features.Payroll.Services
             else
                 lastCol = BuildSalaryExcel(ws, result, request, headerRow);
 
+            // Yol / yemek girdileri: tablo genişliğinde birleşik satır (A sütununu genişletmesin).
+            if (result.YolYemekDahil && YolYemekBilgisi(request) is { } yolYemek)
+            {
+                var bilgi = ws.Range(3, 1, 3, Math.Max(lastCol, 1));
+                bilgi.Merge();
+                bilgi.Value = yolYemek;
+            }
+
             AppendExcelFooter(ws, footerStartRow: totalRow + 2, lastCol: lastCol);
 
             ws.Columns().AdjustToContents();
@@ -79,8 +87,23 @@ namespace CatalogService.Api.Features.Payroll.Services
             return stream.ToArray();
         }
 
+        /// <summary>Yol / yemek girdileri — Excel ve PDF üst bilgisinde aynı metin.</summary>
+        private static string? YolYemekBilgisi(CalculatePayrollRequest request)
+        {
+            if (request.YolYemek is not { } y) return null;
+
+            static string Kalem(string ad, decimal gunluk, PayrollYanHakOdemeSekli odeme, string kart) =>
+                gunluk > 0
+                    ? $"{ad} {gunluk.ToString("N2", TrCulture)} TL/gün ({(odeme == PayrollYanHakOdemeSekli.Kart ? kart : "Nakit")})"
+                    : $"{ad} yok";
+
+            return $"Yol / Yemek: {y.GunSayisi} gün · "
+                + Kalem("Yemek", y.YemekGunlukTutar, y.YemekOdemeSekli, "Yemek kartı/çeki") + " · "
+                + Kalem("Yol", y.YolGunlukTutar, y.YolOdemeSekli, "Ulaşım kartı/bilet/akbil");
+        }
+
         // ─────────────────────────────────────────────────────────
-        // EXCEL FOOTER (yasal açıklama + PKF logosu)
+        // EXCEL FOOTER (yasal açıklama + Bordro Hesaplama logosu)
         // ─────────────────────────────────────────────────────────
         private static void AppendExcelFooter(IXLWorksheet ws, int footerStartRow, int lastCol)
         {
@@ -109,18 +132,18 @@ namespace CatalogService.Api.Features.Payroll.Services
 
             // Satır 3: logo (sağa hizalı)
             int logoRow = footerStartRow + 2;
-            ws.Row(logoRow).Height = 60;
+            ws.Row(logoRow).Height = 42;
 
-            var logoBytes = PkfLogoBytes.Value;
+            var logoBytes = LogoBytes.Value;
             if (logoBytes is { Length: > 0 })
             {
                 try
                 {
                     using var imgStream = new MemoryStream(logoBytes);
                     var picture = ws.AddPicture(imgStream)
-                        .MoveTo(ws.Cell(logoRow, Math.Max(lastCol - 2, 1)))
-                        .WithSize(160, 60);
-                    // Yukarıdaki WithSize aspect ratio'yu korumayabilir; logo aspect ~2.4:1 olduğundan 160×60 makul.
+                        .MoveTo(ws.Cell(logoRow, Math.Max(lastCol - 3, 1)))
+                        .WithSize(243, 48);
+                    // WithSize aspect ratio'yu korumaz; logo 486×96 (~5,06:1) → 243×48.
                 }
                 catch
                 {
@@ -133,8 +156,13 @@ namespace CatalogService.Api.Features.Payroll.Services
         {
             bool hasDisability = result.DisabilityType != PayrollDisabilityType.None;
             bool hasEmployer = request.IncludeEmployerCost;
-            bool hasIncentive = request.LawCode != "00000";
+            // Ayrı satır destekte (Turizm, İSG) SGK teşvik kolonu yerine destek kolonu basılır.
+            bool hasSupport = result.Months.Any(x => x.EmployerSupportAmount != null);
+            bool hasIncentive = request.LawCode != PayrollTesvikKurallari.Indirimsiz && !hasSupport;
             bool hasBes = request.HasMandatoryBes;
+            bool hasEmployeeSgkIncentive = result.Months.Any(x => x.EmployeeSgkIncentive != 0);
+            bool hasYolYemek = result.YolYemekDahil;
+            string supportLabel = result.Months.FirstOrDefault(x => x.EmployerSupportSource != null)?.EmployerSupportSource ?? "Destek";
 
             string? incentiveSource = result.Months
                 .FirstOrDefault(x => x.IncentiveSource != null)?.IncentiveSource;
@@ -156,8 +184,16 @@ namespace CatalogService.Api.Features.Payroll.Services
             Header("Ay");
             Header("Tutar");
             Header("Brüt Ücret");
+            if (hasYolYemek)
+            {
+                Header("Yemek Tutarı");
+                Header("Yol Tutarı");
+                Header("SGK'ya Tabi Yan Hak");
+                Header("GV'ye Tabi Yan Hak");
+            }
             Header("SGK İşçi");
             Header("İSP İşçi");
+            if (hasEmployeeSgkIncentive) Header("SGK İşçi Teşvik");
             if (hasDisability) Header("Engel İndirimi");
             Header("GV Matrahı");
             Header("Kümülatif Matrah");
@@ -170,12 +206,14 @@ namespace CatalogService.Api.Features.Payroll.Services
             if (hasBes) Header("BES Kesintisi");
             Header("Kesintiler");
             Header("Net Ücret");
+            if (hasYolYemek) Header("Kartla Ödenen");
             if (hasEmployer)
             {
                 Header("SGK İşveren Brüt");
                 if (hasIncentive) Header(incentiveLabel);
                 Header("SGK İşveren Net");
                 Header("İSP İşveren");
+                if (hasSupport) Header(supportLabel);
                 Header("Toplam İşveren Maliyet");
             }
 
@@ -196,8 +234,16 @@ namespace CatalogService.Api.Features.Payroll.Services
                 ws.Cell(row, col++).Value = MonthNames[m.Month];
                 Num(m.InputAmount);
                 Num(m.GrossSalary);
+                if (hasYolYemek)
+                {
+                    Num(m.MealAmount);
+                    Num(m.TransportAmount);
+                    Num(m.SgkTaxableBenefits);
+                    Num(m.IncomeTaxableBenefits);
+                }
                 Num(m.SgkEmployeeAmount);
                 Num(m.UnemploymentEmployeeAmount);
+                if (hasEmployeeSgkIncentive) Num(m.EmployeeSgkIncentive);
                 if (hasDisability) Num(m.DisabilityExemptionAmount);
                 Num(m.IncomeTaxBase);
                 Num(m.CumulativeIncomeTaxBase);
@@ -210,12 +256,14 @@ namespace CatalogService.Api.Features.Payroll.Services
                 if (hasBes) Num(m.BesAmount);
                 Num(m.TotalDeductions);
                 Num(m.NetSalary);
+                if (hasYolYemek) Num(m.CardPaidBenefits);
                 if (hasEmployer)
                 {
                     Num(m.SgkEmployerGross);
                     if (hasIncentive) Num(m.SgkEmployerIncentive);
                     Num(m.SgkEmployerNet);
                     Num(m.UnemploymentEmployerAmount);
+                    if (hasSupport) Num(m.EmployerSupportAmount);
                     Num(m.TotalEmployerCost);
                 }
             }
@@ -240,8 +288,16 @@ namespace CatalogService.Api.Features.Payroll.Services
                 col++; // skip Tutar column
 
                 Total(result.Totals.TotalGrossSalary);
+                if (hasYolYemek)
+                {
+                    Total(result.Totals.TotalMealAmount);
+                    Total(result.Totals.TotalTransportAmount);
+                    Total(result.Totals.TotalSgkTaxableBenefits);
+                    Total(result.Totals.TotalIncomeTaxableBenefits);
+                }
                 Total(result.Totals.TotalSgkEmployeeAmount);
                 Total(result.Totals.TotalUnemploymentEmployeeAmount);
+                if (hasEmployeeSgkIncentive) Total(result.Totals.TotalEmployeeSgkIncentive);
                 if (hasDisability) Total(result.Totals.TotalDisabilityExemptionAmount);
                 Total(result.Totals.TotalIncomeTaxBase);
                 Total(result.Totals.TotalIncomeTaxBase);
@@ -254,12 +310,14 @@ namespace CatalogService.Api.Features.Payroll.Services
                 if (hasBes) Total(result.Totals.TotalBesAmount);
                 Total(result.Totals.TotalDeductions);
                 Total(result.Totals.TotalNetSalary);
+                if (hasYolYemek) Total(result.Totals.TotalCardPaidBenefits);
                 if (hasEmployer)
                 {
                     Total(result.Totals.TotalSgkEmployerGross);
                     if (hasIncentive) Total(result.Totals.TotalSgkEmployerIncentive);
                     Total(result.Totals.TotalSgkEmployerNet);
                     Total(result.Totals.TotalUnemploymentEmployerAmount);
+                    if (hasSupport) Total(result.Totals.TotalEmployerSupportAmount);
                     Total(result.Totals.TotalEmployerCost);
                 }
             }
@@ -401,11 +459,13 @@ namespace CatalogService.Api.Features.Payroll.Services
                         col.Item().Text(title).Bold().FontSize(14).FontColor(Colors.Grey.Darken4);
                         col.Item().Row(r =>
                         {
-                            r.RelativeItem().Text($"Kanun: {request.LawCode}").FontSize(8).FontColor(Colors.Grey.Darken1);
+                            r.RelativeItem().Text($"Kanun: {PayrollTesvikKurallari.Etiket(request.LawCode, request.TesvikAltSecimi)}").FontSize(8).FontColor(Colors.Grey.Darken1);
                             r.RelativeItem().Text(calcLabel).FontSize(8).FontColor(Colors.Grey.Darken1);
                             r.RelativeItem().AlignRight().Text($"Tarih: {DateTime.Now.ToString("dd.MM.yyyy", TrCulture)}")
                                 .FontSize(8).FontColor(Colors.Grey.Darken1);
                         });
+                        if (result.YolYemekDahil && YolYemekBilgisi(request) is { } yolYemek)
+                            col.Item().Text(yolYemek).FontSize(8).FontColor(Colors.Grey.Darken1);
                         col.Item().PaddingTop(4).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
                     });
 
@@ -419,7 +479,7 @@ namespace CatalogService.Api.Features.Payroll.Services
                                 BuildSalaryPdf(content, result, request);
                         });
 
-                        // Yasal açıklama + PKF logosu — tabloyla aynı içerikte yer alır, sayfa taşarsa
+                        // Yasal açıklama + logo — tabloyla aynı içerikte yer alır, sayfa taşarsa
                         // QuestPDF Column akışıyla bir sonraki sayfaya düzgün taşınır.
                         col.Item().PaddingTop(12).Element(BuildPdfDisclaimerBlock);
                     });
@@ -439,10 +499,18 @@ namespace CatalogService.Api.Features.Payroll.Services
         {
             bool hasDisability = result.DisabilityType != PayrollDisabilityType.None;
             bool hasEmployer = request.IncludeEmployerCost;
-            bool hasIncentive = request.LawCode != "00000";
+            // Ayrı satır destekte (Turizm, İSG) SGK teşvik kolonu yerine destek kolonu basılır.
+            bool hasSupport = result.Months.Any(x => x.EmployerSupportAmount != null);
+            bool hasIncentive = request.LawCode != PayrollTesvikKurallari.Indirimsiz && !hasSupport;
             bool hasBes = request.HasMandatoryBes;
+            bool hasEmployeeSgkIncentive = result.Months.Any(x => x.EmployeeSgkIncentive != 0);
+            bool hasYolYemek = result.YolYemekDahil;
+            string supportLabel = result.Months.FirstOrDefault(x => x.EmployerSupportSource != null)?.EmployerSupportSource ?? "Destek";
 
-            var headers = new List<string> { "Ay", "Tutar", "Brüt", "SGK İ", "İSP İ" };
+            var headers = new List<string> { "Ay", "Tutar", "Brüt" };
+            if (hasYolYemek) headers.AddRange(new[] { "Yemek", "Yol", "SGK Tabi YH", "GV Tabi YH" });
+            headers.AddRange(new[] { "SGK İ", "İSP İ" });
+            if (hasEmployeeSgkIncentive) headers.Add("SGK İ Teşvik");
             if (hasDisability) headers.Add("Engel");
             headers.AddRange(new[]
             {
@@ -451,11 +519,14 @@ namespace CatalogService.Api.Features.Payroll.Services
             });
             if (hasBes) headers.Add("BES");
             headers.AddRange(new[] { "Kesintiler", "Net" });
+            if (hasYolYemek) headers.Add("Kartla Öd.");
             if (hasEmployer)
             {
                 headers.Add("İşvr Brüt");
                 if (hasIncentive) headers.Add("Teşvik");
-                headers.AddRange(new[] { "İşvr Net", "İSP İşvr", "Toplam İşvr" });
+                headers.AddRange(new[] { "İşvr Net", "İSP İşvr" });
+                if (hasSupport) headers.Add(supportLabel);
+                headers.Add("Toplam İşvr");
             }
 
             container.Table(t =>
@@ -479,8 +550,16 @@ namespace CatalogService.Api.Features.Payroll.Services
                     Cell(t, MonthNames[m.Month], align: "left");
                     Cell(t, FormatMoney(m.InputAmount));
                     Cell(t, FormatMoney(m.GrossSalary));
+                    if (hasYolYemek)
+                    {
+                        Cell(t, FormatMoney(m.MealAmount));
+                        Cell(t, FormatMoney(m.TransportAmount));
+                        Cell(t, FormatMoney(m.SgkTaxableBenefits));
+                        Cell(t, FormatMoney(m.IncomeTaxableBenefits));
+                    }
                     Cell(t, FormatMoney(m.SgkEmployeeAmount));
                     Cell(t, FormatMoney(m.UnemploymentEmployeeAmount));
+                    if (hasEmployeeSgkIncentive) Cell(t, FormatMoney(m.EmployeeSgkIncentive));
                     if (hasDisability) Cell(t, FormatMoney(m.DisabilityExemptionAmount));
                     Cell(t, FormatMoney(m.IncomeTaxBase));
                     Cell(t, FormatMoney(m.CumulativeIncomeTaxBase));
@@ -493,12 +572,14 @@ namespace CatalogService.Api.Features.Payroll.Services
                     if (hasBes) Cell(t, FormatMoney(m.BesAmount));
                     Cell(t, FormatMoney(m.TotalDeductions));
                     Cell(t, FormatMoney(m.NetSalary));
+                    if (hasYolYemek) Cell(t, FormatMoney(m.CardPaidBenefits));
                     if (hasEmployer)
                     {
                         Cell(t, FormatMoney(m.SgkEmployerGross ?? 0));
                         if (hasIncentive) Cell(t, FormatMoney(m.SgkEmployerIncentive ?? 0));
                         Cell(t, FormatMoney(m.SgkEmployerNet ?? 0));
                         Cell(t, FormatMoney(m.UnemploymentEmployerAmount ?? 0));
+                        if (hasSupport) Cell(t, FormatMoney(m.EmployerSupportAmount ?? 0));
                         Cell(t, FormatMoney(m.TotalEmployerCost ?? 0));
                     }
                 }
@@ -510,8 +591,16 @@ namespace CatalogService.Api.Features.Payroll.Services
                     Cell(t, "Toplam", bold: true, bg: "#f9fafb", align: "left");
                     Cell(t, "", bold: true, bg: "#f9fafb");
                     Cell(t, FormatMoney(tot.TotalGrossSalary), bold: true, bg: "#f9fafb");
+                    if (hasYolYemek)
+                    {
+                        Cell(t, FormatMoney(tot.TotalMealAmount), bold: true, bg: "#f9fafb");
+                        Cell(t, FormatMoney(tot.TotalTransportAmount), bold: true, bg: "#f9fafb");
+                        Cell(t, FormatMoney(tot.TotalSgkTaxableBenefits), bold: true, bg: "#f9fafb");
+                        Cell(t, FormatMoney(tot.TotalIncomeTaxableBenefits), bold: true, bg: "#f9fafb");
+                    }
                     Cell(t, FormatMoney(tot.TotalSgkEmployeeAmount), bold: true, bg: "#f9fafb");
                     Cell(t, FormatMoney(tot.TotalUnemploymentEmployeeAmount), bold: true, bg: "#f9fafb");
+                    if (hasEmployeeSgkIncentive) Cell(t, FormatMoney(tot.TotalEmployeeSgkIncentive), bold: true, bg: "#f9fafb");
                     if (hasDisability) Cell(t, FormatMoney(tot.TotalDisabilityExemptionAmount), bold: true, bg: "#f9fafb");
                     Cell(t, FormatMoney(tot.TotalIncomeTaxBase), bold: true, bg: "#f9fafb");
                     Cell(t, FormatMoney(tot.TotalIncomeTaxBase), bold: true, bg: "#f9fafb");
@@ -524,12 +613,14 @@ namespace CatalogService.Api.Features.Payroll.Services
                     if (hasBes) Cell(t, FormatMoney(tot.TotalBesAmount), bold: true, bg: "#f9fafb");
                     Cell(t, FormatMoney(tot.TotalDeductions), bold: true, bg: "#f9fafb");
                     Cell(t, FormatMoney(tot.TotalNetSalary), bold: true, bg: "#f9fafb");
+                    if (hasYolYemek) Cell(t, FormatMoney(tot.TotalCardPaidBenefits), bold: true, bg: "#f9fafb");
                     if (hasEmployer)
                     {
                         Cell(t, FormatMoney(tot.TotalSgkEmployerGross ?? 0), bold: true, bg: "#f9fafb");
                         if (hasIncentive) Cell(t, FormatMoney(tot.TotalSgkEmployerIncentive ?? 0), bold: true, bg: "#f9fafb");
                         Cell(t, FormatMoney(tot.TotalSgkEmployerNet ?? 0), bold: true, bg: "#f9fafb");
                         Cell(t, FormatMoney(tot.TotalUnemploymentEmployerAmount ?? 0), bold: true, bg: "#f9fafb");
+                        if (hasSupport) Cell(t, FormatMoney(tot.TotalEmployerSupportAmount ?? 0), bold: true, bg: "#f9fafb");
                         Cell(t, FormatMoney(tot.TotalEmployerCost ?? 0), bold: true, bg: "#f9fafb");
                     }
                 }
@@ -600,7 +691,7 @@ namespace CatalogService.Api.Features.Payroll.Services
         }
 
         // ─────────────────────────────────────────────────────────
-        // PDF FOOTER (yasal açıklama + PKF logosu)
+        // PDF FOOTER (yasal açıklama + Bordro Hesaplama logosu)
         // ─────────────────────────────────────────────────────────
         private static void BuildPdfDisclaimerBlock(IContainer container)
         {
@@ -615,11 +706,11 @@ namespace CatalogService.Api.Features.Payroll.Services
                     col.Item().PaddingTop(4).Text(PayrollExportFooterTexts.Disclaimer)
                         .FontSize(7).FontColor(Colors.Grey.Darken1);
 
-                    var logoBytes = PkfLogoBytes.Value;
+                    var logoBytes = LogoBytes.Value;
                     if (logoBytes is { Length: > 0 })
                     {
                         col.Item().PaddingTop(8).AlignRight()
-                            .Width(120)
+                            .Width(160)
                             .Image(logoBytes).FitWidth();
                     }
                 });

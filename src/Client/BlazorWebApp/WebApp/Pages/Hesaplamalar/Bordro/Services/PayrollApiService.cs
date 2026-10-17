@@ -26,6 +26,7 @@ namespace WebApp.Pages.Hesaplamalar.Bordro.Services
                 request,
                 cancellationToken);
 
+            await PayrollGirdiHatasi.VarsaFirlatAsync(response, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             return await response.Content.ReadFromJsonAsync<CalculatePayrollResponse>(cancellationToken: cancellationToken);
@@ -63,6 +64,7 @@ namespace WebApp.Pages.Hesaplamalar.Bordro.Services
                 $"{Base}/export-excel",
                 request,
                 cancellationToken);
+            await PayrollGirdiHatasi.VarsaFirlatAsync(response, cancellationToken);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsByteArrayAsync(cancellationToken);
         }
@@ -73,6 +75,7 @@ namespace WebApp.Pages.Hesaplamalar.Bordro.Services
                 $"{Base}/export-pdf",
                 request,
                 cancellationToken);
+            await PayrollGirdiHatasi.VarsaFirlatAsync(response, cancellationToken);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsByteArrayAsync(cancellationToken);
         }
@@ -86,6 +89,7 @@ namespace WebApp.Pages.Hesaplamalar.Bordro.Services
                 request,
                 cancellationToken);
 
+            await PayrollGirdiHatasi.VarsaFirlatAsync(response, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             return await response.Content.ReadFromJsonAsync<DistributionComparisonResultDto>(cancellationToken: cancellationToken);
@@ -99,6 +103,7 @@ namespace WebApp.Pages.Hesaplamalar.Bordro.Services
                 $"{Base}/compare-distribution/export-excel",
                 request,
                 cancellationToken);
+            await PayrollGirdiHatasi.VarsaFirlatAsync(response, cancellationToken);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsByteArrayAsync(cancellationToken);
         }
@@ -111,6 +116,7 @@ namespace WebApp.Pages.Hesaplamalar.Bordro.Services
                 $"{Base}/compare-distribution/export-pdf",
                 request,
                 cancellationToken);
+            await PayrollGirdiHatasi.VarsaFirlatAsync(response, cancellationToken);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsByteArrayAsync(cancellationToken);
         }

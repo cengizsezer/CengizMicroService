@@ -7,6 +7,7 @@ using CatalogService.Api.Features.Payroll.Enums;
 using CatalogService.Api.Features.Payroll.Queries.GetPayrollCalculatorBootstrap;
 using CatalogService.Api.Features.Payroll.Queries.GetPayrollLawTypes;
 using CatalogService.Api.Features.Payroll.Queries.GetPayrollParametersByYear;
+using CatalogService.Api.Features.Payroll.Services;
 using CatalogService.Api.Features.Payroll.Services.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -27,6 +28,7 @@ namespace CatalogService.Api.Features.Payroll.Controllers
     [ApiController]
     [Route("api/catalog/payroll")]
     [Authorize]
+    [PayrollGirdiHatasiFiltresi]
     public class PayrollController : ControllerBase
     {
         private readonly IMediator _mediator;
@@ -144,6 +146,13 @@ namespace CatalogService.Api.Features.Payroll.Controllers
                 LawCode = request.LawCode,
                 IsManufacturingSector = request.IsManufacturingSector,
                 ArGeEgitimDurumu = request.ArGeEgitimDurumu,
+                TesvikAltSecimi = request.TesvikAltSecimi,
+                TurizmKonaklamaOnayi = request.TurizmKonaklamaOnayi,
+                TurizmPrimGunu = request.TurizmPrimGunu,
+                IsgDestegiTutari = request.IsgDestegiTutari,
+                ManuelTesvikTuru = request.ManuelTesvikTuru,
+                ManuelTesvikDegeri = request.ManuelTesvikDegeri,
+                YolYemek = request.YolYemek,
             };
 
     }

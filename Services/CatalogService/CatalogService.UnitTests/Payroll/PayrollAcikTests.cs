@@ -133,7 +133,20 @@ namespace CatalogService.UnitTests.Payroll
                 Months = new() { new PayrollMonthInputDto { Month = 3, Amount = 50000m } },
                 LawCode = "05510",
                 IsManufacturingSector = true,
-                ArGeEgitimDurumu = PayrollArGeEgitimDurumu.Doktora95
+                ArGeEgitimDurumu = PayrollArGeEgitimDurumu.Doktora95,
+                TesvikAltSecimi = 2,
+                TurizmKonaklamaOnayi = true,
+                TurizmPrimGunu = 17,
+                IsgDestegiTutari = 1234.56m,
+                ManuelTesvikTuru = PayrollManuelTesvikTuru.Tutar,
+                ManuelTesvikDegeri = 789.01m,
+                YolYemek = new PayrollYolYemekDto
+                {
+                    GunSayisi = 20,
+                    YemekGunlukTutar = 300m,
+                    YemekOdemeSekli = PayrollYanHakOdemeSekli.Nakit,
+                    YolGunlukTutar = 150m
+                }
             };
 
             var girisli = (CalculatePayrollCommand)typeof(PayrollController)

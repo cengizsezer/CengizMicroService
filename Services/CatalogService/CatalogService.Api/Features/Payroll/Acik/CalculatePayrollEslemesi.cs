@@ -31,6 +31,13 @@ namespace CatalogService.Api.Features.Payroll.Acik
                 LawCode = request.LawCode,
                 IsManufacturingSector = request.IsManufacturingSector,
                 ArGeEgitimDurumu = request.ArGeEgitimDurumu,
+                TesvikAltSecimi = request.TesvikAltSecimi,
+                TurizmKonaklamaOnayi = request.TurizmKonaklamaOnayi,
+                TurizmPrimGunu = request.TurizmPrimGunu,
+                IsgDestegiTutari = request.IsgDestegiTutari,
+                ManuelTesvikTuru = request.ManuelTesvikTuru,
+                ManuelTesvikDegeri = request.ManuelTesvikDegeri,
+                YolYemek = request.YolYemek,
             };
     }
 }

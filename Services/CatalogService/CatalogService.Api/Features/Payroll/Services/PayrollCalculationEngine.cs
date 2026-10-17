@@ -52,7 +52,8 @@ namespace CatalogService.Api.Features.Payroll.Services
                 CalculationType = command.CalculationType,
                 EmployeeType = command.EmployeeType,
                 HasMandatoryBes = command.HasMandatoryBes,
-                DisabilityType = command.DisabilityType
+                DisabilityType = command.DisabilityType,
+                YolYemekDahil = command.YolYemek is not null && command.EmployeeType != PayrollEmployeeType.Honorarium
             };
 
             decimal cumulativeTaxBase = command.PreviousCumulativeTaxBase;
@@ -97,11 +98,15 @@ namespace CatalogService.Api.Features.Payroll.Services
                 {
                     PayrollMonthResultDto monthResult;
 
+                    // Yol / yemek ücretten bağımsız sabit girdi; ayın istisna parametresine göre.
+                    var yanHak = PayrollYanHakHesabi.Hesapla(command.YolYemek, command.Year, month.Month);
+
                     if (command.CalculationType == PayrollCalculationType.GrossToNet)
                     {
                         monthResult = CalculateSalaryGrossToNetMonth(
                             month.Month,
                             month.Amount,
+                            yanHak,
                             cumulativeTaxBase,
                             ref minimumWageCumulativeTaxBase,
                             command,
@@ -112,6 +117,7 @@ namespace CatalogService.Api.Features.Payroll.Services
                         monthResult = CalculateSalaryNetToGrossMonth(
                             month.Month,
                             month.Amount,
+                            yanHak,
                             cumulativeTaxBase,
                             ref minimumWageCumulativeTaxBase,
                             command,
@@ -131,6 +137,7 @@ namespace CatalogService.Api.Features.Payroll.Services
         private PayrollMonthResultDto CalculateSalaryGrossToNetMonth(
             int month,
             decimal inputAmount,
+            YanHakSonucu yanHak,
             decimal previousCumulativeTaxBase,
             ref decimal minimumWageCumulativeTaxBase,
             CalculatePayrollCommand command,
@@ -138,15 +145,21 @@ namespace CatalogService.Api.Features.Payroll.Services
         {
             var grossSalary = Round2(inputAmount);
 
-            var sgkEmployeeAmount = CalculateSgkEmployee(grossSalary, context, command.EmployeeType);
-            var unemploymentEmployeeAmount = CalculateUnemploymentEmployee(grossSalary, context, command.EmployeeType);
+            // Yol / yemek: istisnayı aşan kısım SGK matrahına (sgkGross) ve GV/DV matrahına (taxGross) eklenir.
+            // Yan haksız (kapalı ya da 2026 öncesi) ikisi de grossSalary'dir — hesap öncekiyle birebir.
+            if (grossSalary <= 0) yanHak = YanHakSonucu.Yok;
+            var sgkGross = Round2(grossSalary + yanHak.SgkyaTabi);
+            var taxGross = Round2(grossSalary + yanHak.GvyeTabi);
+
+            var sgkEmployeeAmount = CalculateSgkEmployee(sgkGross, context, command.EmployeeType);
+            var unemploymentEmployeeAmount = CalculateUnemploymentEmployee(sgkGross, context, command.EmployeeType);
 
             var disabilityExemptionAmount = grossSalary > 0
                 ? GetDisabilityExemptionAmount(context)
                 : 0m;
 
             var incomeTaxBase = CalculateIncomeTaxBase(
-                grossSalary,
+                taxGross,
                 sgkEmployeeAmount,
                 unemploymentEmployeeAmount,
                 disabilityExemptionAmount);
@@ -163,14 +176,25 @@ namespace CatalogService.Api.Features.Payroll.Services
      : 0m;
 
             // Kanun teşviki (4691/5746): AÜ istisnasından sonra kalan vergiye uygulanır.
+            // Brüt, üst sınırı (asgari ücret × 40) aşıyorsa teşvik yalnız sınıra kadar olan kısmın vergisine;
+            // aşan kısmın vergisi normal (kısım, ayın kümülatif diliminde önce gelir).
             var remainingIncomeTax = Round2(Math.Max(0, calculatedIncomeTax - minimumWageIncomeTaxExemption));
-            var incomeTaxIncentive = Round2(remainingIncomeTax * context.EmployeeTaxIncentive.IncomeTaxIncentiveRate);
+            var wageCeiling = context.EmployeeTaxIncentive.WageCeiling;
+            var incentiveIncomeTax = remainingIncomeTax;
+            // TODO-TEYIT: tavan karşılaştırmasında GV'ye tabi yol/yemek ücrete dahil edildi (taxGross).
+            if (wageCeiling is { } ceiling && taxGross > ceiling)
+            {
+                var ceilingTaxBase = CalculateIncomeTaxBase(ceiling, sgkEmployeeAmount, unemploymentEmployeeAmount, disabilityExemptionAmount);
+                var ceilingIncomeTax = CalculateProgressiveIncomeTax(previousCumulativeTaxBase, ceilingTaxBase, context);
+                incentiveIncomeTax = Round2(Math.Min(remainingIncomeTax, Math.Max(0, ceilingIncomeTax - minimumWageIncomeTaxExemption)));
+            }
+            var incomeTaxIncentive = Round2(incentiveIncomeTax * context.EmployeeTaxIncentive.IncomeTaxIncentiveRate);
 
             var incomeTaxExemption = Round2(minimumWageIncomeTaxExemption + incomeTaxIncentive);
             var payableIncomeTax = Round2(remainingIncomeTax - incomeTaxIncentive);
 
             var calculatedStampTax = command.IncludeStampTax
-    ? CalculateStampTax(grossSalary, context)
+    ? CalculateStampTax(taxGross, context)
     : 0m;
 
             var stampTaxExemption = (grossSalary > 0 && command.IncludeStampTax && command.IncludeMinimumWageExemption)
@@ -178,24 +202,38 @@ namespace CatalogService.Api.Features.Payroll.Services
        : 0m;
 
             if (context.EmployeeTaxIncentive.IsStampTaxExempt)
-                stampTaxExemption = calculatedStampTax;
+                stampTaxExemption = wageCeiling is { } dvCeiling && taxGross > dvCeiling
+                    ? Math.Max(stampTaxExemption, Math.Min(calculatedStampTax, CalculateStampTax(dvCeiling, context)))
+                    : calculatedStampTax;
 
             var payableStampTax = Round2(Math.Max(0, calculatedStampTax - stampTaxExemption));
 
+            // BES prime esas kazançtan: SGK'ya tabi yan hak dahil.
             var besAmount = CalculateBes(
-    grossSalary,
+    sgkGross,
     context,
     command.HasMandatoryBes,
     command.EmployeeType);
+
+            // 26322 / 15921 / 02828: sigortalı hissesi asgari ücret tabanında karşılanır.
+            // GV matrahı değişmez (26322 için TODO-TEYIT, bkz. PayrollTesvikKurallari); kesintiden düşer → net artar.
+            var employeeSgkIncentive = PayrollTesvikTabani.SigortaliTesviki(
+                context.EmployeeTaxIncentive.EmployeeCoveredItems,
+                sgkGross,
+                sgkEmployeeAmount,
+                unemploymentEmployeeAmount,
+                context.Parameter);
 
             var totalDeductions = Round2(
                 sgkEmployeeAmount +
                 unemploymentEmployeeAmount +
                 payableIncomeTax +
                 payableStampTax +
-                besAmount);
+                besAmount -
+                employeeSgkIncentive);
 
-            var netSalary = Round2(grossSalary - totalDeductions);
+            // Nakit yan hak nete eklenir; kartla ödenen nete girmez (CardPaidBenefits).
+            var netSalary = Round2(grossSalary + yanHak.Nakit - totalDeductions);
 
             return new PayrollMonthResultDto
             {
@@ -220,14 +258,26 @@ namespace CatalogService.Api.Features.Payroll.Services
                 PayableStampTax = payableStampTax,
 
                 BesAmount = besAmount,
+                EmployeeSgkIncentive = employeeSgkIncentive,
                 TotalDeductions = totalDeductions,
-                NetSalary = netSalary
+                NetSalary = netSalary,
+
+                MealAmount = yanHak.Yemek,
+                TransportAmount = yanHak.Yol,
+                SgkTaxableBenefits = yanHak.SgkyaTabi,
+                IncomeTaxableBenefits = yanHak.GvyeTabi,
+                CashBenefits = yanHak.Nakit,
+                CardPaidBenefits = yanHak.Kart
             };
         }
+
+        /// <summary>Netten brüte hedefi: yan haklar HARİÇ ücret neti (nakit yan hak çıkarılır).</summary>
+        private static decimal WageNet(PayrollMonthResultDto result) => result.NetSalary - result.CashBenefits;
 
         private PayrollMonthResultDto CalculateSalaryNetToGrossMonth(
             int month,
             decimal targetNet,
+            YanHakSonucu yanHak,
             decimal previousCumulativeTaxBase,
             ref decimal minimumWageCumulativeTaxBase,
             CalculatePayrollCommand command,
@@ -235,6 +285,7 @@ namespace CatalogService.Api.Features.Payroll.Services
         {
             var grossEstimate = SolveSalaryGrossFromTargetNet(
                 targetNet,
+                yanHak,
                 previousCumulativeTaxBase,
                 minimumWageCumulativeTaxBase,
                 command,
@@ -249,12 +300,13 @@ namespace CatalogService.Api.Features.Payroll.Services
                 var candidateResult = CalculateSalaryGrossToNetMonth(
                     month: 0,
                     inputAmount: candidate,
+                    yanHak: yanHak,
                     previousCumulativeTaxBase: previousCumulativeTaxBase,
                     minimumWageCumulativeTaxBase: ref tempMinimumWageCumulativeTaxBase,
                     command: command,
                     context: context);
 
-                if (candidateResult.NetSalary < targetNet)
+                if (WageNet(candidateResult) < targetNet)
                     break;
 
                 grossEstimate = candidate;
@@ -263,6 +315,7 @@ namespace CatalogService.Api.Features.Payroll.Services
             return CalculateSalaryGrossToNetMonth(
                 month,
                 grossEstimate,
+                yanHak,
                 previousCumulativeTaxBase,
                 ref minimumWageCumulativeTaxBase,
                 command,
@@ -271,13 +324,15 @@ namespace CatalogService.Api.Features.Payroll.Services
 
         private decimal SolveSalaryGrossFromTargetNet(
             decimal targetNet,
+            YanHakSonucu yanHak,
             decimal previousCumulativeTaxBase,
             decimal minimumWageCumulativeTaxBase,
             CalculatePayrollCommand command,
             PayrollCalculationContext context)
         {
+            // Yan hakların vergi/primi ücretten kesildiği için üst sınır yan hak kadar genişler (kapalıyken aynı).
             decimal low = targetNet;
-            decimal high = targetNet * 3;
+            decimal high = (targetNet + yanHak.Toplam) * 3;
 
             for (int i = 0; i < 60; i++)
             {
@@ -287,15 +342,16 @@ namespace CatalogService.Api.Features.Payroll.Services
                 var result = CalculateSalaryGrossToNetMonth(
                     month: 0,
                     inputAmount: mid,
+                    yanHak: yanHak,
                     previousCumulativeTaxBase: previousCumulativeTaxBase,
                     minimumWageCumulativeTaxBase: ref tempMinimumWageCumulativeTaxBase,
                     command: command,
                     context: context);
 
-                if (Math.Abs(result.NetSalary - targetNet) < 0.01m)
+                if (Math.Abs(WageNet(result) - targetNet) < 0.01m)
                     return mid;
 
-                if (result.NetSalary < targetNet)
+                if (WageNet(result) < targetNet)
                     low = mid;
                 else
                     high = mid;
@@ -539,8 +595,15 @@ namespace CatalogService.Api.Features.Payroll.Services
                 TotalStampTaxExemption = Round2(months.Sum(x => x.StampTaxExemption)),
                 TotalPayableStampTax = Round2(months.Sum(x => x.PayableStampTax)),
                 TotalBesAmount = Round2(months.Sum(x => x.BesAmount)),
+                TotalEmployeeSgkIncentive = Round2(months.Sum(x => x.EmployeeSgkIncentive)),
                 TotalDeductions = Round2(months.Sum(x => x.TotalDeductions)),
-                TotalNetSalary = Round2(months.Sum(x => x.NetSalary))
+                TotalNetSalary = Round2(months.Sum(x => x.NetSalary)),
+                TotalMealAmount = Round2(months.Sum(x => x.MealAmount)),
+                TotalTransportAmount = Round2(months.Sum(x => x.TransportAmount)),
+                TotalSgkTaxableBenefits = Round2(months.Sum(x => x.SgkTaxableBenefits)),
+                TotalIncomeTaxableBenefits = Round2(months.Sum(x => x.IncomeTaxableBenefits)),
+                TotalCashBenefits = Round2(months.Sum(x => x.CashBenefits)),
+                TotalCardPaidBenefits = Round2(months.Sum(x => x.CardPaidBenefits))
             };
         }
 
